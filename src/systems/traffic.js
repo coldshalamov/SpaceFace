@@ -1883,6 +1883,46 @@ export const traffic = {
   // not defensively clone the (large) traffic payload a second time during autosave capture.
   saveSnapshotOwned: true,
 
+  /** A secured physical hull leaves traffic's route/job roster without destruction or cargo
+   * settlement. World-record retirement is performed by the world owner before this handoff. */
+  relinquishVessel(entityId, vesselId) {
+    const entity = this.state.entities?.get(entityId);
+    if (!entity || entity.alive === false || entity.type !== 'ship'
+      || typeof vesselId !== 'string' || entity.data?.vesselId !== vesselId) {
+      return { ok: false, reason: 'vessel_identity_changed' };
+    }
+    const rows = this.state.traffic?.freighters;
+    const index = Array.isArray(rows) ? rows.findIndex(row => row?.id === entityId) : -1;
+    const row = index >= 0 ? rows[index] : null;
+    const active = this._active?.includes(entityId) === true;
+    if (!row && !active && !entity.data.trafficRole) return { ok: true, relinquished: false };
+    // Preserve the exact finite freight object aboard the real hull. This is custody, neither
+    // cargo extraction nor an economy trade, and must not mint a replacement manifest.
+    if (!entity.data.cargoManifest && row?.manifest) entity.data.cargoManifest = row.manifest;
+    const jobs = this.helpers?.npcJobs;
+    const entry = jobs?.byEntity?.(entityId);
+    const jobId = entity.data.jobId || entry?.job?.id;
+    if (jobId && typeof jobs?.release === 'function') jobs.release(jobId);
+    // The ordinary despawn-side handler only releases salvor reservations; it never destroys
+    // a body or settles its manifest. Capturing the working salvor ends those same leases.
+    this._onEntityDestroyed({ id: entityId, entity, reason: 'custody_transferred' });
+    if (index >= 0) rows.splice(index, 1);
+    if (Array.isArray(this._active)) this._active = this._active.filter(id => id !== entityId);
+    if (this._industryHaulDispatched instanceof Map) {
+      for (const [key, order] of this._industryHaulDispatched) if (order.entityId === entityId) this._industryHaulDispatched.delete(key);
+    }
+    // Generic promote/save adoption is keyed on trafficRole. Keeping it would silently reclaim
+    // the parked ship on the next enter even though its former job and world record are retired.
+    delete entity.data.trafficRole;
+    entity.data.intent = null;
+    entity.data.ai = null;
+    entity.flags ||= {};
+    entity.flags.persistent = true;
+    this._ensureState();
+    this.bus?.emit('traffic:vesselRelinquished', { entityId, vesselId, jobId: jobId || null });
+    return { ok: true, relinquished: true, jobId: jobId || null };
+  },
+
   destroy() {
     clearCeresWorkfleetControls(this.state);
     unregisterMachineryReconciliation(this.state, this);

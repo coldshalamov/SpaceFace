@@ -6,8 +6,10 @@
 import {
   userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
 } from './userContent.js';
+import { BLACK_FLAG_MODULES } from './shipjackEquipment.js';
 
 const SHIPPED_MODULES = [
+  ...BLACK_FLAG_MODULES,
   // ===================== SHIELDS =====================
   {
     id: 'mod_shield_booster_s', name: 'Shield Booster S', slotType: 'shield', size: 'S', tier: 1, mass: 3, price: 6000,

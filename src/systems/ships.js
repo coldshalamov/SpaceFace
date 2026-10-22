@@ -54,6 +54,8 @@ import { cleanShipName } from '../data/hullIdentity.js';
 import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCrossover.js';
 import { FACTION_META } from '../data/factions.js';
 import { hash32 } from '../core/rng.js';
+import { captureAndTransfer, admitCapturedVessel } from './shipControlTransfer.js';
+import { settleOwnedVesselYardOperation } from '../shipjack/ownedOperations.js';
 
 /** Non-negative finite reading of a receipt amount; a missing measurement stays zero, never NaN. */
 function finiteAmount(value) {
@@ -182,7 +184,28 @@ export function shipyardPurchaseQuote(state, defId) {
 }
 
 function derivedForOwned(defId, fittings, player, owned) {
-  const derived = getDerivedStats(defId, fittings || [], player);
+  let derived = getDerivedStats(defId, fittings || [], player);
+  // Recovered component condition has a physical consequence without a second fitting model.
+  // Clone the nested profile before changing it: getDerivedStats caches catalog profiles.
+  for (const [slotIndex, instance] of Object.entries(owned?.fittedInstances || {})) {
+    if (typeof instance?.condition !== 'number' || !Number.isFinite(instance.condition)
+      || instance.defId !== fittings?.[slotIndex]) continue;
+    const component = defById(instance.defId);
+    const factor = 0.35 + 0.65 * clamp01(instance.condition);
+    if (component?.slotType === 'engine') {
+      derived.thrust *= factor;
+      if (derived.propulsion) {
+        derived.propulsion = { ...derived.propulsion };
+        for (const key of ['mainAccel', 'reverseAccel', 'strafeAccel', 'maxAccel', 'maxBrakeAccel',
+          'rcsForwardAccel', 'rcsReverseAccel', 'rcsStrafeAccel', 'fieldAccel', 'trimAccel', 'yawAccel', 'yawBrake', 'baseImpulseDv', 'maxImpulseDv']) {
+          if (Number.isFinite(derived.propulsion[key])) derived.propulsion[key] *= factor;
+        }
+      }
+    }
+    if (component?.slotType === 'reactor' && Number.isFinite(derived.capRegen)) derived.capRegen *= factor;
+    if (component?.slotType === 'shield' && Number.isFinite(derived.shieldMax)) derived.shieldMax *= factor;
+    if (component?.slotType === 'sensor' && Number.isFinite(derived.radarRange)) derived.radarRange *= factor;
+  }
   const quirk = owned && owned.impoundQuirk;
   if (!quirk || quirk.kind !== 'overbored') return derived;
   return derivedWithOverbore(derived, quirk.accelMult);
@@ -1669,6 +1692,9 @@ export const ships = {
     this._cargoMassRefreshPending = false;
     this._lastScarByCause = { weapon: null, slam: null };
     const bus = this.bus;
+    bus.on('game:new', () => {
+      if (this.state.player) delete this.state.player.shipControlTransfers;
+    });
 
     // re-derive on fit/research changes coming from other systems
     bus.on('module:equipped', ({ shipId }) => this.recomputeEntity(shipId));
@@ -2065,11 +2091,24 @@ export const ships = {
     const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
     const prevAppearance = e.data._appearance || '';
     const newWeapons = buildWeaponList(shipDef, fit, isPlayer, derived || null);
+    if (ownedForQuirk?.shipjackNoLegacyWeapon && !fit.some(id => WEAPON_BY_ID.has(id))) {
+      // A physically stripped socket is empty. The pre-fitting legacy-save starter gun is
+      // compatibility, never an equipment replenishment service for captured hulls.
+      for (let i = newWeapons.length - 1; i >= 0; i -= 1) if (!newWeapons[i].intrinsic) newWeapons.splice(i, 1);
+    }
+    if (ownedForQuirk) for (const weapon of newWeapons) {
+      const instance = ownedForQuirk.fittedInstances?.[weapon.slotIndex];
+      if (instance?.defId === weapon.defId && typeof instance.condition === 'number' && Number.isFinite(instance.condition)) {
+        weapon.dmg = scaleWeaponRuntimeStat(weapon.dmg, 0.35 + 0.65 * clamp01(instance.condition));
+      }
+    }
     const newViewFittings = fittingsForView(shipDef, fit, newWeapons);
     const newAppearance = defId + '|' + newViewFittings.join(',') + '|'
       + shipAppearanceSignature(e.data.appearance, defId);
 
     e.data.derived = derived;
+    if (ownedForQuirk?.shipjackDriveRemoved) e.data.shipjackDriveRemoved = true;
+    else if (Object.hasOwn(e.data, 'shipjackDriveRemoved')) delete e.data.shipjackDriveRemoved;
     if (isPlayer && this.state.ui) this.state.ui.radarRange = derived.radarRange;
     e.data.weapons = newWeapons;
     e.data.miningBeam = buildMiningBeam(shipDef, fit, isPlayer);
@@ -2364,6 +2403,13 @@ export const ships = {
     }
     const owned = p.ownedShips[index];
     if (!owned) return false;
+    if (owned.vesselId) {
+      // Tracked vessels require the same physical-inventory appraisal and terminal custody
+      // receipt as the Registry. Legacy half-price sale also refunds every fitted module,
+      // which would bypass liens, condition, title and disjoint hull/parts valuation.
+      this.bus.emit('toast', { text: 'Use the Black Flag Registry appraisal to release this vessel and settle its title, fittings and liens.', kind: 'warn', ttl: 4 });
+      return false;
+    }
     // FB-061 — the hold is part of the hull. A parked ship still carrying units cannot leave
     // without an explicit confirmation that names them; the caller passes the unit count it
     // showed the player, so a stale quote cannot silently take a loaded hold.
@@ -2399,6 +2445,12 @@ export const ships = {
     const p = this.state.player;
     const owned = p.ownedShips[index];
     if (!owned) return false;
+    const vessel = owned.vesselId && this.state.shipjack?.vesselsById?.[owned.vesselId];
+    if (index !== p.activeShipIndex && vessel
+      && (vessel.location?.kind !== 'berth' || vessel.location.stationId !== this.state.ui?.dockedStationId)) {
+      this.bus.emit('toast', { text: 'That hull is in space. Recover it or approach it for a physical helm transfer.', kind: 'warn', ttl: 4 });
+      return false;
+    }
     const isTransition = index !== p.activeShipIndex;
     const previousOwned = p.ownedShips[p.activeShipIndex] || null;
     const target = getDerivedStats(owned.defId, owned.fittings || [], p);
@@ -2430,6 +2482,9 @@ export const ships = {
       this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
       return false;
     }
+    if (isTransition) this.bus.emit('ship:berthSwitching', {
+      fromId: this.state.playerId, fromVesselId: previousOwned?.vesselId || null, toVesselId: owned.vesselId || null,
+    });
     p.activeShipIndex = index;
     // re-derive the player entity onto the new hull if it exists
     const e = this.state.entities.get(this.state.playerId);
@@ -2438,7 +2493,25 @@ export const ships = {
       e.data.shipName = cleanShipName(owned.name) || null;
       e.data.appearance = normalizeShipAppearance(owned.appearance, owned.defId);
       e.data.livingHull = normalizeLivingHull(owned.livingHull, this.state.simTime || 0);
+      if (owned.vesselId) {
+        e.data.vesselId = owned.vesselId;
+        e.data.shipjackGeneration = vessel?.generation || e.occupantGeneration;
+      } else {
+        delete e.data.vesselId;
+        delete e.data.shipjackGeneration;
+      }
       this.recomputeEntity(e.id, owned.fittings);
+      if (isTransition && vessel) {
+        // The ordinary berth adapter keeps its player body, but the incoming hull brings its
+        // own damage. Outgoing hull integrity cannot repair a captured ship for free.
+        const parked = vessel.parkedBody || {};
+        e.hull = Math.min(e.hullMax, Number.isFinite(parked.hull) ? parked.hull
+          : e.hullMax * Math.max(0, Math.min(1, Number(vessel.condition?.hull) || 0)));
+        for (const [key, max] of [['armorHp','armorMax'], ['shield','shieldMax'], ['cap','capMax']]) {
+          e[key] = Math.max(0, Math.min(e[max] || 0, Number.isFinite(parked[key]) ? parked[key] : 0));
+        }
+        if (parked.subsystems) this.helpers?.restoreShipjackSubsystems?.({ entityId: e.id, subsystems: parked.subsystems });
+      }
     }
     if (isTransition) {
       this.publishActiveRoleContext({
@@ -2449,6 +2522,40 @@ export const ships = {
     }
     return true;
   },
+
+  /** In-flight custody transfers move the pilot, never swap a station hull into a body. */
+  captureAndTransfer(request) { return captureAndTransfer(this, request); },
+
+  admitCapturedVessel(request) { return admitCapturedVessel(this, request); },
+
+  linkVesselToOwned({ index = this.state.player.activeShipIndex, vesselId } = {}) {
+    const owned = this.state.player.ownedShips[index];
+    if (!owned || typeof vesselId !== 'string' || !/^[A-Za-z0-9_:.\-]{1,128}$/.test(vesselId)
+      || (owned.vesselId && owned.vesselId !== vesselId)
+      || this.state.player.ownedShips.some((other, i) => i !== index && other.vesselId === vesselId)) return false;
+    owned.vesselId = vesselId;
+    return true;
+  },
+
+  getTransferCargoCapacity(owned) {
+    return getDerivedStats(owned.defId, owned.fittings || [], this.state.player).cargoCap;
+  },
+
+  validateTransferFittings(owned) {
+    if (!Array.isArray(owned.fittings) || owned.fittings.length > 64) return false;
+    const slots = buildSlotList(SHIP_BY_ID.get(owned.defId));
+    return owned.fittings.every((id, index) => !id || (defById(id) && slots[index] && fits(slots[index], defById(id))));
+  },
+
+  ownedVesselLocationBlocker(owned, shipIndex) {
+    if (!owned?.vesselId || shipIndex == null || shipIndex === this.state.player.activeShipIndex) return null;
+    const vessel = this.state.shipjack?.vesselsById?.[owned.vesselId];
+    if (!vessel || (vessel.location?.kind === 'berth' && vessel.location.stationId === this.state.ui?.dockedStationId)) return null;
+    return { reason: 'remote_vessel', text: 'Deliver that hull to this berth before moving its equipment.' };
+  },
+
+  /** Yard settlement enters through the canonical owned-hull/module writer. */
+  settleVesselYardOperation(request) { return settleOwnedVesselYardOperation(this, request); },
 
   setShipAppearance({ shipIndex = null, appearance = null } = {}) {
     const owned = this.ownedShip(shipIndex);
@@ -2499,6 +2606,8 @@ export const ships = {
   moduleFitBlocker({ shipIndex, slotIndex, def }) {
     const owned = this.ownedShip(shipIndex);
     if (!owned || !def) return { reason: 'missing_fit_target', text: null };
+    const locationBlocker = this.ownedVesselLocationBlocker(owned, shipIndex);
+    if (locationBlocker) return locationBlocker;
     const shipDef = SHIP_BY_ID.get(owned.defId);
     const slot = buildSlotList(shipDef)[slotIndex];
     if (!slot) return { reason: 'unknown_slot', text: null };
@@ -2610,6 +2719,7 @@ export const ships = {
     owned.fittedInstances[slotIndex] = fittedInventoryItem
       ? { ...fittedInventoryItem, defId }
       : { instanceId: this.nextInstanceId(), defId };
+    if (def.type === 'engine' || def.category === 'engine' || def.slotType === 'engine') delete owned.shipjackDriveRemoved;
 
     // Unfit whatever previously occupied the slot back to inventory after validation succeeds.
     if (displaced) p.moduleInventory.push({ ...displaced });
@@ -2637,6 +2747,8 @@ export const ships = {
     const p = this.state.player;
     const owned = this.ownedShip(shipIndex);
     if (!owned) return refuse('missing_ship');
+    const locationBlocker = this.ownedVesselLocationBlocker(owned, shipIndex);
+    if (locationBlocker) return refuse(locationBlocker.reason);
     const defId = owned.fittings[slotIndex];
     if (!defId) return refuse('empty_slot');
 
@@ -2665,6 +2777,7 @@ export const ships = {
   takeFittedModuleInstance(shipIndex, slotIndex) {
     const owned = this.ownedShip(shipIndex);
     if (!owned || !Array.isArray(owned.fittings)) return null;
+    if (this.ownedVesselLocationBlocker(owned, shipIndex)) return null;
     const defId = owned.fittings[slotIndex];
     if (!defId) return null;
     const inst = this._takeFittedInstance(owned, slotIndex);

@@ -148,6 +148,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'ui:setCourse',
   'ui:setShipAppearance',
   'ui:setShipName',
+  'ui:shipjack',
   'ui:talkContact',
   'ui:trackMission',
   'ui:unfitPayload',
@@ -269,4 +270,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=138 dynamic=22 legacy=7 excluded=6 total=158 knownUnforwarded=78
+// provenance: census=139 dynamic=22 legacy=7 excluded=6 total=159 knownUnforwarded=78
