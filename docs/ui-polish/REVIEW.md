@@ -1853,3 +1853,9 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`pause.js` one line, `pauseLayouts.js` one `max-width:760px` block scoped to `:not([data-sf-mobile="1"])`):** windows ≤760 wide take the existing phone column, and the sheet gives it the phone sheet's flow (one scroll owner, rows that wrap, a single-column body, 20–48px margins). 0 findings at 390×844, 600×800, 700×800, 701×800; 700×500 and 760×700 only report verbs below the fold of the scrolling list. 960×540, 1280×720, 1920×1080 and the real phone (`--phone` 390×844) are unchanged. Selectors and IDs are unchanged.
 
 **Still open:** at 761–~790 wide the dial's REFERENCE bank runs STATISTICS past the right edge.
+
+### ui-polish-88 review fixes (#499, after Code Work's 227ae0e47a hand-back)
+- pause.js watches `matchMedia('(max-width:760px)')` and remounts when the window crosses 760 (and on show if it crossed while covered); classes are reset first so the dial and the column never stack.
+- The column's key strip says `↑↓ MOVE` (a flat list) instead of `↑↓ CATEGORY / ←→ ITEM`; the dial keeps its two-level hints.
+- test/ui-polish-88-pause-narrow.test.mjs: mounts at 700, resizes 700→1280→700 and 1280→700.
+- Bench (mk499): resize 1280→700 now column, 0/18 unreachable (was dial, 7/18, 4 off-x); 700→1280 now dial, 0 overlaps (was column, 12). 390x844 / 760x800 / 1280x720 unchanged.
