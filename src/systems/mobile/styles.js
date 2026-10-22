@@ -339,15 +339,9 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] :is(.sf-prail,.sf-leftstack,.orr-hud-cluster,.sf-overview,.sf-target) { display:none!important; }
  /* the deck has its own DOCK key, so the keyboard-worded prompt goes; alerts and the travel tape clear the status strip */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-alert--dock { display:none!important; }
- /* the objective and comms stack stands under the status strip and the alerts, left-aligned; the radar band readout sits
-    under the pause key and the deck has no band to switch, so it goes; hail and comms are real buttons and get thumb size */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-leftcontext { top:calc(176px + var(--sf-safe-top,0px))!important; left:calc(14px + var(--sf-safe-left,0px))!important; max-width:min(250px,64vw); }
+ /* One mobile placement contract is defined below, after the desktop adaptation rules. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-band-hud { display:none!important; }
- /* the right dock stacks law/intercept and contact cards up from the bottom-right corner, which is the key cluster's:
-    on a phone it hangs from under the pause key instead; the radar's accessibility canvas must not eat a thumb */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(168px + var(--sf-safe-top,0px))!important; bottom:auto!important; right:calc(12px + var(--sf-safe-right,0px))!important; width:min(236px,58vw)!important; max-height:150px; overflow:hidden; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-radar-semantic-canvas { pointer-events:none!important; }
- :root[data-sf-mobile-wheel="1"] #hud .sf-rightdock { opacity:0!important; }
  /* the Massline cadence card is a 330px instrument in the mid-left column, where a thumb lives: on a phone it keeps its
     status line and window bar, drops the stat row and hint, and sits under the pause key */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { position:fixed!important; right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; top:calc(176px + var(--sf-safe-top,0px))!important; bottom:auto!important; width:min(230px,56vw)!important; }
@@ -355,9 +349,7 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence { width:100%!important; padding:9px 12px 8px!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence :is(.ml-cadence__stats,.ml-cadence__hint) { display:none!important; }
  :root[data-sf-mobile-wheel="1"] .ml2-cadence-slot { opacity:0!important; }
- /* Receipts grow upward above the stick and Dock key. Keep the power handle's edge clear;
-    the cluster width also carries the player's control-size setting into this reserved lane. */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; top:auto!important; bottom:calc(max(224px,94px + var(--mf-cluster-w,196px) * .8) + var(--sf-safe-bottom,0px))!important; width:min(320px,calc(100vw - 26px - max(58px,var(--mf-cluster-w,196px) * .25) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important; max-width:none!important; }
+ /* Receipts occupy the reserved text lane, clear of the power handle. */
  /* Informational arrivals stay two thin receipt rows, rather than wrapping a zone paragraph
     upward across the ship. Full text remains in the receipt and its live announcement. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast--info { box-sizing:border-box; width:100%; max-width:100%; min-width:0; }
@@ -366,13 +358,10 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] :is(#toasts,#toasts *) { pointer-events:none!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #toasts { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud :is(.sf-contact-hail__button,.sf-comm-backlog-btn) { min-height:40px; min-width:60px; pointer-events:auto; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:translateY(calc(124px + var(--sf-safe-top,0px))); }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-vtape { left:14px!important; bottom:auto!important; top:calc(128px + var(--sf-safe-top,0px))!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { position:fixed!important; top:64px!important; right:12px!important; bottom:auto!important; left:auto!important; transform:scale(.5)!important; transform-origin:top right!important; pointer-events:auto!important; }
  /* Ordinary flight's camera/Circuits keys are a narrow rail under Pause, clear of the ship scales.
     Authored races keep their map and readings in a compact central instrument. */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape { font:500 11px/1.3 var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); background:rgb(8 11 16 / .76); padding:6px; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(70px + var(--sf-safe-top,0px)); right:calc(12px + var(--sf-safe-right,0px)); width:min(128px,calc(100vw - 202px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))); }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape { font:500 12px/1.3 var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); background:rgb(8 11 16 / .76); padding:6px; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-actions { gap:4px; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-actions .k-word { min-height:44px; border:0; border-bottom:1px solid rgb(232 226 212 / .25); padding:4px 6px; font:inherit; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -388,22 +377,123 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"] .dp-frame__head { flex:none; }
 }
 @media (max-height:500px) {
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { bottom:calc(max(182px,84px + var(--mf-cluster-w,196px) * .675) + var(--sf-safe-bottom,0px))!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { top:56px!important; transform:scale(.4)!important; }
  /* landscape has the width: alerts return to the top centre, the right dock sits left of the pause key */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:none!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(64px + var(--sf-safe-top,0px))!important; right:calc(104px + var(--sf-safe-right,0px))!important; width:min(236px,32vw)!important; max-height:150px; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(68px + var(--sf-safe-top,0px)); right:calc(84px + var(--sf-safe-right,0px)); width:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:flex; }
-}
-@media (max-height:500px) and (orientation:landscape) {
- /* Short landscape HUD owns the first 118px; anchor the receipt stack below it so multiple rows
-    flow down toward, but remain clear of, the left stick. Portrait keeps its bottom-up placement. */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { top:calc(118px + var(--sf-safe-top,0px))!important; bottom:auto!important; }
 }
 @media (max-width:600px) {
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="false"] { top:calc(172px + var(--sf-safe-top,0px)); left:14px; right:14px; max-height:calc(100dvh - 372px); }
 }
+
+/* Mobile flight lanes: explicit dimensions, not a scaled desktop instrument. These scoped
+   rules win in either stylesheet injection order. Fixed children must not inherit the
+   desktop dock's containment/transform containing block. SVG labels retain >= 9px ink:
+   24 * 96 / 208 = 11.08px compact; 32 * 96 / 290 = 10.59px expanded.
+   Details are deliberately scrollable only after the player expands the existing radar. */
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] {
+ --sf-mobile-edge: max(90px, calc(20px + var(--mf-cluster-w,196px) * .266));
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-status { width:124px; }
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock {
+ position:static!important; transform:none!important; contain:none!important;
+ width:auto!important; max-height:none!important; overflow:visible!important;
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext {
+ top:calc(132px + var(--sf-safe-top,0px))!important; left:calc(14px + var(--sf-safe-left,0px))!important;
+ width:140px!important; max-width:140px!important; max-height:126px!important;
+ transform:none!important; overflow-x:hidden!important; overflow-y:auto!important;
+ overscroll-behavior:contain; touch-action:pan-y; pointer-events:auto;
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext > * {
+ width:100%!important; max-width:100%!important; min-width:0; box-sizing:border-box;
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext :is(.sf-mt-title,.sf-nav-label) {
+ max-width:100%!important; white-space:normal!important; overflow-wrap:anywhere;
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud #race-tape[data-compact="true"] {
+ position:fixed!important; top:calc(70px + var(--sf-safe-top,0px))!important;
+ right:calc(var(--sf-mobile-edge) + var(--sf-safe-right,0px))!important;
+ left:auto!important; bottom:auto!important; width:136px!important; transform:none!important;
+ box-sizing:border-box; margin:0; min-width:0;
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap {
+ position:fixed!important; top:calc(138px + var(--sf-safe-top,0px))!important;
+ right:calc(var(--sf-mobile-edge) + var(--sf-safe-right,0px))!important;
+ left:auto!important; bottom:auto!important; transform:none!important;
+ --sf-radar-size:96px; --sf-kit-radar-rim:12px;
+ width:120px!important; min-height:120px!important; height:120px!important;
+ box-sizing:border-box; padding:0!important; gap:0!important; pointer-events:auto!important;
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap .sf-radar {
+ width:96px!important; height:96px!important; flex:none; margin-top:12px!important;
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar canvas { width:100%!important; height:100%!important; }
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-orrery text { font-size:24px!important; }
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar-objective-key { display:none!important; }
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded {
+ width:180px!important; min-height:0!important; height:auto!important; max-height:120px!important;
+ overflow-x:hidden!important; overflow-y:auto!important; overscroll-behavior:contain; touch-action:pan-y;
+ padding:6px 0!important; background:var(--dp-glass-bg,rgb(6 8 12 / .9));
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded .sf-radar {
+ width:96px!important; height:96px!important; margin-top:12px!important;
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded .sf-radar-orrery text { font-size:32px!important; }
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded .sf-radar-objective-key {
+ flex:none; margin:22px 0 0!important; padding:0 6px 8px; box-sizing:border-box;
+ font-size:12px!important; line-height:1.3; letter-spacing:.04em!important;
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"]:has(.sf-radar-wrap--expanded) #hud > .sf-leftcontext { visibility:hidden; pointer-events:none!important; }
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts {
+ top:calc(266px + var(--sf-safe-top,0px))!important; left:calc(14px + var(--sf-safe-left,0px))!important;
+ right:auto!important; width:calc(100vw - 28px - var(--sf-mobile-edge) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important;
+ transform:none!important; max-height:44px; overflow-y:auto; touch-action:pan-y; pointer-events:auto;
+}
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts {
+ top:calc(318px + var(--sf-safe-top,0px))!important; bottom:auto!important; width:140px!important;
+ left:calc(14px + var(--sf-safe-left,0px))!important; right:auto!important; transform:none!important;
+}
+:root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
+:root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { right:auto!important; left:calc(var(--sf-mobile-edge) + var(--sf-safe-left,0px))!important; }
+:root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #alerts { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
+:root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #toasts { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
+@media (max-height:500px) and (orientation:landscape) {
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] { --sf-mobile-edge:calc(24px + var(--mf-cluster-w,196px) * .87); --sf-mobile-nav-w:clamp(136px,calc(100vw - 528px),236px); }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud #race-tape[data-compact="true"] { top:calc(12px + var(--sf-safe-top,0px))!important; width:var(--sf-mobile-nav-w)!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { top:calc(76px + var(--sf-safe-top,0px))!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded { width:120px!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext { top:calc(158px + var(--sf-safe-top,0px))!important; width:min(280px,calc(50vw - 40px))!important; max-width:280px!important; max-height:56px!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { top:calc(76px + var(--sf-safe-top,0px))!important; left:calc(164px + var(--sf-safe-left,0px))!important; width:min(280px,calc(50vw - 184px))!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { top:calc(12px + var(--sf-safe-top,0px))!important; left:calc(164px + var(--sf-safe-left,0px))!important; width:min(224px,calc(100vw - var(--sf-mobile-edge) - max(180px,var(--sf-mobile-nav-w)) - 180px))!important; max-height:56px; }
+ :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { left:auto!important; right:calc(var(--sf-mobile-edge) + var(--sf-safe-right,0px))!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext { left:calc(80px + var(--sf-safe-left,0px))!important; right:auto!important; width:min(280px,calc(50vw - 120px))!important; }
+}
+@media (max-height:500px) and (orientation:landscape) {
+ :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #toasts { left:calc(164px + var(--sf-safe-left,0px))!important; right:auto!important; width:min(280px,calc(50vw - 184px))!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-edge { top:calc(118px + var(--sf-safe-top,0px)); bottom:auto; }
+}
+@media (max-width:374px) and (orientation:portrait) {
+ :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-edge { top:calc(132px + var(--sf-safe-top,0px)); bottom:auto; height:calc(88px * var(--mf-scale)); }
+
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-status { width:92px; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud #race-tape[data-compact="true"] { top:calc(124px + var(--sf-safe-top,0px))!important; left:calc(14px + var(--sf-safe-left,0px))!important; right:auto!important; width:calc(100vw - 28px - var(--sf-mobile-edge))!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap,
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded {
+  top:calc(12px + var(--sf-safe-top,0px))!important; left:calc(116px + var(--sf-safe-left,0px))!important; right:auto!important;
+  width:100px!important; min-height:100px!important; height:100px!important; max-height:100px!important;
+  --sf-radar-size:80px; --sf-kit-radar-rim:10px; padding:0!important;
+ }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap .sf-radar { width:80px!important; height:80px!important; margin-top:10px!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded .sf-radar-orrery text { font-size:36px!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #hud #race-tape[data-compact="true"] { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext { top:calc(188px + var(--sf-safe-top,0px))!important; width:calc(100vw - 28px - var(--sf-mobile-edge))!important; max-width:none!important; max-height:64px!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { top:calc(260px + var(--sf-safe-top,0px))!important; width:90px!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { top:calc(312px + var(--sf-safe-top,0px))!important; width:90px!important; }
+}
+/* Opacity alone leaves invisible controls intercepting flight/wheel taps. */
+:root[data-sf-mobile-wheel="1"] :is(#alerts,#hud > .sf-leftcontext) { visibility:hidden!important; pointer-events:none!important; }
+:root[data-sf-mobile-wheel="1"] #hud .sf-rightdock { visibility:hidden!important; pointer-events:none!important; }
+:root[data-sf-mobile-wheel="1"] #hud .sf-rightdock * { pointer-events:none!important; }
+
 `;
 
 export const MOBILE_CSS = FLIGHT_CSS + SCREEN_CSS;
