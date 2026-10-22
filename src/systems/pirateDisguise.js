@@ -111,6 +111,11 @@ export const pirateDisguise = {
         reputation,
       };
       this._emit('cargo:laundered', denial);
+      this._emit('toast', {
+        text: `Papers refused — the cut is ${cut} cr and you are holding ${credits}.`,
+        kind: 'warn',
+        ttl: 3,
+      });
       return denial;
     }
 
