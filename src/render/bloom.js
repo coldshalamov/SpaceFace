@@ -451,9 +451,11 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     }
     ${POST_DITHER_LSB > 0.0001 ? /* glsl */`
     // Static 1-LSB triangular dither ahead of the 8-bit encode; the step() gate keeps exact
-    // black exactly black.
+    // black exactly black. fract() of a positive value is already in [0, 1), so the clamp never
+    // bites on conformant fp32; it is a saturate on the subtract and only exists so an odd driver
+    // cannot turn sqrt of a hair under zero into a NaN across the whole frame.
     float sfDitherN = spaceGrainNoise(fragCoord) * 2.0 - 1.0;
-    float sfDither = sign(sfDitherN) * (1.0 - sqrt(1.0 - abs(sfDitherN)));
+    float sfDither = sign(sfDitherN) * (1.0 - sqrt(clamp(1.0 - abs(sfDitherN), 0.0, 1.0)));
     srgb += vec3(sfDither * ${(POST_DITHER_LSB / 255).toFixed(8)}) * step(vec3(0.5 / 255.0), srgb);
     ` : ''}
     return clamp(srgb, 0.0, 1.0);
