@@ -2868,6 +2868,14 @@ export const asteroidSites = {
       if (before && before.state !== status.state) {
         statusTransitions.push({ machineId: m.id, state: status.state, prev: before.state });
       }
+      // A first watch is not news for ordinary idle or starved — but a machine that is
+      // already in thermal fault on that first watch has cut its output, and the board
+      // used to leave the claim log empty. Say it once, on the entry.
+      if (status.state === 'overheat' && (!before || before.state !== 'overheat')) {
+        const line = `${def.name} overheated — output is cut until it cools.`;
+        this._ledger(site, 'warn', line);
+        if (this.bus) this.bus.emit('toast', { text: line, kind: 'warn', ttl: 3.2 });
+      }
     }
     for (const t of statusTransitions) {
       this.bus.emit('site:machineStatus', {
