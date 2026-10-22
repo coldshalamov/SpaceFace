@@ -563,9 +563,13 @@ function tickHunterTrick(entity, state, host) {
   const now = finite(state && state.simTime, 0);
 
   // A wake-mine trail keeps seeding after activation, on the mine-layer cadence.
-  if ((rt.mineDropsLeft || 0) > 0 && now + 1e-6 >= finite(rt.nextMineAt, now)) {
-    if (dropTrickMine(entity, host)) rt.mineDropsLeft -= 1;
-    rt.nextMineAt = now + finite(rt.mineCadenceS, 0.7);
+  if ((rt.mineDropsLeft || 0) > 0) {
+    if (now > finite(rt.mineUntil, now)) {
+      rt.mineDropsLeft = 0;
+    } else if (now + 1e-6 >= finite(rt.nextMineAt, now)) {
+      if (dropTrickMine(entity, host)) rt.mineDropsLeft -= 1;
+      rt.nextMineAt = now + finite(rt.mineCadenceS, 0.7);
+    }
   }
 
   if (rt.phase === 'cooldown' && now >= finite(rt.readyAt, 0)) {
@@ -585,6 +589,22 @@ function tickHunterTrick(entity, state, host) {
   if (rt.phase !== 'idle') return;
   if (now < finite(rt.readyAt, 0)) return;
   startHunterTrickTelegraph(entity, state, trick, rt, host.bus, host.helpers);
+}
+
+// The trail's single release: same wake point and helpers.placeMine law the mine-layer
+// doctrine uses (ai/mineLayerVerb.js) — never a direct entity write.
+function dropTrickMine(entity, host) {
+  const placeMine = host && host.helpers && host.helpers.placeMine;
+  if (typeof placeMine !== 'function') return false;
+  const pos = mineLayerWakePoint(entity);
+  if (!pos) return false;
+  return placeMine({
+    ownerId: entity.id,
+    pos,
+    team: entity.team,
+    factionId: entity.factionId || null,
+    telegraph: true,
+  }) != null;
 }
 
 // Damage during the telegraph fizzles tricks whose telegraph says so (the jump spool's
@@ -658,12 +678,23 @@ function activateHunterTrick(entity, state, trick, rt, host) {
   emit(host.bus, 'bountyHunt:trickActivated', payload);
 }
 
-function applyHunterTrick(entity, state, trick, payload) {
+function applyHunterTrick(entity, state, trick, payload, rt) {
   const data = entity.data || (entity.data = {});
   const intent = data.intent || (data.intent = {});
   intent.trickVerb = trick.verb.kind;
   intent.trickId = trick.id;
   intent.trickActivatedAt = payload.at;
+
+  // A mine trick's payload is the seeded trail: tickHunterTrick drops one mine per
+  // `mineCadenceS` beat until the count or the window runs out — `mineUntil` bounds a
+  // capped rack's retries so it stops instead of echoing capReached for the whole hunt.
+  const mineCount = Math.floor(finite(trick.effect && trick.effect.mineCount, 0));
+  if (rt && mineCount > 0) {
+    rt.mineDropsLeft = mineCount;
+    rt.mineCadenceS = finite(trick.effect.mineCadenceS, 0.7);
+    rt.nextMineAt = payload.at;
+    rt.mineUntil = payload.at + (mineCount + 3) * rt.mineCadenceS;
+  }
 
   switch (trick.id) {
     case 'emergency-jump-spool':
@@ -671,10 +702,6 @@ function applyHunterTrick(entity, state, trick, payload) {
       break;
     case 'tether-cutter':
       intent.tetherCut = true;
-      break;
-    case 'mine-dropper':
-      intent.fire = true;
-      intent.weaponId = 'mine_dropper';
       break;
     case 'phase-jammer':
       // ECM effect loop reads cfg.radius for the jam ring and cfg.turnRateMult for the

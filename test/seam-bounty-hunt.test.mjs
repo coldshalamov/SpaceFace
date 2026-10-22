@@ -94,6 +94,44 @@ test('a hunter trick reaching its activation window emits trickActivated', () =>
   }
 });
 
+test('a wake-mines hunter seeds its mine trail through placeMine after activation', () => {
+  const { state, bus, system } = bootHunt();
+  const placed = [];
+  system.helpers.placeMine = (opts) => { placed.push(opts); return { id: 700 + placed.length }; };
+  try {
+    const hunter = place(state, makeBountyHunterSpec({
+      contractId: 'c-trail',
+      contractTargetId: state.playerId,
+      trick: 'wake-mines',
+      pos: { x: 40, z: 0 },
+    }), 41);
+    hunter.vel = { x: 24, z: 0 };
+
+    system.update(1 / 60, state);
+    assert.equal(hunter.data.bountyHunt.trickState.phase, 'telegraphing');
+
+    state.simTime += 2;
+    system.update(1 / 60, state);
+    const rt = hunter.data.bountyHunt.trickState;
+    assert.equal(rt.phase, 'cooldown');
+    assert.equal(rt.mineDropsLeft, 3, 'activation arms the authored mineCount trail');
+
+    for (let i = 0; i < 3; i += 1) {
+      state.simTime += 0.7;
+      system.update(1 / 60, state);
+    }
+    assert.equal(placed.length, 3, 'one mine per cadence beat through the helpers.placeMine law');
+    assert.equal(rt.mineDropsLeft, 0);
+    assert.equal(placed[0].ownerId, 41);
+    assert.equal(placed[0].telegraph, true);
+    // The trail releases into the wake — behind the hull along its motion.
+    assert.ok(placed.every((p) => p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)));
+  } finally {
+    system.destroy?.();
+    bus.clear();
+  }
+});
+
 test('the player killing the quarry records a helped-hunter outcome', () => {
   const { state, bus, system } = bootHunt();
   try {
