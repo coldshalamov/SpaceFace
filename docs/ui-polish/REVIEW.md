@@ -1837,3 +1837,11 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`archiveLayouts.js`, one `max-width:639px` block):** the page stacks: title, the list capped at min(330px, 40vh), then the dossier in its own scrolling stage with a hairline above and a fade at its foot. The dossier is one column (kicker, title, objective, terms), then the 120px dial beside TRACKED / OPEN ON THE CHART / ABANDON, then the route band with FROM and TO wrapping as in the 640–760 band.
 
 **Checked:** bench `mission-log` clean at 390×844, 360×740 and 390×844 phone; scrolled to the stage's foot the route band and both ends are whole. Wider viewports are outside the query. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish86/`.
+
+## Missions on a short phone-width window — room for the dossier (ui-polish-87)
+
+**Before:** at 639×461 and 600×500 the 90px title and the list (40vh) left the stacked dossier only 95–122px, so it showed the contract title and nothing else.
+
+**After (`archiveLayouts.js`, one `max-width:639px and max-height:620px` block):** the title drops to clamp(30px, 8vh, 44px), the list caps at 36vh (the selected ACTIVE row still shows) and the gaps tighten. The dossier gets 126px at 639×461 and 152px at 600×500, enough for the objective and the first terms row; the rest scrolls as before.
+
+**Checked:** bench `mission-log` clean at 639×461, 600×500, 390×600, 390×844 and 960×540; 390×844 and anything taller than 620 are outside the query. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish87/`.
