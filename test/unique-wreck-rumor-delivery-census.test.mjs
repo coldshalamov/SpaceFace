@@ -5,6 +5,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { FLAVOR_SOURCE_BY_REF } from '../src/data/flavor/index.generated.js';
 import {
   UNIQUE_WRECKS,
+  EXPANSION_ACTIVITY_WRECKS,
   placementForUniqueWreck,
   programSeedFor,
   uniqueWreckById,
@@ -131,7 +132,7 @@ test(`seed ${META_SEED}: the Vigilant case file rides the news ticker but mints 
   }
 });
 
-test('census: every one of the sixteen authored wrecks has a live delivery path', () => {
+test('census: every authored wreck — the sixteen plus the activity hulls — has a live delivery path', () => {
   const covered = new Map();
 
   // Sector-entry surfaces: exact authored source + channel, home sector, authored copy present.
@@ -142,12 +143,19 @@ test('census: every one of the sixteen authored wrecks has a live delivery path'
     const source = def.rumorSources.find((entry) => entry.sourceRef === def.bearingSourceRef);
     assert.ok(source, `${def.id}: bearing source is authored`);
     assert.equal(source.channelId, surface.channelId, `${def.id}: surface carries the authored channel`);
-    assert.ok(authoredText(def.bearingSourceRef), `${def.id}: authored sourceText exists`);
+    // The flavor corpus stays closed to the D1-D16 reservations (check-flavor-corpus pins the
+    // wreck_rumors pack at twelve). An activity hull carries its authored copy on the hull —
+    // the scanLabel the enter surface and _recordRumor actually speak (uniqueWrecks.js).
+    const activityCopy = EXPANSION_ACTIVITY_WRECKS.some((row) => row.id === def.id) && def.scanLabel;
+    assert.ok(authoredText(def.bearingSourceRef) || activityCopy, `${def.id}: authored sourceText exists`);
     covered.set(def.id, `sector-enter:${sectorId}`);
   }
 
-  // Bar wiring: every bar-channel bearing source is askable at a live station bar.
-  for (const stationId of ['station_sker', 'station_haumea_rift', 'station_reach', 'station_helios']) {
+  // Bar wiring: every bar-channel bearing source is askable at a live station bar. The two
+  // expansion berths (station_veil, station_ashcache) answer for their neighbor leads the same
+  // way (uniqueWreckRumorSurface EXPANSION_BAR_BY_STATION), so Page Nine has a heard path too.
+  // Listed first: a hull with both paths keeps its sector-enter record as the primary one.
+  for (const stationId of ['station_veil', 'station_ashcache', 'station_sker', 'station_haumea_rift', 'station_reach', 'station_helios']) {
     const rumor = uniqueWreckBarRumor({}, stationId, 'rumors');
     assert.ok(rumor, `${stationId} bar carries a wreck rumor`);
     const def = uniqueWreckById(rumor.wreckId);
@@ -222,8 +230,9 @@ test('census: every one of the sixteen authored wrecks has a live delivery path'
     }
   }
 
-  for (const def of UNIQUE_WRECKS) {
+  for (const def of [...UNIQUE_WRECKS, ...EXPANSION_ACTIVITY_WRECKS]) {
     assert.ok(covered.has(def.id), `${def.id} (${def.programSlot}, ${def.sectorId}) has no live delivery path`);
   }
-  assert.equal(covered.size, UNIQUE_WRECKS.length, 'delivery paths are one-per-wreck with no orphans');
+  assert.equal(covered.size, UNIQUE_WRECKS.length + EXPANSION_ACTIVITY_WRECKS.length,
+    'delivery paths are one-per-wreck with no orphans');
 });
