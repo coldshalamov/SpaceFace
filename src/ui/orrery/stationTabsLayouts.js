@@ -1191,6 +1191,44 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${T} .sx-dossier .k-hero--hero { margin:0 0 4px !important; }
   ${T} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; }
 }
+/* …and in a mid-size desktop window (801–1100 × 461–800) the same wrapped flow ran into a third column past the
+   frame's right edge (the risk sentence and terms cut to "E / p / C"), the reward words broke "DELIVER / Y" and the
+   legend read "PASSENGER TRANSPO…". 901–1100 takes the short desktop's two fixed columns (what the job is and pays;
+   ACCEPT, the risk sentence and the terms), 801–900 the narrow window's one column with ACCEPT under the reward.
+   The dossier scrolls under a 16px fade; labels and words break only at spaces. Desktop only. */
+@media (min-width:801px) and (max-width:1100px) and (min-height:461px) and (max-height:800px) {
+  ${D} .sx-dossier { display:grid !important; grid-auto-rows:max-content !important; align-content:start !important; row-gap:0 !important;
+    height:100% !important; overflow:hidden auto !important; overscroll-behavior:contain; padding-right:4px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; }
+  ${D} .sx-dossier::after { content:none !important; }
+  /* the backdrop's 40px bleed would be 40px of empty scroll in a scrolling dossier */
+  ${D} .sx-dossier::before { inset:0 !important; }
+  ${D} .sx-dossier > * { width:auto !important; }
+  ${D} .sx-dossier > .sx-dossier__risk { width:auto !important; }
+  ${D} .sx-dossier > .k-caps { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:.1em !important; line-height:1.3 !important; }
+  ${D} .sx-dossier__title { overflow-wrap:normal !important; word-break:normal !important; }
+  ${D} .sx-dossier .k-hero--hero { flex-wrap:wrap !important; column-gap:8px !important; row-gap:0 !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__w { letter-spacing:.08em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier__terms > li { grid-template-columns:max-content minmax(0, 1fr) !important; column-gap:10px !important; }
+  ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier__terms :is(.sx-term__v, .sx-term__sub) { overflow-wrap:break-word !important; }
+  /* a blocked job's RESOLVE READINESS keeps its reason under it instead of past the frame's edge */
+  ${D} .sx-dossier__foot > li { flex-wrap:wrap !important; row-gap:2px !important; }
+  ${D} .sx-dossier__foot .k-word-sub { min-width:0 !important; white-space:normal !important; }
+}
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:800px) {
+  ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; grid-template-rows:none !important; column-gap:16px !important; }
+  ${D} .sx-dossier > * { grid-column:1 !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 3 !important; align-self:start !important; margin:0 0 4px !important; }
+  ${D} .sx-dossier > .sx-dossier__risk { grid-column:2 !important; grid-row:3 / 5 !important; align-self:start !important; margin:0 0 4px !important; }
+  ${D} .sx-dossier > .sx-dossier__terms { grid-column:2 !important; grid-row:5 / span 4 !important; align-self:start !important; }
+}
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important; padding-top:6px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:2 !important; margin:0 0 8px !important; }
+  ${D} .sx-dossier__title { font-size:15px !important; line-height:1.15 !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; }
+}
 /* the Ledger's purse has the width of its words */
 ${T} .orr-ledger-purse { width:260px; }
 @media (max-height:800px) { ${T} .orr-ledger-purse { width:230px; } }
