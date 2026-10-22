@@ -230,8 +230,8 @@ export function controlSections(state) {
       // The five powers (owner 2026-10-22): one row each, in number-row order. Row 493: how a
       // power key behaves follows Settings → Gameplay → Powers.
       powersFireOnPress(state)
-        ? ['Powers 1–5 use on press (Settings → Gameplay → Powers)', null, 'Press']
-        : ['Powers 1–5: hold to outline every body it will move and where it goes; let go to use it', null, 'Hold, then let go'],
+        ? ['Powers: each is used the moment you press its key (Settings → Gameplay → Powers)', null, '1–5']
+        : ['Powers: hold a key to outline every body it will move and where it goes; let go to use it', null, '1–5'],
       ['Pull — drop a gravity well at your aim; it grips your locked target three times as hard', 'pull'],
       ['Shove — blast everything outward from your ship, and set off every armed charge and bomb', 'shove'],
       ['Pin — fire an anchor that locks where it lands, then latch your Line to it', 'pin'],
