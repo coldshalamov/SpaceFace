@@ -30,6 +30,8 @@ export const FRAGILE_CARGO_TRADE_GOODS = Object.freeze([
   // Ice Volatiles already wear the fragile hold badge. The warm-cargo lot spoils
   // through this same impact path; the handling limit itself is not retuned.
   'cmdty_volatiles',
+  // The lens is glass. A hard hit cracks it the same way crystal lots crack.
+  'cmdty_unbroken_lens',
 ]);
 
 const STATE_VERSION = 1;
@@ -91,6 +93,9 @@ export function ensureFragileCargoState(state) {
 
 export function isFragileCommodity(commodityId) {
   if (FRAGILE_TRADE_SET.has(commodityId)) return true;
+  const commodity = COMMODITY_BY_ID.get(commodityId);
+  // Living samples spoil on a hard hit. Lattice credentials that are not glass do not.
+  if (commodity && commodity.biohazard === true) return true;
   const ore = ORE_BY_ID.get(commodityId);
   if (!ore || !Array.isArray(ore.tags)) return false;
   return ore.tags.some((tag) => FRAGILE_TAG_SET.has(tag));
