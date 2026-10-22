@@ -1,3 +1,4 @@
+import { pallasShiftStatus } from './pallasWorkShift.js';
 import { isOrchardReceiver, orchardTowQuote } from '../world/anvilOrchardTowAssist.js';
 // Deterministic contact-hail classification and copy.
 //
@@ -1103,6 +1104,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     };
   }
   const actions = [{ id: 'route', label: 'ROUTE' }];
+  if (pallasShiftStatus(state, availability.entity)) actions.unshift({ id: 'status', label: 'STATUS' });
   if (availability.manifestAvailable) actions.push({ id: 'manifest', label: 'MANIFEST' });
   if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
   const remembered = availability.rescuedWorkerMemory;
@@ -1495,6 +1497,8 @@ function ordinaryJobStatusText(entity, depth, state) {
 export function livingWorkStatusText(entity, opts = {}) {
   if (!entity) return null;
   const data = entity.data || {};
+  const pallas = pallasShiftStatus(opts.state, entity);
+  if (pallas) return `WORK · ${pallas.label}`;
   const passengerStatus = passengerLinerStatusText(opts.state || null, entity);
   if (passengerStatus) return passengerStatus.replace(/^STATUS · /, 'SERVICE · ');
   const salvorSource = salvorSourceTruth(opts.state || null, entity);
@@ -1598,6 +1602,8 @@ const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
 });
 
 function workerStatusText(target, state = null) {
+  const pallas = pallasShiftStatus(state, target);
+  if (pallas) return `STATUS · ${pallas.text}`;
   const data = target && target.data || {};
   const salvorSource = salvorSourceTruth(state, target);
   if (salvorSource && salvorSource.state === 'aboard') return 'STATUS · SALVAGE ABOARD · FORGE INBOUND';
@@ -1736,7 +1742,12 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
   if (!target) return null;
   const id = String(choice || '').toLowerCase();
   let line = null;
-  if (offer.kind === 'ace' && id === 'status') {
+  const pallas = pallasShiftStatus(state, target);
+  if (pallas && id === 'status' && authority.weaponsAuthorized !== true) {
+    line = `STATUS · ${pallas.text}`;
+  } else if (pallas && id === 'route') {
+    line = 'ROUTE · Sker run marks to Smuggler Den at Hollow Hub.';
+  } else if (offer.kind === 'ace' && id === 'status') {
     line = aceHailStatusText(state, target);
   } else if (offer.kind === 'ace' && id === 'identify') {
     line = aceHailIdentifyText(state, target);
