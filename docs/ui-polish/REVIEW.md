@@ -1942,3 +1942,11 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`saveLayouts.js`, desktop only):** the ≤1100 column rule now runs to 1199; 941–1199 × 461+ uses the 791–940 station treatment (name and credits; the reading carries the selected save's line) and closes up the context line. The 640-tall two-column hull record and the short-desktop page no longer stop at 1100 wide; the short page also covers 941+ wide up to 520 tall. No selector or ID changes.
 
 **Checked:** bench `save-load` and `save-load-empty` clean (0 findings) at 390×844, 790×600, 844×390, 860×600, 900×420, 941×600, 960×540, 1000×700, 1024×440, 1150×700, 1250×440, 1280×500, 1280×600, 1280×720 and 1920×1080; also 1101×700, 1199×800, 1280×521, 1920×440/460/520/600. 960×540, 1280×720 and 1920×1080 are outside every changed band. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish95/`.
+
+## Save/Load: short windows at 861+ × 461–560 take clicks (ui-polish-96)
+
+**Before (master a87ecf9a71):** at 1200–1239 × 521–539 (left over from master's 1200–1600 × 521–560 break) LOAD printed over EXPORT (86×13 px) and EXPORT / IMPORT / BACK failed an `elementFromPoint` check. At 940×461 and 940×480 the foot sat under the name field and LOAD, so EXPORT / IMPORT / BACK took no clicks (on master too).
+
+**After (`saveLayouts.js`, desktop only):** the short-desktop page (way back under the filmstrip, tighter reading) now covers 861+ wide up to 560 tall (was 941+ up to 520). No selector or ID changes.
+
+**Checked:** probe (text overlap, off-frame, `elementFromPoint` on every button and input, action/foot rect intersection) on `save-load` and `save-load-empty` at 1200×521, 1220×530, 1239×539, 1239×521, 1240×540, 1200×560, 1199×530, 940×461, 940×480, 941×461, 960×540, 1280×720, 1920×1080, plus 861×461, 900×520, 940×560, 1240×560: 0 overlaps, 0 dead buttons. 941×461, 1280×720 and 1920×1080 render identical to master. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish96/compare/`.
