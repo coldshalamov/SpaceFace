@@ -1,6 +1,32 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current delivery checkpoint — 22 October 2026, 04:04 UTC
+
+All ten outcomes remain OPEN, including SF-PLAY-WORLD. This checkpoint supersedes historical current-head, pending-CI and next-operation statements below without removing their evidence or acceptance limits.
+
+### Mobile fixture delivered; new-head CI remains pending
+
+PR488 https://github.com/coldshalamov/SpaceFace/pull/488 remains open/draft/unmerged at e7f6122f8d8f2985223940bfbb60eb4f66272561, tree 0eb0585be132145897bf28e902236431aa2ff1fb, sole parent 850d380a58e0ac4d5deef22430efebccbfda1ed2. Remote ref, commit, PR head and both complete changed files were verified at 04:00:46 UTC; the PR description was updated at 04:02 UTC. This successor changes only the recovered mobile startup fixture and its evidence document. Controlled baseline 12/18 becomes 20/20 with no skips. Production probe and five-minute/150-sample gates are unchanged; historical full-gate passes are not current evidence.
+
+New main https://github.com/coldshalamov/SpaceFace/actions/runs/39719962776 and mobile https://github.com/coldshalamov/SpaceFace/actions/runs/39719962956 are underway at this checkpoint, not passed. The synthetic merge f21f500f0ac8ad0335f65da4df5780532c7db4c7 has parents master e51a7389cd7b55fc8d126d4bef9ad38c8cd3e389 and e7f6122f8d8f2985223940bfbb60eb4f66272561, tree e902f83aa6e23b99a5067a46aa1a432aec0fa4ba. Master advanced through PR489 with non-overlapping Save/Load layout and review-document changes, which remain preserved.
+
+### Previous-head actual CI: focused proof, terminal failure
+
+Run https://github.com/coldshalamov/SpaceFace/actions/runs/39716843708 is terminal failed: eight leaf jobs failed and browser 3 was cancelled. Actual checkout 17fa82a9c1395c428951cce0659466a9f330ee17 has source tree 491de1405df59688aefe0054b400d0a0e59b52e8 and PR head 850d380a58e0ac4d5deef22430efebccbfda1ed2. Actual CI executed all 53 focused Pallas/Ilex/save/preload cases successfully, with no skips/cancellations; this establishes registered Ilex execution, not a green full suite. Seven failing simulation diagnostics match the prior increment after timing-only normalization.
+
+Newly red sector-arrival-admission printed destination-publication PASS before outer SIGKILL. No timestamp establishes final-phase duration or cleanup cause; neither a demonstrated cleanup hang nor a justified timeout relaxation follows. Browser 3 partial artifacts contain three passing commands (title-continue-runtime, station-egress, first-15-runtime), no completed report and no flight-visual result. All ten artifact hashes verified; no images were present. These previous-head results are not new-head or newer-merge results.
+
+### Physical Grave Drift work and real-play boundary
+
+The physical reef/cutter/tug/carrier owner continues the existing native reel/receiving-movement implementation. Initial physical transfer retained the same body, native mass and four finite units; subsequent Continue attempts exposed trailing-section stalls, ambient-manifest refill and a spent-source ghost. A new narrow run06 clean-cut/transfer test passes partial-cut Continue and carrier-owned-line Continue (1/1, 34.3 seconds): attachment att_000003 transfers at simulation 24.0167 seconds, section mass 45 and all four finite units remain, carrier manifest stays empty and credits unchanged, old-tug cleanup preserves the transferred joint, and same-owner release breaks it. Spent-source retirement through the exact legitimate markRecordDestroyed API and remaining recovery/negative tests are unfinished. These are WIP native-contract results, not accepted or published episode/gameplay delivery.
+
+Narrow actual cutter transport/render-consumer tests pass 7/7. A CPU source-model preview is being prepared from an immutable actual partial-cut/released-held snapshot of the earlier failed Continue run; it is not gameplay or live visual acceptance. WIP source is externally preserved and verified. A fresh own-cloud browser attempt at 03:40 still failed before the menu because WebGL is Disabled; no actual gameplay occurred.
+
+### Owners and next executable actions
+
+Root integration retains publication and shared-register ownership; the native-world CI owner verifies both exact new-head runs through terminal results, artifacts and source identity. The physical Grave Drift owner finishes spent-source retirement and remaining recovery/negative checks; the visual owner labels and reviews the source-model preview without claiming game-camera evidence. Preserve all existing feature/reviewer ownership. Do not merge, deploy, relax production gates, replace actual-play evidence with CPU previews, or rerun prohibited receiver operations. The original PR480 asset upload remains pending, unchanged and isolated: do not repeat or bypass it. No optional user engineering decision is needed; ordinary-play, visual, full-sector and whole-game acceptance remain open.
+
 ## Current CI coverage correction — 22 October 2026, 03:27 UTC
 
 PR488 https://github.com/coldshalamov/SpaceFace/pull/488 is draft/open/unmerged at latest head 850d380a58e0ac4d5deef22430efebccbfda1ed2, tree 491de1405df59688aefe0054b400d0a0e59b52e8, sole parent 129aa830917b738dd7d5374b28e3710b159c3da7, remotely verified at 03:27:03 UTC. This successor changes only package.json: an explicit check:sim:ilex-ark gate now covers the complete Ilex test, which had no package command or matching dispatcher glob before this correction. The actual npm gate passes 13/13 in 28.255 seconds. All prior 313 CI commands and order are preserved, 314 total; the new gate is selected once in existing unsharded sim. These are local execution and dispatcher-selection results, not proof of execution in GitHub CI.
