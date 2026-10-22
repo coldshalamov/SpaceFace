@@ -659,7 +659,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | toolchain | free | `package.json`, `package-lock.json`, three/Rapier/Electron adapters, `scripts/AGENTS.md` script tiers (§31 THE MACHINE) | 414, 415 |
 | rope-scale | devin-fleet-oct20 | `masslineTelemetry.js` tension read-out, `cargoCustody.js` declared-vs-true mass, customs prompt hunk of `lawSecurity.js`, contract templates in `economyContracts.js` (§31.5) | 423, 444 |
 | hull-ghost | devin-fleet-oct20 | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 424, 425, 460 |
-| first-look | free | the clean-flight-plane guard, camera distance review, passable near-field dust, hero-hull art — coordinate with L-PICTURE (§31.5, §31.6) | 443, 427, 428 |
+| first-look | codex-bm30 | the clean-flight-plane guard, camera distance review, passable near-field dust, hero-hull art — coordinate with L-PICTURE (§31.5, §31.6) | 443, 427, 428 |
 | stranger-hud | devin-fleet-oct20 | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 457, 431 |
 | set-pieces | free | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks (§31.5) | 430 |
 | pulse-voice | devin-fleet-oct20 | `data/flavor/040-band.js` format, `systems/bandRadio.js`, `systems/stationBroadcast.js`, traffic hail/chatter data, ship identity data, station PA cues (serial with `hull-ghost` on `barks.js`/`barkVoice.js`) (§31.6) | 432, 434, 436 |
@@ -688,7 +688,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | seed-b | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 418, 419 |
 | seed-c | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 420, 421, 422, 442 |
 | rock-core | devin-thirty-oct22 | impact-kill path in `combat/damage.js`, `systems/hullBurst.js`, `systems/hullFracture.js`, `data/physicsMaterials.js` substance layer, hit-stop in `render/feel.js`, swarm wave composition and arena-scale hunk of `data/swarmMode.js` (serial with `swarm`) (§33 core, §34) | 488, 482, 487, 510, 509, 486, 483, 485, 484, 511, 541 |
-| fight-read | devin-thirty-oct22 | attack-cycle hunk of `ai/maneuver.js`, `ai/reflexes.js` consolidation (serial with `hostile-hands`), enemy silhouette and engine-colour reads, `render/masslineCableSurface.js`, `masslineReleaseArc.js`, `masslinePresentation.js` at chase distance (serial with `rope-world`), `render/camera.js` framing | 491, 490, 492, 545 |
+| fight-read | free | attack-cycle hunk of `ai/maneuver.js`, `ai/reflexes.js` consolidation (serial with `hostile-hands`), enemy silhouette and engine-colour reads, `render/masslineCableSurface.js`, `masslineReleaseArc.js`, `masslinePresentation.js` at chase distance (serial with `rope-world`), `render/camera.js` framing | 545 |
 | glass-tiers | devin-thirty-oct22 | `ui/hud.js` tier hunks (serial with `glass` row 474), `ui/powerRail.js`, `ui/orrery/flightCluster.js`, `ui/stuntCallout.js` (LOG feed), `ui/screens/newGame.js` copy, `systems/onboarding.js` situation hunk; edits minimal and ORRERY-consistent with bench shots and `--walk` (owner 2026-09-27) | 494, 496, 502, 546, 493 |
 | line-progression | free | Line Class and strain hunk of `systems/tetherGameplay.js` (serial with `rope-world`), `masslineTelemetry.js` (serial with `rope-scale`), class hull states, Line heads in `data/modules.js` and `systems/ships.js` (serial with `hull-commit`), provenance rarity, `economy.js` pacing (§34) | 498, 499, 501, 489, 500, 550, 544 |
 | bloom | free | `data/swarmBrood.js`, `systems/swarmBrood.js`, swarm group-behaviour hunk of `systems/survivalSwarm.js`, `systems/alienEcology.js`, `regionalEcology.js`, coupling-filament VFX (§34.2) | 503, 507, 504, 508 |
@@ -1133,9 +1133,9 @@ production units, and never build what they write.
 | 487 | ROCK-IMPACT | Impacts that land — hit-stop by mass, crumple into throwable chunks, peak effects ≥10 % of the screen, readable with sound off (§33.1) | BUILD | OPEN |
 | 488 | ROCK-BUDGET | The physics budget, measured — wave 15 at p95 ≤ 20 ms on the iGPU, quiet host (§33.1) | BUILD | OPEN — first in rock-core |
 | 489 | ROCK-HEADS | Line heads worth chasing — meta unlocks between runs; rarity allowed (§33.1) | BUILD | OPEN — after 501 |
-| 490 | CRAFT-READ | Enemies you read without rings — silhouette and engine colour per role (§33.2) | BUILD | OPEN |
-| 491 | CRAFT-INTENT | Enemies with intent — attack cycles, cruise ≥70 % of the player's, ≤0.4 reversals/s (measured 50 vs 117, 0.8/s) (§33.2) | BUILD | OPEN |
-| 492 | CRAFT-LINE | The Line you can see — strain thickness and glow, a rim-lit latch, the release arc at the chase camera (§33.2) | BUILD | OPEN |
+| 490 | CRAFT-READ | Enemies you read without rings — silhouette and engine colour per role (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
+| 491 | CRAFT-INTENT | Enemies with intent — attack cycles, cruise ≥70 % of the player's, ≤0.4 reversals/s (measured 50 vs 117, 0.8/s) (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
+| 492 | CRAFT-LINE | The Line you can see — strain thickness and glow, a rim-lit latch, the release arc at the chase camera (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
 | 493 | CRAFT-POWERS | Fewer powers, each distinct and previewed — the owner picks the merge set (`design/expansion/05_ASSET_ROSTER.md` §7.2) (§33.2) | BUILD | OPEN — merge landed 2026-10-22 (owner chose Pull · Shove · Pin · Bomb · Rig on 1–5, `src/systems/powerVerbs.js`; rail, Cluster, help, settings, pad and phone deck name and tint each power); remaining: the held-key preview |
 | 494 | CRAFT-GLASS | Glass in three tiers; closes D240 (§33.2) | FIX | OPEN |
 | 495 | CRAFT-ROCKS | Rocks are the hero art (§33.2) | ART | OPEN — with 509 |
