@@ -27,12 +27,32 @@ export async function bootToMenu(page, baseUrl, step) {
       const el = document.querySelector('[data-screen="mainMenu"]');
       return !!(window.SF && window.SF.state && window.SF.bus && el && getComputedStyle(el).display !== 'none');
     }).catch(() => false);
-    if (ready) { step('main menu', true, 'menu visible'); return; }
+    if (ready) {
+      step('main menu', true, 'menu visible');
+      await answerFirstRunPrompt(page, step);
+      return;
+    }
     await page.waitForTimeout(400);
   }
   const quote = await readLoadError(page);
   if (quote) throw environmentError(quote);
   throw new Error('main menu did not appear');
+}
+
+// A fresh profile can be asked a first-run question on the menu (the shared confirm surface, e.g.
+// "First light", the accessibility preset offer). A measured run keeps the shipped settings, so it
+// answers with the cancel ("keep") button and says which question it answered; nothing else is
+// dismissed. `.sf-confirm` / `__cancel` / `#sf-confirm-title` are the surface's documented hooks.
+async function answerFirstRunPrompt(page, step) {
+  const open = page.locator('#sf-confirm-root .sf-confirm .sf-confirm__cancel:visible').first();
+  try {
+    await open.waitFor({ state: 'visible', timeout: 1500 });
+  } catch {
+    return; // no question asked
+  }
+  const title = await page.locator('#sf-confirm-title').first().textContent().catch(() => '');
+  await open.click();
+  step('first-run prompt', true, `answered "${String(title || '').trim()}" with keep (shipped settings)`);
 }
 
 /** Flight, or a quoted load error. `active` also requires the run phase to be active. */
