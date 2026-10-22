@@ -1,6 +1,46 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current delivery and verification boundary — 22 October 2026, 02:19 UTC
+
+All ten outcomes remain OPEN. This block supersedes the earlier next-operation statements below; historical evidence and acceptance limits remain intact. PR485 terminal CI verification, PR486 Charon source publication and PR487 preload source publication are complete units, not future implementation tasks. The original asset upload remains held and must not be reissued. The held sector register and canonical source are unchanged by this handoff.
+
+### Continue repair: terminal CI, bounded success
+
+PR485 https://github.com/coldshalamov/SpaceFace/pull/485 remains open/draft at `99ad82fb517bfcf5334b3dba9eebe0ca0227a181`, rechecked at 01:53 UTC. Main https://github.com/coldshalamov/SpaceFace/actions/runs/39703557775 and mobile https://github.com/coldshalamov/SpaceFace/actions/runs/39703557846 ended in failure. The actual fidelity leaf ran both files and passed 12/12. Completed comparable failing-command sets match the public parent; matching command names does not establish identical diagnostics or unchanged behavior. Parent browser 3 was cancelled, so no completed direct comparison exists for that group. PR485 browser 3 completed failure, not cancellation. Missing encounter HTTP404s were observed, but preload cleanup is not claimed to explain every warning/readiness failure or imply total boot failure.
+
+Existing connected Ilex integration remains 11/12. Real production Continue passes; the separate manually stepped hull-damage propulsion case does not invoke Continue and remains unproven. No fixture relaxation, repeated prohibited receiver test or whole-game acceptance follows.
+
+Terminal evidence archive `spaceface-pr485-terminal-ci-20261022.tar.gz`: SHA256 `eff6e6e8c278da206ca8563528b50d65bce2b420fd17da47ce63fbb0c2fe4600`, 111,832 bytes. Independent readback verified all 16 manifest members and 40 nested ZIP members. Earlier source recovery remains separate and retained.
+
+### Charon approach: published on the existing world branch
+
+PR486 https://github.com/coldshalamov/SpaceFace/pull/486 was verified at 01:46 UTC: head `5f57ccee9bb91a6389c00d9962cfce40335ca823`, tree `ff2503256e25beb79b400688b47e9f8b904d7cd5`, sole parent `ff62ac4261b4debaff798f46cbe56a6473f8cf2e`, all seven source blobs verified. Its base is the PR480 branch `dot/orchard-receiver-delivery-20261020`, NOT master. Existing automatic full-check workflows target master/main-base PRs and do not trigger for this base. No workflow bypass or full-CI pass is claimed.
+
+The real approach cue teaches existing Hail → Supply Route, with historical last-crew-report wording, original actor identity, cooldown, combat quieting and cancellation across stale replay/UI lifecycles. No custody, reward or save changes. Focused checks pass 99/99; independent probes pass 13/13; 1,986 unique materialized files are accounted for. This is source/test delivery, not ordinary-play or visual acceptance.
+
+Recovery `spaceface-charon-approach-recovery-20261022.tar.gz`: SHA256 `d353289b5c44b5f8985a9d96bef9aac41cb596e1ada7f8e9f1ab8d7304b1d78a`; independent readback verified all 32 members and seven source blobs.
+
+### Public preload repair: published; actual CI in progress
+
+PR487 https://github.com/coldshalamov/SpaceFace/pull/487 is open/draft and verified at 02:09 UTC: head `e61a83e6ff93fc8f598998db1df6d549952f698d`, tree `6fd32bd2c26e208da2879c38d88f3f97d0c73fe4`, sole public parent `4ea92f15e03fdede9d8254a410cb0b65fd3f44fc`, all three source blobs verified. Exactly 16 stale HTML preload hints were removed; every other HTML byte is preserved. All 2,142 retained valid hints and 329 generated encounter imports remain. The actual source uses LF; earlier connector evidence had one extra terminal newline, not CRLF. No source stubs, private encounter graph regeneration or deleted encounter modules were introduced.
+
+Root ran the actual registered npm leaf: 3/3 passed. All 2,175 materialized input files match the candidate. The new leaf runs once in static shard 1/3 with 180000 ms budget; all prior 309 commands and their order remain unchanged. Main CI https://github.com/coldshalamov/SpaceFace/actions/runs/39709608632 is in progress, with nine leaf jobs. Synthetic merge `94f19e15` has the candidate tree. Its current owner performs read-only exact-head verification. The actual static 1 preload leaf now passes 3/3, exit 0, no skips/cancellations, 177 ms. Artifact 12396249985 has SHA256 `e821b25d57f8f1dec9d74c703c251233ca2b1c76e6112528df37413ecf7aa5be`. Browser 1 now passes confirm-dialog and sector-arrival-admission, which failed in the public parent; runtime-maturity and mission-handoff still fail. Browser 2 also passes bar-mission-readiness, mission-cargo-loading and 47a-live-cold-open that failed in the recorded parent; assets-live remains failing. Browser 4 also passes new-game-layout; station-tabs, market-first-loop and shader-compile remain failing. Browser 3 remains running. No terminal result, full boot or all-gates-green claim is made.
+
+Recovery `spaceface-preload-repair-recovery-20261022.tar.gz`: SHA256 `08b2cb77bdf36a73c8ede9d31dc050cda238b4a7ce9fe0adf14d3a4081425d78`, 220,800 bytes. Independent readback verified all 34 members and three source blobs.
+
+### Next unresolved operations and acceptance
+
+1. Follow exact-head PR487 CI to its terminal result, retain the completed 3/3 actual preload-leaf evidence and classify remaining attributable failures. Do not repeat completed source publication or presume broader browser acceptance.
+2. Keep original asset upload held; resolve only its existing authorized route without reissuing it. Preserve frozen greenhouse source/exports and current upstream/package changes. No merge, deployment or force update.
+3. The prior Ceres arrival-story owner confirms no reserved paths or unpublished delta. The Ceres visual/collision owner also confirms implementation is already complete locally at `25acfe5c97f069a34a045bea0cdc4450430657e9`: distinct torn fairlead/cargo/recorder models, 17 convex deck pieces, stable Continue identity, 42 focused tests plus legacy-binary regression. All paths are released. At 02:20 UTC, root verified all three collision/source/test blobs byte-for-byte at public PR480 head ff62ac4261b4debaff798f46cbe56a6473f8cf2e. Publication of this increment is confirmed; it is not an outstanding source-delivery task. Approximate observer/projectile/LOS strip parity and full-game/visual acceptance remain, not missing model selection or another missing story feature. Root has selected investigation of the Pallas Grave Drift salvor/patrol interaction, with exact scope awaiting actual-source evidence before edits; no new implementation or acceptance is claimed. The existing held sector register stays untouched.
+4. Resume real ordinary play in a permitted WebGL-capable browser when available. The observed cloud browser cannot create WebGL; this is not a blanket game/device failure. Source tests and CPU views do not establish ordinary flight, Charon discovery, greenhouse visual quality, GPU performance or final acceptance.
+
+
+Pallas integration basis correction (02:20 UTC): the public PR480 head still has the old scalar Pallas loop and lacks the physical PR462/464 successor hooks. Do not build Grave Drift on that obsolete behavior or presume those separate drafts are integrated. The next owner is checking their current public lineage before selecting a coherent sector base; Black-Wake already has finite recovery, and the decorative grave shard is not salvage stock.
+
+Active next unit (02:24 UTC): reconcile the independent public PR462 physical Pallas passage and PR464 finite Independent Seam, both based on a8a9500, before new Grave Drift behavior. Preserve PR462's physical work loop and no-clock-motion test; combine only scoped seam hooks and add coexistence/Continue coverage. The owner works in an isolated exact-public extraction. Root owns final package/index reconciliation and publication; native tow-interception and foreign regions stay untouched. No new Grave Drift stock is authorized as an implementation shortcut.
+
 ## Ordinary Continue repair delivered independently — 22 October 2026, 01:16 UTC
 
 All ten outcomes remain OPEN. The active production defect was implemented, independently reviewed, tested against exact current public master, preserved externally and delivered as a separate draft. The held asset upload did not stop this work.
