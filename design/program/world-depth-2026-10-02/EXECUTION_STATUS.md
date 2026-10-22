@@ -1,6 +1,30 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current native-world delivery boundary — 22 October 2026, 03:21 UTC
+
+All ten outcomes remain OPEN: SF-GAME, SF-ORCHARD, SF-PUBLISH, SF-RECOVER, SF-VISUALS, SF-ASSETBANK, SF-ASSET-QUALITY, SF-LIVING-WORLD, SF-SECTOR-COHERENCE and SF-PLAY-WORLD. This block supersedes historical next-operation and in-progress statements below without removing their evidence or acceptance limits. Only this handoff and OPEN_GOALS.md are updated; canonical source and the held sector register are unchanged.
+
+### Native-world reconciliation: source delivery, not acceptance
+
+Native-world reconciliation is source-delivered in https://github.com/coldshalamov/SpaceFace/pull/488 at 129aa830917b738dd7d5374b28e3710b159c3da7, tree efbeec6f31efd56febabf6685da1c58bc5dc7705, with sole public parent e61a83e6ff93fc8f598998db1df6d549952f698d. It reconciles PR462 physical Pallas passage and PR464 finite seam, removes competing movement owners, preserves truthful Hail/UI worker transport, and narrowly calibrates the Ilex planner while retaining actual 8/7/5 propulsion and original collider/mass identities. It includes the already-public PR485 Continue fix and PR487 preload fix. All 53 focused tests pass (Pallas 25, Ilex 13, Orchard 12, preload 3); 3,077 input blobs match and all prior 310 CI commands are preserved in the 313-command suite. Independent integration review is clear. Full-geography evidence proves threatened passage hold alongside finite seam work and Continue, not successful escorted arrival through uncleared threats. Full browser-worker startup, continuous collider nonpenetration and real rendered/player-route acceptance remain unproven. These are source/test results, not ordinary-play, visual or whole-sector acceptance.
+
+Public master was freshly verified at 4ea92f15e03fdede9d8254a410cb0b65fd3f44fc at 03:15 UTC. Publication uses the single public PR487 parent, not private local ancestry. PR488 is draft/open/unmerged, with 29 changed files and two public commits. Exact remote ref, tree and sole parent were verified at 03:20:48 UTC. Actual full CI is pending verification as of publication; its monitoring owner performs read-only exact-head checks. No merge, deployment or complete-game acceptance is claimed.
+
+The source recovery was independently downloaded and read back: SHA256 0fbb054ef9b9bdcd914d118285c114593445b392aace8a355e05b657dc02d85e, 1,770,805 bytes, all 80 archive members and 29 source files verified. Recovery is distinct from source publication and acceptance.
+
+### PR487: terminal CI, bounded browser improvement
+
+PR487 main run https://github.com/coldshalamov/SpaceFace/actions/runs/39709608632 is terminal failure. The actual new preload leaf passes 3/3 and six previously failing browser commands now pass; remaining browser failures persist. Browser 3 was cancelled and has no final visual artifacts. No full-green, merge, deployment or actual-play acceptance is established.
+
+The six improved commands are confirm-dialog, sector-arrival-admission, bar-mission-readiness, mission-cargo-loading, 47a-live-cold-open and new-game-layout. Runtime-maturity, mission-handoff, assets-live, station-tabs, market-first-loop and shader-compile remain failing in the reported browser groups. Terminal evidence recovery SHA256 b7bfdc883b6ab49b6834541d7b9823ae299868801c97ed0547813394b0d4034f is retained separately. Earlier PR485 and PR486 evidence and limits remain intact below.
+
+### Outcome, ownership and next executable operation
+
+Root integration owns exact-head native-world CI verification and the unfinished physical Grave Drift reef/cutter/tug/carrier work. The reconciliation is a tested basis for that work, not its replacement or completion. Continue the physical work only within the actual reconciled source scope and preserve exact feature ownership. The former Ilex 11/12 result below remains historical; the reconciled source passes Ilex 13/13 while preserving actual 8/7/5 propulsion and original collider/mass identities. Do not weaken guards or rerun prohibited receiver tests.
+
+Actual cloud-browser play remains blocked before the menu by disabled WebGL. No new live images, ordinary flight, visual acceptance or whole-sector/game acceptance exists. Resume ordinary exploration in a permitted WebGL-capable browser when available. The PR480 original asset upload is still a separate unchanged pending operation, not a new failure or authorization request; do not retry or bypass it. Greenhouse export/review/publication/integration/acceptance stages remain separate, and its held publication is unchanged. No optional creative decision is needed; final user acceptance awaits adequate evidence.
+
 ## Current delivery and verification boundary — 22 October 2026, 02:19 UTC
 
 All ten outcomes remain OPEN. This block supersedes the earlier next-operation statements below; historical evidence and acceptance limits remain intact. PR485 terminal CI verification, PR486 Charon source publication and PR487 preload source publication are complete units, not future implementation tasks. The original asset upload remains held and must not be reissued. The held sector register and canonical source are unchanged by this handoff.
