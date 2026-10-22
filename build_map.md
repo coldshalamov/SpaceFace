@@ -1152,10 +1152,10 @@ production units, and never build what they write.
 | 507 | W-BLOOM-LOW | Bloom ladder T0–T2 — spore drift, Lantern cyst, Glassback, Wake eel, Bellows (§34.2) | BUILD | OPEN |
 | 508 | W-BLOOM-HIGH | Bloom ladder T3–T6 — Bristle ram, Furnace maw, Husks, Blind shepherd, Hive-hulk, Veil ray, Anchor beast, the Long Field (§34.2) | BUILD | OPEN — after 507 |
 | 512 | W-STATIONS | Fourteen faction station kits (§34.4) | ART | OPEN |
-| 513 | W-STEALTH | Mass-signature stealth — sweep rings, mass shadows, cold coasting, Hush, decoys (§34.4) | BUILD | OPEN |
+| 513 | W-STEALTH | Mass-signature stealth — sweep rings, mass shadows, cold coasting, Hush, decoys (§34.4) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
 | 514 | W-KITS | Faction hull kits plus the Overgrowth and junk kits (§34.5) | ART | OPEN |
-| 515 | W-CONCORD | Concord — commanders, Clamp Tender, Scale Barge, the Weighing (§34.5) | BUILD | OPEN — after 513 for the Weighing |
-| 516 | W-MERIDIAN | Meridian — cargo spines, couplers, hull tickers, Spine Break (§34.5) | BUILD | OPEN |
+| 515 | W-CONCORD | Concord — commanders, Clamp Tender, Scale Barge, the Weighing (§34.5) | BUILD | DONE devin-thirty-oct22 — after 513 for the Weighing |
+| 516 | W-MERIDIAN | Meridian — cargo spines, couplers, hull tickers, Spine Break (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
 | 517 | W-UNDERSTORY | Understory — five-stage gardens, the Compost Run, tide pushback (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 518 | W-FULFILLMENT | Fulfillment — route trains, hitchhike, derail spill, boarding, Order #0000001 (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 519 | W-PITBORN | Pitborn — Cull dressing, Ma Sprocket, Yardmaster, Ballast (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
@@ -1164,13 +1164,13 @@ production units, and never build what they write.
 | 522 | W-GRAY | The Slow Gray clock on the ticker; it never recovers (§34.6) | BUILD | OPEN |
 | 523 | W-CHART | The chart keeps the receipt (§34.6) | BUILD | OPEN — after 520 and 521 |
 | 524 | W-VAEL | Vael — Override Tender, the transferable Lien Anchor, Page Nine (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
-| 525 | W-QUIET | Quiet — juggling runners, The Swap, sold routes (§34.5) | BUILD | OPEN |
-| 526 | W-HELIX | Helix — too-perfect false flags, Lien drones, Gate Audit platforms, Adjudicator 44-C (§34.5) | BUILD | OPEN |
+| 525 | W-QUIET | Quiet — juggling runners, The Swap, sold routes (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
+| 526 | W-HELIX | Helix — too-perfect false flags, Lien drones, Gate Audit platforms, Adjudicator 44-C (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
 | 527 | W-ARCHIVE | Archive — Redaction, reading rooms, page drones, Index Head (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 528 | W-CHOIR | Choir — Bells, resonance, the Carried Relic (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 529 | W-VERGE | Verge-Layers — machine bodies, flyable directives, the Appeal, the Sleeping Jury, the Line trial (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
-| 530 | W-DRIFT | Drift — claim pylons, the Claim Jump, the Breaker Derby (§34.5) | BUILD | OPEN |
-| 531 | W-REACH | Reach — the Nest Carrier, the Trophy Wall, chained gate camps (§34.5) | BUILD | OPEN |
+| 530 | W-DRIFT | Drift — claim pylons, the Claim Jump, the Breaker Derby (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
+| 531 | W-REACH | Reach — the Nest Carrier, the Trophy Wall, chained gate camps (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
 | 532 | W-FRONTIER | Frontier — homestead modules, Barn Raising, Weld Head (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 533 | W-BOOKS-0-2 | Books 0–2 play per `design/expansion/06_CAMPAIGN_SCRIPT.md` (§34.7) | BUILD | OPEN |
 | 534 | W-BOOKS-3-4 | Books 3–4 play — VARIANCE ADJUSTMENT, the three doors, the doubled contract (§34.7) | BUILD | OPEN — after 533 |
