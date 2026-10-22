@@ -13,10 +13,12 @@ import {
   machineKindById,
   MACHINE_DIRECTIVES,
   machineDirectiveLine,
+  spokenDirectiveId,
   machineRevealsVerge,
   advanceMachineProtocol,
   grantWitnessMark,
   hasWitnessMark,
+  witnessSkipsInterrogation,
   scannerMachineLabel,
 } from '../data/precursorMachines.js';
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
@@ -46,10 +48,12 @@ function holdWindowS(state) {
 // AE-170 (G15) — a fitted Quiet Equation decodes directive grammar into intent: the
 // comms line keeps the machine's own words, then appends the human read.
 function directiveText(state, id) {
-  const line = machineDirectiveLine(id);
+  const proto = state && state.world && state.world.alienEcology
+    && state.world.alienEcology.machineProtocol;
+  const line = machineDirectiveLine(id, proto);
   const decoded = fittedModuleDefs(state).some((d) => d && d.mods && d.mods.quietEquation === true);
   if (!decoded) return line;
-  const d = MACHINE_DIRECTIVES[id];
+  const d = MACHINE_DIRECTIVES[spokenDirectiveId(id, proto)];
   return d && d.resolves ? `${line} — ${d.resolves}.` : line;
 }
 
@@ -378,7 +382,7 @@ export function tickMachineLayer(world, dt) {
         if (site.beat) world.bus.emit('toast', { text: site.beat, kind: 'info', ttl: 6 });
         if (revealed) {
           world.bus.emit('toast', {
-            text: 'Scanner catalogue revised: PREDECESSOR LATTICE — INSTRUMENT CLASS.',
+            text: `Scanner catalogue revised: ${scannerMachineLabel(advanced)}.`,
             kind: 'info', ttl: 6,
           });
         }
@@ -389,7 +393,10 @@ export function tickMachineLayer(world, dt) {
             ? presentOrderLine(site, g)
             : (site.directive === 'HOLD' || site.directive === 'WITNESS')
               ? `${directiveText(state, site.directive)} CENTER ${Math.round(g.x)}, ${Math.round(g.z)}. RADIUS ${site.radius + 120}. SPEED BELOW 8. HOLD ${holdWindowS(state)} SECONDS CONTINUOUSLY.`
-              : `${directiveText(state, site.directive)} CLEAR RADIUS ${site.radius + 120} WITHIN 60 SECONDS.`;
+              : site.directive === 'CLOSE'
+                ? directiveText(state, site.directive)
+                : `${directiveText(state, site.directive)} CLEAR RADIUS ${site.radius + 120} WITHIN 60 SECONDS.`;
+          if (site.directive === 'CLOSE') rec.closeSpoken = orderText;
           world.bus.emit('comms:log', {
             from: site.name,
             text: orderText,
@@ -419,11 +426,12 @@ export function tickMachineLayer(world, dt) {
       const dC = Math.sqrt(dist2(player.pos.x, player.pos.z, g.x, g.z));
       if (dC < site.radius + 260) {
         rec.couplerEcho = true;
-        const dir = site.directive && MACHINE_DIRECTIVES[site.directive];
+        const spoken = spokenDirectiveId(site.directive, ae.machineProtocol);
+        const dir = spoken && MACHINE_DIRECTIVES[spoken];
         world.bus.emit('comms:log', {
           from: 'Lattice Coupler', kind: 'machine',
           text: dir
-            ? `Site memory read: standing directive ${site.directive} — ${dir.resolves}.`
+            ? `Site memory read: standing directive ${spoken} — ${dir.resolves}.`
             : 'Site memory read: no standing directive. This site observes only.',
         });
       }
@@ -434,7 +442,8 @@ export function tickMachineLayer(world, dt) {
       const d = Math.sqrt(dist2(player.pos.x, player.pos.z, g.x, g.z));
       const windowS = 60; // a directive stands for a minute of player behavior
       rec.directiveT = (rec.directiveT || 0) + dt;
-      if (site.directive === 'VACATE' || site.directive === 'CLOSE') {
+      // CLOSE stays sealed until standing improves. Leaving the ring is not compliance.
+      if (site.directive === 'VACATE') {
         if (d > site.radius + 120) {
           rec.directiveResolved = true;
           advanceMachineProtocol(state, 'satisfied');
@@ -524,6 +533,17 @@ export function tickMachineLayer(world, dt) {
     }
     if (site.siteId === 'veil_exception_chamber' && rec.directiveResolved
       && ae.machineProtocol === 'exception') grantChamberCredentials(world, rec, site, sectorId);
+    // A sealed gate speaks OPEN once standing actually opens. It does not re-issue the seal.
+    if (site.directive === 'CLOSE' && player && player.pos && rec.closeSpoken) {
+      const dClose = Math.sqrt(dist2(player.pos.x, player.pos.z, g.x, g.z));
+      if (dClose < site.radius + 400) {
+        const line = directiveText(state, 'CLOSE');
+        if (rec.closeSpoken !== line) {
+          rec.closeSpoken = line;
+          world.bus.emit('comms:log', { from: site.name, text: line, kind: 'machine' });
+        }
+      }
+    }
     noteMachineWorkReturn(world, site, rec, player, g);
   }
 
@@ -573,7 +593,7 @@ export function tickMachineLayer(world, dt) {
           e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
           if (d < kind.interrogateR && !m.interrogated) {
             m.interrogated = true;
-            const marked = hasWitnessMark(state);
+            const marked = witnessSkipsInterrogation(state);
             world.bus.emit('comms:log', {
               from: 'Gate Auditor',
               text: marked

@@ -10,6 +10,7 @@
 // galaxyMap already read verge.revealed / verge.awake / verge.revocations).
 
 import { ensureAlienEcologyState } from './alienEcologyState.js';
+import { sectorGlobalOrigin } from './sectorCoordinates.js';
 
 // ── Machine kinds (AE-093/094/095 + doc 07 §5 families) ───────────────────────────────────
 // These are kinematic entities (type 'machine') — no combat AI. Their behavior is a narrow
@@ -208,8 +209,16 @@ export const MACHINE_DIRECTIVES = Object.freeze({
   APPEAL:   Object.freeze({ line: 'PRESENT COUNTER-EVIDENCE.', resolves: 'show a record that contradicts the classification' }),
 });
 
-export function machineDirectiveLine(id) {
-  const d = MACHINE_DIRECTIVES[id];
+// CLOSE is an administrative seal, not a vacate order. Open standing speaks OPEN.
+export function spokenDirectiveId(id, protocol) {
+  if (id === 'CLOSE' && (protocol === 'compliant' || protocol === 'witnessed' || protocol === 'exception')) {
+    return 'OPEN';
+  }
+  return id;
+}
+
+export function machineDirectiveLine(id, protocol) {
+  const d = MACHINE_DIRECTIVES[spokenDirectiveId(id, protocol)];
   return d ? d.line : 'PROTOCOL UNRECOGNIZED.';
 }
 
@@ -268,7 +277,17 @@ const MACHINE_SCAN_TERMS = Object.freeze([
   'VERGE-LAYER CONSTRUCT',
 ]);
 
+// Faults rank below unknown on the ladder, but the contact name must not pretend the
+// machines have never met this hull. Exception is above witnessed and reads as its own grant.
+const MACHINE_FAULT_SCAN = Object.freeze({
+  violation: 'PROTOCOL VIOLATION — DIRECTIVE BROKEN',
+  revoked: 'TRANSIT AUTHORITY REVOKED',
+});
+const MACHINE_EXCEPTION_SCAN = 'ROUTE AUTHORITY — EXCEPTION ON FILE';
+
 export function scannerMachineLabel(machineProtocol) {
+  if (MACHINE_FAULT_SCAN[machineProtocol]) return MACHINE_FAULT_SCAN[machineProtocol];
+  if (machineProtocol === 'exception') return MACHINE_EXCEPTION_SCAN;
   // Rank 1 is 'unknown' — the first ladder rung is an unresolved signal, not a classification.
   const tier = Math.max(0, Math.min(MACHINE_SCAN_TERMS.length - 1, machineProtocolRank(machineProtocol) - 1));
   return MACHINE_SCAN_TERMS[tier];
@@ -277,16 +296,44 @@ export function scannerMachineLabel(machineProtocol) {
 // ── Suppression fields (AE-096) ──────────────────────────────────────────────────────────
 // Volumes where shared-field coherence collapses: fauna inside lose relay coherence and
 // scatter (the "dead pocket" / safe-corridor mechanic). Volumes live on machine sites below.
+function suppressionContains(x, z, cx, cz, suppression) {
+  const dx = x - cx;
+  const dz = z - cz;
+  const d2 = dx * dx + dz * dz;
+  const radius = suppression.radius;
+  if (!(d2 <= radius * radius)) return false;
+  // Authored hole: the containment core is live. The seal is the annulus only.
+  const inner = suppression.inner;
+  if (Number.isFinite(inner) && inner > 0 && d2 < inner * inner) return false;
+  return true;
+}
+
 export function suppressionFieldAt(sectorId, x, z) {
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  // Site centers are sector-local. Live fauna positions are galactic: the world has no
+  // _toLocal, so ecology asks with the entity position. Answer both frames. The nearer
+  // center wins if a point could sit in two pockets.
+  const origin = sectorGlobalOrigin(sectorId);
+  const ox = origin && Number.isFinite(origin.x) ? origin.x : 0;
+  const oz = origin && Number.isFinite(origin.z) ? origin.z : 0;
+  let best = null;
+  let bestD = Infinity;
   for (const site of machineSitesForSector(sectorId)) {
-    if (!site.suppression) continue;
-    const dx = x - site.center.x;
-    const dz = z - site.center.z;
-    if (dx * dx + dz * dz <= site.suppression.radius * site.suppression.radius) {
-      return site;
+    if (!site.suppression || !site.center) continue;
+    const frames = [[site.center.x, site.center.z]];
+    if (ox !== 0 || oz !== 0) frames.push([site.center.x + ox, site.center.z + oz]);
+    for (let i = 0; i < frames.length; i += 1) {
+      const cx = frames[i][0];
+      const cz = frames[i][1];
+      if (!suppressionContains(x, z, cx, cz, site.suppression)) continue;
+      const d2 = (x - cx) * (x - cx) + (z - cz) * (z - cz);
+      if (d2 < bestD) {
+        bestD = d2;
+        best = site;
+      }
     }
   }
-  return null;
+  return best;
 }
 
 // ── Structure + machine site registry (AE-100..108) ──────────────────────────────────────
@@ -636,4 +683,13 @@ export function grantWitnessMark(state, source) {
 export function hasWitnessMark(state) {
   const ae = state && state.world && state.world.alienEcology;
   return !!(ae && ae.machineAccess && ae.machineAccess.witnessMark);
+}
+
+// The mark still wakes a faulted jury. It does not wave the hull past an auditor
+// while a violation or revocation is the standing on file.
+export function witnessSkipsInterrogation(state) {
+  if (!hasWitnessMark(state)) return false;
+  const ae = state.world && state.world.alienEcology;
+  const proto = ae && ae.machineProtocol;
+  return !MACHINE_PROTOCOL_FAULTS.includes(proto);
 }
