@@ -1845,3 +1845,13 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`archiveLayouts.js`, one `max-width:639px and max-height:620px` block):** the title drops to clamp(30px, 8vh, 44px), the list caps at 36vh (the selected ACTIVE row still shows) and the gaps tighten. The dossier gets 126px at 639×461 and 152px at 600×500, enough for the objective and the first terms row; the rest scrolls as before.
 
 **Checked:** bench `mission-log` clean at 639×461, 600×500, 390×600, 390×844 and 960×540; 390×844 and anything taller than 620 are outside the query. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish87/`.
+
+## Station signs side by side in a short narrow desktop window — 651–900 wide, 461–800 tall (ui-polish-89)
+
+**Before (master 5a7f93c4ef):** the bay screen and station wire stacked as two full-width rows under the next step, ~144px of the head. At 801×600 the head ran 420px and every tab's body got 66px: Missions showed one cut row and the dossier only its title.
+
+**After (`stationLayouts.js`, one desktop-only block):** in this band the two signs share one row, each taking half the width. The head drops to 339px and the body grows to ~147px, so at 801×600 the whole Missions list (both postings and YOURS) and the dossier through its reward are on screen before scrolling.
+
+**Checked:** bench `station-contracts` clean at 720×600, 801×600 and 900×600. Other tabs at 801×600 and 700×600 have no new findings and fewer old ones (Shipworks 16→12 and 15→7, Market 18→16, Ledger unchanged). 390×844, 960×540, 1280×720 and 1920×1080 can't match the rule (counts unchanged). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish89/`.
+
+**Leftovers:** Shipworks and Market are still cramped at 651–900 × 600 (pre-existing composition findings).
