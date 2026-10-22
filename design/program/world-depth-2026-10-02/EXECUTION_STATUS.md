@@ -1,6 +1,14 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current CI coverage correction — 22 October 2026, 03:27 UTC
+
+PR488 https://github.com/coldshalamov/SpaceFace/pull/488 is draft/open/unmerged at latest head 850d380a58e0ac4d5deef22430efebccbfda1ed2, tree 491de1405df59688aefe0054b400d0a0e59b52e8, sole parent 129aa830917b738dd7d5374b28e3710b159c3da7, remotely verified at 03:27:03 UTC. This successor changes only package.json: an explicit check:sim:ilex-ark gate now covers the complete Ilex test, which had no package command or matching dispatcher glob before this correction. The actual npm gate passes 13/13 in 28.255 seconds. All prior 313 CI commands and order are preserved, 314 total; the new gate is selected once in existing unsharded sim. These are local execution and dispatcher-selection results, not proof of execution in GitHub CI.
+
+The earlier 53/53 focused result applies to the initial integration tree efbeec6f31efd56febabf6685da1c58bc5dc7705. Gameplay and test source are unchanged in this package-only successor; all 53 tests were not rerun on the latest tree. Actual CI receipts for the latest head remain pending. Root integration and the CI monitoring owner must verify that exact head and its actual registered Ilex leaf, preserving terminal PR487 findings and unfinished physical Grave Drift reef/cutter/tug/carrier work. All ten goals remain OPEN; no merge, deployment, live image, ordinary-play, visual or whole-sector/game acceptance is claimed. The original PR480 asset upload remains a separate unchanged pending operation and must not be retried or bypassed.
+
+Independent recovery readback/checksums for this package-only successor are verified: SHA256 f01f930c34c14c61c0b40b904e382f1d5e81938aba3adde7faa876e92b8f35f2, 20,171 bytes. Recovery, publication, CI execution and final acceptance remain separate. This block supersedes the latest-head and next-CI-operation statements in the valid historical checkpoint below, preserving its source/test evidence.
+
 ## Current native-world delivery boundary — 22 October 2026, 03:21 UTC
 
 All ten outcomes remain OPEN: SF-GAME, SF-ORCHARD, SF-PUBLISH, SF-RECOVER, SF-VISUALS, SF-ASSETBANK, SF-ASSET-QUALITY, SF-LIVING-WORLD, SF-SECTOR-COHERENCE and SF-PLAY-WORLD. This block supersedes historical next-operation and in-progress statements below without removing their evidence or acceptance limits. Only this handoff and OPEN_GOALS.md are updated; canonical source and the held sector register are unchanged.
