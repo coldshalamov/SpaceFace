@@ -61,7 +61,7 @@ test('PRO-13: the six new definitions validate and are structurally sound', () =
   // (four were removed by an earlier lane without the count being revisited), so six more is 22.
   // The binding claim — six more, all on existing counters — is what this unit delivers; the
   // absolute number is recorded as the arithmetic actually is rather than asserted to a stale base.
-  assert.equal(ACHIEVEMENTS.length, 22, `22 achievements (16 + 6), got ${ACHIEVEMENTS.length}`);
+  assert.equal(ACHIEVEMENTS.length, 40, `40 achievements (22 + 18 trick feats), got ${ACHIEVEMENTS.length}`);
   for (const id of ADDED) {
     assert.ok(ACHIEVEMENTS.some((d) => d.id === id), `${id} is defined`);
   }

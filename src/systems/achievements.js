@@ -136,6 +136,7 @@ function liveStorage() {
 // against the record that existed before it settled. Both are max-merged, like counters.
 const KNOWN_BAG_KEYS = new Set([
   'schemaVersion', 'unlocked', 'counters', 'crucibleBestByKey', 'crucibleBestByRunKey', 'steam',
+  'trickFeats',
 ]);
 
 function asObject(value) {
@@ -163,6 +164,7 @@ export function emptyAchievementBag() {
     crucibleBestByKey: {},
     crucibleBestByRunKey: {},
     steam: {},
+    trickFeats: {},
   };
 }
 
@@ -209,6 +211,13 @@ function migrateBag(raw) {
   const steam = asObject(src.steam) || {};
   for (const id of Object.keys(steam)) {
     if (steam[id] === true) bag.steam[id] = true;
+  }
+  const feats = asObject(src.trickFeats) || {};
+  for (const id of Object.keys(feats)) {
+    if (!achievementById(id)) continue;
+    const episodeId = feats[id];
+    if (typeof episodeId !== 'string' || episodeId.length === 0 || episodeId.length > 512) continue;
+    bag.trickFeats[id] = episodeId;
   }
   for (const key of Object.keys(src)) {
     if (KNOWN_BAG_KEYS.has(key)) continue;
@@ -276,6 +285,9 @@ export function mergeAchievementBags(primary, secondary) {
   }
   for (const id of new Set([...Object.keys(a.steam), ...Object.keys(b.steam)])) {
     if (a.steam[id] === true || b.steam[id] === true) out.steam[id] = true;
+  }
+  for (const id of new Set([...Object.keys(a.trickFeats), ...Object.keys(b.trickFeats)])) {
+    out.trickFeats[id] = a.trickFeats[id] || b.trickFeats[id];
   }
   return out;
 }
@@ -519,6 +531,43 @@ export function applyAchievementEvent(bag, event, payload, context = {}) {
   return moved;
 }
 
+/** True when one player trick receipt satisfies a one-time feat rule. Not a counter. */
+export function trickFeatMatches(rule, payload) {
+  if (!rule || rule.source !== 'trick' || !payload) return false;
+  if (typeof rule.trickId === 'string') return payload.trickId === rule.trickId;
+  if (typeof rule.variantId === 'string') return payload.variantId === rule.variantId;
+  if (Number.isInteger(rule.minCollateral)) {
+    return Number(payload.modifiers && payload.modifiers.collateralCount) >= rule.minCollateral;
+  }
+  if (rule.razorKill === true) {
+    return payload.modifiers && payload.modifiers.razorRelease === 'razor'
+      && payload.consequence && payload.consequence.killed === true;
+  }
+  return false;
+}
+
+/**
+ * Latch trick feats the player just earned. Writes the META bag only.
+ * A receipt that is not the player's, or that has no episode, changes nothing.
+ * An episode already latched for that feat is not recorded again, so an amend cannot re-announce it.
+ * Returns the feat ids newly latched.
+ */
+export function applyTrickFeat(bag, payload, context = {}) {
+  if (!bag || !payload) return NONE;
+  const playerId = playerIdOf(context);
+  if (playerId == null || payload.actorId !== playerId) return NONE;
+  if (typeof payload.episodeId !== 'string' || payload.episodeId.length === 0 || payload.episodeId.length > 512) return NONE;
+  if (!asObject(bag.trickFeats)) bag.trickFeats = {};
+  const moved = [];
+  for (const def of ACHIEVEMENTS) {
+    if (!trickFeatMatches(def.rule, payload)) continue;
+    if (bag.trickFeats[def.id] != null) continue;
+    bag.trickFeats[def.id] = payload.episodeId;
+    moved.push(def.id);
+  }
+  return moved.length ? moved : NONE;
+}
+
 export function crucibleFactsFromProfile(profile) {
   const records = asObject(profile && profile.records) || {};
   const lifetime = asObject(records.lifetime) || {};
@@ -635,6 +684,11 @@ export function achievementProgress(def, bag, crucible) {
   let current = 0;
   if (rule && rule.source === 'counter') current = cleanCount(bag && bag.counters && bag.counters[rule.key]);
   else if (rule && rule.source === 'crucible') current = cleanCount(crucible && crucible[rule.key]);
+  else if (rule && rule.source === 'trick') {
+    const earned = (bag && bag.trickFeats && bag.trickFeats[def.id] != null)
+      || (bag && bag.unlocked && bag.unlocked[def.id] != null);
+    current = earned ? 1 : 0;
+  }
   return { current, target, done: current >= target };
 }
 
@@ -1037,6 +1091,15 @@ export function installAchievements({
     flushPendingNotice();
   }
 
+  function onTrick(event, payload) {
+    if (disposed) return;
+    const moved = applyTrickFeat(bag, payload, eventContext);
+    if (!moved.length) return;
+    const fresh = evaluate(event);
+    if (!fresh.length) scheduleSave();
+    flushPendingNotice();
+  }
+
   function onRunResults(result) {
     if (disposed) return;
     // survivalResults settles the run synchronously BEFORE it emits run:resultsReady, so the
@@ -1086,6 +1149,12 @@ export function installAchievements({
     const off = bus.on(event, (payload) => onCounterEvent(event, payload));
     if (typeof off === 'function') unsubs.push(off);
   }
+  // Trick feats stay off ACHIEVEMENT_EVENT_HANDLERS: that table is exactly the counter events.
+  // stuntGrammar already decided the trick. An amend of a latched episode does not announce again.
+  const offTrick = bus.on('stunt:trickDetected', (payload) => onTrick('stunt:trickDetected', payload));
+  if (typeof offTrick === 'function') unsubs.push(offTrick);
+  const offAmend = bus.on('stunt:trickAmended', (payload) => onTrick('stunt:trickAmended', payload));
+  if (typeof offAmend === 'function') unsubs.push(offAmend);
   for (const event of Object.keys(CAREER_EVENT_HANDLERS)) {
     const off = bus.on(event, (payload) => onCounterEvent(event, payload));
     if (typeof off === 'function') unsubs.push(off);
