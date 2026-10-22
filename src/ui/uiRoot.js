@@ -612,6 +612,8 @@ export const ui = {
     this.windowTitle = null;
     invalidateScreenRegistrationCycle(this);
     this._screenRegistrationCycle = null;
+    this.toasts?.destroy?.();
+    this.toasts = null;
     if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
     this.hud = null;
     if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
@@ -1950,6 +1952,8 @@ export const ui = {
     this.input = null;
     if (this.worldObject && typeof this.worldObject.destroy === 'function') this.worldObject.destroy();
     this.worldObject = null;
+    this.toasts?.destroy?.();
+    this.toasts = null;
     if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
     this.hud = null;
     if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
