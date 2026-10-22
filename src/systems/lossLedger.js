@@ -59,6 +59,7 @@ import { pickWreckClass, wreckClassById } from '../data/wreckClasses.js';
 import { effectiveDangerTierFor, sectorSignalFor } from './sectorSim.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { postImpoundListing } from './impoundLot.js';
+import { FACTION_KITS } from '../data/factions/index.js';
 
 const MAX_PER_SECTOR = 8;           // ring-buffer cap — bounded growth (failureMode guard)
 const MAX_TOTAL = 64;               // global backstop across all sectors (rare; trims oldest)
@@ -147,21 +148,28 @@ export function latestLossLine(state, sectorId) {
   return lossLine(e, sectorName(state, sectorId));
 }
 
+const FACTION_SHORT = new Map();
+for (const kit of FACTION_KITS) {
+  if (kit && kit.id && kit.short) FACTION_SHORT.set(kit.id, kit.short);
+}
+// Older ledger rows used these aliases. The headline still has to name the house.
+FACTION_SHORT.set('faction_concord', 'Concord');
+FACTION_SHORT.set('faction_drift', 'Drift');
+
+function lossArticle(word) {
+  return /^[AEIOU]/i.test(word) ? 'An' : 'A';
+}
+
 function lossLine(e, sName) {
-  // Canonical ids are faction_scn / faction_dmc (short names Concord / Drift).
-  // Legacy aliases kept so old loss-ledger rows still headline correctly.
-  const factionWord = (e.factionId === 'faction_scn' || e.factionId === 'faction_concord') ? 'Concord'
-    : e.factionId === 'faction_reach' ? 'Reach'
-    : (e.factionId === 'faction_dmc' || e.factionId === 'faction_drift') ? 'Drift'
-    : e.factionId === 'faction_quiet' ? 'the Quiet'
-    : 'a';
   const noun = e.kind === 'outpost' ? 'outpost'
     : e.kind === 'fleet' ? 'fleet vessel'
     : e.kind === 'drone' ? 'mining drone'
     : e.kind === 'ship' ? 'ship'
     : 'hauler';
   const verb = e.kind === 'outpost' ? 'was raided' : 'went dark';
-  return `A ${factionWord} ${noun} ${verb} near ${sName}.`;
+  const short = FACTION_SHORT.get(e.factionId);
+  if (!short) return `A ${noun} ${verb} near ${sName}.`;
+  return `${lossArticle(short)} ${short} ${noun} ${verb} near ${sName}.`;
 }
 
 function makeLossId(seed, sectorId, kind, simTime, assetId) {
