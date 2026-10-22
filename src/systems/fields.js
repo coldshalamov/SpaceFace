@@ -357,6 +357,93 @@ function npcOwnedFieldCount(kernel) {
   return n;
 }
 
+/**
+ * Where a Pull well or a Shove repulsor deploys right now: the Well at the aim point (clamped to
+ * deployRange and kept clear of the hull), the Repulsor at the ship. The deploy and the held-key
+ * preview (row 493, data/powerPreview.js) both read this, so the preview cannot drift from it.
+ */
+export function radialFieldDeployCenter(kind, player, state) {
+  const def = FIELD_DEFS[kind];
+  let cx = player.pos.x, cz = player.pos.z;
+  if (kind === 'well') {
+    const dir = aimDirection(player, state);
+    const aw = state.input && state.input.aimWorld;
+    let dist = def.deployRange;
+    if (aw && Number.isFinite(aw.x) && Number.isFinite(aw.z)) {
+      dist = Math.min(def.deployRange, Math.hypot(aw.x - player.pos.x, aw.z - player.pos.z));
+    }
+    dist = Math.max(finite(player.radius, 6) + def.emitterRadius + def.spawnGap, dist);
+    cx = player.pos.x + dir.x * dist;
+    cz = player.pos.z + dir.z * dist;
+  }
+  return { x: cx, z: cz };
+}
+
+/**
+ * The kernel record a player Pull well, Shove repulsor or Rig cone registers when it deploys right
+ * now (ids, source and clock left to the caller). The deploys spread this, and the row-493 preview
+ * normalizes the same object, so the predicted paths run on the field the press will make.
+ */
+export function playerFieldSpec(kind, player, state) {
+  const def = FIELD_DEFS[kind];
+  if (kind === 'cone') {
+    const rot = finite(player.rot);
+    const dir = { x: Math.cos(rot), z: Math.sin(rot) };
+    const center = { x: player.pos.x + dir.x * def.originGap, z: player.pos.z + dir.z * def.originGap };
+    return {
+      kind: def.kind, center, dir, radius: def.radius, strength: def.strength,
+      falloff: def.falloff, halfAngleRad: def.halfAngleRad, edgeSoftRad: def.edgeSoftRad,
+      volume: fieldVolumeOf(def),
+      durationS: Infinity, ownerId: player.id, team: player.team,
+      // Owner exclusion, same rule as the deployed tools: the rig never pushes its own hull.
+      // The wedge apex sits ahead of the nose so geometry already keeps the player out; this
+      // keeps that guarantee true regardless of future originGap/geometry tuning.
+      filters: { excludeId: player.id },
+    };
+  }
+  return {
+    kind: def.kind,
+    center: radialFieldDeployCenter(kind, player, state),
+    radius: def.radius,
+    strength: def.strength,
+    // PQ-137.09 — the deploy path never forwarded the authored damping, so the ONE field record
+    // the kernel built for a player-deployed Well or Repulsor always read damping 0 no matter
+    // what the data said. Every other register site (the anchor snare, external profiles) does
+    // forward it; this one silently dropped it. Without this line the well's convergence law
+    // does not exist on the default route and a body just falls faster and faster.
+    damping: def.damping,
+    falloff: def.falloff,
+    volume: fieldVolumeOf(def),
+    innerRadius: def.innerRadius || 0,
+    innerSoft: def.innerSoft || 0,
+    durationS: def.durationS,
+    ownerId: player.id,
+    team: player.team,
+  };
+}
+
+/** Bodies a player field can move: dynamic or anchored physical bodies, never emitters or seeds. */
+export function isForceableFieldBody(e) {
+  if (!e || e.alive === false || !e.pos) return false;
+  if (e.type === EMITTER_TYPE || e.type === 'massSeed' || (e.type === 'fx' && !isPhysicalMissionBody(e))) return false;
+  // Only dynamic Rapier bodies can be moved by an impulse; fixed bodies (stations, gates, static
+  // asteroids, the emitters/anchors themselves) ignore it.
+  return isDynamicPhysicsBodyEntity(e) || isAnchoredPhysicalBody(e);
+}
+
+/**
+ * PULL marks the locked target a well lands on (see _pullMarkLockedTarget): the target must sit in
+ * the footprint, and a hull must be hostile to the player; a rock, wreck, pod or crate always is.
+ */
+export function pullMarkTargetEligible(state, player, target, cx, cz, radius) {
+  if (!target || !player || target.id === player.id || target.alive === false || !target.pos) return false;
+  const dx = finite(target.pos.x) - cx;
+  const dz = finite(target.pos.z) - cz;
+  if (dx * dx + dz * dz > radius * radius) return false;
+  const isShip = target.type === 'ship' || target.type === 'drone';
+  return !isShip || isHostileToPlayer(target, player.team, state);
+}
+
 // Aim convention shared with impulse charges / mass seed: direction toward the painted world point,
 // else the nose. Pure; no allocation beyond the returned vector.
 function aimDirection(player, state) {
@@ -1254,19 +1341,9 @@ export const fields = {
     }
 
     // Placement: the Well is thrown to the aim point (up to deployRange); the Repulsor drops at the
-    // ship (behind you mid-chase).
-    let cx = player.pos.x, cz = player.pos.z;
-    if (kind === 'well') {
-      const dir = aimDirection(player, state);
-      const aw = state.input && state.input.aimWorld;
-      let dist = def.deployRange;
-      if (aw && Number.isFinite(aw.x) && Number.isFinite(aw.z)) {
-        dist = Math.min(def.deployRange, Math.hypot(aw.x - player.pos.x, aw.z - player.pos.z));
-      }
-      dist = Math.max(finite(player.radius, 6) + def.emitterRadius + def.spawnGap, dist);
-      cx = player.pos.x + dir.x * dist;
-      cz = player.pos.z + dir.z * dist;
-    }
+    // ship (behind you mid-chase). The one rule the held-key preview also reads.
+    const spec = playerFieldSpec(kind, player, state);
+    const cx = spec.center.x, cz = spec.center.z;
 
     // Enforce the active-field cap by retiring the oldest deployed emitter (bounded work + read).
     this._enforceCap(state, rt);
@@ -1303,25 +1380,9 @@ export const fields = {
     if (!emitter) return;
 
     this._kernel.register({
+      ...spec,
       id: fieldId,
-      kind: def.kind,
-      center: { x: cx, z: cz },
-      radius: def.radius,
-      strength: def.strength,
-      // PQ-137.09 — the deploy path never forwarded the authored damping, so the ONE field record
-      // the kernel built for a player-deployed Well or Repulsor always read damping 0 no matter
-      // what the data said. Every other register site (the anchor snare, external profiles) does
-      // forward it; this one silently dropped it. Without this line the well's convergence law
-      // does not exist on the default route and a body just falls faster and faster.
-      damping: def.damping,
-      falloff: def.falloff,
-      volume: fieldVolumeOf(def),
-      innerRadius: def.innerRadius || 0,
-      innerSoft: def.innerSoft || 0,
-      durationS: def.durationS,
       sourceId: emitter.id,
-      ownerId: player.id,
-      team: player.team,
       createdAt: now,
       // The deploying hull never feels its own tool (same rule the enemy anchor snare applies to
       // its source hull): the Well/Repulsor exist to move OTHER bodies. Without this the
@@ -1351,12 +1412,7 @@ export const fields = {
     const targetId = state.player && state.player.targetId;
     if (targetId == null || !player || targetId === player.id) return false;
     const target = state.entities && typeof state.entities.get === 'function' ? state.entities.get(targetId) : null;
-    if (!target || target.alive === false || !target.pos) return false;
-    const dx = finite(target.pos.x) - cx;
-    const dz = finite(target.pos.z) - cz;
-    if (dx * dx + dz * dz > radius * radius) return false;
-    const isShip = target.type === 'ship' || target.type === 'drone';
-    if (isShip && !isHostileToPlayer(target, player.team, state)) return false;
+    if (!pullMarkTargetEligible(state, player, target, cx, cz, radius)) return false;
     const kernel = this._combatKernel;
     if (!kernel || !kernel.statuses || typeof kernel.statuses.schedule !== 'function') return false;
     const runtime = ensureCombatant(state, target, kernel.catalog);
@@ -1383,19 +1439,9 @@ export const fields = {
       const def = FIELD_DEFS.cone;
       const now = nowOf(state);
       const fieldId = `field_cone_${player.id}`;
-      const rot = finite(player.rot);
-      const dir = { x: Math.cos(rot), z: Math.sin(rot) };
-      const center = { x: player.pos.x + dir.x * def.originGap, z: player.pos.z + dir.z * def.originGap };
-      this._kernel.register({
-        id: fieldId, kind: def.kind, center, dir, radius: def.radius, strength: def.strength,
-        falloff: def.falloff, halfAngleRad: def.halfAngleRad, edgeSoftRad: def.edgeSoftRad,
-        volume: fieldVolumeOf(def),
-        durationS: Infinity, sourceId: player.id, ownerId: player.id, team: player.team, createdAt: now,
-        // Owner exclusion, same rule as the deployed tools: the rig never pushes its own hull.
-        // The wedge apex sits ahead of the nose so geometry already keeps the player out; this
-        // keeps that guarantee true regardless of future originGap/geometry tuning.
-        filters: { excludeId: player.id },
-      });
+      const coneSpec = playerFieldSpec('cone', player, state);
+      const center = coneSpec.center;
+      this._kernel.register({ ...coneSpec, id: fieldId, sourceId: player.id, createdAt: now });
       rt.coneActive = true;
       rt.coneFieldId = fieldId;
       // CV-EAR: the cone's deploy is a fields:deployed emit like every other power (the wedge
@@ -1831,12 +1877,8 @@ export const fields = {
   // ── force application (the ONE kernel → membrane) ────────────────────────────────────────────
 
   _forceableBody(e) {
-    if (!e || e.alive === false || !e.pos) return false;
-    if (e.type === EMITTER_TYPE || e.type === 'massSeed' || (e.type === 'fx' && !isPhysicalMissionBody(e))) return false;
-    // Only dynamic Rapier bodies can be moved by an impulse; fixed bodies (stations, gates, static
-    // asteroids, the emitters/anchors themselves) ignore it. Gating here spares wasted membrane
-    // writes and keeps the affected count honest.
-    return isDynamicPhysicsBodyEntity(e) || isAnchoredPhysicalBody(e);
+    // Gating here spares wasted membrane writes and keeps the affected count honest.
+    return isForceableFieldBody(e);
   },
 
   _collectFieldCandidates(field, state, out) {
