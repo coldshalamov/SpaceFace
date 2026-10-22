@@ -208,9 +208,14 @@ test('flavor packs meet the V2 count and identity contracts', () => {
       'tomato_glut', 'first_violin', 'laundry_code', 'model_ship', 'captains_last',
       'umbrella_audit', 'ice_sculpture', 'chess_set', 'compost_crates', 'paper_books',
       'window_glass',
+      'lane_grandma', 'dead_relay_crew',
     ],
   );
-  assert.equal(FLAVOR_PACKS.roaming_events.entries.every((entry) => entry.economyHook && entry.lines.length >= 8), true);
+  assert.equal(FLAVOR_PACKS.roaming_events.entries.every((entry) => (
+    entry.id === 'lane_grandma' || entry.id === 'dead_relay_crew'
+      ? !entry.economyHook && entry.lines.every((line) => line.surface === 'hail' || line.surface === 'band')
+      : entry.economyHook && entry.lines.length >= 8
+  )), true);
 
   const facts = FLAVOR_PACKS.quiessence.entries;
   assert.equal(facts.length, 17);

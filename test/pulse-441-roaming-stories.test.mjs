@@ -12,6 +12,7 @@ import { v2FlavorRuntime } from '../src/systems/v2FlavorRuntime.js';
 import { hash32 } from '../src/core/rng.js';
 
 const REQUIRED_SURFACES = ['hail', 'band', 'trade', 'news'];
+const TALK_ONLY = new Set(['lane_grandma', 'dead_relay_crew']);
 const PACK = FLAVOR_PACKS.roaming_events;
 
 function makeHarness() {
@@ -40,6 +41,12 @@ test('at least thirty roaming micro-stories, all riding the roaming_events pack'
 test('every story carries lines on hail, band, trade, and news', () => {
   for (const story of ROAMING_STORIES) {
     const surfaces = new Set(story.lines.map((line) => line.surface));
+    if (TALK_ONLY.has(story.id)) {
+      assert.deepEqual([...surfaces].sort(), ['band', 'hail']);
+      assert.equal(story.economyHook, undefined);
+      assert.ok(story.lines.every((line) => line.surface === 'hail' || line.surface === 'band'));
+      continue;
+    }
     for (const surface of REQUIRED_SURFACES) {
       assert.ok(surfaces.has(surface), `${story.id} has a ${surface} line`);
     }
@@ -101,6 +108,15 @@ test('the v2 runtime presents each story on all four surfaces with correct chann
   const CHANNELS = { hail: 'comms', band: 'band', trade: 'news', news: 'news' };
   for (const story of ROAMING_STORIES) {
     const record = { encounterId: `enc_test_${story.id}`, eventId: story.eventId, fingerprint: 'fp-test' };
+    if (TALK_ONLY.has(story.id)) {
+      for (const surface of ['hail', 'band']) {
+        assert.equal(v2FlavorRuntime._presentRoaming(record, surface, { eventId: record.encounterId }), true);
+      }
+      for (const surface of ['trade', 'news', 'scan']) {
+        assert.equal(v2FlavorRuntime._presentRoaming(record, surface, { eventId: record.encounterId }), false);
+      }
+      continue;
+    }
     for (const surface of REQUIRED_SURFACES) {
       const before = voice.said.length;
       const ok = v2FlavorRuntime._presentRoaming(record, surface, { eventId: record.encounterId });
