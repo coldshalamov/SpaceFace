@@ -6,7 +6,7 @@ Allocated 22 October 2026 at 21:53 UTC. Owner: dot. This repairs a verified base
 
 Master: 5e5b619b57c53be410e90c7e5f21bbb2fd0127f5. Generator scripts/sync-modulepreload.mjs: ed4078b9a1c45a589eca874307600cd8499f5d69. Index: 30e86f03ce7ee723c96fa823da7ca5fe3acd6c8b. Current NOW: 28c49d3e8aa779e931c7830e7bebcdf8ae1e13fd; no exact index.html/generated registry-block owner is listed.
 
-The unchanged generator --check exits 1 in a coherent, hash-gated virtual public snapshot: 100 current imports are missing and 16 removed encounter paths remain (1300 and 570–584). All 2,278 successfully read source/dependency paths were hash checked; no missing public source was substituted and no game code executed. Source composition uses the complete public tree and verified deltas, not a partial simulation overlay or unverified dirty files.
+The unchanged generator --check exits 1 in a coherent, hash-gated virtual public snapshot: 100 current imports are missing and 16 removed encounter paths remain (1300 and 570–584). All 2,277 successfully read source/dependency paths were hash checked; no missing public source was substituted and no game code executed. Source composition uses the complete public tree and verified deltas, not a partial simulation overlay or unverified dirty files.
 
 This matches sync-modulepreload errors in exact-base CI run 39852539933 and replay-head run 39854604366, and stale-encounter 404 signatures in several browser checks. It does not prove every browser failure or the phone launch problem has this cause.
 
@@ -18,3 +18,7 @@ This matches sync-modulepreload errors in exact-base CI run 39852539933 and repl
 Do not edit scripts, workflow/security settings, hand-maintained preload waves, import owners, tests, unrelated index markup or other active writers. No game/browser execution, broad aggregate, CI rerun or deployment is allocated. Preserve the original index and failed check, inspect the resulting +100/-16 block change, then run the generator's --check again and verify the rest of index.html byte-identical. Freeze and preserve exact source/proof, publish a fresh coherent draft increment, and follow CI separately.
 
 Whole-game, ordinary flight/phone and unrelated CI goals remain open.
+
+## Delivery update, 22:18 UTC
+
+Implemented and independently reviewed. Draft PR #517 at 6783d6c814a3b255c3b6e2764887a610e7b4eef3 preserves the exact two-file scope. The final verified read count is 2,277; the initial 2,278 was preliminary. Follow CI and live acceptance separately; this claim is not a vacancy for a second writer.
