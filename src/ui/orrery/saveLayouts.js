@@ -204,6 +204,8 @@ ${SL} > .k-foot .k-word.sf-back:is(:hover, :focus-visible) { color:var(--dp-hand
    hull only, so LOAD, the name field and the hull record never print over the strip's berths (they
    did at 960, 1280 and 1920). Desktop only; the phone has its own stack. */
 html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "page stage" "page hang" "foot foot" !important; }
+/* ui-polish-79: the hull record's key column fits its longest key (RAP SHEET ran into "Clean" at 761–1280) */
+html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-columns:max(96px, calc(104px * var(--sv))) minmax(0, 1fr); }
 @media (max-width:1100px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-columns:minmax(356px, 38%) minmax(0, 1fr) !important; column-gap:28px !important; }
   /* the context line (QUICK SAVE · CURRENT · FLOWN 20 DAYS AGO) fits the column on one line */
@@ -231,6 +233,10 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(even) > .sf-ledger-k { padding-left:8px; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait .sf-ledger-k { letter-spacing:.08em; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait .sf-ledger-line .k-sentence { font-size:12px; line-height:1.3; }
+  /* ui-polish-79: LOAD printed over EXPORT at 960×540. The record's last, unpaired line (GRUDGE) takes the whole
+     row instead of wrapping in half of it, and the context line closes up so it reads on one line */
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(odd):nth-last-of-type(1) > :not(.sf-ledger-k) { grid-column:2 / -1; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.05em; }
 }
 /* UI polish (ui-polish-63): a very short desktop (≤1100 × ≤460: 844×390, 801×390, 900×420, 1024×440).
    The reading ran ~80px past the foot, so LOAD / SAVE HERE / DELETE and the name field fell off the
@@ -288,8 +294,11 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
    the full width, the way back along the foot. The hull's own berth steps aside (each slot's frame on
    the strip still shows its hull); a filed slot shows its name and credits (the reading carries its line).
    Review: at 740–760 a short window (≤460 tall) keeps the reviewed one-screen short-desktop layout above (bench
-   clean there on master; stacking pushed the strip and the way back below the fold). */
-@media (max-width:739px), (max-width:760px) and (min-height:461px) {
+   clean there on master; stacking pushed the strip and the way back below the fold).
+   ui-polish-79: 761–790 above 460 tall and 791–860 at 750+ tall stack too. Side by side, the ~300px strip ran
+   CURRENT into SLOT 1 and the two saves' credits together up to ~790 wide; 791–860 × 461–749 still fits side by
+   side on one screen (the stack needs ~746px), and every ≤460-tall window keeps the short-desktop page. */
+@media (max-width:739px), (max-width:790px) and (min-height:461px), (max-width:860px) and (min-height:750px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { padding:28px 24px clamp(18px, 3.4vh, 35px) !important; row-gap:10px !important;
     grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:max-content max-content minmax(max-content, 1fr) max-content !important;
     grid-template-areas:"title" "page" "hang" "foot" !important; overflow-x:hidden !important; overflow-y:auto !important; }
@@ -299,7 +308,6 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-title { font-size:calc(58px * var(--sv)) !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-fact-n { font-size:calc(46px * var(--sv)); }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-fact-u { padding-bottom:calc(5px * var(--sv)); }
-  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-columns:max(92px, calc(96px * var(--sv))) minmax(0, 1fr); }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-k { letter-spacing:.12em; white-space:nowrap; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.06em; }
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-hang { align-self:end; height:auto; min-height:168px; }
