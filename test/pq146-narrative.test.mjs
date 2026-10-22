@@ -211,7 +211,7 @@ test("all sixteen mastery rules exist; Rock Tutor needs three lives in at least 
   const s = scene(), trick = evidence(s);
   s.bus.emit("stunt:trickDetected", trick);
   const base = s.state.story.titles.stuntIncidents[0];
-  assert.equal(STUNT_TITLE_RULES.length, 16);
+  assert.equal(STUNT_TITLE_RULES.length, 17);
   const first = { ...base, id: "rock:1", rootId: "rock:1", trickId: "rock_discovery", victimLives: [{ lifeId: "a" }, { lifeId: "b" }] };
   qualifyStuntTitles(s.state, first, s.bus);
   assert.equal(s.state.story.titles.byId.title_rock_discovery, void 0);
