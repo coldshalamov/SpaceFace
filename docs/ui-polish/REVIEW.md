@@ -1846,6 +1846,15 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 
 **Checked:** bench `mission-log` clean at 639×461, 600×500, 390×600, 390×844 and 960×540; 390×844 and anything taller than 620 are outside the query. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish87/`.
 
+## Station signs side by side in a short narrow desktop window — 651–900 wide, 461–800 tall (ui-polish-89)
+
+**Before (master 5a7f93c4ef):** the bay screen and station wire stacked as two full-width rows under the next step, ~144px of the head. At 801×600 the head ran 420px and every tab's body got 66px: Missions showed one cut row and the dossier only its title.
+
+**After (`stationLayouts.js`, one desktop-only block):** in this band the two signs share one row, each taking half the width. The head drops to 339px and the body grows to ~147px, so at 801×600 the whole Missions list (both postings and YOURS) and the dossier through its reward are on screen before scrolling.
+
+**Checked:** bench `station-contracts` clean at 720×600, 801×600 and 900×600. Other tabs at 801×600 and 700×600 have no new findings and fewer old ones (Shipworks 16→12 and 15→7, Market 18→16, Ledger unchanged). 390×844, 960×540, 1280×720 and 1920×1080 can't match the rule (counts unchanged). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish89/`.
+
+**Leftovers:** Shipworks and Market are still cramped at 651–900 × 600 (pre-existing composition findings).
 ## Pause in a narrow desktop window — session notes (2026-10-22, ui-polish-88)
 
 **Before:** a desktop window ≤760 wide without touch (no `data-sf-mobile`) still got the dial composition. At 390–700 wide the group banks ran off the right edge (RESUME, SETTINGS, SAVE… outside the frame), the brief's Next and Saved lines printed over RESUME and GAME, and the foot keycaps ran into EXIT (390×844: 52 findings; 600×800: 31; 700×800: 26). At 701–760 STATISTICS and the save note collided with the ladder.
