@@ -1,0 +1,33 @@
+{
+  "previous_base": "065f9d293e036cc92040657d2923f0477932e3cd",
+  "previous_base_tree": "9f0cd6210fbb763493ee22a935bb592d720367d3",
+  "previous_proposed_tree": "cf901b22a799323cc73b5f22e5b5c5b1dbf3a065",
+  "base_commit": "c855b6a6b9fb488d44a4fdfa4e865a9a854826b9",
+  "base_tree": "4c6a609d86477dc161a49e1c466c12d90deca911",
+  "proposed_tree": "5108d18430a99cda51c577a4c7a3a8bd7bf993d4",
+  "public_parents": [
+    "e7f6122f8d8f2985223940bfbb60eb4f66272561",
+    "c855b6a6b9fb488d44a4fdfa4e865a9a854826b9"
+  ],
+  "upstream_additions": [
+    {
+      "path": "src/ui/ionStormHud.js",
+      "blob": "bfb2dc1755b14c199996cc2907f3afe9c1bad0af",
+      "mode": "100644"
+    },
+    {
+      "path": "src/ui/travelVectorHud.js",
+      "blob": "d6e4158486815fc09bdaee9d2ae92c9b02ed0c65",
+      "mode": "100644"
+    }
+  ],
+  "reviewed_output_count": 69,
+  "reviewed_outputs_unchanged": true,
+  "unchanged_dependency_files": 1838,
+  "previous_passed_checks": 124,
+  "tests_rerun": false,
+  "import_absence_resolved": true,
+  "hud_features_implemented": false,
+  "canonical_modified": false,
+  "runtime_remote_written": false
+}

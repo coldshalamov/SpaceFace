@@ -1,0 +1,426 @@
+{
+  "base_commit": "c855b6a6b9fb488d44a4fdfa4e865a9a854826b9",
+  "base_tree": "4c6a609d86477dc161a49e1c466c12d90deca911",
+  "proposed_tree": "5108d18430a99cda51c577a4c7a3a8bd7bf993d4",
+  "entries": [
+    {
+      "path": "assets/ships/forge/sources/pallas_cut_section/pallas_cut_section.blend",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "532fb6eb95dc9e65ca04becabc4f13d7608fa4e3"
+    },
+    {
+      "path": "assets/ships/parts/places/place_pallas_cut_section.glb",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3ed66b0cb10aac32045de83426995ef0e499526a"
+    },
+    {
+      "path": "assets/ships/release/parts/places/place_pallas_cut_section.glb",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "203b9cf7d99dbe41c407ee73efedc7c9f6e68511"
+    },
+    {
+      "path": "assets/ships/release/release_manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "891429a3d980bd3128afd4531b722bd5f25c6f6e"
+    },
+    {
+      "path": "assets/ships/release/render-packages/pallas-cut-section/render-package.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "19e4bc79a4362cf03dd5c7a82ad3cea3fa3ecc95"
+    },
+    {
+      "path": "assets/ships/release/render-packages/pallas-cut-section/render.glb",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30f9828de75f6700b74bff88678f579f0fe2559f"
+    },
+    {
+      "path": "assets/ships/render-packages/pilots.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ce025b54b6a37acbefde7d61e1525d9edf5104bd"
+    },
+    {
+      "path": "design/pallas-cut-section-model.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b79acf5e0a73a3d4551ed7d5ec691fb91553c0e7"
+    },
+    {
+      "path": "design/program/world-depth-2026-10-02/MOBILE_PROBE_FIXTURE_FIDELITY_2026-10-20.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b6644ccf962898dc923adbcca87abcc03c7144b3"
+    },
+    {
+      "path": "index.html",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea68cb96a6f32f8f7afa50f3e03601fa56fb0159"
+    },
+    {
+      "path": "package.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1945eb8966530f398bc9cd3439112af71ea3d2da"
+    },
+    {
+      "path": "scripts/lib/npcJobsMirror.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "49807060fa66d1f072d778507a3972a45e1a1b27"
+    },
+    {
+      "path": "scripts/lib/simReadModel.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c403ff9f90c8d254f4995d073c6437938dadbcf2"
+    },
+    {
+      "path": "scripts/lib/simWorkerHost.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e95ea08f466eaf7df87f89a8323257b9d972f981"
+    },
+    {
+      "path": "src/core/anvilOrchardNative.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "094723aa3bc01949b77b683d07bfe81bbaa947b1"
+    },
+    {
+      "path": "src/data/contactHail.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "98ab634b7250b07805870e32150688327d4de2a6"
+    },
+    {
+      "path": "src/data/pallasReefCrew.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0589e2b57c2e96e25870f36f5a1c35e1be4a6f03"
+    },
+    {
+      "path": "src/data/pallasSeamWork.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2dbd8d9844350b77d4afd515d41c659968a2648b"
+    },
+    {
+      "path": "src/data/pallasWorkShift.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64b2a714398c82530c42f8c70156e3c763d33ac1"
+    },
+    {
+      "path": "src/data/sectorActivityPockets.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d9bffc9c66539125df92f3207dfd47ed157157d1"
+    },
+    {
+      "path": "src/render/npcJobSignatureVfx.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "77b83dadc08ddf562a94a772e0ad15a6e9bc59cb"
+    },
+    {
+      "path": "src/render/renderPackageManifest.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5db550ea5ac3969bcd0f8dc6e3bcba7a742d8490"
+    },
+    {
+      "path": "src/render/visualFactory.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1bf0aaa7a5a28ee374b07ce638094cae8ab06dd8"
+    },
+    {
+      "path": "src/systems/economy.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65c7b0f7e57d0669e73aef1454efb35ddc6cfa46"
+    },
+    {
+      "path": "src/systems/ilexArk.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "115ba46a82dd985b7c0213a0eb424dd3ea7a9217"
+    },
+    {
+      "path": "src/systems/mobile/styles.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2501aa9dc2930f5804eb39ae997e4f2bb29c0d22"
+    },
+    {
+      "path": "src/systems/mobile/view.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6379687e0eb9ad15bca9f60bc82ea839cac3f30"
+    },
+    {
+      "path": "src/systems/npcJobsRuntime.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a0681cbb53f89db06e06e87c16b59e120c94b819"
+    },
+    {
+      "path": "src/systems/pallasReefCrew.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d4605f27df48383adbce03d11aecbba0c628f01f"
+    },
+    {
+      "path": "src/systems/pallasReefSource.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ad2da315d9ffa290856df5454ddba6ee4b18ba10"
+    },
+    {
+      "path": "src/systems/pallasSeamWork.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "94ce52b5d9daf905282b90ec5a18b298b3aa88d1"
+    },
+    {
+      "path": "src/systems/pallasWorkLoop.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "240fd16ed5ad05d154984a141cf04bd5ab35f55c"
+    },
+    {
+      "path": "src/systems/salvage.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06465a6013f50139badd46925ccb87fe9dd273fb"
+    },
+    {
+      "path": "src/systems/traffic.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "66e9aeba703e26980f70c750276ddd169b2ee351"
+    },
+    {
+      "path": "src/ui/targetPanel.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c70524a6f869d34a2d1286fc2840074f3c90b2e3"
+    },
+    {
+      "path": "src/ui/views/hudStyles.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0892118bab8e97efa4d9e319c1e0dfc92ade0034"
+    },
+    {
+      "path": "test/fb-pallas-activity-pockets.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "95538097f1bb15a929d856e6b29adca1824cc55d"
+    },
+    {
+      "path": "test/fixtures/pallas-drift-native.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9f055c56910a89a5fe80dbe6a5ea1d4a75717bea"
+    },
+    {
+      "path": "test/fixtures/pallas-reef-native.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5298b4232e5416bc26c8849e4510ec7fcd14e964"
+    },
+    {
+      "path": "test/fixtures/pallas-seam-native.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9eea19eb2c68f06b0c21221dbdc632309a2bb0ea"
+    },
+    {
+      "path": "test/fixtures/pallasNativeFixture.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "59876573da65358a02184796a78096cb6eb8668d"
+    },
+    {
+      "path": "test/html-preload-targets.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "21cecffb3e84c97ed0b21d8b53981927e96e6bf2"
+    },
+    {
+      "path": "test/ilex-ark.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3f10e837e1f3dfb5a8b375f8457e359131cac3fc"
+    },
+    {
+      "path": "test/mobile-control-lifecycle.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6df832b5fea1f6d72b5dfe24940f68e689adaf32"
+    },
+    {
+      "path": "test/mobile-deck-instrument.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a0a84cf6700acd7aadd365958fcc8b8fdc0d852a"
+    },
+    {
+      "path": "test/mobile-hud-lanes.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fffd4e948a246ac9dc0592472ba9e4e58b16612b"
+    },
+    {
+      "path": "test/mobile-probe-startup.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91a82840a15107825c44cb5dd1f45d8995679da1"
+    },
+    {
+      "path": "test/orchard-dormant-frame-continue.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f933a6566729d27b183b0e8d6cc5631f35c75322"
+    },
+    {
+      "path": "test/pallas-activity-pocket-chain.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0265980c82128af5feec74aec6ea750b30d2905"
+    },
+    {
+      "path": "test/pallas-cut-section-geometry.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3dc9091db1cab94f2425ae64e34874c7bb311ff5"
+    },
+    {
+      "path": "test/pallas-cut-section-visual-identity.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e04da6096ccabbe75efe3e8753746eef18ea536d"
+    },
+    {
+      "path": "test/pallas-drift-guidance-diagnostic.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc07518a8a692c417cfc6a9bbc37066312fb8aec"
+    },
+    {
+      "path": "test/pallas-drift-guidance.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d613eb771ae3f99175ce6feae5c5f8d01487861"
+    },
+    {
+      "path": "test/pallas-drift-intake.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0caa92cb50338620c6ee2fd0f8583a57c603e57"
+    },
+    {
+      "path": "test/pallas-drift-read-model.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "504cf8ae8d127e14604ab0e8dd7e653f70ff9f5b"
+    },
+    {
+      "path": "test/pallas-drift-return.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "61f3465c0091c645f050aedbd68a002ef36c9731"
+    },
+    {
+      "path": "test/pallas-modular-cutter-vfx.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e274ffff40be938f5e01c993444ad157d3eac9b3"
+    },
+    {
+      "path": "test/pallas-physical-shift.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04fefc6ed9d42be4e5692abc864919e623345816"
+    },
+    {
+      "path": "test/pallas-reef-contact-voice.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "86a13da074974fa04d481deebf38e602b28f2305"
+    },
+    {
+      "path": "test/pallas-reef-physical.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "60b785c2ed8a95386912226ef44e0f3895ae2ec3"
+    },
+    {
+      "path": "test/pallas-reef-read-model.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0676fa276ff4b7f9dd27825fbc03db0957b451ee"
+    },
+    {
+      "path": "test/pallas-reef-residency.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eaedf4d03d4d4a3079689489577e5e5ec1b63ed4"
+    },
+    {
+      "path": "test/pallas-seam-read-model.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b3705c2c04cd1ba7af883e0d17b55587f6f7de0c"
+    },
+    {
+      "path": "test/pallas-seam-work.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f60e878a7fadfb9353c814f4b705028b512659ee"
+    },
+    {
+      "path": "test/pallas-sector-coexistence.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3da7f4091e2ea40451d2e4c2c3daf8fce2288266"
+    },
+    {
+      "path": "test/pallas-shift-ownership.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9baa91dfca85c9ca5b35c78a6eb2f3d7c30df93b"
+    },
+    {
+      "path": "test/pallas-shift-read-model.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f7e3e554267205deffd6d105a023a7cc17332c49"
+    },
+    {
+      "path": "test/r2-d202b-phone-hud.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2841dd2d1824bbbd13d9d05625d89206341fcd62"
+    },
+    {
+      "path": "tools/blender/pallas_cut_section_source.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9e11d43cc90dc5276ea1fd6d1c217d4e635c0320"
+    }
+  ],
+  "ancestry": "Existing open PR488: public e7 head first, public c855b6a6 master second. All 69 reviewed outputs unchanged; preserve both upstream HUD stubs. No private ancestry.",
+  "public_parents_proposal": [
+    "e7f6122f8d8f2985223940bfbb60eb4f66272561",
+    "c855b6a6b9fb488d44a4fdfa4e865a9a854826b9"
+  ]
+}
