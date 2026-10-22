@@ -8,6 +8,7 @@
     "node": ">=22.12.0 <25"
   },
   "scripts": {
+    "check:runaway-kiln-damage-route": "node --test test/encounter-runaway-kiln-damage-route.test.mjs",
     "postinstall": "node scripts/patch-playwright-electron.mjs",
     "stranger-lab": "node tools/agentic/stranger-lab/cli.mjs",
     "causal-foundry": "node tools/causal-foundry/cli.mjs",

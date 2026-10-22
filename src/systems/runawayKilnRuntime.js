@@ -124,7 +124,8 @@ export const RUNAWAY_KILN_RUNTIME = Object.freeze({
     dz /= anchorDist;
 
     const crucible = d.spawnProp(live, {
-      type: 'beacon',
+      // A physical tow load must accept ordinary combat hits; beacons are damage-filtered.
+      type: 'payload',
       pos: { x: ring.x + dx * backoff, z: ring.z + dz * backoff },
       radius: KILNBACK_RADIUS,
       mass: 150,
