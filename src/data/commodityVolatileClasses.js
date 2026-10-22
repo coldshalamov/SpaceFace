@@ -3,6 +3,7 @@
 // Volatile cargo classes define physical behavior when cargo pods are jettisoned,
 // spilled, or shoved as dynamic bodies (build_map §15, PQ-148.01).
 // Pure data catalog and lookup helpers: deterministic, no UI, no ambient randomness.
+import { commodityIsBiohazard } from './commodities.js';
 
 export const VOLATILE_CLASSES = Object.freeze({
   explosive: Object.freeze({
@@ -84,6 +85,8 @@ export function volatileClassOf(commodityId) {
   if (VOLATILE_CLASSES[id]) {
     return VOLATILE_CLASSES[id];
   }
+  // Jettisoned living samples are containment flasks. They tick hull on contact.
+  if (commodityIsBiohazard(id)) return VOLATILE_CLASSES.corrosive;
   return null;
 }
 
