@@ -1065,13 +1065,13 @@ production units, and never build what they write.
 | 413 | AL-MACH-2 | Split `missions.js` and `traffic.js` below 8k LOC, byte-identical digests (§31.3) | BUILD | OPEN — only while seams `world-answers-2`/`run-memory` are not claimed |
 | 414 | AL-MACH-3 | Newest versions — three, Electron, Rapier, electron-builder on ≥7-day-old releases, digest-gated (§31.3) | BUILD | OPEN |
 | 415 | AL-MACH-4 | A toolchain a newcomer can read — tier the 662 npm scripts, retire zero-reference aliases (§31.3) | BUILD | OPEN — after 414 |
-| 416 | SEED-HAND-FIGHT | Seed ≥12 audited lines: rope/terrain residuals, enemy physical tells, the eight capital bosses as machines you take apart (§31.3 Writers' room) | SEED | OPEN |
-| 417 | SEED-WORLD-LONG | Seed ≥12 audited lines: readers for written-and-unread flags, hour 10–25 career beats, standing-order clients (§31.3) | SEED | OPEN |
-| 418 | SEED-SHOW-EAR | Seed ≥12 audited lines: caption gaps by recipe id, off-grid stingers, replay/photo gaps (§31.3) | SEED | OPEN |
-| 419 | SEED-SECTORS | The 25-sector postcard pass — each sector's identity as verb, job, sound and picture within 2 min of arrival; each miss is one line (§31.3) | SEED | OPEN |
-| 420 | SEED-SWARM | Seed Swarm phase C residual lines only, after row 270's design read (§31.3) | SEED | OPEN |
-| 421 | SEED-META | Seed feat-based achievements/titles from the 16 witnessed tricks; no grind counters (§31.3) | SEED | OPEN |
-| 422 | SEED-STRANGER | Seed TEACH/PRO lines from a recorded first-30-minute stranger route (§29 bundles, player-truth actor) (§31.3) | SEED | OPEN |
+| 416 | SEED-HAND-FIGHT | Seed ≥12 audited lines: rope/terrain residuals, enemy physical tells, the eight capital bosses as machines you take apart (§31.3 Writers' room) | SEED | DONE devin-ten-oct22 (21452bddf9) |
+| 417 | SEED-WORLD-LONG | Seed ≥12 audited lines: readers for written-and-unread flags, hour 10–25 career beats, standing-order clients (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 418 | SEED-SHOW-EAR | Seed ≥12 audited lines: caption gaps by recipe id, off-grid stingers, replay/photo gaps (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 419 | SEED-SECTORS | The 25-sector postcard pass — each sector's identity as verb, job, sound and picture within 2 min of arrival; each miss is one line (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 420 | SEED-SWARM | Seed Swarm phase C residual lines only, after row 270's design read (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 421 | SEED-META | Seed feat-based achievements/titles from the 16 witnessed tricks; no grind counters (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 422 | SEED-STRANGER | Seed TEACH/PRO lines from a recorded first-30-minute stranger route (§29 bundles, player-truth actor) (§31.3) | SEED | DONE devin-ten-oct22 (21452bddf9) |
 | 423 | AL-STORY-1 | The rope is a scale — towing reveals true mass against the declared manifest, so a mass discrepancy is a clue, contraband or a frame (generalises 47-A's evidence spindle) (§31.5) | BUILD | OPEN |
 | 424 | AL-STORY-2 | The hull ghost — Captain Maera Vols speaks in flight about real events: stunts, near-misses, sectors she remembers, the story (§31.5) | BUILD | OPEN |
 | 425 | AL-STORY-3 | Faces on the radio — in-flight transmissions show the speaker's portrait with a voiced bark, for the cast and for station locals (§31.5) | BUILD | OPEN — after 424; owner ruling needed: `src/ui/AGENTS.md` bans pilot portraits in the flight HUD, so until ruled the portrait shows on the station comms screen and the in-flight line carries name, voice and caption only |
@@ -1091,7 +1091,7 @@ production units, and never build what they write.
 | 439 | PULSE-TIME | The world keeps time — station shifts, market days, ≥6 festivals, storm seasons (§31.6) | BUILD | DONE devin-thirty-oct22 |
 | 440 | PULSE-HISTORY | Your ship and the world wear your history — trinkets, decals, memorial names of the sim's real dead, graffiti about you (§31.6) | BUILD | OPEN |
 | 441 | PULSE-STORIES | Small stories in passing — roaming moving stories 2 → ≥30, each across hail/band/trade/news (§31.6) | BUILD | DONE devin-thirty-oct22 |
-| 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | OPEN |
+| 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
 | 444 | GOLD-LEDGER | The Ledger — a diegetic case board where physically found evidence pins and links; the Vale thread is solvable there (§32.4) | BUILD | OPEN — M3; after 423 in the seam |
 | 445 | GOLD-HOME | The Long Berth — tow and restore the abandoned yard tug as a home; towed trophies persist in its yard (§32.4) | BUILD | OPEN — M3 |
 | 446 | GOLD-CREW | Crew aboard — up to 4 crew from the local pool and cast, one real perk each, banter about real events, loyalty jobs (§32.4) | BUILD | OPEN — M3; after 445 |
@@ -1147,7 +1147,7 @@ production units, and never build what they write.
 | 502 | W-LOG | LOG — the physics narrator (EXP-12 fills its copy) (§34.1) | BUILD | DONE devin-thirty-oct22-b (187daf8f) — cause-aware one-line register (`src/data/physicsLog.js`) riding the stunt-callout lane's ~3 s fade; silent in terminal zones |
 | 503 | W-COUPLING | Coupling you can see — filaments; panic, aggression and grief cascades (§34.2) | BUILD | OPEN |
 | 504 | W-PATHOLOGY | Pain loop, route-memory, host-shadow Husks (§34.2) | BUILD | OPEN — after 503 |
-| 505 | W-ONEOFFS | The ~35 one-offs mapped to a sector, a Book and the chart; a census test (§34.3) | BUILD | OPEN |
+| 505 | W-ONEOFFS | The ~35 one-offs mapped to a sector, a Book and the chart; a census test (§34.3) | BUILD | DONE devin-ten-oct22 (32918b94f6) |
 | 506 | W-SHIFT | The Orphaned Shift — twelve new machine-people, one per sitting (§34.3) | BUILD | OPEN — after 505 |
 | 507 | W-BLOOM-LOW | Bloom ladder T0–T2 — spore drift, Lantern cyst, Glassback, Wake eel, Bellows (§34.2) | BUILD | OPEN |
 | 508 | W-BLOOM-HIGH | Bloom ladder T3–T6 — Bristle ram, Furnace maw, Husks, Blind shepherd, Hive-hulk, Veil ray, Anchor beast, the Long Field (§34.2) | BUILD | OPEN — after 507 |
@@ -1179,7 +1179,7 @@ production units, and never build what they write.
 | 537 | W-CANON | Interludes as quiet scenes; PROPOSED CANON folded into `docs/worldbuilding/` or rejected in one sentence (§34.7) | BUILD | OPEN |
 | 538 | W-ARCS | Fourteen faction arcs, three missions each (§34.7) | BUILD | OPEN — each arc after its faction row |
 | 539 | W-CULL | The Cull ladder — ten leagues, Ma Sprocket, Clatter (§34.7) | BUILD | OPEN — after 519 and 541 |
-| 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | OPEN |
+| 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | DONE devin-ten-oct22 (0749dfe36e) |
 | 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | OPEN — with 485 |
 | 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | OPEN |
 | 543 | W-FACES | Canon, new and culture portrait pools (§34.8) | ART | OPEN |
