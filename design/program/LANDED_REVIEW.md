@@ -1,4 +1,8 @@
 | R-579d9e3 | 579d9e319 | Rows 490/491/492 fight-read: role engine glows, reversal governor, latch rim ring | Re-check that the reversal governor cannot lock a ship into a stale committed arc — a denied reversal holds `runtime.lastDesiredUnit` for up to 150 ticks, so confirm a target that crosses behind the ship mid-hold still gets re-approached on the next allowed reversal and that obstacle/emergency lanes always exempt | OPEN |
+| R-1edfe57 | 1edfe57623 | rock-core rows 486/487/509/510/511: substances, ladder bedrock, pack density, mass hit-stop | Re-check _ensureRockLadderBedrock: ladder boulders pin at golden-angle ring positions with zero rng, but confirm a field whose authored boulders already exceed ROCK_LADDER_MIN_PER_TIER on a band never double-spawns, and that rockTierForRadius band cutoffs (38/24/14/6) agree with the census tool | OPEN |
+
+| R-b8eaa2e | b8eaa2e5dc | glass rows 474/494: danger-quiet, presets, bingo fuel, release read, D240 tier gate | Re-check admitReceipt's flightGlassNever gate: the debug-stat regex (/[··].*·|VULN|[A-Z]—/) may catch legitimate receipt text containing an em-dash or two middots — confirm ordinary receipts like sortie tallies and faction lines still admit | OPEN |
+
 
 | R-7657b6e | 7657b6e63 | Grudge roe restore no longer disarms live foreign postures | Re-check that _endNpcGrudge's ownership proof (retaliationTargetId or activity reason === NPC_GRUDGE_REASON, non-null targetId, captured before restores, combat lock excluded) cannot mistake a grudge still owned by the record for a foreign takeover — i.e. that a grudge whose channels are still its own still restores the prior roe on expiry | OPEN |
 
@@ -68,3 +72,5 @@ The oldest OPEN row is the next second look.
 - `c37a4854b` — R467 Clause Gambit — Cargo intact premium pair on eligible cargo/smuggling offers; pair withdrawal precedes writes; rebuild-at-accept; pays once. NOTE: commit body discloses a foreign-hunk sweep (devin-inf5c race-restart). Re-check: orphan-gambit retirement when the base expires off-board.
 
 | R-a1074cd | a1074cde7a | Row 455: plan-engine dispatch | Re-check strict thresholds, C8 cap precedence, and duplicate C1 rotation after pruning without modifying plan surfaces on dispatch. | OPEN |
+
+| R-b87c9f1 | b87c9f1822 | Row 443: clean flight plane guard | Re-check that a failed gate transit or incomplete Ceres approach cannot compare green, and only real physics receipts count contact episodes. | OPEN |

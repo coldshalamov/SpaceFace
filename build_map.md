@@ -659,7 +659,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | toolchain | free | `package.json`, `package-lock.json`, three/Rapier/Electron adapters, `scripts/AGENTS.md` script tiers (§31 THE MACHINE) | 414, 415 |
 | rope-scale | devin-fleet-oct20 | `masslineTelemetry.js` tension read-out, `cargoCustody.js` declared-vs-true mass, customs prompt hunk of `lawSecurity.js`, contract templates in `economyContracts.js` (§31.5) | 423, 444 |
 | hull-ghost | devin-fleet-oct20 | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 424, 425, 460 |
-| first-look | codex-bm30 | the clean-flight-plane guard, camera distance review, passable near-field dust, hero-hull art — coordinate with L-PICTURE (§31.5, §31.6) | 443, 427, 428 |
+| first-look | free | the clean-flight-plane guard, camera distance review, passable near-field dust, hero-hull art — coordinate with L-PICTURE (§31.5, §31.6) | 427, 428 |
 | stranger-hud | devin-fleet-oct20 | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 457, 431 |
 | set-pieces | free | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks (§31.5) | 430 |
 | pulse-voice | devin-fleet-oct20 | `data/flavor/040-band.js` format, `systems/bandRadio.js`, `systems/stationBroadcast.js`, traffic hail/chatter data, ship identity data, station PA cues (serial with `hull-ghost` on `barks.js`/`barkVoice.js`) (§31.6) | 432, 434, 436 |
@@ -1088,7 +1088,6 @@ production units, and never build what they write.
 | 440 | PULSE-HISTORY | Your ship and the world wear your history — trinkets, decals, memorial names of the sim's real dead, graffiti about you (§31.6) | BUILD | OPEN |
 | 441 | PULSE-STORIES | Small stories in passing — roaming moving stories 2 → ≥30, each across hail/band/trade/news (§31.6) | BUILD | OPEN |
 | 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | OPEN |
-| 443 | PULSE-GUARD | The clean flight plane guard — deterministic unwanted-contact/obstruction measurement on the default route, before/after (§31.6) | BUILD | OPEN — land before 427/438 |
 | 444 | GOLD-LEDGER | The Ledger — a diegetic case board where physically found evidence pins and links; the Vale thread is solvable there (§32.4) | BUILD | OPEN — M3; after 423 in the seam |
 | 445 | GOLD-HOME | The Long Berth — tow and restore the abandoned yard tug as a home; towed trophies persist in its yard (§32.4) | BUILD | OPEN — M3 |
 | 446 | GOLD-CREW | Crew aboard — up to 4 crew from the local pool and cast, one real perk each, banter about real events, loyalty jobs (§32.4) | BUILD | OPEN — M3; after 445 |
@@ -1117,7 +1116,6 @@ production units, and never build what they write.
 | 471 | RC-RECORDS | Records that tell stories — Records Wall, working photo Look, empty-state copy, Today's board, Pact dial, Range Licence (§32.7) | BUILD | OPEN |
 | 472 | RC-VENUES | Toys out of the drawer — venue/race event cards, minigames from the world, Ring-Out, Toll Threading, Hot Tow, Wreck Strip, Spill Catch (§32.7) | BUILD | OPEN — after 395 in the seam |
 | 473 | RC-FRONT-DOOR | A fast, kind front door — interactive title ≤10 s, mm:ss clock, destination slate, first-light preset, settings density (§32.7) | BUILD | OPEN — M1; coordinate with L-MACHINE shader admission |
-| 474 | RC-GLASS | Glass that breathes — danger-quiet, glass presets, release read, sortie tally, bingo fuel, tether load on the ring (§32.7) | BUILD | OPEN |
 | 475 | RC-FELT | Every verb is felt — callout rarity, haptics, Around the World, Trick Book, arena bounties, Prize Run, Perfect Vent, Match Burn (§32.7) | BUILD | OPEN — M1/M2 |
 | 476 | RC-TRAVEL | Travel is a choice — Freight Spine, stale chart, Two Roads, Interdiction Wrestle, drift vector (§32.7) | BUILD | OPEN |
 | 477 | RC-NPC-READ | NPCs you can read — job phases, grudge hails, faction flight styles, robbed haulers move prices (§32.7) | BUILD | OPEN |
@@ -1129,15 +1127,12 @@ production units, and never build what they write.
 | 483 | ROCK-KATAMARI | The Katamari line — in-run line rating in tonnes, newly movable class lit in the Line colour, a visible winch (§33.1) | BUILD | OPEN — after 482 |
 | 484 | ROCK-FLAIL | The flail — chained wrecks on the Line as the endgame weapon; 5 links stable at 60 fps on the iGPU (§33.1) | BUILD | OPEN — after 483 and 488 |
 | 485 | ROCK-ARENAS | Arenas that scale with the rating; the camera opens with it (§33.1) | BUILD | OPEN — after 483 |
-| 486 | ROCK-WAVES | Waves built to be smashed — ≥30 % of throws hit ≥2 enemies by wave 8; formations re-form (§33.1) | BUILD | OPEN |
-| 487 | ROCK-IMPACT | Impacts that land — hit-stop by mass, crumple into throwable chunks, peak effects ≥10 % of the screen, readable with sound off (§33.1) | BUILD | OPEN |
 | 488 | ROCK-BUDGET | The physics budget, measured — wave 15 at p95 ≤ 20 ms on the iGPU, quiet host (§33.1) | BUILD | OPEN — first in rock-core |
 | 489 | ROCK-HEADS | Line heads worth chasing — meta unlocks between runs; rarity allowed (§33.1) | BUILD | OPEN — after 501 |
 | 490 | CRAFT-READ | Enemies you read without rings — silhouette and engine colour per role (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
 | 491 | CRAFT-INTENT | Enemies with intent — attack cycles, cruise ≥70 % of the player's, ≤0.4 reversals/s (measured 50 vs 117, 0.8/s) (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
 | 492 | CRAFT-LINE | The Line you can see — strain thickness and glow, a rim-lit latch, the release arc at the chase camera (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
 | 493 | CRAFT-POWERS | Fewer powers, each distinct and previewed — the owner picks the merge set (`design/expansion/05_ASSET_ROSTER.md` §7.2) (§33.2) | BUILD | OPEN — merge landed 2026-10-22 (owner chose Pull · Shove · Pin · Bomb · Rig on 1–5, `src/systems/powerVerbs.js`; rail, Cluster, help, settings, pad and phone deck name and tint each power); remaining: the held-key preview |
-| 494 | CRAFT-GLASS | Glass in three tiers; closes D240 (§33.2) | FIX | OPEN |
 | 495 | CRAFT-ROCKS | Rocks are the hero art (§33.2) | ART | OPEN — with 509 |
 | 496 | CRAFT-WORDS | Words a player understands — plain verbs on the flight HUD and the power labels (§33.2) | FIX | OPEN |
 | 497 | CRAFT-CADENCE | Something happens every minute — first contact ≤2 min, then every 3–5; cohort travel ≤50 % (§33.3) | BUILD | OPEN — after 482–492 make a pocket fight worth meeting |
@@ -1152,9 +1147,6 @@ production units, and never build what they write.
 | 506 | W-SHIFT | The Orphaned Shift — twelve new machine-people, one per sitting (§34.3) | BUILD | OPEN — after 505 |
 | 507 | W-BLOOM-LOW | Bloom ladder T0–T2 — spore drift, Lantern cyst, Glassback, Wake eel, Bellows (§34.2) | BUILD | OPEN |
 | 508 | W-BLOOM-HIGH | Bloom ladder T3–T6 — Bristle ram, Furnace maw, Husks, Blind shepherd, Hive-hulk, Veil ray, Anchor beast, the Long Field (§34.2) | BUILD | OPEN — after 507 |
-| 509 | W-SUBSTANCE | Ten substance materials and 24 rock bodies; ice sublimates (§34.4) | BUILD | OPEN |
-| 510 | W-BREAKDOWN | Everything breaks down a tier; the arena never runs dry (§34.4) | BUILD | OPEN |
-| 511 | W-LADDER | The Katamari ladder placed — ≥6 bodies per tier per sector, with a census tool (§34.4) | BUILD | OPEN — after 509 |
 | 512 | W-STATIONS | Fourteen faction station kits (§34.4) | ART | OPEN |
 | 513 | W-STEALTH | Mass-signature stealth — sweep rings, mass shadows, cold coasting, Hush, decoys (§34.4) | BUILD | OPEN |
 | 514 | W-KITS | Faction hull kits plus the Overgrowth and junk kits (§34.5) | ART | OPEN |
