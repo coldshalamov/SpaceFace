@@ -82,6 +82,9 @@ ${S} > .k-title > p { ${LABEL} margin:14px 0 0 !important; font-size: 12px !impo
   display:flex; align-items:center; gap:14px; }
 ${S} > .k-title > p::after { content:""; width:72px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
 ${S} > .orr-set-preview { grid-area:preview; align-self:stretch; justify-self:stretch; min-height:0; }
+/* The focused channel owns the mixer's caption. Inner ring spacing becomes smaller than a
+   label at laptop sizes; keep every ring, and reveal its name as its control is focused. */
+${S} .orr-set-mixer .orr-set-ch:not(.is-focus) .orr-set-mixer__lab { visibility:hidden; }
 
 /* ------------------------------------------------ the category ladder -------------------------- */
 ${S} > .k-hang { overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
