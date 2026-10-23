@@ -42,3 +42,7 @@ Overlap review: public PR #510 adds captureBolusRib as the first capture-method 
 Publication baseline is now master45a97fdbda62611cc13001bd16790f8afa844753, whose only change from5e5b is merged #516 Save/Load UI layout and its review document. Mission/world sources are unchanged. Deliver Writ as its own coherent draft PR on current master with only its additive check leaf; research PR #518 retains its separate Triton/Far changes. Recheck actual master and exact path owners before publication.
 
 Legacy accepted Writ migration may issue the missing original pair only after checking existing stable source records/tombstones and bounded ledger. Baseline never issued these on-site originals; offersEmitted alone is neither completion nor stock expenditure. Preserve first migration, no-refill after depletion, and unchanged external-cargo delivery through explicit tests.
+
+
+## Final route clarification and review, 03:25 UTC
+Normal collection is proximity/magnet pickup, not industrial beam extraction. The beam requirement above is superseded by actual dispatcher evidence; direct drain tests are adversarial custody tests. Final29 cases pass independently under root review, including ledger-identity cache reset across real New Game and fresh-state Continue. Eight shipping paths frozen and externally recovered; publication owner is dot's Writ publisher, no other source writer active. Ordinary flight/performance/game-camera and user acceptance remain open. See current checkpoint for exact recovery and CI evidence.
