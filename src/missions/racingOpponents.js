@@ -150,7 +150,8 @@ export function createRacingOpponents({ state, bus, helpers }) {
         const events = advanceCircuit(row.params, { prev: row.previous, pos: entity.pos, vel: entity.vel,
           gates: heat.gates, previousTime: row.previousTime, now });
         const finish = events.find(event => event.finished);
-        if (finish) { row.status = 'finished'; row.elapsedS = finish.elapsedS + (Number(row.lostS) || 0); terminalChanged = true;
+        // The brake already sits inside finish.elapsedS. lostS is the receipt, not a second penalty.
+        if (finish) { row.status = 'finished'; row.elapsedS = finish.elapsedS; terminalChanged = true;
           bus?.emit?.('race:rivalFinished', { missionId: mission.id, rivalId: row.id, name: row.name, elapsedS: row.elapsedS }); }
         else if (now - startS > Math.max(240, (Number(p.courseLengthWU) || 5000) * Math.max(1, p.laps || 1) / 24)) {
           row.status = 'dnf'; terminalChanged = true;

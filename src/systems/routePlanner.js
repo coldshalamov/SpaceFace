@@ -11,6 +11,8 @@
 
 import { SECTORS } from '../data/sectors.js';
 import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
+import { FREIGHT_SPINE, gateTollFor, spineFix } from '../data/travelChoices.js';
+import { gateTransitClosed } from '../data/worldPressure.js';
 
 export const ROUTE_BASE_FUEL = 4;            // fuel units per lightyear
 export const ROUTE_BASE_INTERDICT = 0.35;
@@ -170,13 +172,20 @@ export function computeDiscoveredRoute(state, targetSectorId, mode, opts = {}) {
     const su = sectorOf(u);
     if (!su) continue;
     const neighbors = [...(su.neighbors || [])];
-    if (su.wormholeTo && wormholeGate(state, su) !== 'closed') {
+    if (mode !== 'dark' && su.wormholeTo && wormholeGate(state, su) !== 'closed') {
       neighbors.push(su.wormholeTo.sectorId);
     }
     for (const v of neighbors) {
       if (!isDiscovered(v) && v !== targetSectorId) continue; // route only through known space
       const sv = sectorOf(v);
       if (!sv) continue;
+      // §34 row 521: a welded audit gate drops out of gate-mode routes — traffic
+      // reroutes onto the remaining lanes. The drive still flies the same road,
+      // so 'fuel'/'hops'/'dark' routes keep the edge (the closure lengthens the
+      // tolled road, never strands the sector).
+      if ((mode === 'gate' || mode === 'spine')
+          && !(su.wormholeTo && su.wormholeTo.sectorId === v)
+          && gateTransitClosed(state, u, v)) continue;
       const edgeDist = routeEdgeDist(su, sv);
       const via = routeLegVia(su, v);
       const w = mode === 'hops' ? 1 : Math.ceil(ROUTE_BASE_FUEL * edgeDist * drive.tierFuelMult);
@@ -201,15 +210,28 @@ export function computeDiscoveredRoute(state, targetSectorId, mode, opts = {}) {
 
   const legs = [];
   let totalFuel = 0;
+  let totalToll = 0;
+  if (mode === 'spine' && start === FREIGHT_SPINE[0].sectorId) {
+    for (const [index, offset, label] of [[0, -180, 'Freight Spine · line up'], [2, 160, 'Freight Spine · three rings']]) {
+      legs.push({ from: start, to: start, fuel: 0, charge: 0, interdict: 0,
+        target: spineFix(index, offset), label, arrivalRadius: index === 0 ? 36 : 60 });
+    }
+  }
   for (let i = 0; i < nodes.length - 1; i++) {
     const a = sectorOf(nodes[i]), b = sectorOf(nodes[i + 1]);
     const edgeDist = routeEdgeDist(a, b);
-    const via = routeLegVia(a, nodes[i + 1]);
-    const fuel = Math.ceil(ROUTE_BASE_FUEL * edgeDist * drive.tierFuelMult);
+    // Dark space spends jump fuel and takes interdiction risk; the policed road pays customs.
+    const mandatoryGate = routeLegVia(a, nodes[i + 1]) === 'gate';
+    const via = mode === 'gate' || mode === 'spine' || mandatoryGate ? 'gate' : 'drive';
+    const fuel = mode === 'gate' || mode === 'spine' ? 0 : Math.ceil(ROUTE_BASE_FUEL * edgeDist * drive.tierFuelMult);
     const charge = drive.baseCharge * (edgeDist / 4);
     const interdict = routeInterdictChance(b, via, drive);
-    legs.push({ from: nodes[i], to: nodes[i + 1], fuel, charge, interdict, via });
+    const toll = via === 'gate' ? gateTollFor(b) : 0;
+    totalToll += toll;
+    legs.push({ from: nodes[i], to: nodes[i + 1], fuel, charge, interdict, via,
+      ...(['gate', 'dark', 'spine'].includes(mode) ? { toll, travelVia: via } : {}) });
     totalFuel += fuel;
   }
-  return { legs, totalFuel, totalHops: legs.length };
+  return { legs, totalFuel, totalHops: nodes.length - 1,
+    ...(['gate', 'dark', 'spine'].includes(mode) ? { totalToll, mode } : {}) };
 }

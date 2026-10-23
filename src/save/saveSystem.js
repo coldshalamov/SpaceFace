@@ -921,6 +921,9 @@ export const save = {
       ['automation', () => this._callSerialize('automation') || this._serializeAutomation()],
       ['crafting', () => this._callSerialize('crafting') || this._serializeCrafting()],
       ['sectorSim', () => this._callSerialize('sectorSim') || {}],
+      // §34 rows 520–523/549: the world-pressure bag (tide, gate audits, Slow Gray,
+      // colossus remains) — owner-serialized, bounded on normalize (v19).
+      ['worldPressure', () => this._callSerialize('worldPressure') || {}],
       ['npcJobs', () => this._callSerialize('npcJobsRuntime') || {}], // PQ-014 live NPC job bag (v12)
       ['traffic', () => this._callSerialize('traffic') || {}],
       ['claims', () => this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] })],
@@ -1082,6 +1085,10 @@ export const save = {
     yield 'serialize:crafting';
     data.sectorSim = this._callSerialize('sectorSim') || {};
     yield 'serialize:sectorSim';
+    // §34 rows 520–523/549 (v19): must stay in the same slot as _serializeDataSteps —
+    // the envelope checksum is insertion-order sensitive.
+    data.worldPressure = this._callSerialize('worldPressure') || {};
+    yield 'serialize:worldPressure';
     data.npcJobs = this._callSerialize('npcJobsRuntime') || {}; // PQ-014 live NPC job bag (v12)
     yield 'serialize:npcJobs';
     data.traffic = this._callSerialize('traffic') || {};
@@ -6899,6 +6906,10 @@ export const save = {
       // read the restored sector owners + faction power. runOfflineCatchup fires on save:loaded below.
       yield* this._callDeserializeChunked('sectorSim', data.sectorSim);
       yield 'sector-sim-restored';
+      // §34 world-pressure bag (v19): absent key (older saves) restores the fresh
+      // bag — tide flat at the sea floor, no audits filed, Slow Gray at the start index.
+      yield* this._callDeserializeChunked('worldPressure', data.worldPressure);
+      yield 'world-pressure-restored';
       // PQ-014 live NPC jobs. All hulls were cleared above, so every restored job comes back VIRTUAL
       // and re-links to its rematerialized hull by worldRecordId on the next sector enter. Absent in
       // pre-v12 saves → migration seeds an empty bag → the runtime starts with no jobs.
@@ -9073,6 +9084,7 @@ function sanitizeNavExecutorLeg(leg) {
     fromSectorId: from,
     toSectorId: to,
     final: leg.final === true,
+    ...(leg.via === 'drive' || leg.via === 'gate' ? { via: leg.via } : {}),
     resolved: !!target && leg.resolved === true,
     targetNodeId: navString(leg.targetNodeId),
     targetKind: navString(leg.targetKind),
@@ -9118,6 +9130,8 @@ function sanitizeNavRoute(route) {
   const out = { legs };
   if (Number.isFinite(route.totalFuel)) out.totalFuel = Math.max(0, route.totalFuel);
   if (Number.isFinite(route.totalHops)) out.totalHops = Math.max(0, Math.floor(route.totalHops));
+  if (Number.isFinite(route.totalToll)) out.totalToll = Math.max(0, route.totalToll);
+  if (route.mode === 'gate' || route.mode === 'dark' || route.mode === 'spine') out.mode = route.mode;
   return out;
 }
 
@@ -9130,6 +9144,14 @@ function sanitizeNavLeg(leg) {
   if (Number.isFinite(leg.fuel)) out.fuel = Math.max(0, leg.fuel);
   if (Number.isFinite(leg.charge)) out.charge = Math.max(0, leg.charge);
   if (Number.isFinite(leg.interdict)) out.interdict = Math.max(0, Math.min(1, leg.interdict));
+  if (leg.travelVia === 'drive' || leg.travelVia === 'gate') out.travelVia = leg.travelVia;
+  if (Number.isFinite(leg.toll)) out.toll = Math.max(0, leg.toll);
+  const target = sanitizeNavPos(leg.target);
+  if (target) {
+    out.target = target;
+    out.label = navString(leg.label);
+    out.arrivalRadius = Number.isFinite(leg.arrivalRadius) ? Math.max(12, Math.min(500, leg.arrivalRadius)) : 36;
+  }
   return out;
 }
 

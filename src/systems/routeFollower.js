@@ -166,12 +166,25 @@ function decomposeRoute(route, atlas) {
     const leg = source[i];
     if (!leg || typeof leg.from !== 'string' || typeof leg.to !== 'string') continue;
     const isFinal = i === source.length - 1;
-    const resolved = resolveLegTarget(atlas, leg.from, leg.to, isFinal);
+    const resolved = hasXZ(leg.target) ? {
+      targetNodeId: null, targetKind: 'fix', target: leg.target,
+      arrivalRadius: leg.arrivalRadius || DESTINATION_ARRIVAL_RADIUS, label: leg.label,
+    } : resolveLegTarget(atlas, leg.from, leg.to, isFinal);
+    if (resolved && leg.travelVia === 'drive' && !hasXZ(leg.target)) {
+      // A dark departure is flown beside the watched gate approach before the normal drive jump.
+      const origin = atlas.getNode(leg.from)?.globalPos;
+      const dx = resolved.target.x - (origin?.x || 0), dz = resolved.target.z - (origin?.z || 0);
+      const length = Math.hypot(dx, dz) || 1;
+      resolved.target = { x: resolved.target.x - dz / length * 700, z: resolved.target.z + dx / length * 700 };
+      resolved.targetKind = 'dark-lane';
+      resolved.label = `Dark lane · ${resolved.label}`;
+    }
     legs.push({
       index: legs.length,
       fromSectorId: leg.from,
       toSectorId: leg.to,
       final: isFinal,
+      via: leg.travelVia || 'gate',
       resolved: !!resolved,
       targetNodeId: resolved ? resolved.targetNodeId : null,
       targetKind: resolved ? resolved.targetKind : null,
@@ -200,7 +213,9 @@ function legsMatchRoute(routeLegs, executorLegs) {
     const stored = executorLegs[i];
     if (!planned || !stored
         || planned.from !== stored.fromSectorId
-        || planned.to !== stored.toSectorId) return false;
+        || planned.to !== stored.toSectorId
+        || (planned.travelVia || 'gate') !== (stored.via || 'gate')
+        || (hasXZ(planned.target) && !sameXZ(planned.target, stored.target))) return false;
   }
   return true;
 }
@@ -1009,7 +1024,7 @@ export const routeFollower = {
     if (executor.handoffRequestedLegIndex === executor.legIndex) return;
     executor.handoffRequestedLegIndex = executor.legIndex;
     this._setStatus(executor, ROUTE_EXECUTOR_STATUS.TRANSITING);
-    this._emit('world:requestJump', { targetSectorId: leg.toSectorId, via: 'gate' });
+    this._emit('world:requestJump', { targetSectorId: leg.toSectorId, via: leg.via || 'gate' });
     // The bus is synchronous. An immediate `jump:chargeAbort` may already have interrupted and
     // cleared the latch by the time requestJump returns; do not publish a contradictory pending
     // handoff after that terminal-for-now transition.

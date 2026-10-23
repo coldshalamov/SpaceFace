@@ -145,6 +145,10 @@ import {
 import { fenceAmbushChance, sanitizeFenceLedger } from '../data/fences.js'; // U-B: fences with faces
 import { installFenceDesk } from './fenceDesk.js'; // U-B: the one writer of stats.fences
 import { admitDistressLamp, endDistressLamp } from '../render/vfx/worldCueRecipes.js'; // PIC-32
+import {
+  craftCadenceEnsure, cadenceLiveCombat, cadencePendingCombat, cadenceVerdict,
+  cadenceTravelShare, CADENCE_BACKSTOP_SHAPE_ID, CADENCE_CONTACT_GAP_MIN_S,
+} from '../data/craftCadence.js'; // row 497 CRAFT-CADENCE: first contact ≤2 min, recur ≤5
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
@@ -436,7 +440,11 @@ export const encounterDirector = {
     tickEarlyTrailerEncounters(this, dir, state, now);
     // The onboarding rail suppresses ordinary pacing, not the authored opening beats:
     // earlyWindowGuaranteeDay items are themselves the first-minute content the rail teaches.
-    if (!isDocked(state) && !raceLeaseActive(state)) this._pump(dir, state, now);
+    if (!isDocked(state) && !raceLeaseActive(state)) {
+      this._pump(dir, state, now);
+      // Row 497 cadence governor: after the pump so the verdict sees this tick's admission.
+      this._tickCadence(dir, state, now, step);
+    }
     this._tickLive(dir, state, now);
     this._tickStaleEncounters(dir, state, now);
     this._tickHarassMercy(dir, state, now);
@@ -1227,6 +1235,10 @@ export const encounterDirector = {
       && !(authoredGuarantee && (pacingReason === 'tutorial' || pacingReason === 'pacing_gap'
         || pacingReason === 'tension_recovery'))
       && !(preyInReach && (pacingReason === 'pacing_gap' || pacingReason === 'pressure'
+        || pacingReason === 'tension_recovery' || pacingReason === 'rhythm'))
+      // Row 497: a cadence backstop item exists because the contact clock hit its ceiling —
+      // quiet rhythm and spacing gaps are exactly what it overrides.
+      && !(item.cadence === true && (pacingReason === 'pacing_gap' || pacingReason === 'pressure'
         || pacingReason === 'tension_recovery' || pacingReason === 'rhythm'))) {
       // A guarantee item deferring on pacing must still be bounded — plain defer() would let it
       // ride dir.pending across replans forever with no fizzle and no receipt.
@@ -1275,6 +1287,88 @@ export const encounterDirector = {
     }
     dir.pending.splice(dueIdx, 1);
     this._fire(dir, state, item, shape, now);
+  },
+
+  // ─── Row 497 CRAFT-CADENCE ─────────────────────────────────────────────────────────────
+  // The durable cadence ledger on dir.cadence tracks first-contact time, contact gap, and the
+  // cohort travel share (elapsed hour-one time with no live in-sector combat = "in transit").
+  // When the contact clock hits its ceiling the governor injects a backstop combat shape that
+  // the pump treats like an authored guarantee for rhythm/spacing reasons only.
+  _tickCadence(dir, state, now, step) {
+    const c = craftCadenceEnsure(dir, now);
+    const sectorId = this._currentSectorId();
+    const liveCombat = cadenceLiveCombat(dir, sectorId);
+    const pendingCombat = cadencePendingCombat(dir, sectorId, ENCOUNTERS);
+    if (liveCombat) {
+      if (!c._wasLive) {
+        c.contactCount = (c.contactCount | 0) + 1;
+        if (!Number.isFinite(c.firstContactAt)) c.firstContactAt = now;
+      }
+      c.lastContactAt = now;
+      c.combatS += step;
+    } else {
+      c.travelS += step;
+    }
+    c._wasLive = liveCombat;
+    c.travelShare = cadenceTravelShare(c, now);
+    // The tutorial rail owns its own first-minute beats; cadence stays out of the classroom.
+    if (isTutorialActive(state) || isDocked(state)) return;
+    const verdict = cadenceVerdict(c, now, liveCombat, pendingCombat);
+    if (verdict === 'first_due' || verdict === 'recur_due') {
+      this._injectCadenceContact(dir, state, now, c);
+    } else if (verdict === 'pull_forward') {
+      // Inside the 3–5 minute band: pull queued combat toward the band midpoint so the gap
+      // lands inside the window instead of riding the authored day-schedule to the ceiling.
+      const target = Math.max(now, c.lastContactAt + (CADENCE_CONTACT_GAP_MIN_S + 60));
+      for (const it of dir.pending) {
+        if (!it || !it.shapeId) continue;
+        if (it.sectorId && it.sectorId !== sectorId) continue;
+        const shape = ENCOUNTERS[it.shapeId];
+        if (shape && shape.deck === 'combat' && Number.isFinite(it.dueAt) && it.dueAt > target) {
+          it.dueAt = target;
+        }
+      }
+    }
+  },
+
+  /** Inject the backstop contact: combat/minor, no authored gates, anchored on the player so
+   * the proximity check passes on the same pump instead of waiting out the starvation clock. */
+  _injectCadenceContact(dir, state, now, c) {
+    const enc = ENCOUNTERS[CADENCE_BACKSTOP_SHAPE_ID];
+    if (!enc) return false;
+    const p = this.player();
+    if (!p || !p.pos) return false;
+    c.injected = (c.injected | 0) + 1;
+    const encounterId = `cadence:${Math.round(c.bornAt)}:${c.injected}`;
+    // live.plan IS the pending item, so the squad roster must be composed at queue time
+    // exactly like a planner schedule row — a bare item telegraphs then dies in the
+    // script's fire on an unresolved plan.ships. Player pos is already galactic-global,
+    // so the zone skips resolveEncounter's local→global translation and feeds addSquad.
+    const globalZone = { id: 'cadence_drift', name: 'open drift', type: 'patrol_corridor', threat: 1, radius: 200, center: { x: p.pos.x, z: p.pos.z } };
+    const rng = mulberry32(hash32((state.meta && state.meta.seed) || 0, encounterId, 'cadence'));
+    const ships = [];
+    addSquad(ships, enc.squad, enc.factionId, enc.context || 'patrol', globalZone, [1, 4], rng, 'squad');
+    if (!ships.length) return false;
+    dir.pending.push({
+      encounterId,
+      shapeId: CADENCE_BACKSTOP_SHAPE_ID,
+      script: enc.script,
+      tier: enc.tier,
+      deck: enc.deck,
+      squadId: encounterId,
+      sectorId: this._currentSectorId(),
+      factionId: enc.factionId,
+      bark: enc.bark,
+      variantKind: null,
+      levelBand: [1, 4],
+      ships,
+      dueAt: now,
+      defers: 0,
+      cadence: true,
+      zoneCenter: { x: p.pos.x, z: p.pos.z },
+      zoneRadius: 200,
+    });
+    return true;
   },
 
   _gatesPass(shape, state, options = {}) {

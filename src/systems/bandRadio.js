@@ -5,6 +5,8 @@
 // for a matching, root-supplied canonical band:bearingResolved receipt.
 
 import { hash32 } from '../core/rng.js';
+import { weatherForecast } from '../data/seasonalWeather.js';
+import { WEATHER_SECTOR_IDS } from '../data/environmentalMachinery.js';
 import { localizeText } from '../localization/gameLocalization.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
@@ -14,6 +16,7 @@ import {
   BAND_EVENT_KEYS,
   TUNABLE_BAND_CHANNEL_IDS,
   bandSignalStrength,
+  eligibleBandLines,
   resolveLandmarkBleed,
   selectBandLine,
 } from '../data/bandRadio.js';
@@ -306,6 +309,34 @@ export const bandRadio = {
       return;
     }
 
+    // A deed key earns one airing: once any line for the key has been heard the
+    // debt is settled and its alternates return to the open rotation.
+    const eventLines = !bleed && tuned ? eligibleBandLines(tuned, {
+      eventKeys: own.eventKeys,
+      reachRep: context.reachRep,
+    }).filter((line) => line.eventKey) : [];
+    const heardKeys = new Set();
+    for (const line of eventLines) {
+      if (own.heardLineIds.includes(line.id)) heardKeys.add(line.eventKey);
+    }
+    const pendingReports = [];
+    for (const line of eventLines) {
+      if (!heardKeys.has(line.eventKey) && !pendingReports.some((row) => row.eventKey === line.eventKey)) {
+        pendingReports.push(line);
+      }
+    }
+
+    const weatherSector = this.state.world && this.state.world.currentSectorId;
+    if (WEATHER_SECTOR_IDS.has(weatherSector)) {
+      const forecast = weatherForecast(weatherSector, now);
+      if (forecast.id !== own.lastWeatherForecastId && !pendingReports.length
+          && this._say(forecast, own.effectiveChannelId)) {
+        own.lastWeatherForecastId = forecast.id;
+        own.nextLineAtS = now + this._cadenceForSignal(own.signalStrength);
+        return;
+      }
+    }
+
     if (tuned.id === 'numbers_station' && !bleed) {
       const shadowLine = this._numbersShadowLine();
       if (shadowLine) {
@@ -335,12 +366,27 @@ export const bandRadio = {
       }
     }
 
+    if (pendingReports.length) {
+      const report = pendingReports[own.sequence % pendingReports.length];
+      if (!this._say(report, tuned.id)) return;
+      own.lastLineIdByChannel[effectiveKey] = report.id;
+      own.heardLineIds.push(report.id);
+      if (own.heardLineIds.length > 256) own.heardLineIds.splice(0, own.heardLineIds.length - 256);
+      own.sequence += 1;
+      own.nextLineAtS = now + this._cadenceForSignal(own.signalStrength);
+      return;
+    }
+
+    // Once a deed's report has aired, its alternate lines leave the rotation —
+    // the receipt is heard once, then the band moves on.
+    const openEventKeys = own.eventKeys ? { ...own.eventKeys } : {};
+    for (const key of heardKeys) delete openEventKeys[key];
     const source = bleed || tuned;
     const line = bleed
       ? selectLandmarkLine(bleed, this._programSeed(), own.sequence, context.sectorId,
         own.lastLineIdByChannel[effectiveKey])
       : selectBandLine(tuned, {
-        eventKeys: own.eventKeys,
+        eventKeys: openEventKeys,
         reachRep: context.reachRep,
         lastLineId: own.lastLineIdByChannel[effectiveKey],
       }, this._programSeed(), own.sequence, context.sectorId);

@@ -7,7 +7,7 @@ import { racingLoadoutCategory } from '../src/systems/racingSteer.js';
 import {
   observeRacingGhost, readRacingGhost, validateRacingGhost, sampleRacingGhostLine,
 } from '../src/systems/racingGhosts.js';
-import { createRacingGhostView } from '../src/render/racingGhostView.js';
+import { createRacingGhostView, racingGhostHookLocal } from '../src/render/racingGhostView.js';
 
 const SEED = 4242;
 
@@ -93,6 +93,19 @@ test('seed 4242: the ghost keeps its Quarry Hook line and older tapes stay valid
   const extra = JSON.parse(JSON.stringify(latched.tape));
   extra.extra = 'untrusted';
   assert.equal(validateRacingGhost(extra), false);
+});
+
+test('seed 4242: a right-angle heading keeps the hook end on the hook', () => {
+  const pose = { x: 0, z: 0, heading: Math.PI / 2 };
+  const hook = { x: 40, z: 0 };
+  const local = racingGhostHookLocal(pose, hook);
+  const cos = Math.cos(-pose.heading);
+  const sin = Math.sin(-pose.heading);
+  const worldX = local.x * cos + local.z * sin;
+  const worldZ = -local.x * sin + local.z * cos;
+  assert.ok(Math.abs(worldX - 40) < 1e-6);
+  assert.ok(Math.abs(worldZ) < 1e-6);
+  assert.ok(Math.hypot(local.x - 40, local.z) > 20);
 });
 
 test('seed 4242: the ghost view draws the Quarry Hook line and hides it on an older tape', () => {

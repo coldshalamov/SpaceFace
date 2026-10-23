@@ -148,6 +148,14 @@ function withAmendedGrade(clip) {
   return { ...clip, rarity: grade };
 }
 
+/** A Death clip stays on the reel when a voyage-log kill shares its tick. Other raw clips still yield. */
+export function clipKeptBesideMoments(clip, moments) {
+  if (!clip) return false;
+  if (clip.kind === 'death') return true;
+  const list = Array.isArray(moments) ? moments : [];
+  return !list.some((moment) => moment && moment.payoffTick === clip.momentTick);
+}
+
 function listedClips(director) {
   const list = director && typeof director.list === 'function' ? director.list() : [];
   const raw = Array.isArray(list) ? list.map(withAmendedGrade) : [];
@@ -161,7 +169,7 @@ function listedClips(director) {
     endTick: Math.min(recording.absoluteBaseTick + recording.ticks - 1, moment.outTick),
     tickRate: 60, seconds: (Math.min(recording.absoluteBaseTick + recording.ticks - 1, moment.outTick)
       - Math.max(recording.absoluteBaseTick, moment.inTick)) / 60, rating: moment.score, moment }))
-    .concat(raw.filter((clip) => !moments.some((moment) => moment.payoffTick === clip.momentTick)));
+    .concat(raw.filter((clip) => clipKeptBesideMoments(clip, moments)));
 }
 
 function noteMomentAmendment(moment) {

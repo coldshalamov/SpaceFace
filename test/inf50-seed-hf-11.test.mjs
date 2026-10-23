@@ -1,5 +1,6 @@
-// SEED-HF-11 — a thrown-mass kill says it was yours. One string branch on destruction.playerCaused.
-// Seed 4242. Kill cause, surface, and attribution stay whatever compactKillCausality already stored.
+// SEED-HF-11 — a thrown-mass kill says it was yours. The sentence reads the impact tag
+// at speak time. A hull ram keeps the old line. Seed 4242. The stored destruction
+// record stays version, cause, playerCaused, surface — no tag field.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -79,11 +80,14 @@ test('SEED-HF-11 seed 4242 your thrown-mass crash says so, and an NPC crash does
     cause: KillCause.TERRAIN_COLLISION,
     playerCaused: true,
     surface: KillSurface.TERRAIN,
+    impactLink: { actorId: h.state.playerId, tag: 'massline_throw' },
   }, h.state.playerId);
   kill(h.bus, yoursShip, {
     version: 1,
     cause: KillCause.SHIP_COLLISION,
+    playerCaused: true,
     surface: KillSurface.CRAFT,
+    impactLink: { actorId: h.state.playerId, tag: 'direct_contact' },
   }, h.state.playerId);
   kill(h.bus, theirs, {
     version: 1,
@@ -125,10 +129,12 @@ test('SEED-HF-11 seed 4242 your thrown-mass crash says so, and an NPC crash does
     .map((line) => line.text);
   assert.deepEqual(said, [
     'Reach Raider smashed against terrain, wrecked by your thrown mass.',
-    'Keel Dog destroyed in a collision, wrecked by your thrown mass.',
+    'Keel Dog destroyed in a collision.',
     'Other Pilot destroyed in a collision.',
     'Gunner destroyed by weapons fire.',
   ]);
+  assert.equal(terrain.destruction.tag, undefined);
+  assert.equal(collision.destruction.tag, undefined);
 
   h.sys.destroy();
 });

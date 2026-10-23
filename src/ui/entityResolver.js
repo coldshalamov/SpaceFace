@@ -80,6 +80,15 @@ export function entityExists(ref) {
   }
 }
 
+/**
+ * Find's Enter key. A named ace still exists as an entity. A remembered captain is not
+ * added to that list: the row opens only when the dossier itself resolves.
+ */
+export function findRowOpens(state, ref) {
+  if (entityExists(ref)) return true;
+  return !!resolveEntity(state, ref);
+}
+
 function escapeAttr(value) {
   return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }

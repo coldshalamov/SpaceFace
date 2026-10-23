@@ -596,3 +596,98 @@ export function simulateBossKill({ wave, weaponId = 'wpn_pulse_laser_s', seed = 
     gun: { ...gun, weaponId },
   };
 }
+
+// ─── Row 541 W-ARENAS / 485 ROCK-ARENAS: the ten-arena Cull ladder ───────────────────────────
+// The Cull's circuit by scale step — one arena per Line-rating band so the room grows with
+// what the player can swing (design/expansion/04_SECTORS.md §the Cull, rows 292–310).
+// `tierBand` names the Line-rating band the arena is tuned for; `lineRatingMinT` is the
+// rating the arena expects on entry; `mechanic` is the authored gimmick the wave systems key on.
+// Pure data — the registered owners consume it; nothing here ticks.
+
+export const CULL_ARENA_LADDER = Object.freeze([
+  Object.freeze({
+    step: 1, id: 'cull_pebble_yard', name: 'Pebble Yard', sector: 'sector_helios_prime',
+    tierBand: 'T1', lineRatingMinT: 0, scaleStep: 1.0,
+    bodyKind: 'pods_buoys', mechanic: 'first_room',
+    note: 'First room. Pods and buoys teach that mass is ammunition.',
+  }),
+  Object.freeze({
+    step: 2, id: 'cull_slag_bowl', name: 'Slag Bowl', sector: 'sector_vesta',
+    tierBand: 'T1_T2', lineRatingMinT: 25, scaleStep: 1.15,
+    bodyKind: 'slag_bergs', mechanic: 'heat_lanes',
+    note: 'Heat lanes cook a held tow — throw or burn.',
+  }),
+  Object.freeze({
+    step: 3, id: 'cull_container_graveyard', name: 'Container Graveyard', sector: 'sector_tethys',
+    tierBand: 'T2', lineRatingMinT: 80, scaleStep: 1.35,
+    bodyKind: 'containers_on_spines', mechanic: 'couplers_relink',
+    note: 'Containers on snapped spines; couplers relink whatever the throw touches.',
+  }),
+  Object.freeze({
+    step: 4, id: 'cull_reef_pinball', name: 'Reef Pinball', sector: 'sector_pallas',
+    tierBand: 'T2', lineRatingMinT: 80, scaleStep: 1.35,
+    bodyKind: 'reef_debris', mechanic: 'high_bounce',
+    note: 'Reef debris with a high restitution floor — misses come back.',
+  }),
+  Object.freeze({
+    step: 5, id: 'cull_ice_orchard', name: 'Ice Orchard', sector: 'sector_haumea',
+    tierBand: 'T2_T3', lineRatingMinT: 180, scaleStep: 1.6,
+    bodyKind: 'ice_spires', mechanic: 'shard_ricochet',
+    note: 'Ice spires shatter; the shards ricochet as free fragments.',
+  }),
+  Object.freeze({
+    step: 6, id: 'cull_glass_garden', name: 'Glass Garden', sector: 'sector_phoebe',
+    tierBand: 'T3', lineRatingMinT: 180, scaleStep: 1.6,
+    bodyKind: 'singing_crystal', mechanic: 'resonance_chains',
+    note: 'Singing crystal — impact rings resonance chains through the field.',
+  }),
+  Object.freeze({
+    step: 7, id: 'cull_garden_ring', name: 'Garden Ring', sector: 'sector_charon_expanse',
+    tierBand: 'T3', lineRatingMinT: 180, scaleStep: 1.6,
+    bodyKind: 'wrecks', mechanic: 'understory_walls',
+    note: 'Understory gardens grow walls around misses — the room reshapes itself.',
+  }),
+  Object.freeze({
+    step: 8, id: 'cull_breaker_field', name: 'Breaker Field', sector: 'sector_ceres',
+    tierBand: 'T3_T4', lineRatingMinT: 360, scaleStep: 1.9,
+    bodyKind: 'breaker_chunks', mechanic: 'cut_ammunition',
+    note: 'Breaker chunks — new ammunition is cut from the field mid-fight.',
+  }),
+  Object.freeze({
+    step: 9, id: 'cull_yardmasters_belly', name: "Yardmaster's Belly", sector: 'sector_sker_haven',
+    tierBand: 'T4', lineRatingMinT: 360, scaleStep: 1.9,
+    bodyKind: 'ballast_balls', mechanic: 'inside_yardmaster',
+    note: "Inside a Pitborn Yardmaster — ballast balls for ammunition.",
+  }),
+  Object.freeze({
+    step: 10, id: 'cull_gutted_maw', name: 'The Gutted Maw', sector: 'sector_ashfall',
+    tierBand: 'T5', lineRatingMinT: 640, scaleStep: 2.25,
+    bodyKind: 'dreadnought_plates', mechanic: 'iron_maw_endgame',
+    note: 'Inside the Iron Maw — dreadnought plates are the endgame Cull throw.',
+  }),
+]);
+
+export const CULL_ARENA_LADDER_SCHEMA = 1;
+
+/** Ladder entry by 1-based step (clamped), or null for an out-of-range input. */
+export function cullArenaStep(step) {
+  const s = step | 0;
+  return s >= 1 && s <= CULL_ARENA_LADDER.length ? CULL_ARENA_LADDER[s - 1] : null;
+}
+
+/** The deepest ladder rung a Line rating unlocks (rating in tonnes). */
+export function cullArenaForRating(ratingT) {
+  const t = Number.isFinite(ratingT) ? ratingT : 0;
+  let best = CULL_ARENA_LADDER[0];
+  for (const arena of CULL_ARENA_LADDER) {
+    if (t >= arena.lineRatingMinT) best = arena;
+  }
+  return best;
+}
+
+/** Radius for an arena at a given rating: the rung's scale step × the base radius. */
+export function cullArenaRadiusWu(ratingT, baseRadiusWu) {
+  const arena = cullArenaForRating(ratingT);
+  const base = Number.isFinite(baseRadiusWu) && baseRadiusWu > 0 ? baseRadiusWu : 1200;
+  return Math.round(base * arena.scaleStep);
+}

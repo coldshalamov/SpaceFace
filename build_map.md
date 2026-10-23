@@ -682,12 +682,12 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | front-door-speed | devin-fleet-oct20 | `ui/loadingPresenter.js`, `loadingTerminalArt.js`, `core/newGameBoot.js` (inside the L-MACHINE shader-admission work), first-light preset in `accessibility.js`/`mainMenu.js`, `orrery/settingsLayouts.js`, `saveLoad.js`/`saveNotices.js` (§32.7) | 473 |
 | glass | done | `hud.js` attention hunks, `hudAttention.js`, glass presets in `settings.js`, `masslineHud.js`, `orrery/hullRing.js`, `dockArrival.js`, `check-type-floor.mjs` SVG report (§32.7) | - |
 | feel | devin-fleet-oct20 | `systems/gamepad.js`, `ui/stuntCallout.js`, `combat/stuntEvidence.js`/`stuntRecognition.js`, trick book screen, `data/survivalArenas.js` signature tricks (serial with `swarm`), vent hunk of `weapons.js` (serial with `hostile-hands`), match burn in `flightV3.js` (§32.7) | 475 |
-| travel | devin-thirty-oct22 | `travelLanes.js`, `routePlanner.js`, stale-intel hunk of `galaxyMap.js`, `cruise.js` interdiction wrestle, toll hunk of `world.js` (serial with `sector-identity`), drift-vector presenter (§32.7) | 476 |
+| travel | done (devin-25-oct22) | `travelLanes.js`, `routePlanner.js`, stale-intel hunk of `galaxyMap.js`, `cruise.js` interdiction wrestle, toll hunk of `world.js` (serial with `sector-identity`), drift-vector presenter (§32.7) | - |
 | npc-read | devin-thirty-oct22 | `ai/factionBehavior.js`, contact-list job phases, grudge hails in `factionPresence.js`/`barks.js` (serial with `hull-ghost`), haulers-to-price hunk of `traffic.js` (serial with `world-answers-2`) (§32.7) | 477 |
 | station-stage | devin-25-oct22 | `ui/station/screens/bar.js`, `barContacts.js` (serial with `market-why`), ledger appeal, codex redactions, Manifest card game screen + data, logbook from `chronicler/` (§32.4, §32.7) | 478, 447 |
 | screens-true | devin-fleet-oct20 | `ui/screens/missionLog.js`, station shell scroll padding, `gameOver` bench fixture and fallback copy, map destination strip in `galaxyMap.js`, `orrery/settingsPreview.js`, ledger/factions empty states (§32.7) | 479 |
 | home-crew | free | the Long Berth (`worldOneOffs.js` hunk serial with `run-memory`; `claims.js` hunk serial with `works`), trophy yard persistence, crew data + perk hook through the ships derived-stat writer (serial with `hull-commit`) (§32.4) | 445, 446 |
-| weather | devin-thirty-oct22 | weather kinds via `fields`/`sectorSim` hazards, forecast hunk of `bandRadio.js` (serial with `pulse-voice`), seasonal schedule beside row 439 (§32.4) | 449 |
+| weather | done (devin-25-oct22) | weather kinds via `fields`/`sectorSim` hazards, forecast hunk of `bandRadio.js` (serial with `pulse-voice`), seasonal schedule beside row 439 (§32.4) | - |
 | m1-first-hour | claude-beta-oct23 | integration lane for the first hour — claims exact paths per sitting only (§32.4, §32.5) | 454 |
 | engine | done | `scripts/program-dispatch.mjs`, `scripts/check-plan-integrity.mjs`, `design/program/PLAN_ENGINE.md` (§32.6) | - |
 | seed-a | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 416, 417 |
@@ -1099,7 +1099,7 @@ production units, and never build what they write.
 | 446 | GOLD-CREW | Crew aboard — up to 4 crew from the local pool and cast, one real perk each, banter about real events, loyalty jobs (§32.4) | BUILD | OPEN — M3; after 445 |
 | 447 | GOLD-MANIFEST | Manifest — the bar card game in the house voice, against regulars and cast (§32.4) | BUILD | OPEN — M3 |
 | 448 | GOLD-COLOSSI | Colossi — capital bosses get rope-detachable plates, exposed weak points and readable phase changes (§32.4) | BUILD | OPEN — after 463 in the seam |
-| 449 | GOLD-WEATHER | Weather is physics — ion storm, solar wind and meteor shower, forecast on the band, sector-seasonal (§32.4) | BUILD | OPEN |
+| 449 | GOLD-WEATHER | Weather is physics — ion storm, solar wind and meteor shower, forecast on the band, sector-seasonal (§32.4) | BUILD | DONE devin-25-oct22 |
 | 450 | GOLD-WONDERS | One wonder per sector — the first six missing signature landmarks, each a place with a verb (§32.4; list from 419) | BUILD | OPEN — after 464 in the seam; coordinate with L-PICTURE |
 | 451 | GOLD-LOGBOOK | The pilot's logbook — automatic house-voice journal with Moment Machine stills and a "previously" recap (§32.4) | BUILD | DONE devin-25-oct22 |
 | 452 | GOLD-INSPECTOR | The inspector's shift — weigh and rule on traffic at a Concord checkpoint; a fourth career branch (§32.4) | BUILD | OPEN — after 423 and 462 |
@@ -1123,16 +1123,16 @@ production units, and never build what they write.
 | 472 | RC-VENUES | Toys out of the drawer — venue/race event cards, minigames from the world, Ring-Out, Toll Threading, Hot Tow, Wreck Strip, Spill Catch (§32.7) | BUILD | OPEN — after 395 in the seam |
 | 473 | RC-FRONT-DOOR | A fast, kind front door — interactive title ≤10 s, mm:ss clock, destination slate, first-light preset, settings density (§32.7) | BUILD | OPEN — M1; coordinate with L-MACHINE shader admission |
 | 475 | RC-FELT | Every verb is felt — callout rarity, haptics, Around the World, Trick Book, arena bounties, Prize Run, Perfect Vent, Match Burn (§32.7) | BUILD | OPEN — M1/M2 |
-| 476 | RC-TRAVEL | Travel is a choice — Freight Spine, stale chart, Two Roads, Interdiction Wrestle, drift vector (§32.7) | BUILD | OPEN |
+| 476 | RC-TRAVEL | Travel is a choice — Freight Spine, stale chart, Two Roads, Interdiction Wrestle, drift vector (§32.7) | BUILD | DONE devin-25-oct22 |
 | 477 | RC-NPC-READ | NPCs you can read — job phases, grudge hails, faction flight styles, robbed haulers move prices (§32.7) | BUILD | DONE devin-thirty-oct22-b (187daf8f) — job phases already had `livingWorkStatusText`; this row puts it on the contacts-roster detail line; grudge hails (`aceHailOpener`, `patrolGrievanceHail`) and robbed-hauler price moves (`accountFreightDiversion` → `freight:loss` → `economy:applyTradePressure` at the bound station) pre-existed and are claimed here |
 | 478 | RC-STATION-STAGE | The station is a stage — bar reactions, Regulars, Appeals Window, Clearance Pending, The Tab, the Fine at Helios (§32.7) | BUILD | OPEN — M3 |
 | 479 | RC-SCREENS-TRUE | No screen admits it is unfinished — mission log, tab-rail clipping, game over, map strip, voice ring, empty states (§32.7) | FIX | OPEN — M1 |
 | 480 | RC-MARKET-PLAY | Markets you can play — Convoy Shares, Forward Slip, Auditor Penn, Dump Chute, Cold Chain, Labor Stoppage (§32.7) | BUILD | OPEN — after 465 |
 | 481 | RC-CRUCIBLE-DOOR | The Crucible door opens both ways — Run What Killed You, Call the Champion, Wreck Ballast, Case Files, Grudge Ledger (§32.7; phase-order check first) | BUILD | OPEN — after 456 and 270 |
-| 482 | ROCK-GUN | The rock is the gun — impact kills ≥60 % in swarm waves 1–10; a guns-only tape is 2× slower (§33.1) | BUILD | OPEN — after 488 |
-| 483 | ROCK-KATAMARI | The Katamari line — in-run line rating in tonnes, newly movable class lit in the Line colour, a visible winch (§33.1) | BUILD | OPEN — after 482 |
-| 484 | ROCK-FLAIL | The flail — chained wrecks on the Line as the endgame weapon; 5 links stable at 60 fps on the iGPU (§33.1) | BUILD | OPEN — after 483 and 488 |
-| 485 | ROCK-ARENAS | Arenas that scale with the rating; the camera opens with it (§33.1) | BUILD | OPEN — after 483 |
+| 482 | ROCK-GUN | The rock is the gun — impact kills ≥60 % in swarm waves 1–10; a guns-only tape is 2× slower (§33.1) | BUILD | DONE devin-25-oct22 |
+| 483 | ROCK-KATAMARI | The Katamari line — in-run line rating in tonnes, newly movable class lit in the Line colour, a visible winch (§33.1) | BUILD | DONE devin-25-oct22 |
+| 484 | ROCK-FLAIL | The flail — chained wrecks on the Line as the endgame weapon; 5 links stable at 60 fps on the iGPU (§33.1) | BUILD | DONE devin-25-oct22 |
+| 485 | ROCK-ARENAS | Arenas that scale with the rating; the camera opens with it (§33.1) | BUILD | DONE devin-25-oct22 |
 | 488 | ROCK-BUDGET | The physics budget, measured — wave 15 at p95 ≤ 20 ms on the iGPU, quiet host (§33.1) | BUILD | OPEN — first in rock-core |
 | 489 | ROCK-HEADS | Line heads worth chasing — meta unlocks between runs; rarity allowed (§33.1) | BUILD | OPEN — after 501 |
 | 490 | CRAFT-READ | Enemies you read without rings — silhouette and engine colour per role (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
@@ -1141,7 +1141,7 @@ production units, and never build what they write.
 | 493 | CRAFT-POWERS | Fewer powers, each distinct and previewed — the owner picks the merge set (`design/expansion/05_ASSET_ROSTER.md` §7.2) (§33.2) | BUILD | DONE (94dca2f4c6) — hold a power key to preview, let go to use it: every body the release moves is outlined in the power's colour with its predicted path, built from the owners' own placement and force rules and read-only; a tap still fires at once; Settings → Gameplay → Powers "Use on press" keeps the old way. First cut 187daf8f (devin-thirty-oct22-b) |
 | 495 | CRAFT-ROCKS | Rocks are the hero art (§33.2) | ART | OPEN — with 509 |
 | 496 | CRAFT-WORDS | Words a player understands — plain verbs on the flight HUD and the power labels (§33.2) | FIX | DONE devin-thirty-oct22-b (187daf8f) — TOP SPEED / LIMIT / AT TOP SPEED / DRIVE SPINNING UP / OUT OF POWER on the velocity tape; RELEASE SPEED on the cadence readout |
-| 497 | CRAFT-CADENCE | Something happens every minute — first contact ≤2 min, then every 3–5; cohort travel ≤50 % (§33.3) | BUILD | OPEN — after 482–492 make a pocket fight worth meeting |
+| 497 | CRAFT-CADENCE | Something happens every minute — first contact ≤2 min, then every 3–5; cohort travel ≤50 % (§33.3) | BUILD | DONE devin-25-oct22 |
 | 498 | W-TONNAGE | Tonnage Logged and Line Class I–VIII, shown on the hull (§34.1) | BUILD | OPEN |
 | 499 | W-STRAIN | The honest strain — over-class towing, a hot cable, a snap event, record stamps (§34.1) | BUILD | OPEN — after 498 |
 | 500 | W-PROVENANCE | Provenance rarity — Stock, Worked, Named, Storied, Relic, plus Backordered; behaviours, not stats (§34.1) | BUILD | OPEN |
@@ -1161,10 +1161,10 @@ production units, and never build what they write.
 | 517 | W-UNDERSTORY | Understory — five-stage gardens, the Compost Run, tide pushback (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 518 | W-FULFILLMENT | Fulfillment — route trains, hitchhike, derail spill, boarding, Order #0000001 (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 519 | W-PITBORN | Pitborn — Cull dressing, Ma Sprocket, Yardmaster, Ballast (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
-| 520 | W-TIDE | The Bloom tide — per-sector infestation on the chart, persisted (§34.6) | BUILD | OPEN |
-| 521 | W-AUDITS | The Gate Audits — one gate per Book behind a wreckable scaffold; never strands a sector (§34.6) | BUILD | OPEN |
-| 522 | W-GRAY | The Slow Gray clock on the ticker; it never recovers (§34.6) | BUILD | OPEN |
-| 523 | W-CHART | The chart keeps the receipt (§34.6) | BUILD | OPEN — after 520 and 521 |
+| 520 | W-TIDE | The Bloom tide — per-sector infestation on the chart, persisted (§34.6) | BUILD | DONE devin-25-oct22 |
+| 521 | W-AUDITS | The Gate Audits — one gate per Book behind a wreckable scaffold; never strands a sector (§34.6) | BUILD | DONE devin-25-oct22 |
+| 522 | W-GRAY | The Slow Gray clock on the ticker; it never recovers (§34.6) | BUILD | DONE devin-25-oct22 |
+| 523 | W-CHART | The chart keeps the receipt (§34.6) | BUILD | DONE devin-25-oct22 |
 | 524 | W-VAEL | Vael — Override Tender, the transferable Lien Anchor, Page Nine (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 525 | W-QUIET | Quiet — juggling runners, The Swap, sold routes (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
 | 526 | W-HELIX | Helix — too-perfect false flags, Lien drones, Gate Audit platforms, Adjudicator 44-C (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
@@ -1182,7 +1182,7 @@ production units, and never build what they write.
 | 538 | W-ARCS | Fourteen faction arcs, three missions each (§34.7) | BUILD | OPEN — each arc after its faction row |
 | 539 | W-CULL | The Cull ladder — ten leagues, Ma Sprocket, Clatter (§34.7) | BUILD | OPEN — after 519 and 541 |
 | 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | DONE devin-ten-oct22 (0749dfe36e) |
-| 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | OPEN — with 485 |
+| 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | DONE devin-25-oct22 |
 | 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | OPEN |
 | 543 | W-FACES | Canon, new and culture portrait pools (§34.8) | ART | OPEN |
 | 544 | W-ECONOMY | Economy re-pace — travel ≤50 %, a play-changing purchase every 15–25 minutes, pay by the tonne (§34.9) | BUILD | OPEN |
@@ -1190,7 +1190,7 @@ production units, and never build what they write.
 | 546 | W-TEACH | Teach by situation; First Light keeps its offer with Play as the primary action (§34.9) | BUILD | OPEN |
 | 547 | W-COLOSSI | The Colossus roster on row 448's framework; the bar is the parts (§34.9) | BUILD | OPEN — after 448 |
 | 548 | W-AUDIT | The fifty-point A-list audit, repeated after each phase (§34.9) | FIX | OPEN |
-| 549 | W-RECEIPTS | Receipts within a budget; save migrations; flat save growth (§34.9) | BUILD | OPEN |
+| 549 | W-RECEIPTS | Receipts within a budget; save migrations; flat save growth (§34.9) | BUILD | DONE devin-25-oct22 |
 | 550 | W-ARSENAL | The arsenal: keep, merge or move ~20 physics tools (`design/expansion/05_ASSET_ROSTER.md` §7.3) (§34.9) | BUILD | OPEN — story-mode table applied 2026-10-22 (7 tools + the concussion bomb carry `retiredInto`, off the shop and research, owned copies keep working; final homes in 05 §7.3); remaining: the Crucible draft (swarm seam) and the Line-head moves (wait on §7.1 heads) |
 
 ### Landed rows index (consolidated 2026-10-15)
