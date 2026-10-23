@@ -98,11 +98,26 @@ function isCandidate(entity, state, payload = null) {
   return false;
 }
 
-function killedOutcomeText(label, destruction) {
+const THROWN_MASS_TAGS = new Set(['massline_throw', 'massline', 'rope_throw', 'massline_whip']);
+
+// The compact destruction record does not store a tag. The sentence reads the live
+// impact link at speak time and does not write a new causality field.
+function thrownMassImpact(payload) {
+  const presentation = payload && payload.presentation;
+  const link = presentation && presentation.impactLink;
+  const tags = [
+    link && link.tag,
+    presentation && presentation.tag,
+    payload && payload.tag,
+  ];
+  return tags.some((tag) => THROWN_MASS_TAGS.has(tag));
+}
+
+function killedOutcomeText(label, destruction, thrownMass) {
   const cause = destruction && destruction.cause;
-  // One string branch on a field the record already carries. Attribution, cause, and surface
-  // stay as compactKillCausality wrote them. An NPC crash keeps the line below.
-  if (destruction && destruction.playerCaused === true
+  // A throw says so. A hull ram, and a crash with no throw tag, keep the old line.
+  // Attribution, cause, and surface stay as compactKillCausality wrote them.
+  if (thrownMass && destruction && destruction.playerCaused === true
       && (cause === KillCause.SHIP_COLLISION || cause === KillCause.TERRAIN_COLLISION)) {
     const stem = cause === KillCause.TERRAIN_COLLISION
       ? `${label} smashed against terrain`
@@ -118,13 +133,13 @@ function killedOutcomeText(label, destruction) {
   }
 }
 
-function outcomeText(record) {
+function outcomeText(record, thrownMass) {
   const label = record.label || record.victimClass || 'target';
   switch (record.outcome) {
     case 'fled': return `${label} fled the fight.`;
     case 'disabled': return `${label} disabled; capture window open.`;
     case 'surrendered': return `${label} surrendered.`;
-    case 'killed': return killedOutcomeText(label, record.destruction);
+    case 'killed': return killedOutcomeText(label, record.destruction, thrownMass);
     default: return `${label} resolved.`;
   }
 }
@@ -450,7 +465,7 @@ export const combatOutcome = {
         destruction: record.destruction,
       });
     }
-    this._speak(record);
+    this._speak(record, thrownMassImpact(payload));
     this._publishAftermath();
     return record;
   },
@@ -582,14 +597,14 @@ export const combatOutcome = {
     });
   },
 
-  _speak(record) {
+  _speak(record, thrownMass) {
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
     return voice.say({
       channel: 'info',
       kind: 'combat',
       id: `combatOutcome:${record.entityId}`,
-      text: outcomeText(record),
+      text: outcomeText(record, thrownMass),
       ttl: 2,
     });
   },
