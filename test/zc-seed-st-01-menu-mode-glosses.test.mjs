@@ -35,10 +35,10 @@ test('both rendered verb groups read the gloss table (wiring slice)', () => {
   // The core verb column and the quiet aside row are the only two words() groups on the title;
   // each must source subs from MENU_MODE_GLOSSES so a future verb cannot silently skip the gloss.
   const core = SRC.slice(SRC.indexOf('const items = titleVerbOrder'), SRC.indexOf('const asideItems'));
-  assert.ok(core.includes('MODE_GLOSSES[action]'), 'core verb column must map sub from MENU_MODE_GLOSSES');
+  assert.ok(core.includes('MENU_MODE_GLOSSES[action]'), 'core verb column must map sub from MENU_MODE_GLOSSES');
   const aside = SRC.slice(SRC.indexOf('const asideItems'), SRC.indexOf('const aside = words(asideItems'));
   for (const action of ['archive', 'circuits', 'sandbox', 'physics']) {
-    assert.match(aside, new RegExp(`action: '${action}'.*sub: MODE_GLOSSES\\.${action}`), `aside ${action} must carry its gloss`);
+    assert.match(aside, new RegExp(`action: '${action}'.*sub: MENU_MODE_GLOSSES\\.${action}`), `aside ${action} must carry its gloss`);
   }
   // The kit renders item.sub as the visible note element for the lit system the title uses.
   const kit = readFileSync(new URL('../src/ui/kit/dom.js', import.meta.url), 'utf8');
