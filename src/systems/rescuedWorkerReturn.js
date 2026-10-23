@@ -3,15 +3,16 @@
 // A crewed worker hull that is destroyed may eject a causal survivor pod (survivorPod owns the
 // eject roll, the oxygen window, the tow and the rescue/ransom/abandon resolution). Resolution
 // today ends the story at a rep intent and a moral-memory note. This module turns a COMPLETED
-// rescue into a later visible workplace difference: the same person — one durable world record,
+// rescue into a later visible workplace difference: the same person — one durable person record,
 // same role, same workplace route — comes back to their actual job. Never a generic respawn,
 // never a second person wearing the mask.
 //
 // Identity law (same law as the Choir relief crew in choirReliefBerth.js):
 //   • one durable person record per rescue, keyed by a seed-frozen personKey that survives
 //     save/restore because it lives in the uniqueWrecks bag (owner-persisted);
-//   • one physical hull per record, found again through its worldRecordId when the near entity
-//     table loses it, never duplicated, never respawned dead;
+//   • one returning body per person, found through worldRecordId when the near entity table
+//     loses it. A destroyed casualty hull remains terminal; a pending rescue may receive one
+//     deterministic replacement body, never a second replacement after that body dies;
 //   • the return re-enters through the job kernel with the SAME workplace route the victim was
 //     working when they died — a miner returns to their field, a hauler to their lane;
 //   • ransom and abandonment close the record without a return; a returned worker's death is
@@ -103,6 +104,8 @@ export function normalizeRescuedWorkers(value) {
     normalized[key] = {
       personKey: String(key),
       worldRecordId: raw.worldRecordId != null ? String(raw.worldRecordId) : String(key),
+      // Optional provenance only: the casualty hull stays destroyed when a return body is needed.
+      sourceWorldRecordId: raw.sourceWorldRecordId != null ? String(raw.sourceWorldRecordId) : null,
       memoryId: raw.memoryId != null ? String(raw.memoryId) : null,
       victimId: raw.victimId != null ? String(raw.victimId) : null,
       role: raw.role != null ? String(raw.role) : 'worker',
@@ -176,6 +179,9 @@ export function createRescuedWorkerReturn(owner) {
     const cached = actors.get(record.personKey);
     if (cached?.alive && cached.alive !== false && state.entities.get(cached.id) === cached) return cached;
     const found = indexedWorldRecordEntity(state, record.worldRecordId);
+    if (found && record.sourceWorldRecordId
+      && found.data?.rescuedWorkerPerson !== record.personKey
+      && found.data?.ai?.rescuedWorkerPerson !== record.personKey) return null;
     if (found) actors.set(record.personKey, found);
     return found || null;
   };
@@ -191,7 +197,10 @@ export function createRescuedWorkerReturn(owner) {
     if (!entity || !entity.data) return;
     const d = entity.data;
     d.rescuedWorkerPerson = record.personKey;
-    d.persistenceOwner = 'uniqueWrecks:rescuedWorkers';
+    // uniqueWrecks owns the person; world owns this physical body's residency and tombstone.
+    d.persistenceOwner = 'worldRecords';
+    if (!d.ai || typeof d.ai !== 'object') d.ai = {};
+    d.ai.rescuedWorkerPerson = record.personKey;
     const persona = record.persona;
     if (persona) {
       if (persona.name) d.name = persona.name;
@@ -216,11 +225,15 @@ export function createRescuedWorkerReturn(owner) {
   function killed(payload) {
     if (!payload || payload.id == null) return;
     const now = simNowOf(state);
-    // The join is the durable returnedEntityId, with the hull's stamped person key as the
-    // second witness (numeric entity ids recycle; the record and the stamp do not).
+    // Join the live or world-restored person stamp to its exact body record. The saved
+    // numeric id is only a fallback when no entity exists; ids can recycle on rematerialization.
     const dyingEntity = state.entities?.get?.(payload.id);
-    const returnedRecord = dyingEntity?.data?.rescuedWorkerPerson
-      ? recordOf(String(dyingEntity.data.rescuedWorkerPerson))
+    const personStamp = dyingEntity?.data?.rescuedWorkerPerson || dyingEntity?.data?.ai?.rescuedWorkerPerson;
+    const returnedRecord = personStamp
+      ? (() => {
+        const remembered = recordOf(String(personStamp));
+        return remembered?.worldRecordId === dyingEntity.data?.worldRecordId ? remembered : null;
+      })()
       : !dyingEntity
         ? Object.values(own().people).find((rec) => rec.returnedEntityId === payload.id) || null
         : null;
@@ -382,7 +395,40 @@ export function createRescuedWorkerReturn(owner) {
       if (record.returnDueAtS == null || now < record.returnDueAtS) continue;
       if (record.workplace.sectorId !== sectorId) continue; // the return lands in its own sector
 
-      const existing = actor(record);
+      let existing = actor(record);
+      const records = state.world?.records?.byId;
+      const bodyRecord = records?.[record.worldRecordId];
+      const terminal = (value) => !!value && (value.alive === false
+        || value.outcome === 'destroyed' || value.outcome === 'defeated');
+      if (terminal(bodyRecord)) {
+        // The saved person is not their destroyed ship. Pending legacy rescues may still
+        // point at that casualty's tombstone. Allocate one deterministic replacement body,
+        // never revive the original record or reinterpret a lost return body as another chance.
+        const returnBodyId = `${record.personKey}:return`;
+        if (!existing && record.outcome === 'rescued' && record.returnedAtS == null
+          && !record.sourceWorldRecordId && record.worldRecordId !== returnBodyId) {
+          const priorBody = indexedWorldRecordEntity(state, returnBodyId);
+          const priorRecord = records?.[returnBodyId];
+          if ((priorBody && priorBody.data?.rescuedWorkerPerson !== record.personKey
+            && priorBody.data?.ai?.rescuedWorkerPerson !== record.personKey)
+            || (priorRecord && priorRecord.ai?.rescuedWorkerPerson !== record.personKey)) continue;
+          record.sourceWorldRecordId = record.worldRecordId;
+          record.worldRecordId = returnBodyId;
+          actors.delete(record.personKey);
+          existing = actor(record);
+        } else {
+          if (record.sourceWorldRecordId || record.returnedAtS != null) noteReturnedLoss(record, now);
+          continue;
+        }
+      }
+      // A replacement admitted before an interrupted Save may already be terminal. Its
+      // tombstone is final even when job admission never reached the returned transition.
+      if (terminal(records?.[record.worldRecordId])) {
+        noteReturnedLoss(record, now);
+        continue;
+      }
+      // A rejected foreign holder is not an empty slot, even before world captures it.
+      if (!existing && indexedWorldRecordEntity(state, record.worldRecordId)) continue;
       if (existing && existing.alive !== false) {
         // A world-resident copy is already here (restore rematerialized it first): adopt it,
         // heal its identity stamp, finish its job link, and charge the transition once.
@@ -414,7 +460,8 @@ export function createRescuedWorkerReturn(owner) {
           pos: { x: home.x + off, z: home.z + off * 0.5 },
           ai: { archetype: 'passive', passive: true, spawnContext: 'civilian_worker' },
         });
-        spec.flags = { persistent: true };
+        spec.flags = { durable: true };
+        spec.homeSectorId = record.workplace.sectorId;
         spec.data.worldRecordId = record.worldRecordId;
         spec.data.sectorId = record.workplace.sectorId;
         stampIdentity(spec, record);
@@ -458,7 +505,7 @@ export function createRescuedWorkerReturn(owner) {
 
   function noteReturnedLoss(record, now) {
     if (!record || record.lostAtS != null
-      || !(record.outcome === 'returned' || (record.outcome === 'rescued' && record.returnedEntityId != null))) return;
+      || !(record.outcome === 'returned' || (record.outcome === 'rescued' && (record.returnedEntityId != null || record.sourceWorldRecordId != null)))) return;
     record.outcome = 'lost';
     record.lostAtS = now;
   }
