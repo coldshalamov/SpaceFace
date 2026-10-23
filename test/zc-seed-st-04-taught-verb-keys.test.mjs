@@ -46,6 +46,17 @@ test('no label resolves to no suffix — the authored line stands', () => {
   assert.equal(taughtVerbLine({}, 'thrust', ''), '');
 });
 
+test('SEED-ST-05: the winch line names the whole reel chord with live labels', () => {
+  const st = stateWithBindings({});
+  assert.equal(taughtVerbLine(st, 'tether:tether:latched', 'Winch in. Hold tether to reel.'),
+    'Winch in. Hold Space/F — W/↑ reels in, 0 pays out.');
+  const rebound = stateWithBindings({ tether: ['KeyQ'], forward: ['KeyT'], brake: ['KeyZ'] });
+  assert.equal(taughtVerbLine(rebound, 'tether:tether:latched', 'Winch in. Hold tether to reel.'),
+    'Winch in. Hold Q — T reels in, Z pays out.');
+  assert.equal(taughtVerbLine(stateWithBindings({}, 'touch'), 'tether:tether:latched', 'Winch in. Hold tether to reel.'),
+    'Winch in. Hold tether to reel.', 'touch resolves no labels — the authored line stands');
+});
+
 test('the beat table itself is untouched — lines stay authored, keys join at speak time', () => {
   assert.equal(BEATS.find((b) => b.key === 'thrust').line, 'Thrust until speed passes forty.');
   assert.equal(BEATS.find((b) => b.key === 'seam').followups[0].line, 'Beam the bright seams.');

@@ -383,8 +383,19 @@ const CHOICE_BEAT_INDEX = BEATS.length - 1;
 // resolves to no label and leaves the line exactly as authored).
 const TAUGHT_VERB_LINE_ACTIONS = Object.freeze({
   // Beat lines, keyed by beat.key; followups, keyed by the firedFollowups id (beat.key + ':' + fu.on).
+  // A string value appends that action's key; a function composes the whole line (SEED-ST-05).
   thrust: 'forward',            // Thrust until speed passes forty.
   'tether:target:acquired': 'tether', // Latch it. Massline.
+  // SEED-ST-05 — "Hold tether to reel" taught only the modifier, so a stranger holding just the
+  // tether key reels nothing. The first-hold line names the whole chord: the hold that gives line
+  // control and the two axis ends that reel, all live labels.
+  'tether:tether:latched': (state) => {
+    const hold = verbBindingLabel(state, 'tether');
+    if (!hold) return null;
+    const reelIn = verbBindingLabel(state, 'forward');
+    const reelOut = verbBindingLabel(state, 'brake');
+    return `Winch in. Hold ${hold} — ${reelIn || 'forward'} reels in${reelOut ? `, ${reelOut} pays out` : ''}.`;
+  },
   burst: 'fire',                // Fire a short burst into the raider.
   seam: 'scanPulse',            // Pulse the scanner.
   'seam:scan:hit': 'mine',      // Beam the bright seams.
@@ -392,9 +403,10 @@ const TAUGHT_VERB_LINE_ACTIONS = Object.freeze({
 
 /** The beat line with its taught control's live key appended, or the line unchanged. */
 export function taughtVerbLine(state, id, line) {
-  const action = TAUGHT_VERB_LINE_ACTIONS[id];
-  if (!action || !line) return line;
-  const label = verbBindingLabel(state, action) || MOUSE_ACTION_LABELS[action] || '';
+  const entry = TAUGHT_VERB_LINE_ACTIONS[id];
+  if (!entry || !line) return line;
+  if (typeof entry === 'function') return entry(state, line) || line;
+  const label = verbBindingLabel(state, entry) || MOUSE_ACTION_LABELS[entry] || '';
   if (!label) return line;
   return `${line} (${label})`;
 }
