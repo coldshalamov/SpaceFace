@@ -1064,7 +1064,7 @@ production units, and never build what they write.
 | 410 | AL-SHOW-5 | Languages a native speaker signs off — reviewed first-hour overlays in four locales + glossary (§31.3) | BUILD | OPEN — uses 409's capture inventory when present |
 | 411 | AL-SHOW-6 | The chart draws the arrows — rumor corroboration fields and converging chart arrows, no position leak (§31.3) | BUILD | DONE b7f1bd7ba |
 | 412 | AL-MACH-1 | Split `renderer.js` below 8k LOC, byte-identical digests/boot census (§31.3) | BUILD | OPEN — only while no claimed seam lists the file |
-| 413 | AL-MACH-2 | Split `missions.js` and `traffic.js` below 8k LOC, byte-identical digests (§31.3) | BUILD | CLAIMED devin-ten-oct23 |
+| 413 | AL-MACH-2 | Split `missions.js` and `traffic.js` below 8k LOC, byte-identical digests (§31.3) | BUILD | DONE devin-ten-oct23 — missions 6,298 / traffic 4,599; method blocks moved verbatim into 11 sibling ops modules, spread back so `this` binds identically; blocks verified byte-for-byte vs HEAD |
 | 414 | AL-MACH-3 | Newest versions — three, Electron, Rapier, electron-builder on ≥7-day-old releases, digest-gated (§31.3) | BUILD | DONE devin-ten-oct23 |
 | 415 | AL-MACH-4 | A toolchain a newcomer can read — tier the 662 npm scripts, retire zero-reference aliases (§31.3) | BUILD | DONE devin-ten-oct23 |
 | 416 | SEED-HAND-FIGHT | Seed ≥12 audited lines: rope/terrain residuals, enemy physical tells, the eight capital bosses as machines you take apart (§31.3 Writers' room) | SEED | DONE devin-ten-oct22 (21452bddf9) |
