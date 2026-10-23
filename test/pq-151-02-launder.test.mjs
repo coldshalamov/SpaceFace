@@ -1,5 +1,5 @@
 // PQ-151.02 — corrupt ports wash a hot pod's papers for a cut.
-// Docking at an outlaw berth is the verb. A later customs cone stays clean.
+// Confirming a quoted pod at an outlaw berth is the verb. A later customs cone stays clean.
 // Reputation with the port's faction pays the cut down. Heat is not bought off.
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -139,11 +139,24 @@ function teleport(entity, x, z) {
 }
 
 function dwellCone(t, pod) {
+  t.state.ui.docked = false;
+  t.state.ui.dockedStationId = null;
   teleport(t.player, 420, 380);
   spawnScanner(t);
   teleport(pod, 65, 28);
   const ticks = Math.ceil((CUSTOMS_SCAN_DWELL_S + 0.25) / SIM_DT);
   for (let i = 0; i < ticks; i++) t.sim.step();
+}
+
+function confirmWash(t) {
+  t.state.ui.docked = true;
+  t.state.ui.dockedStationId = OUTLAW_STATION;
+  if (!t.state.entityList.some(e => e.type === 'station')) t.sim.spawn({type:'station',pos:{x:0,z:0},data:{stationId:OUTLAW_STATION}});
+  const owner = t.sim.registry.get('pirateDisguise');
+  const request = {stationId:OUTLAW_STATION,contextId:'pq151',requestId:'quote'};
+  const quote = owner.launderAtDock({...request,action:'quote'}).quotes[0];
+  assert.ok(quote);
+  return owner.launderAtDock({...request,action:'confirm',requestId:'confirm',quoteId:quote.quoteId});
 }
 
 function cleanup(t) {
@@ -172,7 +185,7 @@ test(`seed ${SEED}: a hot pod is still scanned if you never dock the outlaw port
   }
 });
 
-test(`seed ${SEED}: outlaw dock washes the pod; later scan is clean; ledger records the cut`, () => {
+test(`seed ${SEED}: explicit outlaw confirmation washes the pod; later scan is clean; ledger records the cut`, () => {
   const t = boot(SEED);
   try {
     const expectedCut = launderCutCredits(CONTRABAND_ID, POD_UNITS, 0);
@@ -184,6 +197,8 @@ test(`seed ${SEED}: outlaw dock washes the pod; later scan is clean; ledger reco
     const heatBefore = t.state.player.heat;
 
     t.sim.bus.emit('dock:docked', { stationId: OUTLAW_STATION });
+    assert.equal(pod.data.laundered, undefined, 'docking alone never pays');
+    confirmWash(t);
 
     assert.equal(pod.data.laundered, true);
     assert.equal(pod.data.legality, 'legal');
@@ -238,7 +253,7 @@ test(`seed ${SEED}: Quiet standing pays the cut down`, () => {
     assert.equal(cheap, 806);
 
     const pod = spawnPod(t);
-    t.sim.bus.emit('dock:launder', { stationId: OUTLAW_STATION });
+    confirmWash(t);
     assert.equal(t.launders[0].accepted, true);
     assert.equal(t.launders[0].cut, cheap);
     assert.equal(t.launders[0].reputation, 700);
@@ -254,6 +269,8 @@ test(`seed ${SEED}: short credits leave the pod hot`, () => {
   try {
     const pod = spawnPod(t);
     t.sim.bus.emit('dock:docked', { stationId: OUTLAW_STATION });
+    assert.equal(pod.data.laundered, undefined, 'docking alone never pays');
+    confirmWash(t);
     assert.equal(t.launders[0].accepted, false);
     assert.equal(t.launders[0].reason, 'short');
     assert.equal(pod.data.legality, 'contraband');
@@ -276,6 +293,8 @@ test(`seed ${SEED}: classified salvage remaps through the existing helper`, () =
     });
     assert.equal(pod.data.legality, 'restricted');
     t.sim.bus.emit('dock:docked', { stationId: OUTLAW_STATION });
+    assert.equal(pod.data.laundered, undefined, 'docking alone never pays');
+    confirmWash(t);
     assert.equal(pod.data.laundered, true);
     assert.equal(pod.data.commodityId, COMMON_SALVAGE_COMMODITY_ID);
     assert.equal(pod.data.legality, 'legal');

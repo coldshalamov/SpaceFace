@@ -441,7 +441,7 @@ function paperworkFor(state, station) {
   if (hasRestrictedCargo(state)) {
     const stationKey = (station && (station.id || station.stationId)) || '';
     return (canLaunderSalvageAtStation(station) || canLaunderSalvageAtStation(stationKey))
-      ? 'Fence open for restricted cargo at this berth.'
+      ? 'Papers service in Market: choose a hot pod within 200 WU and review its cut before washing. Ownership stays unchanged.'
       : 'Restricted cargo may draw a customs scan.';
   }
   return null;
