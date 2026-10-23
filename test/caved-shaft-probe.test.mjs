@@ -98,6 +98,8 @@ function boot(seed = 6606) {
       sectorId: SECTOR_ID,
     },
   });
+  // Legacy scanner-owner fixture, not the production runtime-owned POI adapter.
+  // caved-shaft-return-guidance.test.mjs exercises the real production shape separately.
   state.world.activeSector = {
     id: SECTOR_ID,
     stations: [], fields: [], gates: [],
@@ -167,6 +169,7 @@ test('a second close scan returns the durable frame through the real mission and
   const offer = h.state.missions.boards[STATION_ID].slots
     .find((row) => row.source === LANDMARK_QUEST_SOURCE);
   assert.ok(offer);
+  assert.match(explorationDiscoveryPlates(h.state).find(p => p.poiId === POI_ID).body, /Cut Refinery.*Jobs board/);
 
   // The first ordinary close reading can already be filed before the hardened-probe job is taken.
   h.scanner._pulse(h.state, h.player, 12);
@@ -179,6 +182,7 @@ test('a second close scan returns the durable frame through the real mission and
   assert.equal(h.missions.acceptMission(offer.id), true);
   const mission = h.state.missions.active.find((row) => row.sourceOfferId === offer.id);
   assert.ok(mission);
+  assert.match(explorationDiscoveryPlates(h.state).find(p => p.poiId === POI_ID).body, /Return to the Caved Shaft.*close scanner pulse/);
   assert.equal(mission.needsTargets, false, 'the contract reuses the physical shaft carrier');
   assert.deepEqual(h.state.nav.waypoint.pos, h.shaft.pos);
 
@@ -202,6 +206,12 @@ test('a second close scan returns the durable frame through the real mission and
   assert.ok(plate);
   assert.match(plate.body, /C6-1 · Shaft Return Frame/);
   assert.match(plate.note, new RegExp(CAVED_SHAFT_PROBE.artifact.id));
+
+  h.scanner._pulse(h.state, h.player, 24);
+  assert.equal(h.log.filter(row => row.event === 'economy:grantCredits' && row.payload.reason === `mission:${mission.id}`).length, 1);
+  assert.equal(h.log.filter(row => row.event === 'landmark:artifactRecovered').length, 1);
+  assert.equal(plate.body, `${CAVED_SHAFT_PROBE.artifact.title} — ${CAVED_SHAFT_PROBE.artifact.body}`);
+  assert.doesNotMatch(plate.body, /Jobs board|Return to the Caved Shaft/);
 
   const savedWorld = h.world.serialize();
   const restored = boot(6607);

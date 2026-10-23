@@ -4,6 +4,7 @@
 import { SECTORS } from '../data/sectors.js';
 import { UNIQUE_WRECKS } from '../data/uniqueWrecks.js';
 import { borrowedVoiceJournalPlate } from '../data/borrowedVoice.js';
+import { CAVED_SHAFT_PROBE, cavedShaftReturnGuidance } from '../data/landmarkMissions.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 
@@ -143,6 +144,11 @@ export function explorationDiscoveryPlates(state) {
         record.defeatedAt,
         record.triangulatedAt,
       );
+      const shaftGuidance = sector.id === CAVED_SHAFT_PROBE.sectorId && poi.id === CAVED_SHAFT_PROBE.poiId
+        ? cavedShaftReturnGuidance(state) : null;
+      const plateRecord = shaftGuidance
+        ? { ...record, landmarkArtifact: shaftGuidance.artifact } : record;
+      const body = plateBody(sector, poi, plateRecord);
       plates.push({
         id: `${sector.id}:${poi.id}`,
         sectorId: sector.id,
@@ -151,9 +157,9 @@ export function explorationDiscoveryPlates(state) {
           ? poi.discoveryPlate.title.trim()
           : (poi.name || record.name || poi.id),
         meta: `${sector.name} · ${record.investigated ? 'SOURCE INVESTIGATED' : (record.defeated ? 'SITE RESOLVED' : 'PHYSICALLY IDENTIFIED')}`,
-        body: plateBody(sector, poi, record),
-        note: record.landmarkArtifact && record.landmarkArtifact.id
-          ? `Recovered ${record.landmarkArtifact.id} · ${progress.found}/${progress.total} authored sites found · ${progress.percent}% sector exploration`
+        body: shaftGuidance && shaftGuidance.text ? `${body}\n${shaftGuidance.text}` : body,
+        note: plateRecord.landmarkArtifact && plateRecord.landmarkArtifact.id
+          ? `Recovered ${plateRecord.landmarkArtifact.id} · ${progress.found}/${progress.total} authored sites found · ${progress.percent}% sector exploration`
           : progress.total > 0
             ? `${progress.found}/${progress.total} authored sites found · ${progress.percent}% sector exploration`
             : 'No additional authored sites are charted in this sector.',
