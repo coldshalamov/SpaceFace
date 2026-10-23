@@ -96,8 +96,13 @@ test('the family roster clock unlocks one silhouette at a time, lawfully', () =>
   assert.deepEqual(swarmBroodIssues(), []);
   assert.deepEqual(swarmBroodRosterFor(1).map((r) => r.id), ['mite']);
   assert.deepEqual(swarmBroodRosterFor(3).map((r) => r.id), ['mite', 'spitter']);
-  assert.deepEqual(swarmBroodRosterFor(7).map((r) => r.id), ['mite', 'spitter', 'charger']);
-  assert.deepEqual(swarmBroodRosterFor(11).map((r) => r.id), ['mite', 'spitter', 'charger', 'leecher']);
+  assert.deepEqual(swarmBroodRosterFor(7).map((r) => r.id), ['mite', 'spitter', 'spore_drift', 'charger']);
+  assert.deepEqual(swarmBroodRosterFor(11).map((r) => r.id), ['mite', 'spitter', 'spore_drift', 'charger', 'lantern_cyst', 'leecher']);
+  // The W-BLOOM-LOW tiers complete the clock: glassback 13, wake_eel 15, bellows 17.
+  assert.deepEqual(swarmBroodRosterFor(17).map((r) => r.id), [
+    'mite', 'spitter', 'spore_drift', 'charger', 'lantern_cyst', 'leecher',
+    'glassback', 'wake_eel', 'bellows',
+  ]);
   // Every family telegraphs {bark,line,cue} — the FB-016/017 language, verbatim shape.
   for (const family of SWARM_BROOD_FAMILIES) {
     assert.ok(family.telegraph.bark && family.telegraph.line && family.telegraph.cue,
@@ -143,6 +148,64 @@ test('the ship wave is untouched: quota, concurrency and roster pins hold', () =
   // The ship roster itself is unchanged by this packet: every entry is a known ship archetype
   // id (the mite is not among them).
   assert.ok(SWARM_ROSTER.every((r) => r.enemyId !== 'mite'));
+});
+
+test('the authored kill laws bind: massOnly, blastOnly, swells and the burst laws', () => {
+  const h = boot({ wave: 17 });
+  const engine = makeEngine(h);
+  engine.prepareWave(h.state.run, 17);
+  engine.spawnWave(h.state);
+  const bodies = engine._bodies;
+
+  // glassback `massOnly`: direct fire and blasts ping off the shell — only mass kills.
+  const gb = familySlot(engine, 'glassback');
+  assert.ok(gb >= 0, 'wave 17 fields the glassback');
+  engine._killDirectForTest(gb, 'direct');
+  assert.equal(bodies.alive[gb], 1, 'a gun pings off the glassback shell');
+  engine._killDirectForTest(gb, 'explosive');
+  assert.equal(bodies.alive[gb], 1, 'a blast still pings off the glassback shell');
+
+  // spore_drift `blastOnly`: whips and walls only blow the cloud around.
+  const sd = familySlot(engine, 'spore_drift');
+  assert.ok(sd >= 0, 'wave 17 fields the spore drift');
+  engine._killDirectForTest(sd, 'collision');
+  assert.equal(bodies.alive[sd], 1, 'a wall just blows the drift around');
+  engine._killDirectForTest(sd, 'explosive');
+  assert.equal(bodies.alive[sd], 0, 'only an explosion burns it out');
+
+  // bellows `swells`: the first non-explosive strike inflates; the second detonates —
+  // and the burst shoves a neighbor.
+  const bw = familySlot(engine, 'bellows');
+  assert.ok(bw >= 0, 'wave 17 fields the bellows');
+  let neighbor = -1;
+  for (let k = 0; k < SWARM_BROOD_MAX; k++) {
+    if (bodies.alive[k] && k !== bw) { neighbor = k; break; }
+  }
+  assert.ok(neighbor >= 0);
+  bodies.px[neighbor] = bodies.px[bw] + 10;
+  bodies.pz[neighbor] = bodies.pz[bw];
+  const nvx = bodies.vx[neighbor];
+  engine._killDirectForTest(bw, 'direct');
+  assert.equal(bodies.alive[bw], 1, 'the first strike only inflates the bellows');
+  engine._killDirectForTest(bw, 'direct');
+  assert.equal(bodies.alive[bw], 0, 'the second strike detonates it');
+  assert.ok(bodies.vx[neighbor] !== nvx, 'the burst shoves the pack');
+
+  // glassback `shardRadius`: the shell's death shatters onto neighbors in range.
+  const gb2 = familySlot(engine, 'glassback');
+  if (gb2 >= 0) {
+    let nb = -1;
+    for (let k = 0; k < SWARM_BROOD_MAX; k++) {
+      if (bodies.alive[k] && k !== gb2 && bodies.family[k] !== bodies.family[gb2]) { nb = k; break; }
+    }
+    if (nb >= 0) {
+      bodies.px[nb] = bodies.px[gb2] + 5;
+      bodies.pz[nb] = bodies.pz[gb2];
+      engine._killDirectForTest(gb2, 'collision');
+      assert.equal(bodies.alive[gb2], 0, 'mass finally kills the glassback');
+      assert.equal(bodies.alive[nb], 0, 'the shell shatters onto the pack');
+    }
+  }
 });
 
 test('spitters lob a marked arc: the marker leads, the splash punishes standing on it', () => {

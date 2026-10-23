@@ -41,7 +41,7 @@ export const lineProgression = {
   init(ctx = {}) {
     this.state = ctx.state || null;
     this.bus = ctx.bus || null;
-    this.kernel = ctx.kernel || null;
+    this.registry = ctx.registry || null;
     this._heldTargetId = null;
     this._heldMassT = 0;
     this._heldAttachmentId = null;
@@ -62,12 +62,22 @@ export const lineProgression = {
 
   _player() {
     const s = this.state;
-    return s && s.player ? s.player : null;
+    if (!s) return null;
+    if (s.player && s.player.id != null) return s.player;
+    return (s.playerId != null && s.entities && typeof s.entities.get === 'function')
+      ? s.entities.get(s.playerId) || null
+      : null;
   },
 
   _attachments() {
-    const k = this.kernel;
-    return k && k.attachments ? k.attachments : null;
+    // The registered combat owner holds the attachments kernel — the init context carries
+    // no `kernel` key on the production route.
+    const registry = this.registry;
+    const combat = registry && typeof registry.get === 'function' ? registry.get('combat') : null;
+    const kernel = combat
+      ? (typeof combat.ensureKernel === 'function' ? combat.ensureKernel() : combat.kernel)
+      : null;
+    return kernel && kernel.attachments ? kernel.attachments : null;
   },
 
   _onLatched(payload = {}) {
@@ -167,11 +177,24 @@ export const lineProgression = {
     }
   },
 
-  serialize(state) {
-    return { data: this._ensureBag(state) };
+  // FRESH_RUN_SYSTEMS — New Game starts at class I with an empty ledger and no held body.
+  newGame() {
+    this._heldTargetId = null;
+    this._heldMassT = 0;
+    this._heldAttachmentId = null;
+    this._snapGraceUntil = 0;
+    if (this.state) this.state.lineProgression = normalizeLineProgression(null);
   },
 
-  deserialize(state, entry) {
+  // The save dispatcher calls serialize() with no arguments and deserialize(bag) with
+  // one; live state comes from this.state (set at init), not parameters.
+  serialize() {
+    return this.state ? { data: this._ensureBag(this.state) } : {};
+  },
+
+  deserialize(entry) {
+    const state = this.state;
+    if (!state) return;
     const data = entry && entry.data !== undefined ? entry.data : entry;
     state.lineProgression = normalizeLineProgression(data);
   },

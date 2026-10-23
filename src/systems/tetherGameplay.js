@@ -1715,21 +1715,30 @@ export const tetherGameplay = {
     const def = attachmentDef(combatKernel(this), attachment.defId);
     if (!def) return { changed: false, reason: 'unknown_attachment_def', attachment };
     const policy = typeof attachments.reelPolicy === 'function' ? attachments.reelPolicy(attachment.id) : null;
-    const reelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
+    // LINE-03/04 (rows 498–499): an over-class hold strains the line — the winch reels
+    // slower, commanded authority weakens, and the strained cable reads its break
+    // threshold early. Factors come from the lineProgression bag (1 when under class).
+    const strain = state && state.lineProgression ? state.lineProgression : null;
+    const baseReelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
+    const reelRate = baseReelRate * (Number.isFinite(strain && strain.overClassReelFactor) ? strain.overClassReelFactor : 1);
     const maxStep = positive(reelRate, 0) * Math.max(0, finite(dt));
     if (!(maxStep > 0)) return { changed: false, reason: 'reel_unavailable', attachment };
     const minLength = positive(def.minLength, 0);
     const maxLength = positive(policy && policy.maxLength, positive(def.maxLength, Infinity));
     const before = finite(attachment.restLength);
-    const maxTension = positive(policy && policy.break && policy.break.maxTension, Infinity);
+    const snapTensionFactor = Number.isFinite(strain && strain.overClassSnapTensionFactor) ? strain.overClassSnapTensionFactor : 1;
+    const maxTension = positive(policy && policy.break && policy.break.maxTension, Infinity) / Math.max(1e-6, snapTensionFactor);
     const automaticBreakAllowed = automaticMasslineBreakAllowed(def, player, target);
     const normalized = options && options.normalizedAxis === true;
     const runtime = this._ensureCadenceRuntime(state, attachment.id);
     let proposal = null, requested;
     if (normalized) {
       const command = state.input && state.input.actions && state.input.actions.massline;
+      // Over-class strain also costs commanded authority: the winch answers the stick
+      // weakly while the load is above the Line's class ceiling.
+      const turnFactor = Number.isFinite(strain && strain.overClassTurnFactor) ? strain.overClassTurnFactor : 1;
       proposal = stepCadenceWinch(runtime.winch, {
-        dt, axis: reelDelta, restLength: before, minLength, maxLength, reelRate,
+        dt, axis: reelDelta * turnFactor, restLength: before, minLength, maxLength, reelRate,
         tension: finite(attachment.lastTension), maxTension, automaticBreakAllowed,
         pair: readCadencePair(player, target, before),
         orbit: !!(command && command.lineControl && Math.abs(finite(command.orbitDirection)) > 0.08),

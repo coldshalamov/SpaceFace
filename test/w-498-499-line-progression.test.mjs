@@ -40,7 +40,11 @@ function harness() {
     },
   };
   const sys = Object.create(lineProgression);
-  sys.init({ state, bus, kernel: { attachments } });
+  sys.init({
+    state,
+    bus,
+    registry: { get: (id) => (id === 'combat' ? { kernel: { attachments } } : null) },
+  });
   return { state, bus, sys, attachments, cutCalls, emitted };
 }
 
@@ -113,14 +117,23 @@ test('w-499: a within-class hold never heats, and a stale bag normalizes clean',
   assert.equal(state.lineProgression.overClass, false, '5 T is inside the class-I ceiling');
   assert.equal(state.lineProgression.winchHeat, 0, 'heat fully decays');
 
-  // Save round trip: a raw bag normalizes, a missing bag defaults.
-  const saved = sys.serialize(state);
-  const restored = { simTime: 0, entities: new Map(), player: { id: 'p1' } };
-  sys.deserialize(restored, saved);
+  // Save round trip with the dispatcher's calling convention (serialize(), deserialize(bag)):
+  // a raw bag normalizes into live state, a missing bag defaults.
+  const saved = sys.serialize();
+  const restored = { simTime: 0, entities: new Map(), playerId: 'p1' };
+  const sys2 = Object.create(lineProgression);
+  sys2.init({ state: restored, bus, registry: { get: () => null } });
+  sys2.deserialize(saved);
   assert.equal(restored.lineProgression.tonnageLoggedT, state.lineProgression.tonnageLoggedT);
-  const fresh = { };
-  sys.deserialize(fresh, undefined);
+  const fresh = { simTime: 0 };
+  const sys3 = Object.create(lineProgression);
+  sys3.init({ state: fresh, bus, registry: { get: () => null } });
+  sys3.deserialize(undefined);
   assert.equal(fresh.lineProgression.tonnageLoggedT, 0);
   assert.equal(fresh.lineProgression.classIndex, 1);
+  // New Game: the ledger and any held target clear back to class I.
+  sys.newGame();
+  assert.equal(state.lineProgression.tonnageLoggedT, 0);
+  assert.equal(state.lineProgression.classIndex, 1);
   assert.equal(LINE_CLASSES.length, 8);
 });

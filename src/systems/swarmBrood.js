@@ -208,6 +208,11 @@ export function createBroodEngine(deps = {}) {
   const teleX = new Float32Array(CAP);  // windup target point (marker/line end)
   const teleZ = new Float32Array(CAP);
   const teleDir = new Float32Array(CAP); // windup bearing (the charger's line)
+  // W-BLOOM-LOW authored laws: the bellows two-hit (first strike arms + starts the fuse)
+  // and the lantern cyst's prime clock (inside primeRange it counts down to self-burst).
+  const swellStage = new Uint8Array(CAP);
+  const swellUntil = new Float64Array(CAP);
+  const primeUntil = new Float64Array(CAP);
 
   // spatial hash
   const gridHead = new Int32Array(GRID_TABLE);
@@ -371,7 +376,9 @@ export function createBroodEngine(deps = {}) {
 
   // --- family table mirror (numeric fields the hot loop reads, rebuilt on demand) ----------
 
-  const FAMILY_SLOT_MAX = 8;
+  // Sized from the authored roster, not a fixed capacity: every family the catalog can
+  // field must fit the mirror, or spawnWave silently drops its planned allocation.
+  const FAMILY_SLOT_MAX = Math.max(8, SWARM_BROOD_FAMILIES.length);
   const liveFamilyId = new Array(FAMILY_SLOT_MAX).fill(null);
   const liveFamilyDef = new Array(FAMILY_SLOT_MAX).fill(null);
   const liveFamilyRadius = new Float32Array(FAMILY_SLOT_MAX);
@@ -525,6 +532,9 @@ export function createBroodEngine(deps = {}) {
     timer[slot] = 0;
     seedPhase[slot] = rng() * Math.PI * 2;
     serial[slot] = nextSerial++;
+    swellStage[slot] = 0;
+    swellUntil[slot] = 0;
+    primeUntil[slot] = 0;
     aliveCount += 1;
   }
 
@@ -750,6 +760,49 @@ export function createBroodEngine(deps = {}) {
           const seek = (diveT % 1) < 0.22 ? 26 : 9;
           ax += (dxp / dp) * seek;
           az += (dzp / dp) * seek;
+        }
+        // wake_eel `trails`: the eel does not seek the hull, it rides the wake — steer to
+        // a point astern of the signature's velocity so it wraps from behind.
+        if (def && def.trails) {
+          const tx = playerX - playerVX * 0.9;
+          const tz = playerZ - playerVZ * 0.9;
+          const tdx = tx - bx;
+          const tdz = tz - bz;
+          const td = Math.sqrt(tdx * tdx + tdz * tdz);
+          if (td > 1e-4) {
+            ax += (tdx / td) * 22;
+            az += (tdz / td) * 22;
+          }
+        }
+        // lantern_cyst `seeksHeat`+`primeRange`: inside the glow range the cyst primes —
+        // primeS later it detonates itself whether or not anything touched it.
+        if (def && def.primeRange > 0) {
+          if (dp <= def.primeRange) {
+            if (!primeUntil[i]) primeUntil[i] = simTime + (def.primeS || 1.1);
+          } else {
+            primeUntil[i] = 0;
+          }
+        }
+        // spore_drift `hazard`+`slowRadius`: the cloud is not an attack — inside it the
+        // signature decelerates as the haze clings to the hull.
+        if (def && def.hazard && def.slowRadius > 0 && dp < def.slowRadius
+            && signatureRef && signatureRef.vel) {
+          const speed = Math.hypot(playerVX, playerVZ);
+          if (speed > 1e-3) {
+            const decel = Math.min(speed, (def.slowAccel || 20) * dt);
+            signatureRef.vel.x -= (playerVX / speed) * decel;
+            signatureRef.vel.z -= (playerVZ / speed) * decel;
+          }
+        }
+        // bellows fuse: an armed bellows detonates on its own clock (swells two-hit law).
+        if (swellStage[i] === 1 && simTime >= swellUntil[i]) {
+          kill(i, 'explosive', px[i], pz[i]);
+          continue;
+        }
+        // lantern cyst prime fuse: the glow finished — it bursts.
+        if (primeUntil[i] && simTime >= primeUntil[i]) {
+          kill(i, 'explosive', px[i], pz[i]);
+          continue;
         }
 
         // -- the room's fields: the SAME kernel the ships feel, sampled at the brood's own point
@@ -1428,8 +1481,82 @@ export function createBroodEngine(deps = {}) {
 
   // --- death bookkeeping -------------------------------------------------------------------
 
+  // W-BLOOM-LOW kill law: the authored family flags are binding. `massOnly` dies only by
+  // mass (collision/terrain — a gun or blast pings off the shell); `blastOnly` dies only
+  // by an explosion (a whip or a wall just blows the cloud around); `swells` is the
+  // two-hit rule — the first non-explosive strike arms the fuse instead of killing.
+  function killLawAllows(def, cause) {
+    if (!def) return true;
+    if (def.massOnly && cause !== 'collision' && cause !== 'terrain') return false;
+    if (def.blastOnly && cause !== 'explosive') return false;
+    return true;
+  }
+
+  let burstGuard = false;
+
+  // Post-death authored blasts: `burstRadius`+`burstDv` shove every nearby cell AND the
+  // hot signature (a cyst or bellows is a bomb whichever side throws it); `shardRadius`
+  // kills neighboring cells outright — the glassback shatter. One level deep, no chains.
+  function broodDeathBurst(i, def, credited) {
+    const bx = px[i];
+    const bz = pz[i];
+    const shardR = Number.isFinite(def.shardRadius) ? def.shardRadius : 0;
+    const burstR = Number.isFinite(def.burstRadius) ? def.burstRadius : 0;
+    const burstDv = Number.isFinite(def.burstDv) ? def.burstDv : 0;
+    if (burstR > 0 && burstDv > 0) {
+      const br2 = burstR * burstR;
+      for (let n = 0; n < CAP; n++) {
+        if (!alive[n] || n === i) continue;
+        const dx = px[n] - bx;
+        const dz = pz[n] - bz;
+        const d2 = dx * dx + dz * dz;
+        if (d2 > br2) continue;
+        const d = Math.sqrt(d2) || 1;
+        const falloff = 1 - d / burstR;
+        vx[n] += (dx / d) * burstDv * falloff;
+        vz[n] += (dz / d) * burstDv * falloff;
+      }
+      // The signature feels the same burst, scaled by mass — a bomb is a bomb.
+      if (signatureRef && signatureRef.vel) {
+        const pdx = playerX - bx;
+        const pdz = playerZ - bz;
+        const pd2 = pdx * pdx + pdz * pdz;
+        if (pd2 <= br2) {
+          const pd = Math.sqrt(pd2) || 1;
+          const share = Math.min(1, (liveFamilyMass[family[i]] || 10) / Math.max(1, playerMass));
+          const falloff = 1 - pd / burstR;
+          signatureRef.vel.x += (pdx / pd) * burstDv * falloff * share;
+          signatureRef.vel.z += (pdz / pd) * burstDv * falloff * share;
+        }
+      }
+      if (bus && typeof bus.emit === 'function') {
+        bus.emit('swarm:broodBurst', { familyId: liveFamilyId[family[i]], pos: { x: bx, z: bz }, radius: burstR });
+      }
+    }
+    if (shardR > 0 && !burstGuard) {
+      burstGuard = true;
+      const sr2 = shardR * shardR;
+      for (let n = 0; n < CAP; n++) {
+        if (!alive[n] || n === i) continue;
+        const dx = px[n] - bx;
+        const dz = pz[n] - bz;
+        if (dx * dx + dz * dz > sr2) continue;
+        kill(n, 'explosive', px[n], pz[n], credited);
+      }
+      burstGuard = false;
+    }
+  }
+
   function kill(i, cause, sampleX, sampleZ, credited = true) {
     if (!alive[i]) return;
+    const def = liveFamilyDef[family[i]];
+    if (!killLawAllows(def, cause)) return;
+    if (def && def.swells && cause !== 'explosive' && swellStage[i] === 0) {
+      // First strike inflates: the fuse starts, the second strike (or the clock) detonates.
+      swellStage[i] = 1;
+      swellUntil[i] = finite(getState()?.simTime) + (Number.isFinite(def.swellS) ? def.swellS : 2.6);
+      return;
+    }
     alive[i] = 0;
     aliveCount -= 1;
     const c = CAUSE_INDEX[cause];
@@ -1439,6 +1566,7 @@ export function createBroodEngine(deps = {}) {
       killPosX[c] = finite(sampleX);
       killPosZ[c] = finite(sampleZ);
     }
+    if (def && (def.burstRadius > 0 || def.shardRadius > 0)) broodDeathBurst(i, def, credited);
     if (!credited) return;
     creditedCount[c]++;
     const pay = killPayFor(liveFamilyId[family[i]]);

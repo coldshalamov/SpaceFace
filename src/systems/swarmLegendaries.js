@@ -297,12 +297,12 @@ export function createSwarmLegendaryDirector(ctx) {
       let shoved = 0;
       for (const death of pending) {
         if (death.lifetime !== lifetime || death.wave !== wave) continue; // a stale room
-        if (death.kind === 'brood') {
-          if (arena && typeof arena.applyLegendaryShove === 'function') {
-            arena.applyLegendaryShove({ center: death.pos });
-            shoved += 1;
-          }
-          continue;
+        // Domino reads room-wide: EVERY credited death shoves both populations — the
+        // Brood flock through its own owner and the entity bodies through the physics
+        // port — so a flock kill beside a ship still moves the ship and vice versa.
+        if (arena && typeof arena.applyLegendaryShove === 'function') {
+          arena.applyLegendaryShove({ center: death.pos });
+          shoved += 1;
         }
         const bodies = queryPhysicalBodies(state, death.pos, DOMINO_RADIUS_WU, helpers, this._scratch, {
           includeAnchored: false,
