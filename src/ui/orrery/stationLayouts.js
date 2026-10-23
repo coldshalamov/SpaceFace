@@ -385,10 +385,6 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
     display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden !important; }
   ${D} .sxb-signs .sx-adboard__text { display:inline !important; margin:0 0 0 8px !important; }
 }
-/* …and at 600 tall or less (960×540) each sign keeps to one line, so the band costs one line, not two */
-@media (min-width:901px) and (min-height:461px) and (max-height:600px) {
-  ${D} .sxb-signs > .sx-adboard { -webkit-line-clamp:1; }
-}
 /* …and its foot: the seven destination words (~715px at full tracking) were capped at 64vw, so at
    651–800 wide only MARKET and SHIPWORKS showed and INDUSTRY ran under COMMS. Now the words own the
    row's left side, closed up at the 12px floor, and the right side stacks UNDOCK over COMMS · HELP,
