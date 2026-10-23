@@ -278,6 +278,11 @@ export async function buildKillcamStage(built, io, options = {}) {
     // -- Hulls.
     _centroid.set(0, 0, 0);
     let centroidN = 0;
+    // The fallback camera follows the recorded subject itself — an unclamped
+    // centroid would park on the death point while a travelled tape plays out
+    // of frame.
+    const subjectShip = (slots.find((s) => s.ship && s.ship.player) || slots[0] || {}).ship || null;
+    let subjectX = 0, subjectZ = 0, subjectSeen = false;
     for (const slot of slots) {
       const ship = slot.ship;
       const dead = ship.d >= 0 && t >= ship.d;
@@ -321,6 +326,9 @@ export async function buildKillcamStage(built, io, options = {}) {
         slot.obj.rotation.z = age * 0.9;
         _centroid.x += slot.obj.position.x; _centroid.z += slot.obj.position.z; centroidN++;
       }
+      if (ship === subjectShip && slot.obj) {
+        subjectX = slot.obj.position.x; subjectZ = slot.obj.position.z; subjectSeen = true;
+      }
     }
 
     // -- Bolts.
@@ -355,8 +363,15 @@ export async function buildKillcamStage(built, io, options = {}) {
     if (centroidN > 0) _centroid.multiplyScalar(1 / centroidN); else _centroid.set(0, 0, 0);
     _centroid.x = (_centroid.x - originX) * SCALE;
     _centroid.z = (_centroid.z - originZ) * SCALE;
-    const len = Math.hypot(_centroid.x, _centroid.z);
-    if (len > CAM_CENTROID_CLAMP) _centroid.multiplyScalar(CAM_CENTROID_CLAMP / len);
+    if (subjectSeen) {
+      // Follow the subject wherever the tape carries it; the fight centroid's
+      // 40-unit clamp exists for the orbit radius, not the subject's flight.
+      _centroid.x = (subjectX - originX) * SCALE;
+      _centroid.z = (subjectZ - originZ) * SCALE;
+    } else {
+      const len = Math.hypot(_centroid.x, _centroid.z);
+      if (len > CAM_CENTROID_CLAMP) _centroid.multiplyScalar(CAM_CENTROID_CLAMP / len);
+    }
   }
 
   function orbitCamera(built2, dt) {

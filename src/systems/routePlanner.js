@@ -228,8 +228,8 @@ export function computeDiscoveredRoute(state, targetSectorId, mode, opts = {}) {
     const interdict = routeInterdictChance(b, via, drive);
     const toll = via === 'gate' ? gateTollFor(b) : 0;
     totalToll += toll;
-    legs.push({ from: nodes[i], to: nodes[i + 1], fuel, charge, interdict, via,
-      ...(['gate', 'dark', 'spine'].includes(mode) ? { toll, travelVia: via } : {}) });
+    legs.push({ from: nodes[i], to: nodes[i + 1], fuel, charge, interdict, via, travelVia: via,
+      ...(['gate', 'dark', 'spine'].includes(mode) ? { toll } : {}) });
     totalFuel += fuel;
   }
   return { legs, totalFuel, totalHops: nodes.length - 1,

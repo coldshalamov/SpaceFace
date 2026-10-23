@@ -46,7 +46,7 @@ import { ensureVergeState } from './faction_verge.js';
 
 const MAX_LAW_ZONE_WAKE = 64;   // bound this system's own contribution to verge.lawZones
 
-function clamp01(v) { return v < 0 ? 0 : v > 1 ? v : v; }
+function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
 /** Unclaimed wreck count for the tide: markers still carrying a salvage pool. */
 function unclaimedWreckUnits(markers) {
