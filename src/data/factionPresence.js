@@ -173,7 +173,7 @@ function conflictPlan({ factionId, shipDefId, sectorId, seed, index, pos, pairKe
  * garrison, so a flipped front re-garrisons with the NEW owner the next time the sector loads.
  * Conflicts input is the factions-owned state.conflicts map; this module never writes it.
  */
-export function planConflictPresence({ sectorId, seed = 1, conflicts = null, ownerFactionId = null } = {}) {
+export function planConflictPresence({ sectorId, seed = 1, conflicts = null, ownerFactionId = null, gateAnchor = null } = {}) {
   if (!sectorId) return [];
   const plans = [];
   for (const pairKey of conflictPairsForSector(sectorId)) {
@@ -184,7 +184,8 @@ export function planConflictPresence({ sectorId, seed = 1, conflicts = null, own
       ? ownerFactionId
       : sides[0];
     const hulls = CONFLICT_PRESENCE_HULLS[garrison] || CONFLICT_PRESENCE_DEFAULT_HULLS;
-    const anchor = seededPosition(seed, `conflict-${pairKey}`, sectorId, 40);
+    const anchor = gateAnchor && Number.isFinite(gateAnchor.x) && Number.isFinite(gateAnchor.z)
+      ? gateAnchor : seededPosition(seed, `conflict-${pairKey}`, sectorId, 40);
     let slot = 0;
     for (let i = 0; i < escalation.pickets; i++) {
       const angle = hash32(seed, pairKey, sectorId, 'picket', i) / 0x100000000 * Math.PI * 2;
@@ -289,6 +290,7 @@ export function planFactionPresence({
   revocationCount = 0,
   conflicts = null,
   ownerFactionId = null,
+  gateAnchor = null,
 } = {}) {
   if (!sectorId) return Object.freeze([]);
   const plans = [];
@@ -430,7 +432,7 @@ export function planFactionPresence({
   }
 
   if (conflicts) {
-    plans.push(...planConflictPresence({ sectorId, seed, conflicts, ownerFactionId }));
+    plans.push(...planConflictPresence({ sectorId, seed, conflicts, ownerFactionId, gateAnchor }));
   }
 
   return Object.freeze(plans);

@@ -16,6 +16,7 @@ import { COMMODITIES } from '../../../data/commodities.js';
 import { FACTION_META } from '../../../data/factions.js';
 import { MISSION_TYPES } from '../../../data/missions.js';
 import { SECTORS } from '../../../data/sectors.js';
+import { replayStandingLines } from '../../../story/endings/worldAfter.js';
 import { contractTermById } from '../../../data/contractClauses.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
@@ -494,6 +495,10 @@ export function createContractsScreen(ctx) {
   el.className = 'k-panel sx-ct';
   el.innerHTML = contractsFrameHtml();
   const dispatchEl = el.querySelector('.sx-ct-dispatch__label');
+  const standingEl = document.createElement('p');
+  standingEl.className = 'k-sentence';
+  standingEl.setAttribute('data-replay-standing-orders', '');
+  dispatchEl.parentNode.appendChild(standingEl);
   const boardEl = el.querySelector('.sx-ct__board');
   const dossierEl = el.querySelector('.sx-ct__dossier');
   const activeEl = el.querySelector('.sx-ct__active');
@@ -612,7 +617,10 @@ export function createContractsScreen(ctx) {
       selectedId = String(mid(list[0]));
     }
     const dispatch = missionBoardDispatchLabel(state, stationId, list.length);
+    const standing = replayStandingLines(state).join(' ');
     if (dispatchEl.textContent !== dispatch) dispatchEl.textContent = dispatch;
+    standingEl.textContent = standing;
+    standingEl.hidden = !standing;
     if (!list.length) {
       mountDataState(boardEl, 'empty', {
         code: 'BOARD_EMPTY',

@@ -738,6 +738,8 @@ export const factionPresence = {
         ...story,
         conflicts: state.conflicts || null,
         ownerFactionId: (sectors[sectorId] && sectors[sectorId].owner) || null,
+        gateAnchor: state.world?.currentSectorId === sectorId
+          ? state.world?.activeSector?.gates?.find(gate => gate?.pos)?.pos : null,
       }),
     ];
     const own = ensureOwnState(state);
@@ -1185,11 +1187,13 @@ export const factionPresence = {
     };
     pushReceipt(state, { kind: 'conflictFlip', ...receipt, pairKey, pos });
     this.bus.emit('wreckField:source', {
-      fieldId: `conflict-flip:${pairKey}`,
+      fieldId: `conflict-flip:${payload.flipId || `${pairKey}:${state.simTime || 0}`}`,
       sectorId,
       kind: 'aftermath',
       pos: { x: pos.x, z: pos.z },
       bornAt: state.simTime || 0,
+      cause: 'territory_flip',
+      losingFactionId: pairKey.split(':').find(id => id !== payload.newOwner) || null,
     });
   },
 

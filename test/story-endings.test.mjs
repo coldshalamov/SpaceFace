@@ -578,9 +578,13 @@ check('live: endings and sandbox advance distinct replay hooks while preserving 
       // objective is scheduled only after the finale's last reading interval has elapsed.
       assert.equal(h.state.story.scheduled.some((event) => event.id === 'post_ending_' + rec.directiveId),
         false, choice + ' does not schedule the objective ahead of the sealed testimony');
-      for (let step = 0; step < 400 && (isWrittenFinaleActive(h.state.story.writtenFinale)
+      // Last Call includes the cast's retained deeds. Cover the authored reading
+      // intervals rather than assuming the older, shorter manuscript's duration.
+      const readingBudget = h.state.story.writtenFinale.beats.reduce((sum, beat) =>
+        sum + Math.max(beat.delayS, (beat.ttl || 0) + 2) + 1, 30);
+      for (let step = 0; step < readingBudget && (isWrittenFinaleActive(h.state.story.writtenFinale)
         || h.story._writtenFinaleHoldsChannel()); step++) {
-        h.state.simTime += 1; // the narrative clock is sim time; 1 s steps cover the ~230 s finale
+        h.state.simTime += 1; // narrative time, including every sealed Last Call reading interval
         h.story.update(1, h.state);
       }
       assert.ok(!isWrittenFinaleActive(h.state.story.writtenFinale), choice + ' finale completes');

@@ -14,8 +14,9 @@ function tileHtml(item, kind) {
     ? `data-nav="${item.id}" role="tab" id="sx-tab-${item.id}" aria-controls="sx-panel" aria-selected="false" tabindex="-1"`
     : `data-act="${item.id}"`;
   const extra = isNav ? '' : ' sx-tile--act';
+  // Inside a role=tablist an <li> keeps no role of its own — the tab is the listitem's button.
   return (
-    `<li><button type="button" ${stationControlAttrs(item.id)} class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
+    `<li${isNav ? ' role="presentation"' : ''}><button type="button" ${stationControlAttrs(item.id)} class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
       `<span class="sx-tile__seat" aria-hidden="true">${stationIcon(item.id)}</span>` +
       `<span class="sx-tile__badge k-t-fine k-signal" data-badge="${item.id}" hidden></span>` +
       `<span class="sx-tile__label">${escapeMarkup(item.label)}</span>` +

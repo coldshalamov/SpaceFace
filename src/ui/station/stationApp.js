@@ -1,4 +1,5 @@
 import { stationFrameHtml } from '../views/stationFrames.js';
+import { createStationArrivalPresenter } from './stationArrival.js';
 // src/ui/station/stationApp.js — Field Hardware berth chrome (PQ-194 / P33 shell).
 // Docking is an arrival on the lit 3D berth: stencil station name, authority legend, one news
 // tape, leftover event/ledger/mechanic strips, destination keys along the bottom edge, Undock as
@@ -776,6 +777,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }, 3600);
   }
 
+  const arrivalPresenter = createStationArrivalPresenter(ctx, {
+    ...opts.arrivalTimers,
+    showReceipt,
+    receiptVisible: () => receiptEl.hidden === false,
+  });
+
   function subscribe(event, handler) {
     const bus = ctx && ctx.bus;
     if (!bus || typeof bus.on !== 'function') return;
@@ -1438,6 +1445,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         const row = pendingReceipts.shift();
         showReceipt(row.kind, row.title, row.delta);
       }
+      arrivalPresenter.show();
       // First focus lands on the active dock tile. screenManager focuses the first focusable in DOM
       // order when a screen has not chosen one, and the topbar's HOLD gauge button precedes the
       // dock — so every keyboard-driven arrival painted a focus ring on the cargo readout. The tile
@@ -1459,6 +1467,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       }
     },
     onHide() {
+      arrivalPresenter.hide();
       finishReturnSummary(state());
       shown = false; commands.setEnabled(false); effects.hide();
       if (receiptTimer) { clearTimeout(receiptTimer); receiptTimer = 0; }
@@ -1475,6 +1484,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (scr && typeof scr.onHide === 'function') { try { scr.onHide(); } catch (_) {} }
     },
     dispose() {
+      arrivalPresenter.dispose();
       shown = false; commands.dispose(); effects.dispose();
       rootEl.classList.remove('sx-observatory');
       rootEl.removeAttribute('data-fh-temp');

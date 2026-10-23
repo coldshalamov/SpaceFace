@@ -97,6 +97,7 @@ import { exposedDeadDropStacks, takeExposedDeadDrop } from './boreDeadDrop.js';
 import { allRegionalPressureRecipes, pressureRecipesForRegion } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState, rankServiceDiscount } from './factions.js';
+import { endingStationTradeMults } from '../story/endings/worldAfter.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { contaminationSaleMult } from '../data/alienEcology.js'; // AE-077/078 biohazard market policy
@@ -2727,6 +2728,9 @@ export const economy = {
     // separately from scarcity, fees and stale intel (board row 321).
     const standingOnly = commodityStandingMultipliers(spread, standingBase, {});
     const standing = commodityStandingMultipliers(spread, standingBase, conditionMult);
+    const endingTerms = endingStationTradeMults(state, stationId);
+    standing.buy *= endingTerms.buy;
+    standing.sell *= endingTerms.sell;
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.

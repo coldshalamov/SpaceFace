@@ -136,6 +136,8 @@ import {
 } from '../missions/capitalBossSpawn.js';
 import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
+import { syncCaptainStandingOrders, noteStandingOrderCompletion, normalizeStandingOrders } from './captainStandingOrders.js';
+import { syncColdburnBid, coldburnDeliveryBonus } from './coldburnRey.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
@@ -2157,8 +2159,10 @@ export const missions = {
       const shortageChanged = this._syncShortageOffers(board);
       const starterChanged = this._syncStarterJobOffer(info, board);
       const rankContractChanged = this._syncRankContractOffer(info, board, epoch);
+      const captainChanged = syncCaptainStandingOrders(this, info, board);
+      const reyChanged = syncColdburnBid(this, info, board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || quietPassageChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged || rankContractChanged) {
+        || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || quietPassageChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged || rankContractChanged || captainChanged || reyChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -2311,6 +2315,8 @@ export const missions = {
     this._syncCapitalBossOffer(info, board, epoch);
     this._syncAdventureSpeedOffers(info, board);
     this._syncRankContractOffer(info, board, epoch);
+    syncCaptainStandingOrders(this, info, board);
+    syncColdburnBid(this, info, board);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
   },
@@ -4726,6 +4732,8 @@ export const missions = {
       ...(setPieceCauseOf(offer)
         ? { upfrontCostCr: setPieceUpfrontCost(offer, this.state) } : {}),
       sourceOfferId: offer.id || null,
+      giverId: offer.giverId || null,
+      clientId: offer.clientId || offer.giverId || null,
       cause: offer.cause ? JSON.parse(JSON.stringify(offer.cause)) : null,
       chainNextSeed: (
         offer.campaign47aBeat != null
@@ -4733,7 +4741,7 @@ export const missions = {
         || !!(offer.params && offer.params.racingContractId)
       )
         ? null
-        : (offer.source !== SET_PIECE_MISSION_SOURCE && def && def.chainable)
+        : (offer.source !== 'coldburnBid' && offer.source !== 'captainStandingOrder' && offer.source !== SET_PIECE_MISSION_SOURCE && def && def.chainable)
           ? this._chainSeed(offer) : null,
     };
   },
@@ -9483,8 +9491,10 @@ export const missions = {
     if (m._settlePending) delete m._settlePending;
     const setPieceTransition = this._compileSetPieceTransition(m, 'completed');
     const clauseSettlement = settleContractClauses(m);
-    const settledRewardCr = clauseSettlement.rewardCr;
+    if (m.cause?.reyBid) this.bus.emit('coldburnRey:playerDelivered', { missionId: m.id });
+    const settledRewardCr = clauseSettlement.rewardCr + coldburnDeliveryBonus(state, m);
     m.status = 'completed';
+    noteStandingOrderCompletion(state, m);
     if (m.params?.workingBattlefield) state.story.flags.workingBattlefieldCompleted = true;
     if (m.params?.adventureSpeedId) {
       const completed = state.missions.adventureSpeedCompleted || (state.missions.adventureSpeedCompleted = {});
@@ -13407,6 +13417,8 @@ export const missions = {
     delete state.missions.ilexArkReward;
     delete state.missions.setPieceSettlements;
     delete state.missions.adventureSpeedCompleted;
+    delete state.missions.standingOrders;
+    delete state.missions.captainOrderCycles;
     state.missions.nextId = 1;
     state.missions.config = MISSION_TUNING;
     // Clear story spine + any prior campaign47a sidecar (nested under state.story).
@@ -13566,6 +13578,8 @@ export const missions = {
     if (m.postEndingReplay) {
       serialized.postEndingReplay = JSON.parse(JSON.stringify(m.postEndingReplay));
     }
+    if (m.standingOrders?.length) serialized.standingOrders = normalizeStandingOrders(m.standingOrders);
+    if (m.captainOrderCycles) serialized.captainOrderCycles = JSON.parse(JSON.stringify(m.captainOrderCycles));
     // RC-34: the dead-mark graveyard ledger. Preserves absence like yardContracts — an empty
     // ledger rolls identically to none, so only a live ledger reaches the save payload.
     if (Array.isArray(m.killedMarkNames) && m.killedMarkNames.length) {
@@ -13629,6 +13643,14 @@ export const missions = {
       delete state.missions.starterJobStep;
     }
     state.missions.nextId = data.nextId || 1;
+    const standingOrders = normalizeStandingOrders(data.standingOrders);
+    if (standingOrders.length) state.missions.standingOrders = standingOrders;
+    else delete state.missions.standingOrders;
+    if (data.captainOrderCycles && typeof data.captainOrderCycles === 'object' && !Array.isArray(data.captainOrderCycles)) {
+      state.missions.captainOrderCycles = Object.fromEntries(Object.entries(data.captainOrderCycles).slice(-24)
+        .map(([id, row]) => [id, { cycle: Math.max(0, Math.floor(Number(row?.cycle) || 0)),
+          dueAtS: Math.max(0, Number(row?.dueAtS) || 0) }]));
+    } else delete state.missions.captainOrderCycles;
     state.missions.config = data.config || MISSION_TUNING;
     if (Object.prototype.hasOwnProperty.call(data, 'careerContracts')) {
       state.missions.careerContracts = data.careerContracts

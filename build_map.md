@@ -650,7 +650,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | rope-world | devin-fleet-oct20 | `tetherGameplay.js` obstruction/wrap seam, `combat/attachments.js`, `world/asteroidField.js`, `masslineThrow.js`, `combat/masslineTargetScoring.js`, cable render, `cameraDirector.js` throw framing (§31 THE HAND) | 390 |
 | hostile-hands | devin-fleet-oct20 | `src/ai/` doctrine/maneuver/reflexes/fireDiscipline/temperament/squad, `aiPorts.js`, `engagementAuthority.js`, `combat/damage.js` friendly-fire flag, weapons splash path, `lawSecurity.js` retaliation, `collisionConsequences.js`, capacitor in `combat.js` (§31 THE FIGHT) | 393 |
 | racing | devin-fleet-oct20 | `racing*` systems/ui/render, `ai/racingDriver.js`, `missions/racing*`, `raceLevels.js`, `raceCourses.js`, `world/racingCorridor.js`, `raceBoard.js` (§31 THE FIGHT) | 394, 395, 472 |
-| world-answers-2 | codex-bm30 | ending application in `story.js`, `postEndingReplay.js`, `sectorSim.js` readers, faction territory-flip embodiment, `traffic.js` pickets/identity, `npcJobsRuntime.js`, `stationContacts.js`, standing-order offers (§31 THE WORLD) | 396, 397, 398, 426 |
+| world-answers-2 | done (devin-25-oct22) | ending application in `story.js`, `postEndingReplay.js`, `sectorSim.js` readers, faction territory-flip embodiment, `traffic.js` pickets/identity, `npcJobsRuntime.js`, `stationContacts.js`, standing-order offers (§31 THE WORLD) | - |
 | run-memory | devin-fleet-oct20 | `worldOneOffs.js`, `scanReveal.js`, `shipCapabilities.js`, `story/campaign47a/embodiedMissions.js`, B7 board hunk of `missions.js`, `story/endings/lifeLedger.js` (§31 THE LONG GAME) | 399, 400 |
 | hull-commit | devin-fleet-oct20 | `data/ships.js`, `systems/ships.js` refit/resale, `data/modules.js`, `techVerbLadder.js`, `shipLedger.js` (§31 THE LONG GAME) | 401, 469 |
 | works | devin-fleet-oct20 | `data/automation.js`, `automation.js`, `alphabet.js`, `claims.js`, `data/sites.js`, `siteProduction.js`, `crafting.js`, automation-panel composer (§31 THE LONG GAME) | 402, 466, 403 |
@@ -662,9 +662,9 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | monoliths | free | `render/renderer.js`, `systems/missions.js`, `systems/traffic.js` — behaviour-preserving splits, one file at a time, only while no claimed seam lists the file (§31 THE MACHINE) | 412, 413 |
 | toolchain | free | `package.json`, `package-lock.json`, three/Rapier/Electron adapters, `scripts/AGENTS.md` script tiers (§31 THE MACHINE) | 414, 415 |
 | rope-scale | devin-fleet-oct20 | `masslineTelemetry.js` tension read-out, `cargoCustody.js` declared-vs-true mass, customs prompt hunk of `lawSecurity.js`, contract templates in `economyContracts.js` (§31.5) | 423, 444 |
-| hull-ghost | devin-fleet-oct20 | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 424, 425, 460 |
+| hull-ghost | devin-fleet-oct20 | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 424, 425 |
 | first-look | free | the clean-flight-plane guard, camera distance review, passable near-field dust, hero-hull art — coordinate with L-PICTURE (§31.5, §31.6) | 427, 428 |
-| stranger-hud | devin-fleet-oct20 | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 457, 431 |
+| stranger-hud | devin-fleet-oct20 | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 457 |
 | set-pieces | free | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks (§31.5) | 430 |
 | pulse-voice | devin-fleet-oct20 | `data/flavor/040-band.js` format, `systems/bandRadio.js`, `systems/stationBroadcast.js`, traffic hail/chatter data, ship identity data, station PA cues (serial with `hull-ghost` on `barks.js`/`barkVoice.js`) (§31.6) | 432, 434, 436 |
 | pulse-print | free | `data/newsTemplates.js` wiring, billboard/bay-screen presenters, inbox data and surface, codex data (ORRERY-consistent screen edits) (§31.6) | 433, 435, 437 |
@@ -686,7 +686,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | screens-true | devin-fleet-oct20 | `ui/screens/missionLog.js`, station shell scroll padding, `gameOver` bench fixture and fallback copy, map destination strip in `galaxyMap.js`, `orrery/settingsPreview.js`, ledger/factions empty states (§32.7) | 479 |
 | home-crew | free | the Long Berth (`worldOneOffs.js` hunk serial with `run-memory`; `claims.js` hunk serial with `works`), trophy yard persistence, crew data + perk hook through the ships derived-stat writer (serial with `hull-commit`) (§32.4) | 445, 446 |
 | weather | devin-thirty-oct22 | weather kinds via `fields`/`sectorSim` hazards, forecast hunk of `bandRadio.js` (serial with `pulse-voice`), seasonal schedule beside row 439 (§32.4) | 449 |
-| m1-first-hour | free | integration lane for the first hour — claims exact paths per sitting only (§32.4, §32.5) | 454 |
+| m1-first-hour | claude-beta-oct23 | integration lane for the first hour — claims exact paths per sitting only (§32.4, §32.5) | 454 |
 | engine | done | `scripts/program-dispatch.mjs`, `scripts/check-plan-integrity.mjs`, `design/program/PLAN_ENGINE.md` (§32.6) | - |
 | seed-a | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 416, 417 |
 | seed-b | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 418, 419 |
@@ -703,7 +703,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | campaign | free | `systems/story.js`, `story/campaign47a/`, Book hunks of `systems/missions.js` (serial with `run-memory` for the B7 hunk), `data/narrative.js`, `systems/capitalBossRuntime.js` Colossus parts (§34.7) | 533, 534, 535, 536, 537, 538, 539, 547 |
 | places-people | free | one-off census tool, new Orphaned Shift encounter owners (one per sitting, on the Morrow and Rubric pattern), `data/sectorWayOfLife.js` readers, canon cast hooks in their owners (§34.3, §34.8) | 505, 540, 542, 506 |
 | cadence | devin-thirty-oct22 | `systems/encounterDirector.js` cooldowns and rhythm phases, `systems/tensionDirector.js`, adventure swarm-pocket shape (§33 row 497) | 497 |
-| audit-50 | free | reads anywhere; writes only fixes inside the owning seam's files, or one demo-ledger row (§34 row 548) | 548 |
+| audit-50 | claude-beta-oct23 | reads anywhere; writes only fixes inside the owning seam's files, or one demo-ledger row (§34 row 548) | 548 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -1045,9 +1045,9 @@ production units, and never build what they write.
 | 393 | AL-FIGHT-3 | Verbs feed verbs — mass kills spill latchable charge cells; guns-only tape runs dry (§31.3) | BUILD | OPEN — after 391 + 392 |
 | 394 | AL-RACE-1 | The line is contested — RF-05 second slice: rivals take anchors, takedowns, medal times, instant restart; AL-HF-03/04/09/10/12 inside (§31.3) | BUILD | OPEN |
 | 395 | AL-RACE-2 | Every way of life is a course — six sector-signature circuits through the RF-02 validator (§31.3) | BUILD | OPEN — reuses 394's rival lines |
-| 396 | AL-WORLD-1 | The ending rewrites the map — three flyable facts per ending; AL-LG-06/07/08/09 inside (§31.3) | BUILD | OPEN |
-| 397 | AL-WORLD-2 | The front line you can see — a territory flip embodies as picket, wreck field and customs change (verify-first hypothesis) (§31.3) | BUILD | OPEN |
-| 398 | AL-WORLD-3 | Civilians with names — bounded remembered-captain roster; rescued captain returns as a standing-order client (AL-LG-16) (§31.3) | BUILD | OPEN |
+| 396 | AL-WORLD-1 | The ending rewrites the map — three flyable facts per ending; AL-LG-06/07/08/09 inside (§31.3) | BUILD | DONE devin-25-oct22 |
+| 397 | AL-WORLD-2 | The front line you can see — a territory flip embodies as picket, wreck field and customs change (verify-first hypothesis) (§31.3) | BUILD | DONE devin-25-oct22 |
+| 398 | AL-WORLD-3 | Civilians with names — bounded remembered-captain roster; rescued captain returns as a standing-order client (AL-LG-16) (§31.3) | BUILD | DONE devin-25-oct22 |
 | 399 | AL-LONG-1 | Seen at minute one, moved at hour fifteen — ≥8 `revisitNeed` one-offs, ≥3 in hours 10–25; AL-LG-01/02/03 inside (§31.3) | BUILD | OPEN |
 | 400 | AL-LONG-2 | The reckoning is built from your run — four one-fact-different saves give four B7 boards; AL-LG-04/05 inside (§31.3) | BUILD | OPEN |
 | 401 | AL-LONG-3 | Hulls you commit to — two irreversible refits per hull; ladder to hour 15; deed-priced resale; AL-LG-10/11/12 inside (§31.3) | BUILD | OPEN |
@@ -1075,12 +1075,12 @@ production units, and never build what they write.
 | 423 | AL-STORY-1 | The rope is a scale — towing reveals true mass against the declared manifest, so a mass discrepancy is a clue, contraband or a frame (generalises 47-A's evidence spindle) (§31.5) | BUILD | OPEN |
 | 424 | AL-STORY-2 | The hull ghost — Captain Maera Vols speaks in flight about real events: stunts, near-misses, sectors she remembers, the story (§31.5) | BUILD | OPEN |
 | 425 | AL-STORY-3 | Faces on the radio — in-flight transmissions show the speaker's portrait with a voiced bark, for the cast and for station locals (§31.5) | BUILD | OPEN — after 424; owner ruling needed: `src/ui/AGENTS.md` bans pilot portraits in the flight HUD, so until ruled the portrait shows on the station comms screen and the in-flight line carries name, voice and caption only |
-| 426 | AL-STORY-4 | Coldburn Rey, a rival with a face — a recurring rival hauler who bids on your contracts, races your deliveries, and can be robbed or rescued; he remembers (§31.5) | BUILD | OPEN — after 398 in the same seam |
+| 426 | AL-STORY-4 | Coldburn Rey, a rival with a face — a recurring rival hauler who bids on your contracts, races your deliveries, and can be robbed or rescued; he remembers (§31.5) | BUILD | DONE devin-25-oct22 |
 | 427 | AL-LOOK-1 | Fill the frame without filling the path — readable hull scale, passable near-field dust, depth layers above/below the flight plane, yielding traffic; no new obstacles (clean-flight-plane law §31.6; guarded by 443) (§31.5) | ART | OPEN — coordinate with L-PICTURE; take only while that lane is quiet |
 | 428 | AL-LOOK-2 | Hero hulls first — the five hulls a player meets in the first two hours raised to hero craft before any other hull (§31.5; includes D72) | ART | OPEN — coordinate with L-PICTURE (D72 is claimed there) |
 | 429 | AL-HUD-1 | A HUD a stranger can read — fix the visible leaks (internal ids such as `ZONE_CERES_DERELICT`, the Overhead/Circuits buttons overlapping the target card, overlapping shipworks list text); hand the rest to ORRERY as one list (§31.5) | FIX | OPEN |
 | 430 | AL-SET-1 | Ten trailer moments — ten existing set pieces, each reachable in the first three hours, staged with a camera beat and a music beat (§31.5) | BUILD | OPEN — clips judged through Theater after 407 |
-| 431 | AL-STATION-1 | Arriving somewhere — docking feels like arrival: a live bay behind the station screen, a voiced barkeep greeting, regulars with faces (§31.5) | BUILD | OPEN |
+| 431 | AL-STATION-1 | Arriving somewhere — docking feels like arrival: a live bay behind the station screen, a voiced barkeep greeting, regulars with faces (§31.5) | BUILD | DONE devin-25-oct22 |
 | 432 | PULSE-RADIO | Radio that's about this galaxy — ≥2 h per channel before a repeat, live-fact segments, The Margin as a show; FILL lines after (§31.6) | BUILD | OPEN |
 | 433 | PULSE-SIGNS | Screens and signs that talk back — billboards, bay screens, news crawls, wanted posters with the player's hull (§31.6) | BUILD | DONE devin-thirty-oct22 |
 | 434 | PULSE-CHATTER | Every ship is somebody — name, registry, captain, cargo, destination, mood; ≥3,000 hail/chatter lines; manifests feed 423 (§31.6) | BUILD | OPEN |
@@ -1106,7 +1106,7 @@ production units, and never build what they write.
 | 456 | RC-SWARM-CLEAN | Swarm runs clean — aftermath card gated in survival, round-1 resolution diagnosed, round-10 Iron Maw script, wording fixes (§32.7) | FIX | OPEN — M2; first in the swarm seam. Aftermath-card gate, round-1 diagnosis and wording landed (fleet oct20); remaining: round-10 Iron Maw script (fb-027 pins the current setup), clipped ROUND label, swarm-active player-truth gate |
 | 457 | RC-FIRST-MINUTES | The clean first two minutes — drive key vs Help, ticker gate, markers off instruments, Hitch naming, in-world names, captioned hook (§32.7) | FIX | OPEN — M1. Captioned 47-A hook, Hitch naming, and the tutorial-owned ticker landed (fleet oct20); remaining: drive key vs Help, markers off instruments |
 | 459 | RC-VIGNETTES | Lived vignettes worth meeting — regenerate from the generator, charge/await verbs, first-hour prop preference, trim (§32.7) | BUILD | OPEN — M1 |
-| 460 | RC-CAST-MEMORY | A cast that remembers — wire 12 dormant contact counters, band glyphs, spoken leads, Last Call reads them (§32.7) | BUILD | OPEN — M3; after 424 in the seam |
+| 460 | RC-CAST-MEMORY | A cast that remembers — wire 12 dormant contact counters, band glyphs, spoken leads, Last Call reads them (§32.7) | BUILD | DONE devin-25-oct22 |
 | 461 | RC-DOCKET | The docket opens — caseForLoss table, reachability test, settlement range, hull-scaled restitution (§32.7) | BUILD | OPEN |
 | 462 | RC-CHASE | Crime is a chase — Witness Run, the Sweep, the Sponsor (§32.7) | BUILD | OPEN — after 461 |
 | 463 | RC-BOSS-READ | Bosses you can read — move plate, name/act cards, Adventure boss bar, show-don't-toast, elite intent, retry act (§32.7) | BUILD | OPEN |

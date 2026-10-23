@@ -54,7 +54,10 @@
 /* Destination keys sit in the foot rail (station.css). Do not promote this nav to a sidebar. */
 :is(#screens .sx-observatory, .sx-observatory) .of-facility-rail { grid-area: auto; display: flex; align-items: stretch; position: relative; min-width: 0; padding: 0; width: auto; border: 0; background: none; gap: 14px; flex: 1 1 auto; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-ops__dock { flex: 1; min-width: 0; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-dock { position: relative; display: flex; width: 100%; height: auto; overflow: auto hidden; isolation: isolate; scrollbar-width: none; }
+/* The rail is the rail's own horizontal scroller (scrollbar hidden). `scroll-padding` is the
+   clearance scrollIntoView/focus-scrolling park a tab inside of, so the first and last
+   destinations reach the glass fully drawn instead of flush against the clip edge. */
+:is(#screens .sx-observatory, .sx-observatory) .sx-dock { position: relative; display: flex; width: 100%; height: auto; overflow: auto hidden; isolation: isolate; scrollbar-width: none; scroll-padding: 6px 18px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-dock__group { display: flex; flex-direction: row; align-items: stretch; flex-wrap: nowrap; list-style: none; padding: 4px 0; margin: 0; gap: 4px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-dock__group>li { display: flex; flex: 0 0 auto; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-tile__seat { position: relative; display: inline-flex; width: 23px; height: 23px; align-items: center; justify-content: center; transform: translateY(var(--dock-lift,0px)) scale(var(--dock-scale,1)); transition: transform 160ms var(--so-ease); }
