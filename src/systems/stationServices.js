@@ -23,7 +23,7 @@
 import { hash32, mulberry32 } from '../core/rng.js';
 import { SECTORS } from '../data/sectors.js';
 import { stationYardRateMult } from '../economy/stationConditions.js';
-import { removeCargo } from './cargo.js';
+import { removeCargo, sellableCargoQty } from './cargo.js';
 
 const DAY_SECONDS = 600;                 // sector-day contract (mirrors encounterDirector)
 const REFUEL_U_PER_S = 4;                // pump rate for a mid tank at a neutral yard
@@ -277,7 +277,12 @@ export const stationServices = {
       this.bus.on('dock:undocked', this._onUndocked);
       this.bus.on('sector:exit', this._onExit);
       this.bus.on('ship:statsChanged', this._onHullChanged);
-      this._onDecantRequest = () => this.decantFuelCells();
+      this._onDecantRequest = () => {
+        const result = this.decantFuelCells();
+        if (result.reason === 'no_free_cells') this.bus.emit('toast', {
+          text: 'No unreserved whole fuel cells are available to decant.', kind: 'warn', ttl: 4,
+        });
+      };
       this.bus.on('service:decantRequest', this._onDecantRequest);
     }
   },
@@ -539,7 +544,10 @@ export const stationServices = {
       if (this.bus) this.bus.emit('toast', { text, kind: 'warn', ttl: 2.8 });
       return { ok: false, reason: 'tank_full', cells: 0, units: 0, text };
     }
-    const cells = Math.min(held, DECANT_MAX_CELLS_PER_PASS, Math.floor(room / FUEL_UNITS_PER_CELL));
+    // The same custody reader as sale, jettison and flight Crack protects sealed manifests.
+    const free = Math.floor(sellableCargoQty(state, 'cmdty_fuel_cells'));
+    if (free <= 0) return { ok: false, reason: 'no_free_cells', cells: 0, units: 0 };
+    const cells = Math.min(free, DECANT_MAX_CELLS_PER_PASS, Math.floor(room / FUEL_UNITS_PER_CELL));
     if (cells <= 0) return { ok: false, reason: 'tank_full', cells: 0, units: 0 };
     const removed = removeCargo(state, 'cmdty_fuel_cells', cells);
     if (removed <= 0) return { ok: false, reason: 'no_cells', cells: 0, units: 0 };
