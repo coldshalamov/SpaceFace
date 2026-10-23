@@ -33,6 +33,7 @@ import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP, FUEL_CELL_COOK } from './fu
 import { stepRadiationCargoCook } from './fragileCargo.js';
 import { writeHazardPresence } from '../data/hazardLanguage.js';
 import { stepDebrisCrossings } from './debrisCrossings.js';
+import { stepDockCollar } from './dockCollar.js';
 import { CHART_FILING, chartFilingBounty } from '../data/surveyCharts.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { FACTION_META } from '../data/factions.js';
@@ -4758,6 +4759,7 @@ export const world = {
     this._tickDeferredCriticalSpawns(state);
     this._tickScan(dt, state);
     this._tickHazards(dt, state);
+    this._applyDockCollar(dt, state);
     if (observeTick) this._tickZoneLabel(state);
     if (observeTick) this._tickPOIScan(state);
     this._tickWorldOneOffSpin(dt, state);
@@ -6224,6 +6226,54 @@ export const world = {
     const presence = state.world.hazardPresence || (state.world.hazardPresence = { nebula: false, radiation: false });
     writeHazardPresence(zones, player.pos, presence);
     this._applyDebrisCrossings(dt, state);
+  },
+
+  // The berth gate already refuses a fast dock. A hull that is in the pocket
+  // above that gate takes one scrape. A crawl and a docked ship do not.
+  _applyDockCollar(dt, state) {
+    const live = state || this.state;
+    const scraped = stepDockCollar(this, dt, live);
+    const hits = scraped && scraped.hits;
+    if (!hits || !hits.length) return scraped;
+    const player = live.entities && live.entities.get(live.playerId);
+    for (let i = 0; i < hits.length; i++) this._applyDockCollarHit(player, hits[i], live);
+    return scraped;
+  },
+
+  _applyDockCollarHit(player, hit, state) {
+    if (!player || player.alive === false || !hit || !(hit.damage > 0)) return;
+    const packet = scalarHitToDamagePacket({
+      damage: hit.damage,
+      damageType: 'kinetic',
+      pos: player.pos,
+      source: { kind: 'dock_collar', hazardId: null },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    const request = {
+      attackerId: null,
+      targetId: player.id,
+      packet,
+      origin: { kind: 'dock_collar' },
+    };
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    if (combat && combat.state === state && typeof combat.ensureKernel === 'function') {
+      combat.ensureKernel().routeDamage(request);
+      return;
+    }
+    if (combat && combat.state === state && combat.kernel && typeof combat.kernel.routeDamage === 'function') {
+      combat.kernel.routeDamage(request);
+      return;
+    }
+    if (player.flags && (player.flags.invuln || player.flags.docked)) return;
+    if (state && state.ui && state.ui.docked) return;
+    const shield = Math.max(0, Number(player.shield) || 0);
+    let remaining = hit.damage;
+    if (shield > 0) {
+      const absorbed = Math.min(shield, remaining);
+      player.shield = shield - absorbed;
+      remaining -= absorbed;
+    }
+    if (remaining > 0) player.hull = Math.max(0, (Number(player.hull) || 0) - remaining);
   },
 
   // A debris disc throws a few shards across itself. The chart already calls
