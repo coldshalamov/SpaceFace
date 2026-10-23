@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 
-## Latest verified delivery addendum: 2026-10-23 09:05 UTC
+## Latest verified delivery addendum: 2026-10-23 09:06 UTC
 
 All ten goals remain OPEN. This addendum supersedes older current-status prose, not historical evidence, scope, or acceptance boundaries.
 
@@ -11,7 +11,7 @@ All ten goals remain OPEN. This addendum supersedes older current-status prose, 
 - [PR533](https://github.com/coldshalamov/SpaceFace/pull/533), head `026e0e0975cb502ae82147da312fffcd6e92d10c`: exact-head run `39919475932 / #5901` is terminal failure. The focused Decant command was included, executed, and exited 0; do not call the workflow green.
 - [PR526](https://github.com/coldshalamov/SpaceFace/pull/526), head `6f6ff23b76acd8d755ed14d483890d175b2e1d49`: exact-head run `39916605470` failed; focused 32/32 passed. PR531 still has no hosted CI because stacked-branch filters exclude it. Other failures remain unattributed absent paired-base evidence.
 - Choir [PR528](https://github.com/coldshalamov/SpaceFace/pull/528) hosted run `5887` failed while its focused Choir gate explicitly passed 17/17; historical `5882` was cancelled with its command passing. No blanket unrelated-failure claim.
-- Next work: observe terminal attribution for Nereid, Nyx and Decant without retry/cancel; then inspect the next evidence-backed sector unit. That unit is under inspection, not yet allocated. Preserve existing Writ, graphics and browser holds; no new user action is needed for the active source/test lane.
+- Next work: observe terminal attribution for Nereid, Nyx and Decant without retry/cancel. A grounded candidate is now allocated for reproduction in unowned `bountyHunt.js`: inspect whether `settleQuarryDown` clears `contractTargetId` before the existing faction lookup, apparently omitting the intended +4 hunter-guild reputation while paying the 200-credit cut. This is a hypothesis, not yet runtime-confirmed. Keep the unit to source plus a focused new test; do not touch traffic, contactHail, or Save. Reproduce, make a bounded fix only if verified, then independently review. Preserve existing Writ, graphics and browser holds; no new user action is needed for the active source/test lane.
 - No merge, deployment, integration, full production boot, native player journey, visual/performance, or whole-game/sector acceptance is claimed. All ten goals remain open.
 
 # Open expansion outcomes
