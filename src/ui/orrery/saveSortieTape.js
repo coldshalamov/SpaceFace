@@ -295,12 +295,22 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   /** One button per stop, seated on the channel at its moment. */
   function buildStops() {
     stopsLayer.textContent = '';
-    stopEls = stops().map((t) => {
+    const ts = stops();
+    const at = (t) => (t >= model.lengthS - 0.5 ? geo.x1 - 22 * geo.k : x(t));
+    const xs = ts.map(at);
+    stopEls = ts.map((t, i) => {
       const b = doc.createElement('button');
       b.type = 'button';
       b.className = 'orr-tape__stop';
       b.tabIndex = -1;
-      b.style.left = `${f(t >= model.lengthS - 0.5 ? geo.x1 - 22 * geo.k : x(t))}px`;
+      // close stops split the gap between them, so each target is its own (22px where there is room)
+      const lo = i > 0 ? Math.max(xs[i] - 11, (xs[i - 1] + xs[i]) / 2) : xs[i] - 11;
+      const hi = i < xs.length - 1 ? Math.min(xs[i] + 11, (xs[i] + xs[i + 1]) / 2) : xs[i] + 11;
+      b.style.left = `${f(xs[i])}px`;
+      if (hi - lo < 21.5) {
+        b.style.width = `${f(Math.max(0, hi - lo))}px`;
+        b.style.marginLeft = `${f(lo - xs[i])}px`;
+      }
       b.style.top = `${f(geo.mid)}px`;
       const ev = model.events.find((e) => e.t === t);
       const word = t >= model.lengthS - 0.5 ? (model.killLabel || 'the loss') : t === 0 ? 'launch' : ev ? ev.label : '';
@@ -362,7 +372,8 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   }
 
   // stops: the launch, every event, the loss
-  const stops = () => [0, ...model.events.map((e) => e.t), model.lengthS].sort((a, b) => a - b);
+  // an event the tape leaves unmarked at the far end (the kill owns it) is the loss's stop, not a second one
+  const stops = () => [0, ...model.events.filter((e) => !geo || geo.x1 - x(e.t) >= 40).map((e) => e.t), model.lengthS].sort((a, b) => a - b).filter((t, i, a) => i === 0 || t !== a[i - 1]);
   let press = null;
   const hostX = (event) => event.clientX - host.getBoundingClientRect().left;
   const onDown = (event) => {
