@@ -29,7 +29,7 @@ import { el, words, settle, cue } from '../kit/index.js';
 import { createArcRail } from '../orrery/arcRail.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
-import { injectPauseLayouts } from '../orrery/pauseLayouts.js';
+import { injectPauseLayouts, PAUSE_COLUMN_QUERY } from '../orrery/pauseLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
 import { requestCodexTab } from './codex.js';
@@ -614,9 +614,10 @@ let photo = null;
 // FB-085: the pause route owns P (BINDINGS.photo) — the handler lives while this screen is top.
 let pausePhotoKeyHandler = null;
 let pauseRootEl = null;
-// The narrow-window switch (≤760 wide takes the column). mount reads it once, so a resize across 760
-// while pause is up must remount, or the sheet keeps the wrong composition (review #499).
-const PAUSE_NARROW_QUERY = '(max-width:760px)';
+// The narrow-window switch (≤760 wide, or a narrow window too tall for the dial, takes the column).
+// mount reads it once, so a resize across it while pause is up must remount, or the sheet keeps the
+// wrong composition (review #499).
+const PAUSE_NARROW_QUERY = PAUSE_COLUMN_QUERY;
 let pauseNarrowWatch = null;
 function pauseNarrowQuery() {
   const mm = (globalThis.window && globalThis.window.matchMedia) || globalThis.matchMedia;
@@ -625,6 +626,8 @@ function pauseNarrowQuery() {
 }
 function pauseWantsColumn() {
   if (isPhoneLayout()) return true;
+  const mql = pauseNarrowQuery();
+  if (mql && typeof mql.matches === 'boolean') return mql.matches;
   const w = globalThis.window && globalThis.window.innerWidth;
   return typeof w === 'number' && w > 0 && w <= 760;
 }
