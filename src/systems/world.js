@@ -5519,6 +5519,14 @@ export const world = {
   // --- jump: CHARGING --------------------------------------------------------
   _tickCharging(dt, state) {
     const jump = state.jump;
+    // The fare was checked when the spool started. A tank that weeps or is sipped
+    // during the charge must not complete a jump it can no longer pay for.
+    const fare = Number(jump._fuelCost) || 0;
+    const held = Number(state.fuel && state.fuel.current) || 0;
+    if (jump.via === 'drive' && fare > held) {
+      this._abortCharge('low_fuel');
+      return;
+    }
     const drive = this._activeDrive();
     if (jump.via === 'drive' && this._combatLock && !drive.hotJump) {
       this._abortCharge('combat_lock');
@@ -5892,6 +5900,7 @@ export const world = {
     // completion tick; the request path merely validated affordability). Aborting before that
     // point has nothing to refund — the half-cost "refund" that used to live here minted free
     // fuel on every abort, repeatable without bound.
+    const fuelNeeded = Number(jump._fuelCost) || 0;
     jump.state = 'IDLE';
     jump.targetSectorId = null; jump.via = null;
     jump.chargeT = 0; jump.chargeNeeded = 0; jump._fuelCost = 0;
@@ -5900,6 +5909,7 @@ export const world = {
     this.bus.emit('jump:chargeAbort', {
       reason,
       fuelHeld: Math.floor(this.state.fuel.current) || 0,
+      ...(reason === 'low_fuel' && fuelNeeded > 0 ? { fuelNeeded } : {}),
       ...(unfiled ? { unfiled: true } : {}),
     });
   },
