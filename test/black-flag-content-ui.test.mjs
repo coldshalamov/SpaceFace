@@ -111,7 +111,8 @@ test('Back cancels an actual vulnerable airlock crossing but ordinary dismissal 
 test('disabled acquired pilot has a public distress route with scanner reopening and stale-body protection',()=>{
   const f=fixture(),pilot=f.state.entities.get(1);
   pilot.data.shipjackGeneration='pilot:1';
-  f.state.player.ownedShips=[{defId:'ship_kestrel',vesselId:'vessel:pilot',shipjackDriveRemoved:true}];
+  f.state.player.ownedShips=[{defId:'ship_kestrel',vesselId:'vessel:pilot'}];
+  f.state.combat={entities:{1:{capabilities:{drive:false}}}};
   const prompt=createBlackFlagPrompt(f,{deck:()=>f.deck});
   for(let i=0;i<8;i++)prompt.frame();
   const offer=f.offers.get('black-flag:distress');assert.ok(offer);

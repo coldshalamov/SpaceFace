@@ -1,7 +1,7 @@
 // A thin adapter to the ONE flight decision deck. Deck owns keyboard/gamepad/touch,
 // attention placement and cancellation. This module reads readiness, never computes it.
 import { getPromptDeck } from './promptDeck.js';
-import { queryShipjack, isBlackFlagAdventure, captureReadiness } from '../shipjack/model.js';
+import { queryShipjack, isBlackFlagAdventure } from '../shipjack/model.js';
 import { BLACK_FLAG_TERMS, BLACK_FLAG_ENCOUNTER_BY_ID } from '../data/blackFlag.js';
 import { laneInputWrite } from '../core/simLaneCommands.js';
 
@@ -56,7 +56,8 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
     if(!isBlackFlagAdventure(state)||state.mode!=='flight'||state.ui?.docked||!pilot?.alive)return;
     const owned=state.player?.ownedShips?.[state.player.activeShipIndex];
     if(!owned?.vesselId)return;
-    const disabled=owned.shipjackDriveRemoved===true||captureReadiness(state,pilot).driveDisabled;
+    const runtime=state.combat?.entities?.[String(pilot.id)],drive=runtime?.subsystems?.subsystem_drive;
+    const disabled=owned.shipjackDriveRemoved===true||drive?.effectiveDisabled===true||drive?.destroyed===true||runtime?.capabilities?.drive===false;
     if(!disabled){distressShown=null;deck()?.resolveDecision('black-flag:distress');return;}
     const generation=pilot.data?.shipjackGeneration ?? pilot.occupantGeneration;
     const key=`${pilot.id}:${generation}`;
