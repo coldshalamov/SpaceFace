@@ -161,6 +161,16 @@ export const TRITON_FIELD_LAB_INTERACTION = Object.freeze({
   radius: 300,
 });
 
+// Far Sounding already authors the sound verb; this is a sampling footprint, not
+// a planetary body, force field or traversable portal.
+export const VEIL_FAR_SOUNDING_INTERACTION = Object.freeze({
+  sectorId: 'sector_veil_nebula',
+  placeId: 'poi_veil_far_sounding',
+  zoneId: 'authored:poi_veil_far_sounding',
+  familyId: 'gravity_well_sounding',
+  radius: 300,
+});
+
 const AUTHORED_PLACE_FAMILIES = Object.freeze({
   poi_triton_field_lab: 'anomaly_research',
   station_vesta_outlying_yard: 'lawful_station_yard',

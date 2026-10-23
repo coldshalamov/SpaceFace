@@ -9,12 +9,13 @@ import { hash32 } from '../core/rng.js';
 import { zonesForSector, zoneAt } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
-import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS, authoredPlacePlansForSector, TRITON_FIELD_LAB_INTERACTION } from '../data/poiBehaviorFamilies.js';
+import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS, authoredPlacePlansForSector, TRITON_FIELD_LAB_INTERACTION, VEIL_FAR_SOUNDING_INTERACTION } from '../data/poiBehaviorFamilies.js';
 import { buildPoiCausalOffer } from '../missions/poiCausalOffers.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { hasContractsDesk } from '../data/missions.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
+const AUTHORED_INTERACTIONS = [TRITON_FIELD_LAB_INTERACTION, VEIL_FAR_SOUNDING_INTERACTION];
 const DAY_SECONDS = 600;
 // Catalog spend is 13 with seven grammars (1+2+2+2+1+2+3); the budget preserves the
 // standing property that every family holding a candidate zone plans, instead of silently
@@ -164,8 +165,29 @@ export const livingPoiBehaviors = {
     this._syncWorldReadouts();
   },
 
-  // Event-driven by design: no timers can silently turn ambience into combat.
-  update() {},
+  // Only this authored footprint lacks a world-zone entry event. Observe one current
+  // player/site pair; the existing entered/deferred bookkeeping owns the first cue.
+  // No progress, reward, world-zone mutation or actor iteration occurs here.
+  update() {
+    const state = this.state;
+    const own = ensureState(state);
+    const row = own.activeByZone[VEIL_FAR_SOUNDING_INTERACTION.zoneId];
+    if (authoredInteraction(row) !== VEIL_FAR_SOUNDING_INTERACTION
+        || row.status === 'resolved' || row.status === 'aftermath'
+        || row._presenceSuspended || state.mode !== 'flight'
+        || !state.world || state.world.currentSectorId !== row.sectorId
+        || state.ui && state.ui.docked
+        || own.entered[row.behaviorId] && (!this._deferredAutomaticGuidance.has(row.behaviorId)
+          || tutorialOwnsObjectiveVoice(state))) return;
+    const player = state.entities && state.entities.get(state.playerId);
+    const pos = player && player.pos;
+    if (!player || player.alive === false || !pos
+        || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)
+        || dist2(pos, row.zoneCenter) > row.zoneRadius * row.zoneRadius) return;
+    const priorZoneId = own.currentZoneId;
+    this._onZoneEntered({ zoneId: row.zoneId });
+    own.currentZoneId = priorZoneId;
+  },
 
   _activateSector(payload = {}) {
     // payload whose enterEpoch no longer matches the world's serial is stale — a queued tail
@@ -186,8 +208,10 @@ export const livingPoiBehaviors = {
     // because deserialize intentionally restores durable consequences without stale live rows.
     if (sameActivation) {
       // The epoch guard above admits this return; retained generic rows stay unchanged.
-      const lab = own.activeByZone[TRITON_FIELD_LAB_INTERACTION.zoneId];
-      if (isTritonFieldLab(lab)) delete lab._presenceSuspended;
+      for (const def of AUTHORED_INTERACTIONS) {
+        const row = own.activeByZone[def.zoneId];
+        if (authoredInteraction(row)) delete row._presenceSuspended;
+      }
       return [];
     }
     return this.planSector(sectorId, { dayIndex, sector: payload.sector || sectorOf(this.state, sectorId) });
@@ -199,8 +223,10 @@ export const livingPoiBehaviors = {
     // Departure clears presence only. Aftermath, receipts, entered identities, and the plan remain
     // available until the destination identity activates; no consequence is rolled back here.
     own.currentZoneId = null;
-    const lab = own.activeByZone[TRITON_FIELD_LAB_INTERACTION.zoneId];
-    if (isTritonFieldLab(lab)) lab._presenceSuspended = true;
+    for (const def of AUTHORED_INTERACTIONS) {
+      const row = own.activeByZone[def.zoneId];
+      if (authoredInteraction(row)) row._presenceSuspended = true;
+    }
     return true;
   },
 
@@ -224,19 +250,23 @@ export const livingPoiBehaviors = {
       sector,
       pinnedByFamily,
     });
-    // The Field Lab is outside Triton's named zones. Its descriptor must become an
-    // actual interaction at the existing POI, without replacing the Wake/Glow plan.
-    const lab = TRITON_FIELD_LAB_INTERACTION;
-    const place = sectorId === lab.sectorId
-      && (sector && sector.pois || []).find((poi) => poi && poi.id === lab.placeId);
-    if (place && place.pos && Number.isFinite(place.pos.x) && Number.isFinite(place.pos.z)) {
-      const authored = planPoiBehaviors({
-        seed: this.state.meta && this.state.meta.seed || 1,
-        sectorId, dayIndex, sector,
-        zones: [{ id: lab.zoneId, name: place.name, type: 'anomaly_deep',
-          center: place.pos, radius: lab.radius, factionId: place.factionId }],
-      });
-      rows.push(...authored);
+    // Independent authored footprints do not replace generic sector plans.
+    for (const def of AUTHORED_INTERACTIONS) {
+      const place = sectorId === def.sectorId
+        && (sector && sector.pois || []).find((poi) => poi && poi.id === def.placeId);
+      if (place && place.pos && Number.isFinite(place.pos.x) && Number.isFinite(place.pos.z)) {
+        const authored = planPoiBehaviors({
+          seed: this.state.meta && this.state.meta.seed || 1,
+          sectorId, dayIndex, sector,
+          zones: [{ id: def.zoneId, name: place.name, type: POI_BEHAVIOR_FAMILIES[def.familyId].zoneTypes[0],
+            center: place.pos, radius: def.radius, factionId: place.factionId }],
+        });
+        if (def === VEIL_FAR_SOUNDING_INTERACTION && authored[0]) {
+          authored[0].entryLine = 'Far Sounding: take a scanner reading in each range band.';
+          authored[0].contract.objective = 'Scan Far Sounding at close <105 WU, middle 105–<210 WU, and far 210–300 WU.';
+        }
+        rows.push(...authored);
+      }
     }
     const priorZoneId = own.activeSectorId === sectorId ? own.currentZoneId : null;
     own.activeSectorId = sectorId;
@@ -371,7 +401,7 @@ export const livingPoiBehaviors = {
     const row = zoneId && own.activeByZone[zoneId];
     if (!row || row.status === 'aftermath' || row.status === 'resolved') return false;
     if (verb !== row.contract.verb) return false;
-    if (isTritonFieldLab(row)) {
+    if (authoredInteraction(row)) {
       // Even an explicit zoneId must not let a remote/malformed pulse earn this reading.
       const pos = payload && payload.pos;
       if (row._presenceSuspended || !this.state.world
@@ -399,7 +429,15 @@ export const livingPoiBehaviors = {
       const band = d2 < (radius * 0.35) * (radius * 0.35) ? 0
         : d2 < (radius * 0.7) * (radius * 0.7) ? 1 : 2;
       row._soundedBands = row._soundedBands || [];
-      if (row._soundedBands.includes(band)) return false;
+      if (row._soundedBands.includes(band)) {
+        // A requested repeat reading recovers the instruction after its toast expires,
+        // but never earns another sample. Use the existing progress TTL as the throttle.
+        const now = Number(this.state.simTime) || 0;
+        if (authoredInteraction(row) === VEIL_FAR_SOUNDING_INTERACTION
+            && (!Number.isFinite(row._rangeGuidanceAt) || now < row._rangeGuidanceAt
+              || now - row._rangeGuidanceAt >= 3.5)) this._publishGuidance(row, 'progress');
+        return false;
+      }
       row._soundedBands.push(band);
     }
     row.progress = Math.min(row.contract.required, (row.progress || 0) + 1);
@@ -504,6 +542,13 @@ export const livingPoiBehaviors = {
       text = `${label} · ${prettyToken(contract.verb)} ${row.progress || 0}/${contract.required}`
         + ` · ${family.riskLabel} → ${family.rewardLabel}`;
       kind = row.dangerMode === 'telegraphed' ? 'warn' : 'info';
+    }
+    if (authoredInteraction(row) === VEIL_FAR_SOUNDING_INTERACTION
+        && phase !== 'outcome' && phase !== 'aftermath') {
+      row._rangeGuidanceAt = Number(this.state.simTime) || 0;
+      const bands = ['close <105 WU', 'middle 105–<210 WU', 'far 210–300 WU'];
+      const missing = bands.filter((_, i) => !(row._soundedBands || []).includes(i));
+      text = `FAR SOUNDING · SCAN ${row.progress || 0}/3 · Next: ${missing.join('; ')}`;
     }
     // Resolution receipts must survive a same-tick campaign/tutorial line. A four-second story
     // floor is common on first-hour authority events; keep the durable result live long enough to
@@ -677,11 +722,13 @@ export const livingPoiBehaviors = {
     if (!pos) return null;
     const sectorId = ensureState(this.state).activeSectorId || this.state.world && this.state.world.currentSectorId;
     if (!sectorId) return null;
-    const lab = ensureState(this.state).activeByZone[TRITON_FIELD_LAB_INTERACTION.zoneId];
-    if (isTritonFieldLab(lab) && !lab._presenceSuspended
-        && this.state.world && this.state.world.currentSectorId === lab.sectorId
-        && Number.isFinite(pos.x) && Number.isFinite(pos.z)
-        && dist2(pos, lab.zoneCenter) <= lab.zoneRadius * lab.zoneRadius) return lab.zoneId;
+    for (const def of AUTHORED_INTERACTIONS) {
+      const row = ensureState(this.state).activeByZone[def.zoneId];
+      if (authoredInteraction(row) && !row._presenceSuspended
+          && this.state.world && this.state.world.currentSectorId === row.sectorId
+          && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+          && dist2(pos, row.zoneCenter) <= row.zoneRadius * row.zoneRadius) return row.zoneId;
+    }
     const local = globalToSectorLocalForSector(pos, sectorId);
     const zone = zoneAt(sectorId, local.x, local.z);
     return zone && zone.id || null;
@@ -696,11 +743,12 @@ export const livingPoiBehaviors = {
     const active = this.state.world && this.state.world.activeSector;
     if (!active || !this.state.entities || typeof this.state.entities.get !== 'function') return;
     const center = row.zoneCenter;
-    if (isTritonFieldLab(row)) {
+    const def = authoredInteraction(row);
+    if (def) {
       const target = (active.pois || []).find((item) => {
         const entity = item && this.state.entities.get(item.id);
-        return item && item.poiId === TRITON_FIELD_LAB_INTERACTION.placeId
-          && entity && entity.data && entity.data.poiId === TRITON_FIELD_LAB_INTERACTION.placeId;
+        return item && item.poiId === def.placeId
+          && entity && entity.data && entity.data.poiId === def.placeId;
       });
       const entity = target && this.state.entities.get(target.id);
       if (entity) {
@@ -907,18 +955,17 @@ function pruneExpiredAftermath(own, dayIndex) {
   }
 }
 
-function isTritonFieldLab(row) {
-  const lab = TRITON_FIELD_LAB_INTERACTION;
-  return !!row && row.sectorId === lab.sectorId && row.zoneId === lab.zoneId
-    && row.familyId === lab.familyId;
+function authoredInteraction(row) {
+  return row && AUTHORED_INTERACTIONS.find((def) => row.sectorId === def.sectorId
+    && row.zoneId === def.zoneId && row.familyId === def.familyId);
 }
 
 function activeAftermathPins(own, sectorId, dayIndex) {
   const pins = {};
   for (const aftermath of Object.values(own.aftermath || {})) {
     if (!aftermath || aftermath.sectorId !== sectorId || aftermath.expiresDay <= dayIndex) continue;
-    // The independently materialized lab must not steal the Wake/Glow aftermath pin.
-    if (isTritonFieldLab(aftermath)) continue;
+    // Independent authored footprints must not steal generic aftermath pins.
+    if (authoredInteraction(aftermath)) continue;
     const prior = pins[aftermath.familyId];
     if (!prior || compareAftermathAge(aftermath, prior) >= 0) pins[aftermath.familyId] = aftermath;
   }
