@@ -558,6 +558,14 @@ export const MOBILE_SCREEN_CSS = `
   ${H} .orr-help-controls__rig.is-phone :is(.orr-hrig__lead, .orr-hrig__lead-band, .orr-hrig__halo) { display:none; }
   ${H} :is(.orr-hreg, .orr-hreg__scroll) { height:auto !important; max-height:none !important; overflow:visible !important; }
   ${H} .orr-help__stage :is(.sf-grid, .dp-grid) { grid-template-columns:minmax(0,1fr) !important; }
+  /* ui-polish-109: Factions inherited the desktop's height:100% orbit inside an auto-height page, so the
+     crest ring collapsed to nothing and only the open power's reading was left (no way to pick another).
+     The ring gets its own square berth above the reading; only the chosen, hovered or focused crest
+     names itself, as at ≤560 on the desktop (each crest keeps its aria-label). */
+  ${H} .orr-help-factions { display:flex !important; flex-direction:column; gap:16px; height:auto !important; min-height:0; }
+  ${H} .orr-help-factions > * { flex:none; min-width:0; }
+  ${H} .orr-help-factions__orbit { width:100% !important; height:320px !important; }
+  ${H} .orr-help-factions__orbit .orr-crest:not(.is-chosen, :hover, :focus-visible) .orr-crest__name { visibility:hidden; }
 
   /* Save portraits retain a horizontal rail, with enough room for each save's own label. */
   ${V} .orr-film { height:auto !important; min-height:280px !important; overflow-x:auto !important; overflow-y:hidden !important; }
