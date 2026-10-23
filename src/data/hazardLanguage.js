@@ -110,6 +110,36 @@ export function hazardLanguageFor(type) {
   return HAZARD_LANGUAGE[type] || null;
 }
 
+const NEBULA_TYPES = new Set(['nebula', 'nebula_fog']);
+const RADIATION_TYPES = new Set(['radiation', 'radiation_field']);
+
+/**
+ * Which named burns the pilot is standing in. Writes into `out` so a hazard
+ * tick does not allocate. Nebula is the murk that washes the scanner; radiation
+ * is the field that cooks.
+ */
+export function writeHazardPresence(zones, pos, out) {
+  const slot = out || { nebula: false, radiation: false };
+  slot.nebula = false;
+  slot.radiation = false;
+  if (!pos || !Array.isArray(zones)) return slot;
+  const px = Number(pos.x);
+  const pz = Number(pos.z);
+  if (!Number.isFinite(px) || !Number.isFinite(pz)) return slot;
+  for (let i = 0; i < zones.length; i++) {
+    const zone = zones[i];
+    if (!zone || !zone.center) continue;
+    const radius = Number(zone.radius);
+    if (!(radius > 0)) continue;
+    const dx = px - Number(zone.center.x);
+    const dz = pz - Number(zone.center.z);
+    if (dx * dx + dz * dz > radius * radius) continue;
+    if (NEBULA_TYPES.has(zone.type)) slot.nebula = true;
+    if (RADIATION_TYPES.has(zone.type)) slot.radiation = true;
+  }
+  return slot;
+}
+
 // ── SYSTEMS-only entry: the once-per-type-per-session counterplay hint ──────────────────────────
 
 export const hazardHints = {

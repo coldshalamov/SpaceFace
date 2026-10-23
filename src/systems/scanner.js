@@ -149,6 +149,14 @@ const PLAYER_DANGER_CONTEXTS = new Set([
   'zone_hostile', // WORLD_OVERHAUL_2_1: pirates/raiders camping a named ambush/outlaw zone
 ]);
 
+/** A nebula washes the hull scanner. The fitting multiplier is unchanged. */
+export const NEBULA_SCAN_MULT = 0.45;
+
+export function nebulaScanMult(state) {
+  const presence = state && state.world && state.world.hazardPresence;
+  return presence && presence.nebula === true ? NEBULA_SCAN_MULT : 1;
+}
+
 /** Hull-scanner reach while biological fouling is severe. 1 leaves the fitting math alone. */
 function severeHullScanMult(state) {
   if (!EXPOSURE_MODEL || EXPOSURE_MODEL.scannerNoiseAtSevere !== true) return 1;
@@ -171,12 +179,14 @@ export function scannerProfileForState(state) {
   // Severe fouling shortens the hull scanner. radiusMult itself stays the fitting, and a
   // placed sensor post still publishes its own range over the fouled hidden base.
   const foul = severeHullScanMult(state);
-  const hiddenPoiRadius = HIDDEN_POI_RADIUS * radiusMult * foul;
+  const wash = nebulaScanMult(state);
+  const hiddenPoiRadius = HIDDEN_POI_RADIUS * radiusMult * foul * wash;
   const sensorPostActive = claimSensorPostActive(state, state && state.world && state.world.currentSectorId);
   return {
     radiusMult,
+    wash,
     pingPersistMult,
-    nearRadius: NEAR_SCAN_RADIUS * radiusMult * foul,
+    nearRadius: NEAR_SCAN_RADIUS * radiusMult * foul * wash,
     hiddenPoiRadius,
     poiRadius: sensorPostActive ? Math.max(hiddenPoiRadius, SENSOR_POST_POI_RANGE) : hiddenPoiRadius,
     sensorPostActive,
