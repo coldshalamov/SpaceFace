@@ -29,7 +29,7 @@ import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
-import { restoreCombatState, restoreCombatStateSteps, serializeCombatState, hasPendingCeresWorkfleetAttachments,
+import { restoreCombatState, restoreCombatStateSteps, serializeCombatState, resolveWorldJobCombatRef, hasPendingCeresWorkfleetAttachments,
   resumeCeresWorkfleetAttachments, cancelPendingCeresWorkfleetAttachments,
   ceresWorkfleetEntityRef, ceresWorkfleetRefKey, resolveCeresWorkfleetEntityRef, ceresWorkfleetHostileAttachmentOwners, ceresWorkfleetIncomingSavedOwnerIds } from '../combat/persistence.js';
 import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
@@ -6835,7 +6835,7 @@ export const save = {
       this._clearStaleTargets();
 
       // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
-      yield* this._restoreCombatSteps(data.combat, entityIdRemap);
+      yield* this._restoreCombatSteps(data.combat, entityIdRemap, data.npcJobs);
       yield 'combat-ledger-restored';
       // Each afterContinue re-derives session state from the restored world —
       // splitting the run lets a dense save's per-system reconciles paint between.
@@ -7458,11 +7458,12 @@ export const save = {
     return r.value;
   },
 
-  *_restoreCombatSteps(d, entityIdRemap) {
+  *_restoreCombatSteps(d, entityIdRemap, incomingJobs = null) {
     const state = this.state;
     const resolveEntityRef = (ref) => {
       if (!ref || typeof ref !== 'object') return null;
       if (ref.kind === 'player') return state.playerId || null;
+      if (ref.kind === 'worldJob') return resolveWorldJobCombatRef(state, ref, incomingJobs);
       if (ref.kind === 'persistent') {
         const mapped = entityIdRemap && entityIdRemap.get(String(ref.saveId));
         return mapped != null && state.entities?.has(mapped) ? mapped : null;

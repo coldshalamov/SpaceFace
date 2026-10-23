@@ -66,6 +66,7 @@ import { takeNearWorkSlice, NEAR_WORK_TOKEN_BUDGET } from '../core/activitySched
 import { createNearestEntityQueryService } from '../core/spatialQuery.js';
 import { normalizeRoe, RulesOfEngagement } from '../ai/doctrine.js';
 import { isPlayerWanted } from './heat.js';
+import { hullEnvelopeWu } from '../data/collisionProxyManifests.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import {
   CERES_ACTIVITY_POCKETS,
@@ -239,7 +240,8 @@ const CREW_RESPONSE_ARRIVE_WU = YARD_DISPATCH_ARRIVE_WU;
 const CREW_RESPONSE_HOT_WU = YARD_DISPATCH_HOT_WU;
 const CREW_RESPONSE_COOLDOWN_S = YARD_DISPATCH_COOLDOWN_S;
 const CREW_RESPONSE_WELD_S = 6;
-const CREW_RESPONSE_DRIVE_UP_FALLBACK_S = 10;
+const CREW_RESPONSE_CONFIRM_TIMEOUT_S = 10;
+const CREW_RESPONSE_SCAN_S = 5;
 const CREW_RESPONSE_TOAST_RANGE_WU = 1600;
 // A truck that can never weld must not vanish from the yard forever: after this long held
 // off a still-hot wreck the crew gives up and the tender returns to its route. The casualty
@@ -1029,6 +1031,7 @@ export const npcJobsRuntime = {
     this._yardLastRefuseT = -Infinity;
     this._crewResponse = null;
     this._crewLastT = -Infinity;
+    this._crewScanNextT = 0;
     this._jobIds = null;
     this._jobIdsById = null;
     this._jobIdsDirty = true;
@@ -1162,6 +1165,7 @@ export const npcJobsRuntime = {
         // PQ-195.04: read-only berth service projection for the flight HUD and focused tests.
         berthStatus: () => this.berthStatus(),
         // INF-WF01: read-only crew-response projection for focused tests (detached scalars).
+        crewResponseOwnsFlight: (entity) => this._crewResponseOwnsFlight(entity),
         crewResponse: () => {
           const r = this._crewResponse;
           return r ? {
@@ -2253,6 +2257,7 @@ export const npcJobsRuntime = {
     this._yardLastRefuseT = -Infinity;
     this._crewResponse = null;
     this._crewLastT = -Infinity;
+    this._crewScanNextT = 0;
   },
 
   /**
@@ -4194,6 +4199,7 @@ export const npcJobsRuntime = {
     this._stepOncallTenderReturn();
     this._stepYardPending();
     this._stepCrewResponse(dt);
+    this._scanCrewCasualties();
     this._stepTowAssists();
     // The Ceres discovery sweeps poll the whole living-actor set. Latency-sensitive arrivals already
     // trigger adoption through wreckEcology:spawned directly, and entity spawn/kill events dirty the
@@ -4314,6 +4320,15 @@ export const npcJobsRuntime = {
       if (!entity || !entity.alive) {
         // Hull vanished without a sector demote (destroyed / despawned) → the job ends with it.
         this.release(jobId);
+        continue;
+      }
+
+      // A physically disabled drive cannot complete work merely because the threat left.
+      // Combat owns the capability; keep the same kernel interruption until it is restored.
+      if (!entry.control && this._crewDriveState(entity.id) === true) {
+        if (entry.job.phase !== NPC_JOB_PHASE.FLEE) this.interruptJob(jobId, { entityId: null });
+        entry.lastAdvanceSimT = simT;
+        this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
         continue;
       }
 
@@ -5914,15 +5929,55 @@ export const npcJobsRuntime = {
     else this._onCrewDriveUp(p);
   },
 
+  // Reconstruct a standing request from the restored combat owner, never a saved numeric id
+  // or a persisted control lease. This bounded job-bag scan also catches an unanswered crew
+  // when its existing tender returns; it never spawns a second truck.
+  _crewResponseOwnsFlight(entity) {
+    const r = this._crewResponse;
+    if (!r || !entity || entity.alive === false || this.state.entities?.get(entity.id) !== entity) return false;
+    if (entity === r.tenderRef) return entity.occupantGeneration === r.tenderGeneration
+      && this._byId()[r.jobId] === r.tenderEntry && r.tenderEntry.entityId === entity.id
+      && entity.data?.worldRecordId === r.tenderEntry.worldRecordId && entity.data?.jobId === r.jobId
+      && r.tenderEntry.control?.claimId === r.claimId;
+    return entity === r.casualtyRef && entity.occupantGeneration === r.casualtyGeneration
+      && this._byId()[r.casualtyJobId] === r.casualtyEntry
+      && r.casualtyEntry.entityId === entity.id && !r.casualtyEntry.control
+      && entity.data?.worldRecordId === r.casualtyEntry.worldRecordId && entity.data?.jobId === r.casualtyJobId;
+  },
+
+  _crewDriveState(entityId) {
+    const drive = this.state?.combat?.entities?.[String(entityId)]?.subsystems?.[YARD_DISPATCH_DRIVE_ID];
+    if (!drive) return null;
+    if (drive.destroyed === true || drive.effectiveDisabled === true) return true;
+    return drive.destroyed === false && drive.effectiveDisabled === false ? false : null;
+  },
+
+  _scanCrewCasualties() {
+    if (this._crewResponse || !this.state) return;
+    const now = finite(this.state.simTime, 0);
+    if (now < this._crewScanNextT) return;
+    this._crewScanNextT = now + CREW_RESPONSE_SCAN_S;
+    for (const jobId of this._jobIdList()) {
+      const entry = this._byId()[jobId];
+      if (!entry || entry.entityId == null || entry.sectorId !== this.state.world?.currentSectorId
+        || entry.control || entry.job?.corrupt || entry.job?.phase === NPC_JOB_PHASE.COMPLETE
+        || this._crewDriveState(entry.entityId) !== true) continue;
+      const casualty = this.state.entities?.get(entry.entityId);
+      if (!casualty || !this._nearestCrewTender(casualty)) continue;
+      this._onCrewDriveDown({ targetId: entry.entityId, subsystemId: YARD_DISPATCH_DRIVE_ID });
+      if (this._crewResponse) return;
+    }
+  },
+
   _onCrewDriveDown(p) {
     if (this.state == null || this._crewResponse) return;
     if (p.targetId == null || p.targetId === this.state.playerId) return;
     const now = finite(this.state.simTime, 0);
-    if (now - (this._crewLastT || -Infinity) < CREW_RESPONSE_COOLDOWN_S) return;
+    if (now - finite(this._crewLastT, -Infinity) < CREW_RESPONSE_COOLDOWN_S) return;
     const casualty = this.state.entities && typeof this.state.entities.get === 'function'
       ? this.state.entities.get(p.targetId)
       : null;
-    if (!casualty || casualty.alive === false || !casualty.pos) return;
+    if (!casualty || casualty.alive === false || !casualty.pos || this._crewDriveState(casualty.id) === false) return;
     // An authored Ceres service incident (tender services miner / disabled hauler recovery)
     // owns its casualty end to end; a second responder would be a second owner of one story.
     // Other causal stamps are handoff choreography, not service — they do not block.
@@ -5946,7 +6001,7 @@ export const npcJobsRuntime = {
     const casualtyJobId = this._jobIdForEntity(p.targetId);
     if (casualtyJobId == null) return;
     const casualtyEntry = this._byId()[casualtyJobId];
-    if (!casualtyEntry || !casualtyEntry.job || casualtyEntry.job.corrupt) return;
+    if (!casualtyEntry || !casualtyEntry.job || casualtyEntry.job.corrupt || casualtyEntry.control) return;
     if (casualtyEntry.job.phase === NPC_JOB_PHASE.COMPLETE) return;
 
     // The casualty's own distress: flee the attacker (the kernel's sticky threat state).
@@ -5979,6 +6034,12 @@ export const npcJobsRuntime = {
       casualtyJobId,
       casualtyEntityId: p.targetId,
       casualtyKind: casualtyEntry.job.kind,
+      casualtyRef: casualty,
+      casualtyGeneration: casualty.occupantGeneration,
+      casualtyEntry,
+      tenderRef: found.hull,
+      tenderGeneration: found.hull.occupantGeneration,
+      tenderEntry: found.entry,
       attackerId,
       arrived: false,
       weldStartT: -Infinity,
@@ -6012,7 +6073,7 @@ export const npcJobsRuntime = {
       if (entry.transient === true) continue;
       if (entry.entityId === casualty.id) continue;
       const hull = this.state.entities.get(entry.entityId);
-      if (!hull || hull.alive === false || !hull.pos) continue;
+      if (!hull || hull.alive === false || !hull.pos || this._crewDriveState(hull.id) === true) continue;
       const dx = hull.pos.x - casualty.pos.x;
       const dz = hull.pos.z - casualty.pos.z;
       const d2 = dx * dx + dz * dz;
@@ -6039,17 +6100,37 @@ export const npcJobsRuntime = {
       ? state.entities.get(response.casualtyEntityId)
       : null;
     const valid = entry && entry.control && entry.control.claimId === response.claimId
-      && tender && tender.alive !== false && tender.pos;
+      && entry === response.tenderEntry && tender === response.tenderRef
+      && tender.occupantGeneration === response.tenderGeneration
+      && tender.alive !== false && tender.pos && this._crewDriveState(tender.id) !== true;
     if (!valid) {
       this._finishCrewResponse('responder_lost');
       return;
     }
-    if (!casualty || casualty.alive === false || !casualty.pos) {
+    if (!casualty || casualty !== response.casualtyRef
+      || casualty.occupantGeneration !== response.casualtyGeneration
+      || this._byId()[response.casualtyJobId] !== response.casualtyEntry
+      || response.casualtyEntry.entityId !== casualty.id
+      || casualty.alive === false || !casualty.pos) {
       // The casualty died under the truck: the run is over, the yard goes home.
       this._finishCrewResponse('casualty_lost');
       return;
     }
+    if (response.casualtyEntry.control) {
+      // An authored handoff acquired this still-live crew. Yield, do not call it a death
+      // or steal its new controller's hull to force the rescue to finish.
+      this._finishCrewResponse('ownership_lost', 'casualty_claimed');
+      return;
+    }
     const now = finite(state.simTime, 0);
+    if (this._crewDriveState(casualty.id) === false) {
+      this._finishCrewResponse(response.welded ? 'repaired' : 'already_operational', 'combat_state');
+      return;
+    }
+    if (response.welded && now > response.fallbackAt) {
+      this._finishCrewResponse('repair_unconfirmed', 'timeout');
+      return;
+    }
     // Trucks, not gunships, for their own crews too: hold clear until the sky over the
     // casualty clears. A wanted attacker looming over the wreck holds the truck as well.
     const attacker = response.attackerId != null && state.entities
@@ -6063,6 +6144,7 @@ export const npcJobsRuntime = {
       && Math.hypot(attacker.pos.x - casualty.pos.x, attacker.pos.z - casualty.pos.z)
         <= CREW_RESPONSE_HOT_WU);
     if (this._hotAt(casualty.pos) || (attackerNear && attackerIsWantedPlayer)) {
+      if (!response.welded) { response.arrived = false; response.weldStartT = -Infinity; }
       if (!Number.isFinite(response.holdSinceT)) response.holdSinceT = now;
       if (now - response.holdSinceT > CREW_RESPONSE_HOLD_MAX_S) {
         // Nobody cleared the wreck: the yard's answer ends honestly and the truck goes home.
@@ -6081,13 +6163,49 @@ export const npcJobsRuntime = {
     const dx = casualty.pos.x - tender.pos.x;
     const dz = casualty.pos.z - tender.pos.z;
     const dist = Math.hypot(dx, dz);
-    if (dist > CREW_RESPONSE_ARRIVE_WU) {
-      const nx = dist > 1e-6 ? dx / dist : 0;
-      const nz = dist > 1e-6 ? dz / dist : 0;
-      this._writeIntent(tender, nx, nz, dist > 600, Math.atan2(dz, dx));
+    // Flight V3 consumes local side/forward commands, not world X/Z. Match casualty drift
+    // with the tender's authored RCS and settle outside both hulls before a continuous weld.
+    const profile = resolvePropulsionProfile(tender, state);
+    const pulse = profile.family === DRIVE_FAMILIES.PULSE_PLATE;
+    const standoff = Math.max(hullEnvelopeWu(tender) + hullEnvelopeWu(casualty) + 22, 90);
+    const closing = Math.min(35, Math.max(0, dist - standoff) * 0.5);
+    let desiredX = (casualty.vel?.x || 0) + dx / Math.max(1, dist) * closing;
+    let desiredZ = (casualty.vel?.z || 0) + dz / Math.max(1, dist) * closing;
+    // The refinery tender starts beside a solid station. A straight pursuit through its
+    // measured hull just spins the truck against the collider; skirt that existing hull.
+    let detouring = false;
+    for (const station of state.entityList) {
+      if (station.type !== 'station' || station.alive === false || !station.pos) continue;
+      const sx = tender.pos.x - station.pos.x, sz = tender.pos.z - station.pos.z;
+      const radius = hullEnvelopeWu(station) + hullEnvelopeWu(tender) + 18;
+      const along = clamp(-(sx * dx + sz * dz) / Math.max(1, dist * dist), 0, 1);
+      if (Math.hypot(sx + dx * along, sz + dz * along) >= radius) continue;
+      const radial = Math.hypot(sx, sz), ux = sx / Math.max(1, radial), uz = sz / Math.max(1, radial);
+      const cross = sx * (casualty.pos.z - station.pos.z) - sz * (casualty.pos.x - station.pos.x);
+      const side = cross >= 0 ? 1 : -1;
+      const outward = clamp((radius + 12 - radial) * 0.8, 0, 35);
+      const tangent = radial < radius - 5 ? 0 : 25;
+      desiredX = ux * outward - uz * side * tangent;
+      desiredZ = uz * outward + ux * side * tangent;
+      detouring = true;
+      break;
+    }
+    const dvx = desiredX - (tender.vel?.x || 0);
+    const dvz = desiredZ - (tender.vel?.z || 0);
+    const c = Math.cos(tender.rot || 0), s = Math.sin(tender.rot || 0);
+    const forward = dvx * c + dvz * s, side = -dvx * s + dvz * c;
+    const main = pulse ? profile.rcsForwardAccel : profile.mainAccel;
+    const reverse = pulse ? profile.rcsReverseAccel : profile.reverseAccel;
+    const strafe = pulse ? profile.rcsStrafeAccel : profile.strafeAccel;
+    this._writeIntent(tender, clamp(side / Math.max(1, strafe), -1, 1),
+      clamp(forward / Math.max(1, forward < 0 ? reverse : main), -1, 1),
+      false, Math.atan2(dz, dx), false);
+    const relativeSpeed = Math.hypot((tender.vel?.x || 0) - (casualty.vel?.x || 0),
+      (tender.vel?.z || 0) - (casualty.vel?.z || 0));
+    if (detouring || dist > Math.max(CREW_RESPONSE_ARRIVE_WU, standoff + 12) || relativeSpeed > 8) {
+      if (!response.welded) { response.arrived = false; response.weldStartT = -Infinity; }
       return;
     }
-    this._writeIntent(tender, 0, 0, false, tender.rot || 0, true);
     if (!response.arrived) {
       response.arrived = true;
       response.weldStartT = now;
@@ -6099,7 +6217,13 @@ export const npcJobsRuntime = {
       // The weld takes a working beat the player can watch — not an instant teleport-fix.
       if (now - response.weldStartT < CREW_RESPONSE_WELD_S) return;
       response.welded = true;
-      response.fallbackAt = now + CREW_RESPONSE_DRIVE_UP_FALLBACK_S;
+      response.fallbackAt = now + CREW_RESPONSE_CONFIRM_TIMEOUT_S;
+      this._emitCrewResponse('welded', { jobId: response.jobId, casualtyJobId: response.casualtyJobId });
+      if (this._crewResponse !== response) return;
+      if (!this._crewResponseOwnsFlight(casualty) || !this._crewResponseOwnsFlight(tender)) {
+        this._finishCrewResponse('ownership_lost');
+        return;
+      }
       try {
         this.bus.emit('combat:repairSubsystem', {
           entityId: response.casualtyEntityId,
@@ -6107,19 +6231,21 @@ export const npcJobsRuntime = {
           amount: 10000,
           reason: 'crew_field_repair',
         });
-      } catch { /* repair is load-bearing; a bus failure just retries next tick */ }
-      this._emitCrewResponse('welded', { jobId: response.jobId, casualtyJobId: response.casualtyJobId });
+      } catch { /* Unconfirmed below; no timer can turn a failed command into a repair. */ }
       return;
     }
-    // The combat owner answers with combat:subsystemEnabled when the drive truly turns
-    // over. In a harness (or an edge where the runtime never answers) the fallback keeps
-    // the story from hanging: the yard finishes and leaves either way.
-    if (now > response.fallbackAt) this._finishCrewResponse('repaired', 'fallback');
+    // A missing confirmation releases the truck honestly, leaving the disabled casualty
+    // eligible for a later attempt. It must never claim that the drive is turning over.
+    if (now > response.fallbackAt) this._finishCrewResponse('repair_unconfirmed', 'timeout');
   },
 
   _onCrewDriveUp(p) {
     const response = this._crewResponse;
-    if (!response || p.targetId !== response.casualtyEntityId) return;
+    if (!response || p.targetId !== response.casualtyEntityId
+      || this.state.entities?.get(p.targetId) !== response.casualtyRef
+      || response.casualtyRef.occupantGeneration !== response.casualtyGeneration
+      || this._byId()[response.casualtyJobId] !== response.casualtyEntry
+      || this._crewDriveState(p.targetId) !== false) return;
     this._finishCrewResponse('repaired', 'drive_up');
   },
 
@@ -6609,6 +6735,9 @@ export const npcJobsRuntime = {
   // between those record boundaries — order and RNG consumption stay identical.
   *deserializeChunked(data) {
     clearCeresWorkfleetControls(this.state);
+    this._crewResponse = null;
+    this._crewLastT = -Infinity;
+    this._crewScanNextT = 0;
     // A restore drops every lease and every transient hull: a dispatch in flight starts over from
     // the save:loaded drive check, and on-call trucks are never carried across a load.
     this._yardDispatch = null;
