@@ -75,12 +75,14 @@ function isHostileHull(state, body) {
 }
 
 function aimPoint(state) {
-  const ship = shipPos(state);
-  if (!ship) return null;
+  const pos = shipPos(state);
+  if (!pos) return null;
+  const ship = state.entities && typeof state.entities.get === 'function' ? state.entities.get(playerIdOf(state)) : null;
   const input = state.input || {};
-  const angle = Number.isFinite(input.aimAngle) ? input.aimAngle : (Number.isFinite(ship.rot) ? ship.rot : 0);
+  const fallback = ship && Number.isFinite(ship.rot) ? ship.rot : 0;
+  const angle = Number.isFinite(input.aimAngle) ? input.aimAngle : fallback;
   const dist = 320;
-  return { x: ship.pos.x + Math.sin(angle) * dist, z: ship.pos.z + Math.cos(angle) * dist };
+  return { x: pos.x + Math.sin(angle) * dist, z: pos.z + Math.cos(angle) * dist };
 }
 
 /**
@@ -181,9 +183,10 @@ export function createSwarmCallinsDirector(ctx) {
       const bodies = queryPhysicalBodies(st, pos, SMART_BOMB_RADIUS_WU, this._helpers, []);
       for (const body of bodies) {
         if (!body || body.id === myId) continue;
-        const dx = body.pos.x - pos.x;
-        const dz = body.pos.z - pos.z;
-        const d = Math.hypot(dx, dz) || 1;
+        let dx = body.pos.x - pos.x;
+        let dz = body.pos.z - pos.z;
+        let d = Math.hypot(dx, dz);
+        if (d < 1e-3) { dx = 0; dz = 1; d = 1; } // a body hugging the bomb still takes the radial throw
         const falloff = 1 - Math.min(1, d / SMART_BOMB_RADIUS_WU);
         const dv = SMART_BOMB_MAX_DV_WU_S * (0.35 + 0.65 * falloff);
         deliverPhysicalImpulse(st, body, { x: (dx / d) * dv * (body.mass || 1), z: (dz / d) * dv * (body.mass || 1) }, {
@@ -220,10 +223,11 @@ export function createSwarmCallinsDirector(ctx) {
         const bodies = queryPhysicalBodies(st, lance, LANCE_RADIUS_WU, this._helpers, [], { includeAnchored: false });
         for (const body of bodies) {
           if (!isHostileHull(st, body)) continue;
-          const dx = body.pos.x - lance.x;
-          const dz = body.pos.z - lance.z;
-          const d = Math.hypot(dx, dz) || 1;
-          deliverPhysicalImpulse(st, body, { x: (dx / d) * LANCE_MAX_DV_WU_S * (body.mass || 1), z: (dz / d) * LANCE_MAX_DV_WU_S * (body.mass || 1) }, {
+          let dx = body.pos.x - lance.x;
+          let dz = body.pos.z - lance.z;
+          let d = Math.hypot(dx, dz);
+          if (d < 1e-3) { dx = 0; dz = 1; d = 1; } // a body dead-center still takes the column's shove
+          const accepted = deliverPhysicalImpulse(st, body, { x: (dx / d) * LANCE_MAX_DV_WU_S * (body.mass || 1), z: (dz / d) * LANCE_MAX_DV_WU_S * (body.mass || 1) }, {
             source: 'swarm_orbital_lance', cause: 'strike',
           });
         }
