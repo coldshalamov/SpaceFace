@@ -5,6 +5,7 @@
 // authorizes hostility, writes cargo, or fires weapons. Named-zone presence and combat remain owned
 // by world/encounterDirector/AI; this layer gives places causal interaction and durable aftermath.
 
+import { isTritonResearch, tritonArrivalPhase, tritonResearchLine, tritonResearchInRange } from '../world/tritonResearchArrival.js';
 import { hash32 } from '../core/rng.js';
 import { zonesForSector, zoneAt } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
@@ -151,6 +152,7 @@ export const livingPoiBehaviors = {
     this._listen('contraband:scanned', (payload) => this._onContrabandScanned(payload || {}));
     this._listen('cargo:changed', (payload) => this._onCargoChanged(payload || {}));
     this._listen('tutorial:finished', () => this._onTutorialFinished());
+    this._listen('voice:surface', (payload) => this._ackTritonGuidance(payload));
   },
 
   _listen(event, fn) {
@@ -175,6 +177,9 @@ export const livingPoiBehaviors = {
   update() {
     const state = this.state;
     const own = ensureState(state);
+    const triton = own.activeByZone[TRITON_FIELD_LAB_INTERACTION.zoneId];
+    const tritonPhase = tritonArrivalPhase(state, own, triton);
+    if (tritonPhase) this._publishGuidance(triton, tritonPhase);
     const row = own.activeByZone[VEIL_FAR_SOUNDING_INTERACTION.zoneId];
     if (authoredInteraction(row) !== VEIL_FAR_SOUNDING_INTERACTION
         || row.status === 'resolved' || row.status === 'aftermath'
@@ -244,6 +249,7 @@ export const livingPoiBehaviors = {
     for (const def of AUTHORED_INTERACTIONS) {
       const row = own.activeByZone[def.zoneId];
       if (authoredInteraction(row)) row._presenceSuspended = true;
+      if (isTritonResearch(row)) { row._tritonInside = false; delete row._tritonPending; delete row._tritonSurface; }
     }
     return true;
   },
@@ -354,6 +360,17 @@ export const livingPoiBehaviors = {
     const row = own.activeByZone[payload.zoneId];
     own.currentZoneId = payload.zoneId || null;
     if (!row) return;
+    if (isTritonResearch(row)) {
+      const aftermath = own.aftermath[row.behaviorId];
+      // Preserve the existing explicit zone-entry retry for a previously closed desk.
+      if (row.status === 'aftermath' && aftermath && aftermath.leadEmitted !== true
+          && aftermath.expiresDay > Math.floor((this.state.simTime || 0) / DAY_SECONDS)) {
+        this._emitMissionLead(row, LEAD_FAMILY_SUMMARIES[row.familyId]);
+      }
+      const phase = tritonArrivalPhase(this.state, own, row);
+      if (phase) this._publishGuidance(row, phase);
+      return;
+    }
     if (row.status === 'aftermath') {
       this._emit('poi:behaviorReadout', readoutOf(row));
       const aftermath = own.aftermath[row.behaviorId] || null;
@@ -445,7 +462,14 @@ export const livingPoiBehaviors = {
       if (!payload || !payload.pos) return false;
       const local = this._localPosition(payload.pos);
       row._bearings = row._bearings || [];
-      if (row._bearings.some((point) => dist2(point, local) < 180 * 180)) return false;
+      if (row._bearings.some((point) => dist2(point, local) < 180 * 180)) {
+        const now = Number(this.state.simTime) || 0;
+        if (isTritonResearch(row) && (!Number.isFinite(row._tritonGuidanceAt)
+            || now < row._tritonGuidanceAt || now - row._tritonGuidanceAt >= 3.5)) {
+          this._publishGuidance(row, 'rejected');
+        }
+        return false;
+      }
       row._bearings.push(local);
     }
     if (row.familyId === 'gravity_well_sounding') {
@@ -625,20 +649,47 @@ export const livingPoiBehaviors = {
           : 'ICE FISSURE · Take a fresh scan in calm, then compare the surge from outside the drill envelope. A stopped drill gives a steady reading.';
       }
     }
+    const tritonLine = tritonResearchLine(row, phase, durable);
+    if (tritonLine) {
+      text = tritonLine;
+      row._tritonGuidanceAt = Number(this.state.simTime) || 0;
+      // The completion itself is not a return; a later physical approach can acknowledge it.
+      if (phase === 'outcome') { row._tritonInside = true; delete row._tritonPending; delete row._tritonSurface; }
+    }
     // Resolution receipts must survive a same-tick campaign/tutorial line. A four-second story
     // floor is common on first-hour authority events; keep the durable result live long enough to
     // take the floor afterwards instead of expiring unseen in the arbiter queue.
-    const ttl = phase === 'outcome' ? 8 : phase === 'aftermath' ? 6 : phase === 'approach' ? 5 : 3.5;
+    const ttl = tritonLine ? (phase === 'progress' ? 5 : 8)
+      : phase === 'outcome' ? 8 : phase === 'aftermath' ? 6 : phase === 'approach' ? 5 : 3.5;
+    const pending = isTritonResearch(row) && row._tritonPending?.phase === phase ? row._tritonPending : null;
+    if (pending) pending.text = text;
     const voice = this.helpers && this.helpers.voice;
     const spoken = voice && typeof voice.say === 'function' && voice.say({
       id: `poi:${row.behaviorId}`,
+      ...(pending ? { valid: () => (row._tritonPending === pending || row._tritonSurface === pending)
+        && ensureState(this.state).activeByZone[row.zoneId] === row
+        && tritonResearchInRange(this.state, ensureState(this.state), row) } : {}),
       channel: phase === 'aftermath' ? 'info' : 'objective',
       text,
       kind,
       ttl,
     });
-    if (!spoken) this._emit('toast', { text, kind, ttl });
+    if (!spoken) {
+      this._emit('toast', { text, kind, ttl });
+      if (pending) this._ackTritonGuidance({ id: `poi:${row.behaviorId}`, text });
+    }
     return true;
+  },
+
+  _ackTritonGuidance(payload) {
+    const own = ensureState(this.state);
+    const row = own.activeByZone[TRITON_FIELD_LAB_INTERACTION.zoneId];
+    const pending = row?._tritonPending;
+    if (!pending || payload?.id !== `poi:${row.behaviorId}` || payload.text !== pending.text
+        || !tritonResearchInRange(this.state, own, row)) return;
+    own.entered[pending.key] = true;
+    row._tritonSurface = pending; // Keep the displayed cue valid until expiry or real departure.
+    delete row._tritonPending;
   },
 
   _emitConsequences(row, outcome, payload) {
