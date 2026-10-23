@@ -3,14 +3,17 @@
 // override wins, then the settings choice — so the tick-line appears exactly when the assist
 // governor is NOT holding the velocity for the pilot (drift ≈ 20 % assist, newtonian = 0).
 export function travelVectorReadout(state, player, out = {}) {
-  const explicit = player?.flightAssistMode
-    || state?.input?.flightMode
-    || state?.settings?.controls?.flightMode
-    || 'assisted';
-  const drift = explicit === 'drift' || explicit === 'newtonian';
+  // Mirror flightV3.resolveAssistMode exactly: the per-tick input packet overrides the
+  // entity stamp, and both must carry a valid mode before the settings default applies.
+  const explicit = state?.input?.flightMode || player?.flightAssistMode;
+  const settingsMode = state?.settings?.controls?.flightMode;
+  const explicit2 = explicit === 'assisted' || explicit === 'drift' || explicit === 'newtonian'
+    ? explicit
+    : (settingsMode === 'drift' || settingsMode === 'newtonian' ? settingsMode : 'assisted');
+  const drift = explicit2 === 'drift' || explicit2 === 'newtonian';
   const speed = Math.hypot(player?.vel?.x || 0, player?.vel?.z || 0);
   const wrestle = state?.player?.cruise?.wrestle;
-  out.drift = drift && speed > 2; out.mode = explicit; out.speed = speed; out.wrestle = wrestle || null;
+  out.drift = drift && speed > 2; out.mode = explicit2; out.speed = speed; out.wrestle = wrestle || null;
   return out;
 }
 

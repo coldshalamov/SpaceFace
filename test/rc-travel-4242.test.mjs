@@ -130,6 +130,17 @@ test('4242: ten-day chart prices fade and both free-inertia modes expose the tic
     f.state.settings.controls.flightMode = mode; assert.equal(travelVectorReadout(f.state, f.player).drift, true);
   }
   f.state.settings.controls.flightMode = 'assisted'; assert.equal(travelVectorReadout(f.state, f.player).drift, false);
+  // The mode mirror keeps the sim's precedence: an input-packet mode beats the entity stamp,
+  // an entity stamp beats settings, and an invalid explicit value falls through to settings.
+  f.state.input = { flightMode: 'drift' }; f.player.flightAssistMode = 'assisted';
+  assert.equal(travelVectorReadout(f.state, f.player).drift, true, 'packet override wins over the entity stamp');
+  f.state.input.flightMode = null; f.player.flightAssistMode = 'newtonian';
+  assert.equal(travelVectorReadout(f.state, f.player).drift, true, 'entity stamp wins over settings');
+  f.player.flightAssistMode = 'warp'; f.state.settings.controls.flightMode = 'drift';
+  const invalidRead = travelVectorReadout(f.state, f.player);
+  assert.equal(invalidRead.drift, true, 'an invalid stamp falls through to the settings mode');
+  assert.equal(invalidRead.mode, 'drift');
+  f.state.input = null; f.player.flightAssistMode = null; f.state.settings.controls.flightMode = 'assisted';
   const makeNode = () => ({ style: {}, attrs: {}, children: [], setAttribute(k, v) { this.attrs[k] = v; },
     append(...nodes) { this.children.push(...nodes); }, appendChild(n) { this.children.push(n); }, cloneNode() { return makeNode(); }, remove() { this.removed = true; } });
   const root = makeNode(); root.ownerDocument = { createElementNS: () => makeNode() };
