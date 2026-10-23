@@ -169,7 +169,8 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
 [data-screen="crucibleResults"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-crucible-door.jpg'); }
 [data-screen="station"]  .k-world--plate { background-image: url('../assets/cinematics/menu_hangar_bg.jpg'); }
 /* The stage is live: the still steps aside and the renderer's world is the picture. */
-.k-screen[data-k-stage="live"] .k-world--plate { opacity: 0; }
+.k-screen[data-k-stage="live"] .k-world--plate,
+.of-title[data-k-stage="live"] .k-world--plate { opacity: 0; }
 /* spec2/03 §3 idle attract, carried by the still itself (MAP_OVERHAUL_BRIEF "cinematic still +
    idle drift"): after 12s without input mainMenu sets data-attract on the screen root and the
    photograph breathes — a slow push-in/pan on the authored shot, not a second scene. Transform

@@ -33,22 +33,24 @@ test('each 15-second chapter records catch, a real swing, release, measured coll
 test('title uses the shared rope renderer and caps reduced flashes in the same stage as kill-cam', async () => {
   const geometry = new THREE.BoxGeometry(6, 2, 4), material = new THREE.MeshStandardMaterial();
   const io = { async loadPart() { return { primitives: [{ name: 'hull', geometry, material, matrix: new THREE.Matrix4() }] }; } };
-  const built = { scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(42, 16 / 9), clock: 2 };
+  const built = { scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(42, 16 / 9), clock: 20 };
   const stage = await buildTitleAttractStage(built, io);
   try {
     assert.equal(stage.ready, true);
     stage.update(built, 1 / 60, { settings: {} });
+    built.clock = 22;
+    stage.update(built, 1 / 60, { settings: {} });
     const cables = stage.roots[0].getObjectByName('SF_NpcMasslineCables');
     assert.ok(cables.children.some((child) => child.visible));
-    built.clock = 477 / 60 + 0.12;
+    built.clock = 20 + 477 / 60 + 0.12;
     stage.update(built, 1 / 60, { settings: { video: { flashReduce: true } } });
     const flashes = stage.roots[0].getObjectByName('UiStageKillcamFlashes');
     assert.ok(flashes.count > 0);
     assert.ok(flashes.material.opacity <= 0.27 + 1e-9, 'reduced peak opacity is capped');
-    built.clock = 477 / 60 + 0.25;
+    built.clock = 20 + 477 / 60 + 0.25;
     stage.update(built, 1 / 60, { settings: { video: { flashReduce: true } } });
     assert.equal(flashes.count, 0, 'reduced flash is gone within 240 ms');
-    built.clock = 62;
+    built.clock = 82;
     stage.update(built, 1 / 60, { settings: {} });
     assert.ok(cables.children.some((child) => child.visible), 'loop wrap restores the first catch');
   } finally { stage.dispose(); geometry.dispose(); material.dispose(); }
