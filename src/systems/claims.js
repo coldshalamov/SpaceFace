@@ -59,6 +59,7 @@ import { drawSeeded, hash32 } from '../core/rng.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { SECTORS, dangerIndex, stationGrowthLadderFor, aceTrophyHeadByTier, aceTrophyHeadByModuleId, trophyFromFittings } from '../data/sectors.js';
 import { DRONES, OUTPOSTS } from '../data/automation.js';
+import { sectorLocalToGlobalForSector, sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { outpostOutputGoodId } from './automation.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { farActorTableRadius } from '../world/farActorTable.js';
@@ -68,7 +69,6 @@ import { stableRecordId, RECORD_KIND } from '../world/worldRecords.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { collidesFlipEpoch } from '../world/livingWorldViews.js';
 import { physicsPartitionEpoch } from '../world/activityRuntime.js';
-import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
 const REFINE_RATIO = 2;
@@ -407,7 +407,7 @@ export const claims = {
     if (!this.state.claims) this.state.claims = { bodies: [] };
     // World respawns POI entities on sector entry — re-stamp specialization identity on them.
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('sector:enter', () => this._applyAllPoiLabels());
+      this.bus.on('sector:enter', () => { this._ensureRetiredRefineryShells(); this._applyAllPoiLabels(); });
       // PQ-170.01: world respawns stations on sector entry — re-stamp the growth they earned.
       this.bus.on('sector:enter', () => this._stampAllStationGrowth());
       // PQ-170.01: player-supplied throughput. Only the SELL side supplies a station.
@@ -2351,6 +2351,65 @@ export const claims = {
   },
 
   // ------------------------------------------------------------------------------------------
+  // Row 402: current saves (including specVersion 1) also retire the duplicate producer.
+  // Automation removes its own instance; claims takes custody of the same stored goods.
+  migrateRetiredRefineries() {
+    const state = this.state, owner = this.ctx?.registry?.get?.('automation');
+    if (!owner?.decommissionOutpost) return 0;
+    const outposts = state.automation?.outposts || [], bodies = state.claims.bodies;
+    let migrated = 0;
+    for (const outpost of outposts.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)))) {
+      const definition = OUTPOST_BY_ID.get(outpost.defId);
+      if (!definition?.retiredInto) continue;
+      if (bodies.some(body => body.retiredOutpostId === outpost.id)) {
+        owner.decommissionOutpost(outpost.id); continue;
+      }
+      const specialization = BODY_SPECIALIZATION_BY_ID.get(definition.retiredInto);
+      const hasPosition = Number.isFinite(outpost.pos?.x) && Number.isFinite(outpost.pos?.z);
+      const poi = hasPosition ? null : this._findFreeClaimablePoi(outpost.sectorId);
+      const origin = sectorGlobalOrigin(outpost.sectorId);
+      const pos = poi?.pos ? sectorLocalToGlobalForSector(poi.pos, outpost.sectorId)
+        : hasPosition ? outpost.pos
+        : { x: origin.x + 900, z: origin.z + 600 };
+      const size = poi?.size || 'M';
+      const body = { id: 'claim_' + _nextClaimId++, sectorId: outpost.sectorId,
+        poiId: poi?.id || `retired_refinery_${outpost.id}`, name: poi?.name || outpost.name || 'Re-chartered Refinery',
+        size, slots: BODY_SLOTS_BY_SIZE[size] || 3, modules: [specialization.requiresModule],
+        linkedStationId: null, x: pos.x, z: pos.z, claimedAt: state.simTime || 0, owned: true,
+        retiredOutpostId: outpost.id, retiredOutpostShell: !poi, spec: this._freshSpec(specialization) };
+      const amount = Math.max(0, Number(outpost.storage) || 0);
+      const goodId = outpost.storageGoodId || outpostOutputGoodId(definition);
+      if (amount > 0) body.spec.store.output[goodId] = amount;
+      // A nonempty old bank keeps its commodity identity, even when it exceeds a new cap.
+      body.spec.upkeepDebt = Math.max(0, Number(outpost.upkeepDebt) || 0);
+      if (outpost.status === 'raided') {
+        body.spec.status = 'raided'; body.spec.statusUntil = (state.simTime || 0) + Math.max(0, Number(outpost.raidCooldown) || 0);
+      } else if (outpost.status === 'distressed' && body.spec.upkeepDebt > 0) body.spec.status = 'cold';
+      if (!owner.decommissionOutpost(outpost.id)) continue;
+      bodies.push(body);
+      this._receipt(body, 'outpost_refinery_retired', 'Outpost re-chartered as an Industrial Refinery; stored goods retained',
+        { outpostId: outpost.id, goodId, qty: amount });
+      migrated++;
+    }
+    this._ensureRetiredRefineryShells(); this._applyAllPoiLabels();
+    return migrated;
+  },
+
+  _ensureRetiredRefineryShells() {
+    const state = this.state, spawn = this.ctx?.helpers?.spawnEntity;
+    if (!spawn) return;
+    for (const body of state.claims.bodies || []) {
+      if (!body.retiredOutpostShell || body.sectorId !== state.world?.currentSectorId) continue;
+      if ([...state.entities.values()].some(entity => entity.alive !== false && entity.data?.retiredRefineryClaimId === body.id)) continue;
+      spawn({ type: 'fx', pos: { x: body.x, z: body.z }, radius: 28, mass: 0, collides: false, ttl: Infinity,
+        data: { role: 'retired_refinery_claim', retiredRefineryClaimId: body.id,
+          poiId: body.poiId, poiType: 'colony', name: body.name, claimOwned: true, claimSpecId: 'spec_refinery',
+          placeId: 'place_claim_outpost_refinery', placeScale: 1, worldDressing: true,
+          sectorId: body.sectorId, homeSectorId: body.sectorId, visualRadius: 28, placeRadius: 28 } });
+    }
+  },
+
+  // ------------------------------------------------------------------------------------------
   // F6-owned legacy migration: abstract automation outposts become claim specializations at a
   // free claimable body in their sector — or keep running untouched when none exists. Runs only
   // when loading a save older than specVersion 1, exactly once per load, and never duplicates:
@@ -2365,6 +2424,7 @@ export const claims = {
     const receipt = { t: state.simTime || 0, migrated: 0, kept: 0, settledCr: 0 };
     for (const o of outposts) {
       const def = OUTPOST_BY_ID.get(o.defId);
+      if (def?.retiredInto) continue; // current and old saves use the lossless 402 migration above
       const specDef = BODY_SPECIALIZATION_BY_ID.get(OUTPOST_TO_SPEC[o.defId] || 'spec_relay');
       const poi = def && specDef ? this._findFreeClaimablePoi(o.sectorId) : null;
       if (!poi) { receipt.kept += 1; continue; }

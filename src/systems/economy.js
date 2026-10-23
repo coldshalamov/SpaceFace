@@ -3777,6 +3777,15 @@ export const economy = {
     this.bus.emit('economy:auditorTally', {
       stationId, tally: row.tally, scanMult: auditorScanMultiplier(row.tally),
     });
+    // One dump is a lead. Five is a pattern. The dumps between stay quiet.
+    if (row.tally === 1 || row.tally === 5) {
+      const { voice, name } = stationVoiceFor(this.state, stationId);
+      const word = row.tally === 1 ? 'a lead' : 'a pattern';
+      this.bus.emit('toast', {
+        text: `${voice}, ${name}: Auditor Penn has ${word} on the Dump Chute.`,
+        kind: 'warn', ttl: 5,
+      });
+    }
   },
 
   /** Penn's live lead at a berth (0 when nothing was dumped inside his window). */
@@ -3937,10 +3946,20 @@ export const economy = {
       cause: 'freight_loss',
       freighterKey: intent.freighterKey || null,
     };
+    const armed = econ.coldChain[stationId];
     this.bus.emit('economy:coldChainArmed', {
       stationId,
-      commodityIds: econ.coldChain[stationId].commodityIds.slice(),
-      untilSimTime: econ.coldChain[stationId].untilSimTime,
+      commodityIds: armed.commodityIds.slice(),
+      untilSimTime: armed.untilSimTime,
+    });
+    const { voice, name } = stationVoiceFor(state, stationId);
+    const labels = armed.commodityIds.map((cid) => {
+      const def = commodityDef(state, cid);
+      return (def && def.name) || cid;
+    });
+    this.bus.emit('toast', {
+      text: `${voice}, ${name}: Cold chain broken — ${labels.join(', ')} spoiling.`,
+      kind: 'warn', ttl: 6,
     });
   },
 
@@ -4537,7 +4556,7 @@ export const economy = {
       rec.cause = 'ore_flood';
       rec.atT = now;
       if (wasOn) continue;
-      const { lawful } = stationVoiceFor(state, st.id);
+      const { voice, name, lawful } = stationVoiceFor(state, st.id);
       const receipt = {
         schemaVersion: 1, stationId: st.id, sectorId: p.sectorId, factionId: info.factionId || null, lawful,
         commodityId: p.commodityId || null, yieldU: Number(p.yieldU) || 0, boomUntil: rec.boomUntil,
@@ -4545,6 +4564,10 @@ export const economy = {
       };
       receipts.push(receipt);
       this.bus.emit('station:boom', receipt);
+      this.bus.emit('toast', {
+        text: `${voice}, ${name}: ${CONDITION_LINES.boom}`,
+        kind: 'info', ttl: 5,
+      });
     }
     return receipts;
   },

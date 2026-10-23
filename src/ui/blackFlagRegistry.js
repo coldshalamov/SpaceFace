@@ -19,13 +19,14 @@ const STATIONS = new Map(SECTORS.flatMap(row => (row.stations || []).map(station
 const SERVICE_LABELS = Object.freeze({ sell: 'Offer intact hull', return: 'Return to registered owner',
   register: 'File salvage title', extract: 'Extract this part', repair_module: 'Restore this part',
   forge_broadcast: 'Copy service broadcast', repaint: 'Rework registry marks', settle_lien: 'Settle lender lien',
-  recover: 'Send recovery tug', secure_berth: 'Reserve a secure berth' });
+  recover: 'Send recovery tug', secure_berth: 'Reserve a secure berth', module_sell: 'Spare component offer' });
 const integer = value => Math.max(0, Math.floor(Number(value) || 0)).toLocaleString('en-US');
 
 export function vesselLocationText(vessel) {
   const loc = vessel?.location || {};
   const sector = SECTOR_NAMES.get(loc.sectorId) || 'Unconfirmed sector';
   if (loc.kind === 'active') return `Piloted · ${sector}`;
+  if (loc.kind === 'missing') return `Signal lost · last recorded in ${sector} · plot the last trajectory; recovery is unconfirmed`;
   if (loc.kind === 'berth') return `Berthed · ${STATIONS.get(loc.stationId) || 'Unconfirmed berth'}`;
   if (loc.kind === 'field' || loc.kind === 'remote' || loc.kind === 'tow') {
     const position = loc.pos;
@@ -139,7 +140,7 @@ export function createBlackFlagRegistry(ctx, { dockHost = () => true } = {}) {
       if (job.status === 'queued' && (ctx.state.simTime || 0) < job.departureAt) button(body,'Cancel tow before departure',()=>
         ctx.bus.emit('ui:shipjack',{action:'cancel_recovery',vesselId:selectedId,jobOperationId:job.operationId,operationId:`cancel:${job.operationId}`}));
     }
-    if (['field','remote','tow'].includes(model.vessel.location?.kind)) button(body, 'Plot recovery course', () =>
+    if (['field','remote','tow','missing'].includes(model.vessel.location?.kind)) button(body, model.vessel.location.kind==='missing'?'Plot last trajectory':'Plot recovery course', () =>
       ctx.bus.emit('ui:shipjack', { action:'navigate', vesselId:selectedId }));
     if (!dockHost()) { line('Dock at a receiving yard for registry, extraction and sale services.'); return; }
     if (selectedQuote) {

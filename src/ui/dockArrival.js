@@ -11,6 +11,7 @@ import { isPlayerWanted } from '../systems/heat.js';
 import { cardsForStation } from './marketNews.js';
 import { formatOfflineReceiptLine, isOfflineReceiptShowable } from './automationPayoff.js';
 import { CHRONICLER_DIGEST_WEEK_S, chroniclerDigestWeek, selectWeeklyDigest } from '../systems/chronicler.js';
+import { LONG_BERTH_STATION_ID, BERTH_STAGES } from '../data/longBerth.js';
 
 /** One sim day. A loaded save older than this may speak the offline summary. */
 const SIM_DAY_S = 600;
@@ -498,6 +499,44 @@ export function stationServiceGaps(station) {
     : [];
 }
 
+// GOLD-HOME: docking the claimed berth reads like home — the hull in the bay, the crew aboard,
+// and the trophy yard, all read from the longBerth slice the system owns.
+function longBerthHomeCard(state) {
+  const lb = state && state.longBerth;
+  if (!lb || lb.claimed !== true) return null;
+  const hull = activeHullIdentity(state);
+  const hullName = (hull && (hull.name || hull.defId)) || 'your ship';
+  const crew = Array.isArray(lb.crew) ? lb.crew.filter(Boolean) : [];
+  const roster = (state && state.crew && Array.isArray(state.crew.members) ? state.crew.members : [])
+    .filter(Boolean);
+  const crewNames = (roster.length ? roster : crew)
+    .map((c) => {
+      if (!c) return null;
+      const name = c.name || c.id;
+      if (c.status === 'injured') return `${name} (hurt)`;
+      if (c.loyalty) return `${name} ◆`;
+      return name;
+    }).filter(Boolean).slice(0, 4);
+  const trophies = Array.isArray(lb.trophies) ? lb.trophies.filter(Boolean) : [];
+  const trophyNames = trophies.map((t) => t && t.label).filter(Boolean).slice(-3);
+  const stage = Number(lb.stage) || 0;
+  const stageDef = BERTH_STAGES.find((row) => row.stage === stage);
+  const stageLine = stageDef ? stageDef.label : 'Freshly claimed';
+  const parts = [`${hullName} on the rail`, stageLine];
+  parts.push(crewNames.length ? `crew: ${crewNames.join(', ')}` : 'no crew aboard');
+  parts.push(trophies.length
+    ? `yard: ${trophies.length} ${trophies.length === 1 ? 'trophy' : 'trophies'} — ${trophyNames.join(', ')}`
+    : 'the yard stands empty');
+  return {
+    badge: 'HOME',
+    title: 'The Long Berth',
+    body: parts.join(' · ') + '.',
+    eventId: `longBerth:home:${stage}:${trophies.length}`,
+    kind: 'home',
+    tone: 'gain',
+  };
+}
+
 export function buildDockArrival(state = {}, station = {}) {
   const stationId = station.id || station.stationId || '';
   const action = primaryActionFor(state);
@@ -507,7 +546,8 @@ export function buildDockArrival(state = {}, station = {}) {
   const traffic = localTraffic(state, stationId) || route;
   const paperwork = paperworkFor(state, station);
   const factionBerth = factionBerthStatusLine(state, stationId);
-  const eventCard = leftoverEventCard(state, stationId);
+  const homeCard = stationId === LONG_BERTH_STATION_ID ? longBerthHomeCard(state) : null;
+  const eventCard = homeCard || leftoverEventCard(state, stationId);
   const ledgerCard = leftoverLedgerCard(state);
   const mechanicCard = leftoverMechanicCard(state);
   // One berth mechanic, one header (PQ-207.01): when the hull card and the ledger recap

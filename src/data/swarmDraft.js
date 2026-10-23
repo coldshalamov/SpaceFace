@@ -203,7 +203,7 @@ export const SWARM_DRAFT_DEF_IDS = Object.freeze(SWARM_DRAFT_OFFERS.map((o) => o
 
 export const SWARM_LEGENDARY_RECORD_KIND = 'swarm_legendary';
 
-export const SWARM_ROOM_LEGENDARIES = Object.freeze([
+const SWARM_ROOM_LEGENDARIES_BASE = Object.freeze([
   Object.freeze({
     id: 'domino',
     offerId: 'legendary_domino',
@@ -227,6 +227,45 @@ export const SWARM_ROOM_LEGENDARIES = Object.freeze([
     blurb: 'A weak gravity well follows your ship and pulls nearby bodies inward.',
   }),
 ]);
+
+// SEED-SW-08/11/12 — the throw-and-room legendaries join the same service counter: the throw
+// economy (volatile hulls), the cover (bumper walls) and the kill (second sun) are room-long
+// changes bought like every other legendary and read from the run's own ledger.
+export const SWARM_ROOM_LEGENDARIES = Object.freeze(SWARM_ROOM_LEGENDARIES_BASE.concat([
+  Object.freeze({
+    id: 'volatile_hulls',
+    offerId: 'legendary_volatile_hulls',
+    name: 'Volatile Hulls',
+    verb: 'Volatile Hulls',
+    price: 120,
+    fromWave: 4,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Anything you throw detonates on its first solid impact, credited to you.',
+  }),
+  Object.freeze({
+    id: 'bumper_walls',
+    offerId: 'legendary_bumper_walls',
+    name: 'Bumper Walls',
+    verb: 'Bumper Walls',
+    price: 100,
+    fromWave: 3,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Arena cover throws the pack back like a pinball table. Your own contacts unchanged.',
+  }),
+  Object.freeze({
+    id: 'second_sun',
+    offerId: 'legendary_second_sun',
+    name: 'Second Sun',
+    verb: 'Second Sun',
+    price: 140,
+    fromWave: 5,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Every kill ignites whatever stood close to it — ships and brood alike.',
+  }),
+]));
 
 const LEGENDARY_BY_ID = new Map(SWARM_ROOM_LEGENDARIES.map((entry) => [entry.id, entry]));
 
@@ -259,4 +298,188 @@ export function ownedSwarmLegendaryIds(run) {
     ids.push(id);
   }
   return ids;
+}
+
+// ── the call-in charges (SEED-SW-01..07) ────────────────────────────────────────────────────────
+//
+// A call-in charge is SPENT STOCK, not a fitting and not a room upgrade: the armory sells the
+// charge, the run remembers how many it holds as `swarm_callin` records (count summed across
+// rows of the same callinId), and one fire spends exactly one. Like the legendaries they ride
+// the run's own modifier ledger — nothing here reads a save, and a charge lives exactly as long
+// as the run that bought it. `fromWave` counts CLEARED waves (the opening armory sits at 0).
+
+export const SWARM_CALLIN_RECORD_KIND = 'swarm_callin';
+
+// ── the stacking passives (SEED-SW-14) ────────────────────────────────────────────────────────
+//
+// A stacking passive is SPENT STOCK of a room effect: the armory sells repeat copies of one
+// passive (each copy applies its effect exactly once — the effect readers multiply by the held
+// count), the stack caps small, and the copies ride the run's own modifier ledger as
+// `swarm_passive` records — never the Hangar profile, which stays earned profile gear.
+
+export const SWARM_PASSIVE_RECORD_KIND = 'swarm_passive';
+
+/** The stack cap: a passive is a rack, not a vault. */
+export const SWARM_PASSIVE_STACK_MAX = 5;
+
+export const SWARM_PASSIVE_CATALOG = Object.freeze([
+  Object.freeze({
+    id: 'plated_hull',
+    offerId: 'passive_plated_hull',
+    name: 'Plated Hull',
+    verb: 'Plate',
+    price: 48,
+    fromWave: 1,
+    perCopyHull: 14,
+    blurb: '+14 hull per plate, stacked to five. Scrap welded straight onto the frame.',
+  }),
+]);
+
+const PASSIVE_BY_ID = new Map(SWARM_PASSIVE_CATALOG.map((entry) => [entry.id, entry]));
+
+/** The catalog row for one passive id, or null. */
+export function swarmPassiveById(id) {
+  return typeof id === 'string' ? (PASSIVE_BY_ID.get(id) || null) : null;
+}
+
+/** How many copies of one passive THIS run holds (sum across ledger rows). */
+export function swarmPassiveCount(run, passiveId) {
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return 0;
+  if (typeof passiveId !== 'string' || !PASSIVE_BY_ID.has(passiveId)) return 0;
+  if (run.ruleset !== SWARM_RULESET) return 0;
+  const modifiers = Array.isArray(run.modifiers) ? run.modifiers : [];
+  let total = 0;
+  for (const record of modifiers) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) continue;
+    if (record.kind !== SWARM_PASSIVE_RECORD_KIND || record.passiveId !== passiveId) continue;
+    const n = Number(record.count);
+    if (Number.isFinite(n) && n > 0) total += Math.floor(n);
+  }
+  return total;
+}
+
+/** The hull bonus the run's plated-hull stack grants, once per copy. */
+export function swarmPassiveHullBonus(run) {
+  const entry = PASSIVE_BY_ID.get('plated_hull');
+  return entry ? swarmPassiveCount(run, 'plated_hull') * entry.perCopyHull : 0;
+}
+
+
+/** Restock cap per charge type: stock is a rack, not a vault. */
+export const SWARM_CALLIN_MAX_PER_TYPE = 3;
+
+export const SWARM_CALLIN_CATALOG = Object.freeze([
+  Object.freeze({
+    id: 'smart_bomb',
+    offerId: 'callin_smart_bomb',
+    name: 'Smart Bomb',
+    verb: 'Bomb',
+    price: 64,
+    fromWave: 1,
+    category: 'Service',
+    slotLabel: 'Call-in charge · one Bomb press · spends one',
+    blurb: 'One Bomb press detonates a room-clearing blast that throws and breaks the pack, never you.',
+  }),
+  Object.freeze({
+    id: 'orbital_lance',
+    offerId: 'callin_orbital_lance',
+    name: 'Orbital Lance',
+    verb: 'Lance',
+    price: 90,
+    fromWave: 2,
+    category: 'Service',
+    slotLabel: 'Call-in charge · telegraphed strike · spends one',
+    blurb: 'Paints the aim point, then a beam column lands a real hit and a shove on everything in it.',
+  }),
+  Object.freeze({
+    id: 'turret_drop',
+    offerId: 'callin_turret_drop',
+    name: 'Turret Drop',
+    verb: 'Turret',
+    price: 96,
+    fromWave: 2,
+    category: 'Service',
+    slotLabel: 'Call-in charge · fights this wave · spends one',
+    blurb: 'Drops an allied turret that fights beside you until the wave clears, then strikes its colors.',
+  }),
+  Object.freeze({
+    id: 'drone_wing',
+    offerId: 'callin_drone_wing',
+    name: 'Drone Wing',
+    verb: 'Wing',
+    price: 104,
+    fromWave: 3,
+    category: 'Service',
+    slotLabel: 'Call-in charge · four escorts · spends one',
+    blurb: 'Launches four escort drones that shoot the pack for the wave and leave with it.',
+  }),
+  Object.freeze({
+    id: 'shield_dome',
+    offerId: 'callin_shield_dome',
+    name: 'Shield Dome',
+    verb: 'Dome',
+    price: 84,
+    fromWave: 2,
+    category: 'Service',
+    slotLabel: 'Call-in charge · plants where you stand · spends one',
+    blurb: 'Plants a fixed dome that stops the pack and its shots at the rim while yours leave. Runs on a clock.',
+  }),
+  Object.freeze({
+    id: 'decoy',
+    offerId: 'callin_decoy',
+    name: 'Decoy',
+    verb: 'Decoy',
+    price: 56,
+    fromWave: 1,
+    category: 'Service',
+    slotLabel: 'Call-in charge · throwable lure · spends one',
+    blurb: 'A thrown lure the pack cannot resist. It dies like debris when the battery does.',
+  }),
+]);
+
+const CALLIN_BY_ID = new Map(SWARM_CALLIN_CATALOG.map((entry) => [entry.id, entry]));
+
+/** The catalog row for one call-in id, or null for an id the catalog does not name. */
+export function swarmCallinById(id) {
+  return typeof id === 'string' ? (CALLIN_BY_ID.get(id) || null) : null;
+}
+
+/**
+ * How many of one charge THIS run holds: the sum of counts across recognized `swarm_callin`
+ * records of that id. Restocks append rows; the count is the truth, not any single row.
+ */
+export function swarmCallinCount(run, callinId) {
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return 0;
+  if (typeof callinId !== 'string' || !CALLIN_BY_ID.has(callinId)) return 0;
+  if (run.ruleset !== SWARM_RULESET) return 0;
+  const modifiers = Array.isArray(run.modifiers) ? run.modifiers : [];
+  let total = 0;
+  for (const record of modifiers) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) continue;
+    if (record.kind !== SWARM_CALLIN_RECORD_KIND) continue;
+    if (record.callinId !== callinId) continue;
+    const n = Number(record.count);
+    if (Number.isFinite(n) && n > 0) total += Math.floor(n);
+  }
+  return total;
+}
+
+/**
+ * Spend one charge of `callinId` from the run's own ledger: rows are consumed FIFO (a restock
+ * never short-changes an older row), and the row that reaches zero is removed. Returns the count
+ * held after the spend — the caller compares before/after to know the fire was real.
+ */
+export function spendSwarmCallin(run, callinId) {
+  if (!run || !Array.isArray(run.modifiers)) return 0;
+  const rows = run.modifiers.filter((record) => record && typeof record === 'object'
+    && !Array.isArray(record) && record.kind === SWARM_CALLIN_RECORD_KIND && record.callinId === callinId);
+  for (const row of rows) {
+    const n = Number(row.count);
+    if (!(Number.isFinite(n) && n > 0)) continue;
+    const left = Math.floor(n) - 1;
+    if (left > 0) row.count = left;
+    else run.modifiers.splice(run.modifiers.indexOf(row), 1);
+    return swarmCallinCount(run, callinId);
+  }
+  return swarmCallinCount(run, callinId);
 }

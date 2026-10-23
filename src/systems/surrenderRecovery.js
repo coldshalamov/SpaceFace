@@ -47,6 +47,16 @@ export function isSurrenderedContact(entity) {
     && entity.data?.ai?.fsm === 'surrender';
 }
 
+/** Read-only recovery consent bound to this exact live body, never a recycled annotation ID. */
+export function hasRecoveryTowConsent(state, entity) {
+  const record = recordForEntity(state?.surrenderRecovery, entity?.id);
+  return !!record && state.entities?.get(entity.id) === entity
+    && entity[RECOVERY_ENTITY_INSTANCE] === record.id && !record.resolved
+    && ['awaiting_tether', 'secured'].includes(record.phase)
+    && entity.data?.surrenderRecovery?.id === record.id
+    && (record.recoveryKind === RECOVERY_CIVILIAN_DISABLED || isSurrenderedContact(entity));
+}
+
 /** Membership lanes for the adoption walk — results read ship/drone members only. */
 const READOPT_LANES = ['shipLike'];
 

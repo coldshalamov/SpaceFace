@@ -7,7 +7,7 @@
 //   hull/shield/armour  p.hull/hullMax · p.shield/shieldMax · p.armorHp/armorMax
 //   energy              p.cap/capMax                      (the live HUD reads cap, not energy)
 //   heat                weaponHeatSummary(p.data.weapons)
-//   speed / reference   |p.vel| · p.maxSpeed
+//   speed / reference   |p.vel| · governed combat speed (legacy maxSpeed only when the hull has no drive)
 //   speed ceiling       state.input.travelDrive.ceiling, else resolveTravelCeiling(profile) — the V-MAX the
 //                       travel tape already prints, so the Speed Dial's last blade is the same number
 //   boost               p.boost.energy / p.boost.max · p.flags.boosting (the afterburner is burning)
@@ -20,7 +20,7 @@ import { BOMB_SLOT_INDEX, readRailModel, RAIL_SLOTS, railSlotTip, resolveSlotKey
 import { masslineInstrumentReadout } from '../hudAttention.js';
 import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCustody.js';
 import { SHIPS } from '../../data/ships.js';
-import { resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
+import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { resolveTravelCeiling } from '../../core/flight/propulsionKernel.js';
 import { travelFlag } from '../../data/featureFlags.js';
 import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
@@ -170,6 +170,23 @@ export function readSpeedCeiling(state, p) {
   try { return finite(resolveTravelCeiling(resolvePropulsionProfile(p, state))); } catch { return 0; }
 }
 
+/** True when the hull published a drive. Live ships stamp propulsion, not driveId. */
+function hullHasAuthoredDrive(p) {
+  if (!p) return false;
+  if (p.driveId || (p.data && p.data.driveId)) return true;
+  const derived = p.data && p.data.derived;
+  if (derived && (derived.driveId || derived.propulsion)) return true;
+  if (p.propulsion) return true;
+  if (p.flightModel && p.flightModel.propulsion) return true;
+  return false;
+}
+
+/** The dial's Ref mark is the speed the governor holds, not the legacy derived top speed. */
+function clusterSpeedRef(p, state) {
+  const governed = hullHasAuthoredDrive(p) ? resolveGovernedCombatSpeed(p, state) : 0;
+  return governed > 0 ? governed : (p && p.maxSpeed);
+}
+
 /** The Cluster's model for this frame; only the caller's tracker and heat scratch are updated. */
 export function readClusterModel(state, p, { tracker = null, ordnance = null, bindings = null, speedMax = 0, weaponHeatScratch = null } = {}) {
   if (!p) return null;
@@ -228,7 +245,7 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
     armor: finite(p.armorHp), armorMax: finite(p.armorMax, 0),
     energy: finite(p.cap), energyMax: finite(p.capMax, 0),
     heat: finite(heat && heat.frac),
-    speed, speedRef: finite(p.maxSpeed, 180), speedMax: finite(speedMax),
+    speed, speedRef: finite(clusterSpeedRef(p, state), 180), speedMax: finite(speedMax),
     boost: p.boost && p.boost.max > 0 ? Math.max(0, Math.min(1, p.boost.energy / p.boost.max)) : 0,
     boosting: !!(p.flags && p.flags.boosting),
     // burning, not recovering: the dial's DRIVE tag and halo belong to a spooling or engaged drive only

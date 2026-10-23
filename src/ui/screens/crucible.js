@@ -546,6 +546,18 @@ export function todayBoardFigures(profile, dateKey) {
 
 const OUTCOME_WORD = Object.freeze({ victory: 'WON', defeat: 'LOST', aborted: 'LEFT' });
 
+export function renderTodayBoard(profile, dateKey) {
+  const board = el('section', 'sf-crd-today');
+  board.setAttribute('aria-label', "Today's local daily board");
+  board.appendChild(el('p', 'k-caps', `Today · ${dateKey} · local daily runs`));
+  const ranked = todayRankedRuns(profile, dateKey);
+  if (!ranked.length) board.appendChild(el('p', 'k-sentence', 'No daily result yet. Fly Today’s challenge to put a run on this board.'));
+  const list = el('ol', 'k-rows');
+  for (const run of ranked) list.appendChild(el('li', 'k-row k-row--static',
+    `${run.rank}. ${run.score} points · wave ${run.wave} · seed ${run.seed}`));
+  board.appendChild(list); return board;
+}
+
 /** The most recent runs, newest first. History is stored oldest→newest (settleCrucibleRun
  *  appends); the door reads the tail. Never re-sorted by score — the order is the record. */
 export function recentRunRows(profile, limit = 5) {
@@ -2125,11 +2137,16 @@ export const crucibleScreen = {
         const recSum = el('summary', 'k-t-fine fh-legend', 'Records & challenges');
         paintLegend(recSum, false);
         records.appendChild(recSum);
+        let todayBoard = renderTodayBoard(doorProfile, dailySnapshot.dateKey);
+        records.appendChild(todayBoard);
         records.appendChild(renderRecordRows(doorProfile, { onPractice: practiceFromLine }));
         let localBoard = renderCabinetBoard(rootEl.ownerDocument || document, doorProfile);
         records.appendChild(localBoard);
         this._refreshCabinetBoard = () => {
-          const next = renderCabinetBoard(rootEl.ownerDocument || document, loadCrucibleMeta());
+          const profile = loadCrucibleMeta();
+          const nextToday = renderTodayBoard(profile, dailySnapshot.dateKey);
+          records.replaceChild(nextToday, todayBoard); todayBoard = nextToday;
+          const next = renderCabinetBoard(rootEl.ownerDocument || document, profile);
           records.removeChild(localBoard); localBoard = next; records.appendChild(localBoard);
         };
         stage.appendChild(records);

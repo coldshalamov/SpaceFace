@@ -256,6 +256,12 @@ export const SITE_BALANCE = {
 
 export const SITE_MACHINE_BY_ID = new Map(SITE_MACHINES.map((m) => [m.id, m]));
 export const SITE_RECIPE_BY_ID = new Map(SITE_RECIPES.map((r) => [r.id, r]));
+// One material bill per product across the site, hold and outpost consumers.
+// Machine cadence and work durations remain owned by each production system.
+export const MATERIAL_RECIPE_BY_GOOD = Object.freeze(Object.fromEntries(SITE_RECIPES
+  .filter(recipe => Object.keys(recipe.output).length === 1)
+  .map(recipe => [Object.keys(recipe.output)[0], Object.freeze({ id: recipe.id, name: recipe.name,
+    inputs: Object.freeze({ ...recipe.inputs }), output: Object.freeze({ ...recipe.output }) })])));
 
 // AL-LG-13/14 (build map row 402): the ONE refinery recipe book. A claim Industrial Refinery
 // runs the same continuous recipes a site sm_refinery runs, never its own private map. Copper is
@@ -269,7 +275,8 @@ export const CLAIM_REFINERY_RECIPES = Object.freeze([
     return Object.freeze({ id: r.id, name: r.name, inputs: Object.freeze({ ...r.inputs }), output: Object.freeze({ ...r.output }) });
   }),
   Object.freeze({ id: 'claim_smelt_copper', name: 'Smelt Copper',
-    inputs: Object.freeze({ cmdty_ore_copper: 2 }), output: Object.freeze({ cmdty_refined_metals: 1 }) }),
+    inputs: Object.freeze({ cmdty_ore_copper: MATERIAL_RECIPE_BY_GOOD.cmdty_refined_metals.inputs.cmdty_ore_iron }),
+    output: MATERIAL_RECIPE_BY_GOOD.cmdty_refined_metals.output }),
 ]);
 export const CLAIM_REFINERY_INPUT_IDS = Object.freeze(
   [...new Set(CLAIM_REFINERY_RECIPES.flatMap((r) => Object.keys(r.inputs)))].sort());

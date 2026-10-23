@@ -13,6 +13,8 @@ import { captureReadiness, normalizeShipjack, vesselForEntity, queryShipjack } f
 import { traffic as trafficProto } from '../src/systems/traffic.js';
 import { npcJobsRuntime as npcJobsProto } from '../src/systems/npcJobsRuntime.js';
 import { hash32 } from '../src/core/rng.js';
+import { pirateDisengage as parleyProto } from '../src/systems/pirateDisengage.js';
+import { surrenderRecovery as recoveryProto } from '../src/systems/surrenderRecovery.js';
 
 async function runtime() {
   const state = createGameState(4242), bus = createBus(), slots = new Map();
@@ -89,6 +91,8 @@ test('real scan, crew passage, stable port, custody and vulnerable crossing oper
     assert.equal(rt.state.player.ownedShips.length, 2);
     assert.equal(rt.player.hull, 61); assert.equal(rt.target.hull, 45);
     assert.ok(queryShipjack(rt.state,rt.target.id).actions.some(row=>row.action==='tow'),'reverse handoff must leave a public tow route for the retained prize');
+    assert.equal(rt.command('tow').ok,false,'safe crew terms cannot substitute for an actual tow attachment');
+    assert.equal(queryShipjack(rt.state,rt.target.id).actions.find(row=>row.action==='tow').enabled,false);
   } finally { rt.dispose(); }
 });
 
@@ -97,6 +101,7 @@ test('live distress marks the actual hull without falsely invoking defeated-play
   try{
     let wreckRecoveryRequests=0;
     rt.bus.on('player:recoveryRequested',()=>wreckRecoveryRequests++);
+    rt.state.player.ownedShips[0].shipjackDriveRemoved=true;
     const result=rt.system.command({action:'distress'});
     assert.equal(result.ok,true);
     assert.match(result.reason,/No rescue tow has accepted/);
@@ -104,6 +109,66 @@ test('live distress marks the actual hull without falsely invoking defeated-play
     assert.equal(vesselForEntity(rt.state,rt.player).beacon,true);
     assert.equal(rt.state.playerId,rt.player.id);
     assert.equal(rt.player.hull,61);
+  }finally{rt.dispose();}
+});
+
+test('evacuated parley never creates a crew escape timer and recycled ids cannot redirect recovery',async()=>{
+  const rt=await runtime();
+  try{
+    const parley=Object.create(parleyProto);parley.init(rt.ctx);rt.slots.set('pirateDisengage',parley);
+    const recovery=Object.create(recoveryProto);recovery.init(rt.ctx);rt.slots.set('surrenderRecovery',recovery);
+    const rock=rt.helpers.spawnEntity({type:'asteroid',pos:{x:20,z:0},radius:5});
+    rt.state.player.targetId=rock.id;
+    let scanReplies=0;rt.bus.on('shipjack:result',()=>scanReplies++);
+    rt.bus.emit('scan:pulse',{entityId:rt.player.id});
+    assert.equal(scanReplies,0,'ordinary rock scans must not emit custody refusals');
+    assert.equal(rt.state.player.shipjack,undefined,'ordinary scans retain the lazy save boundary');
+    rt.state.player.targetId=rt.target.id;
+    rt.bus.emit('scan:pulse',{entityId:rt.player.id});
+    assert.equal(rt.state.player.shipjack.custodyAttempts[vesselForEntity(rt.state,rt.target).vesselId].scanned,true,'actual scanner pulse reaches the custody owner');
+    assert.match(queryShipjack(rt.state,rt.target.id).detail,/no armed hardpoints/);
+    assert.equal(rt.command('hail').ok,true);
+    for(let i=0;i<120;i++){rt.state.simTime++;recovery.update(1,rt.state);}
+    assert.equal(rt.target.data.despawnAt,undefined);
+    assert.notEqual(rt.target.data.ai?.fsm,'flee');assert.equal(rt.target.alive,true);
+    assert.equal(Object.values(rt.state.surrenderRecovery.records).length,0,'an empty hull has no fleeing crew');
+    const v=vesselForEntity(rt.state,rt.target);
+    const recycled=makeEntity({type:'asteroid',pos:{x:900,z:900},radius:20});recycled.id=rt.target.id;
+    rt.state.entities.set(recycled.id,recycled);rt.state.entityList[1]=recycled;
+    let course=null;rt.bus.on('ui:setCourse',p=>course=p);
+    rt.system.navigate(v.vesselId);
+    assert.equal(course.targetEntityId,null);assert.equal(course.rendezvous,false);
+    assert.notDeepEqual(course.pos,{x:900,z:900},'route retains the vessel last trajectory');
+    rt.system.update(1/60,rt.state);
+    assert.equal(v.location.kind,'missing');assert.equal(v.location.entityId,null);
+    assert.equal(v.title,'disputed');assert.match(v.history.at(-1).text,/custody and title have not been reassigned/);
+    assert.equal(normalizeShipjack(rt.state.player.shipjack).vesselsById[v.vesselId].location.kind,'missing');
+  }finally{rt.dispose();}
+});
+
+test('an ordinary captured traffic hull routes to a real local receiver without an authored quest row',async()=>{
+  const rt=await runtime();
+  try{
+    rt.state.world.currentSectorId='sector_helios_prime';
+    assert.equal(rt.command('scan').ok,true);
+    const vessel=vesselForEntity(rt.state,rt.target);
+    const station=rt.helpers.spawnEntity({type:'station',pos:{x:450,z:200},radius:42,data:{stationId:'station_helios'}});
+    let course=null;rt.bus.on('ui:setCourse',p=>course=p);
+    assert.equal(rt.system.navigate(vessel.vesselId,true).ok,true);
+    assert.deepEqual(course.pos,{x:station.pos.x,z:station.pos.z});assert.match(course.label,/Helios/);
+    assert.equal(course.rendezvous,false);assert.equal(course.targetEntityId,null);
+  }finally{rt.dispose();}
+});
+
+test('an autonomous helm cannot be surrendered through nonexistent crew terms',async()=>{
+  const rt=await runtime();
+  try{
+    assert.equal(rt.command('scan').ok,true);
+    const vessel=vesselForEntity(rt.state,rt.target);vessel.crew='automated';vessel.profile='autonomous';
+    const answer=rt.command('hail');assert.equal(answer.ok,false);assert.match(answer.reason,/No crew channel/);
+    assert.notEqual(rt.state.player.shipjack.custodyAttempts[vessel.vesselId].surrendered,true);
+    const actions=queryShipjack(rt.state,rt.target.id).actions;
+    assert.equal(actions.some(row=>row.action==='hail'),false);assert.equal(actions.some(row=>row.action==='probe'),true);
   }finally{rt.dispose();}
 });
 

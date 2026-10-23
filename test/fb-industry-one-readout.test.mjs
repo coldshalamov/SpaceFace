@@ -65,8 +65,8 @@ test('FB-055 one readout names output per day and the limit, seed 4242', () => {
 
 test('FB-055 an empty works says so, and a quiet trader cycle is still a sentence', () => {
   const empty = industryReadoutFromState({ seed: SEED, automation: {} });
-  assert.equal(empty.sentence, 'No industrial output on record.');
-  assert.equal(empty.crest, 'No output on record');
+  assert.equal(empty.sentence, 'No industrial output yet. Start in Drones: the purchase row shows the research and bay your first miner needs.');
+  assert.equal(empty.crest, 'No output yet · Open Drones for your first miner’s requirements');
   assert.equal(traderCycleLine({ receipt: { result: 'no_spread', credited: 0 } }), 'A trader finished a run with no payout.');
   assert.equal(traderCycleLine(null), 'A trader finished a run.');
 });

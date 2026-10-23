@@ -2741,7 +2741,7 @@ export const vfx = {
       const rec = broadcastDishBeatRecord(p);
       if (!rec) return;
       this._onStationSideEvent({
-        kind: 'sensor_sweep',
+        kind: rec.profileId,
         eventId: `broadcast:${rec.stationId}:${rec.tic}`,
         stationId: rec.stationId,
         from: rec.pos,
@@ -4784,6 +4784,10 @@ export const vfx = {
       this._drawInertFieldPass(p);
       return;
     }
+    if (p.id === 'thermal.mark' || p.kind === 'thermalMark') {
+      this._drawThermalMark(p);
+      return;
+    }
     // The normalized cue retains measured subsystem identity before the generic adapter drops it.
     if (p.id === 'subsystem.disabled' || p.id === 'subsystem.restored') return;
     if (p.lane === STRUCTURAL_FX_CUE_KIND || p.kind === STRUCTURAL_FX_CUE_KIND) {
@@ -4879,6 +4883,28 @@ export const vfx = {
       bloomIndependent: true,
       lights: 0,
       opacity: ring ? ring.op0 : 0,
+    };
+  },
+
+  // A burn or a coolant patch is a ring in that patch's colour. No particles, no light,
+  // and the ring does not outlive the field (the field itself never lasts past four seconds).
+  _drawThermalMark(p) {
+    const pos = (p && (p.position || p.pos)) || null;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+    const radius = Math.max(1.5, Math.min(160, Number(p.radius) || 8));
+    const life = Math.max(0.15, Math.min(4, Number(p.life) || 0.4));
+    const ink = typeof p.color === 'string' && p.color
+      ? p.color
+      : (p.thermalKind === 'coolant' ? '#7ec8e8' : '#e85a20');
+    const ring = this._spawnSprite(
+      SPR_RING, pos.x, 0.16, pos.z, life, radius * 0.35, radius, 0.72, 0.0, ink, 0, 0, 1, 0,
+    );
+    this._lastThermalMark = {
+      color: ink,
+      life,
+      radius,
+      shape: ring ? 'ring' : null,
+      lights: 0,
     };
   },
 
@@ -11877,7 +11903,7 @@ export const vfx = {
       const dx = miner.pos.x - pos.x, dz = miner.pos.z - pos.z;
       if (dx * dx + dz * dz > 1) backA = Math.atan2(dz, dx);
     }
-    this._c0.set('#ffc078'); this._c1.set('#582510');
+    this._c0.set(col); this._c1.set(col);
     const n = Math.max(2, Math.round(5 * (this._burst || 1)));
     for (let k = 0; k < n; k++) {
       // Ejection off the work face toward the miner, with two tangential cutting lobes.
@@ -12053,7 +12079,7 @@ export const vfx = {
       );
     }
     this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, 0.3, 3.0, 8.0, 0.8, 0.0, col, 0, 0);
-    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, 3.2, 9.0, 0.4, 0.0, crystal ? '#c2dce8' : '#cbb9a0',
+    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, 3.2, 9.0, 0.4, 0.0, crystal ? '#c2dce8' : col,
       (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
     if (this._gas) {
       // Granular fracture dust: lumpy, unlit, heavy, and it disperses instead of rising.
@@ -17805,8 +17831,11 @@ function tetherVisualRadius(entity) {
 }
 
 // ore/commodity -> tint (cosmetic; falls back to a warm amber)
-function oreColor(id) {
+export function oreColor(id) {
   if (!id) return '#d8a050';
+  // The beam and the shatter pass asteroid ids. "icy" is not "ice", and a grey rock is not amber.
+  if (id === 'ast_common_rock') return '#c8c0a8';
+  if (id === 'ast_icy') return '#9fd8e8';
   if (id.indexOf('ice') >= 0 || id.indexOf('water') >= 0) return '#9fd8e8';
   if (id.indexOf('volatile') >= 0 || id.indexOf('gas') >= 0) return '#40d090';
   if (id.indexOf('crystal') >= 0 || id.indexOf('lumin') >= 0) return '#b060ff';

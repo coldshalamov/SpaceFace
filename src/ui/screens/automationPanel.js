@@ -6,7 +6,7 @@
 //
 // Export: automationScreen  (id 'automation'). No 'three' import.
 
-import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
+import { DRONES, TRADERS, BUILDABLE_OUTPOSTS as OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
 import { CLAIM_REFINERY_RECIPES } from '../../data/sites.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { TECH_NODES } from '../../data/tech.js';

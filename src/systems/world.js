@@ -30,6 +30,8 @@ import { createDockIntent } from '../core/dockIntent.js';
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
 import { clearSurveyFix, bearingCharted } from './surveyFix.js';
 import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP, FUEL_CELL_COOK } from './fuelCrack.js';
+import { stepRadiationCargoCook } from './fragileCargo.js';
+import { writeHazardPresence } from '../data/hazardLanguage.js';
 import { CHART_FILING, chartFilingBounty } from '../data/surveyCharts.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { FACTION_META } from '../data/factions.js';
@@ -6181,7 +6183,13 @@ export const world = {
   // =========================================================================================
   _tickHazards(dt, state) {
     const player = state.entities.get(state.playerId);
-    if (!player || player.alive === false) return;
+    if (!player || player.alive === false) {
+      if (state.world && state.world.hazardPresence) {
+        state.world.hazardPresence.nebula = false;
+        state.world.hazardPresence.radiation = false;
+      }
+      return;
+    }
     const zones = state.world.activeSector.hazards || [];
     this._resolveMovingHazards(zones, state);
     const inside = this._hazardSet || (this._hazardSet = new Set());
@@ -6212,6 +6220,8 @@ export const world = {
     inside.clear();
     this._hazardSet = nowInside;
     this._hazardNextSet = inside;
+    const presence = state.world.hazardPresence || (state.world.hazardPresence = { nebula: false, radiation: false });
+    writeHazardPresence(zones, player.pos, presence);
   },
 
   // WORLD-25: radiation and nebula entry/exit raise the HUD alert line. Damage is unchanged.
@@ -6268,6 +6278,12 @@ export const world = {
   _applyRadiationTick(player, zone, dt, state) {
     const damage = this._hazardEffectiveIntensity(zone) * 6 * dt;
     if (!(damage > 0) || !player || player.alive === false) return;
+    const live = state || this.state;
+    stepRadiationCargoCook(live, {
+      dt,
+      intensity: this._hazardEffectiveIntensity(zone),
+      bus: this.bus,
+    });
     const packet = scalarHitToDamagePacket({
       damage,
       damageType: 'thermal',
@@ -6281,7 +6297,6 @@ export const world = {
       packet,
       origin: { kind: 'hazard_radiation', id: (zone && zone.id) || (zone && zone.type) },
     };
-    const live = state || this.state;
     const combat = this.registry && this.registry.get && this.registry.get('combat');
     if (combat && combat.state === live && typeof combat.ensureKernel === 'function') {
       combat.ensureKernel().routeDamage(request);

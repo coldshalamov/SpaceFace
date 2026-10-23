@@ -68,8 +68,9 @@ export function resolveGateVerdictRingRate(baseRate, kind) {
   const base = Number(baseRate);
   if (!Number.isFinite(base)) return 0;
   if (kind === 'pass' || kind === 'green') return base * 1.65;
-  if (kind === 'hold' || kind === 'amber') return base * 0.85;
-  if (kind === 'refusal' || kind === 'refuse' || kind === 'red') return base * 0.35;
+  // A toll, a scan, or a queue is the lane waiting. Hostile is a refusal.
+  if (kind === 'hold' || kind === 'amber' || kind === 'mts_toll' || kind === 'scn_scan' || kind === 'queue') return base * 0.85;
+  if (kind === 'refusal' || kind === 'refuse' || kind === 'red' || kind === 'hostile') return base * 0.35;
   return base;
 }
 

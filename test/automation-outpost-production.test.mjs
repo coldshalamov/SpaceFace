@@ -9,6 +9,10 @@ import { SHIPS } from '../src/data/ships.js';
 import { buildSlotList } from '../src/systems/ships.js';
 
 const OUTPOST_BY_ID = new Map(OUTPOSTS.map((def) => [def.id, def]));
+// Coarse scheduling/allocation remains a unit contract after refinery retirement.
+// The fixture runs the canonical book through the generic owner; it is never a
+// buildable refinery. The native migration/chain route has its own 402 fixtures.
+const { retiredInto: _retired, ...COARSE_BOOK_FIXTURE } = OUTPOST_BY_ID.get('outpost_refinery');
 
 function rangerWithDroneBay() {
   const hull = SHIPS.find((def) => def.id === 'ship_ranger');
@@ -86,13 +90,14 @@ function addFeed(state, {
 
 function addOutpost(state, {
   id = 'outpost_test',
-  defId = 'outpost_refinery',
+  defId = 'fixture_canonical_book',
   sectorId = 'sector_helios_prime',
   storage = 0,
   ...overrides
 } = {}) {
-  const def = OUTPOST_BY_ID.get(defId) || overrides;
+  const def = OUTPOST_BY_ID.get(defId) || (defId === 'fixture_canonical_book' ? COARSE_BOOK_FIXTURE : overrides);
   const outpost = {
+    ...(defId === 'fixture_canonical_book' ? def : {}),
     id,
     defId,
     level: 1,
@@ -126,7 +131,7 @@ test('refinery with no matching input produces nothing and reports starvation', 
   assert.equal(outpost.ratePerMin, 0, 'the displayed actual rate must agree with zero production');
 });
 
-test('refinery consumes four iron to produce two alloys at its authored 2:1 ratio', () => {
+test('the coarse canonical book consumes four iron to produce two refined metals', () => {
   const { state, inst } = boot();
   const iron = addFeed(state, { id: 'feed_iron', oreType: 'cmdty_ore_iron', buffer: 4 });
   const outpost = addOutpost(state);
@@ -134,12 +139,13 @@ test('refinery consumes four iron to produce two alloys at its authored 2:1 rati
   runProduction(inst, state, 4);
 
   assert.equal(outpost.storage, 2);
+  assert.equal(outpost.storageGoodId, 'cmdty_refined_metals');
   assert.equal(iron.buffer, 0, 'production must debit its real automation feed source');
   assert.equal(outpost.status, 'producing');
   assert.ok(outpost.ratePerMin > 0);
 });
 
-test('an icy-field drone supplies a local Fuel Synth through the coarse off-screen network', () => {
+test('an icy-field drone cannot synthesize fuel without its canonical co-reactants', () => {
   const { state, inst } = boot();
   const remoteSector = 'sector_frontier_remote';
   state.world.currentSectorId = remoteSector;
@@ -155,18 +161,16 @@ test('an icy-field drone supplies a local Fuel Synth through the coarse off-scre
   assert.equal(inst.buyDrone('drone_mk1'), true);
   const drone = state.automation.drones[0];
   assert.equal(drone.fieldId, 'field_remote_ice');
-  assert.equal(drone.oreType, 'cmdty_volatiles',
-    'deployment should select the local recipe input that the authored icy field can yield');
+  assert.equal(drone.oreType, 'cmdty_ice_water',
+    'without a usable local recipe input, deployment preserves the icy field water output');
 
   state.world.currentSectorId = 'sector_helios_prime';
   state.world.activeSector = null;
   inst.update(60, state);
 
-  assert.equal(fuelSynth.storage, 42,
-    'one coarse minute converts 42 of the drone\'s 48 volatile units into fuel cells');
-  assert.equal(drone.buffer, 6, 'unconsumed volatiles remain in the physical drone buffer');
-  assert.equal(fuelSynth.production.limitingGoodId, null);
-  assert.equal(fuelSynth.status, 'producing');
+  assert.equal(fuelSynth.storage, 0, 'ice water alone does not pay the canonical fuel bill');
+  assert.equal(drone.buffer, 48, 'unaccepted ice water remains in the physical drone buffer');
+  assert.equal(fuelSynth.status, 'starved');
 });
 
 test('common-rock deployment keeps its established iron output without a local outpost', () => {
@@ -304,7 +308,7 @@ test('off-screen drone-to-outpost throughput advances on a coarse minute cadence
 
   inst.update(1, state);
   assert.equal(outpost.storage, 24,
-    'one coarse minute converts the streamed 48 iron into 24 alloys at the 2:1 recipe');
+    'one coarse minute converts the streamed 48 iron into 24 refined metals at the canonical 2:1 bill');
 });
 
 test('an off-screen drone delivers its final fuel-bounded batch then waits in place', () => {
@@ -325,7 +329,7 @@ test('an off-screen drone delivers its final fuel-bounded batch then waits in pl
   inst.update(60, state);
 
   assert.equal(outpost.storage, 24,
-    'the refinery receives 48 final iron and converts it to 24 alloys before the drone waits');
+    'the canonical book receives 48 final iron and converts it to 24 refined metals before the drone waits');
   assert.equal(state.automation.drones.length, 1, 'fuel shortage never deletes the purchased machine');
   assert.equal(remote.status, 'stranded');
   assert.equal(remote.fuel, 0);

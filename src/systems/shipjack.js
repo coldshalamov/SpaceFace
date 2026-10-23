@@ -57,7 +57,7 @@ export const shipjack = {
       const v=this.admit(e);if(!v)return;const a=this.attempt(v,e);if(a){a.surrendered=true;a.phase='exposed';a.windowUntil=now(this.state)+90;}
     });
     on('entity:killed',p=>this._killed(p?.id ?? p?.entityId ?? p?.targetId));
-    on('scanner:pulse',()=>this.scanSelected());
+    on('scan:pulse',()=>this.scanSelected());
     // The UI commits docked state AFTER dock:docked reaches the sim systems, and docking then freezes
     // the full tick, so update() never sees a docked player. Paid extraction work that matured in
     // flight settles here, once docked state is real, at its originating berth (after berthAt).
@@ -90,7 +90,7 @@ export const shipjack = {
     if(Object.keys(own.custodyAttempts).length>=SHIPJACK_LIMITS.attempts)return null;
     return own.custodyAttempts[vessel.vesselId]={vesselId:vessel.vesselId,generation:entity.data.shipjackGeneration,phase:'observed',scanned:false,dwell:0,adaptation:0,tries:0,deadline:now(this.state)+180,windowUntil:0,lastActionAt:-10};
   },
-  scanSelected(){if(isBlackFlagAdventure(this.state)&&this.state.player?.targetId!=null)this.command({action:'scan',targetId:this.state.player.targetId});},
+  scanSelected(){if(isBlackFlagAdventure(this.state)&&this.state.player?.targetId!=null&&queryShipjack(this.state,this.state.player.targetId).eligible)this.command({action:'scan',targetId:this.state.player.targetId});},
   result(payload,result){
     const value={...result,action:payload.action,operationId:payload.operationId};
     this.bus.emit('shipjack:result',value);
@@ -126,7 +126,7 @@ export const shipjack = {
       if(!active)return deny('The distress registry is full; your live hull has not been moved.');
       active.beacon=true;this.snapshot(active,pilot);this.dirty();
       this.bus.emit('shipjack:distress',{vesselId:active.vesselId,sectorId:currentSector(state),pos:vec(pilot.pos)});
-      return this.result(payload,{ok:true,reason:'Distress beacon marked. No rescue tow has accepted. Return to your retained hull, or use emergency thrust to reach a repair berth.'});
+      return this.result(payload,{ok:true,reason:'Distress beacon marked. No rescue tow has accepted. Return to your retained hull; a damaged drive may receive existing yard-tender assistance, but an extracted drive requires replacement at a yard.'});
     }
     const entity=state.entities.get(payload.targetId ?? state.player.targetId);
     const view=queryShipjack(state,entity?.id);
@@ -167,12 +167,14 @@ export const shipjack = {
     }
     if(payload.action==='tow'){
       if(a.phase!=='secured')return deny('Secure the target first.');
+      if(!ready.tethered)return deny('Attach the Massline to this exact hull before plotting a tow. A line to another object cannot carry it.');
       vessel.location.kind='tow';this.navigate(vessel.vesselId,true);return this.result(payload,{ok:true,reason:'Tow slowly into a receiving berth. The Massline carries the actual hull.'});
     }
     if(!a.scanned)return deny('Identify the frame before negotiating or probing.');
     if(time-a.lastActionAt<1.2)return deny('The interface is recovering; watch the signal before another command.');
     a.lastActionAt=time;
     if(payload.action==='hail'){
+      if(vessel.crew==='automated'||vessel.profile==='autonomous')return deny('No crew channel answers. Probe the maintenance signal or reach the service port with a pod; safe-passage terms cannot surrender an autonomous helm.');
       if(ready.distance>1200)return deny('Comms are out of range.');
       const safeCrew=entity.data.shipjackUncrewed || vessel.crew==='evacuated' || vessel.crew==='automated';
       const hullFraction=entity.hull/Math.max(1,entity.hullMax);
@@ -181,7 +183,9 @@ export const shipjack = {
       if(!accepts){a.tries++;this.cue('failed',entity);return deny(vessel.profile==='corporate'?'Captain: Crew passage, yes. Corporate title, no. Cut my drive before you ask for the helm.':'Captain: I still have engines and people counting on me. Not yet.');}
       a.surrendered=true;a.phase='exposed';a.windowUntil=time+90;vessel.crewSafe=true;a.method='parley';
       if(fittedBlackFlagTool(state,'mod_proof_recorder_s'))vessel.proofRecorded=true;
-      this.registry?.get('pirateDisengage')?.acceptCrewSurrender(entity.id,'black_flag_safe_passage');
+      // An evacuated/automated frame has no pilot to surrender. Registering one with the
+      // crew recovery owner would schedule an impossible flee/despawn behind this attempt.
+      if(!safeCrew)this.registry?.get('pirateDisengage')?.acceptCrewSurrender(entity.id,'black_flag_safe_passage');
       vesselHistory(state,vessel,'crew_passage','Crew accepted safe passage. Vessel title was not transferred.');
       this.cue('hail',entity);this.dirty();return this.result(payload,{ok:true,reason:'Crew passage accepted. Match speed, approach the service port, and secure the bridge.'});
     }
@@ -261,7 +265,7 @@ export const shipjack = {
     for(const [id,a] of Object.entries(own.custodyAttempts)){
       if(TERMINAL.has(a.phase))continue;
       const v=own.vesselsById[id],e=state.entities.get(v?.location?.entityId);
-      if(!e?.alive||e.data?.shipjackGeneration!==a.generation){a.phase='destroyed';a.transferStartedAt=null;continue;}
+      if(!e?.alive||e.data?.shipjackGeneration!==a.generation){a.phase=e?.data?.shipjackGeneration===a.generation?'destroyed':'escaped';a.transferStartedAt=null;continue;}
       const readiness=captureReadiness(state,e,a);
       if(readiness.tethered&&readiness.distance<180&&fittedBlackFlagTool(state,'mod_claw_anchor_s')){
         const body=resolvePhysicsBodySpec(e),inertia=body?.inertiaY || e.mass*e.radius*e.radius*.5;
@@ -290,7 +294,11 @@ export const shipjack = {
     if(time<this._nextWork)return;this._nextWork=time+.5;
     for(const v of Object.values(own.vesselsById)){
       const e=state.entities.get(v.location?.entityId);
-      if(e?.alive && e.data?.vesselId===v.vesselId)this.snapshot(v,e);
+      if(e?.alive && e.data?.vesselId===v.vesselId && e.data?.shipjackGeneration===v.generation)this.snapshot(v,e);
+      else if(v.location.sectorId===currentSector(state)&&['field','tow','active'].includes(v.location.kind)){
+        v.location.kind='missing';v.location.entityId=null;
+        vesselHistory(state,v,'signal_lost','Physical signal lost. The last recorded trajectory is retained; custody and title have not been reassigned.');this.dirty();
+      }
       if(v.noticeAt && time>=v.noticeAt && !v.claimResolved){v.noticeAt=0;this.say(`REGISTRY: ${v.name} reported missing. Broadcast papers cannot conceal its frame and engine.`, 'warn');vesselHistory(state,v,'reported','Owner’s missing-vessel notice reached the network.');}
       // Finite remote drift. No invisible loot rolls or full-universe physics.
     }
@@ -336,10 +344,23 @@ export const shipjack = {
   navigate(vesselId,toReceiver=false){
     const v=peekShipjack(this.state)?.vesselsById[vesselId];if(!v)return this.result({action:'navigate'},{ok:false,reason:'No trajectory is on record.'});
     const encounter=BLACK_FLAG_ENCOUNTERS.find(row=>peekShipjack(this.state).encounters[row.id]?.vesselId===vesselId);
-    const receiver=encounter&&STATIONS.get(encounter.stationId);
+    let receiver=encounter&&STATIONS.get(encounter.stationId);
+    if(toReceiver&&(!receiver||!this.stationEntity(receiver.id))){
+      const pilot=this.state.entities.get(this.state.playerId);
+      receiver=[...STATIONS.values()].filter(port=>port.sectorId===currentSector(this.state)
+        &&port.services?.some(service=>['shipyard','repair','black_market'].includes(service))&&this.stationEntity(port.id))
+        .sort((a,b)=>{
+          const pa=this.stationEntity(a.id).pos,pb=this.stationEntity(b.id).pos;
+          return Math.hypot(pa.x-pilot.pos.x,pa.z-pilot.pos.z)-Math.hypot(pb.x-pilot.pos.x,pb.z-pilot.pos.z)||a.id.localeCompare(b.id);
+        })[0];
+      if(!receiver)return this.result({action:'navigate'},{ok:false,reason:'No receiving yard is physically available in this sector. Keep the hull beacon marked and arrange recovery from a port.'});
+    }
     const pos=toReceiver&&receiver?this.stationEntity(receiver.id)?.pos:sectorLocalToGlobalForSector(v.location.pos,v.location.sectorId);
     const sectorId=toReceiver&&receiver?receiver.sectorId:v.location.sectorId;
-    this.bus.emit('ui:setCourse',sectorId!==currentSector(this.state)?{sectorId}:{sectorId,pos:vec(pos),label:toReceiver&&receiver?receiver.name:v.name,targetEntityId:toReceiver?null:v.location.entityId,rendezvous:!toReceiver&&v.location.entityId!=null});
+    const body=this.state.entities.get(v.location.entityId);
+    const live=body?.alive&&body.data?.vesselId===v.vesselId&&body.data?.shipjackGeneration===v.generation;
+    const targetEntityId=!toReceiver&&live?body.id:null;
+    this.bus.emit('ui:setCourse',sectorId!==currentSector(this.state)?{sectorId}:{sectorId,pos:vec(pos),label:toReceiver&&receiver?receiver.name:v.name,targetEntityId,rendezvous:targetEntityId!=null});
     this.bus.emit('shipjack:route',{vesselId,sectorId:v.location.sectorId,pos:vec(pos),label:v.name});
     return this.result({action:'navigate'},{ok:true,reason:`${v.name}: ${v.location.kind}, ${v.location.sectorId}. Beacon route requested.`});
   },

@@ -3990,8 +3990,8 @@ export const rangeScreen = {
     const best = this._bestByRung && this._bestByRung.get(sim.id);
     const medal = rangeMedalLabel(this._licence, sim.id);
     const savedBest = this._licence?.rungs?.[sim.id]?.bestS;
-    const bestTime = best > 0 ? best : savedBest;
-    const bestText = bestTime > 0 ? `Licence ${medal} · Best ${bestTime.toFixed(1)}s` : 'Licence — Gold: clear within 30s; Silver: 60s';
+    const bestTime = Math.min(best > 0 ? best : Infinity, savedBest > 0 ? savedBest : Infinity);
+    const bestText = Number.isFinite(bestTime) ? `Licence ${medal} · Best ${bestTime.toFixed(1)}s` : 'Licence — Gold: clear within 30s; Silver: 60s';
     if (this._els.runBest.textContent !== bestText) this._els.runBest.textContent = bestText;
     const label = `Run progress. ${gate}. Elapsed ${clock}. ${bestText}.`;
     if (this._els.runItem.getAttribute('aria-label') !== label) this._els.runItem.setAttribute('aria-label', label);

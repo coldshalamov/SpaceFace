@@ -9,7 +9,7 @@ import { FLEET_OPERATION_LIMITS, recoveryRoute } from './fleetPersistence.js';
 export { FLEET_OPERATION_LIMITS, recoveryRoute, normalizeFleetPersistence } from './fleetPersistence.js';
 const STATIONS = new Map(SECTORS.flatMap(s => (s.stations || []).map(st => [st.id, { ...st, sectorId: s.id }])));
 const HULLS = new Map(SHIPS.map(s => [s.id, s]));
-const FINAL = new Set(['destroyed', 'returned', 'sold', 'impounded']);
+const FINAL = new Set(['destroyed', 'returned', 'sold', 'impounded', 'missing']);
 const LOCK = new WeakSet();
 const fail = reason => ({ ok: false, reason });
 const finite = (n, fallback = 0) => Number.isFinite(n) ? n : fallback;
@@ -21,6 +21,7 @@ function sourceFacts(state, payload) {
   const owned = state.player?.ownedShips?.find(s => s.vesselId === payload.vesselId);
   if (!vessel || !owned || vessel.custodian !== 'player') return fail('A physically acquired vessel in your custody is required');
   if (state.player.ownedShips[state.player.activeShipIndex] === owned || vessel.location?.entityId === state.playerId || vessel.location?.kind === 'active') return fail('The piloted ship cannot be placed on a recovery transport');
+  if (vessel.location?.kind === 'missing') return fail('The physical signal is lost. Plot its last trajectory; a tender cannot collect an unconfirmed hull.');
   if (FINAL.has(vessel.location?.kind) || vessel.title === 'sold' || vessel.title === 'returned'
     || !(vessel.condition?.hull > 0)) return fail('This vessel is destroyed, released, or under an authority hold');
   if (vessel.location?.kind === 'in_transit') return fail('This vessel is already aboard a recovery transport');

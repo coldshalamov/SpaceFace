@@ -5,6 +5,12 @@ import { TITLE_ATTRACT_TAPE } from '../sim/titleAttractTapeData.js';
 import { buildKillcamStage } from './killcamStage.js';
 import { KILLCAM_TAPE_SCHEMA } from '../sim/killcamTape.js';
 
+/** Authored impact size, or the flash-reduction cap while that cut is on. */
+export function attractFlashSize(fullSize, flashReduced) {
+  const full = Number.isFinite(fullSize) && fullSize > 0 ? fullSize : 7;
+  return flashReduced ? Math.min(full, 1.6) : full;
+}
+
 export function attractPlaybackTape(encoded = TITLE_ATTRACT_TAPE) {
   const tape = decodeTape(encoded), rate = tape.tickRate / tape.shipRate;
   const ships = tape.ships.map((ship) => ({
@@ -46,11 +52,23 @@ export async function buildTitleAttractStage(built, io) {
   const live = await buildKillcamStage(built, io, { tape, control });
   if (live.roots[0]) live.roots[0].name = 'UiStageAttract';
   let visibleStart = null;
+  for (const flash of tape.flashes) flash.fullSize = flash.size;
   return { ...live, update(stage, dt, state) {
     // uiStage's clock already ran while assets compiled under the opaque plate.
     // The first visible catch must start here, rather than being skipped by loading.
     if (visibleStart == null) visibleStart = stage.clock;
     control.elapsed = (((stage.clock - visibleStart) % seconds) + seconds) % seconds;
+    const settings = state && state.settings;
+    const flashReduced = !!(settings && (
+      (settings.accessibility && settings.accessibility.flashReduce)
+      || (settings.video && settings.video.flashReduce)
+    ));
+    // Impact blooms on the title fight honour the same flash cut the flight view uses.
+    // The authored size is kept so turning the cut off restores the bolt.
+    for (const flash of tape.flashes) {
+      const full = flash.fullSize || flash.size;
+      flash.size = attractFlashSize(full, flashReduced);
+    }
     live.update(stage, dt, state);
   } };
 }

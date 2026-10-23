@@ -83,6 +83,22 @@ test('a stale target callback and closed panel cannot steal flight input', () =>
   f.bus.emit('game:load'); prompt.dispose();
 });
 
+test('clearing and deliberately reacquiring the same vessel reopens its dismissed link', () => {
+  const f=fixture();const prompt=createBlackFlagPrompt(f,{deck:()=>f.deck});prompt.open();
+  f.offers.get('black-flag:acquisition').onChoose('$close','keyboard');
+  f.state.player.targetId=null;for(let i=0;i<8;i++)prompt.frame();
+  f.state.player.targetId=2;for(let i=0;i<8;i++)prompt.frame();
+  assert.ok(f.offers.has('black-flag:acquisition'));
+  assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack').length,0);prompt.dispose();
+});
+
+test('the real scanner pulse reopens a dismissed vessel link without a duplicate simulation intent', () => {
+  const f=fixture();const prompt=createBlackFlagPrompt(f,{deck:()=>f.deck});prompt.open();
+  f.offers.get('black-flag:acquisition').onChoose('$close','keyboard');
+  f.bus.emit('scan:pulse',{sourceId:1});assert.ok(f.offers.has('black-flag:acquisition'));
+  assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack').length,0);prompt.dispose();
+});
+
 test('world opportunity is acquired through the shared deck, with no stale-mode or occupant shortcut', () => {
   const f=fixture(); f.state.player.targetId=null;
   const prompt=createBlackFlagPrompt(f,{deck:()=>f.deck});
@@ -105,6 +121,24 @@ test('Back cancels an actual vulnerable airlock crossing but ordinary dismissal 
   assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack' && row.payload.action==='abort').length,1);
   crossing=false;prompt.open();f.offers.get('black-flag:acquisition').onChoose('$close','gamepad');
   assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack').length,1);
+  prompt.dispose();
+});
+
+test('disabled acquired pilot has a public distress route with scanner reopening and stale-body protection',()=>{
+  const f=fixture(),pilot=f.state.entities.get(1);
+  pilot.data.shipjackGeneration='pilot:1';
+  f.state.player.ownedShips=[{defId:'ship_kestrel',vesselId:'vessel:pilot'}];
+  f.state.combat={entities:{1:{capabilities:{drive:false}}}};
+  const prompt=createBlackFlagPrompt(f,{deck:()=>f.deck});
+  for(let i=0;i<8;i++)prompt.frame();
+  const offer=f.offers.get('black-flag:distress');assert.ok(offer);
+  offer.onChoose('leave','touch');assert.equal(f.offers.has('black-flag:distress'),false);
+  for(let i=0;i<8;i++)prompt.frame();assert.equal(f.offers.has('black-flag:distress'),false,'dismissal stays quiet');
+  f.bus.emit('scan:pulse');const retry=f.offers.get('black-flag:distress');assert.ok(retry);
+  retry.onChoose('distress','gamepad');assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack'&&row.payload.action==='distress').length,1);
+  f.state.playerId=2;retry.onChoose('distress','keyboard');
+  assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack'&&row.payload.action==='distress').length,1);
+  f.state.run.kind='crucible';f.bus.emit('game:new');f.bus.emit('scan:pulse');assert.equal(f.offers.size,0);
   prompt.dispose();
 });
 

@@ -47,7 +47,13 @@ const FRAGILE_GLYPH = Object.freeze({
 });
 
 function freshState() {
-  return { schemaVersion: STATE_VERSION, receipts: [], lastLossT: -Infinity, readout: [] };
+  return {
+    schemaVersion: STATE_VERSION,
+    receipts: [],
+    lastLossT: -Infinity,
+    readout: [],
+    radiationExposure: 0,
+  };
 }
 
 function finiteOrZero(value) {
@@ -88,7 +94,65 @@ export function ensureFragileCargoState(state) {
   if (!Array.isArray(own.receipts)) own.receipts = [];
   if (!Array.isArray(own.readout)) own.readout = [];
   if (!Number.isFinite(own.lastLossT)) own.lastLossT = -Infinity;
+  if (!Number.isFinite(own.radiationExposure) || own.radiationExposure < 0) own.radiationExposure = 0;
   return own;
+}
+
+/** Seconds at intensity 1 that ruin one hold unit. A fast transit stays under this. */
+export const RADIATION_CARGO_COOK_S = 4;
+
+function playerIsDocked(state) {
+  if (state && state.ui && state.ui.docked) return true;
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  return !!(player && player.flags && player.flags.docked);
+}
+
+/**
+ * Radiation the chart already names as cooking cargo. One unit per threshold,
+ * fragile lots first, then whatever else is in the hold. Persistent freight
+ * stays (removeCargo refuses it). At most one unit leaves per call.
+ */
+export function stepRadiationCargoCook(state, { dt = 0, intensity = 1, bus = null } = {}) {
+  if (!state || playerIsDocked(state)) return null;
+  const own = ensureFragileCargoState(state);
+  if (!own) return null;
+  const step = Number(dt);
+  const burn = Number(intensity);
+  if (!(step > 0) || !(burn > 0)) return null;
+  own.radiationExposure = Math.min(
+    RADIATION_CARGO_COOK_S,
+    (Number(own.radiationExposure) || 0) + step * burn,
+  );
+  if (own.radiationExposure < RADIATION_CARGO_COOK_S) return null;
+  const items = state.player && state.player.cargo && state.player.cargo.items;
+  if (!items) return null;
+  const ids = Object.keys(items).filter((id) => Math.floor(Number(items[id]) || 0) > 0).sort();
+  const pick = ids.filter((id) => isFragileCommodity(id))[0] || ids[0];
+  if (!pick) return null;
+  const removed = removeCargo(state, pick, 1);
+  if (removed <= 0) {
+    own.radiationExposure = 0;
+    return null;
+  }
+  own.radiationExposure = 0;
+  const receipt = {
+    event: 'radiation_cargo_cook',
+    commodityId: pick,
+    name: commodityName(pick),
+    qty: removed,
+    t: round4(state.simTime),
+  };
+  own.receipts.push(receipt);
+  if (own.receipts.length > FRAGILE_CARGO_RECEIPT_CAP) {
+    own.receipts.splice(0, own.receipts.length - FRAGILE_CARGO_RECEIPT_CAP);
+  }
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('cargo:radiationCooked', receipt);
+    bus.emit('toast', { text: `Radiation cooked the ${receipt.name}.`, kind: 'warn', ttl: 2.4 });
+  }
+  return receipt;
 }
 
 export function isFragileCommodity(commodityId) {
