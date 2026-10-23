@@ -211,9 +211,17 @@ export function createRockCoreSystem() {
       const links = rc.flail.links;
       if (!links.length) return;
       // Prune dead/freed links — a released or destroyed wreck leaves the chain.
+      let pruned = false;
       for (let i = links.length - 1; i >= 0; i--) {
         const b = entityOf(state, links[i].id);
-        if (!b || b.alive === false || !b.pos) { links.splice(i, 1); }
+        if (!b || b.alive === false || !b.pos) { links.splice(i, 1); pruned = true; }
+      }
+      // Membership changed: the chain visual and any listener reading flailChanged must see
+      // a link die the same way they see a link chain on or release.
+      if (pruned) {
+        this.bus.emit(ROCK_CORE_EVENTS.flailChanged, Object.freeze({
+          links: Object.freeze(links.map((l) => l.id)),
+        }));
       }
       // Below chaining tier the Line can't hold wrecks: shed links, keep the event honest.
       if (tier < LINE_FLAIL_MIN_TIER && links.length) {
