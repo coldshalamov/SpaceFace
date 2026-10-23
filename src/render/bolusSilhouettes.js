@@ -41,6 +41,8 @@ function clonePart(part) {
     glow: part.glow,
     indices: part.indices,
     positions: part.positions.slice(),
+    ...(part.uvs ? { uvs: part.uvs.slice() } : {}),
+    ...(part.normals ? { normals: part.normals.slice() } : {}),
   };
 }
 
@@ -182,12 +184,104 @@ function buildHauler() {
 }
 
 function buildRib() {
-  return {
-    parts: [
-      quad('rib_hook', [-0.2, 0.9, 0], [0.55, 0.7, 0.1], [0.7, -0.4, 0.15], [-0.05, -0.2, 0], TISSUE),
-      quad('rib_return', [0.55, 0.7, 0.1], [0.15, 0.95, -0.2], [-0.1, 0.4, -0.15], [0.4, 0.2, 0.05], TISSUE),
-    ],
-  };
+  // Two closed cartilage lobes retain the existing child order and motion contract.
+  // Each station is [x, y, z, in-plane radius, depth radius]. The smaller return
+  // seats inside the crook near the origin, so its inherited flare cannot unseat it.
+  function lobe(id, stations) {
+    // One midpoint per authored span rounds the long crook without extra parts or
+    // smoothing away the deliberately tapered ends. End stations stay exact.
+    const authored = stations;
+    stations = [];
+    for (let i = 0; i < authored.length - 1; i++) {
+      const a = authored[Math.max(0, i - 1)], b = authored[i];
+      const c = authored[i + 1], d = authored[Math.min(authored.length - 1, i + 2)];
+      stations.push(b, b.map((v, k) => (-a[k] + 9 * v + 9 * c[k] - d[k]) / 16));
+    }
+    stations.push(authored[authored.length - 1]);
+    const sides = 8;
+    const positions = [], indices = [], uvs = [];
+    const lengths = [0];
+    for (let i = 1; i < stations.length; i++) {
+      const a = stations[i - 1], b = stations[i];
+      lengths.push(lengths[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]));
+    }
+    for (let i = 0; i < stations.length; i++) {
+      const p = stations[i];
+      const a = stations[Math.max(0, i - 1)], b = stations[Math.min(stations.length - 1, i + 1)];
+      const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const nx = -(b[1] - a[1]) / length, ny = (b[0] - a[0]) / length;
+      for (let j = 0; j <= sides; j++) {
+        const angle = (j % sides) / sides * Math.PI * 2;
+        positions.push(p[0] + nx * Math.cos(angle) * p[3], p[1] + ny * Math.cos(angle) * p[3], p[2] + Math.sin(angle) * p[4]);
+        uvs.push(j / sides, lengths[i] / lengths[lengths.length - 1]);
+      }
+    }
+    for (let i = 0; i < stations.length - 1; i++) {
+      for (let j = 0; j < sides; j++) {
+        const a = i * (sides + 1) + j, b = a + sides + 1;
+        indices.push(a, a + 1, b, a + 1, b + 1, b);
+      }
+    }
+    const capRim = new Map();
+    for (const end of [0, stations.length - 1]) {
+      const p = stations[end], center = positions.length / 3, ring = end * (sides + 1);
+      positions.push(p[0], p[1], p[2]); uvs.push(0.5, 0.5);
+      const rim = positions.length / 3;
+      for (let j = 0; j < sides; j++) {
+        const v = ring + j, angle = j / sides * Math.PI * 2;
+        capRim.set(rim + j, v);
+        positions.push(...positions.slice(v * 3, v * 3 + 3));
+        uvs.push(0.5 + Math.cos(angle) * 0.5, 0.5 + Math.sin(angle) * 0.5);
+      }
+      for (let j = 0; j < sides; j++) {
+        const next = (j + 1) % sides;
+        if (end) indices.push(center, rim + j, rim + next);
+        else indices.push(center, rim + next, rim + j);
+      }
+    }
+    // Area-weighted normals share both the wrap and radial-cap UV seams.
+    const normals = new Array(positions.length).fill(0);
+    const canonical = (v) => capRim.get(v) ?? (v < stations.length * (sides + 1) && v % (sides + 1) === sides ? v - sides : v);
+    for (let i = 0; i < indices.length; i += 3) {
+      const [a, b, c] = indices.slice(i, i + 3).map(v => v * 3);
+      const ux = positions[b] - positions[a], uy = positions[b + 1] - positions[a + 1], uz = positions[b + 2] - positions[a + 2];
+      const vx = positions[c] - positions[a], vy = positions[c + 1] - positions[a + 1], vz = positions[c + 2] - positions[a + 2];
+      const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+      for (const v of indices.slice(i, i + 3)) for (let k = 0; k < 3; k++) normals[canonical(v) * 3 + k] += n[k];
+    }
+    for (let v = 0; v < positions.length / 3; v++) {
+      const c = canonical(v) * 3;
+      const length = c === v * 3 ? Math.hypot(normals[c], normals[c + 1], normals[c + 2]) : 1;
+      for (let k = 0; k < 3; k++) normals[v * 3 + k] = normals[c + k] / length;
+    }
+    // Lay the authored crook toward the XZ flight plane, not on an upright card.
+    // This is vertex construction only: the entity yaw and fauna motion stay unchanged.
+    const c = Math.cos(Math.PI * 5 / 12), s = Math.sin(Math.PI * 5 / 12);
+    for (const values of [positions, normals]) for (let i = 0; i < values.length; i += 3) {
+      const y = values[i + 1], z = values[i + 2];
+      values[i + 1] = y * c - z * s;
+      values[i + 2] = y * s + z * c;
+    }
+    // Reserve the unchanged motion envelope: root scale <=1.12, charge offset <=hypot(.1,.45).
+    // Including the secondary 1.25 flare scale, every posed vertex remains inside radius16.
+    for (let i = 0; i < positions.length; i++) positions[i] *= 0.93;
+    return { id, color: TISSUE, tissue: true, glow: false, positions, indices, uvs, normals };
+  }
+  return { parts: [
+    lobe('rib_hook', [
+      [0.36, -0.35, 0.06, 0.055, 0.075], [0.45, -0.22, 0.07, 0.105, 0.14],
+      [0.53, -0.02, 0.07, 0.13, 0.18], [0.56, 0.20, 0.06, 0.145, 0.21],
+      [0.51, 0.43, 0.04, 0.15, 0.22], [0.37, 0.64, 0.01, 0.155, 0.22],
+      [0.16, 0.75, -0.02, 0.15, 0.205], [-0.04, 0.70, -0.03, 0.135, 0.18],
+      [-0.12, 0.54, -0.02, 0.12, 0.16], [-0.06, 0.34, 0.0, 0.13, 0.15],
+      [0.03, 0.20, 0.02, 0.09, 0.12],
+    ]),
+    lobe('rib_return', [
+      [-0.04, 0.33, 0.0, 0.11, 0.13], [0.01, 0.23, 0.0, 0.14, 0.155],
+      [0.07, 0.10, 0.01, 0.12, 0.13], [0.17, 0.04, 0.02, 0.075, 0.085],
+      [0.27, 0.07, 0.02, 0.025, 0.035],
+    ]),
+  ] };
 }
 
 function buildBezoar() {
