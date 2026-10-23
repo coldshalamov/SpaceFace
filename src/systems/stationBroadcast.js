@@ -43,6 +43,7 @@
 // noTouch honored: world.js / voiceArbiter.js / combat.js / render root are never edited.
 
 import { hash32 } from '../core/rng.js';
+import { rheaShiftBroadcast } from '../data/rheaShiftBroadcast.js';
 
 /** Explicit numeric priority for ambient lines — strictly below every CHANNEL_PRIORITY default. */
 export const AMBIENT_PRIORITY = 1;
@@ -302,13 +303,21 @@ export const stationBroadcast = {
     const hull = hulls.length
       ? hulls[hash32(seedBase, 'broadcast-hull', bucket) % hulls.length]
       : null;
-    const text = pickBroadcastLine(def.lines, roll, hull);
+    // One in four ordinary ambient buckets carries a work-backed local recap. Other beats
+    // keep the station's existing chatter; this adds no clock, event queue or saved latch.
+    const shift = bucket % 4 === 0 ? rheaShiftBroadcast(state, data.stationId) : null;
+    const text = shift?.text || pickBroadcastLine(def.lines, roll, hull);
     if (!text) return;
 
     const helpers = (this._ctx && this._ctx.helpers) || {};
     if (!helpers.voice || typeof helpers.voice.say !== 'function') return;
     helpers.voice.say({
       channel: 'ambient', text, kind: 'stationBroadcast',
+      ...(shift ? { id: shift.id, valid: () => this._state === state
+        && state.mode === 'flight' && !this._restoring && !isOnboardingActive(state)
+        && (state.simTime - this._lastCombatAt) >= COMBAT_SILENCE_S
+        && nearestVisibleStation(state, NEAR_RANGE) === station
+        && rheaShiftBroadcast(state, data.stationId)?.id === shift.id } : {}),
       factionId: data.factionId || null, priority: AMBIENT_PRIORITY, ttl: LINE_TTL_S,
     });
     this._lastSayAt = now;
