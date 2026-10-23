@@ -1784,7 +1784,7 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 
 **Checked:** bench clean (no tangled, cut-off or offscreen type; primary controls reachable) at 960×540, 1280×720, 1920×1080, 761×800, 820×600 and 860×800, with the control walk at each. Phone unaffected (desktop-only selectors).
 
-**Leftover:** at 1280×720 the context line still wraps "DAYS AGO" onto a second line.
+**Leftover:** ~~at 1280×720 the context line still wraps "DAYS AGO" onto a second line~~ (fixed in ui-polish-100, see § Save/Load context line at 1200–1599).
 
 ## Save/Load: the context line wraps between readings, not inside one (ui-polish-82)
 
@@ -1966,3 +1966,11 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`saveLayouts.js`, desktop only):** in `(min-width:641px) and (max-width:790px) and (min-height:461px) and (max-height:749px)` the way back moves into the title's row, top right (`grid-template-areas:"title foot" "page page" "hang hang"`), not pinned, so nothing scrolls under it; the title takes the short-desktop size (34px) and the subtitle gets 8px under it. ≤640 wide and ≤460 tall keep their own rules. No selector or ID changes. (A first cut pinned the foot with `position:sticky`; it covered LOAD at 461 tall and the strip's labels at 500, and was dropped. A ≤739 × ≤460 clause was dropped too: it put EXPORT under the LOAD title at 390×700.)
 
 **Checked (review-516/c2):** probe (text overlap, off-frame, `elementFromPoint` on every button and input, foot vs title/subtitle rects) on `save-load` and `save-load-empty` at 641/739/740/790 × 461/500/561/700/749, 760×461, 700×500, 700×700: EXPORT / IMPORT / BACK in view and clickable without a scroll, no title/foot overlap, off-frame text 15→11 (461), 14→10 (500), 12→4–5 (561), 3→0 (700). 640×*, *×460, *×750, 791×*, 390×700, 390×460, 500×460/600, 600×460/700/800, 960×540, 1280×720, 1366×768, 1440×900, 1920×1080, 390×844 and 375×667 phones render identical to master (layout rect hashes). Type floor OK. Shots: `/workspace/orchestra/state/review-516/c2/side-by-side-516-c2.png`.
+
+## Save/Load context line at 1200–1599 (ui-polish-100)
+
+**Before (master f56dfa6d32):** at 1280×720 the reading column is ~360px, so the context line at .2em tracking broke as "QUICK SAVE · CURRENT · / FLOWN 9/22/2026" and pushed the title and the reading down a line.
+
+**After (`saveLayouts.js`, desktop only):** in `(min-width:1200px) and (max-width:1599px)` the context line is tracked at .06em and reads on one line, with room for the longer "FLOWN 29 DAYS AGO". Size stays 12px. ≤1199 and ≥1600 keep their rules. No selector or ID changes.
+
+**Checked:** ui-bench `save-load` clean at 1200×720, 1280×720, 1440×900 and 1599×900; 960×540, 1920×1080 and 390×844 are outside the query. Type floor OK. Shots: `ui-shots/polish100/{before,after,after2}/`.
