@@ -1097,7 +1097,7 @@ production units, and never build what they write.
 | 444 | GOLD-LEDGER | The Ledger — a diegetic case board where physically found evidence pins and links; the Vale thread is solvable there (§32.4) | BUILD | OPEN — M3; after 423 in the seam |
 | 445 | GOLD-HOME | The Long Berth — tow and restore the abandoned yard tug as a home; towed trophies persist in its yard (§32.4) | BUILD | CLAIMED devin-ten-oct23 |
 | 446 | GOLD-CREW | Crew aboard — up to 4 crew from the local pool and cast, one real perk each, banter about real events, loyalty jobs (§32.4) | BUILD | CLAIMED devin-ten-oct23 |
-| 447 | GOLD-MANIFEST | Manifest — the bar card game in the house voice, against regulars and cast (§32.4) | BUILD | OPEN — M3 |
+| 447 | GOLD-MANIFEST | Manifest — the bar card game in the house voice, against regulars and cast (§32.4) | BUILD | DONE — 321483d434; seeded three-manifest matches, five contact policies, deed-earned cards, economy-owned stakes/payouts, real bar entry and ORRERY table; full UI match and forfeit checked |
 | 448 | GOLD-COLOSSI | Colossi — capital bosses get rope-detachable plates, exposed weak points and readable phase changes (§32.4) | BUILD | OPEN — after 463 in the seam |
 | 449 | GOLD-WEATHER | Weather is physics — ion storm, solar wind and meteor shower, forecast on the band, sector-seasonal (§32.4) | BUILD | DONE devin-25-oct22 |
 | 450 | GOLD-WONDERS | One wonder per sector — the first six missing signature landmarks, each a place with a verb (§32.4; list from 419) | BUILD | OPEN — after 464 in the seam; coordinate with L-PICTURE |
