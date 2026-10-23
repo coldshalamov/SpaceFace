@@ -89,10 +89,11 @@ export function admitReceipt({
 // ALWAYS: hull/shield arc at the ship + cooldown pips. WHEN IT MATTERS: one aimed-target line.
 // NEVER in flight: colour legends, authority receipts, jurisdiction notes, debug stat strings.
 const FLIGHT_NEVER_KINDS = new Set(['legend', 'authority', 'jurisdiction', 'debug']);
-// Debug stat strings look like `Reach·Fighter·L1 … VULN E— K—` — middot-separated fields
-// with a stat tail. A plain `A · B · C` receipt (payout, tally, ledger line) must not trip
-// the separator arm, so it also requires VULN, an L<level> marker, or a bare-letter dash.
-const FLIGHT_DEBUG_STAT = /[·•][^\n]*?(?:VULN|L\d|[A-Z]—)|VULN|[A-Z]—/;
+// Debug stat strings look like `Reach·Fighter·L1 … VULN E— K—` — compact class-name
+// fields joined by UNspaced middots ending in an L<level> marker. A receipt with spaced
+// ` · ` separators ("Refit complete · L2 engine fitted", payout tallies) must admit, so
+// the stat arm requires the compact token shape, not a level marker anywhere in prose.
+const FLIGHT_DEBUG_STAT = /(?:^|\s)\S*[·•]\S*[·•]L\d|VULN|[A-Z]—/;
 
 /** True while `kind`/`text` names a surface the flight glass never shows. */
 export function flightGlassNever(kind, text) {

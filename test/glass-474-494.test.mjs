@@ -45,6 +45,12 @@ test('three tiers: flight glass never shows legends/authority/jurisdiction/debug
   // Ordinary receipts use middot separators too — without a stat tail they must still admit.
   assert.equal(flightGlassNever('info', '920 cr payout · no bond · 5 min'), false);
   assert.equal(flightGlassNever('info', 'delivered 6u silicate · Ceres Port · 1,420 cr on the receipt'), false);
+  // A level token in spaced-separator prose is not a debug stat string.
+  assert.equal(flightGlassNever('info', 'Refit complete · L2 engine fitted'), false);
+  assert.equal(flightGlassNever('info', 'Refit complete · SL2 engine fitted'), false);
+  assert.equal(flightGlassNever('info', 'Refit complete · Level 3 engine fitted'), false);
+  // …but the compact unspaced stat shape still is.
+  assert.equal(flightGlassNever('info', 'Reach·Fighter·L1'), true);
   assert.equal(admitReceipt({ text: 'some line', kind: 'jurisdiction' }).admit, false);
   assert.equal(admitReceipt({ text: 'Reach·Fighter·L1', kind: 'info' }).admit, false);
   assert.equal(admitReceipt({ text: 'ORE HOLD FULL', kind: 'info' }).admit, true);
