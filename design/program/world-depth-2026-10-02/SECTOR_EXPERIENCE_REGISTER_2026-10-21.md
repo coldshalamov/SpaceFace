@@ -1,5 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 
+## Archive instrument and placement progress: 2026-10-23 20:11 UTC
+
+All twelve goals remain OPEN. This is substantial **local implementation and qualification**, not published runtime integration or game acceptance. World/story composition remains primary; Rope/Blind Welder remain PARKED.
+
+- Guarded selected-new-ID census support derived from public PR480 passes 10/10 reviewed tests. The preservation proof keeps all 218 prior public rows unchanged in a proposed 219-row union; it is not a full census regeneration.
+- The actual canonical Forge adapter exposed and corrected an eager-LOD construction bug: each LOD is now constructed only after the previous one is extracted. The corrected released package is 275,792 bytes, SHA256 `c7fdaf0662320da033e719bfb15705efacf1444aaf5c5fa602083aa75dd0563e`. The actual selected census owner measures the cradle green, 1/1, with 16 authored compound boxes, 0.000483 WU visible-vertex coverage error, draw scale 1 and origin zero. This bounded geometry result does not establish native contact behavior or flight clearance.
+- The fifth Triton Archive row is implemented at the unique visible live Archive POI, retaining the four existing surround rows, six-row cap, western approach/watch references and missing/ambiguous-anchor fallback. Nine targeted tests pass, including 36 other-sector/fallback comparisons and the extracted ordinary world consumer. These are not a full boot, actual Save/Continue or renderer acceptance. No mission, reward, crew or new persistence owner is added; Wake Lab remains a separate place.
+- New actual images were delivered: a composed Archive surround at 19:45 and a released-package PBR preview at 20:09. The latter uses Blender studio lighting and the top texture mip, without rendered AO. Neither is a live game-camera capture.
+- The nine-path asset-bank candidate still has no verified commit, ref or PR. Eight required blob objects exist, but the original LOD0 oversized transfer remains unresolved and was not repeated. The available authorized CLI/proxy alternative was checked without finding a verified working publication route. A lossless compression experiment is preserved but not adopted: it remained too large and carries authoring-compatibility risk. This scoped publication issue does not stop local integration/testing and does not call for new credentials or a generic login request.
+
+The integration owner additionally reports the isolated parts-library ID/catalog at authored scale 1/origin zero, the current-master world consumer with the PR552 anchor and new fixed-body ID, and a 219-row union retaining all 218 prior rows exactly. Four exact-world-method tests exercise actual insertion, physics resolution, sweep and renderer center; a 557-module resolution guard excludes canonical source imports. These are local candidate results, not full-game integration. Native-contact evidence is being finalized separately. Ownership and next action: the integration owner alone retains release, parts-library, world, census and package integration; full renderer metadata/package admission remains active. The adapter and fifth-row source author has completed and preserved that bounded work; do not create a competing writer. Resource recovery is handled separately with exact, backed-up cleanup only. Finish these connected Archive checks, preserve the source/models/tests, then verify coherent draft delivery through a supported route.
+
+Exported, reviewed, published, integrated and accepted remain distinct. Existing PR552/559/561 terminal CI evidence below is unchanged; no new hosted or full-game acceptance is claimed. Existing browser approval hold and other held operations remain unchanged.
+
+
 ## CI closure and active build work: 2026-10-23 19:35 UTC
 
 All twelve goals remain OPEN; world/story composition remains primary and Rope/Blind Welder remain PARKED. This update supersedes the prior running status for PR552, not its implementation or acceptance evidence.
