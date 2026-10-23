@@ -887,6 +887,9 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   function diffDomains(state, seq) {
     refreshDraftReadView(state);
     refreshResultsReadView(state);
+    state.towjawPublic = host.registry?.get('towjaw')?.readView?.() ?? null;
+    state.derelictExpeditionView = host.registry?.get('derelictExpedition')?.presentation?.() ?? null;
+    state.kineticCatalystsPublic = host.registry?.get('kineticCatalysts')?.getSnapshot?.() ?? null;
     const r = host.domainDiffer.diff(state, seq);
     host.domainDiffNsTotal += BigInt(Math.round(r.diffMs * 1e6));
     if (r.diffMs > host.domainDiffMsMax) host.domainDiffMsMax = r.diffMs;

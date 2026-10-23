@@ -18,6 +18,9 @@ import { createUiInput } from './input.js';
 import { isConfirmOpen, bindConfirmBus } from './confirm.js';
 import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
 import { resolveActionLabel } from '../systems/input.js';
+import { getActiveTowjawRuntime, mountTowjawPresentation } from '../features/towjaw/index.js';
+import { createDerelictExpeditionHud } from '../features/derelictExpedition/hud.js';
+import { BLACKBOX_RUNS_SITE } from '../features/derelictExpedition/site.js';
 import { injectHudCss } from './views/hudStyles.js';
 import { isHostileToPlayer, isWreckLike, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { targetDisplayName } from './targetPanel.js';
@@ -857,6 +860,14 @@ export const ui = {
       this.physicsVenueHud = mountPhysicsVenueHud({ root: uiRootEl, bus: this.bus, state: this.state, screens: this.screenManager });
       this.spectrumOverlay = mountSpectrumOverlay({ root: uiRootEl, state: this.state, helpers: this.helpers, screens: this.screenManager });
     } catch (e) { console.warn('[ui] racing tape mount failed', e); }
+    try {
+      const root = typeof document !== 'undefined' ? document.getElementById('ui-root') : null;
+      const system = ctx.registry?.get('derelictExpedition');
+      // Worker mode supplies a read-only registry facade. Never initialize a second sim owner.
+      if (root && system) this.derelictExpeditionHud = createDerelictExpeditionHud({
+        root, system, helpers: this.helpers,
+      });
+    } catch (e) { console.warn('[ui] blackbox instrument mount failed', e); }
 
     this.worldObject = createWorldObjectInteraction(ctx, this.screenManager);
 
@@ -1910,6 +1921,15 @@ export const ui = {
         this._hudVisibleLast = hudVisible;
       }
       if (hudVisible && this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
+      const blackboxVisible = hudVisible && st.world?.currentSectorId === BLACKBOX_RUNS_SITE.sectorId;
+      this._derelictHudElapsed = (this._derelictHudElapsed || 0) + Math.max(0, Number.isFinite(dt) ? dt : 0);
+      if (!blackboxVisible) {
+        this.derelictExpeditionHud?.update({ visible: false });
+        this._derelictHudElapsed = 0.125;
+      } else if (this._derelictHudElapsed >= 0.125) {
+        this._derelictHudElapsed = 0;
+        this.derelictExpeditionHud?.update({ visible: true });
+      }
       if (this.racingHud && typeof this.racingHud.frame === 'function') this.racingHud.frame(st);
       this.physicsVenueHud?.frame(st);
       this.spectrumOverlay?.frame(st);
@@ -1921,6 +1941,18 @@ export const ui = {
       if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function') {
         this.capitalBossOverlay.draw(st);
       }
+      this._towjawViewFacade ||= { getView: () => this.state?.towjawPublic || null };
+      const towjawRuntime = getActiveTowjawRuntime(st) || (st?.towjawPublic ? this._towjawViewFacade : null);
+      if (towjawRuntime !== this._towjawRuntime) {
+        this.towjawOverlay?.destroy();
+        this._towjawRuntime = towjawRuntime;
+        this.towjawOverlay = towjawRuntime ? mountTowjawPresentation({
+          root: document.getElementById('ui-root'), state: st, bus: this.bus,
+          helpers: this.helpers, runtime: towjawRuntime,
+        }) : null;
+        if (this.towjawOverlay) towjawRuntime.setPresentation?.(this.towjawOverlay);
+      }
+      this.towjawOverlay?.draw({ visible: hudVisible });
       if (this.promptDeck && typeof this.promptDeck.tick === 'function') this.promptDeck.tick();
       if (this.toasts && this.toasts.tick) this.toasts.tick();
       if (this.discoveryPlate && this.discoveryPlate.tick) this.discoveryPlate.tick();
@@ -1975,6 +2007,10 @@ export const ui = {
     this.nemesisComms = null;
     if (this.capitalBossOverlay && typeof this.capitalBossOverlay.destroy === 'function') this.capitalBossOverlay.destroy();
     this.capitalBossOverlay = null;
+    this.towjawOverlay?.destroy();
+    this.towjawOverlay = null;
+    this._towjawRuntime = null;
+    this._towjawViewFacade = null;
     if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
     this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
@@ -1998,6 +2034,13 @@ export const ui = {
     this.disposeHudOverlays();
   },
   disposeHudOverlays() {
+    this.towjawOverlay?.destroy();
+    this.towjawOverlay = null;
+    this._towjawRuntime = null;
+    this._towjawViewFacade = null;
+    this.derelictExpeditionHud?.dispose();
+    this.derelictExpeditionHud = null;
+    this._derelictHudElapsed = 0.125;
     if (this.racingHud && typeof this.racingHud.dispose === 'function') { try { this.racingHud.dispose(); } catch (_) {} }
     this.racingHud = null;
     this.physicsVenueHud?.dispose?.();

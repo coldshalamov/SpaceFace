@@ -6,9 +6,17 @@ import { quoteLoadError } from './environment.mjs';
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 const firstLightHandlerPages = new WeakSet();
 
-export function isFirstLightPrompt(title, cancelLabel) {
+function firstLightSettingsChoice(title, cancelLabel, confirmLabel) {
   // confirm.js appends an aria-hidden ESC keycap inside the button.
-  return norm(title) === 'First light' && norm(cancelLabel).toUpperCase().replace(/\s*ESC$/, '') === 'KEEP MY SETTINGS';
+  if (norm(title) !== 'First light') return null;
+  const cancel = norm(cancelLabel).toUpperCase().replace(/\s*ESC$/, '');
+  if (cancel === 'KEEP MY SETTINGS') return 'cancel';
+  if (cancel === 'USE FIRST LIGHT' && norm(confirmLabel).toUpperCase() === 'PLAY') return 'confirm';
+  return null;
+}
+
+export function isFirstLightPrompt(title, cancelLabel, confirmLabel) {
+  return firstLightSettingsChoice(title, cancelLabel, confirmLabel) !== null;
 }
 
 // First light is scheduled after the title is painted. On a busy renderer it can appear
@@ -62,7 +70,7 @@ export async function bootToMenu(page, baseUrl, step) {
 
 // A fresh profile can be asked a first-run question on the menu (the shared confirm surface, e.g.
 // "First light", the accessibility preset offer). A measured run keeps the shipped settings, so it
-// answers with the cancel ("keep") button and says which question it answered; nothing else is
+// answers the public keep-settings choice and says which question it answered; nothing else is
 // dismissed. `.sf-confirm` / `__cancel` / `#sf-confirm-title` are the surface's documented hooks.
 async function answerFirstRunPrompt(page, step) {
   const open = page.locator('#sf-confirm-root .sf-confirm .sf-confirm__cancel:visible').first();
@@ -73,8 +81,11 @@ async function answerFirstRunPrompt(page, step) {
   }
   const title = await page.locator('#sf-confirm-title').first().textContent().catch(() => '');
   const cancelLabel = await open.textContent().catch(() => '');
-  if (!isFirstLightPrompt(title, cancelLabel)) return;
-  await open.click();
+  const primary = page.locator('#sf-confirm-root .sf-confirm .sf-confirm__ok:visible').first();
+  const confirmLabel = await primary.textContent().catch(() => '');
+  const choice = firstLightSettingsChoice(title, cancelLabel, confirmLabel);
+  if (!choice) return;
+  await (choice === 'confirm' ? primary : open).click();
   step('first-run prompt', true, `answered "${String(title || '').trim()}" with keep (shipped settings)`);
 }
 

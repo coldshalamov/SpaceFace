@@ -20,6 +20,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'npcJobsRuntime',
   // Clear durable extraction records before world entry replans authored salvage sources.
   'salvage',
+  'towjaw', 'derelictExpedition', 'convoyRaid', 'stormChase', 'kineticCatalysts',
   // Encounter-cover placement and spin use a private per-run stream. Reset it before
   // world/encounter owners can rematerialize content on a retained New Game instance.
   'terrainAnchors',

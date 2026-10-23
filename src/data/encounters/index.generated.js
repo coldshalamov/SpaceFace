@@ -344,6 +344,11 @@ import * as encounter340 from './1303-glue-meet-mass.js';
 import * as encounter341 from './1304-two-ships-one-mistake.js';
 import * as encounter342 from './1305-the-blind-welder.js';
 import * as encounter343 from './1306-the-drift-auction.js';
+import * as encounter344 from './8101-pro-five-towjaw.js';
+import * as encounter345 from './8102-pro-five-derelict-expedition.js';
+import * as encounter346 from './8103-pro-five-convoy-raid.js';
+import * as encounter347 from './8104-pro-five-storm-chase.js';
+import * as encounter348 from './8105-pro-five-kinetic-catalysts.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -689,5 +694,10 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter341,
   encounter342,
   encounter343,
+  encounter344,
+  encounter345,
+  encounter346,
+  encounter347,
+  encounter348,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

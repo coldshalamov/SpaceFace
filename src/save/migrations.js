@@ -386,6 +386,16 @@ export const MIGRATIONS = [
       }
     },
   },
+  {
+    from: 19,
+    to: 20,
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      for (const key of ['towjaw', 'derelictExpedition', 'convoyRaid', 'stormChase', 'kineticCatalysts']) {
+        if (!Object.prototype.hasOwnProperty.call(data, key)) data[key] = null;
+      }
+    },
+  },
 ];
 
 /**

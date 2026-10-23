@@ -880,6 +880,7 @@ export const save = {
       ['ruckus', () => this._callSerialize('ruckus') || {}],
       ['ruud', () => this._callSerialize('ruud') || {}],
       ['salvage', () => this._callSerialize('salvage') || {}],
+      ['derelictExpedition', () => this._callSerialize('derelictExpedition')],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
       // stripped pod re-promotes as a live one.
@@ -911,10 +912,14 @@ export const save = {
       ['charges', () => this._callSerialize('impulseCharges')],
       ['stunts', () => this._callSerialize('stuntGrammar')],
       ['fields', () => this._callSerialize('fields')],
+      ['kineticCatalysts', () => this._callSerialize('kineticCatalysts')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
       // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
       // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
       ['capitalBoss', () => this._callSerialize('capitalBossEncounters')],
+      ['towjaw', () => this._callSerialize('towjaw')],
+      ['convoyRaid', () => this._callSerialize('convoyRaid')],
+      ['stormChase', () => this._callSerialize('stormChase')],
       ['careerOrigins', () => this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {})],
       ['careerLadders', () => this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {})],
       ['scenario', () => this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {})],
@@ -1030,6 +1035,7 @@ export const save = {
     data.ruckus = this._callSerialize('ruckus') || {};
     data.ruud = this._callSerialize('ruud') || {};
     data.salvage = this._callSerialize('salvage') || {};
+    data.derelictExpedition = this._callSerialize('derelictExpedition');
     yield 'serialize:salvage';
     data.survivorPod = this._callSerialize('survivorPod') || {};
     yield 'serialize:survivorPod';
@@ -1069,10 +1075,18 @@ export const save = {
     yield 'serialize:stunts';
     data.fields = this._callSerialize('fields');
     yield 'serialize:fields';
+    data.kineticCatalysts = this._callSerialize('kineticCatalysts');
+    yield 'serialize:kineticCatalysts';
     data.missions = this._callSerialize('missions') || this._serializeMissions();
     yield 'serialize:missions';
     data.capitalBoss = this._callSerialize('capitalBossEncounters');
     yield 'serialize:capitalBoss';
+    data.towjaw = this._callSerialize('towjaw');
+    yield 'serialize:towjaw';
+    data.convoyRaid = this._callSerialize('convoyRaid');
+    yield 'serialize:convoyRaid';
+    data.stormChase = this._callSerialize('stormChase');
+    yield 'serialize:stormChase';
     data.careerOrigins = this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {});
     yield 'serialize:careerOrigins';
     data.careerLadders = this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {});
@@ -6716,6 +6730,7 @@ export const save = {
       this._callDeserialize('borrowedVoice', data.borrowedVoice);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
+      this._callDeserialize('derelictExpedition', data.derelictExpedition);
 
       // 5. spawn the saved player entity (fresh id) and adopt it.
       const savedPlayer = data.entities && data.entities.player;
@@ -6999,6 +7014,9 @@ export const save = {
       // stale world-space geometry and grant the resume warmup). Absent slice (old saves) is a
       // no-op; a present slice without its owner is a hard error rather than silent loss.
       yield* this._restoreCapitalBossFightsChunked(data.capitalBoss);
+      this._callDeserialize('towjaw', data.towjaw);
+      this._callDeserialize('convoyRaid', data.convoyRaid);
+      this._callDeserialize('stormChase', data.stormChase);
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
       // reconstructed from the live director. Clear tracking so stale cross-save references and
@@ -7042,6 +7060,7 @@ export const save = {
         }
       }
       yield 'fields-restored';
+      this._callDeserialize('kineticCatalysts', data.kineticCatalysts);
       try {
         this.registry?.get?.('environmentMaterials')?.deserialize?.(data.environmentMaterials, entityIdRemap);
       } catch (err) {
@@ -9706,6 +9725,8 @@ function profileSettingsSnapshot(settings) {
       gameSpeed: normalizeGameSpeed(s.gameplay?.gameSpeed),
       velocityVectoring: s.gameplay?.velocityVectoring !== false,
       pauseOnFocusLoss: s.gameplay?.pauseOnFocusLoss !== false,
+      // Row 493: Settings → Gameplay → Powers. Only 'press' changes behaviour (powersFireOnPress).
+      powerFire: s.gameplay?.powerFire === 'press' ? 'press' : 'hold',
     },
   };
 }

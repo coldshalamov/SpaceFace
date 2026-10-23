@@ -1,4 +1,5 @@
 import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
+import { interceptTowjawDamage } from '../features/towjaw/damageBridge.js';
 import { selectHitSubsystem } from './geometry.js';
 import { ensureCombatant, syncCombatantBounds } from './runtime.js';
 import { damageSubsystem } from './subsystems.js';
@@ -112,6 +113,7 @@ export function createDamageRouter(context, statusService, options = {}) {
   const ROUTE_SCRATCH = [{}, {}, {}, {}, {}, {}];
 
   function routeDamage(input) {
+    input = interceptTowjawDamage(state, input);
     const attacker = entity(input && input.attackerId);
     const aimed = entity(input && input.targetId);
     const screen = wardScreenTarget(state, attacker, aimed, input && input.origin);

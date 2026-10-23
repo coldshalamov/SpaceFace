@@ -7,9 +7,13 @@ import {
   userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
 } from './userContent.js';
 import { BLACK_FLAG_MODULES } from './shipjackEquipment.js';
+import { LINE_HEAD_MODULES } from './lineProgression.js';
+import { CATALYST_MODULES } from '../features/kineticCatalysts/catalog.js';
 
 const SHIPPED_MODULES = [
   ...BLACK_FLAG_MODULES,
+  ...LINE_HEAD_MODULES,
+  ...CATALYST_MODULES,
   // ===================== SHIELDS =====================
   {
     id: 'mod_shield_booster_s', name: 'Shield Booster S', slotType: 'shield', size: 'S', tier: 1, mass: 3, price: 6000,
@@ -431,6 +435,22 @@ const SHIPPED_MODULES = [
     id: 'mod_ram_plate', name: 'Ram Plate', slotType: 'utility', size: 'S', tier: 1, mass: 4, price: 6000,
     energyDraw: 0, mods: { ramDamageDealtMult: 1.80 },
     visuals: { part: 'greebles/greeble_armor_plates.glb' },
+  },
+  {
+    // SCARRED RAM PLATE — AL-LG-11 (build-map row 401). This is not a damage tier and not a
+    // catalogue part: the same plate that THREE real rams wrote onto ONE hull. Only
+    // `systems/ships.js` mints it, from that hull's own bounded ram history, and only the hull
+    // whose history names that exact instance may fit it (every other fitting path refuses with
+    // `hull_history_required`). `purchasable:false` + `price:0` keep it off every rack and
+    // sandbox. Deliberately NOT `unique:true`: there is no wreck/lineage/site reservation for it,
+    // and the live loot audit fails closed on a catalog unique that has none. Uniqueness is the
+    // award plus `owned.ramPlateHistory.rewardInstanceId`, which travels in the player save.
+    // `historyGate` is documentation of the earn; ships.js holds the rule.
+    id: 'mod_ram_plate_scarred', name: 'Scarred Ram Plate', slotType: 'utility', size: 'S',
+    tier: 1, mass: 4, price: 0, energyDraw: 0, purchasable: false,
+    historyGate: { act: 'ram', count: 3 },
+    mods: { ramDamageDealtMult: 1.80 },
+    sentence: 'Earned through three rams; belongs to the hull that earned it.',
   },
   {
     // GRAVITY BUMPER — the first HULL BURST (design doc 2026-09-29 section 4). A timed, front-facing

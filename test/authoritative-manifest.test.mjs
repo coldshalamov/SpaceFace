@@ -110,8 +110,9 @@ test('production init + update order lengths match the live browser baseline', (
   // 222 -> 224 init / 164 -> 166 update: PULSE-MAIL (mail) and PULSE-TIME (worldClock) join
   // both orders on the calendar clock — letter delivery evaluates once a second, calendar
   // announcements are day-scale.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 224);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 166);
+  // World pressure and rock-core owners add two; the five physical feature owners add five.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 231);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 173);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

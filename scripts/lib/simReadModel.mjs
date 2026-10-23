@@ -610,6 +610,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'planet.ships', 'planet.orchardForecast',
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
   'survivalDraftPublic', 'survivalResultsPublic', 'careers',
+  'towjawPublic', 'derelictExpeditionView', 'stormChaseView', 'kineticCatalystsPublic', 'convoyRaid',
   'physicsVenueSession', 'world.wreckCourtRulings',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
@@ -681,7 +682,7 @@ export function resolveDomainValue(state, key) {
 // last-signed digest per leaf path, so it stays consistent with the facade
 // state between cold/warm re-signs (facades trail live by the tier interval
 // at worst — the signed digest still describes the shipped content).
-export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1 });
+export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, convoyRaid: 3 });
 // player: 1 — the wallet/cargo fields the UI reads hot (player.credits,
 // player.cargo) sign every pass instead of trailing the monolithic player
 // leaf's cold-tier 60-tick interval: a settled trade used to leave the facade
@@ -1484,7 +1485,7 @@ export function createDomainDiffer(options = {}) {
       probeChanged: false,
       // These values depend only on the path. Keep them on the node so the
       // hot walk does not repeatedly classify the same path.
-      ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
+      ownerSnapshot: ['survivalDraftPublic', 'survivalResultsPublic', 'towjawPublic', 'derelictExpeditionView', 'stormChaseView', 'kineticCatalystsPublic'].includes(segs[0]),
       isCombatTrace: isCombatTracePath(segs),
       isCombatAttachments: segs[0] === 'combat' && segs[1] === 'attachments',
       isNpcJobsById: isNpcJobsByIdPath(segs),
@@ -1516,7 +1517,7 @@ export function createDomainDiffer(options = {}) {
     let metadata = node.aliasMetadata && node.aliasMetadata.get(aliasKey);
     if (metadata) return metadata;
     metadata = {
-      ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
+      ownerSnapshot: ['survivalDraftPublic', 'survivalResultsPublic', 'towjawPublic', 'derelictExpeditionView', 'stormChaseView', 'kineticCatalystsPublic'].includes(segs[0]),
       isCombatTrace: isCombatTracePath(segs),
       isCombatAttachments: segs[0] === 'combat' && segs[1] === 'attachments',
       isNpcJobsById: isNpcJobsByIdPath(segs),

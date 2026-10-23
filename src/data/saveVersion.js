@@ -18,4 +18,5 @@
 // v18: imported cross-run dead hulls persist under player.uniqueWrecks.
 // v19: §34 world-pressure bag persists under data.worldPressure (Bloom tide,
 //      Gate Audit records, Slow Gray index, colossus remains — bounded receipts).
-export const CURRENT_VERSION = 19;
+// v20: physical expeditions, the Towjaw encounter and fitted kinetic catalyst state.
+export const CURRENT_VERSION = 20;

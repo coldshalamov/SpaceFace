@@ -45,6 +45,12 @@ import { DamagedPortVfxPlanner } from './vfx/damagedPortVfx.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
+import { SweptSurfaceBatch } from './forceLanguage/sweptSurfaceBatch.js';
+import { createStormChasePresentation, readStormChaseView } from '../features/stormChase/index.js';
+import { createSwitchbackView } from '../features/convoyRaid/view.js';
+import { getPromptDeck } from '../ui/promptDeck.js';
+import { kineticCatalystsFor } from '../features/kineticCatalysts/runtime.js';
+import { createCatalystPresentationAdapter, CATALYST_PRESENTATION_LIMITS } from '../features/kineticCatalysts/presentation.js';
 import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
 import { EmergentPayloadPresentation } from './forceLanguage/emergentPayloadPresentation.js';
 import { fieldSignature } from './forceLanguage/catalog.js';
@@ -280,7 +286,7 @@ import {
   updateMasslineLatchRim,
 } from './masslineLatchRim.js';
 import { createPowerPreview } from './powerPreview.js';
-import { powerPreviewPlan } from '../data/powerPreview.js';
+import { powerHeld, powerPreviewPlan } from '../data/powerPreview.js';
 import {
   createMasslineChainReadout,
   createMasslineChainReadoutGeometry,
@@ -953,6 +959,8 @@ const VFX_PROJECTILE_TRAILS_HZ = 45;
 // Ambient station movers are event-driven, pooled VFX. Twelve pose writes per second is enough for
 // their slow docking/orbit paths and leaves the ordinary frame asleep when no side-event is active.
 const VFX_STATION_SIDE_EVENTS_HZ = 12;
+// Row 493: the held-key preview re-plans this often; between plans its rings follow their bodies.
+const VFX_POWER_PREVIEW_HZ = 15;
 // NPC work signatures ("The Working Light"). Same 12 Hz as the station movers: the underlying job
 // phases change on the order of seconds, so a faster pose write would buy nothing, and the shared
 // cadence keeps the two ambient layers from beating against each other. Slept entirely when no live
@@ -1844,6 +1852,12 @@ export const vfx = {
     // return permanently muting gyre VFX after a scene rebuild.
     invokeVfxDisposer(this._gyreSnareFx, 'gyre snare');
     this._gyreSnareFx = null;
+    invokeVfxDisposer(this._stormChaseFx, 'Glasswake storm');
+    this._stormChaseFx = null;
+    invokeVfxDisposer(this._switchback, 'Switchback convoy');
+    this._switchback = null;
+    invokeVfxDisposer(this._kineticCatalystsFx, 'kinetic catalyst surfaces');
+    this._kineticCatalystsFx = null;
 
     invokeVfxDisposer(this._overflowJets, 'overflow jets');
     this._overflowJets = null;
@@ -1867,6 +1881,9 @@ export const vfx = {
     disposeVfxRoot(this._monofilamentBlade && this._monofilamentBlade.mesh, disposeState);
     invokeVfxDisposer(this._selectionSigil, 'selection sigil');
     this._selectionSigil = null;
+    invokeVfxDisposer(this._powerPreview, 'power preview');
+    this._powerPreview = null;
+    this._powerPreviewPlan = null;
     disposeVfxRoot(this._seamMarkers && this._seamMarkers.mesh, disposeState);
     disposeVfxRoot(this._masslineSwingTrace && this._masslineSwingTrace.mesh, disposeState);
     disposeVfxRoot(this._masslineChainReadout && this._masslineChainReadout.mesh, disposeState);
@@ -2631,6 +2648,12 @@ export const vfx = {
     // primitive; this subscription is the cradle hologram's half of the same departure.
     add('dock:undocked', () => this._releaseDockingCradle());
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
+      add(name, () => {
+        this._stormChaseFx?.clear();
+        this._kineticCatalystsFx?.clear();
+        invokeVfxDisposer(this._switchback, 'Switchback boundary');
+        this._switchback = null;
+      });
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._emergentPayloads?.clear(); this._retireEventLightSlot(this._findSustainedEventLight('gyre-payload')); this._releaseTransientEventLights(); });
       add(name, () => this._clearWorldTransientMatter());
       add(name, () => this._resetDamagedPortVfx());
@@ -9512,19 +9535,36 @@ export const vfx = {
   },
 
   _powerPreview: null,
+  _powerPreviewPlan: null,
+  _powerPreviewLocalize: null,
   _initPowerPreview() {
     if (!this._scene) return;
     this._powerPreview = createPowerPreview({ THREE, scene: this._scene });
+    this._powerPreviewLocalize = (x, z, out) => this._toLocalXZ(x, z, out);
   },
 
-  // Row 493: hold a power's key and every body it would move shows an outline + predicted path
-  // in that power's tint. The plan is the deterministic data seam; this only draws it.
-  _updatePowerPreview() {
+  // Row 493: hold a power's key and every body letting go will move shows an outline and its
+  // predicted path in that power's tint. The plan is the deterministic, read-only data seam,
+  // re-planned at VFX_POWER_PREVIEW_HZ (and at once when the held power changes); this only
+  // draws it. No key held costs one WeakMap read.
+  _updatePowerPreview(dt) {
     const pv = this._powerPreview;
     if (!pv) return false;
-    const plan = this.state ? powerPreviewPlan(this.state) : null;
-    pv.update(plan, (x, z, out) => this._toLocalXZ(x, z, out));
-    return !!(plan && plan.moves && plan.moves.length);
+    const state = this.state;
+    const held = state ? powerHeld(state) : null;
+    if (!held) {
+      if (this._powerPreviewPlan || pv.group.visible) {
+        this._powerPreviewPlan = null;
+        this._cadencePowerPreview = 0;
+        pv.update(null);
+      }
+      return false;
+    }
+    const replan = this._consumeCadence('_cadencePowerPreview', dt, VFX_POWER_PREVIEW_HZ);
+    if (replan || !this._powerPreviewPlan || this._powerPreviewPlan.power !== held) {
+      this._powerPreviewPlan = powerPreviewPlan(state, held);
+    }
+    return pv.update(this._powerPreviewPlan, this._powerPreviewLocalize, state);
   },
 
   _resetMasslineSwingTrace() {
@@ -12589,6 +12629,38 @@ export const vfx = {
       toLocal: this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)),
     });
   },
+  _updateProBuildPresentations() {
+    const state = this.state;
+    if (!state || !this._scene) return;
+    const localize = this._combatBeamLocalizer;
+    const storm = readStormChaseView(state);
+    if (!this._stormChaseFx && storm?.active) {
+      this._stormChaseFx = createStormChasePresentation({ THREE, scene: this._scene, toLocal: localize });
+    }
+    this._stormChaseFx?.update(storm, state.settings);
+    if (!this._switchback) {
+      this._switchback = createSwitchbackView({ THREE, state, bus: this.bus,
+        getDeck: getPromptDeck, toLocalXZ: localize });
+    }
+    this._switchback.update();
+    const catalyst = kineticCatalystsFor(state)?.getSnapshot() ?? state.kineticCatalystsPublic ?? null;
+    if (!this._kineticCatalystsFx && catalyst?.catalystId) {
+      this._kineticCatalystsFx = createCatalystPresentationAdapter({
+        surfaceBatch: new SweptSurfaceBatch(this._scene, {
+          capacity: CATALYST_PRESENTATION_LIMITS.maxSurfaces,
+          name: 'SF_KineticCatalysts', fieldVolume: true,
+        }), toLocal: localize,
+      });
+    }
+    if (this._kineticCatalystsFx) {
+      const video = state.settings?.video, a11y = state.settings?.accessibility;
+      this._kineticCatalystsFx.update(catalyst, {
+        simTime: state.simTime,
+        reducedMotion: !!(video?.motionReduce || a11y?.reducedMotion || a11y?.motionReduce),
+        reducedFlash: !!(video?.flashReduce || a11y?.flashReduce || a11y?.reducedFlash),
+      });
+    }
+  },
   _updateGyreSnare(dt) {
     if (!this._gyreSnareFx && this._gyreRelevant()) this._initGyreSnare();
     if (this._gyreSnareFx) this._gyreSnareFx.update(dt, this.state);
@@ -12821,7 +12893,7 @@ export const vfx = {
       sub.masslineReleaseArc = 0;
     }
     sub.masslineLatchRim = this._updateMasslineLatchRim(dt) ? 1 : 0;
-    this._updatePowerPreview();
+    this._updatePowerPreview(dt);
     if (this._stationSideEventsRelevant()) {
       const stationStep = this._consumeCadence(
         '_cadenceStationSideEvent',
@@ -12894,6 +12966,7 @@ export const vfx = {
     } else sub.fieldFlow = 0;
     this._syncFieldPowerLights();
     if (this._gyreRelevant() || this._gyreSnareFx) this._updateGyreSnare(dt);
+    this._updateProBuildPresentations();
     if (this._actionVfx) this._actionVfx.update(this.state);
     if (this._bombDetonationVfx) this._bombDetonationVfx.update(this.state);
     if (this._statusMatterVfx) this._statusMatterVfx.update(this.state);

@@ -24,3 +24,21 @@ test('late First light uses the real cancel control once, and leaves unrelated d
   title='Confirm purchase';await handler();assert.equal(clicks,1);
   title='First light';label='Confirm';await handler();assert.equal(clicks,1);
 });
+
+test('current First light keeps shipped settings through Play, never the calm preset button', async () => {
+  assert.equal(isFirstLightPrompt('First light', 'Use first light ESC', 'Play'), true);
+  assert.equal(isFirstLightPrompt('Purchase', 'Use first light ESC', 'Play'), false);
+  assert.equal(isFirstLightPrompt('First light', 'Use first light ESC', 'Confirm purchase'), false);
+  let handler;
+  const clicks = [];
+  const cancel = { first() { return this; }, async waitFor() {}, async textContent() { return 'Use first light ESC'; }, async click() { clicks.push('calm'); } };
+  const ok = { first() { return this; }, async textContent() { return 'Play'; }, async click() { clicks.push('play'); } };
+  const title = { first() { return this; }, filter() { return this; }, async textContent() { return 'First light'; } };
+  const page = {
+    locator(selector) { return selector.includes('__cancel') ? cancel : selector.includes('__ok') ? ok : title; },
+    async addLocatorHandler(_locator, callback) { handler = callback; },
+  };
+  await installFirstLightPromptHandler(page, () => {});
+  await handler();
+  assert.deepEqual(clicks, ['play']);
+});

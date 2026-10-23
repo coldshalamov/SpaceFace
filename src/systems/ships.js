@@ -11,6 +11,9 @@ import { SAUCER_ID, SAUCER_WEAPON_SLOTS, saucerFittingRefusal } from '../data/sa
 import { FLIGHT_TUNING } from '../data/flightTuning.js';
 import { HARDPOINT_ACCEPTS, TURRET_RING_OUTPUT, WEAPONS, WEAPON_MOUNT_CLASSES } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
+import { findCatalystFitConflict } from '../features/kineticCatalysts/fitting.js';
+import { resolveCatalyst } from '../features/kineticCatalysts/catalog.js';
+import { lineHeadBehavior, lineHeadDef, normalizeModuleProvenance } from '../data/lineProgression.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
@@ -50,7 +53,7 @@ import {
   scarFromPlayerDamage,
   shouldAdmitScar,
 } from '../combat/hullScars.js';
-import { cleanShipName } from '../data/hullIdentity.js';
+import { cleanShipName, hullNameForOwnedShip } from '../data/hullIdentity.js';
 import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCrossover.js';
 import { FACTION_META } from '../data/factions.js';
 import { hash32 } from '../core/rng.js';
@@ -61,6 +64,75 @@ import { settleOwnedVesselYardOperation } from '../shipjack/ownedOperations.js';
 function finiteAmount(value) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, number) : 0;
+}
+
+// ---- AL-LG-11: the scarred Ram Plate is earned by one hull, not bought ---------------------
+// build-map row 401 / `design/VISION.md` Part II. Three real rams leave a physical keepsake on
+// the hull that hit them: `owned.ramPlateHistory` (optional, bounded) stores the receipt keys and
+// the ID of the ONE instance that hull is allowed to fit. There is no second copy, no purchase
+// path, no generic reward path, and no way for an identical twin to borrow the plate.
+const RAM_PLATE_SCARRED_DEF_ID = 'mod_ram_plate_scarred';
+const RAM_PLATE_HISTORY_VERSION = 1;
+const RAM_PLATE_HITS_MAX = 3;
+// A hit key is `${receipt.tick}:${receipt.targetId}` — two non-negative safe integers.
+const RAM_PLATE_HIT_KEY = /^(0|[1-9][0-9]{0,15}):(0|[1-9][0-9]{0,15})$/;
+// `nextInstanceId()` mints `mi_<tick>_<seq>`; a restored reward ID must look like an instance ID,
+// never a path, a URL, or an unbounded blob.
+const RAM_PLATE_INSTANCE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+// Provenance tags that make a contact the PLAYER's ram. `direct_contact` is the bare-hull ram,
+// `ram_plate` the same contact after the ordinary plate made the player the causal body.
+const RAM_PLATE_PROVENANCE_TAGS = new Set(['direct_contact', 'ram_plate']);
+// PLAN-GATE §7.3 / §8.4 — `_resolveStrandedCraftContactsBefore` publishes a deferred Massline
+// contact with the ORIGINAL tick, one or more ticks after it happened. The credit gate accepts a
+// small bounded window so those legitimate rams are not silently lost, and nothing older.
+const RAM_PLATE_RECEIPT_WINDOW_TICKS = 3;
+const RAM_PLATE_BLOCK_TEXT = 'This hull has not earned a Scarred Ram Plate.';
+
+/**
+ * Bounded, pure normalization of one owned hull's ram history. Returns null when there is
+ * nothing legitimate to keep — missing (a clean legacy hull stays absent), malformed, or
+ * oversized records are rejected outright rather than repaired, because a fabricated hit would
+ * become a fabricated plate. Only version 1 is read, every key must be a well-formed ram key, a
+ * repeated key is a forged second ram, and the list never exceeds RAM_PLATE_HITS_MAX. A record
+ * that fails any of that is dropped whole: keeping its valid subset would let an edit choose
+ * which rams count.
+ */
+export function normalizeRamPlateHistory(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  if (Number(input.version) !== RAM_PLATE_HISTORY_VERSION) return null;
+  if (!Array.isArray(input.hits)) return null;
+  const hits = [];
+  const seen = new Set();
+  for (const raw of input.hits) {
+    if (typeof raw !== 'string' || !RAM_PLATE_HIT_KEY.test(raw)) return null;
+    if (seen.has(raw)) return null;
+    seen.add(raw);
+    hits.push(raw);
+  }
+  if (hits.length > RAM_PLATE_HITS_MAX) return null;
+  const rewardRaw = input.rewardInstanceId;
+  let rewardInstanceId = null;
+  if (rewardRaw != null) {
+    if (typeof rewardRaw !== 'string' || !RAM_PLATE_INSTANCE_ID.test(rewardRaw)) return null;
+    // The plate is minted on the third hit, so a reward before or after it contradicts itself.
+    if (hits.length !== RAM_PLATE_HITS_MAX) return null;
+    rewardInstanceId = rewardRaw;
+  }
+  if (!hits.length) return null;
+  const out = { version: RAM_PLATE_HISTORY_VERSION, hits };
+  if (rewardInstanceId) out.rewardInstanceId = rewardInstanceId;
+  return out;
+}
+
+/** Value-equality for a normalized history (bounded lists, so this never walks a large record). */
+function sameRamPlateHistory(left, right) {
+  const a = normalizeRamPlateHistory(left);
+  const b = normalizeRamPlateHistory(right);
+  if (!a || !b) return a === b;
+  if (a.rewardInstanceId !== b.rewardInstanceId) return false;
+  if (a.hits.length !== b.hits.length) return false;
+  for (let i = 0; i < a.hits.length; i += 1) if (a.hits[i] !== b.hits[i]) return false;
+  return true;
 }
 
 // ---- catalog lookup tables (built once at module load) ------------------------------------
@@ -206,6 +278,17 @@ function derivedForOwned(defId, fittings, player, owned) {
     if (component?.slotType === 'shield' && Number.isFinite(derived.shieldMax)) derived.shieldMax *= factor;
     if (component?.slotType === 'sensor' && Number.isFinite(derived.radarRange)) derived.radarRange *= factor;
   }
+  // Line heads live on module identity, not just the def. derivedStats has the catalog head;
+  // this pass adds the exact fitted instance's provenance behaviour without touching stats.
+  const headSlot = (fittings || []).findIndex((fittedId) => lineHeadIdForDef(defById(fittedId)));
+  if (headSlot >= 0) {
+    const headDef = defById(fittings[headSlot]);
+    const headInstance = owned && owned.fittedInstances && owned.fittedInstances[headSlot];
+    const provenance = normalizeModuleProvenance(headInstance, headDef);
+    derived.lineHeadId = headDef.mods.lineHeadId;
+    derived.lineHeadProvenance = provenance;
+    derived.lineHeadBehavior = lineHeadBehavior(headDef.mods.lineHeadId, provenance);
+  }
   const quirk = owned && owned.impoundQuirk;
   if (!quirk || quirk.kind !== 'overbored') return derived;
   return derivedWithOverbore(derived, quirk.accelMult);
@@ -268,17 +351,24 @@ function masslineHeadIdForDef(def) {
   const id = def && def.mods && def.mods.masslineHeadId;
   return MASSLINE_HEAD_PRIORITY[id] ? id : null;
 }
+function lineHeadIdForDef(def) {
+  const id = def && def.mods && def.mods.lineHeadId;
+  return lineHeadDef(id) ? id : null;
+}
+function fittedHeadTokenForDef(def) {
+  return lineHeadIdForDef(def) || masslineHeadIdForDef(def);
+}
 
 /** Return the differently slotted Massline head that makes this requested fit exclusive. Replacing
  * the head in its current slot is valid; fitting a second head elsewhere is not. */
 export function findMasslineHeadConflict(fittings, slotIndex, requestedDef) {
-  if (!masslineHeadIdForDef(requestedDef)) return null;
+  if (!fittedHeadTokenForDef(requestedDef)) return null;
   const safeFittings = Array.isArray(fittings) ? fittings : [];
   for (let index = 0; index < safeFittings.length; index += 1) {
     const fittedId = safeFittings[index];
     if (index === slotIndex || !fittedId) continue;
     const fittedDef = defById(fittedId);
-    if (masslineHeadIdForDef(fittedDef)) return fittedDef;
+    if (fittedHeadTokenForDef(fittedDef)) return fittedDef;
   }
   return null;
 }
@@ -652,6 +742,14 @@ export function dryRunLoadoutPresetApply({
         slotIndex,
         conflictDefId: conflictingDef.id,
         text: 'Unfit ' + conflictingDef.name + ' before fitting another head',
+      });
+    }
+    const conflictingCatalyst = findCatalystFitConflict(afterFittings, slotIndex, def);
+    if (conflictingCatalyst) {
+      slotBlockers.push({
+        reason: 'catalyst_conflict', defId, name: def.name, slotIndex,
+        conflictDefId: conflictingCatalyst.id,
+        text: 'Unfit ' + conflictingCatalyst.name + ' before fitting another catalyst',
       });
     }
   }
@@ -1195,6 +1293,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   let magnetRange = 0;
   let lootMagnetRange = 0;
   let masslineHeadId = null;
+  let lineHeadId = null;
   // TOY CHEST T13: a trophy head's higher break ceiling. Only a module that IS a Massline head can
   // carry it, and heads are mutually exclusive, so this can never raise another head's line.
   let masslineLoadCapacityMult = 1;
@@ -1316,6 +1415,8 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     if ((MASSLINE_HEAD_PRIORITY[candidateHeadId] || 0) > (MASSLINE_HEAD_PRIORITY[masslineHeadId] || 0)) {
       masslineHeadId = candidateHeadId;
     }
+    const candidateLineHeadId = lineHeadIdForDef(d);
+    if (candidateLineHeadId) lineHeadId = candidateLineHeadId;
     // Smuggling utilities are capability ratings, not additive economy bonuses. Taking the
     // strongest fitted module prevents stacking the same hidden volume or scan evasion twice.
     if (Number.isFinite(mods.hiddenCargoPct)) {
@@ -1458,6 +1559,8 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     massLoadFactor: propulsion.massLoadFactor,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     tetherSpoolMult, tetherReelRateMult, masslineHeadId, masslineLoadCapacityMult, magnetRange,
+    lineHeadId,
+    lineHeadBehavior: lineHeadId ? lineHeadBehavior(lineHeadId, null) : null,
     lootMagnetRange, swingDrive, towFlail, phaseBlink, hullBurstKind, hullBurstRank,
     weaponRangePct,
     weaponDmgPct,
@@ -1709,6 +1812,10 @@ export const ships = {
     bus.on('cargo:changed', () => { this._cargoMassRefreshPending = true; });
     bus.on('cargo:massSettled', () => this.flushCargoMassRefresh());
     bus.on('save:loaded', () => {
+      // AL-LG-11 — the ram history is restored by the existing player record; normalize it before
+      // any fitting eligibility is judged, so a bound plate is recognised on Continue and a
+      // malformed record cannot borrow one.
+      this.reconcileRamPlateHistory();
       this.reconcileIllegalFittings();
       this.flushCargoMassRefresh();
       this._resetScarAdmission();
@@ -1797,6 +1904,9 @@ export const ships = {
     bus.on('ui:setShipName', (p) => this.setShipName(p || {}));
     // Canonical gameplay receipts feed a small per-owned-ship history record. Presentation gets a
     // rare in-place update event; none of these events requests a ship rebuild or asset admission.
+    // AL-LG-11 — the collision owner's committed receipt is the ONLY ram evidence. Raw contacts,
+    // incoming hits, thrown bodies and weapon provenance never reach the count.
+    bus.on('combat:collisionConsequence', (p) => this._recordRamPlateHistory(p));
     bus.on('lossLedger:recorded', (p) => {
       if (p && p.kind === 'ship' && p.killedByPlayer === true) {
         this._reduceLivingHull((hull, now) => livingHullWithKill(hull, now), 'player_kill');
@@ -1849,6 +1959,7 @@ export const ships = {
       }
     });
     bus.on('game:started', () => {
+      this.reconcileRamPlateHistory();
       this._resetScarAdmission();
       this.reconcileLivingHull({ announce: false });
     });
@@ -1879,7 +1990,9 @@ export const ships = {
   },
 
   /** PQ-176.02: a fitting the mount law now refuses (a launcher on a turret ring in an older save)
-   *  moves to inventory with its refusal sentence, so no hull carries a weapon that fires nothing. */
+   *  moves to inventory with its refusal sentence, so no hull carries a weapon that fires nothing.
+   *  AL-LG-11: a scarred Ram Plate that a save (or a twin's preset) left on the wrong hull takes the
+   *  same trip — its exact instance record goes back to the hold, never deleted and never re-minted. */
   reconcileIllegalFittings() {
     const p = this.state && this.state.player;
     if (!p || !Array.isArray(p.ownedShips)) return 0;
@@ -1893,14 +2006,22 @@ export const ships = {
         if (!defId) return;
         const def = defById(defId);
         const slot = slots[slotIndex];
-        if (!def || !slot || fits(slot, def)) return;
+        if (!def || !slot) return;
+        // Read the slot's identity record without minting one: an absent record cannot prove the
+        // plate was earned here. `_takeFittedInstance` below mints for the ordinary paths only.
+        const record = (owned.fittedInstances && owned.fittedInstances[slotIndex]) || null;
+        const recordId = record && record.defId === defId && record.instanceId ? record.instanceId : null;
+        const unearned = def.id === RAM_PLATE_SCARRED_DEF_ID && !this._hullOwnsScarredPlate(owned, recordId);
+        if (fits(slot, def) && !unearned) return;
         const inst = this._takeFittedInstance(owned, slotIndex);
         owned.fittings[slotIndex] = null;
         if (!Array.isArray(p.moduleInventory)) p.moduleInventory = [];
         p.moduleInventory.push(inst ? { ...inst } : { instanceId: this.nextInstanceId(), defId });
         movedHere += 1;
         this.bus.emit('toast', {
-          text: (fitRefusalText(slot, def) || def.name + ' does not fit this slot') + ' It is in your inventory.',
+          text: unearned
+            ? RAM_PLATE_BLOCK_TEXT + ' It is in your inventory.'
+            : (fitRefusalText(slot, def) || def.name + ' does not fit this slot') + ' It is in your inventory.',
           kind: 'warn',
           ttl: 6,
         });
@@ -1966,6 +2087,175 @@ export const ships = {
   /** Transient admission memory only — the durable marks live in the saved hull record. */
   _resetScarAdmission() {
     this._lastScarByCause = { weapon: null, slam: null };
+  },
+
+  // ---- AL-LG-11: three rams earn one scarred Ram Plate on THIS hull ------------------------
+
+  /**
+   * Normalize every owned hull's optional ram history in place. Runs before fitting eligibility
+   * is judged on Continue and on a fresh run start. Missing history stays missing (a clean legacy
+   * hull is byte-identical); malformed history is dropped rather than repaired. Restoration never
+   * mints a reward and never speaks.
+   */
+  reconcileRamPlateHistory() {
+    const player = this.state && this.state.player;
+    if (!player || !Array.isArray(player.ownedShips)) return 0;
+    let changed = 0;
+    for (const owned of player.ownedShips) {
+      if (!owned || typeof owned !== 'object') continue;
+      if (!Object.hasOwn(owned, 'ramPlateHistory')) continue;
+      const normalized = normalizeRamPlateHistory(owned.ramPlateHistory);
+      if (!normalized) {
+        delete owned.ramPlateHistory;
+        changed += 1;
+        continue;
+      }
+      if (sameRamPlateHistory(owned.ramPlateHistory, normalized)) continue;
+      owned.ramPlateHistory = normalized;
+      changed += 1;
+    }
+    return changed;
+  },
+
+  /**
+   * The plate belongs to one hull. A held scarred instance is fittable on `owned` only when that
+   * hull's own history names that exact instance AND the three rams are on record. A twin hull,
+   * a keepsake souvenir, and a copied ID all fail here.
+   */
+  _hullOwnsScarredPlate(owned, instanceId) {
+    if (!owned || typeof instanceId !== 'string' || !instanceId) return false;
+    const history = normalizeRamPlateHistory(owned.ramPlateHistory);
+    if (!history || !history.rewardInstanceId) return false;
+    if (history.hits.length < RAM_PLATE_HITS_MAX) return false;
+    return history.rewardInstanceId === instanceId;
+  },
+
+  /** True for the inventory record(s) this hull may actually fit. */
+  _isEligibleScarredInstance(owned, item) {
+    return !!item
+      && item.defId === RAM_PLATE_SCARRED_DEF_ID
+      && this._hullOwnsScarredPlate(owned, item.instanceId);
+  },
+
+  /**
+   * Admit one committed collision consequence as a ram ONLY when every fact says the player did
+   * it: flight, a living active hull, this tick (bounded window for deferred receipts), the player
+   * as the causal body, a hostile SHIP target, applied damage, and a bare-contact or plate
+   * provenance. Each admitted ram is three pieces of evidence and nothing else: the dedup key, the
+   * hull renown act, and — at three — the plate.
+   */
+  _recordRamPlateHistory(receipt) {
+    const state = this.state;
+    if (!state || state.mode !== 'flight') return false;
+    if (!receipt || typeof receipt !== 'object') return false;
+    const owned = this.ownedShip();
+    const entity = this.activeShipEntity();
+    if (!owned || !entity) return false;
+    const playerId = state.playerId;
+    if (receipt.otherId !== playerId) return false;
+    if (receipt.targetId === playerId) return false;
+    if (receipt.targetType !== 'ship' || receipt.targetHostile !== true) return false;
+    if (receipt.damageApplied !== true) return false;
+    const impactDamage = Number(receipt.impactDamage);
+    if (!Number.isFinite(impactDamage) || impactDamage <= 0) return false;
+    const provenance = receipt.provenance;
+    if (!provenance || typeof provenance !== 'object') return false;
+    if (provenance.actorId !== playerId) return false;
+    if (!RAM_PLATE_PROVENANCE_TAGS.has(provenance.tag)) return false;
+    const tick = Number(receipt.tick);
+    const stateTick = Number(state.tick);
+    if (!Number.isFinite(tick) || !Number.isFinite(stateTick)) return false;
+    if (tick > stateTick || stateTick - tick > RAM_PLATE_RECEIPT_WINDOW_TICKS) return false;
+    const key = `${Math.trunc(tick)}:${receipt.targetId}`;
+    if (!RAM_PLATE_HIT_KEY.test(key)) return false;
+
+    const history = normalizeRamPlateHistory(owned.ramPlateHistory) || {
+      version: RAM_PLATE_HISTORY_VERSION,
+      hits: [],
+    };
+    if (history.hits.includes(key)) return false;
+    if (history.hits.length >= RAM_PLATE_HITS_MAX) return false;
+    const next = { version: RAM_PLATE_HISTORY_VERSION, hits: [...history.hits, key] };
+    if (history.rewardInstanceId) next.rewardInstanceId = history.rewardInstanceId;
+    owned.ramPlateHistory = next;
+
+    // The same ram is a witnessed act on the hull record (existing reducer, stable ID).
+    const target = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(receipt.targetId) : null;
+    const now = Number(state.simTime) || 0;
+    this._reduceLivingHull((hull, at) => livingHullWithRenown(hull, {
+      id: `ram:${Math.trunc(tick)}:${receipt.targetId}`,
+      act: 'ram',
+      factionId: (target && target.factionId) || null,
+      sectorId: (state.world && state.world.currentSectorId) || null,
+      atT: now,
+      tick: Math.trunc(tick),
+    }, at), 'witnessed_ram');
+
+    if (next.hits.length === RAM_PLATE_HITS_MAX && !next.rewardInstanceId) {
+      this._awardScarredRamPlate(owned);
+    }
+    return true;
+  },
+
+  /**
+   * Mint the ONE scarred plate this hull earned. Private: `buyModule`, `grantModule`,
+   * `moduleFitBlocker`, `fitModule` and the preset path all refuse the definition from outside,
+   * so this is the only door. The reward ID is written onto the hull BEFORE the receipts publish,
+   * which is what makes a reloaded, refitted, or re-delivered third ram a no-op.
+   */
+  _awardScarredRamPlate(owned) {
+    const player = this.state && this.state.player;
+    if (!owned || !player) return null;
+    const history = normalizeRamPlateHistory(owned.ramPlateHistory);
+    if (!history || history.rewardInstanceId || history.hits.length < RAM_PLATE_HITS_MAX) return null;
+    if (!Array.isArray(player.moduleInventory)) player.moduleInventory = [];
+    const index = Array.isArray(player.ownedShips) ? player.ownedShips.indexOf(owned) : -1;
+    const hullName = hullNameForOwnedShip(
+      owned,
+      index < 0 ? 0 : index,
+      Number(this.state.meta && this.state.meta.seed) || 0,
+    );
+    const instanceId = this.nextInstanceId();
+    // Two hulls may carry the same spoken name; the plate's identity text must still
+    // distinguish them or hold grouping would merge two hull-bound plates into one row.
+    const baseLabel = `Three rams aboard ${hullName}`;
+    const taken = new Set();
+    const collectLabel = (item) => {
+      if (item && item.defId === RAM_PLATE_SCARRED_DEF_ID && item.provenance && item.provenance.label) {
+        taken.add(item.provenance.label);
+      }
+    };
+    for (const item of player.moduleInventory) collectLabel(item);
+    for (const hull of Array.isArray(player.ownedShips) ? player.ownedShips : []) {
+      const fitted = hull && hull.fittedInstances;
+      if (fitted) for (const slotKey of Object.keys(fitted)) collectLabel(fitted[slotKey]);
+    }
+    let label = baseLabel;
+    for (let n = 2; taken.has(label); n += 1) label = `${baseLabel} (${n})`;
+    const record = {
+      instanceId,
+      defId: RAM_PLATE_SCARRED_DEF_ID,
+      condition: 'scarred',
+      provenance: { label, source: 'hull_ram_history' },
+    };
+    owned.ramPlateHistory = {
+      version: RAM_PLATE_HISTORY_VERSION,
+      hits: history.hits.slice(),
+      rewardInstanceId: instanceId,
+    };
+    player.moduleInventory.push(record);
+    this.bus.emit('module:granted', {
+      defId: RAM_PLATE_SCARRED_DEF_ID,
+      instanceId,
+      reason: 'hull_ram_history',
+    });
+    this.bus.emit('toast', {
+      text: 'Scarred Ram Plate earned — fit it to this hull at Shipworks.',
+      kind: 'success',
+      ttl: 6,
+    });
+    return record;
   },
 
   _reduceLivingHull(reducer, source) {
@@ -2226,6 +2516,23 @@ export const ships = {
     const def = defById(defId);
     const p = this.state.player;
     if (!def) { this.bus.emit('toast', { text: 'Unknown module', kind: 'error', ttl: 2 }); return refuse('unknown_module'); }
+    if (resolveCatalyst(def.id)) {
+      this.bus.emit('toast', { text: 'Kinetic catalysts are recovered relics, never sold.', kind: 'error', ttl: 3 });
+      return refuse('salvage_instance_required');
+    }
+    // AL-LG-11 — earned only. `price:0` with no tech gate would otherwise be a free mint, so this
+    // refusal is load-bearing and comes before any price, credit or inventory mutation. The gate
+    // covers every named entry point (buyModule, grantModule, moduleFitBlocker, fitModule, presets);
+    // crafting.js and cargo pickup mint `moduleInventory` directly, but no authored recipe or loot
+    // row names this definition, so those paths stay unreachable for it (PLAN-GATE §7.5).
+    if (def.id === RAM_PLATE_SCARRED_DEF_ID) {
+      this.bus.emit('toast', {
+        text: 'The Scarred Ram Plate is earned on a hull, never sold.',
+        kind: 'error',
+        ttl: 3,
+      });
+      return refuse('hull_history_required');
+    }
     if (!this.isUnlocked(def)) {
       this.bus.emit('toast', { text: defLockReasonText(def), kind: 'error', ttl: 3 });
       return refuse('research_required');
@@ -2285,11 +2592,31 @@ export const ships = {
     const def = defById(defId);
     const p = this.state.player;
     if (!def || !p || !Array.isArray(p.moduleInventory)) return false;
+    // AL-LG-11 + PLAN-GATE §8 (NG+ keepsake crash path). The scarred plate has ONE private mint
+    // (the hull's own ram history). The single sanctioned exception is a New Run+ keepsake, whose
+    // call string is `new-game-plus:<ending>` (core/newGameBoot.js). That copy is deliberately
+    // UNBOUND — no hull lock, still scarred — so it is a souvenir, the same fate a sold earnest
+    // hull's plate has (deferred to AL-LG-10 resale). Nothing else may mint one.
+    const keepsake = typeof reason === 'string' && reason.startsWith('new-game-plus');
+    if (def.id === RAM_PLATE_SCARRED_DEF_ID && !keepsake) {
+      this.bus.emit('toast', {
+        text: 'The Scarred Ram Plate is earned on a hull, never granted.',
+        kind: 'error',
+        ttl: 3,
+      });
+      return false;
+    }
     const item = { instanceId: this.nextInstanceId(), defId };
     // NXB-032 — supported optional instance fields ride along unchanged; absence is
     // legitimate ('unrecorded' fallback), never fabricated.
     if (provenance != null) item.provenance = provenance;
     if (condition != null) item.condition = condition;
+    if (keepsake && def.id === RAM_PLATE_SCARRED_DEF_ID) {
+      if (item.condition == null) item.condition = 'scarred';
+      if (item.provenance == null) {
+        item.provenance = { label: 'Kept from the last run · three rams', source: 'new-game-plus' };
+      }
+    }
     p.moduleInventory.push(item);
     this.bus.emit('module:granted', { defId, instanceId: item.instanceId, reason });
     return true;
@@ -2347,6 +2674,11 @@ export const ships = {
       impoundLossId: current.lossId || null,
     };
     if (quirk) owned.impoundQuirk = quirk;
+    // AL-LG-11 — dead defence, kept on purpose: an impound lot only ever lists a hull the pilot
+    // lost, never their own, so this branch cannot fire today. If that changes, the plate's
+    // count rides with the hull instead of silently resetting it to "has not earned one".
+    const ramPlateHistory = normalizeRamPlateHistory(current.ramPlateHistory);
+    if (ramPlateHistory && ramPlateHistory.hits.length > 0) owned.ramPlateHistory = ramPlateHistory;
     const shadow = mintImpoundShadow(current, this.state.simTime || 0);
     if (shadow) owned.impoundShadow = shadow;
     p.ownedShips.push(owned);
@@ -2603,11 +2935,17 @@ export const ships = {
 
   // ---- outfitting: fit / unfit modules ----------------------------------------------------
 
-  moduleFitBlocker({ shipIndex, slotIndex, def }) {
+  moduleFitBlocker({ shipIndex, slotIndex, def, instanceId = null }) {
     const owned = this.ownedShip(shipIndex);
     if (!owned || !def) return { reason: 'missing_fit_target', text: null };
     const locationBlocker = this.ownedVesselLocationBlocker(owned, shipIndex);
     if (locationBlocker) return locationBlocker;
+    // AL-LG-11 — a scarred plate answers only to the hull whose history minted that exact
+    // instance. Another hull, a defId-only fit, and a keepsake souvenir all stop here, before any
+    // slot, price or displacement logic runs.
+    if (def.id === RAM_PLATE_SCARRED_DEF_ID && !this._hullOwnsScarredPlate(owned, instanceId)) {
+      return { reason: 'hull_history_required', text: RAM_PLATE_BLOCK_TEXT };
+    }
     const shipDef = SHIP_BY_ID.get(owned.defId);
     const slot = buildSlotList(shipDef)[slotIndex];
     if (!slot) return { reason: 'unknown_slot', text: null };
@@ -2626,6 +2964,11 @@ export const ships = {
         text: 'Unfit ' + conflictingDef.name + ' before fitting another head',
       };
     }
+    const conflictingCatalyst = findCatalystFitConflict(owned.fittings, slotIndex, def);
+    if (conflictingCatalyst) return {
+      reason: 'catalyst_conflict',
+      text: 'Unfit ' + conflictingCatalyst.name + ' before fitting another catalyst',
+    };
     const prospective = { ...owned, fittings: (owned.fittings || []).slice() };
     prospective.fittings[slotIndex] = def.id;
     const budgetBlocker = outfitBudgetBlocker(shipDef, prospective.fittings);
@@ -2699,7 +3042,17 @@ export const ships = {
       def = defById(defId);
     }
     if (!def) return refuse('unknown_module');
-    const blocker = this.moduleFitBlocker({ shipIndex, slotIndex, def });
+    if (resolveCatalyst(def.id) && invIdx < 0) {
+      this.bus.emit('toast', { text: 'Fit the recovered catalyst instance from inventory.', kind: 'error', ttl: 3 });
+      return refuse('salvage_instance_required');
+    }
+    // AL-LG-11 — a defId-only fit is reserved for internal draft/reward paths and would mint a
+    // fresh copy of an earned keepsake, so the scarred plate REQUIRES the held instance.
+    if (def.id === RAM_PLATE_SCARRED_DEF_ID && invIdx < 0) {
+      this.bus.emit('toast', { text: RAM_PLATE_BLOCK_TEXT, kind: 'error', ttl: 3 });
+      return refuse('hull_history_required');
+    }
+    const blocker = this.moduleFitBlocker({ shipIndex, slotIndex, def, instanceId: invIdx >= 0 ? instanceId : null });
     if (blocker) {
       if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
       return refuse(blocker.reason);
@@ -2917,11 +3270,21 @@ export const ships = {
       this.bus.emit('toast', { text: 'Preset does not match this hull layout', kind: 'error', ttl: 3 });
       return false;
     }
+    // AL-LG-11 — a scarred plate answers only to the hull that earned it. Unbound ones (a twin's
+    // plate, a New Run+ souvenir) are held out of BOTH the dry run's stock count and the instance
+    // picker below, then handed back untouched, so an identical hull cannot borrow the reward.
+    const heldOutScarred = [];
+    const eligibleInventory = (Array.isArray(p.moduleInventory) ? p.moduleInventory : []).filter((item) => {
+      if (!item || item.defId !== RAM_PLATE_SCARRED_DEF_ID) return true;
+      if (this._isEligibleScarredInstance(owned, item)) return true;
+      heldOutScarred.push(item);
+      return false;
+    });
     const dryRun = dryRunLoadoutPresetApply({
       shipDefId: shipDef.id,
       currentFittings: owned.fittings,
       targetFittings,
-      moduleInventory: p.moduleInventory,
+      moduleInventory: eligibleInventory,
       player: p,
       enforceCargo: owned === this.ownedShip(),
       isUnlockedFn: (def) => this.isUnlocked(def),
@@ -2963,7 +3326,7 @@ export const ships = {
 
     // NXB-029/NXB-032 — the swap keeps instance identity. Displaced modules carry their
     // records back to the hold; a module moving between slots keeps its own record.
-    const inventory = Array.isArray(p.moduleInventory) ? p.moduleInventory.slice() : [];
+    const inventory = eligibleInventory.slice();
     const takenByDef = new Map();
     for (const [defId, takeCount] of dryRun.takeByDefId.entries()) {
       const items = [];
@@ -2981,9 +3344,15 @@ export const ships = {
     const displacedByDef = new Map();
     const nextInstances = {};
     // Pass 1: slots whose occupant already matches the target keep their record; the rest
-    // lift theirs into the displaced pool.
+    // lift theirs into the displaced pool. AL-LG-11: a scarred record only "matches" when this
+    // hull owns it — an illegal one goes back to the hold instead of being re-seated.
     for (let i = 0; i < afterFittings.length; i += 1) {
       const cur = this._reconcileFittedInstance(owned, i);
+      if (cur && cur.defId === RAM_PLATE_SCARRED_DEF_ID
+        && !this._hullOwnsScarredPlate(owned, cur.instanceId)) {
+        inventory.push({ ...cur });
+        continue;
+      }
       if (cur && cur.defId === afterFittings[i]) {
         nextInstances[i] = cur;
         continue;
@@ -3014,6 +3383,20 @@ export const ships = {
     for (const items of takenByDef.values()) {
       for (const item of items) inventory.push(item);
     }
+    // AL-LG-11 — last gate before anything moves: a scarred record may only be seated on the
+    // hull that earned it. A fresh mint (or a record that slipped past the hold filter) is
+    // refused here, before the rack commit, so the build is not half-applied.
+    for (const inst of Object.values(nextInstances)) {
+      if (!inst || inst.defId !== RAM_PLATE_SCARRED_DEF_ID) continue;
+      if (this._isEligibleScarredInstance(owned, inst)) continue;
+      this.bus.emit('ship:loadoutPresetApplyRejected', {
+        presetId,
+        hullDefId: shipDef.id,
+        reason: 'hull_history_required',
+      });
+      this.bus.emit('toast', { text: RAM_PLATE_BLOCK_TEXT, kind: 'error', ttl: 3 });
+      return false;
+    }
 
     // Commit order: rack first (its commit is the fallible one — the module write below is
     // a pure assignment the dry run already proved). A rack failure leaves the fit intact.
@@ -3028,7 +3411,7 @@ export const ships = {
         return false;
       }
     }
-    p.moduleInventory = inventory;
+    p.moduleInventory = inventory.concat(heldOutScarred);
     owned.fittings = afterFittings.slice();
     owned.fittedInstances = nextInstances;
     this.bus.emit('ship:loadoutPresetApplied', {
