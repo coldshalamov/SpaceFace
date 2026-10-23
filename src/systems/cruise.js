@@ -24,7 +24,7 @@ const CHIP_WINDOW_FLOOR = 36;       // applied dmg in-window — above sustained
 const ROUTE_ALIGN_MAX_OFF_COURSE_RAD = 30 * Math.PI / 180;
 const DROP_REASONS = Object.freeze({
   DAMAGE: 'damage', MASSLOCK: 'masslock', MANUAL: 'manual', SNARED: 'snared', DRIVE: 'drive',
-  BOOST: 'boost', FIRED: 'fired', POWER: 'power',
+  BOOST: 'boost', FIRED: 'fired', POWER: 'power', JUMP: 'jump',
 });
 
 // Weapons whose hit IS the verb, not the damage number: EMP/subsystem spikes, latch/status
@@ -68,6 +68,8 @@ export const cruise = {
     this.bus.on('combat:fire', (p) => {
       if (p && p.ownerId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.FIRED);
     });
+    // A fold and a cruise burn do not share the drive. The spool cuts cruise.
+    this.bus.on('jump:chargeStart', (p) => this._onJumpSpool(p));
     // Give the pilot one steering window before an external snare takes the drive.
     this.bus.on('cruise:snareRequest', (p) => {
       const c = this._ensureCruise(this.state);
@@ -163,6 +165,13 @@ export const cruise = {
     return p.cruise;
   },
 
+  _onJumpSpool(payload) {
+    if (!this.state) return;
+    const who = payload && payload.playerId;
+    if (who != null && who !== this.state.playerId) return;
+    this._drop(DROP_REASONS.JUMP);
+  },
+
   _startCharge(cruise) {
     cruise.phase = 'charging';
     cruise.t = 0;
@@ -232,7 +241,7 @@ export const cruise = {
     // Re-arm cooldown: a drop inside the window does not stack a second yaw stumble — under
     // sustained real fire the stick otherwise stays spongy for as long as the hits keep landing.
     // The authored snare always stumbles; the interdiction beat is supposed to be felt.
-    if (reason !== DROP_REASONS.DRIVE && reason !== DROP_REASONS.POWER
+    if (reason !== DROP_REASONS.DRIVE && reason !== DROP_REASONS.POWER && reason !== DROP_REASONS.JUMP
         && (reason === DROP_REASONS.SNARED || cruise.stumbleCdT <= 0)) {
       cruise.stumbleT = STUMBLE_S;
       cruise.stumbleCdT = STUMBLE_REARM_S;
@@ -249,6 +258,9 @@ export const cruise = {
     }
     if (reason === DROP_REASONS.POWER && this.bus) {
       this.bus.emit('toast', { text: 'Capacitor empty — cruise dropped', kind: 'warn', ttl: 1.6 });
+    }
+    if (reason === DROP_REASONS.JUMP && this.bus) {
+      this.bus.emit('toast', { text: 'Jump spool — cruise cut', kind: 'warn', ttl: 1.6 });
     }
     // kind error: a fight or a hurt hull drops warn receipts, and these two drops
     // happen in exactly that window. Boost and firing cancel a charge without a sentence.
