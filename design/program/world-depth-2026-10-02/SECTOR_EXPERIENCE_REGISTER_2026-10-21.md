@@ -649,3 +649,12 @@ DraftPR528 head d5e1a1da49585dfdba4877280f2efc96bca1db00 retains Last Light/Merc
 ### Eunomia follow-up, 23 October2026 06:14 UTC
 
 Upstream#525 restores the previously absent import using an inert public onboarding module. Unchanged PR523 now passes53/53 on6756current-source overlay,1619loadedESM inputs verified, including worker transport. The previous worker-startup blocker is resolved, not a current excuse to stop. This does not accept the inert onboarding feature or prove ordinary flight/visual/phone quality. Historical hosted CI remains failed with focused gate included-but-skipped after precheck.
+
+
+### Nereid: earned freight annex becomes physical, 23 October 2026 09:05 UTC
+
+Draft [PR537](https://github.com/coldshalamov/SpaceFace/pull/537) at `c6f74168d7cfb9e4d94e6505c5e6e1c5c0567375` projects the existing station-growth Bonded Freight Annex receipt into existing world dressing at Nereid Waystation. A real 150-food trade awards the existing claims receipt; once earned, the existing freight platform and container rack are seated at fixed authored positions. Existing claims/save/world-dressing owners remain authoritative. Blocked seating retries on existing entry, restore, or later growth rather than clearing obstructions or polling every frame; older saves without the receipt remove tagged annex dressing. No new ledger, reward, asset, job, or economy authority is added.
+
+Qualification records 22 distinct focused behavior cases and one real native Rapier case; the latter exercised two fixed bodies and 36 colliders, repeated seating and cleanup on older-save restore. This is source/owner and native-physics proof, not player-flown travel or rendered/performance acceptance. The inspected CPU preview decodes actual exported geometry; it is not a live-game capture. PR537 is open, draft, and unmerged. Exact-head run `39927303314 / #5908` is still running. Static-1 package:scripts.check artifact `12490083951` explicitly shows the focused gate executed with exit 0 and 15/15 TAP tests, but other workflow failures remain and the overall run is not green. Await terminal status without retry or cancellation. See the [implementation report](NEREID_FREIGHT_ANNEX_2026-10-23.md).
+
+All ten game/sector goals remain open; source publication is not integration or acceptance. The next grounded sector unit is under inspection and has not yet been allocated.
