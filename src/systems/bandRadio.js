@@ -5,6 +5,8 @@
 // for a matching, root-supplied canonical band:bearingResolved receipt.
 
 import { hash32 } from '../core/rng.js';
+import { weatherForecast } from '../data/seasonalWeather.js';
+import { WEATHER_SECTOR_IDS } from '../data/environmentalMachinery.js';
 import { localizeText } from '../localization/gameLocalization.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
@@ -304,6 +306,16 @@ export const bandRadio = {
         own.identPending = false;
       }
       return;
+    }
+
+    const weatherSector = this.state.world && this.state.world.currentSectorId;
+    if (WEATHER_SECTOR_IDS.has(weatherSector)) {
+      const forecast = weatherForecast(weatherSector, now);
+      if (forecast.id !== own.lastWeatherForecastId && this._say(forecast, own.effectiveChannelId)) {
+        own.lastWeatherForecastId = forecast.id;
+        own.nextLineAtS = now + this._cadenceForSignal(own.signalStrength);
+        return;
+      }
     }
 
     if (tuned.id === 'numbers_station' && !bleed) {
