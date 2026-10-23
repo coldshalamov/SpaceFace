@@ -7,6 +7,8 @@ import { waveOpeningLine } from '../src/systems/survivalAnnounce.js';
 import { circuitPanelLines } from '../src/ui/screens/crucibleDraft.js';
 import { OBJECTIVE_WORDS, survivalHud } from '../src/ui/survivalHud.js';
 import { createVisualFactory } from '../src/render/visualFactory.js';
+import { VoiceQueue } from '../src/ui/voiceArbiter.js';
+import { NAMED_KILL_PRIORITY } from '../src/systems/survivalAnnounce.js';
 import { SWARM_STAKES } from '../src/data/swarmStakes.js';
 import { COMBAT_LAB_ARENAS } from '../src/data/combatLabSetups.js';
 import {
@@ -180,6 +182,19 @@ test('seed 4242: a hive node is a sac, and the commander wears a ring', () => {
   });
   assert.ok(commander.getObjectByName('circuit-commander'), 'the commander is marked');
   assert.equal(commander.getObjectByName('circuit-node'), undefined);
+});
+
+test('seed 4242: the commander line speaks over a line that is already up', () => {
+  const queue = new VoiceQueue();
+  queue.enqueue({ channel: 'story', text: 'A longer story line.', id: 'story', ttl: 8 }, 0);
+  queue.step(0);
+  assert.equal(queue.active.text, 'A longer story line.');
+  queue.enqueue({
+    channel: 'objective', text: `${CIRCUIT_COMMANDER_NAME} down`, id: 'down', ttl: 12,
+    priority: NAMED_KILL_PRIORITY,
+  }, 1000);
+  queue.step(1000);
+  assert.equal(queue.active.text, `${CIRCUIT_COMMANDER_NAME} down`);
 });
 
 test('seed 4242: the commander\'s name is on the glass', () => {

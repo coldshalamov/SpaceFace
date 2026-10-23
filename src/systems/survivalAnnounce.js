@@ -45,6 +45,8 @@ import { GATE_BEARINGS } from './waveMaterialization.js';
  * opener + question (PQ-140) + arrival + cleared + levelUp = 5. Nothing can exceed it.
  */
 export const MAX_LINES_PER_WAVE = 5;
+// Above story, below a life-critical danger line, so the named kill speaks over whatever is up.
+export const NAMED_KILL_PRIORITY = 105;
 
 /** At most one counter-hint per wave. Teaching two archetypes at once teaches neither. */
 export const MAX_HINTS_PER_WAVE = 1;
@@ -409,7 +411,9 @@ export const survivalAnnounce = {
     // A forced line is the round's result. It does not spend the warning budget, and a
     // spent warning budget cannot swallow it.
     if (!forced) this._linesThisWave += 1;
-    this.bus.emit('voice:say', { channel, id, text, ttl });
+    this.bus.emit('voice:say', forced
+      ? { channel, id, text, ttl, priority: NAMED_KILL_PRIORITY }
+      : { channel, id, text, ttl });
     return true;
   },
 
@@ -635,7 +639,7 @@ export const survivalAnnounce = {
     // The commander round already wrote the named kill line. Say that, not a generic clear.
     const namedDown = typeof rec.killWord === 'string' ? rec.killWord.trim() : '';
     if (namedDown) {
-      this._say('objective', `survival:w${wave}:down`, namedDown, 4, { force: true });
+      this._say('objective', `survival:w${wave}:down`, namedDown, 12, { force: true });
       return;
     }
     const killed = Number.isInteger(rec.killed) && rec.killed >= 0 ? rec.killed : null;

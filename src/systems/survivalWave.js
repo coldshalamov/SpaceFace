@@ -726,7 +726,8 @@ export const survivalWave = {
       const zone = spec.kind === 'hold' ? spec.zone : spec.gate;
       const inside = !!(zone && Math.hypot(pos.x - zone.x, pos.z - zone.z) <= zone.radius);
       if (inside) spec.fill = (spec.fill || 0) + 1;
-      else if (spec.kind === 'hold') spec.fill = Math.max(0, (spec.fill || 0) - 1);
+      // The gate is a sit, the same as the hold. Leaving drains the clock; dipping in and out does not add up.
+      else spec.fill = Math.max(0, (spec.fill || 0) - 1);
       return;
     }
     if (spec.kind !== 'collect' || !pos) return;

@@ -13,7 +13,7 @@ import { survivalArena } from '../src/systems/survivalArena.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
-import { MAX_LINES_PER_WAVE, survivalAnnounce } from '../src/systems/survivalAnnounce.js';
+import { MAX_LINES_PER_WAVE, NAMED_KILL_PRIORITY, survivalAnnounce } from '../src/systems/survivalAnnounce.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import {
   CIRCUIT_BOSS_SEQUENCE,
@@ -453,6 +453,16 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.equal(clearedCount(h), before, 'kills do not finish a zone round');
       h.player.pos.x = zone.x;
       h.player.pos.z = zone.z;
+      step(h, 40);
+      const dipped = survivalWave._swarm.circuit.fill;
+      assert.ok(dipped >= 30, 'standing in the spot fills the clock');
+      h.player.pos.x = 0;
+      h.player.pos.z = 0;
+      step(h, 30);
+      assert.ok(survivalWave._swarm.circuit.fill < dipped, 'leaving the spot drains the clock');
+      assert.equal(clearedCount(h), before, 'a dip does not finish the sit');
+      h.player.pos.x = zone.x;
+      h.player.pos.z = zone.z;
       step(h, lastPlan(h).swarm.circuit.need);
       assert.equal(clearedCount(h), before + 1, `${round.kind} fills on presence`);
       const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
@@ -546,8 +556,10 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.equal(receipt.completionKind, 'commander');
       assert.equal(receipt.objectiveName, round.commanderName);
       assert.equal(receipt.killWord, `${round.commanderName} down`);
-      const said = named(h.emitted, 'voice:say').map((entry) => entry.payload && entry.payload.text);
-      assert.ok(said.includes(`${round.commanderName} down`), 'the kill line is spoken');
+      const down = named(h.emitted, 'voice:say').find((entry) => entry.payload
+        && entry.payload.text === `${round.commanderName} down`);
+      assert.ok(down, 'the kill line is spoken');
+      assert.equal(down.payload.priority, NAMED_KILL_PRIORITY, 'the kill line speaks over a line that is already up');
       survivalAnnounce.destroy();
     } else {
       clearCohortRound(h);
