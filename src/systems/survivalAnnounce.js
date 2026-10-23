@@ -45,6 +45,8 @@ import { GATE_BEARINGS } from './waveMaterialization.js';
  * opener + question (PQ-140) + arrival + cleared + levelUp = 5. Nothing can exceed it.
  */
 export const MAX_LINES_PER_WAVE = 5;
+// Above story, below a life-critical danger line, so the named kill speaks over whatever is up.
+export const NAMED_KILL_PRIORITY = 105;
 
 /** At most one counter-hint per wave. Teaching two archetypes at once teaches neither. */
 export const MAX_HINTS_PER_WAVE = 1;
@@ -399,10 +401,19 @@ export const survivalAnnounce = {
    * live floor as a REPLACEMENT (voiceArbiter.js:296-300), so a single stable id would silently
    * collapse a wave's whole announcement into one.
    */
-  _say(channel, id, text, ttl) {
-    if (!text || !this._canSpeak()) return false;
-    this._linesThisWave += 1;
-    this.bus.emit('voice:say', { channel, id, text, ttl });
+  _say(channel, id, text, ttl, opts = null) {
+    const forced = !!(opts && opts.force);
+    if (!text) return false;
+    if (forced) {
+      if (this._muted || !liveSurvivalRun(this.state)) return false;
+      if (!this.bus || typeof this.bus.emit !== 'function') return false;
+    } else if (!this._canSpeak()) return false;
+    // A forced line is the round's result. It does not spend the warning budget, and a
+    // spent warning budget cannot swallow it.
+    if (!forced) this._linesThisWave += 1;
+    this.bus.emit('voice:say', forced
+      ? { channel, id, text, ttl, priority: NAMED_KILL_PRIORITY }
+      : { channel, id, text, ttl });
     return true;
   },
 
@@ -625,6 +636,12 @@ export const survivalAnnounce = {
     // Swarm waves end on the clock: "survived", not "clear". Prefer actual kills when the
     // receipt names them — admissions count bodies the stream fielded, not bodies the player
     // put down.
+    // The commander round already wrote the named kill line. Say that, not a generic clear.
+    const namedDown = typeof rec.killWord === 'string' ? rec.killWord.trim() : '';
+    if (namedDown) {
+      this._say('objective', `survival:w${wave}:down`, namedDown, 12, { force: true });
+      return;
+    }
     const killed = Number.isInteger(rec.killed) && rec.killed >= 0 ? rec.killed : null;
     const admitted = Number.isInteger(rec.admitted) && rec.admitted > 0 ? rec.admitted : 0;
     const tallyCount = killed != null ? killed : admitted;

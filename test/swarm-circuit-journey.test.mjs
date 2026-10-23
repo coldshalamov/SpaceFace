@@ -13,6 +13,7 @@ import { survivalArena } from '../src/systems/survivalArena.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
+import { MAX_LINES_PER_WAVE, NAMED_KILL_PRIORITY, survivalAnnounce } from '../src/systems/survivalAnnounce.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import {
   CIRCUIT_BOSS_SEQUENCE,
@@ -440,6 +441,7 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.ok(mark, `${round.kind} plants a beacon on the spot`);
       assert.equal(mark.physicsBody, false, 'the mark is not a solid body');
       assert.equal(mark.collides, false);
+      assert.equal(mark.data.ringRadius, zone.radius, 'the drawn circle is the circle the clock uses');
       assert.ok(Math.hypot(mark.pos.x - zone.x, mark.pos.z - zone.z) < 1, 'the beacon sits on the spot');
       const shipDist = Math.hypot(h.player.pos.x - zone.x, h.player.pos.z - zone.z);
       assert.ok(shipDist > zone.radius, 'the ship is not already standing in the spot');
@@ -449,6 +451,16 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       killEverything(h);
       step(h, 30);
       assert.equal(clearedCount(h), before, 'kills do not finish a zone round');
+      h.player.pos.x = zone.x;
+      h.player.pos.z = zone.z;
+      step(h, 40);
+      const dipped = survivalWave._swarm.circuit.fill;
+      assert.ok(dipped >= 30, 'standing in the spot fills the clock');
+      h.player.pos.x = 0;
+      h.player.pos.z = 0;
+      step(h, 30);
+      assert.ok(survivalWave._swarm.circuit.fill < dipped, 'leaving the spot drains the clock');
+      assert.equal(clearedCount(h), before, 'a dip does not finish the sit');
       h.player.pos.x = zone.x;
       h.player.pos.z = zone.z;
       step(h, lastPlan(h).swarm.circuit.need);
@@ -463,7 +475,22 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
         step(h, 10);
       }
       assert.equal(clearedCount(h), before, 'cores on the field do not finish the round');
-      for (const core of survivalWave._circuitCores || []) {
+      const planted = survivalWave._circuitCores || [];
+      assert.equal(planted.length, need, 'the round spills one marker per core');
+      for (const core of planted) {
+        const mark = [...h.state.entities.values()].find((entity) => entity.data && entity.data.circuitCore
+          && entity.alive !== false && entity.pos
+          && Math.hypot(entity.pos.x - core.x, entity.pos.z - core.z) < 1);
+        assert.ok(mark, 'each core is a marker in the fight');
+        assert.equal(mark.physicsBody, false, 'a core is not a solid body');
+        assert.equal(mark.collides, false);
+        assert.notEqual(mark.data.wallet, 'run', 'a core is not a credit chip');
+        const dist = Math.hypot(core.x - h.player.pos.x, core.z - h.player.pos.z);
+        assert.ok(dist > 12, 'a core is not sitting on the ship');
+        assert.ok(core.z > h.player.pos.z, 'a core is ahead of the ship');
+        assert.ok(dist + 6 <= CIRCUIT_VIEW_AHEAD + 0.01, 'a core stays inside the swarm picture');
+      }
+      for (const core of planted) {
         h.player.pos.x = core.x;
         h.player.pos.z = core.z;
         step(h, 1);
@@ -472,11 +499,68 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
       assert.equal(receipt.completionKind, 'collect');
       assert.equal(receipt.found, need);
-    } else if (round.kind === 'nodes' || round.kind === 'commander') {
+    } else if (round.kind === 'nodes') {
+      const landed = tickUntil(h, () => {
+        let n = 0;
+        for (const entity of h.state.entities.values()) {
+          if (entity && entity.alive !== false && entity.data && entity.data.circuitNode) n += 1;
+        }
+        return n >= 3;
+      }, 800);
+      assert.ok(landed, 'three hive nodes take the field');
+      const nodes = [...h.state.entities.values()].filter((entity) => entity && entity.alive !== false
+        && entity.data && entity.data.circuitNode);
+      assert.equal(nodes.length, 3, 'the nodes are this wave\'s own bodies');
+      for (const node of nodes) {
+        const dist = Math.hypot(node.pos.x - h.player.pos.x, node.pos.z - h.player.pos.z);
+        const radius = Number(node.radius) > 0 ? node.radius : 8;
+        assert.ok(dist > 4, 'a node is planted ahead of the ship');
+        assert.ok(dist + radius <= CIRCUIT_VIEW_AHEAD + 0.01, 'a node stays inside the swarm picture');
+        assert.equal(node.data.scanLabel, 'Hive node');
+        if (node.data.ai) assert.equal(node.data.ai.swarmFireHeld, true, 'a node does not shoot');
+      }
+      const packBefore = [...h.state.entities.values()].filter((entity) => entity && entity.alive !== false
+        && entity.id !== h.player.id && !(entity.data && entity.data.circuitNode));
+      const before = clearedCount(h);
+      for (const node of nodes) {
+        node.alive = false;
+        h.bus.emit('entity:killed', { id: node.id });
+      }
+      step(h, 5);
+      assert.equal(clearedCount(h), before + 1, 'the last node ends the round');
+      const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
+      assert.equal(receipt.completionKind, 'nodes');
+      if (packBefore.length > 0) {
+        const still = [...h.state.entities.values()].filter((entity) => entity && entity.alive !== false
+          && entity.id !== h.player.id && !(entity.data && entity.data.circuitNode));
+        assert.ok(still.length > 0, 'the pack is still flying when the nodes are gone');
+      }
+    } else if (round.kind === 'commander') {
+      const landed = tickUntil(h, () => {
+        for (const entity of h.state.entities.values()) {
+          if (entity && entity.alive !== false && entity.data && entity.data.circuitCommander) return true;
+        }
+        return false;
+      }, 800);
+      assert.ok(landed, 'the commander takes the field');
+      const commander = [...h.state.entities.values()].find((entity) => entity && entity.alive !== false
+        && entity.data && entity.data.circuitCommander);
+      assert.equal(commander.data.scanLabel, round.commanderName);
+      assert.equal(commander.data.callsign, round.commanderName);
+      assert.notEqual(commander.data.swarmChampion, true, 'the commander is not a second stage boss');
+      survivalAnnounce.init(h.ctx);
+      survivalAnnounce._wave = h.state.run.wave;
+      survivalAnnounce._linesThisWave = MAX_LINES_PER_WAVE;
       clearCohortRound(h);
       const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
-      assert.equal(receipt.completionKind, round.kind);
-      if (round.kind === 'commander') assert.equal(receipt.objectiveName, round.commanderName);
+      assert.equal(receipt.completionKind, 'commander');
+      assert.equal(receipt.objectiveName, round.commanderName);
+      assert.equal(receipt.killWord, `${round.commanderName} down`);
+      const down = named(h.emitted, 'voice:say').find((entry) => entry.payload
+        && entry.payload.text === `${round.commanderName} down`);
+      assert.ok(down, 'the kill line is spoken');
+      assert.equal(down.payload.priority, NAMED_KILL_PRIORITY, 'the kill line speaks over a line that is already up');
+      survivalAnnounce.destroy();
     } else {
       clearCohortRound(h);
       const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
