@@ -1,7 +1,7 @@
 {
   "schema": "spaceface.steamAchievements.v1",
   "source": "src/data/achievements.js",
-  "count": 22,
+  "count": 40,
   "achievements": [
     {
       "order": 1,
@@ -441,6 +441,348 @@
       "iconFiles": {
         "achieved": "build/store/steam/achievements/SF_SALVAGE_CREW_achieved.jpg",
         "unachieved": "build/store/steam/achievements/SF_SALVAGE_CREW_unachieved.jpg"
+      }
+    },
+    {
+      "order": 23,
+      "id": "two_hulls_one_rope",
+      "apiName": "SF_TWO_HULLS_ONE_ROPE",
+      "name": "Two Hulls, One Rope",
+      "description": "Release one ship under load into another hull.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "bolas"
+      },
+      "ruleText": "player stunt:trickDetected trickId bolas once",
+      "icon": "icon-wreck",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_TWO_HULLS_ONE_ROPE_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_TWO_HULLS_ONE_ROPE_unachieved.jpg"
+      }
+    },
+    {
+      "order": 24,
+      "id": "keep_the_heavy_end",
+      "apiName": "SF_KEEP_THE_HEAVY_END",
+      "name": "Keep the Heavy End Moving",
+      "description": "Kill with the mass that is still on the line.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "wrecking_ball"
+      },
+      "ruleText": "player stunt:trickDetected trickId wrecking_ball once",
+      "icon": "icon-freighter",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_KEEP_THE_HEAVY_END_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_KEEP_THE_HEAVY_END_unachieved.jpg"
+      }
+    },
+    {
+      "order": 25,
+      "id": "watch_the_cable",
+      "apiName": "SF_WATCH_THE_CABLE",
+      "name": "Watch the Cable",
+      "description": "Kill a hull that crosses a loaded tether.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "clothesline"
+      },
+      "ruleText": "player stunt:trickDetected trickId clothesline once",
+      "icon": "icon-warning",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_WATCH_THE_CABLE_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_WATCH_THE_CABLE_unachieved.jpg"
+      }
+    },
+    {
+      "order": 26,
+      "id": "one_mistake_three_wrecks",
+      "apiName": "SF_ONE_MISTAKE_THREE_WRECKS",
+      "name": "One Mistake, Three Wrecks",
+      "description": "Wreck three or more hulls in one throw.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "minCollateral": 3
+      },
+      "ruleText": "player stunt:trickDetected collateralCount >= 3 once",
+      "icon": "icon-derelict",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_ONE_MISTAKE_THREE_WRECKS_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_ONE_MISTAKE_THREE_WRECKS_unachieved.jpg"
+      }
+    },
+    {
+      "order": 27,
+      "id": "still_flying",
+      "apiName": "SF_STILL_FLYING",
+      "name": "Still Flying",
+      "description": "Clear a kill-shot by a hair.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "near_miss"
+      },
+      "ruleText": "player stunt:trickDetected trickId near_miss once",
+      "icon": "icon-shield",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_STILL_FLYING_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_STILL_FLYING_unachieved.jpg"
+      }
+    },
+    {
+      "order": 28,
+      "id": "dragged_all_the_way",
+      "apiName": "SF_DRAGGED_ALL_THE_WAY",
+      "name": "Dragged All the Way In",
+      "description": "Tow a hostile into a fatal collision.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "tow_kill"
+      },
+      "ruleText": "player stunt:trickDetected trickId tow_kill once",
+      "icon": "icon-target",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_DRAGGED_ALL_THE_WAY_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_DRAGGED_ALL_THE_WAY_unachieved.jpg"
+      }
+    },
+    {
+      "order": 29,
+      "id": "the_rock_won",
+      "apiName": "SF_THE_ROCK_WON",
+      "name": "The Rock Won",
+      "description": "Redirect a body into terrain for the kill.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "rock_discovery"
+      },
+      "ruleText": "player stunt:trickDetected trickId rock_discovery once",
+      "icon": "icon-asteroid",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_THE_ROCK_WON_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_THE_ROCK_WON_unachieved.jpg"
+      }
+    },
+    {
+      "order": 30,
+      "id": "out_the_other_side",
+      "apiName": "SF_OUT_THE_OTHER_SIDE",
+      "name": "Out the Other Side",
+      "description": "Let a gravity well carry a body into a kill.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "well_golf"
+      },
+      "ruleText": "player stunt:trickDetected trickId well_golf once",
+      "icon": "icon-well",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_OUT_THE_OTHER_SIDE_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_OUT_THE_OTHER_SIDE_unachieved.jpg"
+      }
+    },
+    {
+      "order": 31,
+      "id": "one_job_left",
+      "apiName": "SF_ONE_JOB_LEFT",
+      "name": "One Job Left",
+      "description": "Put a wreck back in motion for a kill.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "dead_mans_mass"
+      },
+      "ruleText": "player stunt:trickDetected trickId dead_mans_mass once",
+      "icon": "icon-hull",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_ONE_JOB_LEFT_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_ONE_JOB_LEFT_unachieved.jpg"
+      }
+    },
+    {
+      "order": 32,
+      "id": "cover_not_guaranteed",
+      "apiName": "SF_COVER_NOT_GUARANTEED",
+      "name": "Cover Is Not a Guarantee",
+      "description": "Bank a shot around cover that kills.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "bank_job"
+      },
+      "ruleText": "player stunt:trickDetected trickId bank_job once",
+      "icon": "icon-cone",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_COVER_NOT_GUARANTEED_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_COVER_NOT_GUARANTEED_unachieved.jpg"
+      }
+    },
+    {
+      "order": 33,
+      "id": "back_with_your_name",
+      "apiName": "SF_BACK_WITH_YOUR_NAME",
+      "name": "Back With Your Name On It",
+      "description": "Return hostile ordnance to kill its owner.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "return_to_sender"
+      },
+      "ruleText": "player stunt:trickDetected trickId return_to_sender once",
+      "icon": "icon-munitions",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_BACK_WITH_YOUR_NAME_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_BACK_WITH_YOUR_NAME_unachieved.jpg"
+      }
+    },
+    {
+      "order": 34,
+      "id": "rode_the_blast",
+      "apiName": "SF_RODE_THE_BLAST",
+      "name": "Rode the Blast",
+      "description": "Ride a blast's momentum clear of a threat.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "kickstart"
+      },
+      "ruleText": "player stunt:trickDetected trickId kickstart once",
+      "icon": "icon-fire",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_RODE_THE_BLAST_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_RODE_THE_BLAST_unachieved.jpg"
+      }
+    },
+    {
+      "order": 35,
+      "id": "you_fit",
+      "apiName": "SF_YOU_FIT",
+      "name": "You Fit",
+      "description": "Escape through a moving gap between two hulls.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "needle_thread"
+      },
+      "ruleText": "player stunt:trickDetected trickId needle_thread once",
+      "icon": "icon-repel",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_YOU_FIT_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_YOU_FIT_unachieved.jpg"
+      }
+    },
+    {
+      "order": 36,
+      "id": "second_impulse",
+      "apiName": "SF_SECOND_IMPULSE",
+      "name": "Second Impulse",
+      "description": "Correct a body with a second impulse into a kill.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "one_two"
+      },
+      "ruleText": "player stunt:trickDetected trickId one_two once",
+      "icon": "icon-energy",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_SECOND_IMPULSE_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_SECOND_IMPULSE_unachieved.jpg"
+      }
+    },
+    {
+      "order": 37,
+      "id": "rope_well_wreck",
+      "apiName": "SF_ROPE_WELL_WRECK",
+      "name": "Rope, Well, Wreck",
+      "description": "Pass a body from a rope through a well into a wreck.",
+      "hidden": true,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "trickId": "slingshot_golf"
+      },
+      "ruleText": "player stunt:trickDetected trickId slingshot_golf once",
+      "icon": "icon-pod",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_ROPE_WELL_WRECK_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_ROPE_WELL_WRECK_unachieved.jpg"
+      }
+    },
+    {
+      "order": 38,
+      "id": "two_hulls_one_rock",
+      "apiName": "SF_TWO_HULLS_ONE_ROCK",
+      "name": "Two Hulls, One Rope, One Rock",
+      "description": "Drive a Twin Bridle pair into terrain.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "variantId": "bolas_pair"
+      },
+      "ruleText": "player stunt:trickDetected variantId bolas_pair once",
+      "icon": "icon-patrol",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_TWO_HULLS_ONE_ROCK_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_TWO_HULLS_ONE_ROCK_unachieved.jpg"
+      }
+    },
+    {
+      "order": 39,
+      "id": "his_own_wingman",
+      "apiName": "SF_HIS_OWN_WINGMAN",
+      "name": "His Own Wingman",
+      "description": "Shove a wreck into a hull of its own faction.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "variantId": "own_wingman"
+      },
+      "ruleText": "player stunt:trickDetected variantId own_wingman once",
+      "icon": "icon-pirate",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_HIS_OWN_WINGMAN_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_HIS_OWN_WINGMAN_unachieved.jpg"
+      }
+    },
+    {
+      "order": 40,
+      "id": "perfect_cut",
+      "apiName": "SF_PERFECT_CUT",
+      "name": "Perfect Cut",
+      "description": "Land a razor-rated release that kills.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "trick",
+        "razorKill": true
+      },
+      "ruleText": "player stunt:trickDetected razor release that kills, once",
+      "icon": "icon-weapon",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_PERFECT_CUT_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_PERFECT_CUT_unachieved.jpg"
       }
     }
   ]

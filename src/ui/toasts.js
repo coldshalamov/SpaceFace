@@ -360,7 +360,7 @@ export function createToasts(ctx) {
   bindExportRecoveryToasts(bus);
   bindSlingPassReceipts(bus);
   bindCounterplayReceipts(bus);
-  bindCapitalBossReceipts(bus);
+  bindCapitalBossReceipts(bus, () => ctx.state);
   bindAutomationPayoffUi(bus, () => ctx.state);
   bindReturningPilotSummary(bus, ctx && ctx.state);
 
@@ -581,16 +581,148 @@ export function capitalBossWarningReceipt(payload) {
     channel: 'capitalBoss', castId: payload.castId, fightId: payload.fightId, simTime: payload.simTime };
 }
 
-export function bindCapitalBossReceipts(bus) {
+export function capitalBossStartedReceipt(payload) {
+  const name = String(payload?.name || '').trim();
+  const lesson = String(payload?.lesson || '').trim();
+  if (!name || !lesson || payload?.fightId == null) return null;
+  return {
+    text: `${name} — ${lesson}`,
+    kind: 'info',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossActReceipt(payload) {
+  const title = String(payload?.title || '').trim();
+  if (!title || payload?.fightId == null || !Number.isInteger(payload.index)) return null;
+  return {
+    text: title,
+    kind: 'info',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+    index: payload.index,
+  };
+}
+
+export function capitalBossCounteredReceipt(payload) {
+  if (!payload || payload.reason !== 'subsystem_disabled') return null;
+  const title = String(payload.title || '').trim();
+  if (!title) return null;
+  return {
+    text: `${title} — the part you broke cancelled it`,
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossExposureReceipt(payload) {
+  if (!payload || payload.exposure == null) return null;
+  const title = String(payload.title || '').trim();
+  if (!title) return null;
+  return {
+    text: `EXPOSED — ${title}. Throw now`,
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossDisarmedReceipt(payload) {
+  if (!payload || payload.fightId == null) return null;
+  return {
+    text: 'Disarmed — finish it',
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossHitReceipt(payload, playerId) {
+  if (!payload || playerId == null || payload.targetId !== playerId) return null;
+  const title = String(payload.title || '').trim();
+  if (!title) return null;
+  return {
+    text: `${title} landed`,
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+    castId: payload.castId,
+  };
+}
+
+export function bindCapitalBossReceipts(bus, getState) {
   if (!bus || typeof bus.on !== 'function') return;
   const seen = new Set();
+  const started = new Set();
+  const acts = new Set();
+  const disarmed = new Set();
+  const castTitles = new Map();
+  const toast = (receipt) => {
+    if (receipt && typeof bus.emit === 'function') bus.emit('toast', receipt);
+  };
+  const playerId = () => {
+    const state = typeof getState === 'function' ? getState() : null;
+    return state && state.playerId != null ? state.playerId : null;
+  };
   bus.on('capitalBoss:telegraph', (payload) => {
     if (!payload || seen.has(payload.castId) || typeof bus.emit !== 'function') return;
+    if (payload.castId != null && payload.title) {
+      castTitles.set(payload.castId, { fightId: payload.fightId, title: payload.title });
+      if (castTitles.size > 64) castTitles.delete(castTitles.keys().next().value);
+    }
     const receipt = capitalBossWarningReceipt(payload);
     if (!receipt) return;
     seen.add(payload.castId);
     if (seen.size > 64) seen.delete(seen.values().next().value);
     bus.emit('toast', receipt);
+  });
+  bus.on('capitalBoss:started', (payload) => {
+    if (!payload || started.has(payload.fightId)) return;
+    const receipt = capitalBossStartedReceipt(payload);
+    if (!receipt) return;
+    started.add(payload.fightId);
+    toast(receipt);
+  });
+  bus.on('capitalBoss:actChanged', (payload) => {
+    if (!payload) return;
+    const key = `${payload.fightId}:${payload.index}`;
+    if (acts.has(key)) return;
+    const receipt = capitalBossActReceipt(payload);
+    if (!receipt) return;
+    acts.add(key);
+    toast(receipt);
+  });
+  bus.on('capitalBoss:countered', (payload) => toast(capitalBossCounteredReceipt(payload)));
+  bus.on('capitalBoss:recovery', (payload) => toast(capitalBossExposureReceipt(payload)));
+  bus.on('capitalBoss:disarmed', (payload) => {
+    if (!payload || disarmed.has(payload.fightId)) return;
+    const receipt = capitalBossDisarmedReceipt(payload);
+    if (!receipt) return;
+    disarmed.add(payload.fightId);
+    toast(receipt);
+  });
+  bus.on('capitalBoss:hit', (payload) => {
+    if (!payload) return;
+    const remembered = castTitles.get(payload.castId);
+    toast(capitalBossHitReceipt({
+      ...payload,
+      title: payload.title || remembered?.title,
+    }, playerId()));
+  });
+  bus.on('capitalBoss:ended', (payload) => {
+    const fightId = payload && payload.fightId;
+    if (fightId == null) return;
+    for (const [castId, row] of castTitles) {
+      if (row.fightId === fightId) castTitles.delete(castId);
+    }
   });
 }
 

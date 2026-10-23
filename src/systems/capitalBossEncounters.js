@@ -1,7 +1,62 @@
 import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
+import { spawnSwarmCapitalBallast } from '../missions/capitalBossSpawn.js';
 import { createCapitalBossFight,restoreCapitalBossFight,rebindCapitalBossFight,
   bindCapitalBossWing,stepCapitalBossFight,validFightId } from '../combat/capitalBossScore.js';
 import { capitalOrderKey } from '../ai/capitalBossOrders.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
+
+// Same thrown-mass part tear missions.js applies to a contract capital. The router there is not
+// exported and writes mission params, so a swarm champion — no mission row — emits the same
+// combat:routeDamage packet from here. Mission fight ids are ignored, so that path stays the
+// missions owner's and is not hit twice.
+const THROWN_MASS_SUBSYSTEM_DAMAGE = 40;
+const CAPITAL_SUBSYSTEM_BY_ID = new Map(SUBSYSTEM_DEFS.map((def) => [def.id, def]));
+const THROWN_MASS_ROLE_FALLBACK = Object.freeze([
+  'subsystem_drive', 'subsystem_weapon', 'subsystem_tether_spool',
+]);
+
+function thrownMassSubsystemOrder(capital, encounterId) {
+  const stamped = capital && capital.data && capital.data.capitalSubsystemRoles;
+  let roles = stamped;
+  if (!roles) {
+    try { roles = requireCapitalBossEncounter(encounterId).subsystemRoles; }
+    catch (_) { roles = null; }
+  }
+  roles = roles || {};
+  return [
+    roles.thrusters || THROWN_MASS_ROLE_FALLBACK[0],
+    roles.turrets || THROWN_MASS_ROLE_FALLBACK[1],
+    roles.bays || THROWN_MASS_ROLE_FALLBACK[2],
+  ];
+}
+
+function capitalSubsystemWorldPos(entity, subsystemId) {
+  const def = CAPITAL_SUBSYSTEM_BY_ID.get(subsystemId);
+  const center = def && def.volume && Array.isArray(def.volume.center) ? def.volume.center : [0, 0];
+  const radius = Math.max(1, Number(entity && entity.radius) || 20);
+  const lx = (Number(center[0]) || 0) * radius;
+  const lz = (Number(center[1]) || 0) * radius;
+  const rot = Number(entity && entity.rot) || 0;
+  const cos = Math.cos(rot);
+  const sin = Math.sin(rot);
+  return {
+    x: (entity && entity.pos && entity.pos.x || 0) + lx * cos - lz * sin,
+    z: (entity && entity.pos && entity.pos.z || 0) + lx * sin + lz * cos,
+  };
+}
+
+function swarmChampionMassHit(kind, payload, bossId) {
+  if (bossId == null || !payload) return false;
+  if (kind === 'whip') {
+    if (payload.victimId == null || payload.victimId !== bossId) return false;
+    const rating = payload.rating;
+    if (rating && rating !== 'solid' && rating !== 'crushing') return false;
+    return true;
+  }
+  if (payload.payloadId == null) return false;
+  return payload.aimTargetId === bossId || payload.payloadId === bossId;
+}
 
 const clone=v=>JSON.parse(JSON.stringify(v));
 const sort=(a,b)=>a<b?-1:a>b?1:0;
@@ -27,6 +82,46 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
   if(typeof observe!=='function'||typeof spawnWing!=='function')
     throw new TypeError('Capital bosses require explicit observation and mission-owned wing spawning');
   let ctx=null;const unsubs=[];
+  // Per swarm fight, not mission params. Detach drops it; a mission fight never reads it.
+  const thrownMassHits=new Map();
+  const routeSwarmThrownMass=(record,capital)=>{
+    const order=thrownMassSubsystemOrder(capital,record.encounterId);
+    const hits=thrownMassHits.get(record.fightId)||0;
+    const subsystemId=order[hits%order.length];
+    thrownMassHits.set(record.fightId,hits+1);
+    const packet=scalarHitToDamagePacket({
+      damage:THROWN_MASS_SUBSYSTEM_DAMAGE,
+      damageType:'kinetic',
+      pos:capitalSubsystemWorldPos(capital,subsystemId),
+      subsystemShare:1,
+      source:{kind:'thrown_mass',subsystemId},
+    });
+    packet.hit={...(packet.hit||{}),subsystemId,pos:packet.hit&&packet.hit.pos};
+    packet.flags={ignoreFriendlyFire:true,allowAnyTarget:true};
+    const request={
+      attackerId:ctx.state.playerId,
+      targetId:capital.id,
+      packet,
+      origin:{kind:'thrown_mass',id:capital.id,subsystemId},
+    };
+    // Same seam missions.js emits. The kernel's combat:routeDamage listener is the writer.
+    ctx.bus.emit('combat:routeDamage',request);
+  };
+  const onSwarmMass=(kind,payload)=>{
+    if(!ctx||!payload) return;
+    const fights=ctx.state&&ctx.state.capitalBossEncounters&&ctx.state.capitalBossEncounters.fights;
+    const entities=ctx.state&&ctx.state.entities;
+    if(!fights||!entities||typeof entities.get!=='function') return;
+    for(const id of Object.keys(fights)){
+      if(typeof id!=='string'||!id.startsWith('swarm:')) continue;
+      const record=fights[id];
+      if(!record||record.terminal) continue;
+      if(!swarmChampionMassHit(kind,payload,record.bossId)) continue;
+      const capital=entities.get(record.bossId);
+      if(!capital||capital.alive===false||!capital.pos) continue;
+      routeSwarmThrownMass(record,capital);
+    }
+  };
   const root=()=>{
     if(!ctx.state.capitalBossEncounters) ctx.state.capitalBossEncounters={version:1,fights:{},orders:{}};
     return ctx.state.capitalBossEncounters;
@@ -47,6 +142,12 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(!Array.isArray(ids)) throw new TypeError('spawnWing must synchronously return a bounded ID array');
       bindCapitalBossWing(r,c.wing.id,ids);
       for(const id of ids) if(id!=null) store.orders[capitalOrderKey(id)]={fightId:r.fightId,scoreOwnsAttacks:false,suppressStockFire:true};
+      const bark=typeof c.wing?.bark==='string'?c.wing.bark.trim():'';
+      if(bark) {
+        const say=ctx.helpers.voice?.say;
+        if(say) say.call(ctx.helpers.voice,{channel:'chatter',text:bark,kind:'info',ttl:4,id:`capital-wing:${r.fightId}:${c.wing.id}`});
+        else ctx.bus.emit('toast',{text:bark,kind:'info',ttl:4,channel:'capitalBoss'});
+      }
     } else if(c.type==='voice') {
       const say=ctx.helpers.voice?.say;
       if(say) say.call(ctx.helpers.voice,{channel:c.priority,text:c.text,kind:'info',ttl:4,id:`capital:${r.fightId}`});
@@ -75,13 +176,32 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
           if(p.id===r.targetId) r.targetKilled=true;
         }
       });
+      // Swarm champions have no mission row. A mass hit tears the next named part. Contract
+      // fights are not swarm: ids, so missions.js remains their only router.
+      listen('tether:whipImpact',p=>onSwarmMass('whip',p));
+      listen('massline:throw',p=>onSwarmMass('throw',p));
     },
     start({encounterId,fightId,bossId,targetId,mirror=1}) {
       if(!validFightId(fightId)) throw new TypeError('Invalid fight id');
       const store=root(),id=fightId,old=store.fights[id];
+      // A swarm champion's hull is already on the field. The throw-mass is not. The ledger
+      // keeps a second start from doubling rocks, including ones the player already spent.
+      const placeSwarmBallast=(liveBossId)=>{
+        if(typeof id!=='string'||!id.startsWith('swarm:')) return;
+        const spawn=ctx.helpers&&ctx.helpers.spawnEntity;
+        if(typeof spawn!=='function') return;
+        const boss=ctx.state.entities&&ctx.state.entities.get(liveBossId);
+        if(!boss||boss.alive===false||!boss.pos) return;
+        const ledgers=(store.swarmBallastLedgers??={});
+        const ledger=(ledgers[id]??={});
+        spawnSwarmCapitalBallast({
+          fightId:id,encounter:requireCapitalBossEncounter(encounterId),boss,ledger,spawnEntity:spawn,
+        });
+      };
       if(old) {
         if(old.encounterId!==encounterId) throw new Error('Fight id reused for a different encounter');
         if(old.bossId!==bossId||old.targetId!==targetId) system.rebind(id,{bossId,targetId});
+        placeSwarmBallast(old.bossId);
         return old;
       }
       if(Object.keys(store.fights).length>=16) throw new Error('Detach settled capital fights before creating another');
@@ -90,6 +210,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       store.fights[id]=r;
       // Close the stock-fire gate BEFORE the first AI tick, not on the first authored cast.
       store.orders[capitalOrderKey(bossId)]={fightId:id,scoreOwnsAttacks:true,suppressStockFire:true,forward:0,brake:true,phase:'intro'};
+      placeSwarmBallast(bossId);
       return r;
     },
     update(_dt,state=ctx?.state) {
@@ -110,6 +231,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(r.cast) ctx.bus.emit('capitalBoss:telegraphEnd',{fightId:r.fightId,castId:r.cast.id,reason:'detached'});
       // Removal/cleanup of entities is the mission owner’s decision, not ours.
       for(const [k,order] of Object.entries(store.orders)) if(order.fightId===r.fightId) delete store.orders[k];
+      thrownMassHits.delete(r.fightId);
       delete store.fights[String(fightId)];return true;
     },
     // Uninitialized owner (headless fixtures) serializes nothing — absent-owner semantics.

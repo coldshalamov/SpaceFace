@@ -39,8 +39,8 @@ function greetingPool(factionId, role) {
 }
 
 test('every bar faction has non-empty greeting and approach pools', () => {
-  assert.equal(GREETING_FACTIONS.length, 13, 'greeting table covers every voiced house');
-  assert.equal(APPROACH_FACTIONS.length, 13, 'approach table covers every voiced house');
+  assert.equal(GREETING_FACTIONS.length, 14, 'greeting table covers every voiced house');
+  assert.equal(APPROACH_FACTIONS.length, 14, 'approach table covers every voiced house');
   for (const id of GREETING_FACTIONS) {
     const cell = BAR_GREETING_BARKS[id];
     assert.ok(Array.isArray(cell.any) && cell.any.length >= 3, `${id} greeting.any non-empty`);

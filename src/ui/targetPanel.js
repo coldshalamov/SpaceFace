@@ -45,6 +45,7 @@ import { occupantGenerationOf } from '../core/entity.js';
 import { targetConditionReadout } from './targetCondition.js';
 import { BINDINGS } from './bindings.js';
 import { SECTORS, stationContactServices } from '../data/sectors.js';
+import { PASSENGER_LINER_ITINERARY_KIND } from '../data/laneContacts.js';
 import { SECTOR_ZONES } from '../data/sectorZones.js';
 import { isSurrenderedContact } from '../systems/surrenderRecovery.js';
 import { stationServiceLabel } from './station/stationHubModel.js';
@@ -625,8 +626,33 @@ function orchardSocketInfoLine(target, state) {
   return `${units} · release unavailable`;
 }
 
+const LINER_LEG_WORD = Object.freeze({
+  DELIVERED: 'arrived', ARRIVED: 'arrived', RETURNED: 'returned', LOST: 'lost',
+  arrived: 'arrived', returned: 'returned', lost: 'lost',
+});
+
+/** The persisted last leg on a passenger liner, or '' when the record was never settled. */
+export function passengerLinerLastLegLine(entity) {
+  const data = entity && entity.data;
+  const itinerary = data && data.itinerary;
+  if (!itinerary || itinerary.kind !== PASSENGER_LINER_ITINERARY_KIND) return '';
+  const last = itinerary.lastOutcome;
+  if (!last || typeof last !== 'object') return '';
+  const word = LINER_LEG_WORD[last.outcome];
+  if (!word) return '';
+  const stationId = typeof last.stationId === 'string' ? last.stationId : '';
+  const station = stationId ? STATION_BY_ID.get(stationId) : null;
+  const stationName = (station && station.name) || stationId;
+  return stationName ? `last leg: ${word} · ${stationName}` : `last leg: ${word}`;
+}
+
 export function objectInfoLine(t, state, p, dist) {
-  if (t.type === 'ship' || t.type === 'drone') return presentationStatusWord(t) || '';
+  if (t.type === 'ship' || t.type === 'drone') {
+    const status = presentationStatusWord(t) || '';
+    const leg = passengerLinerLastLegLine(t);
+    if (!leg) return status;
+    return status ? `${status} · ${leg}` : leg;
+  }
   if (t.type === 'station') {
     const services = stationContactServices(t.data && t.data.stationId);
     const facts = services.length ? [`Services: ${services.map(stationServiceLabel).join(' · ')}`] : [];

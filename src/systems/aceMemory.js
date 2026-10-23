@@ -3,6 +3,7 @@
 // Durable lifecycle owner: records named-ace outcomes, schedules director-owned first contacts,
 // spawns only its established promoted-return crews, and emits the station-news seam. It never
 // owns first-contact entities or changes hostility.
+import { WEAPONS } from '../data/weapons.js';
 import {
   ACE_RAM_PASS_TELEGRAPH_BARK,
   ACE_RAM_PASS_TELEGRAPH_TICKS,
@@ -53,12 +54,21 @@ import { barkFor } from '../data/barks.js';
 import { pirateDoctrineForEntity, reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { planetStatesForSector } from '../data/planetStates.js';
 import { activeFrontForFaction } from '../data/conflictZones.js';
-import { WEAPONS } from '../data/weapons.js';
 import { hash32 } from '../core/rng.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { makeEnemySpawnSpec } from './combat.js';
 
 export const ACE_MEMORY_VERSION = 2;
+
+const WEAPON_NAME_BY_ID = new Map(WEAPONS.map((row) => [row.id, row.name]));
+
+/** One return line for the weapon that last put this ace down. No field, no line. */
+export function aceWeaponMemoryLine(rec) {
+  if (!rec || typeof rec.lastWeaponId !== 'string' || !rec.lastWeaponId) return null;
+  const name = WEAPON_NAME_BY_ID.get(rec.lastWeaponId);
+  if (!name) return null;
+  return `Last time it was the ${name}.`;
+}
 
 // Receipt shapes that read as the player settling — or crossing — a faction's lane.
 const TOLL_SHAPE_FACTION = Object.freeze({
@@ -1697,6 +1707,10 @@ export const aceMemory = {
   _speakReturnTaunt(ace, rec, requestId, stance = null) {
     if (rec.lastTauntRequestId === requestId) return;
     rec.lastTauntRequestId = requestId;
+    const weaponLine = aceWeaponMemoryLine(rec);
+    if (weaponLine) {
+      this._speakAceLine(ace, weaponLine, 'last-weapon', `aceMemory:${ace.id}:last-weapon:${requestId}`);
+    }
     // First words of the return: the last fight, named — where, how it ended, with what. The
     // style / remembered / promoted line below follows it as the second beat.
     const fight = this._grievanceLine(ace, rec, requestId);

@@ -29,7 +29,10 @@ const spec = {
     {
       "id": "a",
       "label": "Share heat",
-      "playerLine": "Sharing heat."
+      "playerLine": "Sharing heat.",
+      "requires": {
+        "module": "mod_heat_lure_s"
+      }
     },
     {
       "id": "b",
@@ -224,7 +227,10 @@ export default defineEncounter(trigger, {
     {
       "id": "a",
       "label": "Share heat",
-      "playerLine": "Sharing heat."
+      "playerLine": "Sharing heat.",
+      "requires": {
+        "module": "mod_heat_lure_s"
+      }
     },
     {
       "id": "b",

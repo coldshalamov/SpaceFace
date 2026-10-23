@@ -83,7 +83,15 @@ test('every counter is fed by a live emit site and a ledger handler that reads r
   }
   for (const def of ACHIEVEMENTS) {
     if (def.rule.source === 'counter') assert.ok(ACHIEVEMENT_COUNTERS[def.rule.key], `${def.id} counter exists`);
-    else assert.ok(CRUCIBLE_FACTS[def.rule.key], `${def.id} crucible fact exists`);
+    else if (def.rule.source === 'crucible') assert.ok(CRUCIBLE_FACTS[def.rule.key], `${def.id} crucible fact exists`);
+    else if (def.rule.source === 'trick') {
+      const named = ['trickId', 'variantId', 'minCollateral', 'razorKill'].filter((key) => def.rule[key] != null);
+      assert.equal(named.length, 1, `${def.id} names one trick predicate`);
+      assert.equal(def.rule.target, undefined, `${def.id} is not a grind counter`);
+      assert.equal(ACHIEVEMENT_EVENT_HANDLERS['stunt:trickDetected'], undefined, 'trick feats are not counter events');
+    } else {
+      assert.fail(`${def.id} has an unknown rule source`);
+    }
   }
 
   // The payload fields the filters read are the ones the emitters write. The release grade itself

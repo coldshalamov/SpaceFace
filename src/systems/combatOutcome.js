@@ -99,7 +99,17 @@ function isCandidate(entity, state, payload = null) {
 }
 
 function killedOutcomeText(label, destruction) {
-  switch (destruction && destruction.cause) {
+  const cause = destruction && destruction.cause;
+  // One string branch on a field the record already carries. Attribution, cause, and surface
+  // stay as compactKillCausality wrote them. An NPC crash keeps the line below.
+  if (destruction && destruction.playerCaused === true
+      && (cause === KillCause.SHIP_COLLISION || cause === KillCause.TERRAIN_COLLISION)) {
+    const stem = cause === KillCause.TERRAIN_COLLISION
+      ? `${label} smashed against terrain`
+      : `${label} destroyed in a collision`;
+    return `${stem}, wrecked by your thrown mass.`;
+  }
+  switch (cause) {
     case KillCause.TERRAIN_COLLISION: return `${label} smashed against terrain.`;
     case KillCause.SHIP_COLLISION: return `${label} destroyed in a collision.`;
     case KillCause.EXPLOSIVE: return `${label} detonated.`;

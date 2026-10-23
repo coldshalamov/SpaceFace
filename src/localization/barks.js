@@ -689,6 +689,56 @@ const T = Object.freeze({
       R('Tránsito aprobado por ahora. La auditoría nunca cierra del todo.', 'Transit approuvé pour l’instant. L’audit ne ferme jamais tout à fait.', 'Transit vorerst genehmigt. Das Audit schließt nie ganz.', 'Trânsito aprovado por ora. A auditoria nunca fecha de vez.'),
     ],
   }),
+  faction_helix: Object.freeze({
+    scan: [
+      R("Interdicción legal. Varianza Helix: lee la factura primero.", "Interdiction légale. Variance Helix : lis la facture d’abord.", "Rechtmäßige Abfangung. Helix-Abweichung: lies zuerst die Rechnung.", "Interdição legal. Variância Helix: leia a fatura primeiro."),
+      R("Varianza Helix. Tu matrícula ya está escrita en la factura.", "Variance Helix. Ton registre est déjà écrit sur la facture.", "Helix-Abweichung. Dein Register steht schon auf der Rechnung.", "Variância Helix. Seu registro já está escrito na fatura."),
+      R("Varianza Helix. Declara la bodega antes de que la multa se escriba sola.", "Variance Helix. Déclare la cale avant que l’amende s’écrive seule.", "Helix-Abweichung. Nenne den Laderaum, bevor die Strafe sich selbst schreibt.", "Variância Helix. Declare o porão antes que a multa se escreva sozinha."),
+      R("Varianza Helix. Cortador desenmascarado, y tu rumbo ya está archivado.", "Variance Helix. Cotre démasqué, et ton cap est déjà classé.", "Helix-Abweichung. Enttarnter Kutter, und dein Kurs ist schon abgelegt.", "Variância Helix. Cortador desmascarado, e sua proa já está arquivada."),
+    ],
+    warn: [
+      R("Bajo órdenes. Varianza Helix: corrige el rumbo o la multa se publica.", "Sous ordres. Variance Helix : corrige le cap ou l’amende s’affiche.", "Auf Befehl. Helix-Abweichung: Kurs korrigieren, oder die Strafe wird gebucht.", "Sob ordens. Variância Helix: corrija o rumo ou a multa é lançada."),
+      R("Varianza Helix. Este carril tiene tarifa. Espera la factura.", "Variance Helix. Cette voie est tarifée. Attends la facture.", "Helix-Abweichung. Diese Bahn ist verzollt. Warte auf die Rechnung.", "Variância Helix. Esta faixa tem tarifa. Espere a fatura."),
+      R("Varianza Helix. Tu rumbo salió del carril publicado. Reduce velocidad.", "Variance Helix. Ton cap a quitté la voie affichée. Réduis.", "Helix-Abweichung. Dein Kurs ist von der Bahn. Tempo runter.", "Variância Helix. Sua proa saiu da faixa publicada. Reduza."),
+      R("Varianza Helix. La Dirección no advierte dos veces.", "Variance Helix. La Direction n’avertit pas deux fois.", "Helix-Abweichung. Die Direktion warnt nicht zweimal.", "Variância Helix. A Direção não avisa duas vezes."),
+    ],
+    'demand-cargo': [
+      R("Varianza Helix. La factura y la multa están escritas por la misma mano.", "Variance Helix. La facture et l’amende sont de la même main.", "Helix-Abweichung. Rechnung und Strafe schreibt dieselbe Hand.", "Variância Helix. A fatura e a multa são da mesma mão."),
+      R("Varianza Helix. Alija la carga marcada. La factura ya la nombra.", "Variance Helix. Jette la cargaison signalée. La facture la nomme déjà.", "Helix-Abweichung. Wirf die markierte Fracht ab. Die Rechnung nennt sie schon.", "Variância Helix. Alije a carga marcada. A fatura já a nomeia."),
+      R("Varianza Helix. La incautación está publicada. Corta el empuje y abre la bodega.", "Variance Helix. La saisie est affichée. Coupe la poussée et ouvre la cale.", "Helix-Abweichung. Beschlagnahme ist gebucht. Schub aus, Laderaum auf.", "Variância Helix. A apreensão está lançada. Corte o empuxo e abra o porão."),
+      R("Lee la factura primero. La varianza Helix ya reasignó los bienes.", "Lis la facture d’abord. La variance Helix a déjà réassigné les biens.", "Lies zuerst die Rechnung. Die Helix-Abweichung hat die Güter schon neu zugewiesen.", "Leia a fatura primeiro. A variância Helix já reatribuiu os bens."),
+    ],
+    attack: [
+      R("Interdicción legal. Varianza Helix: el plazo de aviso expiró.", "Interdiction légale. Variance Helix : le délai d’avertissement a expiré.", "Rechtmäßige Abfangung. Helix-Abweichung: die Frist ist abgelaufen.", "Interdição legal. Variância Helix: o prazo de aviso expirou."),
+      R("Bajo órdenes. Varianza Helix: las armas son la multa que rechazaste.", "Sous ordres. Variance Helix : les armes sont l’amende que tu as refusée.", "Auf Befehl. Helix-Abweichung: die Waffen sind die Strafe, die du ablehntest.", "Sob ordens. Variância Helix: as armas são a multa que você recusou."),
+      R("Varianza Helix. La factura está cerrada y el casco es la garantía.", "Variance Helix. La facture est close et la coque est la garantie.", "Helix-Abweichung. Die Rechnung ist zu, der Rumpf ist das Pfand.", "Variância Helix. A fatura está fechada e o casco é a garantia."),
+      R("Varianza Helix. Fuego de la Dirección, y este combate ya está archivado.", "Variance Helix. Feu de la Direction, et cet engagement est déjà classé.", "Helix-Abweichung. Direktionsfeuer, und dieses Gefecht ist schon abgelegt.", "Variância Helix. Fogo da Direção, e este combate já está arquivado."),
+    ],
+    flee: [
+      R("Varianza Helix. El cortador se retira y la factura no.", "Variance Helix. Le cotre rompt, et la facture non.", "Helix-Abweichung. Der Kutter bricht ab, die Rechnung nicht.", "Variância Helix. O cortador se afasta e a fatura não."),
+      R("Varianza Helix. Nos retiramos, y la multa queda en tu matrícula.", "Variance Helix. Nous nous retirons, et l’amende reste sur ton registre.", "Helix-Abweichung. Wir ziehen ab, und die Strafe bleibt auf deinem Register.", "Variância Helix. Recuamos, e a multa fica no seu registro."),
+      R("Varianza Helix. Combate suspendido. El cobro sigue en papel.", "Variance Helix. Engagement suspendu. Le recouvrement continue sur papier.", "Helix-Abweichung. Gefecht ausgesetzt. Die Eintreibung geht auf Papier weiter.", "Variância Helix. Combate suspenso. A cobrança segue no papel."),
+      R("Varianza Helix. Motor libre. El expediente de tu casco sigue abierto.", "Variance Helix. Poussée claire. Le dossier de ta coque reste ouvert.", "Helix-Abweichung. Antrieb frei. Die Akte deines Rumpfs bleibt offen.", "Variância Helix. Motor livre. O arquivo do seu casco continua aberto."),
+    ],
+    reinforce: [
+      R("Varianza Helix. Un segundo cortador está en la factura. Mantén el vector.", "Variance Helix. Un second cotre est sur la facture. Tiens le vecteur.", "Helix-Abweichung. Ein zweiter Kutter steht auf der Rechnung. Vektor halten.", "Variância Helix. Um segundo cortador está na fatura. Mantenha o vetor."),
+      R("Varianza Helix. El expediente pidió más cascos, y ya vienen.", "Variance Helix. Le dossier a demandé plus de coques, et elles arrivent.", "Helix-Abweichung. Die Akte verlangte mehr Rümpfe, und sie kommen.", "Variância Helix. O arquivo pediu mais cascos, e eles vêm."),
+      R("Varianza Helix. El refuerzo está publicado. Esto no es una negociación.", "Variance Helix. Le renfort est affiché. Ce n’est pas une négociation.", "Helix-Abweichung. Verstärkung ist gebucht. Das ist kein Verhandeln.", "Variância Helix. O reforço está lançado. Isto não é negociação."),
+      R("Varianza Helix. Otro casco de la Dirección tiene tu nombre. Bajo órdenes.", "Variance Helix. Une autre coque de la Direction porte ton nom. Sous ordres.", "Helix-Abweichung. Ein weiterer Direktionsrumpf hat deinen Namen. Auf Befehl.", "Variância Helix. Outro casco da Direção tem o seu nome. Sob ordens."),
+    ],
+    taunt: [
+      R("Varianza Helix. Discutes con un documento, y el documento va ganando.", "Variance Helix. Tu discutes avec un document, et le document gagne.", "Helix-Abweichung. Du streitest mit einem Dokument, und das Dokument gewinnt.", "Variância Helix. Você discute com um documento, e o documento vai ganhando."),
+      R("Varianza Helix. Tu empuje no enmienda la factura.", "Variance Helix. Ta poussée n’amende pas la facture.", "Helix-Abweichung. Dein Schub ändert die Rechnung nicht.", "Variância Helix. Seu empuxo não emenda a fatura."),
+      R("Varianza Helix. Tenemos tu matrícula, tu carga y tu tiempo.", "Variance Helix. Nous avons ton registre, ta cargaison et ton temps.", "Helix-Abweichung. Wir haben dein Register, deine Fracht und deine Zeit.", "Variância Helix. Temos seu registro, sua carga e seu tempo."),
+      R("Lee la factura primero. La varianza Helix dice que llegas tarde.", "Lis la facture d’abord. La variance Helix dit que tu es en retard.", "Lies zuerst die Rechnung. Die Helix-Abweichung sagt, du bist spät dran.", "Leia a fatura primeiro. A variância Helix diz que você está atrasado."),
+    ],
+    'patrol-greeting': [
+      R("Varianza Helix. Patrulla de la Dirección. Tu tránsito se tolera y se detalla.", "Variance Helix. Patrouille de la Direction. Ton transit est toléré et détaillé.", "Helix-Abweichung. Direktionspatrouille. Dein Transit wird geduldet und aufgeführt.", "Variância Helix. Patrulha da Direção. Seu trânsito é tolerado e detalhado."),
+      R("Varianza Helix. Paso legal. Mantén la bodega igual al expediente.", "Variance Helix. Passage légal. Garde la cale conforme au dossier.", "Helix-Abweichung. Rechtmäßige Passage. Laderaum gleich der Akte.", "Variância Helix. Passagem legal. Mantenha o porão igual ao arquivo."),
+      R("Varianza Helix. Canal libre. Cruza en el rumbo publicado.", "Variance Helix. Canal libre. Traverse sur le cap affiché.", "Helix-Abweichung. Kanal frei. Kreuze auf dem gebuchten Kurs.", "Variância Helix. Canal livre. Cruze na proa publicada."),
+      R("Bajo órdenes. La varianza Helix deja pasar una matrícula limpia. Sigue limpio.", "Sous ordres. La variance Helix laisse passer un registre propre. Reste propre.", "Auf Befehl. Die Helix-Abweichung lässt ein sauberes Register durch. Bleib sauber.", "Sob ordens. A variância Helix deixa passar um registro limpo. Continue limpo."),
+    ],
+  }),
 });
 
 const HULL = Object.freeze({
@@ -769,6 +819,12 @@ const HULL = Object.freeze({
     R('{ship} transita de nuevo. El portal conserva toda inscripción.', '{ship} transite encore. Le portail garde chaque inscription.', '{ship} transitet erneut. Das Tor bewahrt jede Einschreibung.', '{ship} transita de novo. O portal guarda toda inscrição.'),
     R('Evaluación: la {ship}, una {class} registrada. Su expediente es antiguo.', 'Évaluation : la {ship}, une {class} consignée. Son dossier est ancien.', 'Bewertung: die {ship}, eine registrierte {class}. Ihre Akte ist uralt.', 'Avaliação: a {ship}, uma {class} registrada. Seu arquivo é antigo.'),
     R('{ship}. La red no olvida una firma.', '{ship}. Le réseau n’oublie pas une signature.', '{ship}. Das Gitter vergisst keine Signatur.', '{ship}. A malha não esquece uma assinatura.'),
+  ],
+  faction_helix: [
+    R('Coincidencia de registro Helix: {ship}, y la factura ya conoce esta {class}.', 'Correspondance de registre Helix : {ship}, et la facture connaît déjà cette {class}.', 'Helix-Registertreffer: {ship}, und die Rechnung kennt diese {class} schon.', 'Correspondência de registro Helix: {ship}, e a fatura já conhece esta {class}.'),
+    R('{ship} en el tablero Helix, con multas previas sobre el casco.', '{ship} au tableau Helix, avec d’anciennes amendes sur la coque.', '{ship} auf der Helix-Tafel, mit alten Strafen auf dem Rumpf.', '{ship} no quadro Helix, com multas antigas no casco.'),
+    R('Esa es la {ship}, una {class} con un expediente Helix abierto.', 'C’est la {ship}, une {class} avec un dossier Helix ouvert.', 'Das ist die {ship}, eine {class} mit offener Helix-Akte.', 'Essa é a {ship}, uma {class} com um arquivo Helix aberto.'),
+    R('{ship}, y Helix no necesita una segunda mirada.', '{ship}, et Helix n’a pas besoin d’un second regard.', '{ship}, und Helix braucht keinen zweiten Blick.', '{ship}, e Helix não precisa de um segundo olhar.'),
   ],
 });
 

@@ -89,6 +89,78 @@
     {
       "id": "salvage_crew",
       "apiName": "SF_SALVAGE_CREW"
+    },
+    {
+      "id": "two_hulls_one_rope",
+      "apiName": "SF_TWO_HULLS_ONE_ROPE"
+    },
+    {
+      "id": "keep_the_heavy_end",
+      "apiName": "SF_KEEP_THE_HEAVY_END"
+    },
+    {
+      "id": "watch_the_cable",
+      "apiName": "SF_WATCH_THE_CABLE"
+    },
+    {
+      "id": "one_mistake_three_wrecks",
+      "apiName": "SF_ONE_MISTAKE_THREE_WRECKS"
+    },
+    {
+      "id": "still_flying",
+      "apiName": "SF_STILL_FLYING"
+    },
+    {
+      "id": "dragged_all_the_way",
+      "apiName": "SF_DRAGGED_ALL_THE_WAY"
+    },
+    {
+      "id": "the_rock_won",
+      "apiName": "SF_THE_ROCK_WON"
+    },
+    {
+      "id": "out_the_other_side",
+      "apiName": "SF_OUT_THE_OTHER_SIDE"
+    },
+    {
+      "id": "one_job_left",
+      "apiName": "SF_ONE_JOB_LEFT"
+    },
+    {
+      "id": "cover_not_guaranteed",
+      "apiName": "SF_COVER_NOT_GUARANTEED"
+    },
+    {
+      "id": "back_with_your_name",
+      "apiName": "SF_BACK_WITH_YOUR_NAME"
+    },
+    {
+      "id": "rode_the_blast",
+      "apiName": "SF_RODE_THE_BLAST"
+    },
+    {
+      "id": "you_fit",
+      "apiName": "SF_YOU_FIT"
+    },
+    {
+      "id": "second_impulse",
+      "apiName": "SF_SECOND_IMPULSE"
+    },
+    {
+      "id": "rope_well_wreck",
+      "apiName": "SF_ROPE_WELL_WRECK"
+    },
+    {
+      "id": "two_hulls_one_rock",
+      "apiName": "SF_TWO_HULLS_ONE_ROCK"
+    },
+    {
+      "id": "his_own_wingman",
+      "apiName": "SF_HIS_OWN_WINGMAN"
+    },
+    {
+      "id": "perfect_cut",
+      "apiName": "SF_PERFECT_CUT"
     }
   ]
 }

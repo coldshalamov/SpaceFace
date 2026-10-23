@@ -518,6 +518,26 @@ export const ROAMING_STORIES = deepFreeze([
       { id: 'window_glass_news_02', surface: 'news', text: 'Glazier\'s mark hidden in the corner of pane seven. Finders keep it.' },
     ],
   },
+  // SEED-PC-05 — a lane stranger who hails just to talk. No cargo, no ask, no trade or news hook.
+  {
+    id: 'lane_grandma', eventId: 'event_lane_grandma',
+    lines: [
+      { id: 'lane_grandma_hail_01', surface: 'hail', text: 'Grandma to the lane. I am not selling anything. I wanted a voice that is not the autopilot.' },
+      { id: 'lane_grandma_hail_02', surface: 'hail', text: 'Do not alter course. I already had my tea. I only wanted to say the lane is quiet today.' },
+      { id: 'lane_grandma_band_01', surface: 'band', text: 'She has been talking for nine minutes. Nobody has been asked to do a thing.' },
+      { id: 'lane_grandma_band_02', surface: 'band', text: 'Traffic note: the old hauler is still on the channel, and she still does not want anything.' },
+    ],
+  },
+  // SEED-PC-09 — a crew found mid-repair on dead infrastructure. They ask for nothing.
+  {
+    id: 'dead_relay_crew', eventId: 'event_dead_relay_crew',
+    lines: [
+      { id: 'dead_relay_crew_hail_01', surface: 'hail', text: 'Tender crew on the dead relay. We are mid-repair. We are not hiring and we are not selling the parts.' },
+      { id: 'dead_relay_crew_hail_02', surface: 'hail', text: 'Leave the relay dark. We have the job. Nothing is requested of you.' },
+      { id: 'dead_relay_crew_band_01', surface: 'band', text: 'The relay is still dead. The crew is still on it. They did not ask for a hand.' },
+      { id: 'dead_relay_crew_band_02', surface: 'band', text: 'Band copy: salvor lamps on a silent relay. No distress, no offer, no claim.' },
+    ],
+  },
 ]);
 
 export default ROAMING_STORIES;
