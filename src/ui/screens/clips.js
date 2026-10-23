@@ -301,11 +301,24 @@ export function exportClip(clip, options = {}) {
   };
 }
 
+/**
+ * SEED-SE-16 — the theater render is the fast route, not a gate. These rendered-tape refusals
+ * mean the recording exists but the machinery does not (no sound window, no tape renderer, no
+ * video encoder); the path was built to fall through to the flight-video encoder in exactly
+ * this case, so a clip inside the tape but outside the recorded-sound window still exports
+ * picture. A user cancel or a failed file save is terminal and returns as-is.
+ */
+const THEATER_FALLTHROUGH_REASONS = new Set(['recorded-sound-unavailable', 'tape-renderer-unavailable', 'video-encoder-unavailable']);
+
+export function theaterRefusalFallsThrough(theater) {
+  return !!theater && theater.ok === false && THEATER_FALLTHROUGH_REASONS.has(theater.reason);
+}
+
 /** Genuine captured pixels only. Browser video may use WebM when MP4 is unavailable. */
 export async function exportRecordedClip(clip, options = {}) {
   if (options.format === 'mp4' || options.format === 'webm') {
     const theater = await exportTheaterClip(clip, { ...options, state: options.state || clipStateOf() });
-    if (theater) return theater;
+    if (!theaterRefusalFallsThrough(theater)) return theater;
   }
   let encoded;
   if (options.format === 'mp4' || options.format === 'webm') encoded = await encodeFlightVideo(clip, options);
