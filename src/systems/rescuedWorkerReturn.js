@@ -50,6 +50,8 @@ const ROLE_LABELS = {
 
 const simNowOf = (state) => Math.max(0, Number(state.simTime) || 0);
 const finiteOr = (value, fallback = null) => {
+  // Unoccurred lifecycle events stay unset across Continue; zero is a real event time.
+  if (value == null) return fallback;
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 };
