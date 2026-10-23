@@ -364,24 +364,27 @@ export function createSwarmCallinsDirector(ctx) {
     _expireAllies(st) {
       if (!this._allies.length) return;
       const now = st.simTime || 0;
-      const despawn = this._helpers && this._helpers.despawnEntity;
       this._allies = this._allies.filter((entry) => {
         if (!entry.body || entry.body.alive === false) return false;
         if (now < entry.deadlineS) return true;
-        if (typeof despawn === 'function') despawn(entry.body.id);
-        else entry.body.alive = false;
+        this._despawn(entry.body);
         return false;
       });
     },
 
     _releaseAllies() {
-      const despawn = this._helpers && this._helpers.despawnEntity;
       for (const entry of this._allies) {
         if (!entry.body || entry.body.alive === false) continue;
-        if (typeof despawn === 'function') despawn(entry.body.id);
-        else entry.body.alive = false;
+        this._despawn(entry.body);
       }
       this._allies.length = 0;
+    },
+
+    /** Remove one called body through the arena's own seam, or honestly kill it without one. */
+    _despawn(body) {
+      const despawn = this._helpers && this._helpers.despawnEntity;
+      if (typeof despawn === 'function') despawn.call(this._helpers, body.id);
+      else body.alive = false;
     },
 
     _releaseDomes() {
