@@ -1,5 +1,18 @@
 <!-- LIFETIME: DURABLE -->
 
+## Runtime publication checkpoint: 2026-10-23 21:23 UTC
+
+All twelve goals remain OPEN. The Archive model bank remains published in draft [PR562](https://github.com/coldshalamov/SpaceFace/pull/562); its exact-head [CI run 40020337693](https://github.com/coldshalamov/SpaceFace/actions/runs/40020337693) ended FAILURE at 21:05:27 UTC. The focused bank gate did not run because static shard 1's command group was skipped after the visual-continuity prerequisite. This is not a hosted asset-test pass or a finding that the asset caused unrelated failures.
+
+The runtime union now spans 47 public-delta paths against master `3095a835eb3dbda178d359bbb0541e3ee6124f4c`, including checked carryovers from PR552 and PR562. It preserves newer upstream guards, postcards and package entries, retains all 355 existing bindings, and adds the cradle as binding 356. The narrow Veil test correction preserves the new 48-entry inventory and extracted Archive constant. Twenty affected Tethys/Veil tests pass with the exact resident-locker fixture. Forty assets absent from the isolated overlay were verified present by exact path, blob and size in the public tree; those local omissions do not prove repository omissions.
+
+Runtime publication remains in progress, with **blob objects only and no verified runtime tree, commit, branch update or PR**. Several individual writes succeeded. A stalled compiled-package write was interrupted; its expected binary object exists, but exact raw readback awaits a commit path and it must not be rewritten blindly. The expected parts-library object was still absent after a controlled retry; do not repeat the identical stalled operation without a materially supported alternative. The two census objects had not yet been attempted at the checkpoint. These are scoped publishing stalls, not a user denial, credential failure or proof that binary publication is unavailable.
+
+The latest nine-file source/test union delta, full 47-path manifest and publication receipts are now durably preserved with exact raw readbacks. Restore the historical 35-path snapshot only as a base, then overlay the latest delta and resolve the manifest's pinned public carryovers. Resume from that latest manifest and successful-object ledger, recheck current upstream and branch state, and finish only the missing publication steps. Do not overwrite newer upstream with the old snapshot or repeat uncertain writes. Independent source, test, model and recovery work continues; no new publication approval is required.
+
+Native contact and serialization-method qualifications remain bounded evidence. Full player-facing Continue, ordinary flight, live-camera quality and end-to-end performance are still open. The browser approval hold is unchanged, as are the parked Rope and Blind Welder work and all larger game goals.
+
+
 ## Current Archive delivery and remaining integration: 2026-10-23 20:43 UTC
 
 **The model bank is now durably published in draft PR562. The complete runtime candidate is backed up and being reconciled with newer upstream work before publication.** All twelve larger goals remain OPEN. World/story composition remains primary; Rope and Blind Welder remain parked.
