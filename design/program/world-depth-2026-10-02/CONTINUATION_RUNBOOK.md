@@ -1,5 +1,8 @@
 # Expansion continuation: restart and failure recovery
 
+Current-state pointer (23 October 2026): after reading EXECUTION_STATUS.md for durable history, read [CURRENT_CHECKPOINT_2026-10-22.md](CURRENT_CHECKPOINT_2026-10-22.md) for the latest verified delivery, active exact-path claims and ten-goal register. Its newer dated observations supersede historical current-state statements, not acceptance criteria. Resume its active Kiln visual integration rather than reopening completed continuity or preload work.
+
+
 This procedure was requested on 8 October 2026 after repeated status reports replaced
 implementation. It supports the original expansion; it is not a new feature queue or
 evidence of gameplay completion. Current task state belongs in `EXECUTION_STATUS.md`.

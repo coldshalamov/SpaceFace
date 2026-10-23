@@ -17,6 +17,7 @@ New paths only:
 - assets/ships/parts/pods/pod_runaway_kiln.glb
 - assets/ships/forge/sources/runaway_kiln/measured-contract.json
 - test/runaway-kiln-visual-fit.test.mjs
+- test/runaway-kiln-visual-admission.test.mjs
 - design/program/world-depth-2026-10-02/RUNAWAY_KILN_VISUAL_2026-10-22.md
 - design/program/world-depth-2026-10-02/evidence/runaway-kiln-visual-20261022/export-top.jpg
 - design/program/world-depth-2026-10-02/evidence/runaway-kiln-visual-20261022/export-oblique.jpg
@@ -41,3 +42,9 @@ Root owns only the new pod-runaway-kiln identity's additive entries in assets/sh
 The source contains a strictly marked non-render collision prism matching kilnbackPhysicalBody([]) and planarProxyPrismHalfHeight. Its height exceeds visible geometry. Compiler/loader helper filtering must be verified for the actual mounted prop path so the hidden helper cannot silently change fit or center. Authored-origin census authority requires measured source hashes and exact native convex-part parity. No physics geometry, solver or gameplay mutation is authorized by this visual claim.
 
 Revision 2 and 3 recipes, models and matching measurements plus the defective revision-3 top view are preserved in a seven-file, 813,505-byte recovery package, independently read back with exact member bytes and SHA256 bddccff910694019ab1d45cce72a490231ae787ef632907a0027653715a97226. Recovery is not repository delivery. The interrupted authoring resumed after an environment restart; surviving files were checked before continuation.
+
+### Final source and admission decision, 23 October 00:10 UTC
+
+Final eight-file authoring packet: source GLB SHA256 9aa0153fcc97a4308f7847ae4dc2d7af475ffe1527a6cdde771c28ce2b68168a, 856,124 bytes; recipe SHA256 0e5ebb707360c48058607c5e523869ea2db4dcbc8029e8ce14b0d1169151a508. Root inspected oblique/collider views and independently reran all eight fit checks. Final recovery is 679,538 bytes/nine regular members including its shipping manifest, independently read back and member-verified, SHA256 eca0a04036264675de9dab356da183b8ff1d38cc29c822321c560cdfe7059613. These are source reviews, not compiled-package or game-camera acceptance.
+
+Use a dedicated payload/storyPropKind selector returning radius 13.5 and hideImmediately:false. Preserve explicit package, mapped story props and rescue priorities. PR #515's fresh/restored actor is payload, unlike old master. It has no authoredPayloadAssetId and does not enter the authored-cargo wrapper. The existing filtered-primitives path excludes nonrender helpers before final fitting; leaving the procedural fallback visible avoids the resolving stand-in's helper-contaminated record.bounds without changing generic renderer behavior. Test pending/failure retention, successful swap and existing selectors. Do not add a new scale mode or delete collision certificate geometry. Census uses authored-origin with exact native convex parts and sealed hashes, not authored-place-origin, which bypasses compound certification.

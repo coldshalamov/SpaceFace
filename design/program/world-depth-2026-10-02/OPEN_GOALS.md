@@ -1,6 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
+## Current authority, 23 October 2026, 00:10 UTC
+
+The [current checkpoint and ten-goal register](CURRENT_CHECKPOINT_2026-10-22.md) supersede dated current-state statements below; historical evidence and acceptance boundaries remain intact. All ten outcomes remain OPEN. Latest verified handoff is 6e3c78ed053f3f48a43462b53723a463e561c480. PR #515 head 09ecc5633e6397003fbc1dd70a040b3d4ac17cc0 has a passing 22-case continuity CI gate, but the overall workflow failed and damage-route CI was skipped. Fitted unmanned Kiln source is exported and reviewed with eight local fit checks; release/package/admission integration is active, not delivered or accepted. Next action: finish the existing visual increment through selected production tools and focused pending/failure/settled tests, preserving all other owners and held operations. No new user action is requested by this checkpoint.
+
+
 Updated 22 October 2026, 08:38 UTC. All ten outcomes remain open. This register supports the
 existing original twenty-concept/IMPLEMENTATION/build-map scope, not a new dispatch queue.
 Scoped tests, exports, source publication and offline images do not establish whole-game acceptance.
