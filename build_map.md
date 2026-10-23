@@ -592,6 +592,8 @@ finished plan — the board is finished only when every number in this table is 
 | Inference catalog (`INFERENCE_IDEAS.md`) | **55 OPEN lines** — section A-LIST (AL-HF-01…15, AL-LG-01…16, AL-PR-01…16), each already owned by a §N row and taken inside it, plus section PULSE (PULSE-01…08, volume fill for the living world, §31.6) and section REPORT CARD (RC-01…50, the audited small parts of rows 456–481, §32.7) — 105 OPEN in all; every earlier catalog line SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
 | vm-drop | code stack drained; only HOLDs and 9 chase REVISEs remain, waiting on the remote machine |
 
+**Public beta (2026-10-23):** the maturity report, the one direction and the beta task set (29 board-sourced, 43 found) live in [`BETA_PLAN_2026-10-23.md`](./design/program/BETA_PLAN_2026-10-23.md) — thread `claude-beta-oct23`.
+
 ### Seams — what is free, and what another agent has
 
 One seam is one set of files. Five agents take five different seams. Read the Claim cell
