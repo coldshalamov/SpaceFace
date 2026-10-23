@@ -56,17 +56,13 @@ test('only informational receipts compact in touch flight; critical copy and tou
   assert.match(MOBILE_CSS, /:is\(#toasts,#toasts \*\)\s*\{\s*pointer-events:none!important/);
 });
 
-test('short landscape flight receipts start below the HUD while portrait keeps its lower lane', () => {
-  const shortLandscape = MOBILE_CSS.slice(MOBILE_CSS.indexOf('@media (max-height:500px) and (orientation:landscape) {'));
-  const flightReceipt = /:root\[data-sf-mobile="1"\]\[data-sf-mobile-flight="1"\] #toasts\s*\{([^}]+)\}/.exec(shortLandscape)?.[1];
-  assert.ok(flightReceipt, 'phone flight receipt placement is scoped to short landscape');
-  assert.match(flightReceipt, /top:calc\(118px \+ var\(--sf-safe-top,0px\)\)!important/);
-  assert.match(flightReceipt, /bottom:auto!important/);
-  assert.match(MOBILE_CSS,
-    /:root\[data-sf-mobile="1"\]\[data-sf-mobile-flight="1"\] #toasts \{[^}]*top:auto!important; bottom:calc\(max\(224px/,
-    'portrait continues using the existing bottom-anchored receipt lane');
-  assert.match(MOBILE_CSS, /:is\(#toasts,#toasts \*\)\s*\{\s*pointer-events:none!important/,
-    'receipt placement retains touch-through');
+test('flight receipts occupy their own touch-through lane in both orientations', () => {
+  const lanes = MOBILE_CSS.slice(MOBILE_CSS.indexOf('/* Mobile flight lanes:'));
+  assert.match(lanes, /#toasts \{\s*top:calc\(318px \+ var\(--sf-safe-top,0px\)\)!important; bottom:auto!important; width:140px!important/);
+  assert.match(lanes, /#toasts \{ top:calc\(76px \+ var\(--sf-safe-top,0px\)\)!important; left:calc\(164px \+ var\(--sf-safe-left,0px\)\)!important; width:min\(280px,calc\(50vw - 184px\)\)!important/);
+  assert.match(MOBILE_CSS, /:is\(#toasts,#toasts \*\)\s*\{\s*pointer-events:none!important/);
+  assert.doesNotMatch(lanes, /#toasts \{[^}]*overflow:hidden/,
+    'critical receipts must not be clipped to make a layout test pass');
 });
 
 function withDoc(fn) {
