@@ -378,6 +378,40 @@ test('an ignored surrender escapes instead of remaining inert forever', { skip: 
   assert.ok(t.hostile.data.despawnAt > t.state.simTime);
 });
 
+test('a powerless surrendered crew cannot invent escape thrust, but a real repair restores escape', { skip: !surrenderRecovery }, () => {
+  const t = boot();
+  surrender(t);
+  disableDrive(t);
+  t.hostile.vel.x = 2;
+  t.hostile.vel.z = 1;
+  const beforeAi = structuredClone(t.hostile.data.ai);
+  const beforeIntent = structuredClone(t.hostile.data.intent);
+  const beforeVel = { x: t.hostile.vel.x, z: t.hostile.vel.z };
+  t.sim.runTicks(Math.ceil((ESCAPE_S + 12) / SIM_DT));
+  assert.equal(t.events.escaped.length, 0);
+  assert.equal(t.hostile.alive, true);
+  assert.equal(t.hostile.data.despawnAt, undefined);
+  assert.equal(t.hostile.data.surrenderRecovery.phase, 'awaiting_tether');
+  assert.match(t.hostile.data.surrenderRecovery.instruction, /drive remains disabled|tow/i);
+  assert.ok(t.hostile.data.surrenderRecovery.escapeAt > t.state.simTime);
+  assert.ok(t.hostile.data.surrenderRecovery.escapeAt <= t.state.simTime + 5);
+  assert.deepEqual(t.hostile.data.ai, beforeAi);
+  assert.deepEqual(t.hostile.data.intent, beforeIntent);
+  assert.deepEqual({ x: t.hostile.vel.x, z: t.hostile.vel.z }, beforeVel, 'retry never invents or resets momentum');
+  assert.equal(t.events.option.length, 1, 'a retry never repeats the original offer');
+  assert.equal(t.voices.length, 1, 'a retry does not spam the voice floor');
+
+  restoreDrive(t);
+  t.sim.runTicks(Math.ceil(5.2 / SIM_DT));
+  assert.equal(t.events.escaped.length, 1);
+  assert.equal(t.hostile.data.surrenderRecovery.phase, 'escaped');
+  assert.equal(t.hostile.data.ai.fsm, 'flee');
+  assert.equal(t.hostile.data.intent.boost, true);
+  assert.ok(t.hostile.data.despawnAt > t.state.simTime);
+  t.sim.step();
+  assert.equal(t.events.escaped.length, 1, 'escape settles once after restoration');
+});
+
 test('a released disabled hull remains ballistic, and repair closes the option without fake flight', { skip: !surrenderRecovery }, () => {
   const t = boot({ hostileData: { ai: { fsm: 'attack', passive: false, roe: 'fire_at_will' } } });
   t.hostile.data.intent.fire = true;
