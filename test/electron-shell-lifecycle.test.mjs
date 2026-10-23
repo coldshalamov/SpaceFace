@@ -703,6 +703,8 @@ test('main accepts only the documented quit send channel and invoke IPC set', as
     'spaceface:perf-metrics',
     'spaceface:save-clip',
     'spaceface:steam-status',
+    'spaceface:window-mode-get',
+    'spaceface:window-mode-set',
     'spaceface:workshop-publish',
     'spaceface:workshop-status',
     'spaceface:workshop-sync',
@@ -753,7 +755,7 @@ test('preload exposes one monotonic one-way subscription and replays the latest 
   assert.deepEqual(Object.keys(lifecycle), ['subscribe', 'quit']);
   assert.deepEqual(
     Object.keys(h.exposed.get('spacefaceShell')),
-    ['quit', 'saveClip', 'buildInfo', 'unlockAchievement', 'steamStatus', 'workshopStatus', 'workshopPublish', 'workshopSync', 'perfMetrics'],
+    ['quit', 'saveClip', 'buildInfo', 'unlockAchievement', 'steamStatus', 'workshopStatus', 'workshopPublish', 'workshopSync', 'perfMetrics', 'getWindowMode', 'setWindowMode'],
   );
   assert.equal(typeof h.exposed.get('spacefaceQuit'), 'function');
 

@@ -47,70 +47,13 @@ function geo(key, make) {
   return cache.get(key);
 }
 
-// ── Machine entity bodies ────────────────────────────────────────────────────────────────
-
-// Surveyor Prism: a slowly tumbling tetrahedral instrument — pure procedure, no menace.
-function buildSurveyorPrism() {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(
-    geo('prism_body', () => new THREE.OctahedronGeometry(1, 0)),
-    metalMat(),
-  );
-  body.scale.setScalar(12);
-  g.add(body);
-  const ring = new THREE.Mesh(
-    geo('prism_ring', () => new THREE.TorusGeometry(1.35, 0.06, 6, 40)),
-    lightMat(1.2),
-  );
-  ring.scale.setScalar(12);
-  ring.rotation.x = Math.PI / 2;
-  g.add(ring);
-  const pupil = new THREE.Mesh(geo('prism_pupil', () => new THREE.SphereGeometry(0.16, 10, 8)), lightMat(2.4));
-  pupil.scale.setScalar(12);
-  g.add(pupil);
-  g.name = 'SF_Machine_surveyor_prism';
-  return g;
-}
-
-// Custodian: a low radial shell with articulated maintenance arms — reads industrious.
-function buildCustodian(entity = null) {
-  const g = new THREE.Group();
-  const shell = new THREE.Mesh(geo('cust_shell', () => {
-    const s = new THREE.SphereGeometry(1, 16, 8);
-    s.scale(1.5, 0.45, 1.5);
-    return s;
-  }), metalMat());
-  shell.scale.setScalar(14);
-  g.add(shell);
-  const arm = geo('cust_arm', () => {
-    const s = new THREE.BoxGeometry(0.16, 0.1, 2.4);
-    s.translate(0, 0, -1.0);
-    return s;
-  });
-  const tipMat = lightMat(1.8);
-  const tips = [];
-  for (let i = 0; i < 4; i += 1) {
-    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    const m = new THREE.Mesh(arm, seamMat());
-    m.position.set(Math.cos(a) * 12, -3, Math.sin(a) * 12);
-    m.rotation.y = -a;
-    m.scale.setScalar(8);
-    g.add(m);
-    const tip = new THREE.Mesh(geo('cust_tip', () => new THREE.SphereGeometry(0.14, 8, 6)), tipMat);
-    tip.name = 'cust_tip';
-    tip.position.set(Math.cos(a) * 12 + Math.sin(-a) * 0 - Math.sin(a) * -14, -3, Math.sin(a) * 12 + Math.cos(a) * -14);
-    tip.scale.setScalar(6);
-    g.add(tip);
-    tips.push(tip);
-  }
-  const eye = new THREE.Mesh(geo('cust_eye', () => new THREE.SphereGeometry(0.22, 8, 6)), lightMat(1.5));
-  eye.position.y = 5;
-  eye.scale.setScalar(10);
-  g.add(eye);
-  g.name = 'SF_Machine_custodian';
-
+// A working machine DEPLOYS its tool: the arm/spindle eases from stowed to working pose
+// while `isWorking(live)` reads the sim's work flag true, then stows again (board 384).
+// `apply(deploy, motionTime, liveEntity)` poses the parts; deploy is a smoothed 0..1.
+function registerWorkMotion(entity, isWorking, apply) {
   let motionTime = 0;
-  g.userData.updateAuthoredMotion = (arg1, arg2) => {
+  let deploy = 0;
+  return (arg1, arg2) => {
     let dt = 0.016;
     let live = null;
     if (typeof arg1 === 'number') {
@@ -128,21 +71,155 @@ function buildCustodian(entity = null) {
     } else {
       motionTime += Math.max(0, Math.min(1, dt));
     }
-    const isRepairing = Boolean(current?.data?.machine?.repairing);
-    const targetIntensity = isRepairing
-      ? 1.8 + (Math.sin(motionTime * 6) * 0.5 + 0.5) * 0.6
-      : 0.25;
-    tipMat.emissiveIntensity = targetIntensity;
-    for (const t of tips) {
-      if (t.material) t.material.emissiveIntensity = targetIntensity;
-    }
+    const step = Math.max(0, Math.min(1, dt)) * 3.2;
+    deploy += ((isWorking(current) ? 1 : 0) - deploy) * Math.min(1, step);
+    apply(deploy, motionTime, current);
   };
+}
+
+// A slim articulated arm segment that can stow folded and extend while working.
+function buildToolArm(parent, { pivot, stowRotX = 0.5, workRotX = -0.6, length = 16, tipScale = 5, tipIntensity = 2.0 } = {}) {
+  const root = new THREE.Group();
+  root.position.set(pivot.x || 0, pivot.y || 0, pivot.z || 0);
+  if (pivot.rotY != null) root.rotation.y = pivot.rotY;
+  const arm = new THREE.Mesh(geo('tool_arm_seg', () => {
+    const s = new THREE.BoxGeometry(0.14, 0.1, 1.6);
+    s.translate(0, 0, -0.8);
+    return s;
+  }), seamMat());
+  arm.scale.setScalar(length / 1.6);
+  const tipMat = lightMat(tipIntensity);
+  const tip = new THREE.Mesh(geo('tool_arm_tip', () => new THREE.OctahedronGeometry(0.16, 0)), tipMat);
+  tip.position.z = -length;
+  tip.scale.setScalar(tipScale);
+  root.add(arm, tip);
+  parent.add(root);
+  return { root, tipMat, apply: (t) => { root.rotation.x = stowRotX + (workRotX - stowRotX) * t; } };
+}
+
+// A telescoping spindle that extends along -Y while working (drill/weld/read).
+function buildToolSpindle(parent, { length = 18, y = 0, tipScale = 5, tipIntensity = 2.4 } = {}) {
+  const rod = new THREE.Mesh(geo('tool_spindle', () => {
+    const s = new THREE.CylinderGeometry(0.07, 0.05, 1, 6);
+    s.translate(0, -0.5, 0);
+    return s;
+  }), metalMat());
+  rod.position.y = y;
+  const tipMat = lightMat(tipIntensity);
+  const tip = new THREE.Mesh(geo('tool_spindle_tip', () => new THREE.SphereGeometry(0.12, 8, 6)), tipMat);
+  tip.position.y = y;
+  tip.scale.setScalar(tipScale);
+  parent.add(rod, tip);
+  return { tipMat, apply: (t) => {
+    const len = Math.max(0.001, length * t);
+    rod.scale.y = len;
+    rod.visible = tip.visible = t > 0.02;
+    tip.position.y = y - len;
+  } };
+}
+
+// ── Machine entity bodies ────────────────────────────────────────────────────────────────
+
+// Surveyor Prism: a slowly tumbling tetrahedral instrument — pure procedure, no menace.
+// Its scanner arm unfolds while the inspection sweep winds toward the ping (row 384).
+function buildSurveyorPrism(entity = null) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(
+    geo('prism_body', () => new THREE.OctahedronGeometry(1, 0)),
+    metalMat(),
+  );
+  body.scale.setScalar(12);
+  g.add(body);
+  const ring = new THREE.Mesh(
+    geo('prism_ring', () => new THREE.TorusGeometry(1.35, 0.06, 6, 40)),
+    lightMat(1.2),
+  );
+  ring.scale.setScalar(12);
+  ring.rotation.x = Math.PI / 2;
+  g.add(ring);
+  const pupil = new THREE.Mesh(geo('prism_pupil', () => new THREE.SphereGeometry(0.16, 10, 8)), lightMat(2.4));
+  pupil.scale.setScalar(12);
+  g.add(pupil);
+  const scanArm = buildToolArm(g, { pivot: { y: 4 }, length: 14 });
+  g.name = 'SF_Machine_surveyor_prism';
+  const scanPeriod = machineKindById('surveyor_prism')?.scanPeriodS || 14;
+  g.userData.updateAuthoredMotion = registerWorkMotion(entity,
+    (live) => {
+      const sweep = live?.data?.machine?.sweepT;
+      return typeof sweep === 'number' && sweep > scanPeriod * 0.55;
+    },
+    (t, time) => {
+      scanArm.apply(t);
+      scanArm.tipMat.emissiveIntensity = 1.2 + t * (1.2 + Math.sin(time * 9) * 0.4);
+      scanArm.root.rotation.y = time * 0.7;
+    });
+  return g;
+}
+
+// Custodian: a low radial shell with articulated maintenance arms — reads industrious.
+// While `machine.repairing` the four arms pitch down to the work face and the centre
+// repair spindle telescopes out of the shell (row 384).
+function buildCustodian(entity = null) {
+  const g = new THREE.Group();
+  const shell = new THREE.Mesh(geo('cust_shell', () => {
+    const s = new THREE.SphereGeometry(1, 16, 8);
+    s.scale(1.5, 0.45, 1.5);
+    return s;
+  }), metalMat());
+  shell.scale.setScalar(14);
+  g.add(shell);
+  const arm = geo('cust_arm', () => {
+    const s = new THREE.BoxGeometry(0.16, 0.1, 2.4);
+    s.translate(0, 0, -1.0);
+    return s;
+  });
+  const tipMat = lightMat(1.8);
+  const tips = [];
+  const arms = [];
+  for (let i = 0; i < 4; i += 1) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const m = new THREE.Mesh(arm, seamMat());
+    m.position.set(Math.cos(a) * 12, -3, Math.sin(a) * 12);
+    m.rotation.y = -a;
+    m.scale.setScalar(8);
+    g.add(m);
+    arms.push(m);
+    const tip = new THREE.Mesh(geo('cust_tip', () => new THREE.SphereGeometry(0.14, 8, 6)), tipMat);
+    tip.name = 'cust_tip';
+    // Child of the arm: the tip rides the deploy pitch instead of floating at the
+    // flat pose. Local z -1.75 lands where the world offset -14 used to put it.
+    tip.position.set(0, 0, -1.75);
+    tip.scale.setScalar(0.75);
+    m.add(tip);
+    tips.push(tip);
+  }
+  const eye = new THREE.Mesh(geo('cust_eye', () => new THREE.SphereGeometry(0.22, 8, 6)), lightMat(1.5));
+  eye.position.y = 5;
+  eye.scale.setScalar(10);
+  g.add(eye);
+  const spindle = buildToolSpindle(g, { length: 15, y: -4 });
+  g.name = 'SF_Machine_custodian';
+
+  g.userData.updateAuthoredMotion = registerWorkMotion(entity,
+    (live) => Boolean(live?.data?.machine?.repairing),
+    (deploy, motionTime) => {
+      const targetIntensity = 0.25 + deploy * (1.55 + (Math.sin(motionTime * 6) * 0.5 + 0.5) * 0.6);
+      tipMat.emissiveIntensity = targetIntensity;
+      for (const t of tips) {
+        if (t.material) t.material.emissiveIntensity = targetIntensity;
+      }
+      for (const a of arms) a.rotation.x = 0.35 - deploy * 0.9;
+      spindle.apply(deploy);
+      spindle.tipMat.emissiveIntensity = 0.4 + deploy * 2.0;
+    });
 
   return g;
 }
 
 // Gate Auditor: a tall open ring — a standing frame that waits. Read: customs arch.
-function buildGateAuditor() {
+// While a hull sits inside its interrogate radius the audit bar sweeps the ring
+// opening (`machine.interrogating`, written by the sim tick) (row 384).
+function buildGateAuditor(entity = null) {
   const g = new THREE.Group();
   const ring = new THREE.Mesh(
     geo('aud_ring', () => new THREE.TorusGeometry(1, 0.09, 8, 48)),
@@ -168,7 +245,22 @@ function buildGateAuditor() {
   core.position.y = 6;
   core.scale.setScalar(14);
   g.add(core);
+  const scanMat = lightMat(0.0);
+  const scanBar = new THREE.Mesh(geo('aud_scanbar', () => new THREE.BoxGeometry(2, 0.04, 0.04)), scanMat);
+  scanBar.position.y = 6;
+  scanBar.scale.set(0.001, 18, 18);
+  scanBar.visible = false;
+  g.add(scanBar);
   g.name = 'SF_Machine_gate_auditor';
+  g.userData.updateAuthoredMotion = registerWorkMotion(entity,
+    (live) => Boolean(live?.data?.machine?.interrogating),
+    (t, time) => {
+      scanBar.visible = t > 0.02;
+      // The bar grows to span the ring opening and sweeps around its centre.
+      scanBar.scale.set(Math.max(0.001, 18 * t), 18, 18);
+      scanBar.rotation.y = time * 1.9;
+      scanMat.emissiveIntensity = t * (1.4 + Math.sin(time * 11) * 0.5);
+    });
   return g;
 }
 
@@ -223,58 +315,50 @@ function buildShepherd() {
 }
 
 // Mason: an assembly cradle — two open gantries holding an empty axis.
+// While `machine.working` the weld spindle thrusts forward through the cradle and
+// the gantry arms flex open (row 384).
 function buildMason(entity = null) {
   const g = new THREE.Group();
   const arm = geo('msn_arm', () => {
     const s = new THREE.TorusGeometry(1.0, 0.09, 6, 24, Math.PI);
     return s;
   });
+  const gantry = [];
   for (let i = 0; i < 2; i += 1) {
     const a = new THREE.Mesh(arm, metalMat());
     a.scale.setScalar(14);
     a.rotation.z = i === 0 ? 0 : Math.PI;
     a.position.x = i === 0 ? -2 : 2;
     g.add(a);
+    gantry.push(a);
   }
   const weldMat = lightMat(2.8);
   const weld = new THREE.Mesh(geo('msn_weld', () => new THREE.SphereGeometry(0.12, 8, 6)), weldMat);
   weld.name = 'msn_weld';
   weld.scale.setScalar(14);
   g.add(weld);
+  const spindle = buildToolSpindle(g, { length: 20, y: 0, tipScale: 6 });
   g.name = 'SF_Machine_mason';
 
-  let motionTime = 0;
-  g.userData.updateAuthoredMotion = (arg1, arg2) => {
-    let dt = 0.016;
-    let live = null;
-    if (typeof arg1 === 'number') {
-      dt = arg1;
-      live = arg2;
-    } else if (arg1 && typeof arg1 === 'object') {
-      live = arg1;
-      if (typeof arg2 === 'number') dt = arg2;
-    } else if (typeof arg2 === 'number') {
-      dt = arg2;
-    }
-    const current = (live && typeof live === 'object') ? live : (entity && typeof entity === 'object' ? entity : null);
-    if (typeof arg2 === 'number' && typeof arg1 !== 'number') {
-      motionTime = arg2;
-    } else {
-      motionTime += Math.max(0, Math.min(1, dt));
-    }
-    const isWorking = Boolean(current?.data?.machine?.working);
-    const targetIntensity = isWorking
-      ? 2.8 + (Math.sin(motionTime * 8) * 0.5 + 0.5) * 0.8
-      : 0.25;
-    weldMat.emissiveIntensity = targetIntensity;
-    if (weld.material) weld.material.emissiveIntensity = targetIntensity;
-  };
+  g.userData.updateAuthoredMotion = registerWorkMotion(entity,
+    (live) => Boolean(live?.data?.machine?.working),
+    (deploy, motionTime) => {
+      const targetIntensity = 0.25 + deploy * (2.55 + (Math.sin(motionTime * 8) * 0.5 + 0.5) * 0.8);
+      weldMat.emissiveIntensity = targetIntensity;
+      if (weld.material) weld.material.emissiveIntensity = targetIntensity;
+      gantry[0].rotation.y = -deploy * 0.5;
+      gantry[1].rotation.y = deploy * 0.5;
+      spindle.apply(deploy);
+      spindle.tipMat.emissiveIntensity = 0.4 + deploy * 2.4;
+      weld.position.z = deploy * -14;
+    });
 
   return g;
 }
 
 // Executor: the revocation enforcer — a narrow dark dart with one cold ring aft.
-function buildExecutor() {
+// While `machine.awakened` the purge spindle drives forward out of the nose (row 384).
+function buildExecutor(entity = null) {
   const g = new THREE.Group();
   const dart = new THREE.Mesh(geo('exe_dart', () => {
     const s = new THREE.ConeGeometry(0.4, 3.0, 4);
@@ -293,7 +377,14 @@ function buildExecutor() {
   eye.position.z = 10;
   eye.scale.setScalar(9);
   g.add(eye);
+  const purge = buildToolArm(g, { pivot: { z: 8 }, stowRotX: Math.PI / 2, workRotX: 0, length: 20, tipIntensity: 2.8 });
   g.name = 'SF_Machine_executor';
+  g.userData.updateAuthoredMotion = registerWorkMotion(entity,
+    (live) => Boolean(live?.data?.machine?.awakened),
+    (t, time) => {
+      purge.apply(t);
+      purge.tipMat.emissiveIntensity = 0.4 + t * (2.4 + Math.sin(time * 14) * 0.6);
+    });
   return g;
 }
 
@@ -395,7 +486,9 @@ function buildAppealsClerk() {
 }
 
 // Debris Sorter: a slow rake — wide intake mouth on a collector spine.
-function buildDebrisSorter() {
+// While it has a claimed workpiece (`machine.collectId`) the mouth opens and the
+// collector spine extends toward the staged body (row 384).
+function buildDebrisSorter(entity = null) {
   const g = new THREE.Group();
   const mouth = new THREE.Mesh(geo('ds_mouth', () => {
     const s = new THREE.CylinderGeometry(1.0, 0.55, 0.8, 12, 1, true);
@@ -416,29 +509,51 @@ function buildDebrisSorter() {
   eye.scale.setScalar(14);
   g.add(eye);
   g.name = 'SF_Machine_debris_sorter';
+  g.userData.updateAuthoredMotion = registerWorkMotion(entity,
+    (live) => live?.data?.machine?.collectId != null,
+    (t, time) => {
+      spine.scale.z = 14 * (1 + t * 0.8);
+      mouth.scale.x = mouth.scale.y = 14 * (1 + t * 0.25);
+      mouth.position.z = t * 6;
+      eye.material.emissiveIntensity = 1.5 + t * (1.0 + Math.sin(time * 10) * 0.4);
+    });
   return g;
 }
 
 // Sleeping Jury: three joined sealed verdict pods — a body that convenes, not fights.
-function buildSleepingJury() {
+// While `machine.awake` the seal lifts off the pods and glows like an open session
+// (row 384).
+function buildSleepingJury(entity = null) {
   const g = new THREE.Group();
   const pod = geo('sj_pod', () => {
     const s = new THREE.SphereGeometry(0.5, 14, 10);
     s.scale(1, 0.7, 1);
     return s;
   });
+  const pods = [];
   for (let i = 0; i < 3; i += 1) {
     const a = (i / 3) * Math.PI * 2;
     const p = new THREE.Mesh(pod, metalMat());
     p.position.set(Math.cos(a) * 10, 0, Math.sin(a) * 10);
     p.scale.setScalar(12);
     g.add(p);
+    pods.push(p);
   }
-  const seal = new THREE.Mesh(geo('sj_seal', () => new THREE.TorusGeometry(1.3, 0.05, 6, 36)), lightMat(0.5));
+  const sealMat = lightMat(0.5);
+  const seal = new THREE.Mesh(geo('sj_seal', () => new THREE.TorusGeometry(1.3, 0.05, 6, 36)), sealMat);
   seal.rotation.x = Math.PI / 2;
   seal.scale.setScalar(12);
   g.add(seal);
   g.name = 'SF_Machine_sleeping_jury';
+  g.userData.updateAuthoredMotion = registerWorkMotion(entity,
+    (live) => Boolean(live?.data?.machine?.awake),
+    (t, time) => {
+      seal.position.y = t * 6;
+      sealMat.emissiveIntensity = 0.5 + t * (1.6 + Math.sin(time * 5) * 0.4);
+      for (let i = 0; i < pods.length; i += 1) {
+        pods[i].rotation.z = t * 0.35 * (i % 2 ? 1 : -1);
+      }
+    });
   return g;
 }
 

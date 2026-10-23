@@ -108,6 +108,11 @@ ${S} .sxb-vitals { display:flex !important; flex-wrap:nowrap !important; justify
 ${S} .sxb-vital { display:flex !important; flex-direction:column; align-items:center; position:relative; min-width:132px !important; width:auto !important; flex:none !important;
   margin:0 !important; padding:0 !important; gap:0 !important; background:none !important; border:0 !important; box-shadow:none !important; }
 ${S} .sxb-vital::before, ${S} .sxb-vital::after { display:none !important; }
+/* The authored narrow-frame wrap (station.css ≤1280px, two gauges per row inside the crown
+   column) is defeated by this sheet's !important nowrap — 4×132px readings then overflow the
+   326px column leftward and print over the news tape. Restoring wrap at the same breakpoint
+   keeps the one-row strip at real widths and stacks it 2×2 when the frame narrows. */
+@media (max-width:1280px) { ${S} .sxb-vitals { flex-wrap:wrap !important; } }
 @media (min-width:900px) { ${S} .sxb-berth > .sxb-handoff { max-width:max(320px, calc(100vw - 816px)) !important; }
   /* the next step's title is one line (OPEN YOUR HOLD, not OPEN YOUR / HOLD); its sentence wraps instead */
   ${S} .sxb-next__t { white-space:nowrap !important; flex:none !important; } }
@@ -361,6 +366,29 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-berth.dp-frame__head > .sxb-signs { grid-column:1 / -1 !important; display:flex !important; gap:0 24px !important; align-items:flex-start !important; min-width:0 !important; }
   ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding-top:8px !important; }
   ${D} .sxb-signs .sx-adboard__text { margin:2px 0 0 !important; }
+}
+/* …and from 901 wide on a short window (1100×700, 1280×720, 960×540) the two signs stacked in the
+   left column under the next step while the right column under the dials stood empty, so the tab body
+   kept ~150-250px and the Market's BUY fell below the destination rail. The next step tucks under the
+   mechanic's note beside the dials (title, count and DISMISS on one line, its sentence under), and the
+   signs share one full-width band under the head, label and notice run on as one paragraph. */
+@media (min-width:901px) and (min-height:461px) and (max-height:800px) {
+  ${D} .sxb-berth.dp-frame__head { grid-template-areas:"title trigger" "title crown" "tape crown" "handoff crown" "signs signs" !important;
+    grid-template-rows:auto auto auto 1fr auto !important; row-gap:6px !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; grid-column:auto !important; align-self:start !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-handoff { grid-area:handoff !important; grid-column:auto !important; align-self:start !important;
+    margin:0 !important; padding:0 !important; display:grid !important; grid-template-columns:minmax(0, 1fr) auto !important;
+    align-items:baseline !important; column-gap:12px !important; }
+  ${D} .sxb-handoff > .sxb-next { grid-column:1 / -1; grid-row:1; flex-wrap:wrap !important; align-items:baseline !important; row-gap:2px !important;
+    padding-block:0 !important; padding-right:60px !important; min-width:0 !important; }
+  ${D} .sxb-handoff > .sxb-next__x { grid-column:2; grid-row:1; position:relative; z-index:1; margin:0 !important; padding:0 !important; }
+  ${D} .sxb-next__n { margin-left:10px !important; white-space:nowrap !important; }
+  ${D} .sxb-next__w { order:3; flex:1 0 calc(100% + 60px) !important; margin-right:-60px; white-space:normal !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-signs { grid-area:signs !important; grid-column:1 / -1 !important; display:flex !important; gap:0 32px !important;
+    align-items:flex-start !important; min-width:0 !important; }
+  ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding-top:4px !important;
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden !important; }
+  ${D} .sxb-signs .sx-adboard__text { display:inline !important; margin:0 0 0 8px !important; }
 }
 /* …and its foot: the seven destination words (~715px at full tracking) were capped at 64vw, so at
    651–800 wide only MARKET and SHIPWORKS showed and INDUSTRY ran under COMMS. Now the words own the

@@ -99,7 +99,7 @@ let arcRail = null;
 // The dial's face is drawn in its own line language (arcRail drawFace); the raster emblem is the
 // loading ring's (bootRing.js).
 // spec2/03 §3: the still begins its slow drift after this much idle time. Input re-arms the window.
-const ATTRACT_IDLE_MS = 12_000;
+const ATTRACT_IDLE_MS = 6_000;
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;

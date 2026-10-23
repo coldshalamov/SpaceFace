@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
-import { createToasts } from '../src/ui/toasts.js';
+import { presentReceipt } from '../src/core/receiptPresenter.js';
+import { PHYSICS_STALL_RECEIPT, createToasts } from '../src/ui/toasts.js';
 import {
   normalizeToastAction,
   pickEvictionVictim,
@@ -276,4 +277,86 @@ test('the pure helpers: normalize trims and bounds, eviction never picks the new
   assert.equal(pickEvictionVictim([plain('new'), plain('mid'), offer('offer')]).name, 'mid');
   assert.equal(pickEvictionVictim([plain('new'), offer('offer'), offer('older offer')]).name, 'older offer');
   assert.equal(pickEvictionVictim([offer('new offer'), offer('offer'), plain('old')]).name, 'old');
+});
+
+// W1-F: wall-clock notices reach the lane through the presentation-only presenter, never the bus
+// (sim listeners hear every bus `toast`), and still render in full - buttons included.
+test('a receipt presented off the bus renders with its button, and nothing rides the bus', () => {
+  const dom = installDom();
+  let calls = 0;
+  const off = registerToastAction('test-offer', () => { calls++; });
+  try {
+    const bus = createBus();
+    const busToasts = [];
+    const cues = [];
+    bus.on('toast', (p) => busToasts.push(p));
+    bus.on('audio:cue', (p) => cues.push(p));
+    createToasts({ bus });
+    assert.equal(presentReceipt({ ...OFFER }), true, 'the lane is up: the receipt was shown');
+    const [card] = dom.cards();
+    assert.ok(card, 'the receipt rendered');
+    assert.equal(buttonOf(card).textContent, 'Switch');
+    assert.equal(busToasts.length, 0, 'a presented receipt never touches the bus');
+    assert.deepEqual(cues, [{ id: 'click' }], 'the UI click the audio system gave every toast survives, once');
+    buttonOf(card).fire('click');
+    assert.equal(calls, 1, 'the button still runs its registered handler');
+  } finally {
+    off();
+    dom.restore();
+  }
+});
+
+test('a receipt the lane refuses is reported as not shown, so a once-only notice is not spent', () => {
+  const dom = installDom();
+  try {
+    const bus = createBus();
+    const cues = [];
+    bus.on('audio:cue', (p) => cues.push(p));
+    createToasts({ bus });
+    // A fight keeps the lane quiet for info receipts (hudAttention 'combat-quiet').
+    document.body.dataset.sfHudJob = 'fight';
+    assert.equal(presentReceipt({ ...OFFER }), false, 'refused during a fight');
+    assert.equal(dom.cards().length, 0);
+    assert.equal(cues.length, 0, 'and no click for a line nobody saw');
+    // A line the voice floor already owns is refused too.
+    assert.equal(presentReceipt({ text: 'CARGO FULL', kind: 'warn' }), false);
+    document.body.dataset.sfHudJob = 'cruise';
+    assert.equal(presentReceipt({ ...OFFER }), true, 'shown once the lane is quiet again');
+    assert.equal(presentReceipt({ ...OFFER }), true, 'an identical live line is folded into its card, which counts as shown');
+    assert.equal(dom.cards().length, 1);
+    assert.equal(cues.length, 2);
+  } finally {
+    dom.restore();
+  }
+});
+
+test('the physics stall event becomes one receipt without a bus toast', () => {
+  const dom = installDom();
+  try {
+    const bus = createBus();
+    const busToasts = [];
+    bus.on('toast', (p) => busToasts.push(p));
+    createToasts({ bus });
+    bus.emit('physics:authorityStalled', { tick: 200, stalledMs: 3400, retryInMs: 9000 });
+    const [card] = dom.cards();
+    assert.ok(card, 'the receipt rendered');
+    assert.equal(dom.live.textContent, PHYSICS_STALL_RECEIPT.text);
+    assert.match(PHYSICS_STALL_RECEIPT.text, /Flight systems are still starting\. If your ship stays still, reload the game\./);
+    assert.equal(PHYSICS_STALL_RECEIPT.kind, 'warn');
+    assert.equal(busToasts.length, 0, 'the stall is not re-emitted as a sim-visible toast');
+  } finally {
+    dom.restore();
+  }
+});
+
+test('with no lane to draw on, presenting reports false instead of pretending', () => {
+  const dom = installDom();
+  try {
+    dom.restore();
+    globalThis.document = { getElementById: () => null, createElement: () => ({}), body: { dataset: {} } };
+    createToasts({ bus: createBus() });
+    assert.equal(presentReceipt({ text: 'nowhere to go', kind: 'info' }), false);
+  } finally {
+    dom.restore();
+  }
 });

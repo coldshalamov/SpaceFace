@@ -61,10 +61,14 @@ function freezeWrapTile(authored, y) {
   return Math.max(authored, Math.ceil(need / 40) * 40);
 }
 
-const FAR = { count: 24, factor: 0.12, tile: freezeWrapTile(2400, -160), y: -160, yJitter: 24, radius0: 0.8, radius1: 4 };
+const FAR = { count: 48, factor: 0.12, tile: freezeWrapTile(2400, -160), y: -160, yJitter: 24, radius0: 0.8, radius1: 4 };
 const MID = { count: 128, factor: 0.24, tile: freezeWrapTile(2000, -100), y: -100, yJitter: 16, radius0: 0.25, radius1: 1.2 };
-const NEAR = { count: 24, factor: 0.40, tile: freezeWrapTile(2000, -60), y: -60, yJitter: 10, radius0: 0.05, radius1: 0.2 };
-export const PARALLAX_BANDS = { far: FAR, mid: MID, near: NEAR };
+const NEAR = { count: 48, factor: 0.40, tile: freezeWrapTile(2000, -60), y: -60, yJitter: 10, radius0: 0.05, radius1: 0.2 };
+// Row 427 — the above-plane sheet. Tiny grains a little over the flight plane read as passable
+// near-field dust: they streak past the hull (highest parallax factor of any band) and are far
+// too small to read as obstacles. This is the layer that keeps empty-black frames honest.
+const DRIFT = { count: 64, factor: 0.58, tile: freezeWrapTile(2200, 34), y: 34, yJitter: 22, radius0: 0.03, radius1: 0.14 };
+export const PARALLAX_BANDS = { far: FAR, mid: MID, near: NEAR, drift: DRIFT };
 
 const MID_LOW_COUNT = Math.max(1, Math.floor(MID.count * 0.5));
 const MID_SPIN_AXIS_ATTRIBUTE = 'aParallaxSpinAxis';
@@ -167,6 +171,7 @@ class ParallaxLayers {
     this._createFarDust();
     this._createMidDebris();
     this._createNearMotes();
+    this._createDriftSheet();
     this._syncQuality();
     this._applyPaletteColor(this._colorCurrent);
   }
@@ -257,6 +262,20 @@ class ParallaxLayers {
     });
     this._nearGroup = band.group;
     this._nearMesh = band.mesh;
+  }
+
+  _createDriftSheet() {
+    const band = this._spawnChipBand({
+      spec: DRIFT,
+      name: 'Parallax_DriftSheet',
+      layer: 'driftSheet',
+      renderOrder: 3,
+      seed: 0x9d3f17,
+      colorMul: 0.34,
+      spin: true,
+    });
+    this._driftGroup = band.group;
+    this._driftMesh = band.mesh;
   }
 
   _spawnChipBand({ spec, name, layer, renderOrder, seed, colorMul, spin }) {
@@ -394,6 +413,7 @@ class ParallaxLayers {
     const farCount = FAR.count;
     const midCount = MID.count;
     const nearCount = NEAR.count;
+    const driftCount = DRIFT.count;
 
     if (this._farMesh) {
       this._farMesh.count = farCount;
@@ -406,6 +426,10 @@ class ParallaxLayers {
     if (this._nearMesh) {
       this._nearMesh.count = nearCount;
       if (this._nearGroup) this._nearGroup.userData.activeCount = nearCount;
+    }
+    if (this._driftMesh) {
+      this._driftMesh.count = driftCount;
+      if (this._driftGroup) this._driftGroup.userData.activeCount = driftCount;
     }
     this._publishOpeningSubmissionPackages();
   }

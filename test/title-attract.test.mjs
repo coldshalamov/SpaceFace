@@ -179,10 +179,10 @@ test('idle gate arms the live title only after the idle window', () => {
       for (const cb of cbs) cb(ms);
     };
     pump(0);
-    pump(4000);
+    pump(5900);
     assert.equal(rootEl.dataset.attract, undefined, 'attract armed before the idle window');
     assert.equal(mainMenuScreen._attractLive, false);
-    pump(13_000);
+    pump(6100);
     assert.equal(rootEl.dataset.attract, '1', 'attract did not arm after the idle window');
     assert.equal(mainMenuScreen._attractLive, true, 'stage spec never swapped to the live scene');
     assert.ok(calls.syncVisibility > 0, 'arming never re-resolved the stage request');

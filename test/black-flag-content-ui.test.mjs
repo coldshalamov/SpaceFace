@@ -19,7 +19,9 @@ test('authored opportunities have real local world anchors and installable canon
     const sector = SECTORS.find(sector => sector.id === row.sectorId);
     assert.ok(sector, row.sectorId);
     assert.ok(sector.pois.some(poi => poi.id === row.anchorPoiId), row.anchorPoiId);
-    assert.ok(sector.stations.some(station => station.id === row.stationId),row.stationId);
+    const receiver=sector.stations.find(station => station.id === row.stationId);
+    assert.ok(receiver,row.stationId);
+    assert.ok(receiver.services.some(service=>['shipyard','repair','black_market'].includes(service)),`${row.name}: receiving port must actually service the hull`);
     const hull = SHIPS.find(hull => hull.id === row.defId); assert.ok(hull,row.defId);
     const slots = buildSlotList(hull); const used = new Set();
     for (const id of row.fitted) {
@@ -29,7 +31,11 @@ test('authored opportunities have real local world anchors and installable canon
     }
     assert.ok(row.condition > 0 && row.condition <= 1);
   }
-  for (const yard of BLACK_FLAG_YARDS) assert.ok(SECTORS.find(sector => sector.id === yard.sectorId)?.stations.some(station => station.id === yard.stationId));
+  for (const yard of BLACK_FLAG_YARDS) {
+    const station=SECTORS.find(sector => sector.id === yard.sectorId)?.stations.find(station => station.id === yard.stationId);
+    assert.ok(station);
+    assert.ok(station.services.some(service=>['shipyard','repair','black_market'].includes(service)),`${yard.name}: no actual receiving service`);
+  }
 });
 
 function fixture() {
@@ -102,6 +108,42 @@ test('Back cancels an actual vulnerable airlock crossing but ordinary dismissal 
   prompt.dispose();
 });
 
+test('disabled acquired pilot has a public distress route with scanner reopening and stale-body protection',()=>{
+  const f=fixture(),pilot=f.state.entities.get(1);
+  pilot.data.shipjackGeneration='pilot:1';
+  f.state.player.ownedShips=[{defId:'ship_kestrel',vesselId:'vessel:pilot'}];
+  f.state.combat={entities:{1:{capabilities:{drive:false}}}};
+  const prompt=createBlackFlagPrompt(f,{deck:()=>f.deck});
+  for(let i=0;i<8;i++)prompt.frame();
+  const offer=f.offers.get('black-flag:distress');assert.ok(offer);
+  offer.onChoose('leave','touch');assert.equal(f.offers.has('black-flag:distress'),false);
+  for(let i=0;i<8;i++)prompt.frame();assert.equal(f.offers.has('black-flag:distress'),false,'dismissal stays quiet');
+  f.bus.emit('scanner:pulse');const retry=f.offers.get('black-flag:distress');assert.ok(retry);
+  retry.onChoose('distress','gamepad');assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack'&&row.payload.action==='distress').length,1);
+  f.state.playerId=2;retry.onChoose('distress','keyboard');
+  assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack'&&row.payload.action==='distress').length,1);
+  f.state.run.kind='crucible';f.bus.emit('game:new');f.bus.emit('scanner:pulse');assert.equal(f.offers.size,0);
+  prompt.dispose();
+});
+
+test('handoff offers the real previous body after the mirror arrives and rejects recycled occupants', () => {
+  const f=fixture();const prompt=createBlackFlagPrompt(f,{deck:()=>f.deck});
+  const prior=f.state.entities.get(1);prior.data.vesselId='vessel:starter:1';prior.data.shipjackGeneration='starter:gen';
+  const receipt={ok:true,fromId:1,toId:2,fromVesselId:'vessel:starter:1'};
+  f.bus.emit('ship:controlTransferred',receipt);
+  for(let i=0;i<8;i++)prompt.frame();
+  assert.equal(f.offers.has('black-flag:prior-hull'),false,'event can arrive before player mirror');
+  f.state.playerId=2;f.state.player.targetId=null;
+  for(let i=0;i<8;i++)prompt.frame();
+  const offer=f.offers.get('black-flag:prior-hull');assert.ok(offer);
+  assert.ok(offer.choices.some(row=>row.cancel && row.label==='Keep flying'));
+  offer.onChoose('target','touch');assert.equal(f.state.player.targetId,1);
+  assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack').length,0,'selects only; never starts a transfer');
+  f.state.player.targetId=null;prior.data.shipjackGeneration='recycled';offer.onChoose('target','gamepad');
+  assert.equal(f.state.player.targetId,null);
+  f.bus.emit('game:load');assert.equal(f.offers.has('black-flag:prior-hull'),false);prompt.dispose();
+});
+
 test('release/abort remains a real action and every page provides safe cancel', () => {
   const view = {actions:[{action:'transfer',enabled:false,reason:'Moving too fast'},{action:'tow'},{action:'abort'}]};
   const first=shipjackPromptActions(view,0), second=shipjackPromptActions(view,1);
@@ -123,6 +165,8 @@ test('Adventure-only query and truthful, stable station presentation keep custod
 });
 
 test('yard confirmation names consumed material, remaining forensic exposure and disabled output', () => {
+  const spare=yardQuotePreview({action:'module_sell',defId:'mod_engine_ion_m',condition:.6,amount:420,fenceId:'fence_test'});
+  assert.match(spare,/60% condition/);assert.match(spare,/420 credits after the fence cut/);assert.match(spare,/exact part leaves/);
   assert.match(yardQuotePreview({action:'forge_broadcast',amount:-900}),/Consumes one Cargo Scanner S/);
   assert.match(yardQuotePreview({action:'forge_broadcast',amount:-900}),/title checks still expose/);
   const preview=yardQuotePreview({action:'extract',slotIndex:3,amount:-280,value:{parts:[{slotIndex:3,defId:'mod_engine_ion_m',family:'engine',condition:.5}]}});

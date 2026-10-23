@@ -10,6 +10,7 @@ import { SECTORS } from '../data/sectors.js';
 
 export const WANTED_KIND_LABELS = Object.freeze({
   payload_theft: 'CARGO THEFT',
+  vessel_theft: 'SHIP THEFT',
   unlawful_kill: 'KILL',
   lawful_kill: 'LAW KILL',
   reckless_kill: 'RECKLESS KILL',

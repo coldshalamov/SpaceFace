@@ -46,10 +46,35 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
   const { state, bus } = ctx;
   const offs = [];
   let selected = null, dismissed = null, signature = '', page = 0, frames = 0, pending = false;
-  let opportunity = null;
+  let opportunity = null, priorHull = null;
+  let distressShown = null;
   const resolve = () => { deck()?.resolveDecision(PANEL_ID); signature = ''; };
-  const clear = () => { selected = null; dismissed = null; page = 0; pending = false; opportunity = null; resolve(); deck()?.resolveDecision('black-flag:opportunity'); };
+  const clear = () => { selected = null; dismissed = null; page = 0; pending = false; opportunity = null; priorHull = null; distressShown=null; resolve(); deck()?.resolveDecision('black-flag:opportunity'); deck()?.resolveDecision('black-flag:prior-hull'); deck()?.resolveDecision('black-flag:distress'); };
   const on = (event, fn) => { const off = bus.on(event, fn); if (typeof off === 'function') offs.push(off); };
+  const offerDistress = (force=false) => {
+    const pilot=state.entities?.get(state.playerId);
+    if(!isBlackFlagAdventure(state)||state.mode!=='flight'||state.ui?.docked||!pilot?.alive)return;
+    const owned=state.player?.ownedShips?.[state.player.activeShipIndex];
+    if(!owned?.vesselId)return;
+    const runtime=state.combat?.entities?.[String(pilot.id)],drive=runtime?.subsystems?.subsystem_drive;
+    const disabled=owned.shipjackDriveRemoved===true||drive?.effectiveDisabled===true||drive?.destroyed===true||runtime?.capabilities?.drive===false;
+    if(!disabled){distressShown=null;deck()?.resolveDecision('black-flag:distress');return;}
+    const generation=pilot.data?.shipjackGeneration ?? pilot.occupantGeneration;
+    const key=`${pilot.id}:${generation}`;
+    if(!force&&distressShown===key)return;
+    const prompt=deck();if(!prompt)return;distressShown=key;
+    prompt.offerDecision({id:'black-flag:distress',kind:'warn',sender:'DISABLED HULL · RECOVERY CHANNEL',
+      headline:'Drive unavailable',
+      detail:'Your hull is still intact. Mark its distress beacon, transfer back to a nearby retained hull, or keep working on recovery. No service tug has accepted. Pulse the scanner to reopen this channel.',
+      choices:[{id:'distress',label:'Send distress / mark hull beacon'},{id:'leave',label:'Keep working on recovery',cancel:true}],
+      onChoose:action=>{
+        prompt.resolveDecision('black-flag:distress');
+        const live=state.entities?.get(pilot.id);
+        if(action!=='distress'||!isBlackFlagAdventure(state)||state.mode!=='flight'||state.ui?.docked||state.playerId!==pilot.id||!live?.alive
+          ||(live.data?.shipjackGeneration ?? live.occupantGeneration)!==generation)return;
+        bus.emit('ui:shipjack',{action});
+      }});
+  };
   const show = (force = false) => {
     const targetId = state.player?.targetId;
     if (targetId == null || state.mode !== 'flight' || state.ui?.docked) { resolve(); return; }
@@ -87,9 +112,16 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
     if (!prompt.updateDecision(PANEL_ID, spec)) prompt.offerDecision(spec);
   };
   on('shipjack:open', () => { dismissed = null; show(true); });
+  on('scanner:pulse',()=>offerDistress(true));
+
   on('shipjack:opportunity', payload => {
     if (!payload || payload.entityId == null || !isBlackFlagAdventure(state)) return;
     opportunity = payload;
+  });
+  on('ship:controlTransferred', receipt => {
+    if (!receipt?.ok || receipt.fromId == null || !receipt.fromVesselId || !isBlackFlagAdventure(state)) return;
+    // Runtime mirrors may follow this receipt. Resolve the actual body on a later frame.
+    priorHull = { ...receipt, waits: 0 };
   });
   on('shipjack:result', result => {
     pending = false; signature = '';
@@ -102,7 +134,32 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
     open() { dismissed = null; show(true); },
     frame() {
       if (++frames % 8 !== 0) return;
+      offerDistress();
       show();
+      if (priorHull && state.mode === 'flight' && !state.ui?.docked && isBlackFlagAdventure(state)) {
+        const receipt = priorHull;
+        const entity = state.entities?.get(receipt.fromId);
+        if (state.playerId === receipt.toId && entity?.alive && entity.data?.vesselId === receipt.fromVesselId) {
+          priorHull = null;
+          const generation = entity.data.shipjackGeneration;
+          deck()?.offerDecision({ id:'black-flag:prior-hull', kind:'info', sender:'PREVIOUS HULL · RECOVERY SIGNAL',
+            headline:entity.data.name || 'Your previous ship remains here',
+            detail:'Your former hull is still drifting beside you. Acquire its signal to transfer back or arrange its recovery. Its position is retained in the station registry.',
+            choices:[{id:'target',label:'Acquire previous hull signal'},{id:'leave',label:'Keep flying',cancel:true}],
+            onChoose: action => {
+              deck()?.resolveDecision('black-flag:prior-hull');
+              const live = state.entities?.get(receipt.fromId);
+              if (action !== 'target' || !isBlackFlagAdventure(state) || state.mode !== 'flight' || state.ui?.docked
+                || state.playerId !== receipt.toId || !live?.alive || live.data?.vesselId !== receipt.fromVesselId
+                || live.data?.shipjackGeneration !== generation) return;
+              laneInputWrite(state,'player.targetId',live.id);
+              laneInputWrite(state,'ui.objectSelection',null);
+              laneInputWrite(state,'input.targetAssistDisabled',false);
+              dismissed = null; signature = ''; show(true);
+            },
+          });
+        } else if (++receipt.waits >= 15) priorHull = null;
+      }
       if (!opportunity || state.mode !== 'flight' || state.ui?.docked || !isBlackFlagAdventure(state)) return;
       const payload = opportunity; opportunity = null;
       const entity = state.entities?.get(payload.entityId);

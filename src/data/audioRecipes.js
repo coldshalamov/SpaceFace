@@ -18,8 +18,10 @@ import { RUCKUS_AUDIO_RECIPES } from './ruckus.js';
 import { RUUD_AUDIO_RECIPES } from './ruud.js';
 import { BOLUS_AUDIO_RECIPES } from './bolusAudio.js';
 import { SECOND_RINSE_AUDIO_RECIPES } from './secondRinseAudio.js';
+import { DISCOVERY_AUDIO_RECIPES } from './discoveryAudio.js';
 
 export const RECIPES = [
+  ...DISCOVERY_AUDIO_RECIPES,
   ...MORROW_AUDIO_RECIPES,
   ...VESPER_AUDIO_RECIPES,
   ...BRACKET_AUDIO_RECIPES,

@@ -61,6 +61,7 @@ import { shipjack } from '../systems/shipjack.js';
 import { custodyConsequences } from '../systems/custodyConsequences.js';
 import { aceMemory } from '../systems/aceMemory.js';
 import { deedRecord } from '../systems/deedRecord.js';
+import { historyWear } from '../systems/historyWear.js';
 import { mail } from '../systems/mail.js';
 import { worldClock } from '../systems/worldClock.js';
 import { worldPressure } from '../systems/worldPressure.js';
@@ -171,7 +172,7 @@ import { ships } from '../systems/ships.js';
 import { crafting } from '../systems/crafting.js';
 import { heat } from '../systems/heat.js';
 import { traffic } from '../systems/traffic.js';
-import { drill, drillReadView } from '../systems/drill.js';
+import { drill, drillReadView, CHARGE_PAYLOAD_ORDER } from '../systems/drill.js';
 import { intervention } from '../systems/intervention.js';
 import { claims, claimsReadView } from '../systems/claims.js';
 import { beacons } from '../systems/beacons.js';
@@ -696,6 +697,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['crafting', crafting],
     ['heat', heat],
     ['deedRecord', deedRecord],   // THE WORLD REMEMBERS: listener-only ledger of player deeds under state.story.record
+    ['historyWear', historyWear], // PULSE-HISTORY: deeds → trinkets/decal/graffiti; loss ledger → memorial arrays
     ['traffic', traffic],
     ['drill', drill],
     ['claims', claims],
@@ -1337,6 +1339,36 @@ export function createRegistry(ctx) {
             return ready;
           },
           end: (opts) => { drillCall('end', { opts }); return null; },
+          // Bore-charge verbs ship as drillCall descriptors like begin/pulseScan; the
+          // boolean answers mirror-read the lane's last-settled drill state (same
+          // ≤1-tick staleness contract as pulseScan's ready).
+          armCharge: () => {
+            const d = st && st.drill;
+            const ready = !!(d && d.active && !d.charge && !(Number(d.chargeCooldown) > 0));
+            if (ready && !d.chargeArmed) drillCall('armCharge');
+            return ready;
+          },
+          disarmCharge: () => {
+            const armed = !!(st && st.drill && st.drill.chargeArmed);
+            if (armed) drillCall('disarmCharge');
+            return armed;
+          },
+          setChargeAim: (col, row) => { drillCall('setChargeAim', { col, row }); },
+          cycleChargePayload: () => {
+            const d = st && st.drill;
+            if (!d || !d.active || !d.chargeArmed) return null;
+            drillCall('cycleChargePayload');
+            const idx = CHARGE_PAYLOAD_ORDER.indexOf(d.chargePayload);
+            return CHARGE_PAYLOAD_ORDER[(idx + 1) % CHARGE_PAYLOAD_ORDER.length] || 'blast';
+          },
+          // The plant's own preview is the gate on the worker too: the op ships and the
+          // worker-side plantCharge refuses+warns on the bridge if the mirror was stale.
+          plantCharge: () => {
+            const active = !!(st && st.drill && st.drill.active);
+            if (active) drillCall('plantCharge');
+            return active;
+          },
+          chargePreview: () => readView.chargePreview(),
           getDrillTier: () => readView.getDrillTier(),
           getDrillDPS: () => readView.getDrillDPS(),
           getTargetTelemetry: (col, row) => readView.getTargetTelemetry(col, row),

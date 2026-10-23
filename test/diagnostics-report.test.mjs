@@ -82,6 +82,26 @@ test('no personal data: no save contents, no seed, no user paths', () => {
   assert.match(text, /Message: Failed at main\.js:1:1/);
 });
 
+test('no personal data: UNC shares and home folders with spaces collapse to a file name', () => {
+  const R = String.raw;
+  const text = buildDiagnosticsReport(liveState(), {
+    env: ENV, now: NOW, version: { version: '0.1.0', build: '' },
+    errors: [
+      { at: 0, label: 'x', message: R`read \\HOME-SERVER\Users\Jane Doe\save.json`, stack: R`at open (/Users/Jane Doe/Library/SpaceFace/io.js:4:2)` },
+      { at: 0, label: 'y', message: R`write /home/jane doe/.config/SpaceFace/profile.json`, stack: R`at C:\Users\Jane Doe\AppData\Roaming\SpaceFace\main.js:9:1` },
+    ],
+    failure: { code: 'BOOT_FAILED', message: R`Failed at file:///Users/Jane Doe/app/boot.js:3:3 near \\HOME-SERVER\share\Jane Doe\x.json` },
+  });
+  for (const secret of ['Jane', 'Doe', 'jane', 'HOME-SERVER', 'Library', 'AppData']) {
+    assert.ok(!text.includes(secret), `"${secret}" must not appear in the report:\n${text}`);
+  }
+  assert.match(text, /save\.json/);
+  assert.match(text, /io\.js:4:2/);
+  assert.match(text, /profile\.json/);
+  assert.match(text, /main\.js:9:1/);
+  assert.match(text, /Message: Failed at boot\.js:3:3 near x\.json/);
+});
+
 test('a failure block carries code, wording, message and loop coordinates', () => {
   const text = buildDiagnosticsReport(liveState(), {
     env: ENV, now: NOW, version: { version: '0.1.0', build: '' }, errors: [],

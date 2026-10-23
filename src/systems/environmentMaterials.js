@@ -256,7 +256,9 @@ export const environmentMaterials = {
    * the play radius restocks the ring with substance-stamped ammunition.
    */
   _tickRockSubstance(state) {
-    const sector = state.sector || (state.world && state.world.sectors && state.world.sectors[state.sectorId]) || null;
+    // The sector record lives at world.sectors[world.currentSectorId]; state.sector / state.sectorId are not set in production.
+    const world = state.world;
+    const sector = (world && world.sectors && world.sectors[world.currentSectorId]) || state.sector || null;
     const profile = sector ? resolveSectorVisualProfile(sector) : null;
     const sunlit = !!(profile && profile.lighting && Number(profile.lighting.key) >= 3.0);
     const now = num(state.simTime);
@@ -274,8 +276,9 @@ export const environmentMaterials = {
       }
     }
     // Restock: only a live survival run owes the floor; open flight keeps ambient fields.
-    if (!(state.run && state.run.kind === 'survival')) return;
-    const player = state.player;
+    if (!(state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive')) return;
+    // state.player is the metadata record (no position); the flying ship is the entity it points at.
+    const player = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
     if (!player || !player.pos || typeof this.helpers?.spawnEntity !== 'function') return;
     const PLAY_RADIUS = 800, FLOOR = 6;
     let live = 0;

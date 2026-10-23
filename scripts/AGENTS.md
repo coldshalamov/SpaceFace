@@ -2,7 +2,8 @@
 # `scripts/` agent notes
 
 Executable checks, probes, index builders, launch helpers, and control-plane readers. Find the
-public command in `package.json`, then inspect only its direct script/imports.
+public command in `package.json`, then inspect only its direct script/imports. The 660+ scripts
+are tiered by prefix — read [`SCRIPT_TIERS.md`](./SCRIPT_TIERS.md) first.
 `program-dispatch.mjs` is a direct read-only command; it needs no coordination window.
 
 **Development iteration starts without a full boot:** `node scripts/agent-loop.mjs plan` names

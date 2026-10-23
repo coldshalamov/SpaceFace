@@ -74,8 +74,13 @@ try {
   await page.screenshot({path:`${out}/03-safe-passage.png`});
   {
     await approach();
+    const intended=await page.evaluate(()=>({targetId:window.SF.state.player.targetId,generation:window.SF.state.entities.get(window.SF.state.player.targetId)?.occupantGeneration,previewTargetId:window.SF.state.masslineAcquisition?.selected?.targetId}));
+    if(intended.previewTargetId!==intended.targetId)throw new Error(`Massline preview selects ${intended.previewTargetId ?? 'nothing'}, not the prize ${intended.targetId}; align through ordinary flight controls before latching.`);
     if(mobile)await page.getByRole('button',{name:/Tether: tap to latch or cut/}).tap();
     else await page.keyboard.press('Space');
+    await page.waitForFunction(({targetId,generation})=>{const s=window.SF.state,l=s.player.tether,a=s.combat?.attachments?.byId?.[l.attachmentId];return l.active&&l.targetId===targetId&&a?.state==='active'&&a.ownerId===s.playerId&&a.targetId===targetId&&a.targetGeneration===generation;},intended,{timeout:10000});
+    report.masslineAttachment=await page.evaluate(()=>({...window.SF.state.combat.attachments.byId[window.SF.state.player.tether.attachmentId]}));
+    step('physical restraint',true,'Authoritative Massline attachment names the prize and its exact occupant generation.');
     const before=await page.evaluate(()=>({id:window.SF.state.playerId,at:window.SF.state.simTime}));
     await page.waitForFunction(at=>window.SF.state.simTime>at+1.6,before.at,{timeout:30000});
     await press(/Reach service port/);

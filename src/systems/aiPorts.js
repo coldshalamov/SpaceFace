@@ -91,6 +91,8 @@ export const aiPorts = {
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || (ctx.helpers = {});
     this._pendingManeuvers = new Map();
+    // O12: last flushed maneuver per entity, replayed on the extra fixed steps of a catch-up frame.
+    this._heldManeuvers = new Map();
     this._capabilityCacheTick = -1;
     this._capabilityCache = new Map();
     this._tagCacheTick = -1;
@@ -168,9 +170,28 @@ export const aiPorts = {
 
   update(dt, state) {
     clearIneligibleAIFiringIntents(state, this.helpers);
-    if (!this._pendingManeuvers || this._pendingManeuvers.size === 0) return;
+    // O12: a physics control is consumed once per fixed step, but the AI decides once per frame -
+    // its stack is a near owner and skips the extra steps of a catch-up frame. Without a replay,
+    // a 30 fps frame (two steps) gave every AI hull thrust on one step and coasting on the other.
+    // This port is a table owner so it runs on every step; on an extra step it re-issues each
+    // maneuver the frame's first step flushed. A full step never replays, so single-step frames
+    // (and the deterministic sims) are untouched.
+    const extraStep = (state.simCatchupIndex | 0) > 0;
+    const held = this._heldManeuvers || (this._heldManeuvers = new Map());
+    // Hulls that stopped requesting (dead, despawned, re-tasked) leave their held entry behind
+    // on full steps; sweep the stale ones now and then so the map stays the size of the roster.
+    if (!extraStep && held.size > 0 && (state.tick & 63) === 0) {
+      for (const [key, entry] of held) if (state.tick - entry.acceptedTick > 4) held.delete(key);
+    }
+    const hasPending = !!this._pendingManeuvers && this._pendingManeuvers.size > 0;
+    if (!hasPending && !(extraStep && held.size > 0)) return;
     if (!usesSg02DynamicAuthority(state) || !sg02Ready(state)) {
-      this._dropPending(usesSg02DynamicAuthority(state) ? 'physics_owner_unavailable' : 'physics_backend_unavailable');
+      held.clear();
+      if (hasPending) this._dropPending(usesSg02DynamicAuthority(state) ? 'physics_owner_unavailable' : 'physics_backend_unavailable');
+      return;
+    }
+    if (!hasPending) {
+      this._replayHeldManeuvers(dt, state, held);
       return;
     }
 
@@ -187,9 +208,25 @@ export const aiPorts = {
         continue;
       }
       writePhysicsControl(entity, controlFromManeuver(entity, entry.request, dt, state));
+      held.set(stableId(entry.request.entityId), entry);
       this._diag.flushedManeuvers++;
     }
     pending.length = 0;
+    if (extraStep) this._replayHeldManeuvers(dt, state, held);
+  },
+
+  // Re-issue maneuvers accepted earlier in this same frame for hulls that got no fresh request on
+  // this extra step. The tick gap equals the catch-up index only inside the frame that flushed it,
+  // so an older held maneuver is retired here instead of thrusting on stale orders.
+  _replayHeldManeuvers(dt, state, held) {
+    const index = state.simCatchupIndex | 0;
+    for (const [key, entry] of held) {
+      if (entry.acceptedTick >= state.tick) continue;            // fresh this step: already written
+      if (state.tick - entry.acceptedTick > index) { held.delete(key); continue; }
+      const entity = getEntity(state, entry.request.entityId);
+      if (!isLiveCraft(entity)) { held.delete(key); continue; }
+      writePhysicsControl(entity, controlFromManeuver(entity, entry.request, dt, state));
+    }
   },
 
   inspect() {

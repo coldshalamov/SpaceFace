@@ -43,6 +43,6 @@ test('a retry backoff that is still blocking counts even when this instance saw 
   assert.equal(stalled.length, 0, 'not before 3 s');
   for (let i = 0; i < 100; i += 1) { clock.t += 1000 * SIM_DT; sim.step(SIM_DT); }
   assert.equal(stalled.length, 1, 'reported once the 3 s have passed');
-  assert.equal(toasts.length, 1);
+  assert.equal(toasts.length, 0, 'the stall is an event for the receipt lane, never a sim-visible bus toast');
   assert.ok(stalled[0].retryInMs > 0, 'the payload says how long until the next attempt');
 });

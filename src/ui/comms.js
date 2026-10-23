@@ -31,6 +31,8 @@ const COMMS_STYLE_ID = 'sf-comms-style';
 
 // category → accent color + label prefix. Most are NOT addressed to the player.
 const CATEGORY_STYLE = {
+  machine:  { color: 'var(--dp-ice)', tag: 'PROTOCOL', glow: 'none' },
+  ecology:  { color: 'var(--dp-hand)', tag: 'FIELD', glow: 'none' },
   ambient:  { color: 'var(--ink-mute)',  tag: 'CHN',  glow: 'none' },
   trap:     { color: 'var(--warn)',      tag: 'ALERT', glow: '0 0 8px rgba(255,179,71,.4)' },
   personal: { color: 'var(--accent-3)',  tag: 'MSG',  glow: '0 0 8px rgba(167,139,202,.4)' },
@@ -41,6 +43,12 @@ const CATEGORY_STYLE = {
 const MAX_LIVE = 4;          // max simultaneous live comms entries on the feed
 const MAX_BACKLOG = 80;      // retained history for the comms backlog view
 const SCENARIO_DIALOGUE_TTL = 18; // authored mission comms need to survive cold-open/load stalls.
+
+export function discoveryCommsPayload(payload) {
+  const category = payload?.kind || payload?.channel;
+  if (!['machine', 'ecology'].includes(category) || typeof payload.text !== 'string' || !payload.text.trim()) return null;
+  return { sender: payload.from || payload.sender || 'FIELD NOTES', text: payload.text, category };
+}
 
 export function branchLifecycleCommsPayload(payload) {
   const lifecycle = payload && payload.lifecycle && typeof payload.lifecycle === 'object' ? payload.lifecycle : {};
@@ -285,7 +293,12 @@ export function createComms(ctx) {
   // capped/queued comms surface instead of mirroring it into transient HUD toasts.
   listen('comms:message', (payload) => {
     if (!payload || typeof payload.text !== 'string' || !payload.text.trim()) return;
-    pushComms({ sender: payload.sender || 'TRAFFIC', text: payload.text, category: 'personal' });
+    const category = ['machine', 'ecology'].includes(payload.channel) ? payload.channel : 'personal';
+    pushComms({ sender: payload.sender || 'TRAFFIC', text: payload.text, category });
+  });
+  listen('comms:log', (payload) => {
+    const comms = discoveryCommsPayload(payload);
+    if (comms) pushComms(comms);
   });
   listen('scenario:dialogueLine', (payload) => {
     const comms = scenarioDialogueCommsPayload(payload || {});

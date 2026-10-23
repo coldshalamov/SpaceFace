@@ -348,6 +348,15 @@ export function suppressionFieldAt(sectorId, x, z) {
 //   reveal:        story.verge flag set on first close scan ('revealed')
 //   revokedRoute:  for the revoked route site — the route it administratively seals
 export const MACHINE_SITES = Object.freeze({
+  // An unexplained working prism on the normal opening mining approach. It grants no lore,
+  // directive or protocol state; the later Verge encounters still earn those discoveries.
+  helios_unanswered_survey: Object.freeze({
+    siteId: 'helios_unanswered_survey', sectorId: 'sector_helios_prime', poiId: null,
+    name: 'Unanswered return', kind: 'monolith', tease: true, center: Object.freeze({ x: 480, z: -220 }),
+    radius: 520, machines: Object.freeze([Object.freeze({ kind: 'surveyor_prism', dx: 0, dz: 0 })]),
+    directive: null, reveals: null,
+    beat: 'A small faceted object crosses the ore seam against the traffic. It measures your hull, then resumes work. No registry answers the return.',
+  }),
   charon_pylon_field: Object.freeze({
     siteId: 'charon_pylon_field',
     sectorId: 'sector_charon_expanse',

@@ -1186,6 +1186,11 @@ export const input = {
         if (d.op === 'begin' && typeof drill.begin === 'function') drill.begin(d.asteroidId);
         else if (d.op === 'pulseScan' && typeof drill.pulseScan === 'function') drill.pulseScan();
         else if (d.op === 'end' && typeof drill.end === 'function') drill.end(d.opts);
+        else if (d.op === 'armCharge' && typeof drill.armCharge === 'function') drill.armCharge();
+        else if (d.op === 'disarmCharge' && typeof drill.disarmCharge === 'function') drill.disarmCharge();
+        else if (d.op === 'setChargeAim' && typeof drill.setChargeAim === 'function') drill.setChargeAim(d.col, d.row);
+        else if (d.op === 'cycleChargePayload' && typeof drill.cycleChargePayload === 'function') drill.cycleChargePayload();
+        else if (d.op === 'plantCharge' && typeof drill.plantCharge === 'function') drill.plantCharge();
         break;
       }
       case 'gamepadFrame':

@@ -14,7 +14,7 @@
 // Split per law: this shell owns lifecycle + DOM + events; asteroidRenderer3d owns pixels;
 // asteroidController owns modes/input. Excavation sim stays in systems/drill.js; durable
 // structures/production in systems/asteroidSites.js.
-import { DRILL_CONST, tileIndex, generateDrillField } from '../../systems/drill.js';
+import { DRILL_CONST, tileIndex, generateDrillField, chargeRefusalText } from '../../systems/drill.js';
 import { BINDINGS } from '../bindings.js';
 import { injectOrreryMobileScreens } from '../orrery/mobileScreenLayouts.js';
 import { resolveDrillControlMap } from '../screens/drill.js';
@@ -2324,6 +2324,20 @@ export const asteroidScreen = {
         hudCache.claimHide = claimHidden;
         hudEls.claim.style.display = claimHidden ? 'none' : '';
       }
+      // An armed bore charge owns the alert slot: the live quote (cost, banked ore, spill,
+      // hazards) re-quotes on the HUD cadence so the aim's verdict is visible before the
+      // second R commits it — sighted players get the same numbers the announce line speaks.
+      if (d.chargeArmed && typeof drillSys.chargePreview === 'function') {
+        const pv = drillSys.chargePreview();
+        const quote = pv && pv.ok
+          ? chargeQuoteText(pv)
+          : `Bore charge — ${chargeRefusalText(pv && pv.reason, pv && pv.cost)}`;
+        const sev = !pv || !pv.ok ? 'bad' : ((pv.selfDanger || pv.gasCount > 0) ? 'warn' : 'good');
+        if (quote) showBanner('charge', quote, sev);
+      } else {
+        clearBanner('charge');
+      }
+
       // ORRERY Surface 1 (F1/F2): the staged rock + Lamp Key stand down once a site exists.
       syncEmptyState(!s);
       if (s && !s.anchored && bannerKind == null) {

@@ -564,6 +564,8 @@ export function faunaFieldNote(t, state) {
   if (!t || t.type !== 'fauna' || t.alive === false) return null;
   if (faunaRevelationFor(state) < 2) return null;
   const eco = t.data && t.data.ecology || {};
+  const scannedSpecies = state?.world?.alienEcology?.taxonomy?.scannedSpecies;
+  if (scannedSpecies && !scannedSpecies[eco.speciesId]) return null;
   const species = eco.speciesId ? faunaSpeciesById(eco.speciesId) : null;
   if (!species) return null;
   const facts = [];

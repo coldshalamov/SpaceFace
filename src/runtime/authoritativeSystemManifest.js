@@ -70,6 +70,14 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // init order matters (bus subscriptions); all are deliberately absent from
   // PRODUCTION_UPDATE_ORDER.
   'impoundPayPrompt', 'warrantOfferPrompt', 'moralTrapPrompt', 'wreckChoicePrompt', 'stuckTowPrompt',
+  // deedRecord: the world-remembers ledger was a lookup-only entry — it materialized but never
+  // initialized, so its receipt listeners never attached and the deed record stayed empty in
+  // production (found while wiring PULSE-HISTORY). Event-only: no update, no clock.
+  'deedRecord',
+  // historyWear (PULSE-HISTORY, row 440): event-only like the prompts — it listens on
+  // lossLedger:recorded and dock:docked, projects the deed ledger into trinket/decal intents and
+  // memorial arrays, and is deliberately absent from PRODUCTION_UPDATE_ORDER.
+  'historyWear',
   'cargoConscience', 'securityReadoutSystem', 'priceForecastSystem', 'contractClausesSystem',
   'moralTrapSystem',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
@@ -358,7 +366,7 @@ export function calendarCohortTickMod(id) {
 
 export const NEAR_CLOCK_IDS = Object.freeze([
   'flybyFocus', 'scanner', 'spectrum', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',
-  'pirateDisengage', 'aiSlot', 'aiPorts', 'aiEncounter', 'traffic', 'titles', 'planetRuntime',
+  'pirateDisengage', 'aiSlot', 'aiEncounter', 'traffic', 'titles',
   'towlineTable', 'borrowedVoice', 'npcJobsRuntime',
   // Observer receipts; primary ticks already throttle internally. Catch-up extra steps
   // must not rescan the island just to notice a flee flag.
@@ -382,6 +390,10 @@ export const NEAR_CLOCK_IDS = Object.freeze([
 export const TABLE_CLOCK_IDS = Object.freeze([
   // Input and control owners — per-tick player intent and assists.
   'input', 'autoTargetAssist', 'bulletTime', 'cloak', 'actions', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'mercyService', 'wreckCourt',
+  // Physical-integration owners that feed the physics step. A control or impulse is consumed once
+  // per fixed step, so on a catch-up frame they must run on every step, not once per frame:
+  // aiPorts flushes (and replays) the AI's maneuvers, planetRuntime queues planet drag/heat/harvest.
+  'aiPorts', 'planetRuntime',
   // Flight + physics authorities: single writers of position/velocity.
   'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack', 'secondRinse',
   // Nemesis: arc engine cadence + per-fixed-step spawn-request drain.

@@ -101,7 +101,7 @@ export function factionRepToastText(state, payload = {}) {
 // comms:log had emitters (barks, encounter acks, survey/rumor lines) and zero
 // consumers — every line evaporated. Map it onto the receipt lane so comms
 // actually read. Kinds whose emitter already toasts the same beat stay out.
-const COMMS_SELF_TOASTED_KINDS = new Set(['salvage']);
+const COMMS_SELF_TOASTED_KINDS = new Set(['salvage', 'machine', 'ecology']);
 const COMMS_TOAST_TTL = 5;
 
 export function commsToastSpec(payload = {}) {

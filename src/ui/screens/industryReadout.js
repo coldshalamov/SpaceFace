@@ -126,10 +126,10 @@ export function industryReadout({ drones = [], traders = [], outposts = [], site
   ];
   const sentence = lines.length
     ? lines.map((line) => line.text).join(' ')
-    : 'No industrial output on record.';
+    : 'No industrial output yet. Start in Drones: the purchase row shows the research and bay your first miner needs.';
   const crest = lines.length
     ? (lines.find((line) => line.limit !== 'Running') || lines[0]).crest
-    : 'No output on record';
+    : 'No output yet · Open Drones for your first miner’s requirements';
   return { lines, sentence, crest };
 }
 

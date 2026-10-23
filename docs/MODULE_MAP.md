@@ -147,7 +147,7 @@
 | File | Role |
 |---|---|
 | `src/systems/ships.js` (39KB) | The ONLY writer of `entity.derived`/ship stat blocks (`getDerivedStats()`). Shipyard + outfitting logic. `makeShipEntitySpec` default `team:0` (line ~388). |
-| `src/systems/shipjack.js` + `src/shipjack/` | Adventure-only custody/registry coordinator, generation-guarded physical takeover, yard quotes/jobs and finite retrieval. `shipControlTransfer.js` serves the ships owner; existing economy, cargo, law and missions retain settlement authority. See [BLACK FLAG](BLACK_FLAG.md) for limits and owner crosswalk. |
+| `src/systems/shipjack.js` + `src/shipjack/` | Adventure-only custody/registry coordinator, generation-guarded physical takeover, exact-component provenance/resale quotes, yard jobs and finite retrieval. `shipControlTransfer.js` serves ships; economy, cargo, law and missions retain settlement authority. See [BLACK FLAG](BLACK_FLAG.md) for limits and owner crosswalk. |
 | `src/systems/wingmen.js` | Wingmen — all `team:0`, same as player. |
 | `src/systems/crafting.js` | Refining/manufacturing recipes + build queue. |
 | `src/data/ships.js` | 13 ships (T0-T5), prices, slots, tech-gates. Starter = `ship_kestrel` (40u cargo). **No direct GLB reference** — the link is in `src/render/partsLibrary.js`. |

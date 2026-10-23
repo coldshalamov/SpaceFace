@@ -1110,6 +1110,41 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .orr-mdial__trace-read { bottom:-40px; }
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-clock__of { display:none; }
 }
+/* a 1024×768-class desktop (761–1100 wide, taller than 640): the hang kept its 350px and the side
+   column 220px, so the reading was ~290px. Values wrapped to four lines and both route ends ellipsized.
+   A 300px hang and a 176px side column (same as the 960 band) give the reading ~400px; the route ends
+   take the same two-row reflow. */
+@media (min-width:761px) and (max-width:1100px) and (min-height:641px) {
+  ${ML} { --ml-dial:150px; grid-template-columns:minmax(0, 300px) minmax(0, 1fr) !important; column-gap:28px !important; }
+  ${ML} .sf-mlog-card { grid-template-columns:minmax(0, 1fr) 176px; column-gap:20px; }
+  ${ML} .sf-mlog-card > h2.k-t-title { font-size:clamp(22px, 2.6vw, 28px) !important; }
+  ${ML} .ml-route__ends { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); grid-template-rows:auto auto; gap:4px 12px; align-items:start; margin-bottom:8px !important; }
+  ${ML} .ml-route__mid { grid-column:1 / -1; grid-row:1; flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:10px 16px; }
+  ${ML} .ml-route__from { grid-row:2; grid-column:1; }
+  ${ML} .ml-route__to { grid-row:2; grid-column:2; }
+  ${ML} :is(.ml-route__from, .ml-route__to) { white-space:normal; text-overflow:clip; line-height:1.3; }
+  ${ML} .ml-route__to .sf-entity-link { white-space:nowrap; }
+  ${ML} .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.1em !important; }
+}
+/* 640–760: the dial and its verbs shared one wrapping row, so the verbs fell under the dial onto
+   its NO CLOCK reading and ABANDON took a line of its own. Dial left, verbs stacked to its right,
+   room under the dial for its reading. */
+@media (min-width:640px) and (max-width:760px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side {
+    flex-wrap:nowrap; align-items:center; gap:0 26px; margin:0 0 34px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side > :not(.sf-mlog-btns) { flex:none; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side > .sf-mlog-btns { flex:0 1 auto; min-width:0; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side > .sf-mlog-btns { margin:0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row {
+    flex-direction:column; flex-wrap:nowrap; align-items:flex-start; gap:12px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row > li { align-items:flex-start; }
+}
+@media (min-width:640px) and (max-width:700px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog { --ml-dial:132px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side { gap:0 18px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.08em !important; white-space:normal !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns .k-word-sub { letter-spacing:.1em !important; }
+}
 /* under 640 wide (phones and narrow windows): hang|stage stayed two columns, so the 360px hang
    pushed the stage off the right edge and the chosen contract's dossier never showed. Stack them:
    a capped hang, then the dossier scrolling beneath it with the dial and verbs in one row. */
@@ -1164,6 +1199,24 @@ html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog 
 }
 @media (min-width:1101px) {
   html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms { grid-template-columns:fit-content(13em) minmax(0, 1fr) !important; }
+}
+/* 960×540-class (901–1100 wide, ≤640 tall; 761–900 keeps the earlier band): the reading ended at the fold, so only the route band's
+   THIS SECTOR line showed. A slightly narrower hang, one-line labels, a tighter ledger and the route
+   ends back on one row (FROM | THIS SECTOR | TO, names wrapping) bring the whole lane into frame. */
+@media (min-width:901px) and (max-width:1100px) and (max-height:640px) {
+  ${ML} { grid-template-columns:minmax(0, 284px) minmax(0, 1fr) !important; }
+  ${ML} > .k-stage.sf-mlog-stage { padding-bottom:4px !important; margin-bottom:-28px !important; }
+  ${ML} .ml-route { --ml-disc:36px; }
+  ${ML} .ml-route__ends { grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows:auto; align-items:start; gap:12px; }
+  ${ML} .ml-route__mid { grid-column:2; grid-row:1; flex-direction:column; align-items:center; gap:3px; }
+  ${ML} :is(.ml-route__from, .ml-route__to) { grid-row:1; line-height:1.25; }
+  ${ML} .ml-route__from { grid-column:1; }
+  ${ML} .ml-route__to { grid-column:3; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms { grid-template-columns:fit-content(10.5em) minmax(0, 1fr) !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row { column-gap:12px; padding-top:2px !important; padding-bottom:2px !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-62 { letter-spacing:.1em !important; white-space:nowrap; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { line-height:1.25 !important; }
+  ${ML} .sf-mlog-card > .ml-route-host { margin-top:8px; }
 }
 @media (forced-colors:active) {
   ${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"] { outline:2px solid Highlight !important; }

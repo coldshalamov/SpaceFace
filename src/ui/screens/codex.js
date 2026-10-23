@@ -42,6 +42,7 @@ import { knownAces, stanceForRecord, rememberedBarkFor } from '../../data/namedA
 import { FACTION_LABELS } from '../../data/encounters.js';
 import { logbookEntries } from '../../chronicler/logbook.js';
 import { logbookStill } from '../logbookMedia.js';
+import { decodedSuhlClauses, namesForTheDead } from '../../data/discoveryPresentation.js';
 import { hash32 } from '../../core/rng.js';
 import { recordSectionModel } from './codexRecord.js';
 
@@ -1503,6 +1504,15 @@ export const codexScreen = {
       art: codexEntryArt('chronicler-story'),
     }));
     this._section('Pilot’s logbook', toEntries(journal));
+    this._section('Suhl’s Clauses', toEntries(decodedSuhlClauses(ctx?.state).map(row => ({
+      id: `world:clause:${row.index}`, name: `Clause ${row.index + 1}`, sub: 'Accepted comparison',
+      body: row.text, note: `Comparison ${row.incidentId}.`, art: codexEntryArt('chronicler-story'),
+    }))), 'An accepted machine appeal earns a decoded clause. The transcript stays sealed until then.');
+    this._section('Names for the Dead', toEntries(namesForTheDead(ctx?.state).map(row => ({
+      id: `world:dead:${row.id}`, name: row.name, sub: row.place, body: row.body,
+      note: `Recorded at ${Math.floor(row.at / 60)}:${String(Math.floor(row.at % 60)).padStart(2, '0')}. Cited ${row.citation}.`,
+      art: codexEntryArt('chronicler-story'),
+    }))), 'No named loss is recorded. This page never fills the silence with invented people.');
   },
 
   _renderDiscoveries(ctx) {

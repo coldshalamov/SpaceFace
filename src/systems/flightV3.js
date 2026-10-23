@@ -1388,6 +1388,8 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     return null;
   }
 
+  if (autopilot.rendezvous === true) return resolveMovingRendezvous(host, entity, input, state, profile, target, autopilot);
+
   const pos = entity.pos || { x: 0, z: 0 };
   const vel = entity.vel || { x: 0, z: 0 };
   const dx = finite(target.x) - finite(pos.x);
@@ -1579,6 +1581,51 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   return { active: true, input: nextInput, telemetry };
 }
 
+function resolveMovingRendezvous(host, entity, input, state, profile, target, autopilot) {
+  const vessel = target.entity;
+  if (!vessel || vessel.type !== 'ship' || vessel.alive === false || !(vessel.hull > 0)) {
+    stopAutopilot(host, state, 'lost-target');
+    return null;
+  }
+  const tx = finite(vessel.vel?.x), tz = finite(vessel.vel?.z);
+  const targetSpeed = Math.hypot(tx, tz);
+  const ceiling = positive(profile.combatSpeed, positive(profile.maxSpeed, 150));
+  if (targetSpeed > ceiling * .9) {
+    stopAutopilot(host, state, 'target-too-fast');
+    return null;
+  }
+  const dx = finite(entity.pos.x) - target.x, dz = finite(entity.pos.z) - target.z;
+  const distance = Math.hypot(dx, dz);
+  if (!autopilot.rendezvousOffset) {
+    const length = distance || 1;
+    autopilot.rendezvousOffset = { x: distance > 1 ? dx / length : -Math.cos(vessel.rot), z: distance > 1 ? dz / length : -Math.sin(vessel.rot) };
+  }
+  const direction = targetSpeed > 2 ? { x: -tx / targetSpeed, z: -tz / targetSpeed } : autopilot.rendezvousOffset;
+  const standoff = Math.max(80, Math.min(100, (entity.radius || 14) + (vessel.radius || 14) + 12));
+  const aim = { ...target, x: target.x + direction.x * standoff, z: target.z + direction.z * standoff, radius: 0 };
+  syncAutopilotAvoidanceContext(autopilot, aim);
+  const errorDistance = Math.hypot(aim.x - entity.pos.x, aim.z - entity.pos.z);
+  const guidance = errorDistance > .5
+    ? computeAutopilotGuidance(state, entity, aim, errorDistance, 8, autopilot)
+    : { x: 0, z: 0, avoiding: false };
+  const length = Math.hypot(guidance.x, guidance.z) || 1;
+  const closing = Math.min(guidance.avoiding ? 45 : 110, errorDistance * .9);
+  let vx = tx + guidance.x / length * closing, vz = tz + guidance.z / length * closing;
+  const speed = Math.hypot(vx, vz);
+  if (speed > ceiling) { vx *= ceiling / speed; vz *= ceiling / speed; }
+  const relativeSpeed = Math.hypot(entity.vel.x - tx, entity.vel.z - tz);
+  const status = guidance.avoiding ? 'rendezvous-avoiding' : errorDistance < 12 && relativeSpeed < 10 ? 'rendezvous-holding' : 'rendezvous-approach';
+  const heading = Math.hypot(vx, vz) > 2 ? Math.atan2(vz, vx) : Math.atan2(target.z - entity.pos.z, target.x - entity.pos.x);
+  const nextInput = { ...input, throttle: 0, strafe: 0, turn: 0, boost: false, brake: false,
+    rendezvous: { velocity: { x: vx, z: vz }, heading } };
+  autopilot.status = status;
+  autopilot.distance = distance;
+  autopilot.relativeSpeed = relativeSpeed;
+  const telemetry = { dist: distance, arrivalRadius: standoff, status, relativeSpeed, avoiding: !!guidance.avoiding, target };
+  syncAutopilotInput(state, nextInput, telemetry);
+  return { active: true, input: nextInput, telemetry };
+}
+
 function hasManualFlightInput(input) {
   if (!input) return false;
   return Math.abs(finite(input.moveX ?? input.strafe, 0)) > 0.08 ||
@@ -1645,6 +1692,7 @@ function stopAutopilot(host, state, reason) {
     bus.emit('nav:autopilot', autopilot);
     bus.emit('toast', {
       text: reason === 'arrived' ? 'Autopilot arrived'
+        : reason === 'target-too-fast' ? 'Target outruns rendezvous thrust — close manually or disable its drive'
         : reason === 'drive-out' ? 'Drive out — autopilot can\'t hold'
         : 'Autopilot disengaged',
       kind: reason === 'arrived' ? 'good' : 'info',

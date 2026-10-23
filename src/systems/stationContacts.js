@@ -4,6 +4,7 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { hash32 } from '../core/rng.js';
+import { createManifestTable } from './manifestGame.js';
 import {
   CONTACT_COUNTER_DEFS,
   createInitialStationContactCounters,
@@ -230,12 +231,22 @@ export const stationContacts = {
     ensureContactBag(this.state);
     ensureCounterBag(this.state);
     ensureLifeState(this.state);
+    this._manifestTable?.dispose();
+    this._manifestTable = createManifestTable(ctx);
     const on = (event, handler) => {
       this.bus.on(event, handler);
       this._subs.push([event, handler]);
     };
     on('ui:talkContact', (payload = {}) => this._recordTalk(payload));
     on('stationContact:counterDelta', (payload = {}) => this._recordCounterDelta(payload));
+    on('stationContact:manifestWon', (payload = {}) => {
+      const id = String(payload.contactId || '');
+      if (!id.startsWith('contact_') || !payload.matchId) return;
+      const bag = ensureContactBag(this.state), record = normalizeStationContactRecord(bag[id]);
+      record.flags.manifest_won = true;
+      bag[id] = record;
+      this.bus.emit('stationContact:changed', { contactId: id, record });
+    });
     on('freight:arrival', (payload = {}) => {
       this._recordFreight(payload, 'arrival');
       this._noteYuneCleanArrival(payload);
@@ -292,6 +303,7 @@ export const stationContacts = {
   },
 
   newGame() {
+    this._manifestTable?.reset();
     if (!this.state) return;
     this.state.player.stationContacts = {};
     this.state.player.stationContactCounters = createInitialStationContactCounters();
@@ -787,6 +799,7 @@ export const stationContacts = {
   },
 
   destroy() {
+    this._manifestTable?.dispose(); this._manifestTable = null;
     for (const [event, handler] of (this._subs || [])) this.bus.off(event, handler);
     this._subs = [];
     this._clearVonnFreightReceipts();

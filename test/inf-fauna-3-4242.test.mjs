@@ -75,6 +75,7 @@ test('the archive crab piles host-archive debris, and the pile collapses when th
   assert.ok(emitLog.some((row) => row.type === 'toast'
     && row.p.text === 'The archive crab finishes a pile — arranged debris, still readable.'));
   ae.revelation = 2;
+  handleAlienEcologyEvent(world, 'scan:pulse', { source: 'player-scanner', pos: { ...crab.pos }, radius: 100 });
   const note = faunaFieldNote(crab, state);
   assert.ok(note && note.includes('DEBRIS PILE · HOST ARCHIVE'));
 

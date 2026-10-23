@@ -21,7 +21,7 @@ import {
   serializeAlienEcologyState,
   tickAlienEcology,
 } from '../src/systems/alienEcology.js';
-import { commsToastSpec } from '../src/ui/floatingText.js';
+import { discoveryCommsPayload } from '../src/ui/comms.js';
 
 const site = ALIEN_SITES.harvest_deep;
 const CLOSE = site.arrivalBands.close;
@@ -159,12 +159,12 @@ test('the notebook and one sample are the lure recipe', () => {
     { lure: LURE_FILAMENT, shown: true, edge: true, asked: true },
   );
   for (const line of [LURE_NEED, LURE_MADE, LURE_MADE_RESIN, LURE_SHOWN]) {
-    const notice = commsToastSpec({ from: site.name, kind: 'ecology', text: line }).text;
+    const notice = discoveryCommsPayload({ from: site.name, kind: 'ecology', text: line }).text;
     assert.equal(notice.includes('...'), false, notice);
   }
-  const made = commsToastSpec({ from: site.name, kind: 'ecology', text: LURE_MADE }).text;
-  const resin = commsToastSpec({ from: site.name, kind: 'ecology', text: LURE_MADE_RESIN }).text;
-  const shown = commsToastSpec({ from: site.name, kind: 'ecology', text: LURE_SHOWN }).text;
+  const made = discoveryCommsPayload({ from: site.name, kind: 'ecology', text: LURE_MADE }).text;
+  const resin = discoveryCommsPayload({ from: site.name, kind: 'ecology', text: LURE_MADE_RESIN }).text;
+  const shown = discoveryCommsPayload({ from: site.name, kind: 'ecology', text: LURE_SHOWN }).text;
   assert.equal(made.includes('Leave and come back'), true);
   assert.equal(resin.includes('Leave and come back'), true);
   assert.equal(shown.includes('The maw answers the lure'), true);

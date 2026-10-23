@@ -67,10 +67,15 @@ try {
 // ------------------------------------------------------------------ args
 
 function parseArgs(argv) {
-  const parsed = { headed: argv.includes('--headed'), json: null, only: null, pixels: argv.includes('--pixels') };
+  const parsed = { headed: argv.includes('--headed'), json: null, only: null, pixels: argv.includes('--pixels'), viewport: null };
   for (const arg of argv) {
     if (arg.startsWith('--json=')) parsed.json = arg.slice('--json='.length);
     if (arg.startsWith('--only=')) parsed.only = arg.slice('--only='.length).split(',').map((s) => s.trim()).filter(Boolean);
+    if (arg.startsWith('--viewport=')) {
+      const m = /^(\d+)x(\d+)$/.exec(arg.slice('--viewport='.length));
+      if (!m) throw new Error('--viewport expects WxH, e.g. --viewport=1280x720');
+      parsed.viewport = { width: Number(m[1]), height: Number(m[2]) };
+    }
   }
   return parsed;
 }
@@ -88,7 +93,9 @@ async function auditAllSurfaces(surfaces) {
   const { loadPlaywright } = await import('./lib/load-playwright.mjs');
   const { chromium } = await loadPlaywright();
 
-  const viewport = { width: 1920, height: 1080 };
+  // --viewport=WxH audits another window size (RC-49 audits the station at 1280x720). Default
+  // stays the 1080p pass every existing gate and receipt was recorded at.
+  const viewport = args.viewport || { width: 1920, height: 1080 };
   const ordered = orderForOneBoot(surfaces);
   const preLaunchIds = new Set(ordered.filter((s) => s.entry.kind === 'boot' || s.entry.kind === 'boot-nested').map((s) => s.id));
   const destructive = ordered.filter((s) => s.destructive || s.isolatedBoot);

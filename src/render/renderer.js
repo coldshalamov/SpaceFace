@@ -40,6 +40,7 @@ import {
 import { CAMERA_NEAR_MARGIN_WU, modelTruthPlanarRadius, modelTruthSlideOutside } from '../data/modelTruth.js';
 import { createSpaceBackground } from './spaceBackground.js';
 import * as parallaxLayers from './parallaxLayers.js';
+import * as farPlaneLife from './farPlaneLife.js';
 import {
   easeSectorTransition,
   SECTOR_VISUAL_TRANSITION_SECONDS,
@@ -10801,6 +10802,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   if (disposeGpu) {
     invokeRendererDisposer(background, 'space background', true);
     invokeRendererDisposer(parallax, 'parallax layers', true);
+    invokeRendererDisposer(options.farPlaneLife || farPlaneLife, 'far plane life', true);
     invokeRendererDisposer(collision, 'collision debug', true);
     invokeRendererDisposer(owner.bloom, 'bloom', true);
     invokeRendererDisposer(owner._renderGraph, 'render graph', true);
@@ -11707,7 +11709,7 @@ export const render = {
     // skipped the hold, so the phone's first rotation redrew released ship buffers.
     this._drawBufferAspectClass = aspectClassFromSize(_drawSize);
 
-    const cam = createChaseCamera(state);
+    const cam = createChaseCamera(state, globalThis.window, null, this.bus);
     const spaceBg = createSpaceBackground(scene, state, { renderer, camera: cam.obj, debug: SF_DEBUG });
     // Near/mid/far parallax dust. The module was complete but had ZERO consumers anywhere in src/,
     // so the scene had a far backdrop and the play plane with nothing between them — the "no back,
@@ -11716,6 +11718,9 @@ export const render = {
     // the camera focus, and already honours particleQuality:'low' and the motionReduce
     // accessibility setting internally.
     parallaxLayers.init(scene, state, bus, state.render.sectorPalette || SECTOR_PALETTE_CLASSES.core);
+    // Rows 427/438 — sim-aware traffic streams, yielding silhouettes and far-battle flashes on the
+    // depth sheets above/below the plane. Render-only: zero collision, fills the frame's black.
+    farPlaneLife.init(scene, state, bus);
     state.render.spaceBg = spaceBg;
     // Generated backdrop producers publish their exact construction recipe in their constructors;
     // renderer only consumes those immutable boundaries.
@@ -13670,7 +13675,10 @@ export const render = {
         .finally(() => {
           if (counters) counters.admissionSubject = priorSubject;
         });
-      if ((state.mode === 'loading' && compileOptions?.openingRequired === true) || shouldSliceFlightAdmission({
+      // A loading admission can outlive the flight handoff. Keep the live player in
+      // its scene while linking; the staging batch below reparents roots until ready.
+      const includesPlayer = batch.includes(this._meshes?.get(state.playerId));
+      if (includesPlayer || (state.mode === 'loading' && compileOptions?.openingRequired === true) || shouldSliceFlightAdmission({
         mode: state.mode,
         firstPlayable: Number.isFinite(state.render && state.render.firstPlayableFrameAt),
         urgent: compileOptions && compileOptions.urgent === true,
@@ -31670,6 +31678,7 @@ export const render = {
       tryPresentedCall(this, 'backdrop', () => {
         if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
         parallaxLayers.update(frameDt);
+        farPlaneLife.update(frameDt);
       });
     }
     tryPresentedCall(this, 'shadow-map-enabled', () => this._syncShadowMapEnabled());

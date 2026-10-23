@@ -40,12 +40,17 @@ export function attractPlaybackTape(encoded = TITLE_ATTRACT_TAPE) {
 export async function buildTitleAttractStage(built, io) {
   const tape = attractPlaybackTape();
   const seconds = tape.samples / tape.sampleRate;
-  const framing = { recorded: true, focus: { x: -25, z: 0 }, zoom: 240 };
+  // Keep the physical encounter on the free right side of the title's menu.
+  const framing = { recorded: true, focus: { x: -145, z: 0 }, zoom: 380 };
   const control = { elapsed: 0, photo: { enabled: false }, cameraLease: { frameAt: () => framing } };
   const live = await buildKillcamStage(built, io, { tape, control });
   if (live.roots[0]) live.roots[0].name = 'UiStageAttract';
+  let visibleStart = null;
   return { ...live, update(stage, dt, state) {
-    control.elapsed = ((stage.clock % seconds) + seconds) % seconds;
+    // uiStage's clock already ran while assets compiled under the opaque plate.
+    // The first visible catch must start here, rather than being skipped by loading.
+    if (visibleStart == null) visibleStart = stage.clock;
+    control.elapsed = (((stage.clock - visibleStart) % seconds) + seconds) % seconds;
     live.update(stage, dt, state);
   } };
 }

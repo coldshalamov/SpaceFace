@@ -39,9 +39,11 @@ export function settleOwnedVesselYardOperation(owner, payload = {}) {
     if (!instance) return { ok: false, reason: 'The extracted instance was moved by another inventory operation' };
     // The existing instance is moved, never reminted. Preserve its complete provenance.
     instance.condition = componentCondition(instance.condition);
-    instance.provenance = { ...(typeof instance.provenance === 'object' ? instance.provenance : {}),
-      sourceVesselId: payload.vesselId, extractionOperationId: payload.operationId,
-      titleAtExtraction: vessel.title };
+    const provenance = typeof instance.provenance === 'object' && instance.provenance ? instance.provenance : {};
+    instance.provenance = { ...provenance,
+      sourceVesselId: provenance.sourceVesselId || provenance.vesselId || payload.vesselId,
+      extractionOperationId: payload.operationId,
+      titleAtExtraction: provenance.titleAtExtraction || provenance.titleAtCapture || vessel.title };
     if (definition?.slotType === 'engine') owned.shipjackDriveRemoved = true;
     if (String(instance.defId).startsWith('wpn_')) owned.shipjackNoLegacyWeapon = true;
     owner.recomputeIfActive(index, owned.fittings);

@@ -412,7 +412,7 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   if (!stage) {
     try {
       stage = buildStage(sceneId, renderer, request, hullFile, {
-        environment: sceneId === 'replay-theater' || SCENES[sceneId]?.live === 'killcam' || SCENES[sceneId]?.live === 'attract'
+        environment: sceneId === 'replay-theater' || SCENES[sceneId]?.live === 'killcam' || SCENES[sceneId]?.live === 'titleAttract'
           ? state.render?.envMap || state.render?.scene?.environment || null : null,
         isRequested: () => {
           const current = uiStageRequestFor(state);
@@ -432,7 +432,7 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   // Replay keeps the flight scene's authored reflection light. Bare metal cannot
   // answer a sun/rim rig without that shared environment; the stage never owns it.
   const environment = state.render?.envMap || state.render?.scene?.environment;
-  if ((stage.spec.live === 'killcam' || stage.spec.live === 'attract') && environment && stage.scene.environment !== environment) stage.scene.environment = environment;
+  if ((stage.spec.live === 'killcam' || stage.spec.live === 'titleAttract') && environment && stage.scene.environment !== environment) stage.scene.environment = environment;
   if (request.control && stage.live?.ready && !request.control.renderAt) {
     const captureOwner = stage;
     captureOwner.capture = (width, height) => captureUiStageFrame(captureOwner, renderer, state, width, height);

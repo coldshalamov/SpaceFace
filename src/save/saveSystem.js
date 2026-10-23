@@ -510,7 +510,7 @@ export const save = {
     for (const eventName of [
       'ship:purchased', 'ship:sold', 'ship:livingHullChanged', 'ship:appearanceSaved',
       'ship:loadoutPresetApplied', 'module:purchased', 'module:granted', 'module:equipped',
-      'module:unequipped', 'craft:complete', 'ship:controlTransferred', 'ship:captured', 'ship:released', 'shipjack:yardReceipt',
+      'module:unequipped', 'module:sold', 'craft:complete', 'ship:controlTransferred', 'ship:captured', 'ship:released', 'shipjack:yardReceipt',
     ]) bus.on(eventName, markPlayerCollectionChanged);
     bus.on('pickup:collected', (payload) => {
       if (payload && payload.kind === 'module' && payload.collectorId === this.state.playerId) {
@@ -7369,6 +7369,7 @@ export const save = {
     // Optional property facts replace as one record; older slots cannot inherit later custody.
     delete player.shipjack;
     delete player.shipControlTransfers;
+    delete player.moduleSales;
     delete this.state.shipjack;
     const cargo = player.cargo; // preserved; restored separately (§4.5 cargo key)
     // The snapshot is laid over the SAME defaults a New Game starts from, never over what the run
@@ -8560,6 +8561,18 @@ function normalizePlayerSaveRecord(player, savedEntity) {
     if(!journal||journal.version!==1||!Array.isArray(journal.receipts)||journal.receipts.length>1024
       ||journal.receipts.some(r=>!r||typeof r.operationId!=='string'||r.operationId.length>128||typeof r.vesselId!=='string'||r.vesselId.length>128)){
       out.shipControlTransfers={version:0,receipts:[]}; // fail closed, never reopen a lost terminal key
+    }
+  }
+  if (out.moduleSales != null) {
+    const journal = out.moduleSales;
+    if (!journal || journal.version !== 1 || !Array.isArray(journal.receipts) || journal.receipts.length > 1024
+      || journal.receipts.some(row => !row || typeof row.operationId !== 'string'
+        || !/^[A-Za-z0-9_:.\-]{1,128}$/.test(row.operationId)
+        || typeof row.instanceId !== 'string' || row.instanceId.length > 128
+        || typeof row.defId !== 'string' || row.defId.length > 128
+        || typeof row.stationId !== 'string' || row.stationId.length > 128
+        || !Number.isFinite(row.amount) || row.amount < 0 || !Number.isFinite(row.at))) {
+      out.moduleSales = { version: 0, receipts: [] };
     }
   }
   if (Object.prototype.hasOwnProperty.call(out, 'loadoutPresets') && !Array.isArray(out.loadoutPresets)) out.loadoutPresets = [];

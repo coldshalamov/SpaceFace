@@ -29,6 +29,7 @@ import {
   defaultShipAppearance,
   normalizeShipAppearance,
   shipAppearanceSignature,
+  SHIP_DECALS,
 } from '../core/shipAppearance.js';
 import {
   defaultLivingHull,
@@ -39,6 +40,7 @@ import {
   livingHullWithRenown,
   livingHullWithRepair,
   livingHullWithScar,
+  livingHullWithTrinket,
   livingHullWithVent,
   normalizeLivingHull,
   sameLivingHull,
@@ -56,6 +58,7 @@ import { FACTION_META } from '../data/factions.js';
 import { hash32 } from '../core/rng.js';
 import { captureAndTransfer, admitCapturedVessel } from './shipControlTransfer.js';
 import { settleOwnedVesselYardOperation } from '../shipjack/ownedOperations.js';
+import { componentAfterRemoval, quoteModuleSale, validateModuleSaleQuote } from '../shipjack/componentProvenance.js';
 
 /** Non-negative finite reading of a receipt amount; a missing measurement stays zero, never NaN. */
 function finiteAmount(value) {
@@ -64,6 +67,7 @@ function finiteAmount(value) {
 }
 
 // ---- catalog lookup tables (built once at module load) ------------------------------------
+const SHIP_DECAL_SET = new Set(SHIP_DECALS);
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
@@ -1694,6 +1698,7 @@ export const ships = {
     const bus = this.bus;
     bus.on('game:new', () => {
       if (this.state.player) delete this.state.player.shipControlTransfers;
+      if (this.state.player) delete this.state.player.moduleSales;
     });
 
     // re-derive on fit/research changes coming from other systems
@@ -1774,6 +1779,7 @@ export const ships = {
     }));
     bus.on('ui:setActiveShip', withShipworksAccess('hull', (p) => this.setActiveShip(p && p.index)));
     bus.on('ui:buyModule', withShipworksAccess('outfit', (p) => this.buyModule(p)));
+    bus.on('ui:sellModule', (p) => this.sellModule({ instanceId: p?.instanceId, quote: p?.quote, operationId: p?.operationId }));
     bus.on('ui:fitModule', withShipworksAccess('outfit', (p) => {
       // Inventory identity is the only UI fitting authority. A catalog defId is intentionally
       // ignored here: fitModule's defId-only form is reserved for internal draft/reward paths
@@ -1847,6 +1853,24 @@ export const ships = {
       if (p && p.where === 'bulkhead' && p.line) {
         this._reduceLivingHull((hull, now) => livingHullWithGraffiti(hull, p, now), 'bulkhead_graffiti');
       }
+    });
+    // PULSE-HISTORY — keepsakes and the earned decal arrive as intents from historyWear; the hull
+    // record and the appearance stay single-writer here. A keepsake id is the dedupe key, so a
+    // replayed dock batch grants nothing twice; the decal only repaints when the record argues
+    // for a different tag than the hull already wears.
+    bus.on('history:trinket', (p) => {
+      if (!p || !p.id || !p.label) return;
+      this._reduceLivingHull((hull, now) => livingHullWithTrinket(hull, p, now), 'deed_trinket');
+    });
+    bus.on('history:decal', (p) => {
+      const decalId = p && String(p.decalId || '');
+      if (!decalId || !SHIP_DECAL_SET.has(decalId)) return;
+      const owned = this.ownedShip(null);
+      const current = owned && owned.appearance ? owned.appearance.decalId : 'none';
+      if (current === decalId) return;
+      this.setShipAppearance({
+        appearance: { ...(owned && owned.appearance ? owned.appearance : {}), decalId },
+      });
     });
     bus.on('game:started', () => {
       this._resetScarAdmission();
@@ -2207,6 +2231,38 @@ export const ships = {
     if (!def.requiresTech) return true;
     if (this.state.player.researchedNodes.includes(def.requiresTech)) return true;
     return !!stationShopOffer(def, dockedShopStationId(this.state));
+  },
+
+  quoteModuleSale(request) { return quoteModuleSale(this.state, request); },
+
+  /** Consume the exact spare once, before publishing the canonical credit intent. */
+  sellModule(request = {}) {
+    const refuse = reason => {
+      this.bus.emit('toast', { text: reason, kind: 'error', ttl: 4 });
+      return { ok: false, reason };
+    };
+    const { instanceId, operationId } = request;
+    if (typeof operationId !== 'string' || !/^[A-Za-z0-9_:.\-]{1,128}$/.test(operationId)) return refuse('A unique component sale receipt is required');
+    const player = this.state.player;
+    const journal = player.moduleSales;
+    if (journal && (journal.version !== 1 || !Array.isArray(journal.receipts) || journal.receipts.length > 1024
+      || journal.receipts.some(row => !row || typeof row.operationId !== 'string' || typeof row.instanceId !== 'string'
+        || !Number.isFinite(row.amount) || row.amount < 0))) return refuse('Component sale journal is invalid');
+    const prior = journal?.receipts.find(row => row.operationId === operationId);
+    if (prior) return prior.instanceId === instanceId ? { ...prior, replayed: true } : refuse('Sale receipt identifies a different component');
+    if ((journal?.receipts.length || 0) >= 1024) return refuse('Component sale ledger is full');
+    const result = validateModuleSaleQuote(this.state, request);
+    if (!result.ok) return refuse(result.reason);
+    const item = this.takeInventoryModuleInstance(instanceId);
+    if (!item) return refuse('That exact spare component is no longer available');
+    const receipt = { ok: true, operationId, instanceId, defId: item.defId,
+      amount: result.quote.amount, stationId: result.quote.stationId, at: Number(this.state.simTime) || 0 };
+    player.moduleSales ||= { version: 1, receipts: [] };
+    player.moduleSales.receipts.push(receipt);
+    this.bus.emit('economy:grantCredits', { amount: receipt.amount, reason: `sellModule:${operationId}` });
+    this.bus.emit('module:sold', receipt);
+    this.bus.emit('toast', { text: `Component sold for ${receipt.amount} cr${result.quote.fenceId ? ' after the fence cut' : ''}`, kind: 'success', ttl: 3 });
+    return { ...receipt };
   },
 
   // ---- module shop: buy a module/weapon into inventory -----------------------------------
@@ -2660,7 +2716,7 @@ export const ships = {
   /** Remove the slot's identity record and return it — the caller routes it somewhere
    *  real (hold, sale); the record must not linger or the module duplicates. */
   _takeFittedInstance(owned, slotIndex) {
-    const inst = this._reconcileFittedInstance(owned, slotIndex);
+    const inst = componentAfterRemoval(this.state, this._reconcileFittedInstance(owned, slotIndex));
     if (inst && owned.fittedInstances) delete owned.fittedInstances[slotIndex];
     return inst;
   },
@@ -2990,7 +3046,7 @@ export const ships = {
       }
       if (cur) {
         const pool = displacedByDef.get(cur.defId) || [];
-        pool.push(cur);
+        pool.push(componentAfterRemoval(this.state, cur));
         displacedByDef.set(cur.defId, pool);
       }
     }

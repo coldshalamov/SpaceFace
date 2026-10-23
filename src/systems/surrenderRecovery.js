@@ -19,6 +19,7 @@ export const CIVILIAN_RECOVERY_WINDOW_S = 75;
 
 const CUSTODY_DESPAWN_S = 1.5;
 const ESCAPE_DESPAWN_S = 12;
+const DISABLED_ESCAPE_RETRY_S = 5;
 const CIVILIAN_RECOVERY_FALLBACK_SPEED_WU_S = 120;
 const RECEIPT_CAP = 32;
 // Exact retirement beats a rotating replay window. If a single uninterrupted run ever saturates
@@ -631,6 +632,14 @@ export const surrenderRecovery = {
 
   _escape(record, entity, now) {
     if (record.resolved || record.recoveryKind !== RECOVERY_SURRENDERED) return false;
+    // Surrender is a crew decision, not engine repair. A powerless prisoner can still drift
+    // and be towed, but cannot burn away or earn a despawn merely because a timer elapsed.
+    // Recheck quietly at a bounded cadence so an actual later drive repair can reopen escape.
+    if (driveDisabled(this.state, entity.id)) {
+      record.escapeAt = now + DISABLED_ESCAPE_RETRY_S;
+      annotate(entity, record, 'Drive remains disabled. This surrendered hull still needs a tow.');
+      return false;
+    }
     record.resolved = true;
     record.phase = 'escaped';
     record.resolvedAt = now;

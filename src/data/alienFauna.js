@@ -34,6 +34,8 @@
 //   commotion     impulse/rebound strength for physics species (bristle ram)
 //   juveniles     spindle-mother style: ornamental juvenile count rendered alongside
 
+import { faunaFamilyId } from './discoveryPresentation.js';
+
 export const FAUNA_DRIVES = Object.freeze([
   'idle', 'drift', 'forage', 'investigate', 'shadow', 'defend',
   'swarm', 'attach', 'feed', 'flee', 'return', 'migrate',
@@ -536,28 +538,9 @@ export function faunaSpeciesById(id) {
 }
 
 // Scan/Encyclopedia taxonomy unlock ids (doc 01 §research contact + doc 09 rewards).
-export const FAUNA_TAXONOMY = Object.freeze({
-  needle_swarm: 'tax_filamentous_contamination',
-  veil_ray: 'tax_filamentous_contamination',
-  blind_shepherd: 'tax_filamentous_contamination',
-  hull_leech: 'tax_filamentous_contamination',
-  lantern_cyst: 'tax_filamentous_contamination',
-  casket_worm: 'tax_filamentous_contamination',
-  bristle_ram: 'tax_filamentous_contamination',
-  mourning_kite: 'tax_filamentous_contamination',
-  anchor_beast: 'tax_filamentous_contamination',
-  furnace_maw: 'tax_filamentous_contamination',
-  glassback: 'tax_filamentous_contamination',
-  wake_eel: 'tax_filamentous_contamination',
-  spindle_mother: 'tax_filamentous_contamination',
-  archive_crab: 'tax_filamentous_contamination',
-  void_carrier: 'tax_filamentous_contamination',
-  cold_bell: 'tax_filamentous_contamination',
-  suture_mite: 'tax_filamentous_contamination',
-  black_sail: 'tax_filamentous_contamination',
-  stone_lung: 'tax_filamentous_contamination',
-  pilgrim_spine: 'tax_filamentous_contamination',
-});
+export const FAUNA_TAXONOMY = Object.freeze(Object.fromEntries(
+  Object.keys(FAUNA_SPECIES).map(id => [id, `tax_${faunaFamilyId(id)}`]),
+));
 
 // AE-053 — cosmetic microfauna aggregation: very small organisms exist only as dressing,
 // never as entities. A bloom state emits these as cheap motes (they carry no drive state).

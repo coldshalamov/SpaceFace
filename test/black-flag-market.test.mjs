@@ -166,7 +166,7 @@ test('changed extraction target cancels and refunds once, without phantom output
   const ctx = boot();
   const credits = ctx.state.player.credits;
   const job = ctx.execute('extract', { slotIndex: ctx.slot });
-  ctx.vessel.revision++;
+  ctx.owned.fittedInstances[ctx.slot].instanceId='mi_replacement_after_booking';
   ctx.state.simTime = job.completesAt;
   advanceYardOperations(ctx);
   assert.equal(ctx.state.player.credits, credits);

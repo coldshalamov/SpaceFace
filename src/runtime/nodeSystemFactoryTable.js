@@ -213,6 +213,8 @@ import { worldClock } from '../systems/worldClock.js';
 import { worldPressure } from '../systems/worldPressure.js';
 import { lineProgression } from '../systems/lineProgression.js';
 import { lossLedger } from '../systems/lossLedger.js';
+import { deedRecord } from '../systems/deedRecord.js';
+import { historyWear } from '../systems/historyWear.js';
 import { provenanceLedger } from '../systems/provenanceLedger.js';
 import { factionPresence } from '../systems/factionPresence.js';
 import { bandRadio } from '../systems/bandRadio.js';
@@ -371,6 +373,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['wingmen', wingmen],
     ['intervention', intervention],
     ['lossLedger', lossLedger],
+    ['deedRecord', deedRecord],
+    ['historyWear', historyWear],
     ['provenanceLedger', provenanceLedger],
     ['chronicler', chronicler],
     ['factionPresence', factionPresence],

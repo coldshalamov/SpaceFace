@@ -6,6 +6,7 @@ import { SECTORS } from '../data/sectors.js';
 import { makeShipEntitySpec, fittingsFromDefaultModules } from './ships.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { inspectVessel } from '../shipjack/market.js';
+import { inspectFittedComponents } from '../shipjack/componentProvenance.js';
 import { fittedBlackFlagTool } from '../data/shipjackEquipment.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -44,7 +45,12 @@ export const shipjack = {
       const e=this.state.entities.get(p.fromId),v=vesselForEntity(this.state,e);
       if(v){this.snapshot(v,e);v.location.kind='berth';v.location.stationId=this.state.ui?.dockedStationId;v.location.entityId=null;}
     });
-    on('dock:docked',p=>this.berthAt(p?.stationId));
+    on('dock:docked',p=>{
+      this.berthAt(p?.stationId);
+      // Station presentation suspends full-tick systems. Work that matured in flight
+      // must settle at this physical arrival, before that suspension takes effect.
+      if(isBlackFlagAdventure(this.state))advanceYardOperations({state:this.state,bus:this.bus,registry:this.registry});
+    });
     on('combat:surrendered',p=>{
       if(!isBlackFlagAdventure(this.state)||p?.entityId===this.state.playerId)return;
       const e=this.state.entities.get(p?.entityId);if(!e)return;
@@ -99,6 +105,10 @@ export const shipjack = {
     const state=this.state;
     const deny=reason=>this.result(payload,{ok:false,reason});
     if(!isBlackFlagAdventure(state))return deny('Ship custody is available only in Adventure.');
+    if(payload.action==='module_sell'){
+      const owner=this.registry?.get('ships');
+      return this.result(payload,owner?.sellModule(payload) || {ok:false,reason:'Shipworks is unavailable.'});
+    }
     if(['recover','secure_berth','cancel_recovery'].includes(payload.action)){
       const result=executeFleetOperation(this.fleetContext(),payload);if(result.ok)this.dirty();return this.result(payload,result);
     }
@@ -111,7 +121,13 @@ export const shipjack = {
     if(state.mode!=='flight'||state.ui?.docked)return deny('Undock before approaching a vessel.');
     const pilot=state.entities.get(state.playerId);
     if(!pilot?.alive)return deny('No living pilot can authorize this action.');
-    if(payload.action==='distress'){this.bus.emit('player:recoveryRequested',{reason:'shipjack_distress'});return this.result(payload,{ok:true,reason:'Distress sent through the existing rescue service.'});}
+    if(payload.action==='distress'){
+      const active=vesselForEntity(state,pilot)||this.admit(pilot,{playerOwned:true,ownerId:'player'});
+      if(!active)return deny('The distress registry is full; your live hull has not been moved.');
+      active.beacon=true;this.snapshot(active,pilot);this.dirty();
+      this.bus.emit('shipjack:distress',{vesselId:active.vesselId,sectorId:currentSector(state),pos:vec(pilot.pos)});
+      return this.result(payload,{ok:true,reason:'Distress beacon marked. No rescue tow has accepted. Return to your retained hull; a damaged drive may receive existing yard-tender assistance, but an extracted drive requires replacement at a yard.'});
+    }
     const entity=state.entities.get(payload.targetId ?? state.player.targetId);
     const view=queryShipjack(state,entity?.id);
     if(!view.eligible)return deny(view.reason || 'This vessel cannot accept a helm transfer.');
@@ -151,6 +167,7 @@ export const shipjack = {
     }
     if(payload.action==='tow'){
       if(a.phase!=='secured')return deny('Secure the target first.');
+      if(!ready.tethered)return deny('Attach the Massline to this exact hull before plotting a tow. A line to another object cannot carry it.');
       vessel.location.kind='tow';this.navigate(vessel.vesselId,true);return this.result(payload,{ok:true,reason:'Tow slowly into a receiving berth. The Massline carries the actual hull.'});
     }
     if(!a.scanned)return deny('Identify the frame before negotiating or probing.');
@@ -165,7 +182,9 @@ export const shipjack = {
       if(!accepts){a.tries++;this.cue('failed',entity);return deny(vessel.profile==='corporate'?'Captain: Crew passage, yes. Corporate title, no. Cut my drive before you ask for the helm.':'Captain: I still have engines and people counting on me. Not yet.');}
       a.surrendered=true;a.phase='exposed';a.windowUntil=time+90;vessel.crewSafe=true;a.method='parley';
       if(fittedBlackFlagTool(state,'mod_proof_recorder_s'))vessel.proofRecorded=true;
-      this.registry?.get('pirateDisengage')?.acceptCrewSurrender(entity.id,'black_flag_safe_passage');
+      // An evacuated/automated frame has no pilot to surrender. Registering one with the
+      // crew recovery owner would schedule an impossible flee/despawn behind this attempt.
+      if(!safeCrew)this.registry?.get('pirateDisengage')?.acceptCrewSurrender(entity.id,'black_flag_safe_passage');
       vesselHistory(state,vessel,'crew_passage','Crew accepted safe passage. Vessel title was not transferred.');
       this.cue('hail',entity);this.dirty();return this.result(payload,{ok:true,reason:'Crew passage accepted. Match speed, approach the service port, and secure the bridge.'});
     }
@@ -245,7 +264,7 @@ export const shipjack = {
     for(const [id,a] of Object.entries(own.custodyAttempts)){
       if(TERMINAL.has(a.phase))continue;
       const v=own.vesselsById[id],e=state.entities.get(v?.location?.entityId);
-      if(!e?.alive||e.data?.shipjackGeneration!==a.generation){a.phase='destroyed';a.transferStartedAt=null;continue;}
+      if(!e?.alive||e.data?.shipjackGeneration!==a.generation){a.phase=e?.data?.shipjackGeneration===a.generation?'destroyed':'escaped';a.transferStartedAt=null;continue;}
       const readiness=captureReadiness(state,e,a);
       if(readiness.tethered&&readiness.distance<180&&fittedBlackFlagTool(state,'mod_claw_anchor_s')){
         const body=resolvePhysicsBodySpec(e),inertia=body?.inertiaY || e.mass*e.radius*e.radius*.5;
@@ -274,7 +293,11 @@ export const shipjack = {
     if(time<this._nextWork)return;this._nextWork=time+.5;
     for(const v of Object.values(own.vesselsById)){
       const e=state.entities.get(v.location?.entityId);
-      if(e?.alive && e.data?.vesselId===v.vesselId)this.snapshot(v,e);
+      if(e?.alive && e.data?.vesselId===v.vesselId && e.data?.shipjackGeneration===v.generation)this.snapshot(v,e);
+      else if(v.location.sectorId===currentSector(state)&&['field','tow','active'].includes(v.location.kind)){
+        v.location.kind='missing';v.location.entityId=null;
+        vesselHistory(state,v,'signal_lost','Physical signal lost. The last recorded trajectory is retained; custody and title have not been reassigned.');this.dirty();
+      }
       if(v.noticeAt && time>=v.noticeAt && !v.claimResolved){v.noticeAt=0;this.say(`REGISTRY: ${v.name} reported missing. Broadcast papers cannot conceal its frame and engine.`, 'warn');vesselHistory(state,v,'reported','Owner’s missing-vessel notice reached the network.');}
       // Finite remote drift. No invisible loot rolls or full-universe physics.
     }
@@ -320,10 +343,23 @@ export const shipjack = {
   navigate(vesselId,toReceiver=false){
     const v=peekShipjack(this.state)?.vesselsById[vesselId];if(!v)return this.result({action:'navigate'},{ok:false,reason:'No trajectory is on record.'});
     const encounter=BLACK_FLAG_ENCOUNTERS.find(row=>peekShipjack(this.state).encounters[row.id]?.vesselId===vesselId);
-    const receiver=encounter&&STATIONS.get(encounter.stationId);
+    let receiver=encounter&&STATIONS.get(encounter.stationId);
+    if(toReceiver&&(!receiver||!this.stationEntity(receiver.id))){
+      const pilot=this.state.entities.get(this.state.playerId);
+      receiver=[...STATIONS.values()].filter(port=>port.sectorId===currentSector(this.state)
+        &&port.services?.some(service=>['shipyard','repair','black_market'].includes(service))&&this.stationEntity(port.id))
+        .sort((a,b)=>{
+          const pa=this.stationEntity(a.id).pos,pb=this.stationEntity(b.id).pos;
+          return Math.hypot(pa.x-pilot.pos.x,pa.z-pilot.pos.z)-Math.hypot(pb.x-pilot.pos.x,pb.z-pilot.pos.z)||a.id.localeCompare(b.id);
+        })[0];
+      if(!receiver)return this.result({action:'navigate'},{ok:false,reason:'No receiving yard is physically available in this sector. Keep the hull beacon marked and arrange recovery from a port.'});
+    }
     const pos=toReceiver&&receiver?this.stationEntity(receiver.id)?.pos:sectorLocalToGlobalForSector(v.location.pos,v.location.sectorId);
     const sectorId=toReceiver&&receiver?receiver.sectorId:v.location.sectorId;
-    this.bus.emit('ui:setCourse',sectorId!==currentSector(this.state)?{sectorId}:{sectorId,pos:vec(pos),label:toReceiver&&receiver?receiver.name:v.name,targetEntityId:toReceiver?null:v.location.entityId});
+    const body=this.state.entities.get(v.location.entityId);
+    const live=body?.alive&&body.data?.vesselId===v.vesselId&&body.data?.shipjackGeneration===v.generation;
+    const targetEntityId=!toReceiver&&live?body.id:null;
+    this.bus.emit('ui:setCourse',sectorId!==currentSector(this.state)?{sectorId}:{sectorId,pos:vec(pos),label:toReceiver&&receiver?receiver.name:v.name,targetEntityId,rendezvous:targetEntityId!=null});
     this.bus.emit('shipjack:route',{vesselId,sectorId:v.location.sectorId,pos:vec(pos),label:v.name});
     return this.result({action:'navigate'},{ok:true,reason:`${v.name}: ${v.location.kind}, ${v.location.sectorId}. Beacon route requested.`});
   },
@@ -404,15 +440,27 @@ export const shipjack = {
     if(b.subsystems)this.helpers.restoreShipjackSubsystems?.({entityId:e.id,subsystems:b.subsystems});
   },
   berthAt(stationId){
-    const station=this.stationEntity(stationId),own=peekShipjack(this.state);if(!station||!own)return;
+    const station=this.stationEntity(stationId),own=peekShipjack(this.state);if(!station||!isBlackFlagAdventure(this.state))return;
+    // Equipment carries its own evidence even when the mounting starter hull has no registry row.
+    const active=this.state.entities.get(this.state.playerId),activeVessel=vesselForEntity(this.state,active);
+    const owned=this.state.player.ownedShips?.[this.state.player.activeShipIndex];
+    const grade=stationId==='station_smuggler'?1:stationId==='station_customs'?3:2;
+    const findings=activeVessel&&activeVessel.custodian==='player'
+      ? inspectVessel(activeVessel,{grade,jurisdiction:stationId}) : {grade,accepted:true,findings:[]};
+    const components=inspectFittedComponents(this.state,owned?.fittedInstances,{grade});
+    findings.findings.push(...components.findings);findings.accepted&&=components.accepted;
+    if(active?.alive&&(activeVessel||components.findings.length)){
+      this.bus.emit('shipjack:inspection',{vesselId:activeVessel?.vesselId || null,entityId:active.id,stationId,grade,accepted:findings.accepted,findings:findings.findings});
+      if(!findings.accepted){
+        this.say(`${station.data?.name || 'REGISTRY'}: ${findings.findings.join('; ')}. Resolve the frame or component title before honest resale.`, 'warn');
+        if(activeVessel?.signature?.broadcastFlagged&&!activeVessel.claimResolved)this.reportTheft(activeVessel,active);
+      }
+    }
+    if(!own)return;
     for(const v of Object.values(own.vesselsById)){
       const e=this.state.entities.get(v.location.entityId);if(!e?.alive||v.custodian!=='player')continue;
       if(e.id===this.state.playerId){
         v.location.kind='active';v.location.stationId=stationId;
-        const illicit=stationId==='station_smuggler';
-        const findings=inspectVessel(v,{grade:illicit?1:stationId==='station_customs'?3:2,jurisdiction:stationId});
-        this.bus.emit('shipjack:inspection',{vesselId:v.vesselId,stationId,grade:findings.grade,accepted:findings.accepted,findings:findings.findings});
-        if(!findings.accepted){this.say(`${station.data?.name || 'REGISTRY'}: ${findings.findings.join('; ')}. Return the frame or resolve the claim.`, 'warn');if(v.signature.broadcastFlagged&&!v.claimResolved)this.reportTheft(v,e);}
         continue;
       }
       if(Math.hypot(e.pos.x-station.pos.x,e.pos.z-station.pos.z)>station.radius+180||Math.hypot(e.vel.x,e.vel.z)>25)continue;

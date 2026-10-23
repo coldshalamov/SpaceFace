@@ -12,7 +12,9 @@ export function recordsWall(state) {
   return (state?.chronicler?.stories || []).filter(story => story?.nodes?.length).map(story => {
     const view = buildStoryView(story);
     const node = story.nodes.slice().sort((a, b) => (b.t || 0) - (a.t || 0))[0];
-    return { id: story.id, title: view.title, text: view.summary,
+    const subject = story.nodes.find(fact => fact.subject?.name)?.subject?.name;
+    const title = subject && view.title.startsWith('Loss recorded') ? `${subject} · ${view.title}` : view.title;
+    return { id: story.id, title, text: view.summary,
       place: node.stationName || node.zoneName || node.sectorName || sectorNames.get(node.sectorId) || 'Position unrecorded',
       time: flightClock(node.t), at: Number(node.t) || 0, evidence: view.evidence };
   }).sort((a, b) => b.at - a.at || String(a.id).localeCompare(String(b.id))).slice(0, 24);
