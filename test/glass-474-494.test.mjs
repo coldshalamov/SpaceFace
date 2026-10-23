@@ -42,6 +42,9 @@ test('three tiers: flight glass never shows legends/authority/jurisdiction/debug
   assert.equal(flightGlassNever('jurisdiction', 'helios law'), true);
   assert.equal(flightGlassNever('info', 'Reach·Fighter·L1 … VULN E— K— X—'), true);
   assert.equal(flightGlassNever('info', 'ORE HOLD FULL'), false);
+  // Ordinary receipts use middot separators too — without a stat tail they must still admit.
+  assert.equal(flightGlassNever('info', '920 cr payout · no bond · 5 min'), false);
+  assert.equal(flightGlassNever('info', 'delivered 6u silicate · Ceres Port · 1,420 cr on the receipt'), false);
   assert.equal(admitReceipt({ text: 'some line', kind: 'jurisdiction' }).admit, false);
   assert.equal(admitReceipt({ text: 'Reach·Fighter·L1', kind: 'info' }).admit, false);
   assert.equal(admitReceipt({ text: 'ORE HOLD FULL', kind: 'info' }).admit, true);

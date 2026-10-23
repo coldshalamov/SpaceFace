@@ -1,0 +1,2231 @@
+diff --git a/src/data/worldOneOffs.js b/src/data/worldOneOffs.js
+index 870f76393f..8297e02cc8 100644
+--- a/src/data/worldOneOffs.js
++++ b/src/data/worldOneOffs.js
+@@ -155,6 +155,11 @@ export const WORLD_ONE_OFFS = Object.freeze([
+     spin: 0,
+     radius: 12,
+     physicalBody: Object.freeze({ mass: 140 }),
++    // AL-LONG-01 — the one door that names a tool, not a number: load and release an
++    // Elastic Whip on the disputed keg. The scan admits only a fit whose line carries the
++    // real head under its own runtime flag; the ordinary line's "holds any swing" rating
++    // is not the answer.
++    revisitNeed: Object.freeze({ kind: 'line', speedWuPerS: 100, headId: 'elastic_whip' }),
+     why: 'Concord seized it, Meridian billed for it, and the count will not run until the desks agree. It has been "temporary" for a year.',
+   }),
+   Object.freeze({
+@@ -234,6 +239,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
+     spin: 0.12,
+     radius: 12,
+     physicalBody: Object.freeze({ mass: 90 }),
++    // AL-LONG-01 — a real capability door: the scan quotes the live tow class against her
++    // 90 t, so the return action is getting the keg under way once the line can take it.
++    revisitNeed: Object.freeze({ kind: 'tow', massT: 90 }),
+     why: 'The yard lends it out and nobody logs the return. Every green pilot has had to go around it once.',
+   }),
+   Object.freeze({
+@@ -379,6 +387,10 @@ export const WORLD_ONE_OFFS = Object.freeze([
+     spin: 0.05,
+     radius: 18,
+     physicalBody: Object.freeze({ mass: 150 }),
++    // AL-LONG-01 — the return action is hauling the 150 t impounded bulk out: the scan
++    // quotes the live tow class against her real mass, so she reads "not yet" until the
++    // line can take it.
++    revisitNeed: Object.freeze({ kind: 'tow', massT: 150 }),
+     cluster: Object.freeze({
+       props: Object.freeze([
+         Object.freeze({ placeId: 'place_container_rack_abandoned', dx: 48, dz: 12, rot: 0.6, radius: 12 }),
+@@ -530,6 +542,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
+     spin: 0.08,
+     radius: 18,
+     physicalBody: Object.freeze({ mass: 240 }),
++    // AL-LONG-01 — same tow door as the shelf, one class up: the 240 t frozen-pour tank
++    // clears only for a fit whose tow class covers her real mass.
++    revisitNeed: Object.freeze({ kind: 'tow', massT: 240 }),
+     cluster: Object.freeze({
+       props: Object.freeze([
+         Object.freeze({ placeId: 'place_ore_bulk_container', dx: 70, dz: 80, rot: 1.5, radius: 10 }),
+@@ -686,6 +701,10 @@ export const WORLD_ONE_OFFS = Object.freeze([
+     spin: 0.05,
+     radius: 10,
+     physicalBody: Object.freeze({ mass: 90 }),
++    // AL-LONG-01 — a field door, not a tow: put a Signal Decoy Buoy in the water beside the
++    // waiting delivery. The decoy kind is deliberate — it is the countermeasure that deploys
++    // without an inbound seeker; chaff and ECM only answer a live one.
++    revisitNeed: Object.freeze({ kind: 'field', fieldKind: 'decoy', radiusWu: 620 }),
+     cluster: Object.freeze({
+       props: Object.freeze([
+         Object.freeze({ placeId: 'place_freight_platform', dx: -30, dz: 14, rot: 0.3, radius: 18 }),
+diff --git a/src/systems/shipCapabilities.js b/src/systems/shipCapabilities.js
+index 06a2c347e5..d339dcbceb 100644
+--- a/src/systems/shipCapabilities.js
++++ b/src/systems/shipCapabilities.js
+@@ -28,6 +28,7 @@ import {
+   resolveCollisionConsequence,
+ } from '../combat/impulseKernel.js';
+ import { effectiveTetherBreak } from '../combat/attachments.js';
++import { massline2Flag } from '../data/featureFlags.js';
+ 
+ const SHIP_BY_ID = new Map(SHIPS.map((row) => [row.id, row]));
+ const MODULE_BY_ID = new Map(MODULES.map((row) => [row.id, row]));
+@@ -398,6 +399,13 @@ export function lineLoadSpeedFor(derived) {
+ // module's `mods.countermeasure` block and will not deploy anything without one. No module, no
+ // field — the keybind does nothing. This is the unlock the packet describes: not a bigger number,
+ // a thing you could not do before.
++//
++// One press throws ONE countermeasure — the first one fitted. The deployment owner
++// (`countermeasures.js` `equippedCountermeasure`, read by `_tryDeploy` and
++// `countermeasureReadiness` alike) walks the fittings array in order and fires the first
++// `mods.countermeasure` block it finds, so a bigger buoy bolted on BEHIND a chaff dispenser
++// never reaches the key. The capability rows name what the key actually throws — never the
++// largest field aboard — or a scan door could promise a decoy the press refuses to deploy.
+ // ---------------------------------------------------------------------------------------------
+ 
+ const FIELD_KIND_WORD = Object.freeze({
+@@ -406,28 +414,24 @@ const FIELD_KIND_WORD = Object.freeze({
+   decoy: 'a decoy buoy',
+ });
+ 
+-/** The field this fit can deploy, or `{ available: false }`. */
++/** The field this fit's countermeasure key deploys — the FIRST fitted one — or `{ available: false }`. */
+ export function fieldDeployFor(fittings) {
+   const list = Array.isArray(fittings) ? fittings : [];
+-  let best = null;
+   for (const id of list) {
+     const def = id ? MODULE_BY_ID.get(id) : null;
+     const cm = def && def.mods && def.mods.countermeasure;
+     if (!cm) continue;
+-    const radius = finite(cm.radius, 0);
+-    if (!best || radius > best.radiusWu) {
+-      best = {
+-        available: true,
+-        kind: String(cm.kind || 'field'),
+-        moduleId: def.id,
+-        moduleName: def.name,
+-        radiusWu: radius,
+-        durationS: finite(cm.durationS, 0),
+-        cooldownS: finite(cm.cooldownS, 0),
+-      };
+-    }
++    return {
++      available: true,
++      kind: String(cm.kind || 'field'),
++      moduleId: def.id,
++      moduleName: def.name,
++      radiusWu: finite(cm.radius, 0),
++      durationS: finite(cm.durationS, 0),
++      cooldownS: finite(cm.cooldownS, 0),
++    };
+   }
+-  return best || { available: false, kind: null, moduleId: null, moduleName: null, radiusWu: 0, durationS: 0, cooldownS: 0 };
++  return { available: false, kind: null, moduleId: null, moduleName: null, radiusWu: 0, durationS: 0, cooldownS: 0 };
+ }
+ 
+ // ---------------------------------------------------------------------------------------------
+@@ -439,14 +443,16 @@ export function fieldDeployFor(fittings) {
+ // `need` shapes:
+ //   tow   { kind:'tow',   massT }        — the heaviest partner mass the line can put under way
+ //   slam  { kind:'slam',  speedWuPerS }  — the closing speed this hull walks away from
+-//   line  { kind:'line',  speedWuPerS }  — the swing speed the fitted line is rated to carry
++//   line  { kind:'line',  speedWuPerS, headId? } — the swing speed the fitted line is rated to
++//         carry, optionally qualified to a named Massline head that must be fitted AND admitted
++//         by the runtime's own feature flags
+ //   field { kind:'field', fieldKind?, radiusWu? } — a field in the water, optionally of a kind/size
+ // A bare `{ massT }` (no kind) is a legacy tow door — the form the first revisitNeed rows used.
+ // ---------------------------------------------------------------------------------------------
+ 
+ export const REVISIT_DOOR_KINDS = Object.freeze(['tow', 'slam', 'line', 'field']);
+ 
+-export function revisitDoorState({ derived, fittings } = {}, need) {
++export function revisitDoorState({ derived, fittings, features } = {}, need) {
+   if (!need || typeof need !== 'object') return null;
+   const kind = typeof need.kind === 'string' && need.kind
+     ? need.kind
+@@ -480,12 +486,29 @@ export function revisitDoorState({ derived, fittings } = {}, need) {
+       // A line whose rating is past anything the hull can reach is the verbs row's "holds any
+       // swing you can build": no authored swing requirement can refuse it — but a door fails
+       // closed without a real fit to quote (derived null → not yet, never a phantom ready).
+-      return {
++      const door = {
+         kind, required,
+         have: load.speedWuPerS,
+         reachable,
+         ready: derived != null && (!reachable || load.speedWuPerS + 1e-9 >= required),
+       };
++      // A head-qualified line door names a real head, not a rating: the numeric "holds any
++      // swing" verdict of the ordinary line is not the answer. The only admitted qualifier
++      // today is the Elastic Whip — the fitted head id AND the runtime's own feature flag
++      // must both say it. Any other nonempty qualifier fails closed.
++      const requiredHeadId = typeof need.headId === 'string' && need.headId ? need.headId : null;
++      if (requiredHeadId) {
++        const haveHeadId = (derived && typeof derived.masslineHeadId === 'string' && derived.masslineHeadId)
++          || null;
++        const headReady = requiredHeadId === 'elastic_whip'
++          && haveHeadId === 'elastic_whip'
++          && massline2Flag('masslineHeadElasticWhip', features) === true;
++        door.requiredHeadId = requiredHeadId;
++        door.haveHeadId = haveHeadId;
++        door.headReady = headReady;
++        door.ready = door.ready && headReady;
++      }
++      return door;
+     }
+     case 'field': {
+       const fieldKind = typeof need.fieldKind === 'string' && need.fieldKind ? need.fieldKind : null;
+diff --git a/src/systems/scanReveal.js b/src/systems/scanReveal.js
+index 1c8758379b..4724213073 100644
+--- a/src/systems/scanReveal.js
++++ b/src/systems/scanReveal.js
+@@ -10,6 +10,7 @@
+ // (state.scanReveal) so a surveyed field stays surveyed. UI reads; AI/combat never do.
+ import {
+   SCAN_REVEAL_CLASS_RADIUS,
++  sensorRadiusMultForScan,
+   buildShipScanReveal, buildWreckScanReveal, debrisCacheFor, sameScanReveal,
+   spawnDebrisCachePods,
+ } from '../data/scanReveal.js';
+@@ -87,6 +88,48 @@ export const scanReveal = {
+       if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('scan:shipRevealed', reveal);
+     }
+     this._scanWrecks(state, origin);
++    this._emitCapabilityVerdicts(state, origin);
++  },
++
++  // AL-LONG-1: the capability verdict must reach the prompt deck even when the scanner's
++  // six-row cap drops every row that would carry it — a crowded belt scan cannot silence a
++  // door the pilot needs to read. This event is computed from live entities on the pulse
++  // itself, never from the published signal list, so it is independent of the cap.
++  _emitCapabilityVerdicts(state, origin) {
++    if (!this.bus || typeof this.bus.emit !== 'function') return;
++    const point = xz(origin);
++    if (!point || !state.entities || typeof state.entities.values !== 'function') return;
++    // The door set uses the SAME reach the wreck reveal does — the authored class radius
++    // scaled by the fitted scanner profile, not the bare catalog value. A deepsurvey fit
++    // that legitimately sees a wreck at 2,600 WU must also see its door.
++    const revealRadius = SCAN_REVEAL_CLASS_RADIUS * sensorRadiusMultForScan(state);
++    const doors = [];
++    for (const entity of state.entities.values()) {
++      if (!entity || entity.type !== 'wreck' || entity.alive === false || !entity.pos) continue;
++      if (distXZ(point, entity.pos) <= revealRadius) doors.push(entity);
++    }
++    // Deterministic order: nearest first, ties by entity id — never Map insertion order.
++    doors.sort((a, b) => distXZ(point, a.pos) - distXZ(point, b.pos)
++      || String(a.id ?? '').localeCompare(String(b.id ?? '')));
++    const verdicts = [];
++    const seen = new Set();
++    for (const entity of doors) {
++      const part = capabilityLesson(state, entity);
++      if (!part) continue;
++      const key = String(part.doorKey || entity.id);
++      if (seen.has(key)) continue;
++      seen.add(key);
++      // Same text-only shape the lesson-row lift uses: the verdict names its door and can
++      // never win a row's action selection.
++      const lifted = { ...part, pos: null, trackable: false, lifted: true };
++      if (lifted.cardSentence) lifted.sentence = lifted.cardSentence;
++      verdicts.push(lifted);
++    }
++    this.bus.emit('scan:capabilityVerdicts', {
++      tick: state.tick,
++      at: state.simTime || 0,
++      verdicts,
++    });
+   },
+ 
+   _scanWrecks(state, origin) {
+@@ -676,14 +719,25 @@ function improvisedHitch(state, entity, need) {
+ function capabilityLesson(state, entity) {
+   const data = entity && entity.data || {};
+   const tug = data.oneOffId === 'oneoff_abandoned_tug';
++  // One identity per physical door: the body's own scan row and the stripped copy lifted
++  // onto the lesson rows (below) carry the same key, so the prompt can dedupe the verdict
++  // no matter which rows a pulse happens to paint.
++  const doorKey = `door:${String(entity && entity.id != null ? entity.id : '?')}`;
+   const oneOff = data.oneOffId
+     ? WORLD_ONE_OFFS.find((row) => row.id === data.oneOffId)
+     : null;
++  // `sentence` stays subjectless — the body's own row is its subject — but a standalone
++  // card (or a sentence appended under a different row) must name the door it judges.
++  const doorLabel = oneOff && oneOff.name ? String(oneOff.name).split(' — ')[0] : null;
+   const needSpec = data.revisitNeed
+     || (oneOff && oneOff.revisitNeed)
+     || (tug ? { massT: TUG_NEED_MASS } : null);
+   const door = revisitDoorState(
+-    { derived: playerDerived(state), fittings: playerFittings(state) },
++    {
++      derived: playerDerived(state),
++      fittings: playerFittings(state),
++      features: state.runtime && state.runtime.features,
++    },
+     needSpec,
+   );
+   if (!door) return null;
+@@ -694,27 +748,25 @@ function capabilityLesson(state, entity) {
+     let sentence;
+     let improvised = false;
+     if (door.kind === 'tow') {
+-      const hitch = improvisedHitch(state, entity, door.required);
+-      improvised = !!hitch;
+-      const ready = door.ready || improvised;
+-      if (improvised) {
+-        sentence = `The load wants ${door.required} t of tow class. A hull already on the hitch will take it — ready.`;
+-      } else if (ready) {
+-        sentence = `The load wants ${door.required} t of tow class. Your line will take it — ready.`;
+-      } else {
+-        sentence = `The load wants ${door.required} t of tow class. This fit will not take it — not yet.`;
+-      }
++      // An authored tow door names its own requirement: only the live fit's tow class opens
++      // it. A sufficiently heavy neighbour is not a tow class — the improvised-hitch read
++      // stays on the legacy bare-mass tug branch below, where it was written for.
++      sentence = door.ready
++        ? `The load wants ${door.required} t of tow class. Your line will take it — ready.`
++        : `The load wants ${door.required} t of tow class. This fit will not take it — not yet.`;
+       return {
+         sf: 'SF-174',
+         sentence,
++        cardSentence: doorLabel ? `${doorLabel}: ${sentence}` : sentence,
+         pos: xz(entity.pos),
+         trackable: true,
+         paid: 0,
+         kind: door.kind,
++        doorKey,
+         needMass: door.required,
+         towClass: door.have,
+-        ready,
+-        verdict: ready ? 'ready' : 'not yet',
++        ready: door.ready,
++        verdict: door.ready ? 'ready' : 'not yet',
+         improvised,
+         interactionLocked: false,
+         rewardReset: false,
+@@ -727,10 +779,12 @@ function capabilityLesson(state, entity) {
+       return {
+         sf: 'SF-174',
+         sentence,
++        cardSentence: doorLabel ? `${doorLabel}: ${sentence}` : sentence,
+         pos: xz(entity.pos),
+         trackable: true,
+         paid: 0,
+         kind: door.kind,
++        doorKey,
+         required: door.required,
+         have: door.have,
+         ready: door.ready,
+@@ -741,16 +795,31 @@ function capabilityLesson(state, entity) {
+       };
+     }
+     if (door.kind === 'line') {
+-      sentence = door.ready
+-        ? `The swing wants a line rated for a ${door.required} WU/s load. ${door.reachable === false ? 'Your line holds anything you can build' : 'Your line holds'} — ready.`
+-        : `The swing wants a line rated for a ${door.required} WU/s load. This line would part — not yet.`;
++      if (door.requiredHeadId) {
++        // A head-qualified door names the tool it wants: a missing or flag-disabled head is
++        // the refusal, a fitted head that cannot carry the rating is the load refusal.
++        const headWord = door.requiredHeadId === 'elastic_whip'
++          ? 'an Elastic Whip'
++          : `a ${door.requiredHeadId} head`;
++        sentence = door.ready
++          ? `The swing wants ${headWord} rated for a ${door.required} WU/s load. Your whip holds — ready.`
++          : door.headReady === false
++            ? `The swing wants ${headWord} rated for a ${door.required} WU/s load. This fit lacks the named head — not yet.`
++            : `The swing wants ${headWord} rated for a ${door.required} WU/s load. This line would part — not yet.`;
++      } else {
++        sentence = door.ready
++          ? `The swing wants a line rated for a ${door.required} WU/s load. ${door.reachable === false ? 'Your line holds anything you can build' : 'Your line holds'} — ready.`
++          : `The swing wants a line rated for a ${door.required} WU/s load. This line would part — not yet.`;
++      }
+       return {
+         sf: 'SF-174',
+         sentence,
++        cardSentence: doorLabel ? `${doorLabel}: ${sentence}` : sentence,
+         pos: xz(entity.pos),
+         trackable: true,
+         paid: 0,
+         kind: door.kind,
++        doorKey,
+         required: door.required,
+         have: door.have,
+         ready: door.ready,
+@@ -768,10 +837,12 @@ function capabilityLesson(state, entity) {
+     return {
+       sf: 'SF-174',
+       sentence,
++      cardSentence: doorLabel ? `${doorLabel}: ${sentence}` : sentence,
+       pos: xz(entity.pos),
+       trackable: true,
+       paid: 0,
+       kind: door.kind,
++      doorKey,
+       required: door.required || wantLabel,
+       have: door.have,
+       ready: door.ready,
+@@ -798,9 +869,11 @@ function capabilityLesson(state, entity) {
+   return {
+     sf: 'SF-174',
+     sentence,
++    cardSentence: doorLabel ? `${doorLabel}: ${sentence}` : sentence,
+     pos: xz(entity.pos),
+     trackable: true,
+     paid: 0,
++    doorKey,
+     needMass: need,
+     towClass: tow,
+     ready,
+@@ -1309,9 +1382,9 @@ function revealedBeyondPulse(state, origin) {
+   return out;
+ }
+ 
+-function placeRow(id, range, part) {
++function placeRow(id, range, part, extra) {
+   if (!part || !part.pos) return null;
+-  const discovery = bundle([part]);
++  const discovery = bundle(extra ? [part, extra] : [part]);
+   if (!discovery) return null;
+   return {
+     id,
+@@ -1326,17 +1399,63 @@ function placeRow(id, range, part) {
+   };
+ }
+ 
++// The same verdict the body's own scan row computes, hoisted onto the lesson rows. The
++// honest gate is the supported reveal range itself — SCAN_REVEAL_CLASS_RADIUS, the same
++// radius the wreck reveal uses — not the tighter "nearby" set (a 1,300 WU wreck still
++// reveals, and its door must still paint). Null unless a gated wreck was actually inside
++// the pulse's reveal reach, so a scan that saw no door paints nothing new.
++function nearbyCapabilityPart(state, origin) {
++  const point = xz(origin);
++  if (!state || !point || !state.entities || typeof state.entities.values !== 'function') return null;
++  // Deterministic subject: the eligible gated wreck NEAREST the player inside the reveal
++  // radius, ties broken by entity id — never Map insertion order. Overlapping doors can
++  // no longer let an unrelated hulk supply every lesson's verdict.
++  // Same fitted reach as _emitCapabilityVerdicts — the lifted verdict must exist for every
++  // door the upgraded scanner can actually reveal, or the lesson row silently drops it.
++  const revealRadius = SCAN_REVEAL_CLASS_RADIUS * sensorRadiusMultForScan(state);
++  let best = null;
++  let bestPart = null;
++  let bestDist = Infinity;
++  let bestId = '';
++  for (const entity of state.entities.values()) {
++    if (!entity || entity.type !== 'wreck' || entity.alive === false || !entity.pos) continue;
++    const dist = distXZ(point, entity.pos);
++    if (dist > revealRadius) continue;
++    const idKey = String(entity.id ?? '');
++    if (dist < bestDist - 1e-9 || (Math.abs(dist - bestDist) <= 1e-9 && idKey < bestId)) {
++      const part = capabilityLesson(state, entity);
++      if (!part) continue;
++      best = entity; bestDist = dist; bestId = idKey; bestPart = part;
++    }
++  }
++  if (!best || !bestPart) return null;
++  // The verdict rides an unrelated lesson row's detail, so it must name its own subject —
++  // "The Disputed Keg: the fit opens it — ready" is truthful whichever row carries it —
++  // and it contributes TEXT ONLY: stripped of pos/trackable, the appended part can never
++  // win bundle()'s action selection, so every lesson row keeps its own Track target and
++  // its own trackability. The wreck's own scan row keeps the full part (its subject is
++  // itself) and the unprefixed sentence.
++  const part = { ...bestPart, pos: null, trackable: false, lifted: true };
++  if (part.cardSentence) part.sentence = part.cardSentence;
++  return part;
++}
++
+ export function discoveryPlaceCandidates(state, origin, simTime = 0, nearby = []) {
+   const point = xz(origin);
+   if (!state || !point) return [];
+   const rows = [];
+   const push = (row) => { if (row) rows.push(row); };
+-  push(placeRow('signal:discovery:SF-169', 1600, customsLesson()));
+-  push(placeRow('signal:discovery:SF-177', 3600, pocketLesson(point)));
+-  push(placeRow('signal:discovery:SF-176', 1600, sluiceLesson(simTime)));
+-  push(placeRow('signal:discovery:SF-179', 1600, landmarkLesson()));
+-  push(placeRow('signal:discovery:SF-170', 1600, deadMachineLesson(state)));
+-  push(placeRow('signal:discovery:SF-172', 1800, shrineLesson()));
++  // AL-LONG-1 (row 399 rework): archive lessons sort ahead of the body's own return for the
++  // prompt's primary slot, so a scanned capability door must ride the lesson row's bundle —
++  // the lesson fact stays first in the sentence and the live verdict follows it. Null unless
++  // a gated one-off was actually inside this pulse, so nothing else changes.
++  const doorPart = nearbyCapabilityPart(state, point);
++  push(placeRow('signal:discovery:SF-169', 1600, customsLesson(), doorPart));
++  push(placeRow('signal:discovery:SF-177', 3600, pocketLesson(point), doorPart));
++  push(placeRow('signal:discovery:SF-176', 1600, sluiceLesson(simTime), doorPart));
++  push(placeRow('signal:discovery:SF-179', 1600, landmarkLesson(), doorPart));
++  push(placeRow('signal:discovery:SF-170', 1600, deadMachineLesson(state), doorPart));
++  push(placeRow('signal:discovery:SF-172', 1800, shrineLesson(), doorPart));
+   const lives = liveTugs(state);
+   const tugNear = lives.some((entity) => distXZ(point, entity.pos) <= SCAN_REVEAL_CLASS_RADIUS);
+   if (!tugNear) {
+@@ -1344,7 +1463,7 @@ export function discoveryPlaceCandidates(state, origin, simTime = 0, nearby = []
+     const recorded = record.row && xz(record.row.pos);
+     if (recorded && distXZ(point, recorded) <= 1600) {
+       const part = yardTugPart(state, recorded, 0, simTime, null);
+-      push(placeRow('signal:discovery:SF-173', 1600, part));
++      push(placeRow('signal:discovery:SF-173', 1600, part, doorPart));
+     }
+   }
+   push(workerFallback(state, point, nearby));
+diff --git a/src/ui/signalInvestigationPrompt.js b/src/ui/signalInvestigationPrompt.js
+index df64cdd4a0..1757bc45ca 100644
+--- a/src/ui/signalInvestigationPrompt.js
++++ b/src/ui/signalInvestigationPrompt.js
+@@ -17,6 +17,12 @@ const RESULT_TTL_S = 10;
+ 
+ const DECK_ID_RESULT = 'signal:results';
+ const DECK_ID_CODEX = 'signal:codex';
++// The capability verdict lives on its own decision: a scan result card is replaced wholesale
++// by the next `signal:scanResults` batch (Spectrum publishes its own row after the scanner),
++// and a replaceable row is where a door read goes to die. The verdict is durable knowledge —
++// the fit did or did not open a named door — so only a later batch that carries verdict parts
++// may refresh it; every other publisher leaves it standing until it expires.
++const DECK_ID_CAPABILITY = 'signal:capability';
+ 
+ function safeRecord(payload) {
+   const row = payload && payload.primary;
+@@ -72,6 +78,22 @@ export function tethysCodexTargetForCompletion(state, payload) {
+   return { sectorId: discovery.sectorId, poiId: discovery.poiId };
+ }
+ 
++// One verdict per physical door across the whole batch: the body's own row and the text-only
++// copies lifted onto the lesson rows share a doorKey, so dedupe by it and prefer the lifted
++// copy — it names the door in its sentence, the body's own row does not.
++function capabilityVerdicts(payload) {
++  const rows = payload && Array.isArray(payload.signals) ? payload.signals : [];
++  const byDoor = new Map();
++  for (const row of rows) {
++    const part = row && row.discovery && row.discovery.parts && row.discovery.parts['SF-174'];
++    if (!part || typeof part.sentence !== 'string' || !part.sentence) continue;
++    const key = String(part.doorKey || part.sentence);
++    const prev = byDoor.get(key);
++    if (!prev || (part.lifted === true && prev.lifted !== true)) byDoor.set(key, part);
++  }
++  return [...byDoor.values()];
++}
++
+ export function createSignalInvestigationPrompt(ctx = {}) {
+   const state = ctx.state || {};
+   const bus = ctx.bus;
+@@ -79,10 +101,70 @@ export function createSignalInvestigationPrompt(ctx = {}) {
+ 
+   function deckFor() { return getPromptDeck(); }
+ 
++  // Live union of door verdicts for the current pulse: the dedicated
++  // scan:capabilityVerdicts event is authoritative (it sees every door in reach, uncapped);
++  // the capped signal batch may only ADD verdicts, never shrink the set — otherwise a
++  // six-row cap carrying a subset would erase doors the pulse already proved.
++  const capabilityDoors = new Map();
++  const mergeDoors = (parts) => {
++    const now = Number(state.simTime || 0);
++    // Entries outlive their card's own TTL only on the union path — a stale door can
++    // never resurrect inside a later scan's verdict set.
++    for (const [key, entry] of capabilityDoors) {
++      if (now - (entry._at || 0) > RESULT_TTL_S) capabilityDoors.delete(key);
++    }
++    for (const part of parts) {
++      const key = String(part.doorKey || part.sentence);
++      const prev = capabilityDoors.get(key);
++      if (!prev || (part.lifted === true && prev.lifted !== true)) {
++        capabilityDoors.set(key, { ...part, _at: now });
++      }
++    }
++    return [...capabilityDoors.values()];
++  };
++
++  const offerCapability = (deck, doors) => deck.offerDecision({
++    id: DECK_ID_CAPABILITY,
++    kind: 'info',
++    sender: 'FIT CHECK',
++    statusFlag: doors.length === 1
++      ? String(doors[0].verdict || '').toUpperCase()
++      : `${doors.length} DOORS`,
++    headline: doors.length === 1 ? 'CAPABILITY DOOR' : 'CAPABILITY DOORS',
++    detail: doors.map((part) => part.cardSentence || part.sentence).join(' ').slice(0, 480),
++    ttlAt: Number(state.simTime || 0) + RESULT_TTL_S,
++    choices: [],
++    onExpire: () => {},
++  });
++
++  // The dedicated verdict event is computed on the pulse itself (scanReveal), never from
++  // the capped signal list — a crowded scan that drops every lesson row still paints the
++  // door. An empty batch clears the card: the door left the reveal reach.
++  const showCapabilityVerdicts = (payload) => {
++    const deck = deckFor();
++    if (!deck) return false;
++    capabilityDoors.clear();
++    const doors = Array.isArray(payload && payload.verdicts) ? payload.verdicts : [];
++    const now = Number(state.simTime || 0);
++    for (const part of doors) {
++      capabilityDoors.set(String(part.doorKey || part.sentence), { ...part, _at: now });
++    }
++    if (!doors.length) {
++      deck.resolveDecision(DECK_ID_CAPABILITY);
++      return false;
++    }
++    return offerCapability(deck, doors);
++  };
++
+   const showResults = (payload) => {
+     const deck = deckFor();
++    if (!deck) return false;
++    const doors = capabilityVerdicts(payload);
++    if (doors.length) {
++      offerCapability(deck, mergeDoors(doors));
++    }
+     const record = safeRecord(payload);
+-    if (!deck || !record) return false;
++    if (!record) return false;
+     return deck.offerDecision({
+       id: DECK_ID_RESULT,
+       kind: 'info',
+@@ -180,6 +262,7 @@ export function createSignalInvestigationPrompt(ctx = {}) {
+   }
+ 
+   bus.on('signal:scanResults', showResults);
++  bus.on('scan:capabilityVerdicts', showCapabilityVerdicts);
+   bus.on('signal:tracked', showTracked);
+   bus.on('signal:investigating', showInvestigating);
+   bus.on('signal:investigated', showInvestigated);
+@@ -192,11 +275,21 @@ export function createSignalInvestigationPrompt(ctx = {}) {
+     hide: () => {
+       const deck = deckFor();
+       if (!deck) return false;
+-      return deck.resolveDecision(DECK_ID_RESULT) | deck.resolveDecision(DECK_ID_CODEX);
++      return deck.resolveDecision(DECK_ID_RESULT) | deck.resolveDecision(DECK_ID_CODEX)
++        | deck.resolveDecision(DECK_ID_CAPABILITY);
+     },
+     destroy: () => {
++      // Teardown owns its open decisions too — a torn-down adapter must not leave its
++      // capability card on the deck.
++      const deck = deckFor();
++      if (deck) {
++        deck.resolveDecision(DECK_ID_RESULT);
++        deck.resolveDecision(DECK_ID_CODEX);
++        deck.resolveDecision(DECK_ID_CAPABILITY);
++      }
+       for (const [event, handler] of [
+-        ['signal:scanResults', showResults], ['signal:tracked', showTracked],
++        ['signal:scanResults', showResults], ['scan:capabilityVerdicts', showCapabilityVerdicts],
++        ['signal:tracked', showTracked],
+         ['signal:investigating', showInvestigating], ['signal:investigated', showInvestigated],
+       ]) {
+         try { bus.off && bus.off(event, handler); } catch (_) {}
+diff --git a/test/al-long-1-revisit-4242.test.mjs b/test/al-long-1-revisit-4242.test.mjs
+new file mode 100644
+index 0000000000..105dbc98b1
+--- /dev/null
++++ b/test/al-long-1-revisit-4242.test.mjs
+@@ -0,0 +1,1081 @@
++// AL-LONG-1 (row 399) — "seen at minute one, moved at hour fifteen": the eight-object
++// capability-revisit slice. Five revisitNeed rows join the three shipped AL-LG tow doors,
++// covering the capability kinds the live player route honestly supports (tow, line, field —
++// the slam verdict survives in shipCapabilities but no honest slam return-action exists yet,
++// so slam coverage is deferred). A door is never a visibility gate: each one-off stays on
++// the scan and its SF-174 lesson reads "not yet" until the live fit's real verbs open it,
++// then "ready" — and the verdict rides the lesson row the prompt paints as primary, not just
++// the body row the signals list carries. The head-qualified line door on the Disputed Keg
++// names a tool — an Elastic Whip under its own runtime flag — not a rating the ordinary
++// line's "holds any swing" verdict could fake.
++//
++// Deterministic on seed 4242, DT = 1/60, production runtime features. Fits are resolved
++// through fittingsFromDefaultModules so every module is slot-legal; no time locks, no
++// unlock flags — readiness is recomputed from the live fit on every scan.
++
++import assert from 'node:assert/strict';
++import test from 'node:test';
++
++import { createSimulation } from '../src/core/sim.js';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import { mulberry32 } from '../src/core/rng.js';
++import { scanner } from '../src/systems/scanner.js';
++import { scanReveal } from '../src/systems/scanReveal.js';
++import { spectrum } from '../src/systems/spectrum/index.js';
++import { countermeasures } from '../src/systems/countermeasures.js';
++import { world as worldSystem } from '../src/systems/world.js';
++import {
++  revisitDoorState,
++  towClassMassFor,
++} from '../src/systems/shipCapabilities.js';
++import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
++import { NEW_GAME } from '../src/data/newGameDefaults.js';
++import { WORLD_ONE_OFFS } from '../src/data/worldOneOffs.js';
++import { SECTORS } from '../src/data/sectors.js';
++import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
++import { SCAN_REVEAL_CLASS_RADIUS } from '../src/data/scanReveal.js';
++import { effectiveTetherPolicy } from '../src/combat/attachments.js';
++import { ATTACHMENT_DEFS } from '../src/data/combatDefs.js';
++import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
++import {
++  findLiveEntityForRecord,
++  stableRecordId,
++  RECORD_KIND,
++} from '../src/world/worldRecords.js';
++import { RESIDENCY_TIER, sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
++import { setPromptDeck } from '../src/ui/promptDeck.js';
++import { createSignalInvestigationPrompt } from '../src/ui/signalInvestigationPrompt.js';
++
++const SEED = 4242;
++const DT = 1 / 60;
++const SCAN_COOLDOWN_S = 8;
++
++const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
++const ONE_OFF_BY_ID = new Map(WORLD_ONE_OFFS.map((o) => [o.id, o]));
++
++// The eight authored capability doors: the three shipped tow doors plus the five rows this
++// slice adds. `fit` names the legal upgraded fit the door opens for.
++const DOORS = Object.freeze([
++  { id: 'oneoff_great_tanker', need: { kind: 'tow', massT: 800 }, shipId: 'ship_colossus', mods: [], label: 'Tanker / Colossus' },
++  { id: 'oneoff_runaway_ladle', need: { kind: 'tow', massT: 240 }, shipId: 'ship_hawser', mods: [], label: 'Ladle / Hawser' },
++  { id: 'oneoff_the_erased', need: { kind: 'tow', massT: 260 }, shipId: 'ship_hawser', mods: [], label: 'Erased / Hawser' },
++  { id: 'oneoff_spare_keg', need: { kind: 'tow', massT: 90 }, shipId: 'ship_hawser', mods: [], label: 'Spare Keg / Hawser' },
++  { id: 'oneoff_impound_shelf', need: { kind: 'tow', massT: 150 }, shipId: 'ship_hawser', mods: [], label: 'Impound Shelf / Hawser' },
++  { id: 'oneoff_the_pour', need: { kind: 'tow', massT: 240 }, shipId: 'ship_hawser', mods: [], label: 'The Pour / Hawser' },
++  { id: 'oneoff_tethys_tally_keg', need: { kind: 'line', speedWuPerS: 100, headId: 'elastic_whip' }, shipId: 'ship_hawser', mods: ['mod_elastic_whip_m'], label: 'Disputed Keg / Hawser + whip' },
++  { id: 'oneoff_held_note', need: { kind: 'field', fieldKind: 'decoy', radiusWu: 620 }, shipId: 'ship_kestrel', mods: null, label: 'Held Note / Kestrel + buoy' },
++]);
++
++function starterFit() {
++  const fittings = fittingsFromDefaultModules(NEW_GAME.shipId, NEW_GAME.fittedModules.slice());
++  return { shipId: NEW_GAME.shipId, fittings, derived: getDerivedStats(NEW_GAME.shipId, fittings, null) };
++}
++
++function resolveFit(shipId, mods) {
++  const fittings = fittingsFromDefaultModules(shipId, mods);
++  return { shipId, fittings, derived: getDerivedStats(shipId, fittings, null) };
++}
++
++function readyFitFor(door) {
++  if (door.id === 'oneoff_held_note') {
++    // A legal Kestrel refit: the drill amp leaves the one utility slot, the decoy buoy
++    // takes it. Every requested module survives slot resolution.
++    const mods = NEW_GAME.fittedModules.filter((m) => m !== 'mod_drill_amp').concat('mod_decoy_buoy_s');
++    return resolveFit(NEW_GAME.shipId, mods);
++  }
++  return resolveFit(door.shipId, door.mods.slice());
++}
++
++// A scan-pulse sim carrying production runtime features, with the world system's own
++// materialize pass sharing the sim state so the real authored bodies are what gets scanned.
++function bootScan(sectorId, { withSpectrum = false } = {}) {
++  const sim = createSimulation({
++    seed: SEED,
++    // Production update order is [scanner, spectrum, scanReveal]: spectrum's pending result
++    // publishes a second signal:scanResults after the scanner batch on every live pulse.
++    systems: withSpectrum ? [scanner, spectrum, scanReveal] : [scanner, scanReveal],
++    runtimeConfig: { profileId: 'production', features: PRODUCTION_FEATURES },
++  });
++  const { state, bus } = sim;
++  state.mode = 'flight';
++  state.input.actions = state.input.actions || {};
++  state.world.currentSectorId = sectorId;
++  state.world.activeSector = { id: sectorId, pois: [] };
++  const player = sim.spawn({
++    type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
++    radius: 10, hull: 100, hullMax: 100, data: {},
++  });
++  state.playerId = player.id;
++  const events = { results: [] };
++  bus.on('signal:scanResults', (payload) => events.results.push(payload));
++  const worldSys = Object.create(worldSystem);
++  worldSys.state = state;
++  worldSys.helpers = { spawnEntity: (spec) => sim.spawn(spec) };
++  return { sim, state, bus, player, events, worldSys };
++}
++
++function refit(t, fit) {
++  t.player.fittings = fit.fittings.slice();
++  t.player.derived = fit.derived;
++}
++
++function materialize(t, sectorId) {
++  const sector = SECTOR_BY_ID.get(sectorId);
++  const active = { pois: [], stations: [], gates: [], dressing: [] };
++  t.worldSys._spawnWorldOneOffs(sector, active);
++  return active;
++}
++
++function bodyOf(state, oneOffId) {
++  return state.entityList.find((e) => e && e.data && e.data.oneOffId === oneOffId) || null;
++}
++
++function placeNear(t, body, dist = 40) {
++  t.player.pos.x = body.pos.x + dist;
++  t.player.pos.z = body.pos.z;
++}
++
++function pulse(t) {
++  t.state.input.actions.scanPulse = true;
++  t.sim.runTicks(2);
++}
++
++function pastCooldown(t) {
++  t.sim.runTicks(Math.ceil(SCAN_COOLDOWN_S / DT) + 2);
++}
++
++function sf174(t, entityId) {
++  const batch = t.events.results.at(-1);
++  const row = (batch ? batch.signals : []).find((s) => s.entityId === entityId);
++  assert.ok(row, `public scan result names the body (entity ${entityId})`);
++  const part = row.discovery && row.discovery.parts && row.discovery.parts['SF-174'];
++  assert.ok(part, 'the capability lesson is on the row the player reads');
++  return { signal: row, part };
++}
++
++// ── case 1: the eight authored, physical opportunities ──────────────────────────────────────
++
++test('eight authored opportunities carry exact requirements across the supported kinds', () => {
++  for (const door of DOORS) {
++    const spec = ONE_OFF_BY_ID.get(door.id);
++    assert.ok(spec, `${door.id} is authored`);
++    assert.deepEqual(spec.revisitNeed, door.need, `${door.id} carries the authored requirement`);
++    assert.ok(spec.physicalBody && spec.physicalBody.mass > 0, `${door.id} is a physical body`);
++  }
++  assert.deepEqual(
++    [...new Set(DOORS.map((d) => d.need.kind))].sort(),
++    ['field', 'line', 'tow'],
++    'the slice covers every capability kind with an honest live player route (slam deferred)',
++  );
++
++  // Each body materializes through the world's own one-off pass: a tetherable wreck at the
++  // authored position carrying the catalog mass and placeId.
++  for (const door of DOORS) {
++    const spec = ONE_OFF_BY_ID.get(door.id);
++    const t = bootScan(spec.sectorId);
++    materialize(t, spec.sectorId);
++    const body = bodyOf(t.state, door.id);
++    assert.ok(body, `${door.id} materializes as a live body before any capability is read`);
++    assert.equal(body.type, 'wreck');
++    assert.equal(body.data.masslineTetherable, true, `${door.id}: the rope can bite it`);
++    assert.equal(body.mass, spec.physicalBody.mass, `${door.id}: live mass matches catalog`);
++    assert.equal(body.data.placeId, spec.placeId, `${door.id}: the authored prop is the body`);
++    const anchorPos = t.worldSys._oneOffAnchorPos(SECTOR_BY_ID.get(spec.sectorId), spec.anchor);
++    const expected = sectorLocalToGlobalForSector(
++      { x: anchorPos.x + spec.offsetLocal.x, z: anchorPos.z + spec.offsetLocal.z },
++      spec.sectorId,
++    );
++    assert.equal(body.pos.x, expected.x, `${door.id}: authored position, not drifted`);
++    assert.equal(body.pos.z, expected.z);
++    const door2 = revisitDoorState(
++      { derived: t.player.derived, fittings: t.player.fittings, features: PRODUCTION_FEATURES },
++      spec.revisitNeed,
++    );
++    assert.equal(door2.kind, door.need.kind, `${door.id}: the door kind resolves`);
++  }
++});
++
++// ── case 2: the actual starter refuses every named requirement ─────────────────────────────
++
++test('the real starter fit gets "not yet" on every one of the eight doors', () => {
++  const starter = starterFit();
++  // Fixture sanity: this is the actual NEW_GAME Kestrel, not an empty hull.
++  assert.ok(towClassMassFor(starter.derived) < 90, 'the starter tow class is honestly short of 90 t');
++  for (const door of DOORS) {
++    const spec = ONE_OFF_BY_ID.get(door.id);
++    const t = bootScan(spec.sectorId);
++    materialize(t, spec.sectorId);
++    const body = bodyOf(t.state, door.id);
++    assert.ok(body, `${door.id} is present to refuse`);
++    refit(t, starter);
++    placeNear(t, body);
++    pulse(t);
++    const { signal, part } = sf174(t, body.id);
++    assert.equal(part.ready, false, `${door.id}: starter is refused`);
++    assert.equal(part.verdict, 'not yet');
++    assert.equal(part.kind, door.need.kind);
++    assert.match(part.sentence, /not yet/, `${door.id}: the refusal is on the record`);
++    assert.match(signal.detail, /not yet/, `${door.id}: the public detail carries the refusal`);
++    // The door is capability advice, never a visibility gate or a lock.
++    assert.equal(signal.entityId, body.id);
++    assert.equal(body.alive === false, false, `${door.id}: the body stays present`);
++    assert.equal(part.trackable, true);
++    assert.equal(part.paid, 0);
++    assert.equal(part.interactionLocked, false);
++    assert.equal(part.rewardReset, false);
++  }
++});
++
++// ── case 3: legal fits open the doors; refit + rescan flips the verdict live ───────────────
++
++test('legal upgraded fits open every door on the same public scan route', () => {
++  for (const door of DOORS) {
++    const spec = ONE_OFF_BY_ID.get(door.id);
++    const fit = readyFitFor(door);
++    for (const mod of door.id === 'oneoff_held_note' ? ['mod_decoy_buoy_s'] : door.mods) {
++      assert.ok(fit.fittings.includes(mod), `${door.id}: ${mod} survives slot resolution on ${fit.shipId}`);
++    }
++    const doorState = revisitDoorState(
++      { derived: fit.derived, fittings: fit.fittings, features: PRODUCTION_FEATURES },
++      spec.revisitNeed,
++    );
++    assert.equal(doorState.ready, true, `${door.id}: the capability law itself admits the fit`);
++
++    const t = bootScan(spec.sectorId);
++    materialize(t, spec.sectorId);
++    const body = bodyOf(t.state, door.id);
++    refit(t, fit);
++    placeNear(t, body);
++    pulse(t);
++    const { part } = sf174(t, body.id);
++    assert.equal(part.ready, true, `${door.id}: the public lesson opens`);
++    assert.equal(part.verdict, 'ready');
++    assert.match(part.sentence, /ready/);
++  }
++});
++
++test('the line and field doors follow a refit on a rescan of the same entity in the same run', () => {
++  const starter = starterFit();
++  for (const door of DOORS.filter((d) => d.need.kind === 'line' || d.need.kind === 'field')) {
++    const spec = ONE_OFF_BY_ID.get(door.id);
++    const t = bootScan(spec.sectorId);
++    materialize(t, spec.sectorId);
++    const body = bodyOf(t.state, door.id);
++    placeNear(t, body);
++
++    refit(t, starter);
++    pulse(t);
++    let { part, signal } = sf174(t, body.id);
++    assert.equal(part.ready, false, `${door.id}: starter fit refuses`);
++    assert.match(signal.detail, /not yet/);
++
++    const ready = readyFitFor(door);
++    refit(t, ready);
++    pastCooldown(t);
++    pulse(t);
++    ({ part, signal } = sf174(t, body.id));
++    assert.equal(part.ready, true, `${door.id}: the refit opens the door on the same body`);
++    assert.equal(part.verdict, 'ready');
++    assert.match(signal.detail, /ready/, `${door.id}: the latest public detail changes to ready`);
++
++    refit(t, starter);
++    pastCooldown(t);
++    pulse(t);
++    ({ part, signal } = sf174(t, body.id));
++    assert.equal(part.ready, false, `${door.id}: reverting the fit restores the refusal`);
++    assert.match(signal.detail, /not yet/);
++  }
++});
++
++// ── case 3b: what the prompt actually paints ──────────────────────────────────────────────
++
++// The prompt reads payload.primary through the real signalInvestigationPrompt adapter onto
++// the prompt deck — a deck stub at the getPromptDeck() seam captures the spec the player
++// reads, so this asserts the presented detail, not a row in signals[].
++function attachPrompt(t) {
++  const specs = [];
++  const resolves = [];
++  setPromptDeck({
++    offerDecision(spec) { specs.push(spec); return true; },
++    updateDecision() { return true; },
++    resolveDecision(id) { resolves.push(id); return true; },
++    hasDecision() { return false; },
++    clearAll() {},
++  });
++  const adapter = createSignalInvestigationPrompt({ state: t.state, bus: t.bus });
++  return {
++    specs,
++    resolves,
++    adapter,
++    latest(id) {
++      for (let i = specs.length - 1; i >= 0; i--) if (specs[i].id === id) return specs[i];
++      return null;
++    },
++    painted() {
++      const spec = specs.at(-1);
++      assert.ok(spec && spec.detail, 'the prompt painted a scan-return decision');
++      return spec.detail;
++    },
++    capability() {
++      const spec = this.latest('signal:capability');
++      assert.ok(spec && spec.detail, 'the deck holds a capability-door decision');
++      return spec;
++    },
++    detach() { setPromptDeck(null); },
++  };
++}
++
++test('the scan prompt paints the door verdict on the presented primary across a refit', () => {
++  const starter = starterFit();
++  // The Disputed Keg (line door, shares the scan with the customs lesson) and the Spare
++  // Keg (tow door): both verdicts must reach the painted detail, not just the signals list.
++  for (const door of DOORS.filter(
++    (d) => d.id === 'oneoff_tethys_tally_keg' || d.id === 'oneoff_spare_keg',
++  )) {
++    const spec = ONE_OFF_BY_ID.get(door.id);
++    const t = bootScan(spec.sectorId);
++    materialize(t, spec.sectorId);
++    const body = bodyOf(t.state, door.id);
++    placeNear(t, body);
++    const prompt = attachPrompt(t);
++    try {
++      refit(t, starter);
++      pulse(t);
++      let detail = prompt.painted();
++      assert.match(detail, /not yet/, `${door.id}: the presented refusal reaches the player`);
++      const primary = t.events.results.at(-1).primary;
++      assert.match(primary.detail, /not yet/, `${door.id}: the primary row carries the verdict`);
++      if (door.id === 'oneoff_tethys_tally_keg') {
++        // Folding the verdict onto the lesson row keeps the lesson's own fact reachable —
++        // the customs teaching is still on the painted line, never replaced.
++        assert.match(detail, /customs cone is the legal gate/i,
++          'the customs fact survives on the painted line');
++      }
++
++      pastCooldown(t);
++      refit(t, readyFitFor(door));
++      pulse(t);
++      detail = prompt.painted();
++      assert.match(detail, /ready/, `${door.id}: the presented verdict opens on the refit`);
++
++      pastCooldown(t);
++      refit(t, starter);
++      pulse(t);
++      detail = prompt.painted();
++      assert.match(detail, /not yet/, `${door.id}: reverting the fit restores the painted refusal`);
++
++      // The verdict reaches the presented primary across the whole supported wreck-reveal
++      // range — the pulse's tighter "nearby" set ends at 1,200 WU but wrecks reveal out to
++      // SCAN_REVEAL_CLASS_RADIUS, and the door must paint at both distances.
++      pastCooldown(t);
++      placeNear(t, body, 1300);
++      pulse(t);
++      detail = prompt.painted();
++      assert.match(detail, /not yet/, `${door.id}: the verdict still paints at 1,300 WU`);
++      pastCooldown(t);
++      placeNear(t, body, SCAN_REVEAL_CLASS_RADIUS - 50);
++      pulse(t);
++      detail = prompt.painted();
++      assert.match(detail, /not yet/, `${door.id}: the verdict still paints at the far reveal edge`);
++    } finally {
++      prompt.detach();
++    }
++  }
++});
++
++test('the door verdict survives the production route where spectrum overwrites the result card', () => {
++  // Codex review-5: with registered [scanner, spectrum, scanReveal], a live spectrum case
++  // answers the same pulse with its own signal:scanResults — "FAINT · 0 WU · PASS 1 —
++  // Occluded" — which replaces the signal:results decision wholesale. The verdict must ride
++  // its own decision so the final player-visible route still carries it. Helios Prime is a
++  // placed spectrum sector: the case arms itself on the first flight tick, no fixture help.
++  const starter = starterFit();
++  const spec = ONE_OFF_BY_ID.get('oneoff_great_tanker');
++  const t = bootScan(spec.sectorId, { withSpectrum: true });
++  materialize(t, spec.sectorId);
++  const tanker = bodyOf(t.state, 'oneoff_great_tanker');
++  placeNear(t, tanker);
++  const prompt = attachPrompt(t);
++  try {
++    refit(t, starter);
++    pulse(t);
++
++    // The overwrite really happened: the latest scan-return card is the spectrum row, not
++    // the verdict batch — this is the negative control proving the route was exercised.
++    const result = prompt.latest('signal:results');
++    assert.ok(result, 'spectrum published its return onto the result card');
++    assert.doesNotMatch(result.detail, /tow class|not yet|ready/i,
++      'the result card no longer carries the door verdict — the overwrite is real');
++
++    // And the verdict is still on the deck, on its own decision the overwrite cannot touch.
++    // Helios carries more than one gated wreck inside the reveal radius, so the card may
++    // list several doors — every one of them refused on the starter fit.
++    const card = prompt.capability();
++    assert.match(card.detail, /Mass of Another Age: /, 'the card names its own subject');
++    assert.match(card.detail, /800 t of tow class/, 'the refusal names the authored requirement');
++    assert.doesNotMatch(card.detail, /— ready\./, 'no door reads ready on the starter fit');
++
++    pastCooldown(t);
++    refit(t, readyFitFor(DOORS.find((d) => d.id === 'oneoff_great_tanker')));
++    pulse(t);
++
++    const opened = prompt.capability();
++    assert.match(opened.detail, /800 t of tow class\. Your line will take it — ready\./,
++      'the refit flips the surviving Tanker verdict to ready');
++    assert.doesNotMatch(prompt.latest('signal:results').detail, /ready|tow class/i,
++      'the second spectrum return still replaced the result card');
++  } finally {
++    prompt.detach();
++  }
++});
++
++// ── case 4: no false line or tow acceptance ────────────────────────────────────────────────
++
++test('the head-qualified line door cannot be satisfied by rating alone', () => {
++  const kegNeed = ONE_OFF_BY_ID.get('oneoff_tethys_tally_keg').revisitNeed;
++  const starter = starterFit();
++
++  // The starter's ordinary line is rated past anything it can fly — and still fails: the
++  // door names a head, not a load number.
++  const starterDoor = revisitDoorState(
++    { derived: starter.derived, fittings: starter.fittings, features: PRODUCTION_FEATURES },
++    kegNeed,
++  );
++  assert.equal(starterDoor.ready, false);
++  assert.equal(starterDoor.headReady, false);
++  assert.equal(starterDoor.haveHeadId, null, 'the starter has no specialist head');
++
++  // The correct head fitted but its production feature flag off: denied.
++  const whip = readyFitFor(DOORS.find((d) => d.id === 'oneoff_tethys_tally_keg'));
++  assert.equal(whip.derived.masslineHeadId, 'elastic_whip', 'the Hawser fit really carries the head');
++  const flagOff = {
++    ...PRODUCTION_FEATURES,
++    massline2: { ...PRODUCTION_FEATURES.massline2, masslineHeadElasticWhip: false },
++  };
++  const disabled = revisitDoorState(
++    { derived: whip.derived, fittings: whip.fittings, features: flagOff },
++    kegNeed,
++  );
++  assert.equal(disabled.headReady, false, 'the runtime flag is part of the admission');
++  assert.equal(disabled.ready, false);
++
++  // The correct head fitted and admitted: accepted.
++  const enabled = revisitDoorState(
++    { derived: whip.derived, fittings: whip.fittings, features: PRODUCTION_FEATURES },
++    kegNeed,
++  );
++  assert.equal(enabled.headReady, true);
++  assert.equal(enabled.ready, true);
++
++  // An unknown head qualifier fails closed — never a phantom ready.
++  const unknown = revisitDoorState(
++    { derived: whip.derived, fittings: whip.fittings, features: PRODUCTION_FEATURES },
++    { kind: 'line', speedWuPerS: 1, headId: 'flux_coupler_mk7' },
++  );
++  assert.equal(unknown.headReady, false);
++  assert.equal(unknown.ready, false);
++
++  // Speed-only line requirements keep their established semantics.
++  const ordinary = revisitDoorState(
++    { derived: starter.derived, fittings: starter.fittings },
++    { kind: 'line', speedWuPerS: 5000 },
++  );
++  assert.equal(ordinary.ready, true, 'a bare line door still reads "holds any swing"');
++  assert.equal(ordinary.requiredHeadId, undefined);
++});
++
++test('an unrelated 900 t hulk beside the Tanker does not improvise the starter in', () => {
++  const starter = starterFit();
++  const spec = ONE_OFF_BY_ID.get('oneoff_great_tanker');
++  const t = bootScan(spec.sectorId);
++  materialize(t, spec.sectorId);
++  const tanker = bodyOf(t.state, 'oneoff_great_tanker');
++  // A heavy neighbour inside improvised-hitch range is not a tow class.
++  const neighbour = t.sim.spawn({
++    type: 'wreck', team: 0, mass: 900, radius: 40,
++    pos: { x: tanker.pos.x + 30, z: tanker.pos.z }, vel: { x: 0, z: 0 },
++    hull: 500, hullMax: 500, collides: true, data: {},
++  });
++  assert.ok(Math.hypot(neighbour.pos.x - tanker.pos.x, neighbour.pos.z - tanker.pos.z) <= 60,
++    'the hulk sits inside the old improvised-hitch range');
++  refit(t, starter);
++  placeNear(t, tanker);
++  pulse(t);
++  const { part } = sf174(t, tanker.id);
++  assert.equal(part.ready, false, 'a parked hulk cannot stand in for a tow class');
++  assert.equal(part.verdict, 'not yet');
++  assert.equal(part.improvised, false);
++});
++
++// ── case 5: the accepted verbs have physical effects ───────────────────────────────────────
++
++// Tow doors are a rating gate, not a hard ability gate: the door reads the same tow-class
++// function the fittings feed. The starter's class sits below every authored load and each
++// legal fit's class clears it — and the public scan verdict flips on the same rating.
++// (Codex round-2 amendment: the plan's "ready fit reaches 60 WU/s in 1.5 s" kernel bar is
++// unreachable even for the pre-existing authored doors — the Hawser measures ~21 WU/s in
++// that window on 240 t — so no physical tow-bar is claimed here; the physical consequence
++// of towing is lg-tow-predict.test.mjs's lane.)
++// Codex round-4: with two gated wrecks inside the reveal radius, the appended verdict must
++// be the NEAREST wreck's — named, deterministic, never Map insertion order — and the lesson
++// row's own Track target must not move to the wreck it is quoting.
++test('overlapping doors: the painted verdict names the nearest gated wreck and Track stays put', async () => {
++  // The lesson rows that carry a bundled verdict live around the tethys places, so the
++  // second door is a fixture wreck beside the Disputed Keg — a real gated subject for the
++  // selector (entity + oneOffId + revisitNeed), not a stubbed lesson.
++  const spec = ONE_OFF_BY_ID.get('oneoff_tethys_tally_keg');
++  const t = bootScan(spec.sectorId);
++  materialize(t, spec.sectorId);
++  const keg = bodyOf(t.state, 'oneoff_tethys_tally_keg');
++  assert.ok(keg, 'the keg materializes');
++  const spareNeed = WORLD_ONE_OFFS.find((r) => r.id === 'oneoff_spare_keg').revisitNeed;
++  const spare = t.sim.spawn({
++    type: 'wreck', alive: true,
++    pos: { x: keg.pos.x - 1800, z: keg.pos.z }, vel: { x: 0, z: 0 },
++    data: { oneOffId: 'oneoff_spare_keg', revisitNeed: spareNeed },
++  });
++  const prompt = attachPrompt(t);
++  const detailOf = (r) => (r.discovery && r.discovery.detail) || r.detail || '';
++  try {
++    placeNear(t, keg, 40);
++    pulse(t);
++    let res = t.events.results.at(-1);
++    let named = (res.signals || []).filter((r) => /The Disputed Keg:/.test(detailOf(r)));
++    assert.ok(named.length > 0,
++      `the nearer wreck names its verdict on the bundled rows — got: ${JSON.stringify((res.signals || []).map(detailOf))}`);
++    assert.equal(
++      (res.signals || []).filter((r) => /The Spare Keg:/.test(detailOf(r))).length, 0,
++      'the farther door does not supply the text');
++    // Track stays every row's own destination — the bundled row keeps its place.
++    for (const row of named) {
++      assert.notDeepEqual(row.pos, keg.pos,
++        'Track keeps the lesson place, never the wreck whose verdict rode the row');
++    }
++    // Codex round-5: the appended part is TEXT ONLY — it must not win bundle()'s action
++    // selection, so no bundled row navigates to the wreck it is quoting. SF-174 outranks
++    // the lesson SFs, which is exactly the trap the reviewer measured at the Ceres tug.
++    for (const row of res.signals || []) {
++      if (!row.discovery || row.discovery.lesson !== true) continue;
++      const partsMap = row.discovery.parts || {};
++      const part = partsMap['SF-174'];
++      if (!part || Object.keys(partsMap).length === 1) continue; // own rows keep full nav
++      assert.equal(part.pos, null, 'the appended capability part carries no navigation');
++      assert.equal(part.trackable, false, 'the appended capability part is not trackable');
++      assert.notDeepEqual(row.discovery.actionPos, keg.pos,
++        'Track keeps the lesson destination, never the wreck the text is about');
++    }
++    // Now the fixture door sits between the player and the keg at the lesson-rich spot —
++    // the nearer subject's name must paint, never whichever wreck Map.values() yielded first.
++    pastCooldown(t);
++    spare.pos.x = keg.pos.x + 30; spare.pos.z = keg.pos.z;
++    pulse(t);
++    res = t.events.results.at(-1);
++    assert.ok((res.signals || []).filter((r) => /The Spare Keg:/.test(detailOf(r))).length > 0,
++      `the nearer door supplies the named verdict — got: ${JSON.stringify((res.signals || []).map(detailOf))}`);
++    assert.equal(
++      (res.signals || []).filter((r) => /The Disputed Keg:/.test(detailOf(r))).length, 0,
++      'the now-farther door no longer paints');
++  } finally {
++    prompt.detach();
++  }
++});
++
++test('tow: door readiness follows the same tow-class rating the door reads', () => {
++  const starter = starterFit();
++  for (const door of DOORS.filter((d) => d.need.kind === 'tow')) {
++    const load = door.need.massT;
++    const starterClass = towClassMassFor(starter.derived);
++    assert.ok(starterClass + 1e-9 < load,
++      `${door.id}: starter tow class ${starterClass.toFixed(1)} t < ${load} t`);
++    const before = revisitDoorState(
++      { derived: starter.derived, fittings: starter.fittings, features: PRODUCTION_FEATURES },
++      door.need,
++    );
++    assert.equal(before.ready, false, `${door.id}: the starter's rating refuses the door`);
++    const readyFit = readyFitFor(door);
++    const readyClass = towClassMassFor(readyFit.derived);
++    assert.ok(readyClass + 1e-9 >= load,
++      `${door.id}: ${readyFit.shipId} tow class ${readyClass.toFixed(1)} t >= ${load} t`);
++    const after = revisitDoorState(
++      { derived: readyFit.derived, fittings: readyFit.fittings, features: PRODUCTION_FEATURES },
++      door.need,
++    );
++    assert.equal(after.ready, true, `${door.id}: the legal fit's rating clears the door`);
++  }
++});
++
++test('line: a stretched Elastic Whip on the disputed keg stores and releases real energy', async () => {
++  const STANDARD = ATTACHMENT_DEFS.find((d) => d.id === 'tether_standard');
++  const whip = readyFitFor(DOORS.find((d) => d.id === 'oneoff_tethys_tally_keg'));
++  const policy = effectiveTetherPolicy(STANDARD, { data: { derived: whip.derived } }, PRODUCTION_FEATURES);
++  assert.equal(policy.headId, 'elastic_whip', 'the fit presents the real head');
++  const kegMass = ONE_OFF_BY_ID.get('oneoff_tethys_tally_keg').physicalBody.mass;
++  const makeBody = (id, x, mass) => ({
++    id, type: 'ship', alive: true, radius: 8, mass, maxSpeed: 170,
++    physicsBody: { schemaVersion: 1, radius: 8, mass, inertiaY: 64, dynamic: true, ccd: true, revision: 0 },
++    pos: { x, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, angVel: 0, data: {},
++  });
++  const owner = makeBody('whip-owner', 0, whip.derived.operationalMass || whip.derived.mass);
++  const keg = makeBody('disputed-keg', 120, kegMass);
++  const runtime = await createSg02DynamicBodyOwner({ fixedDt: DT, quantum: 1e-5, mode: 'rapier-dynamic' });
++  try {
++    runtime.syncFromEntities([owner, keg]);
++    const handle = runtime.createAttachment({
++      attachmentId: 'keg-whip', defId: 'tether_standard',
++      ownerId: owner.id, targetId: keg.id,
++      sourceWorld: owner.pos, targetWorld: keg.pos,
++      restLength: 80, spring: policy.spring, tick: 0,
++    });
++    assert.ok(handle, 'the whip latches the disputed keg');
++    let telemetry = null;
++    for (let tick = 0; tick < 60; tick += 1) {
++      runtime.step(DT);
++      telemetry = runtime.getAttachmentTelemetry({ attachmentId: handle.attachmentId });
++      if (telemetry && telemetry.storedEnergy > 0) break;
++    }
++    assert.ok(telemetry && telemetry.storedEnergy > 0,
++      'the stretched live attachment stores positive spring energy');
++    const before = { x: owner.vel.x, z: owner.vel.z };
++    assert.equal(runtime.cutAttachment({ attachmentId: handle.attachmentId }), true,
++      'the deliberate release is the existing cut verb');
++    runtime.step(DT);
++    // A release that returns true without removing the attachment must fail: the telemetry
++    // feed is the runtime's own report that the latch is actually gone, and a continued
++    // spring pull would keep answering it.
++    assert.equal(runtime.getAttachmentTelemetry({ attachmentId: handle.attachmentId }) ?? null, null,
++      'the released attachment is actually removed — a no-op release would still report it');
++    const delta = Math.hypot(owner.vel.x - before.x, owner.vel.z - before.z);
++    assert.ok(delta > 0, `the release spends the stored energy as a nonzero physical response (${delta.toFixed(3)} WU/s)`);
++  } finally {
++    runtime.dispose();
++  }
++});
++
++// The real countermeasures deploy owner on a bare player ship — `state.input`'s
++// deployCountermeasure edge fires `_tryDeploy`, which selects the FIRST fitted
++// `mods.countermeasure` block via equippedCountermeasure. Shared by the field tests below.
++const makeBus = () => {
++  const handlers = {};
++  const seen = {};
++  return {
++    on(name, fn) { (handlers[name] || (handlers[name] = [])).push(fn); },
++    emit(name, payload) {
++      (seen[name] || (seen[name] = [])).push(payload);
++      for (const fn of handlers[name] || []) fn(payload);
++    },
++    events(name) { return seen[name] || []; },
++  };
++};
++
++const bootCm = (fittings) => {
++  const player = {
++    id: 1, type: 'ship', alive: true, team: 0,
++    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 8,
++    flags: {}, data: { fittings, combat: {} },
++  };
++  const state = {
++    mode: 'flight', playerId: 1, tick: 0, simTime: 0,
++    meta: { seed: SEED }, rng: mulberry32(SEED),
++    input: { deployCountermeasure: false, actions: {} },
++    combat: {}, entities: new Map([[1, player]]), entityList: [player],
++    entityIndex: { __spacefaceEntityIndexV1: true, ships: [player], projectiles: [] },
++  };
++  const bus = makeBus();
++  const cm = Object.create(countermeasures);
++  cm.init({ state, bus, helpers: {} });
++  return { state, cm, bus, player };
++};
++
++test('field: the real countermeasures owner deploys the named decoy buoy on a legal fit', () => {
++  // Without the module the same press deploys nothing.
++  const bare = bootCm(NEW_GAME.fittedModules.slice());
++  bare.state.input.deployCountermeasure = true;
++  bare.cm.update(DT, bare.state);
++  assert.equal(bare.bus.events('countermeasure:deployed').length, 0,
++    'no module, no field — the press is honestly refused');
++  assert.equal(bare.bus.events('countermeasure:denied')[0].reason, 'no_module');
++
++  // The legal decoy fit drops a live timed buoy at the authored radius.
++  const fit = readyFitFor(DOORS.find((d) => d.id === 'oneoff_held_note'));
++  assert.ok(fit.fittings.includes('mod_decoy_buoy_s'));
++  const armed = bootCm(fit.fittings);
++  armed.state.input.deployCountermeasure = true;
++  armed.cm.update(DT, armed.state);
++  const deployed = armed.bus.events('countermeasure:deployed');
++  assert.equal(deployed.length, 1, 'the press deploys');
++  assert.equal(deployed[0].kind, 'decoy');
++  assert.equal(deployed[0].radius, 620, 'the buoy waters match the authored door');
++  const live = armed.player.data.cm;
++  assert.ok(live.effect && live.effect.cfg.kind === 'decoy', 'a live decoy effect is in the water');
++  assert.ok(live.effectT > 0, 'the effect is timed, not instantaneous');
++});
++
++// Codex round-9 (review-9): one press throws ONE countermeasure — the first one fitted —
++// but the door used to quote the largest-radius one aboard. A Hawser with the chaff
++// dispenser seated ahead of the buoy carried both modules, the card promised the buoy
++// ("Your Signal Decoy Buoy S throws it — ready"), and the press deployed chaff into a
++// no_lock refusal. The capability law now mirrors the deployment owner's ordering, so the
++// door reads "not yet" and the press's denial is the honest one.
++test('field: a chaff dispenser seated ahead of the buoy keeps the door honestly shut', () => {
++  const spec = ONE_OFF_BY_ID.get('oneoff_held_note');
++  // A legal Hawser mixed fit — three M utility bays take the M dispenser and the S buoy —
++  // with the refit order deciding which module the countermeasure key fires.
++  const chaffFirst = resolveFit('ship_hawser', ['mod_chaff_dispenser_m', 'mod_decoy_buoy_s']);
++  const decoyFirst = resolveFit('ship_hawser', ['mod_decoy_buoy_s', 'mod_chaff_dispenser_m']);
++  const at = (fit, id) => fit.fittings.indexOf(id);
++  assert.ok(at(chaffFirst, 'mod_chaff_dispenser_m') >= 0
++    && at(chaffFirst, 'mod_chaff_dispenser_m') < at(chaffFirst, 'mod_decoy_buoy_s'),
++    'fixture check — the dispenser really seats ahead of the buoy in the fittings list');
++  assert.ok(at(decoyFirst, 'mod_decoy_buoy_s') >= 0
++    && at(decoyFirst, 'mod_decoy_buoy_s') < at(decoyFirst, 'mod_chaff_dispenser_m'),
++    'fixture check — reversing the refit order seats the buoy first');
++
++  // The capability law itself now reads the same first-fitted selection the key obeys.
++  const blocked = revisitDoorState(
++    { derived: chaffFirst.derived, fittings: chaffFirst.fittings, features: PRODUCTION_FEATURES },
++    spec.revisitNeed,
++  );
++  assert.equal(blocked.ready, false,
++    'chaff ahead of the buoy cannot throw the named decoy — the door stays shut');
++  assert.equal(blocked.have.kind, 'chaff', 'the capability row names what the key would throw');
++  const open = revisitDoorState(
++    { derived: decoyFirst.derived, fittings: decoyFirst.fittings, features: PRODUCTION_FEATURES },
++    spec.revisitNeed,
++  );
++  assert.equal(open.ready, true, 'the same two modules in deploy order open the door');
++  assert.equal(open.have.kind, 'decoy');
++
++  // The painted verdict agrees on the public scan route: the Held Note refuses the
++  // chaff-first fit instead of promising a buoy the key cannot reach.
++  const t = bootScan(spec.sectorId);
++  materialize(t, spec.sectorId);
++  const body = bodyOf(t.state, 'oneoff_held_note');
++  assert.ok(body, 'the Held Note materializes');
++  refit(t, chaffFirst);
++  placeNear(t, body);
++  pulse(t);
++  const { part } = sf174(t, body.id);
++  assert.equal(part.ready, false, 'the scan verdict refuses the blocked fit');
++  assert.equal(part.verdict, 'not yet');
++  assert.match(part.sentence, /not yet/);
++  assert.doesNotMatch(part.sentence, /Signal Decoy Buoy S throws it/,
++    'the card never names a buoy the press would not throw');
++
++  // And the press surfaces the honest denial — the first-fitted chaff, no live lock —
++  // on the same fittings order the scan just read.
++  const jammed = bootCm(chaffFirst.fittings);
++  jammed.state.input.deployCountermeasure = true;
++  jammed.cm.update(DT, jammed.state);
++  assert.equal(jammed.bus.events('countermeasure:deployed').length, 0,
++    'the chaff-first press deploys nothing');
++  const denial = jammed.bus.events('countermeasure:denied')[0];
++  assert.ok(denial, 'the refused press is a spoken denial, never a silent drop');
++  assert.equal(denial.kind, 'chaff', 'the first fitted countermeasure is what answered the key');
++  assert.equal(denial.reason, 'no_lock', 'chaff honestly refuses without an inbound seeker');
++
++  // The same two modules in the other order: the key throws the buoy the door wants.
++  const armed = bootCm(decoyFirst.fittings);
++  armed.state.input.deployCountermeasure = true;
++  armed.cm.update(DT, armed.state);
++  const deployed = armed.bus.events('countermeasure:deployed');
++  assert.equal(deployed.length, 1, 'the buoy-first press deploys');
++  assert.equal(deployed[0].kind, 'decoy', 'first-fitted is the deployment owner\'s law');
++  assert.equal(deployed[0].radius, 620);
++});
++
++// ── case 6: persistence and visibility do not become unlock gates ──────────────────────────
++
++function bootWorld(seed = SEED) {
++  const state = createGameState(seed);
++  state.mode = 'flight';
++  state.meta.seed = seed;
++  // The production runtime always carries its feature config; the harness must too, or the
++  // headless flag fallback silently reads a different world than the game does.
++  state.runtime = Object.freeze({ profileId: 'production', features: PRODUCTION_FEATURES });
++  const bus = createBus();
++  const helpers = {};
++  const ctx = { state, bus, helpers, registry: null };
++  core.init(ctx);
++  const world = Object.create(worldSystem);
++  world.init(ctx);
++  return { state, bus, helpers, world };
++}
++
++test('the durable record carries the body, never the door — readiness follows the live fit', () => {
++  const starter = starterFit();
++  for (const door of DOORS) {
++    const spec = ONE_OFF_BY_ID.get(door.id);
++    const sector = SECTOR_BY_ID.get(spec.sectorId);
++    const boot = bootWorld();
++    const active = { pois: [], stations: [], gates: [], dressing: [] };
++    boot.world._spawnWorldOneOffs(sector, active);
++    const body = bodyOf(boot.state, door.id);
++    assert.ok(body, `${door.id} materializes`);
++    const recordId = body.data.worldRecordId;
++    assert.equal(recordId, stableRecordId(SEED, spec.sectorId, RECORD_KIND.WRECK, `worldOneOff:${door.id}`));
++
++    // A haul persists: move the body, capture the sector's durable records, JSON the bag,
++    // restore it into a fresh world and rematerialize through the existing methods.
++    const moved = { x: body.pos.x + 500, z: body.pos.z - 120 };
++    body.pos.x = moved.x;
++    body.pos.z = moved.z;
++    boot.world._captureSectorDurableRecords(spec.sectorId, { reason: 'revisit-slice-test' });
++    const bag = boot.state.world.records;
++    assert.ok(bag.byId[recordId], `${door.id}: the durable record is captured`);
++    assert.equal(bag.byId[recordId].pos.x, moved.x, `${door.id}: the moved pose is the record`);
++    const serialized = JSON.parse(JSON.stringify(bag));
++
++    const restored = bootWorld();
++    restored.world.deserialize({
++      currentSectorId: spec.sectorId,
++      coordinateSchema: 'global_v1',
++      discovery: {},
++      records: serialized,
++    });
++    const active2 = { pois: [], stations: [], gates: [], dressing: [], enemies: [] };
++    restored.world._rematerializeSectorRecords(spec.sectorId, active2, RESIDENCY_TIER.FULL,
++      { restoreDurableRecords: true });
++    restored.world._spawnWorldOneOffs(sector, active2);
++    const matches = restored.state.entityList.filter(
++      (e) => e && e.data && e.data.worldRecordId === recordId,
++    );
++    assert.equal(matches.length, 1, `${door.id}: exactly one body for the durable identity`);
++    const live = findLiveEntityForRecord(restored.state.entityList, recordId);
++    assert.ok(live, `${door.id}: the record rematerializes a live body`);
++    assert.equal(live, matches[0]);
++    assert.equal(live.data.oneOffId, door.id, `${door.id}: identity survives the round trip`);
++    assert.equal(live.pos.x, moved.x, `${door.id}: the haul is kept, not re-anchored`);
++    assert.equal(live.pos.z, moved.z);
++    assert.equal(live.mass, spec.physicalBody.mass, `${door.id}: the catalog mass is re-stamped`);
++    assert.equal(live.data.revisitNeed == null, true,
++      `${door.id}: no requirement is stamped on the body — the catalog answers`);
++
++    // Rescan under the live fit: readiness is recomputed, never restored from the record.
++    const reveal = Object.create(scanReveal);
++    reveal.init({ state: restored.state, bus: restored.bus, helpers: {} });
++    const player = restored.helpers.spawnEntity({
++      type: 'ship', team: 0, pos: { x: live.pos.x + 40, z: live.pos.z },
++      vel: { x: 0, z: 0 }, radius: 8, data: {},
++    });
++    restored.state.playerId = player.id;
++    const rescan = () => {
++      reveal._scanWrecks(restored.state, { x: live.pos.x + 40, z: live.pos.z });
++      const part = live.data.scanRevealed && live.data.scanRevealed.discovery
++        && live.data.scanRevealed.discovery.parts['SF-174'];
++      assert.ok(part, `${door.id}: the lesson resolves off the restored body`);
++      return part;
++    };
++    refitEntity(player, starter);
++    assert.equal(rescan().ready, false, `${door.id}: the starter fit still refuses after restore`);
++    const readyFit = readyFitFor(door);
++    refitEntity(player, readyFit);
++    assert.equal(rescan().ready, true, `${door.id}: the upgraded fit opens the door after restore`);
++    // simTime is not an input to the door: a day passing changes nothing.
++    refitEntity(player, starter);
++    const before = rescan();
++    restored.state.simTime += 24 * 3600;
++    const after = rescan();
++    assert.equal(after.ready, before.ready, `${door.id}: time alone never opens the door`);
++    assert.equal(after.ready, false);
++    reveal.destroy();
++  }
++});
++
++function refitEntity(entity, fit) {
++  entity.fittings = fit.fittings.slice();
++  entity.derived = fit.derived;
++}
++
++// Codex round-6: the scanner publishes at most six rows — in a crowded belt the door's own
++// row AND every lesson row that would carry the verdict can all be capped out. The verdict
++// must still reach the deck: scanReveal publishes it on the dedicated scan:capabilityVerdicts
++// event, computed from live entities on the pulse, never from the capped list.
++test('a crowded scan cannot cap the capability verdict off the deck', () => {
++  const starter = starterFit();
++  const spec = ONE_OFF_BY_ID.get('oneoff_great_tanker');
++  const t = bootScan(spec.sectorId, { withSpectrum: true });
++  materialize(t, spec.sectorId);
++  const tanker = bodyOf(t.state, 'oneoff_great_tanker');
++  assert.ok(tanker, 'the Tanker materializes');
++  // Park the player 500 WU from the Tanker — inside SCAN_REVEAL_CLASS_RADIUS — and crowd
++  // the scan with six nearer ordinary wrecks so the published six-row batch has no room
++  // for the door's own row or any lesson row carrying its verdict.
++  placeNear(t, tanker, 500);
++  for (let i = 0; i < 6; i++) {
++    t.sim.spawn({
++      type: 'wreck', alive: true, mass: 40 + i * 5, radius: 12,
++      pos: { x: t.player.pos.x - 20 - i * 18, z: t.player.pos.z + (i - 3) * 6 },
++      vel: { x: 0, z: 0 }, data: {},
++    });
++  }
++  refit(t, starter);
++  const prompt = attachPrompt(t);
++  try {
++    pulse(t);
++    const batch = t.events.results.at(-1);
++    assert.ok(batch, 'the scan published a result batch');
++    const published = batch.signals || [];
++    assert.ok(published.length <= 6, 'the published list respects the six-row cap');
++    // Prove the repro is real: no published row carries the Tanker's capability part —
++    // the cap actually excluded every route the verdict used to ride.
++    const cappedPart = published.some((row) =>
++      row && row.entityId === tanker.id
++      && row.discovery && row.discovery.parts && row.discovery.parts['SF-174']);
++    assert.equal(cappedPart, false,
++      'fixture check — the door itself must be capped out of the published batch');
++    const verdict = prompt.capability();
++    assert.equal(verdict.id, 'signal:capability');
++    assert.match(verdict.detail, /not yet/i, 'the starter fit still reads not yet');
++    // Teardown resolves the adapter's own decisions — a destroyed adapter leaves no card.
++    prompt.adapter.destroy();
++    assert.ok(prompt.resolves.includes('signal:capability'),
++      'destroy resolves the capability decision');
++    assert.ok(prompt.resolves.includes('signal:results'), 'destroy resolves the scan result too');
++  } finally {
++    prompt.detach();
++  }
++});
++
++// Codex round-7: the capped batch may carry a SUBSET of the pulse's verdicts — merging it
++// must never shrink the dedicated event's complete set. Player 120 WU from the Spare Keg
++// and ~1600 WU from the Tanker (both inside the reveal radius), five nearer ordinary
++// wrecks crowding the six-row cap: the published batch has room for the Keg's verdict only;
++// the card must still name the Tanker.
++test('a capped subset cannot erase the farther door the pulse already proved', () => {
++  const starter = starterFit();
++  const kegSpec = ONE_OFF_BY_ID.get('oneoff_spare_keg');
++  const tankerSpec = ONE_OFF_BY_ID.get('oneoff_great_tanker');
++  assert.equal(kegSpec.sectorId, tankerSpec.sectorId,
++    'fixture needs both authored doors in one sector (the Helios pair)');
++  const t = bootScan(kegSpec.sectorId, { withSpectrum: true });
++  materialize(t, kegSpec.sectorId);
++  const keg = bodyOf(t.state, 'oneoff_spare_keg');
++  const tanker = bodyOf(t.state, 'oneoff_great_tanker');
++  assert.ok(keg && tanker, 'both doors materialize');
++  placeNear(t, keg, 120);
++  // Put the Tanker at the reveal edge from the player — inside SCAN_REVEAL_CLASS_RADIUS —
++  // and crowd with five nearer ordinary wrecks so the cap keeps the Keg but drops rows
++  // that would carry the Tanker.
++  const dir = Math.sign(tanker.pos.x - t.player.pos.x) || 1;
++  tanker.pos.x = t.player.pos.x + dir * (SCAN_REVEAL_CLASS_RADIUS - 50);
++  tanker.pos.z = t.player.pos.z;
++  for (let i = 0; i < 5; i++) {
++    t.sim.spawn({
++      type: 'wreck', alive: true, mass: 40 + i * 5, radius: 12,
++      pos: { x: t.player.pos.x - 20 - i * 18, z: t.player.pos.z + (i - 2) * 6 },
++      vel: { x: 0, z: 0 }, data: {},
++    });
++  }
++  refit(t, starter);
++  const prompt = attachPrompt(t);
++  try {
++    pulse(t);
++    const batch = t.events.results.at(-1);
++    assert.ok(batch && Array.isArray(batch.signals));
++    const carriesTanker = batch.signals.some((row) =>
++      row && row.entityId === tanker.id
++      && row.discovery && row.discovery.parts && row.discovery.parts['SF-174']);
++    assert.equal(carriesTanker, false,
++      'fixture check — the Tanker verdict must be capped out of the published batch');
++    const verdict = prompt.capability();
++    // Both doors are in the event's complete set — the capped Keg-only batch must not
++    // shrink it back to one.
++    assert.equal(verdict.statusFlag, '2 DOORS', 'both doors stay on the card');
++    const tankerLabel = String(tankerSpec.name || '').split(' — ')[0];
++    const kegLabel = String(kegSpec.name || '').split(' — ')[0];
++    assert.match(verdict.detail, new RegExp(tankerLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
++      'the dedicated event keeps the farther door');
++    assert.match(verdict.detail, new RegExp(kegLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
++    assert.match(verdict.detail, /not yet/i);
++  } finally {
++    prompt.detach();
++  }
++});
++
++// Codex round-8: both capability-selection gates used the bare catalog radius. A deepsurvey
++// fit legitimately reveals a wreck at 2,600 WU — the reach is a fitted capability, not a
++// constant — yet the verdict card and the lifted lesson copy both gated at a fixed 2,200 WU
++// and silently dropped the door. Hawser's three M utility bays take the unique suite
++// (scannerRadiusMult 2.25 → 4,950 WU of reveal), still far short of the Tanker's 800 t tow
++// door, so the verdict must paint "not yet" at a range the bare radius could never serve.
++test('the upgraded scanner keeps the door verdict on both selection paths at fitted range', () => {
++  const tankerSpec = ONE_OFF_BY_ID.get('oneoff_great_tanker');
++  const fit = resolveFit('ship_hawser', ['unique_deepsurvey_suite']);
++  assert.ok(fit.fittings.includes('unique_deepsurvey_suite'),
++    'the legal Hawser fit resolves the unique suite into its fittings');
++  const tankerLabel = String(tankerSpec.name || '').split(' — ')[0];
++  const tankerRe = new RegExp(tankerLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
++
++  // Path A — the dedicated card: crowd the six-row batch so no row can carry the verdict,
++  // exactly the round-6 failure shape, now at a range the bare radius never reached.
++  const t = bootScan(tankerSpec.sectorId, { withSpectrum: true });
++  materialize(t, tankerSpec.sectorId);
++  const tanker = bodyOf(t.state, 'oneoff_great_tanker');
++  assert.ok(tanker, 'the Tanker materializes');
++  placeNear(t, tanker, 2600);
++  for (let i = 0; i < 6; i++) {
++    t.sim.spawn({
++      type: 'wreck', alive: true, mass: 40 + i * 5, radius: 12,
++      pos: { x: t.player.pos.x - 20 - i * 18, z: t.player.pos.z + (i - 3) * 6 },
++      vel: { x: 0, z: 0 }, data: {},
++    });
++  }
++  refit(t, fit);
++  // The sensor profile reads the durable fittings record — production stamps the resolved
++  // module list on entity.data.fittings; a scratch player that only sets .fittings hides
++  // the suite from the reveal and the verdict never had a chance.
++  t.player.data.fittings = t.player.fittings.slice();
++  const prompt = attachPrompt(t);
++  try {
++    pulse(t);
++    const batch = t.events.results.at(-1);
++    assert.ok(batch && Array.isArray(batch.signals));
++    const carriesTanker = batch.signals.some((row) =>
++      row && row.entityId === tanker.id
++      && row.discovery && row.discovery.parts && row.discovery.parts['SF-174']);
++    assert.equal(carriesTanker, false,
++      'fixture check — the crowd caps every row that could carry the Tanker verdict');
++    const verdict = prompt.capability();
++    assert.match(verdict.detail, tankerRe,
++      'the fitted reach keeps the Tanker verdict on the card at 2,600 WU');
++    assert.match(verdict.detail, /800 t of tow class/, 'the refusal names the authored requirement');
++    assert.match(verdict.detail, /not yet/i, 'a 287 t-class tug still refuses the 800 t door');
++  } finally {
++    prompt.detach();
++  }
++
++  // Path B — the lifted copy on the lesson rows. The lesson places only publish inside their
++  // own anchors, which live around the tethys spots, so the second selection path is proven
++  // on the Disputed Keg: stand in the lesson-rich pocket, push the door itself out to 2,600
++  // WU — past the bare radius, inside the fitted one — and the appended verdict must still
++  // name it. The Hawser carries no Elastic Whip head, so the line door honestly refuses.
++  const kegSpec = ONE_OFF_BY_ID.get('oneoff_tethys_tally_keg');
++  const kegLabel = String(kegSpec.name || '').split(' — ')[0];
++  const t2 = bootScan(kegSpec.sectorId);
++  materialize(t2, kegSpec.sectorId);
++  const keg2 = bodyOf(t2.state, 'oneoff_tethys_tally_keg');
++  assert.ok(keg2, 'the disputed keg materializes');
++  placeNear(t2, keg2, 40);
++  keg2.pos.x = t2.player.pos.x + 2600;
++  keg2.pos.z = t2.player.pos.z;
++  refit(t2, fit);
++  t2.player.data.fittings = t2.player.fittings.slice();
++  const prompt2 = attachPrompt(t2);
++  try {
++    pulse(t2);
++    const batch2 = t2.events.results.at(-1);
++    assert.ok(batch2 && Array.isArray(batch2.signals));
++    const lifted = (batch2.signals || [])
++      .filter((row) => row && row.discovery && row.discovery.lesson === true)
++      .map((row) => row.discovery.parts && row.discovery.parts['SF-174'])
++      .find((part) => part && part.lifted === true);
++    assert.ok(lifted, 'a lesson row carries the appended verdict copy');
++    assert.match(lifted.sentence || '', new RegExp(kegLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
++      'the lifted verdict names the far door at fitted range');
++    assert.match(lifted.sentence || '', /not yet/i);
++  } finally {
++    prompt2.detach();
++  }
++});
+diff --git a/design/program/agentic-run-oct20/out/R399/protected.txt b/design/program/agentic-run-oct20/out/R399/protected.txt
+new file mode 100644
+index 0000000000..71147630a7
+--- /dev/null
++++ b/design/program/agentic-run-oct20/out/R399/protected.txt
+@@ -0,0 +1,230 @@
++ M SAVE_SCHEMA.md
++ M build_map.md
++ M design/program/DEMO_READINESS_2026-09-20.md
++ M design/program/INFERENCE_IDEAS.md
++ M design/program/LANDED_REVIEW.md
++ M design/program/NOW.md
++ M design/program/agentic-run-oct20/lane.mjs
++ M design/program/player-truth/adventure/contact-sheet.jpg
++ M design/program/player-truth/adventure/verdict.json
++ M design/program/player-truth/adventure/verdict.md
++ M docs/EVENT_ROUTING.md
++ M docs/SYSTEM_REGISTRY.md
++ M package-lock.json
++ M scripts/bake-title-attract.mjs
++ M scripts/lib/ceresFiveMinuteAcceptance.mjs
++ M scripts/lib/uiBenchCatalog.mjs
++ M src/audio/audioSystem.js
++ M src/audio/bandBeds.js
++ M src/audio/barkVoice.js
++ M src/audio/themeCompose.js
++ M src/audio/themeMatrix.js
++ A src/chronicler/logbook.js
++ A src/chronicler/recordsWall.js
++ M src/combat/masslineTargetScoring.js
++ M src/combat/physicalEffects.js
++ M src/core/flight/propulsionKernel.js
++ M src/core/mainToSimEventSurface.js
++ M src/core/registry.js
++ M src/data/barks.js
++ M src/data/blackFlag.js
++ M src/data/combatDefs.js
++ A src/data/contactDeedMemory.js
++ M src/data/environmentalMachinery.js
++ M src/data/factionPresence.js
++ M src/data/fields.js
++ M src/data/lookMoods.js
++ M src/data/modules.js
++ M src/data/powerPreview.js
++ M src/data/saveVersion.js
++ M src/data/sectorVisualProfiles.js
++ M src/data/shipjackEquipment.js
++ M src/data/starterJobs.js
++ M src/data/survivalArenas.js
++ M src/data/survivalDraft.js
++ M src/data/swarmBrood.js
++ M src/data/swarmCatalog.js
++ M src/data/swarmDraft.js
++ A src/data/travelChoices.js
++ M src/localization/catalogs/en-US.generated.js
++ M src/presentation/momentMachine/captions.js
++ M src/presentation/momentMachine/index.js
++ M src/presentation/momentMachine/ingest.js
++ M src/render/camera.js
++ M src/render/forceLanguage/fieldForcePresentation.js
++ M src/render/illustratedSurface.js
++ M src/render/killcamStage.js
++ M src/render/powerPreview.js
++ M src/render/renderer.js
++ A src/render/replayWeaponStage.js
++ M src/render/titleAttractStage.js
++ M src/render/uiStage.js
++ M src/render/vfx.js
++ M src/render/vfxColorLightDirector.js
++ M src/runtime/authoritativeSystemManifest.js
++ M src/runtime/nodeSystemFactoryTable.js
++ M src/save/migrations.js
++ M src/save/saveSystem.js
++ M src/shipjack/market.js
++ M src/sim/killcamTape.js
++ M src/sim/titleAttract.js
++ M src/sim/titleAttractTape.js
++ M src/sim/titleAttractTapeData.js
++ M src/story/campaign47a/embodiedDialogue.js
++ M src/story/endings/finaleContent.js
++ M src/story/endings/finaleRuntime.js
++ M src/story/endings/lifeLedger.js
++ M src/systems/aftermathWrecks.js
++ M src/systems/bandRadio.js
++ M src/systems/cruise.js
++ M src/systems/custodyConsequences.js
++ M src/systems/economy.js
++ M src/systems/encounterDirector.js
++ M src/systems/environmentalMachinery.js
++ M src/systems/factionPresence.js
++ M src/systems/factions.js
++ M src/systems/fields.js
++ M src/systems/flightV3.js
++ M src/systems/gateControlDirector.js
++ M src/systems/input.js
++ M src/systems/killReplay.js
++ M src/systems/missions.js
++ M src/systems/npcJobsRuntime.js
++ M src/systems/onboarding.js
++ M src/systems/postEndingReplay.js
++ M src/systems/powerVerbs.js
++ M src/systems/routeFollower.js
++ M src/systems/routePlanner.js
++ M src/systems/scanner.js
++ M src/systems/sectorSim.js
++ M src/systems/shipjack.js
++ M src/systems/ships.js
++ M src/systems/stationContacts.js
++ M src/systems/surveyFix.js
++ M src/systems/survivalArena.js
++ M src/systems/survivalDraft.js
++ M src/systems/swarmArena.js
++ M src/systems/swarmBrood.js
++ M src/systems/tetherGameplay.js
++ M src/systems/traffic.js
++ M src/systems/travelLanes.js
++ A src/systems/weatherMeteors.js
++ M src/systems/wingmen.js
++ M src/systems/world.js
++ A src/testing/lab/titleVerbScenario.js
++ M src/ui/accessibility.js
++ M src/ui/bindings.js
++ M src/ui/blackFlag.js
++ M src/ui/blackFlagRegistry.js
++ M src/ui/confirm.js
++ M src/ui/galaxyMap.js
++ M src/ui/input.js
++ A src/ui/ionStormHud.js
++ M src/ui/loadingPresenter.js
++ A src/ui/logbookMedia.js
++ A src/ui/logbookRecap.js
++ M src/ui/map/mapNavContext.js
++ A src/ui/orrery/logbookLayouts.js
++ M src/ui/orrery/settingsPreview.js
++ M src/ui/racingHud.js
++ A src/ui/rangeLicence.js
++ M src/ui/screens/clips.js
++ M src/ui/screens/codex.js
++ M src/ui/screens/crucible.js
++ M src/ui/screens/flightFootage.js
++ M src/ui/screens/footageVideoCodec.js
++ M src/ui/screens/gameOver.js
++ M src/ui/screens/help.js
++ M src/ui/screens/mainMenu.js
++ M src/ui/screens/missionLog.js
++ M src/ui/screens/newGame.js
++ M src/ui/screens/pause.js
++ M src/ui/screens/range.js
++ M src/ui/screens/replay.js
++ M src/ui/screens/settings.js
++ M src/ui/screens/statistics.js
++ M src/ui/station/barContacts.js
++ M src/ui/station/dock.js
++ M src/ui/station/screens/bar.js
++ M src/ui/station/screens/contracts.js
++ M src/ui/station/stationApp.js
++ A src/ui/travelVectorHud.js
++ M src/ui/uiRoot.js
++ M src/ui/voiceArbiter.js
++ M styles/station-orbital.css
++ M test/al-show-2-theater-4242.test.mjs
++ A test/al-show-3-attract-4242.test.mjs
++ M test/black-flag-content-ui.test.mjs
++ M test/black-flag-market.test.mjs
++ A test/black-flag-rendezvous.test.mjs
++ A test/black-flag-save-loop.test.mjs
++ M test/black-flag-state.test.mjs
++ M test/fb-pad-covers-the-hand.test.mjs
++ M test/five-powers-merge-4242.test.mjs
++ A test/gold-logbook-451-4242.test.mjs
++ M test/next-wave-nxb-003.test.mjs
++ M test/powers-493.test.mjs
++ A test/rc-cast-memory-460-4242.test.mjs
++ A test/rc-travel-4242.test.mjs
++ M test/story-endings.test.mjs
++ M test/swarm-preaction-damage-admission.test.mjs
++ M test/title-attract.test.mjs
++ M test/wave-e1-pad-verbs.test.mjs
++ M tools/ui-bench.js
++?? %TEMP%towline_rel_before.txt
++?? .claude/settings.local.json
++?? "C\357\200\272Users93robAppDataLocalTempg453.log"
++?? "c\357\200\272tmp_beam.txt"
++?? "c\357\200\272tmp_mine.txt"
++?? "c\357\200\272tmp_prio.txt"
++?? "c\357\200\272tmp_tb.txt"
++?? "c\357\200\272tmp_tether.txt"
++?? "c\357\200\272tmp_ts.txt"
++?? design/program/agentic-run-oct18/out/audit-audio.log
++?? design/program/agentic-run-oct18/out/audit-hitch2.log
++?? design/program/agentic-run-oct18/out/audit-menus.log
++?? design/program/agentic-run-oct18/packets/AUDIT-AUDIO.md
++?? design/program/agentic-run-oct18/packets/AUDIT-MENUS.md
++?? design/program/agentic-run-oct18/packets/SWP-LOAD-FINDINGS.md
++?? src/audio/barkPcmCache.js
++?? src/audio/outputMix.js
++?? src/audio/replayAudioTape.js
++?? src/audio/replayAudioWorklet.js
++?? src/audio/sectorScoreBeds.js
++?? src/audio/stuntScore.js
++?? src/audio/threatEar.js
++?? src/data/bloomLadder.js
++?? src/data/craftCadence.js
++?? src/data/lineProgression.js
++?? src/data/lineRating.js
++?? src/data/rockGunTape.js
++?? src/data/trailerMoments.js
++?? src/data/worldPressure.js
++?? src/onboarding/powerSituations.js
++?? src/render/trailerStaging.js
++?? src/sim/forceTape.js
++?? src/sim/theaterTape.js
++?? src/story/endings/worldAfter.js
++?? src/systems/captainMemory.js
++?? src/systems/captainStandingOrders.js
++?? src/systems/coldburnRey.js
++?? src/systems/endingWorldPresence.js
++?? src/systems/rockCore.js
++?? src/systems/swarmLegendaries.js
++?? src/systems/trailerEncounterStaging.js
++?? src/systems/worldPressure.js
++?? src/ui/screens/theaterExport.js
++?? src/ui/screens/theaterSession.js
++?? src/ui/screens/theaterWebm.js
++?? src/ui/station/stationArrival.js
++?? test/power-fire-setting.test.mjs
++?? test/power-hold-preview.test.mjs
++?? test/w-520.test.mjs
++?? tools/forge-connectivity-scan.cjs
++?? tools/forge-lod-component-scan.cjs
++?? tools/forge-lod-silhouette-scan.cjs
++?? tools/forge-lodfile-scan.cjs
++?? tools/forge-perch-scan.cjs
++?? tools/forge-probe-part.cjs
++?? tools/forge-surface-scan.cjs
++?? tsconfig-bughunt.tmp.json
+diff --git a/design/program/agentic-run-oct20/out/R399/files.txt b/design/program/agentic-run-oct20/out/R399/files.txt
+new file mode 100644
+index 0000000000..f623a35f41
+--- /dev/null
++++ b/design/program/agentic-run-oct20/out/R399/files.txt
+@@ -0,0 +1,8 @@
++src/data/worldOneOffs.js
++src/systems/shipCapabilities.js
++src/systems/scanReveal.js
++src/ui/signalInvestigationPrompt.js
++test/al-long-1-revisit-4242.test.mjs
++design/program/agentic-run-oct20/out/R399/protected.txt
++design/program/agentic-run-oct20/out/R399/files.txt
++design/program/agentic-run-oct20/out/R399/report.md
+diff --git a/design/program/agentic-run-oct20/out/R399/report.md b/design/program/agentic-run-oct20/out/R399/report.md
+new file mode 100644
+index 0000000000..79b8702b68
+--- /dev/null
++++ b/design/program/agentic-run-oct20/out/R399/report.md
+@@ -0,0 +1,280 @@
++# R399 (AL-LONG-1) — eight-object capability-revisit slice
++
++## Player terms
++
++Eight memorable wrecks now tell the player, on an ordinary scan pulse, whether the fit they
++are flying can handle the named job: six tow doors (Great Tanker 800 t, Runaway Ladle 240 t,
++Erased 260 t, Spare Keg 90 t, Impound Shelf 150 t, The Pour 240 t), one head-qualified line
++door (Disputed Keg — an Elastic Whip rated for a 100 WU/s swing), and one field door
++(Held Note — a Signal Decoy Buoy in the water). The two slam doors were replaced by tow doors
++on the same bodies in Round 1: no honest slam return-action exists on the player route yet. The starter Kestrel reads "not yet"
++on all eight; a legal upgraded fit reads "ready", and rescanning after a refit flips the
++verdict. Nothing is locked, paid, hidden, or time-gated.
++
++## Done-when ↔ assertion
++
++| Scope item | Proven by |
++|---|---|
++| Eight authored, physical doors across the supported kinds (tow, line, field) | `eight authored opportunities carry exact requirements` — deepEqual on each `revisitNeed`, body materialized via `world._spawnWorldOneOffs` is a tetherable wreck at catalog mass/position/placeId |
++| Actual starter refuses every requirement | `the real starter fit gets "not yet" on every one of the eight doors` — real NEW_GAME fit (tow 65.6 t), SF-174 `ready:false`, `verdict:'not yet'`, public `detail` contains the refusal, `paid:0`, `interactionLocked:false`, body stays trackable |
++| Legal fits open the doors | `legal upgraded fits open every door on the same public scan route` — Hawser (90/150/240/260 tow), Colossus (800), Hawser+`mod_elastic_whip_m` (line), Kestrel+`mod_decoy_buoy_s` (field); modules asserted to survive `fittingsFromDefaultModules`; `revisitDoorState.ready` and scanned verdict both true |
++| Refit + rescan flips verdict on same entity/sim | `the line and field doors follow a refit on a rescan` — scan → not yet → refit → past 8 s scanner cooldown → ready → revert → not yet |
++| No false line/tow acceptance | `the head-qualified line door cannot be satisfied by rating alone` (starter "holds any swing" line denied; flag-off whip denied; enabled whip accepted; unknown `headId` fails closed; speed-only line unchanged) and `an unrelated 900 t hulk beside the Tanker` (authored tow branch no longer reads an improvised hitch; `improvised:false`, verdict not yet) |
++| Accepted verbs follow the door's own law | tow: `towClassMassFor` — starter class below every authored load, legal fit's class at or above, `revisitDoorState.ready` flips on the same rating (no physical tow-bar is claimed; the kernel pull is lg-tow-predict's lane). Slam: deferred — no honest slam return-action exists yet. line: SG-02 whip attachment on the keg's 140 t stores `storedEnergy > 0`; cut produces nonzero velocity delta. field: real `countermeasures` owner — no module → `denied(no_module)`; decoy fit → `countermeasure:deployed{kind:'decoy', radius:620}` + live timed effect |
++| Persistence, no unlock gates | `the durable record carries the body, never the door` — per-door: move, `_captureSectorDurableRecords`, JSON round-trip, `deserialize` + `_rematerializeSectorRecords` + `_spawnWorldOneOffs` → one body, stable recordId, moved pose, catalog mass; rescan after restore follows the live fit; record/entity carries no `revisitNeed`; `simTime += 24 h` never flips readiness |
++
++## Commands and results
++
++- `node --test test/al-long-1-revisit-4242.test.mjs` — **11 pass / 0 fail**
++- `node --test` on the plan's regression list (al-lg-capability-doors, grok-disc-discovery,
++  seam-scan-reveal, scanner-signal-investigation, world-one-offs, lg-tow-predict,
++  massline-elastic-whip-head, massline-elastic-whip-snap, countermeasure-denied-readiness,
++  m2-world-records) — **85 pass / 0 fail**
++- `npm run check:baseline` — **12/17 green**, 5 FAILs, all foreign-caused (see below)
++
++## Baseline FAILs — foreign-caused
++
++The 47a tape (`test/47a.inputs.json`) contains no `scanPulse` input, and my diff only changes
++(a) catalog `revisitNeed` rows read inside `capabilityLesson`, (b) `revisitDoorState`'s line
++branch for `headId` needs (none existed before), and (c) the authored-tow branch of
++`capabilityLesson`. None of that code executes without a scan pulse, so the `sim`/`sim-v3`
++hash drift cannot come from this diff — the tree carries ~230 foreign dirty paths including
++`src/core/flight/propulsionKernel.js`, `src/core/registry.js`, `src/combat/*`, `src/data/*`.
++`save-schema` likewise: `SAVE_SCHEMA.md` and `src/data/saveVersion.js` are foreign-dirty and
++my change adds no serialized state. `ui-screen-imports` (2 fails) and `plan-integrity`
++(§1C board drift, row 474) touch nothing I edited.
++
++## Deviations from the plan
++
++1. **Tow physical check.** The literal "60 WU/s inside the 1.5 s kernel window" is unreachable
++   for spooling drives: the Hawser's torch takes ~2 s to peak force, so even door-admitting
++   fits measure 20.8 WU/s in the window on the 240 t load (the door's bar is the sustained-
++   force law `towClassMassFor`, which the kernel cannot reproduce inside 1.5 s). Kept the 1.5 s
++   sample for the starter-denial side; added a 5 s sustained-kernel assertion that the ready
++   fit passes 60 WU/s and out-pulls the starter on the same load.
++2. **Slam surface.** (SUPERSEDED — Round 1 removed both slam doors; no slam test exists.)
++   The original deviation note: real subjects are `wreck` entities → `collisionSurface`
++   reads 'debris' (energy path), under which a bare Mule marginally dies at 75 WU/s
++   (207.3 ≥ 200). Live wreck contact uses the energy law.
++3. The Kestrel has one utility S slot, so the legal decoy fit swaps `mod_drill_amp` for
++   `mod_decoy_buoy_s` (all requested modules asserted to survive slot resolution).
++4. `state.runtime.features` must be stamped in the world-boot harness — production always
++   carries it; the headless flag fallback would deny the whip otherwise.
++
++## Deferred
++
++The clause "three opportunities — including the Tanker — first attainable in hours 10–25"
++stays **open** per the plan: it needs an earned progression route, not a flag or fixture.
++Row 399 remains open.
++
++## Falsify
++
++Scanning the Disputed Keg with a Hawser carrying `mod_elastic_whip_m` returns SF-174
++`ready:true` — try to falsify that this acceptance depends on the runtime feature admission
++(`massline2.masslineHeadElasticWhip`) and the fitted head id, not merely on the whip's
++numeric line rating.
++
++## Round 1 fixes (Codex review 1, rework items A1–A4)
++
++- **A1 [blocking] — the verdict now reaches the painted prompt.** `payload.primary` sorts by
++  signal-kind priority (`archive` 85 > `salvage`/`ship`), so `signal:discovery:SF-169` always
++  won the prompt's primary slot and the body's own SF-174 detail never painted.
++  `placeRow()` gains an optional second bundle part and `discoveryPlaceCandidates` folds
++  `nearbyCapabilityPart(state, nearby)` — the same live `capabilityLesson` verdict the body
++  row computes, null unless a revisitNeed wreck was actually inside the pulse — into every
++  lesson row's discovery. The lesson's own sentence stays first; the door verdict follows.
++  New test asserts the PAINTED detail via the real `createSignalInvestigationPrompt` routed
++  through `setPromptDeck` (capture stub), not `signals[]`: keg + Spare Keg read
++  "not yet → ready → not yet" across the refit cycle, and the customs fact stays on the
++  painted line.
++- **A2 [blocking] — slam doors replaced.** `collisionConsequences` skips player damage and
++  the real `wreck`/'debris' surface fails the bare Mule — no honest slam return-action
++  exists on the player route. Both slam `revisitNeed` annotations removed; the same two
++  bodies now carry tow doors at their real physical masses (`oneoff_impound_shelf` 150 t,
++  `oneoff_the_pour` 240 t — Hawser tow class ~287.8 clears both, starter 65.6 fails).
++  Eight doors stand: 6 tow + 1 head-qualified line + 1 field-decoy. Slam coverage deferred:
++  needs a player-damage route first. `revisitDoorState`'s slam branch untouched (existing
++  code/tests use it).
++- **A3 [major] — one tow criterion for both fits.** The kernel assertion now uses the SAME
++  sustained 5 s window for starter and ready fit on the same load: starter < 60 WU/s in the
++  published 1.5 s window AND ready ≥ 60 WU/s at 5 s AND ready out-pulls starter. Stated
++  plainly: tow class is a rating the door reads, not a hard ability gate — the test measures
++  the pull, it does not pretend the starter cannot nudge the load.
++- **A4 [major] — the whip release is now proven removed.** After `cutAttachment() === true`
++  the test asserts `getAttachmentTelemetry(attachmentId) === null` — a no-op release would
++  keep reporting the latch — plus the velocity delta stays > 0.
++
++Verification: `node --test test/al-long-1-revisit-4242.test.mjs` → **11 pass / 0 fail**
++(the slam case dropped, the prompt-painting case added). Regression list → **85 pass /
++0 fail**. `npm run check:baseline` → **12/17 green, identical foreign FAIL set and hash
++fingerprint** (plan-integrity row-474, ui-screen-imports ×2, save-schema, sim-v3
++`2a5f952b…`, sim `59148655…`).
++
++## Round 3 fixes (Codex review 2)
++
++- **C1 — verdict reach.** `nearbyCapabilityPart` gated on the pulse's tighter `nearby` set
++  (~1,200 WU) while wreck reveals reach `SCAN_REVEAL_CLASS_RADIUS` (2,200 WU): at 1,300 WU
++  the body row painted but the primary never carried the verdict. The gate now selects the
++  first gated wreck inside the reveal radius itself (the same constant, no magic number).
++  Test: the presented primary at 1,300 WU and at `SCAN_REVEAL_CLASS_RADIUS - 50` still reads
++  "not yet" for the starter fit on both doors.
++- **C2 — tow criterion.** Kernel tow-bar assertions removed entirely (the 1.5 s bar is
++  unreachable even for the pre-existing authored doors — Hawser ~21 WU/s on 240 t in that
++  window). Acceptance is the rating the door itself reads: `towClassMassFor` below the load
++  for the starter and at/above it for each legal fit, and `revisitDoorState.ready` flips on
++  the same rating. Stated plainly: **tow class is a rating, not a hard ability gate; no
++  physical tow-bar is claimed** — lg-tow-predict.test.mjs owns the physical consequence.
++- **C3 — report/scope.** The header and done-when table now match the code: eight doors =
++  six tow + one line-with-head + one field-decoy; slam deferred pending a player-damage
++  route; the "hours 10–25" clause remains deferred.
++
++Verification: `node --test test/al-long-1-revisit-4242.test.mjs` → **11 pass / 0 fail**;
++regression list → **85 pass / 0 fail**; `npm run check:baseline` → same five foreign FAIL
++categories.
++
++## Round 4 fixes (Codex review 3, item 3 — items 1-2 resolved by LEAD AMENDMENT scope)
++
++- **Deterministic subject.** `nearbyCapabilityPart` now selects the eligible gated wreck
++  NEAREST the player inside the reveal radius, ties broken by entity id — never Map
++  insertion order. Overlapping doors can no longer let an unrelated hulk supply every
++  lesson's verdict.
++- **Named verdict.** The bundled sentence is prefixed with the subject's own display
++  label (`The Disputed Keg: ... ready`) so it is truthful on whichever lesson row carries
++  it; the wreck's own row keeps the unprefixed form (its subject is itself), and every
++  row's Track target stays that row's own destination.
++- Test: `overlapping doors` — two gated wrecks (keg + fixture door), name follows the
++  nearer subject on both sides, Track stays the lesson place.
++- `node --test test/al-long-1-revisit-4242.test.mjs` → **12 pass / 0 fail**; R399+R423+
++  drill guard batch → **154 pass / 0 fail**.
++
++## Round 5 fixes (Codex review 4)
++
++1. **[MAJOR] navigation hijack.** `bundle()` picks its action target by SF priority, so the
++   appended SF-174 part was winning Track and `actionPos` on lesson rows (the Ceres tug
++   repro). The appended part is now stripped to TEXT ONLY (`pos: null, trackable: false`)
++   — it can never win bundle's action selection; every lesson keeps its own pos,
++   actionPos and trackability. The wreck's own row keeps the full part (its subject is
++   itself). Test asserts appended parts carry no nav and actionPos never equals the wreck.
++2. **[MINOR] `_part` leak.** Subject selection keeps the candidate part in a local
++   `bestPart`; nothing is written onto live entities.
++- `node --test test/al-long-1-revisit-4242.test.mjs` → **12 pass / 0 fail**; guard list
++  (18 files) → all green.
++
++## Round 6 fixes (Codex review 5)
++
++1. **[BLOCKING] Spectrum `signal:scanResults` overwrite.** In production order
++   `[scanner, spectrum, scanReveal]`, spectrum's `_fromPulse` sets `_pendingResult` and its
++   next `update` emits a second `signal:scanResults` (`UNRESOLVED RETURN` / "FAINT · 0 WU ·
++   PASS 1 — Occluded"), which `signalInvestigationPrompt` paints onto `signal:results` —
++   `promptDeck.offerDecision` replaces the spec wholesale, so the verdict never survived to
++   the player's eye. Lead-verified mechanism (not just Codex's claim): spectrum emits the
++   pending result inside its own update, after the scanner's same-tick batch.
++
++   Fix — the verdict rides its own deck decision, Codex's allowed "separate visible
++   decision":
++
++   - `capabilityLesson` stamps every SF-174 part with `doorKey` (`door:<entity.id>`) and a
++     `cardSentence` that prefixes the door's name ("Mass of Another Age: …"); the stripped
++     copy lifted onto lesson rows (`nearbyCapabilityPart`) inherits both and now sets
++     `lifted: true`, and `sentence` (in-row text) stays subjectless only on the body's own
++     row.
++   - `signalInvestigationPrompt.showResults` collects `discovery.parts['SF-174']` across
++     `payload.signals`, dedupes by `doorKey` (preferring the `lifted` copy), and offers a
++     second decision `signal:capability` (sender FIT CHECK, statusFlag the verdict or
++     "N DOORS", detail = cardSentences, same 10 s ttl). Only a batch that carries verdict
++     parts refreshes it — spectrum's overwrite of `signal:results` cannot touch it.
++   - `hide()`/`destroy()` resolve the new id alongside the existing ones.
++
++   Files added to the write set: `src/ui/signalInvestigationPrompt.js` (was clean, unowned).
++
++2. **Production-route regression.** `bootScan` now takes `{ withSpectrum }`; the new test
++   registers real `spectrum` in Helios Prime (a placed spectrum sector — the case arms
++   itself on the first flight tick, no fixture help), pulses at the Great Tanker, and
++   asserts: the latest `signal:results` spec is the spectrum row (negative control — the
++   overwrite really happened, `doesNotMatch /tow class|not yet|ready/`), the
++   `signal:capability` card still names the door and its requirement, and a refit+rescan
++   flips the surviving card to "ready".
++
++- `node --test test/al-long-1-revisit-4242.test.mjs` → **13 pass / 0 fail**; the 10-file
++  guard list → **85 pass / 0 fail**.
++
++## Round-6 fixes (Codex review-6 FINDINGS)
++
++- **MAJOR — verdict lost under the six-row signal cap.** In a crowded belt, the scanner's
++  six-row publish cap can exclude the door's own row AND every lesson row carrying the
++  verdict. `scanReveal` now publishes `scan:capabilityVerdicts` on the pulse itself,
++  computed from live entities inside `SCAN_REVEAL_CLASS_RADIUS` (deterministic order:
++  nearest, ties by id), carrying text-only lifted parts (`pos:null`, `trackable:false`,
++  `cardSentence` promoted). The adapter subscribes to it: nonempty batch offers/updates
++  `signal:capability`; an empty batch resolves the card (door left reach). The capped-list
++  extraction route stays — both paths feed the same deck decision.
++- **MINOR — `destroy()` left `signal:capability` on the deck.** Teardown now resolves all
++  three owned decisions (`signal:results`, `signal:codex`, `signal:capability`) before
++  unsubscribing, including the new event.
++- Regression: crowded scan — six nearer ordinary wrecks + Tanker at 500 WU under the real
++  `[scanner, spectrum, scanReveal]` route proves the published batch drops every
++  verdict-carrying row while the card still paints "not yet"; destroy resolves both cards.
++- Tests: focused file 14/14; guards 85/85.
++
++## Round-7 fixes (Codex review-7 FINDINGS)
++
++- **MAJOR — capped subset erased the pulse's complete verdict set.** `showResults` re-offered
++  `signal:capability` from the capped batch, replacing the dedicated event's superset. The
++  adapter now keeps a per-pulse union (`capabilityDoors` keyed by `doorKey`): the
++  `scan:capabilityVerdicts` event rebuilds it authoritatively each pulse; the capped batch
++  can only ADD verdicts, never shrink the set. Entries carry a `_at` stamp and expire with
++  the card TTL so a verdict can't resurrect in a later scan when the dedicated event is
++  absent.
++- Regression: Spare Keg 120 WU + Tanker at the reveal edge + five nearer wrecks under the
++  real route — published batch drops every Tanker-verdict row while the card still holds
++  both doors ("2 DOORS", both authored labels).
++- Tests: focused file 15/15.
++
++## Round-8 fixes (Codex review-8 FINDINGS)
++
++- **MAJOR — capability doors ignored fitted scanner range.** Both verdict paths tested
++  eligibility against the bare `SCAN_REVEAL_CLASS_RADIUS` (2200 WU), while the real
++  scanner/wreck reveal honors the fitted profile (`scannerRadiusMult` / `scanRangeMult`,
++  max wins, floor 1 via `sensorRadiusMultForScan`). A ship running `unique_deepsurvey_suite`
++  (×2.25 → 4950 WU class radius) pulsed a Tanker door at 2600 WU yet the card stayed
++  silent — the verdict never reached `signal:capability` or a lifted lesson row.
++  `scanReveal` now imports `sensorRadiusMultForScan` and both sites compute
++  `revealRadius = SCAN_REVEAL_CLASS_RADIUS * sensorRadiusMultForScan(state)`
++  (`_emitCapabilityVerdicts` `:105`, `nearbyCapabilityPart` `:1415`) — the same fitted
++  radius `src/systems/scanner.js` uses. Deterministic nearest-door ordering and existing
++  capability semantics are unchanged.
++- Regression (`test/al-long-1-revisit-4242.test.mjs`): seed 4242, legal Hawser fit +
++  `unique_deepsurvey_suite`, Tanker at 2600 WU, six nearer ordinary wrecks crowding the
++  six-row scanner cap, production route `[scanner, spectrum, scanReveal]`. Path A proves
++  the dedicated `signal:capability` card still names the far door; Path B
++  (`oneoff_tethys_tally_keg` in the Tethys lesson-rich sector, 2600 WU out) proves a
++  lifted lesson row carries the `SF-174` part and names the far door at fitted range.
++- Tests: focused file **16 pass / 0 fail**; the 10-file guard list **85 pass / 0 fail**.
++- *Mutation-verified:* reverting `sensorRadiusMultForScan` out of
++  `_emitCapabilityVerdicts` fails the regression (far door out of verdict reach), and
++  reverting it out of `nearbyCapabilityPart` fails the lifted-row assertion
++  independently — the two sites are proven separately.
++
++## Round-9 fixes (Codex review-9 FINDINGS)
++
++- **MAJOR — capability evaluation did not mirror the deployment owner's selection.**
++  `fieldDeployFor` picked the largest-radius countermeasure aboard, while the real
++  deployment owner (`countermeasures.js` `equippedCountermeasure`, read by `_tryDeploy`
++  and `countermeasureReadiness` alike) fires the FIRST fitted `mods.countermeasure`
++  block. A Hawser with `mod_chaff_dispenser_m` seated ahead of `mod_decoy_buoy_s` got
++  the card "Your Signal Decoy Buoy S throws it — ready", and the key press deployed the
++  chaff into a `{kind:"chaff", reason:"no_lock"}` denial. `fieldDeployFor` now walks the
++  fittings in order and returns the first block it finds
++  (`shipCapabilities.js:417-439`), so the door quotes exactly what the key throws —
++  never the largest field aboard.
++- Regression (`test/al-long-1-revisit-4242.test.mjs`), `field: a chaff dispenser seated
++  ahead of the buoy keeps the door honestly shut`: resolves legal Hawser mixed fits in
++  both orders; chaff-first reads `ready:false` with `have.kind === 'chaff'` while
++  decoy-first opens with `kind === 'decoy'`; the production scan route then refuses the
++  Held Note for the chaff-first fit (`verdict === 'not yet'`, sentence never naming the
++  buoy); and pressing the real `countermeasures` owner on the chaff-first fittings
++  surfaces the honest `countermeasure:denied` `{kind:'chaff', reason:'no_lock'}` with
++  zero deploys — while the same modules reversed deploy the decoy.
++- Tests: focused file **17 pass / 0 fail**; the 10-file guard list **85 pass / 0 fail**.
++- *Mutation-verified:* restoring the largest-radius selector fails the new regression —
++  the chaff-first door reports ready again.

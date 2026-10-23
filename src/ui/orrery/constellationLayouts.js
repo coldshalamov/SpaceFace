@@ -228,7 +228,7 @@ ${T} .con-cost dt { align-self:end; }
   ${T} > .con-side::before { inset:-12px -18px; }
   ${T} .con-dossier__name { font-size:clamp(24px, 7vw, 32px); }
   ${T} > .k-foot.con-foot { position:sticky; bottom:0; flex-wrap:wrap; align-items:flex-end; row-gap:4px; column-gap:18px; margin:0 -18px; padding:10px 18px max(10px, env(safe-area-inset-bottom));
-    background:rgb(4 6 9 / .97) !important; box-shadow:0 -22px 22px -6px rgb(4 6 9 / .92); }
+    background:rgb(4 6 9) !important; box-shadow:0 -22px 22px -6px rgb(4 6 9 / .92); } /* opaque: at .97 the reading's REQUIRES ghosted through Back */
 }
 /* too narrow for the dial to stand (it needs 360px of sky): the node list takes its place, as a
    field beside Back in the docked foot, and the zoom reading it would report sleeps with it */

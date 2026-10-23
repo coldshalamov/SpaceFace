@@ -13,10 +13,12 @@
 //   boost               p.boost.energy / p.boost.max · p.flags.boosting (the afterburner is burning)
 //   drift               atan2(vel) − p.rot                 (same frame as playerDefeat.impactDirection)
 //   ordnance            readRailModel(state, simTime)     (slots 1..9, states ready/armed/cooling/…)
-//   tether              masslineInstrumentReadout(tether) + the attached body's mass
+//   tether              masslineInstrumentReadout(tether) + the attached body's mass — for a
+//                       declared manifest, only the measurement the loaded rope earned
 import { weaponHeatSummary } from '../weaponHeat.js';
 import { BOMB_SLOT_INDEX, readRailModel, RAIL_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
 import { masslineInstrumentReadout } from '../hudAttention.js';
+import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCustody.js';
 import { SHIPS } from '../../data/ships.js';
 import { resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { resolveTravelCeiling } from '../../core/flight/propulsionKernel.js';
@@ -189,10 +191,36 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
   const ml = masslineInstrumentReadout(tether);
   let tetherModel = null;
   if (ml) {
-    const attachedId = tether.attachmentId ?? tether.targetId ?? tether.payloadId;
+    // tether.attachmentId is an attachment identity (`att_000001`), never an entity id —
+    // the body it names lives in the attachment ledger. tether.targetId/payloadId are
+    // already entity ids, so they resolve directly as the fallback.
+    const ledger = state.combat && state.combat.attachments && state.combat.attachments.byId;
+    const attachment = tether.attachmentId != null && ledger ? ledger[String(tether.attachmentId)] : null;
+    const attachedId = attachment && attachment.targetId != null
+      ? attachment.targetId
+      : (tether.targetId ?? tether.payloadId);
     const body = attachedId != null && state.entities && typeof state.entities.get === 'function' ? state.entities.get(attachedId) : null;
-    const mass = Math.round(finite((body && ((body.physicsBody && body.physicsBody.mass) || body.mass)) || 0));
-    tetherModel = { state: 'Payload', mass: mass > 0 ? mass : 1, strain: ml.load };
+    let mass = physicalMassT(body);
+    const decl = mass != null ? massDeclarationForTarget(state, body) : null;
+    if (decl) {
+      // The rope is a scale: for a declared manifest the only honest tonnage is the
+      // measurement the loaded line earned — the durable slip is the record of it, and
+      // the live telemetry projection mirrors the same slipId while the latch holds.
+      // Before the dwell completes the readout is honestly unknown; the body's hidden
+      // stamp and the manifest's claim are both kept off the glass.
+      mass = null;
+      const slipId = `mass-slip:${decl.sourceOfferId}:${decl.targetSlot}`;
+      const slips = state.economyContracts && state.economyContracts.massScale
+        ? state.economyContracts.massScale.slips : null;
+      const slip = slips && slips[slipId];
+      const slipMass = slip && Number(slip.measuredMassT);
+      const mw = player.masslineTelemetry && player.masslineTelemetry.massWeighing;
+      const mwMass = mw && mw.slipId === slipId && mw.targetId === body.id
+        ? Number(mw.measuredMassT) : NaN;
+      if (Number.isFinite(slipMass) && slipMass > 0) mass = slipMass;
+      else if (Number.isFinite(mwMass) && mwMass > 0) mass = mwMass;
+    }
+    tetherModel = { state: 'Payload', mass: mass != null && mass > 0 ? Math.round(mass) : null, strain: ml.load };
   }
   return {
     hull: finite(p.hull), hullMax: finite(p.hullMax, 1),

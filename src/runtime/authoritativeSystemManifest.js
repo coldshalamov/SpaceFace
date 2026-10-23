@@ -125,6 +125,11 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // sensor model, formation lock, coupler snap, flag-flip/lien dwell, and pylon claims all
   // read the settled post-physics positions of this tick, so they sit after 'factions'.
   'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
+  // faction-strange rows 517–532: gardens/trains/cull/liens/redaction/choir/court/homesteads
+  // tick real per-step work (biomass digest, anchor/lien dwell, court sessions) — init-only
+  // registration would silently never run their update().
+  'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens',
+  'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads',
   'sectorSim', 'towlineTable', 'borrowedVoice', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
   'liveCareerLadderBranches', 'story', 'scenarioRuntime',
   // survivalWave: materializes the planned wave through spawnBudget and reports the cleared
@@ -416,6 +421,9 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // §34 faction-signature owners — per-step kinematics (formation lock, coupler snap,
   // pylon settle, false-flag deviation, sweep-ring read). Calendar would miss the motion.
   'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
+  // faction-strange owners — per-step faction work on the same settled tick.
+  'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens',
+  'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads',
 ]);
 
 const CLOCK_BY_ID = new Map();
