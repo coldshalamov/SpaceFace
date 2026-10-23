@@ -27,6 +27,7 @@ import {
 } from '../../story/endings/eligibility.js';
 import { ENDING_IDS, endingDef } from '../../story/endings/endingDefs.js';
 import { escapeHtml } from '../comms.js';
+import { isStorySpineContract, STORY_SPINE_KEEP_TEXT } from '../../data/storySpine.js';
 import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
 import { missionNextActionRow } from '../sim/missionNextAction.js';
 import { BINDINGS } from '../bindings.js';
@@ -1157,6 +1158,21 @@ function mapActionButtonAttrs(mapAction, missionId) {
     + (pos && Number.isFinite(pos.z) ? ' data-map-pos-z="' + escapeHtml(String(pos.z)) + '"' : '')
     + (mapAction.source ? ' data-map-source="' + escapeHtml(mapAction.source) + '"' : '')
     + ' data-mid="' + escapeHtml(missionId || mapAction.missionId || '') + '"';
+}
+
+/**
+ * The focused contract's last verb. Ordinary work gets the red Abandon word. A story-spine
+ * contract (the opening 47-A recovery and every later campaign leg) is the story's own rail:
+ * abandoning it left an empty log, so the same slot carries a short note instead — and
+ * missions.abandonMission refuses the intent even if something else sends it.
+ */
+export function abandonSlotHtml(m, titleText) {
+  if (isStorySpineContract(m)) {
+    return '<li><div class="k-word-sub sf-mlog-story-note" data-story-spine="true">'
+      + escapeHtml(STORY_SPINE_KEEP_TEXT) + '</div></li>';
+  }
+  return '<li><button class="k-word k-word--emph k-word--danger sf-mlog-btn-abandon" type="button" data-act="abandon" data-mid="'
+    + escapeHtml(m.id) + '" aria-label="' + escapeHtml('Abandon ' + titleText) + '">Abandon</button></li>';
 }
 
 /**
@@ -3072,7 +3088,7 @@ export const missionLogScreen = {
           ? '<li><button class="k-word k-word--emph sf-mlog-btn-map" type="button" data-act="openMap"' + mapActionButtonAttrs(mapAction, m.id) + ' aria-label="' + escapeHtml(mapAction.title) + '">Open on the chart</button>' +
             '<div class="k-word-sub">' + escapeHtml(wordText(mapAction.label)) + '</div></li>'
           : '') +
-        '<li><button class="k-word k-word--emph k-word--danger sf-mlog-btn-abandon" type="button" data-act="abandon" data-mid="' + escapeHtml(m.id) + '" aria-label="' + escapeHtml('Abandon ' + titleText) + '">Abandon</button></li>' +
+        abandonSlotHtml(m, titleText) +
       '</ul>';
     side.appendChild(btns);
     card.appendChild(side);

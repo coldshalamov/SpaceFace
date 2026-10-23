@@ -91,6 +91,7 @@ import {
 } from '../data/sandboxSetPieceFollowOns.js';
 import { settleContractClauses, unsatisfiedRequiredConditions, contractTermById } from '../data/contractClauses.js';
 import { stationMinRepFor } from '../data/dockDeny.js';
+import { isStorySpineContract, STORY_SPINE_KEEP_TEXT } from '../data/storySpine.js';
 import { stationBerthAdmits, stationBerthRefusal } from '../data/frontierRumors.js';
 import {
   SPLIT_MANIFEST_TYPE,
@@ -1855,6 +1856,7 @@ export const missions = {
   // PER-TICK: TTL decrement, expiry, story-gate checks, stale-target GC.
   // =========================================================================================
   update(dt, state) {
+    this._dropSettledGhosts();
     this._releaseCampaignNavForSwarm(state);
     this._racingOpponents?.reconcile(state.missions?.active || []);
     this._racingSetPieces?.reconcile(state.missions?.active || []);
@@ -4808,6 +4810,12 @@ export const missions = {
     const i = state.missions.active.findIndex((m) => m.id === missionId);
     if (i < 0) return false;
     const m = state.missions.active[i];
+    // A story-spine contract cannot be walked away from through any path (UI intent, bot, console):
+    // the log shows the same sentence in place of the Abandon word.
+    if (isStorySpineContract(m)) {
+      this.bus.emit('toast', { text: STORY_SPINE_KEEP_TEXT, kind: 'info', ttl: 3 });
+      return false;
+    }
     // PQ-019C: a capsule run is never settled behind the arbiter's back. `_failMission` here would
     // remove the mission with ZERO terminal receipts, breaking `terminalReceiptCount == 1` — so
     // abandonment becomes one more candidate in the arbiter's own vocabulary, competing with any
@@ -6758,6 +6766,9 @@ export const missions = {
 
   _onScannedByPatrol(p) {
     if (!p || !p.hasContraband) return;
+    // An evaded sweep (the engine rolled `detected:false`) read nothing and confiscated nothing:
+    // the run is not busted. A packet with no `detected` key is a hand-emitted bust and stands.
+    if (p.detected === false) return;
     // Any active smuggling run is busted (the law penalty itself is applied by economy/customs).
     // One jurisdiction read per sweep: every run caught by the same scan answers to the same
     // lawful post, whether it settles here as `busted` or through its own scan clause.
@@ -6896,6 +6907,14 @@ export const missions = {
     const items = cargo && cargo.items;
     if (!items) return;
     const losses = p.recovery && Array.isArray(p.recovery.cargoLosses) ? p.recovery.cargoLosses : null;
+    // The recovery berth will take exactly these units out of the hold (combat applies the plan
+    // verbatim), so a failing contract's sealed freight is first charged against that loss.
+    const lossBudget = new Map();
+    for (const row of losses || []) {
+      if (!row || typeof row.commodityId !== 'string') continue;
+      const qty = Math.max(0, Math.floor(Number(row.qty) || 0));
+      if (qty > 0) lossBudget.set(row.commodityId, (lossBudget.get(row.commodityId) || 0) + qty);
+    }
     const persistent = this.state.story && Array.isArray(this.state.story.persistentCargo)
       ? this.state.story.persistentCargo : [];
     const marker = playerWreckMarker(this.state);
@@ -6927,6 +6946,18 @@ export const missions = {
         m.params.lostWreckPos = site.wreckPos;
       }
       m._shipLostQty = lost;
+      // Settle the wreck's loss and the failed reservation together. The sealed units the wreck
+      // takes are the ones the recovery plan removes; failing the contract must only remove the
+      // reserved freight that SURVIVES the loss, or recovery then applies the same loss again to
+      // what is left and eats the pilot's own units of that commodity.
+      if (m.preloadedCargo === true && lossBudget.size) {
+        const left = lossBudget.get(cmdtyId) || 0;
+        const absorbed = Math.min(left, releasableContractUnits(this.state, m));
+        if (absorbed > 0) {
+          lossBudget.set(cmdtyId, left - absorbed);
+          m._lossAbsorbedQty = absorbed;
+        }
+      }
       this._failMission(m, i, 'ship_lost');
     }
   },
@@ -9481,7 +9512,38 @@ export const missions = {
     this.bus.emit('toast', { text: `Seed Ark filed — ${journal.deliveredVaultIds.length}/6 vaults · ${journal.creditedCr} cr.`, kind: 'info', ttl: 5 });
     return { ok: true, duplicate: false, ...journal };
   },
+  /**
+   * Settle a mission as completed. Exception-safe: the body flips `status` ~150 lines before it
+   * removes the row, so a throw in between (a debrief, a receipt, an observer) used to leave a
+   * 'completed' ghost in `active` that ate a mission slot and was saved. Whatever happens, a row
+   * that left `active` status leaves the list. Credits are granted before the likeliest throw
+   * points and the status guard stops a second settlement, so payment stays exactly-once.
+   */
   _completeMission(m, index) {
+    try {
+      this._completeMissionBody(m, index);
+    } finally {
+      this._dropSettledRow(m, index);
+    }
+  },
+
+  /** Remove a row whose settlement flipped its status, if the body did not get to remove it. */
+  _dropSettledRow(m, index) {
+    if (m && m.status !== 'active') this._removeActive(m.id, index);
+  },
+
+  /** Defensive sweep: a settled row can never legitimately sit in `active` (a ghost saved by a
+   *  pre-fix crash, or a throw outside the settle wrappers). */
+  _dropSettledGhosts() {
+    const active = this.state && this.state.missions && this.state.missions.active;
+    if (!Array.isArray(active)) return;
+    for (let i = active.length - 1; i >= 0; i--) {
+      const row = active[i];
+      if (row && row.status !== 'active') this._removeActive(row.id, i);
+    }
+  },
+
+  _completeMissionBody(m, index) {
     const state = this.state;
     if (m.status !== 'active') return;
     // Single choke point for blocking physics terms. The objective may be met, but the contract is
@@ -9691,17 +9753,23 @@ export const missions = {
   _removePreloadedContractCargo(mission) {
     if (!mission || !mission.preloadedCargo || !mission.params || !mission.params.cmdtyId) return 0;
     const cap = releasableContractUnits(this.state, mission);
-    const removed = cap > 0 ? removeCargo(this.state, mission.params.cmdtyId, cap) : 0;
+    // Units a defeat already charged to the wreck's recovery loss (see _onPlayerDeathMissions):
+    // the recovery berth removes those, so removing them here too would take them twice.
+    const absorbed = Math.min(cap, Math.max(0, Math.floor(Number(mission._lossAbsorbedQty) || 0)));
+    delete mission._lossAbsorbedQty;
+    const take = cap - absorbed;
+    const removed = take > 0 ? removeCargo(this.state, mission.params.cmdtyId, take) : 0;
     // The contract is leaving. Zero its claim so a second confirmation cannot release it again.
     if (Number(mission.params.qty) > 0 || mission.params.sealAccounted === true) {
       this._accountSeal(mission);
-      mission.params.sealedDelivered = Math.max(0, Math.floor(Number(mission.params.sealedDelivered) || 0)) + removed;
+      mission.params.sealedDelivered = Math.max(0, Math.floor(Number(mission.params.sealedDelivered) || 0))
+        + removed + absorbed;
       mission.params.sealedRemaining = 0;
     } else {
       mission.params.sealAccounted = true;
       mission.params.sealedRemaining = 0;
     }
-    return removed;
+    return removed + absorbed;
   },
 
   /**
@@ -10017,6 +10085,14 @@ export const missions = {
   },
 
   _failMission(m, index, reason) {
+    try {
+      this._failMissionBody(m, index, reason);
+    } finally {
+      this._dropSettledRow(m, index);
+    }
+  },
+
+  _failMissionBody(m, index, reason) {
     if (m.status !== 'active') return;
     this._endAuthoredRace(m, reason);
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
@@ -10106,6 +10182,14 @@ export const missions = {
   },
 
   _expireMission(m, index) {
+    try {
+      this._expireMissionBody(m, index);
+    } finally {
+      this._dropSettledRow(m, index);
+    }
+  },
+
+  _expireMissionBody(m, index) {
     if (m.status !== 'active') return;
     this._endAuthoredRace(m, 'deadline');
     const setPieceTransition = this._compileSetPieceTransition(m, 'expired', 'deadline');
@@ -13703,6 +13787,9 @@ export const missions = {
     syncObservedBeat(state, state.simTime || 0);
     // Drop active missions whose destination no longer resolves (soft-lock guard).
     state.missions.active = state.missions.active.filter((m) => {
+      // A settled row (a ghost a pre-fix throw left between the status flip and the removal)
+      // has already paid and reported; it must not keep a mission slot across a reload.
+      if (m.status !== 'active') return false;
       if (m.destStationId && !STATION_INFO.get(m.destStationId) && m.destStationId !== m.stationId) {
         // unresolved dest station — but sector-only objectives still fine; keep if sector resolves
         return !!SECTOR_BY_ID.get(m.destSectorId);

@@ -52,6 +52,10 @@ export const shipjack = {
     });
     on('entity:killed',p=>this._killed(p?.id ?? p?.entityId ?? p?.targetId));
     on('scanner:pulse',()=>this.scanSelected());
+    // The UI commits docked state AFTER dock:docked reaches the sim systems, and docking then freezes
+    // the full tick, so update() never sees a docked player. Paid extraction work that matured in
+    // flight settles here, once docked state is real, at its originating berth (after berthAt).
+    on('dock:committed',()=>{if(isBlackFlagAdventure(this.state))advanceYardOperations({state:this.state,bus:this.bus,registry:this.registry});});
   },
   destroy(){for(const off of this._subs || [])off();this._subs=[];},
   newGame(){if(this.state?.player)delete this.state.player.shipjack;if(this.state)delete this.state.shipjack;this._pendingEntry=true;},

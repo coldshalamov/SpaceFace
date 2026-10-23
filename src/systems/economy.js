@@ -1165,7 +1165,7 @@ function restoreMarketPlayState(state, raw) {
       ? cloneSaveTree(penn.byStation) : {},
   };
   econ.podIntakeReceipts = Array.isArray(data.podIntakeReceipts)
-    ? cloneSaveTree(data.podIntakeReceipts) : [];
+    ? cloneSaveTree(data.podIntakeReceipts).slice(-POD_INTAKE_LAW.maxAccepted) : [];
   return econ;
 }
 
@@ -3632,9 +3632,10 @@ export const economy = {
 
   /**
    * The Dump Chute: one jettisoned pod becomes credits at the documented discount and real stock
-   * in the receiving market. Committed under `pod-intake:<intakeId>` so a retry republishes the
-   * receipt instead of paying twice. The physical pod is consumed only when the runtime hands us
-   * a live one and a removal helper.
+   * in the receiving market. Committed in the bounded pod-intake receipt ring (newest
+   * POD_INTAKE_LAW.maxAccepted, saved with the market-play slice) so a retry republishes the
+   * receipt instead of paying twice — never in the unbounded `committedIntents` journal. The
+   * physical pod is consumed only when the runtime hands us a live one and a removal helper.
    */
   applyPodIntake(payload) {
     const state = this.state;
@@ -3653,32 +3654,34 @@ export const economy = {
     const market = state.economy.markets[stationId] || this.ensureMarket(stationId, info.type, info.size);
     const entry = market && market[commodityId];
     if (!entry) return { ok: false, reason: 'untraded' };
-    const intents = ensureCommittedIntents(state);
-    const intentKey = 'pod-intake:' + intakeId;
-    const prior = intents[intentKey];
     const receipt = { intakeId, stationId, commodityId, qty, podId: p.podId != null ? String(p.podId) : null };
+    // Duplicate rejection reads the bounded receipt ring (newest POD_INTAKE_LAW.maxAccepted
+    // intakes). The old per-intake `committedIntents` entry grew by one full receipt per pod
+    // forever and rode the save wholesale.
+    const prior = econ.podIntakeReceipts.find((row) => row && row.intakeId === intakeId);
     if (prior) {
-      const prev = prior.receipt || {};
-      if (prev.stationId !== stationId || prev.commodityId !== commodityId || prev.qty !== qty) {
+      if (prior.stationId !== stationId || prior.commodityId !== commodityId || prior.qty !== qty) {
         return { ok: false, reason: 'receipt_conflict' };
       }
-      const settled = prior.result || {};
-      this.bus.emit('economy:podIntakeAccepted', { ...prev, valueCr: settled.valueCr || 0, duplicate: true });
-      return { ok: true, duplicate: true, ...settled };
+      const settled = {
+        ok: true, intakeId, stationId: prior.stationId, commodityId: prior.commodityId,
+        qty: prior.qty, valueCr: prior.valueCr || 0,
+      };
+      this.bus.emit('economy:podIntakeAccepted', { ...settled, podId: prior.podId, duplicate: true });
+      return { ...settled, duplicate: true };
     }
     if (!this._consumeIntakePod(receipt.podId)) return { ok: false, reason: 'pod_missing' };
     const unitPriceCr = Math.max(0, Number(entry.lastSell != null ? entry.lastSell : entry.sell) || 0);
     const valueCr = podIntakeValueCr({ unitPriceCr, qty });
     const result = { ok: true, intakeId, stationId, commodityId, qty, valueCr };
     // Commit before any credit/stock write so a re-entrant retry observes the settled receipt.
-    intents[intentKey] = { receipt: { ...receipt }, result: { ...result } };
-    this._notePodIntake(stationId);
-    this.grantCredits(valueCr, 'market:pod-intake');
-    this.applyStockPressure(stationId, commodityId, 'sell', qty);
     econ.podIntakeReceipts.push({ ...receipt, valueCr, at: Number(state.simTime) || 0 });
     if (econ.podIntakeReceipts.length > POD_INTAKE_LAW.maxAccepted) {
       econ.podIntakeReceipts.splice(0, econ.podIntakeReceipts.length - POD_INTAKE_LAW.maxAccepted);
     }
+    this._notePodIntake(stationId);
+    this.grantCredits(valueCr, 'market:pod-intake');
+    this.applyStockPressure(stationId, commodityId, 'sell', qty);
     this.bus.emit('economy:podIntakeAccepted', { ...result, duplicate: false });
     this.bus.emit('toast', {
       text: `Dump Chute — ${qty}u ${def.name} taken at ${Math.round(POD_INTAKE_LAW.payFrac * 100)}% of dock rate, ${valueCr} cr`,
@@ -3940,7 +3943,11 @@ export const economy = {
     const expire = (book, label) => {
       const open = [];
       for (const row of book.open) {
-        if (!row || !(Number(row.expiresAt) > now)) { open.push(row); continue; }
+        // A malformed row (not an object) carries no stake we can name: discard it.
+        if (!row || typeof row !== 'object') continue;
+        // A contract stays open while its deadline is still ahead; one with no usable deadline
+        // is settled as expired rather than held open forever.
+        if (Number(row.expiresAt) > now) { open.push(row); continue; }
         const settled = { ...row, outcome: 'expired', settledAt: now, payoutCr: 0 };
         book.settled.push(settled);
         this.bus.emit('economy:marketContractExpired', { kind: label, id: row.id, stationId: row.stationId });
@@ -5386,18 +5393,31 @@ export const economy = {
     // successor) can route back through the patrol's lawful jurisdiction rather than only the
     // station the proximity case happened to name.
     if (p.patrolId != null) scannedPayload.patrolId = p.patrolId;
+    // The detection roll is decided BEFORE the scan is announced so the announcement can carry
+    // the real verdict. `hasContraband` still means "contraband was aboard when the scan ran"
+    // (customs UI, mid-scan dump window); `detected` is whether the scanner actually read it.
+    // Contracts bust and confiscation clauses breach on `detected`, never on the bare scan —
+    // an evaded sweep keeps the run alive. Packets from outside runScan carry no `detected` key
+    // and read as detected, so a hand-emitted bust keeps its old meaning. Scan odds are pure
+    // reads and the roll is the only rng draw here, so draw order is unchanged.
+    let factionId;
+    let detected = false;
+    if (hasContraband) {
+      const security = p.security != null ? p.security : this.currentSecurity();
+      const cloak = (p.scannerCloak != null ? p.scannerCloak : this.scannerCloak(state));
+      factionId = p.factionId || (p.patrolId && this.factionOfEntity(p.patrolId)) || this.scanningFaction(state);
+      const hotMap = state.player.customsHotUntil || null;
+      const hot = hotUntilActive(hotMap, state.simTime, factionId);
+      const pScan = this.auditorScanChance({
+        security, cloak, hot, stationId: p.stationId || null,
+      });
+      const roll = this._rng();
+      detected = !(roll > pScan);
+      scannedPayload.detected = detected;
+    }
     this.bus.emit('player:scannedByPatrol', scannedPayload);
     if (!hasContraband) return { found: false };
-    const security = p.security != null ? p.security : this.currentSecurity();
-    const cloak = (p.scannerCloak != null ? p.scannerCloak : this.scannerCloak(state));
-    const factionId = p.factionId || (p.patrolId && this.factionOfEntity(p.patrolId)) || this.scanningFaction(state);
-    const hotMap = state.player.customsHotUntil || null;
-    const hot = hotUntilActive(hotMap, state.simTime, factionId);
-    const pScan = this.auditorScanChance({
-      security, cloak, hot, stationId: p.stationId || null,
-    });
-    const roll = this._rng();
-    if (roll > pScan) {
+    if (!detected) {
       if (factionId) this._markFactionGatesHot(factionId);
       return { found: false, evaded: true }; // evaded; this faction's gates remember the run
     }
@@ -5979,6 +5999,12 @@ export const economy = {
     if (data.committedIntents && typeof data.committedIntents === 'object'
       && !Array.isArray(data.committedIntents) && Object.keys(data.committedIntents).length) {
       econ.committedIntents = cloneSaveTree(data.committedIntents);
+      // Dump Chute intakes used to be journaled here, one full receipt per pod, forever. The
+      // bounded pod-intake receipt ring now owns duplicate rejection; shed the old rows on load.
+      for (const key of Object.keys(econ.committedIntents)) {
+        if (key.startsWith('pod-intake:')) delete econ.committedIntents[key];
+      }
+      if (!Object.keys(econ.committedIntents).length) delete econ.committedIntents;
     } else {
       delete econ.committedIntents;
     }

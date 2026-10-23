@@ -64,6 +64,9 @@ export const RECENT_MEMORY_WINDOW_S = 180;
 /** Bounded deterministic receipts for cap decisions made during restore or runtime upsert. */
 export const MAX_RETENTION_RECEIPTS = 64;
 
+/** Newest player hull losses kept on the durable bag (oldest rows retire first). */
+export const MAX_HULL_LOSSES = 200;
+
 /** Explicit capture sentinel for intentionally clearing a scheduled wake. */
 export const CLEAR_NEXT_EVENT_AT_T = Symbol('spaceface.clearNextEventAtT');
 
@@ -213,7 +216,7 @@ export function createEmptyRecordsBag() {
   };
 }
 
-/** Player hulls are permanent history, independent of the ambient-record retention caps. */
+/** Player hulls outlive the ambient-record caps, but not forever: the newest MAX_HULL_LOSSES stay. */
 function normalizeHullLosses(input) {
   if (!Array.isArray(input)) return [];
   const seen = new Set();
@@ -226,7 +229,7 @@ function normalizeHullLosses(input) {
     seen.add(row.lossId);
     rows.push(clonePlain(row));
   }
-  return rows;
+  return rows.length > MAX_HULL_LOSSES ? rows.slice(-MAX_HULL_LOSSES) : rows;
 }
 
 /** Called only by world's player:death listener, while the defeated hull still exists. */
@@ -254,6 +257,9 @@ export function recordPlayerHullLoss(state) {
     radius: def.collisionRadius,
   };
   bag.hullLosses.push(row);
+  if (bag.hullLosses.length > MAX_HULL_LOSSES) {
+    bag.hullLosses.splice(0, bag.hullLosses.length - MAX_HULL_LOSSES);
+  }
   return row;
 }
 
