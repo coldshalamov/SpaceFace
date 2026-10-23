@@ -241,3 +241,21 @@ test('New Game clears the roster — no inherited crew, no negative stat drift',
   bus2.emit('player:death', {});
   assert.equal(state.player.efficiencyMods.shieldRegenMult, 1, 'no ghost perk to subtract');
 });
+
+test('a decline after the run reset still lands — the handler re-reads the live slice', () => {
+  const state = makeState();
+  const { bus, sys } = wire(state);
+  // resetRunState swaps state.crew for the fresh run's slice without re-running init —
+  // the same system instance keeps listening.
+  state.crew = undefined;
+  sys.update(2.0, state);
+  bus.emit('crew:decline', { candidateId: 'crew_bram' });
+  assert.deepEqual(state.crew.declinedIds, ['crew_bram'],
+    'the decline must reach the bag a New Game minted, not the pre-reset one');
+  // And the offer scan honors it.
+  state.entities.get('player').pos = { x: 50, z: 5000 };
+  sys._scanT = 0;
+  sys.update(0.1, state);
+  const offer = offers(bus).at(-1);
+  assert.notEqual(offer.candidateId, 'crew_bram');
+});

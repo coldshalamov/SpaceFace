@@ -52,7 +52,11 @@ export const crew = {
     this.bus.on('crew:hire', (p) => this._tryHire(p && p.candidateId));
     this.bus.on('crew:decline', (p) => {
       const id = p && p.candidateId;
-      if (id && !c.declinedIds.includes(id)) c.declinedIds.push(id);
+      // Resolve the slice live — resetRunState replaces state.crew on New Game, so the
+      // bag captured at init would take the decline into a detached object and the
+      // candidate would hail again on the next approach.
+      const slice = ensureSlice(this.state);
+      if (id && !slice.declinedIds.includes(id)) slice.declinedIds.push(id);
     });
 
     // Banter + loyalty counters ride the same real events; each line is a fact about something
@@ -109,6 +113,11 @@ export const crew = {
     c.banterPick = Number.isFinite(data.banterPick) ? data.banterPick : 0;
     for (const m of c.members) {
       m.status = m.status === 'injured' || m.status === 'lost' ? m.status : 'active';
+      // Same guard init runs: an injured member always carries a start time, or the
+      // field-recovery check in update() can never fire.
+      if (m.status === 'injured' && !Number.isFinite(m.injuredAt)) {
+        m.injuredAt = Number(this.state.simTime) || 0;
+      }
     }
   },
 
