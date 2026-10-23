@@ -204,6 +204,8 @@ export const postEndingReplay = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
+    this.missions = ctx.registry?.get?.('missions') || null;
+    this._offering = false;
     this._unsubs = [];
     this._pending = new Map();
     ensurePostEndingReplayState(this.state);
@@ -323,7 +325,12 @@ export const postEndingReplay = {
   },
 
   _offerAtStation(stationId) {
-    if (!stationId || !this.bus?.emit) return null;
+    if (!stationId || !this.bus?.emit || this._offering) return null;
+    // Acceptance removes the board row and publishes updated before accepted. Leave
+    // its fingerprint intact until the accepted handler records the committed branch.
+    const current = this.state?.missions?.postEndingReplay;
+    if (current?.status === STATUS.OFFERED && current.stageIndex === 1 && !current.branchId
+      && activeHasMission(this.state, current.missionId, current.fingerprint)) return null;
     const run = this._reconcile();
     if (!run) return null;
     const chain = postEndingReplayChain(run.choiceId);
@@ -333,15 +340,40 @@ export const postEndingReplay = {
       const retained = { receipts: run.receipts, settledMissionIds: run.settledMissionIds, worldFlags: run.worldFlags };
       Object.assign(run, freshState(chain), retained, { cycle: run.cycle + 1, lastCompletedEpoch: run.lastCompletedEpoch });
     }
-    if (![STATUS.READY, STATUS.RECOVERING].includes(run.status)) return null;
+    const preview = run.status === STATUS.OFFERED && run.stageIndex === 1
+      && !run.branchId && !run.missionId;
+    if (!preview && ![STATUS.READY, STATUS.RECOVERING].includes(run.status)) return null;
     const candidate = this._candidateAtStation(chain, run, stationId);
     if (!candidate) return null;
     const offer = buildPostEndingReplayOffer(this.state, candidate.branch?.id || null);
-    if (!offer) return null;
-    this._pending.set(offer.id, offer.cause);
-    this.bus.emit('mission:offered', offer);
-    if (run.status !== STATUS.OFFERED) this._pending.delete(offer.id);
-    return offer;
+    if (!offer || offer.stationId !== stationId) return null;
+    if (preview && (offer.id === run.offerId || typeof this.missions?.pruneBoardOffers !== 'function'
+      || this.missions.state !== this.state || this.missions.bus !== this.bus
+      || activeHasMission(this.state, null, run.fingerprint))) return null;
+    // Retire before reboarding: two simultaneous rows cannot share the run's singleton
+    // fingerprint. The missions owner alone edits boards. Its synchronous updated event
+    // must not re-enter reconciliation and clear the pending offer before its receipt.
+    this._offering = true;
+    try {
+      if (preview) {
+        const { offerId, fingerprint, choiceId, chainId, cycle, stageIndex } = run;
+        const removed = this.missions.pruneBoardOffers((row) => row.source === POST_ENDING_REPLAY_SOURCE
+          && row.id === offerId && row.cause?.fingerprint === fingerprint
+          && row.cause.choiceId === choiceId && row.cause.chainId === chainId
+          && row.cause.cycle === cycle && row.cause.stageIndex === stageIndex
+          && row.cause.phase === 'choice');
+        if (!removed || boardHasOffer(this.state, offerId)) return null;
+        run.status = STATUS.RECOVERING;
+        run.offerId = null;
+        run.fingerprint = null;
+      }
+      this._pending.set(offer.id, offer.cause);
+      this.bus.emit('mission:offered', offer);
+      if (run.status !== STATUS.OFFERED) this._pending.delete(offer.id);
+      return offer;
+    } finally {
+      this._offering = false;
+    }
   },
 
   _onOfferBoarded(payload) {
