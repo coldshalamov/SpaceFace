@@ -18,6 +18,8 @@ import {
   defineFlavorPack,
 } from '../src/data/flavor/catalog.js';
 import { collectBlurbVoiceEntries } from '../scripts/lib/blurbVoiceSources.mjs';
+import { FACTION_META } from '../src/data/factions.js';
+import { SECTORS, STATION_TYPES } from '../src/data/sectors.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const UNIQUE_LOOT = JSON.parse(readFileSync(
@@ -276,5 +278,86 @@ test('flavor corpus CLI emits a deterministic human taste-review artifact', () =
     assert.equal(readFileSync(review, 'utf8'), firstText);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+const OPEN_FACTION_MOTTOS = Object.freeze({
+  faction_understory: 'Everything feeds something.',
+  faction_fulfillment: 'Your order has always been important to us.',
+  faction_archive: 'A secret for a secret. The second secret is the price.',
+  faction_pitborn: 'Heavy is honest.',
+  faction_verge_layers: 'PRESENT. WITNESS. APPEAL.',
+  faction_free: 'Still temporary.',
+});
+
+const OPEN_FACTION_SECTORS = Object.freeze({
+  faction_understory: ['sector_charon_expanse', 'sector_eunomia_gulf'],
+  faction_fulfillment: ['sector_tethys_junction', 'sector_dione_lane'],
+  faction_archive: ['sector_pallas_drift', 'sector_orcus_shadow'],
+  faction_pitborn: ['sector_ashfall_reach'],
+  faction_verge_layers: ['sector_veil_nebula', 'sector_ashfall_reach'],
+  faction_free: ['sector_io_reach', 'sector_veil_nebula'],
+});
+
+test('PULSE-01 dock notices and PULSE-02 / EXP-06 walls cover the live map', () => {
+  const sectorIds = new Set(SECTORS.map((sector) => sector.id));
+  const factionIds = new Set(FACTION_META.map((faction) => faction.id));
+  const notices = FLAVOR_PACKS.ad_board.entries;
+  const tags = FLAVOR_PACKS.graffiti.entries;
+  const keyedTags = tags.filter((entry) => entry.sectorId && entry.factionId);
+  console.log(`PULSE-01 notices: ${notices.length}`);
+  console.log(`PULSE-02 tags: ${tags.length}; keyed by sector and faction: ${keyedTags.length}`);
+
+  assert.equal(notices.length, 353);
+  assert.equal(tags.length, 365);
+  assert.equal(keyedTags.length, 311);
+  assert.equal(new Set(notices.map((entry) => entry.id)).size, notices.length);
+  assert.equal(new Set(tags.map((entry) => entry.id)).size, tags.length);
+  assert.equal(new Set(notices.map((entry) => entry.text)).size, notices.length);
+  assert.equal(new Set(tags.map((entry) => entry.text)).size, tags.length);
+
+  for (const entry of notices) {
+    assert.equal(typeof entry.sponsor, 'string');
+    assert.equal(entry.sponsor.trim().length > 0, true, entry.id);
+    if (entry.sectorId) assert.equal(sectorIds.has(entry.sectorId), true, entry.id);
+    if (entry.factionId) assert.equal(factionIds.has(entry.factionId), true, entry.id);
+    if (entry.stationType) assert.equal(STATION_TYPES.includes(entry.stationType), true, entry.id);
+  }
+  for (const sectorId of sectorIds) {
+    assert.equal(notices.some((entry) => entry.sectorId === sectorId && entry.sponsor.trim()), true, sectorId);
+  }
+  for (const factionId of factionIds) {
+    assert.equal(notices.some((entry) => entry.factionId === factionId), true, factionId);
+  }
+  for (const stationType of STATION_TYPES) {
+    assert.equal(notices.some((entry) => entry.stationType === stationType), true, stationType);
+  }
+
+  const homeByFaction = new Map(FACTION_META.map((faction) => [faction.id, new Set(faction.homeSectors || [])]));
+  for (const entry of keyedTags) {
+    assert.equal(sectorIds.has(entry.sectorId), true, entry.id);
+    assert.equal(factionIds.has(entry.factionId), true, entry.id);
+    if (entry.text !== OPEN_FACTION_MOTTOS.faction_fulfillment) {
+      assert.doesNotMatch(entry.text, /\b(WREN|PILOT|CAPTAIN|PLAYER|CALLSIGN|YOU|YOUR|YOURS)\b/i, entry.id);
+    }
+  }
+  const castAndLandmarks = ['KESSLER', 'SENNA', 'VOLS', 'QUIESCENCE', 'SKER BAZAAR', 'WRECK CATHEDRAL', 'LUNG MARKER'];
+  for (const needle of castAndLandmarks) {
+    assert.equal(keyedTags.some((entry) => entry.text.includes(needle)), true, needle);
+  }
+
+  for (const [factionId, motto] of Object.entries(OPEN_FACTION_MOTTOS)) {
+    const rows = keyedTags.filter((entry) => entry.factionId === factionId && String(entry.set || '').startsWith('exp_'));
+    assert.equal(rows.length >= 4, true, `${factionId} exp tags ${rows.length}`);
+    assert.equal(rows.some((entry) => entry.text === motto), true, motto);
+    const allowed = new Set(OPEN_FACTION_SECTORS[factionId]);
+    for (const row of rows) assert.equal(allowed.has(row.sectorId), true, row.id);
+    if (factionId !== 'faction_fulfillment') {
+      for (const sectorId of allowed) {
+        assert.equal(homeByFaction.get(factionId).has(sectorId), true, `${factionId} ${sectorId}`);
+      }
+    } else {
+      assert.equal(homeByFaction.get(factionId).size, 0);
+    }
   }
 });
