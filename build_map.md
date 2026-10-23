@@ -678,7 +678,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | discovery-shown | free | anatomy hunk of `ui/targetPanel.js`, `data/alienFauna.js` taxonomy, `alienEcology.js` toasts, `ui/comms.js` styling, codex species pages (serial with `pulse-print`), fauna/machine recipes in `audioRecipes.js`, Helios tease placement, `precursorMachines.js` clause decode (§32.7) | 468 |
 | records | free | `ui/screens/statistics.js`, photo Look in `pause.js`/`camera.js`, achievements screen, empty Replay/Clips copy (serial with `theater`), today's board in `survivalRecords.js`/crucible door, Range Licence in `range.js` (§32.7) | 471 |
 | front-door-speed | devin-fleet-oct20 | `ui/loadingPresenter.js`, `loadingTerminalArt.js`, `core/newGameBoot.js` (inside the L-MACHINE shader-admission work), first-light preset in `accessibility.js`/`mainMenu.js`, `orrery/settingsLayouts.js`, `saveLoad.js`/`saveNotices.js` (§32.7) | 473 |
-| glass | free | `hud.js` attention hunks, `hudAttention.js`, glass presets in `settings.js`, `masslineHud.js`, `orrery/hullRing.js`, `dockArrival.js`, `check-type-floor.mjs` SVG report (§32.7) | 474 |
+| glass | done | `hud.js` attention hunks, `hudAttention.js`, glass presets in `settings.js`, `masslineHud.js`, `orrery/hullRing.js`, `dockArrival.js`, `check-type-floor.mjs` SVG report (§32.7) | - |
 | feel | devin-fleet-oct20 | `systems/gamepad.js`, `ui/stuntCallout.js`, `combat/stuntEvidence.js`/`stuntRecognition.js`, trick book screen, `data/survivalArenas.js` signature tricks (serial with `swarm`), vent hunk of `weapons.js` (serial with `hostile-hands`), match burn in `flightV3.js` (§32.7) | 475 |
 | travel | devin-thirty-oct22 | `travelLanes.js`, `routePlanner.js`, stale-intel hunk of `galaxyMap.js`, `cruise.js` interdiction wrestle, toll hunk of `world.js` (serial with `sector-identity`), drift-vector presenter (§32.7) | 476 |
 | npc-read | devin-thirty-oct22 | `ai/factionBehavior.js`, contact-list job phases, grudge hails in `factionPresence.js`/`barks.js` (serial with `hull-ghost`), haulers-to-price hunk of `traffic.js` (serial with `world-answers-2`) (§32.7) | 477 |
@@ -686,7 +686,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | screens-true | devin-fleet-oct20 | `ui/screens/missionLog.js`, station shell scroll padding, `gameOver` bench fixture and fallback copy, map destination strip in `galaxyMap.js`, `orrery/settingsPreview.js`, ledger/factions empty states (§32.7) | 479 |
 | home-crew | free | the Long Berth (`worldOneOffs.js` hunk serial with `run-memory`; `claims.js` hunk serial with `works`), trophy yard persistence, crew data + perk hook through the ships derived-stat writer (serial with `hull-commit`) (§32.4) | 445, 446 |
 | weather | devin-thirty-oct22 | weather kinds via `fields`/`sectorSim` hazards, forecast hunk of `bandRadio.js` (serial with `pulse-voice`), seasonal schedule beside row 439 (§32.4) | 449 |
-| m1-first-hour | free | integration lane for the first hour — claims exact paths per sitting only (§32.4, §32.5) | 454 |
+| m1-first-hour | claude-beta-oct23 | integration lane for the first hour — claims exact paths per sitting only (§32.4, §32.5) | 454 |
 | engine | done | `scripts/program-dispatch.mjs`, `scripts/check-plan-integrity.mjs`, `design/program/PLAN_ENGINE.md` (§32.6) | - |
 | seed-a | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 416, 417 |
 | seed-b | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 418, 419 |
@@ -703,7 +703,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | campaign | free | `systems/story.js`, `story/campaign47a/`, Book hunks of `systems/missions.js` (serial with `run-memory` for the B7 hunk), `data/narrative.js`, `systems/capitalBossRuntime.js` Colossus parts (§34.7) | 533, 534, 535, 536, 537, 538, 539, 547 |
 | places-people | free | one-off census tool, new Orphaned Shift encounter owners (one per sitting, on the Morrow and Rubric pattern), `data/sectorWayOfLife.js` readers, canon cast hooks in their owners (§34.3, §34.8) | 505, 540, 542, 506 |
 | cadence | devin-thirty-oct22 | `systems/encounterDirector.js` cooldowns and rhythm phases, `systems/tensionDirector.js`, adventure swarm-pocket shape (§33 row 497) | 497 |
-| audit-50 | free | reads anywhere; writes only fixes inside the owning seam's files, or one demo-ledger row (§34 row 548) | 548 |
+| audit-50 | claude-beta-oct23 | reads anywhere; writes only fixes inside the owning seam's files, or one demo-ledger row (§34 row 548) | 548 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
