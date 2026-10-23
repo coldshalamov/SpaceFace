@@ -217,9 +217,11 @@ export function createCommandDock(cfg) {
         if (!badge.hidden) badge.hidden = true;
         if (badge.textContent) badge.textContent = '';
       }
+      // The spoken name stays the help line on the tile. Attention is the badge and the tooltip.
       if (on && opts && opts.title) {
         setAttributeIfChanged(tile, 'title', opts.title);
-        setAttributeIfChanged(tile, 'aria-label', opts.title);
+      } else if (tile.hasAttribute('title')) {
+        tile.removeAttribute('title');
       }
     });
   }
