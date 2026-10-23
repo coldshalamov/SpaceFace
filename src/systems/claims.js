@@ -69,6 +69,7 @@ import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { collidesFlipEpoch } from '../world/livingWorldViews.js';
 import { physicsPartitionEpoch } from '../world/activityRuntime.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
+import { NEREID_ANNEX, reconcileNereidFreightAnnex } from '../world/nereidFreightAnnex.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
 const REFINE_RATIO = 2;
@@ -2555,11 +2556,20 @@ export const claims = {
       at: t, throughputU: rec.throughputU, source, receiptId,
     };
     rec.modules.push(module);
-    const reaction = stationGrowthReaction({
+    let reaction = stationGrowthReaction({
       stationId: rec.stationId, stationName: rec.name, factionId: rec.factionId,
       moduleName: rung.name, throughputU: rec.throughputU, line: rung.line,
     });
-    this._stampStationGrowth(rec);
+    const projection = {};
+    this._stampStationGrowth(rec, projection);
+    if (rec.stationId === NEREID_ANNEX.stationId && rung.id === NEREID_ANNEX.moduleId && projection.ready !== true) {
+      // The benefit is earned now; an occupied or unloaded physical seat is not a built body.
+      reaction = stationGrowthReaction({
+        stationId: rec.stationId, stationName: rec.name, factionId: rec.factionId,
+        moduleName: rung.name, throughputU: rec.throughputU,
+        line: '{station} has earned its Bonded Freight Annex; physical seating awaits a clear apron.',
+      });
+    }
     // The relay that fed it keeps the receipt too, so the Base ledger tells the same story.
     if (extra && extra.bodyId) {
       const body = this._body(extra.bodyId);
@@ -2602,9 +2612,10 @@ export const claims = {
   },
 
   // Stamp earned growth onto the live station entity so every surface that reads a station's
-  // data.name (contacts, target panel, local map, dock toasts) shows the module. Display-only,
+  // data.name (contacts, target panel, local map, dock toasts) shows the module. Nereid also
+  // projects its earned annex into the existing dressing owner. Both projections are
   // idempotent, re-applied on sector entry because world respawns stations from data.
-  _stampStationGrowth(rec) {
+  _stampStationGrowth(rec, projection = null) {
     if (!rec) return false;
     const entity = this._stationEntity(rec.stationId);
     const data = entity && entity.data;
@@ -2619,11 +2630,14 @@ export const claims = {
       modules: rec.modules.map((m) => m.name),
       lastReceiptId: top ? top.receiptId : null,
     };
+    const ready = reconcileNereidFreightAnnex(this.ctx, rec, entity);
+    if (projection) projection.ready = ready;
     return true;
   },
 
   _stampAllStationGrowth() {
     const growth = this.state.claims && this.state.claims.stationGrowth;
+    reconcileNereidFreightAnnex(this.ctx, growth && growth.station_nereid, this._stationEntity('station_nereid'));
     if (!growth) return 0;
     let stamped = 0;
     for (const stationId in growth) {
