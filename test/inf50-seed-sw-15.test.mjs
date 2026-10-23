@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { createGameState } from '../src/core/gameState.js';
 import { MODULES } from '../src/data/modules.js';
 import { SHIPS } from '../src/data/ships.js';
+import { isSwarmRelevantDef } from '../src/data/swarmCatalog.js';
 import { SURVIVAL_EVOLUTIONS, evolutionOffersFor } from '../src/data/survivalEvolutions.js';
 import { buildSlotList } from '../src/systems/ships.js';
 
@@ -41,10 +42,12 @@ test('ten named trades each spend at least two held parts on one existing module
     assert.equal(evo.consumes.includes(evo.defId), false, `${evo.id} does not consume its own result`);
     const result = MODULE_BY_ID.get(evo.defId);
     assert.ok(result, `${evo.defId} is an existing module`);
+    assert.equal(isSwarmRelevantDef(result), true, `${evo.defId} is on the swarm shelf`);
     let smallest = Infinity;
     for (const defId of evo.consumes) {
       const part = MODULE_BY_ID.get(defId);
       assert.ok(part, `${defId} is an existing module`);
+      assert.equal(isSwarmRelevantDef(part), true, `${defId} is on the swarm shelf`);
       assert.equal(part.slotType, result.slotType, `${evo.id} stays on the ${result.slotType} bay`);
       smallest = Math.min(smallest, SIZE_RANK[part.size]);
     }

@@ -204,6 +204,13 @@ test('a full chain opens one overdrive window and fitted guns fire about three t
     assert.equal(overdriveOpens(h).length, 1, 'climbing further does not open a second window');
     assert.equal(swarmChain.chainState().overdrive, true);
 
+    // A kill that arrives after the window is a new chain of one. The fast guns die with the old chain.
+    h.state.simTime += SWARM_CHAIN_WINDOW_S + 0.05;
+    raise(h, 1);
+    assert.equal(swarmChain.chainState().chain, 1);
+    assert.equal(swarmChain.chainState().overdrive, false);
+    assert.equal(swarmChainFireRateScale(), 1);
+
     h.state.simTime += SWARM_CHAIN_WINDOW_S + 0.25;
     swarmChain.update(DT, h.state);
     assert.equal(swarmChain.chainState().chain, 0);

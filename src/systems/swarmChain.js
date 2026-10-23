@@ -232,6 +232,8 @@ export const swarmChain = {
     const now = simTimeOf(this.state);
     const cause = styleCauseFromKill(payload);
     const continues = this._chain > 0 && (now - this._lastKillAt) <= SWARM_CHAIN_WINDOW_S;
+    // A late kill is a new chain of one. Overdrive belonged to the chain that just died.
+    if (!continues && this._chain > 0) this._break('lapsed');
     const step = continues ? swarmChainStep(cause, this._lastCause) : SWARM_CHAIN_STEP;
     this._chain = continues ? this._chain + step : step;
     this._lastCause = cause;
@@ -298,6 +300,7 @@ export const swarmChain = {
     let step = 0;
     for (let i = 0; i < count; i++) {
       const continues = this._chain > 0 && (now - this._lastKillAt) <= SWARM_CHAIN_WINDOW_S;
+      if (!continues && this._chain > 0) this._break('lapsed');
       step = continues ? swarmChainStep(cause, this._lastCause) : SWARM_CHAIN_STEP;
       this._chain = continues ? this._chain + step : step;
       this._lastCause = cause;
