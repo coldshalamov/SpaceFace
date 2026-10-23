@@ -1983,6 +1983,12 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 
 **Checked:** bench `save-load` and `save-load-empty` at 800×600, 960×540, 1100×720, 1280×720; phone 390×844. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish102/`.
 
+## Dialog copy wraps without orphans (2026-10-23, ui-polish-103)
+
+**Before:** the confirm body, the danger note and the Find hint used the browser's default wrap, so short last words hung alone: "your hold." at 960 and 1920, "undone." on Sell ship at 1920, and "ESC CLOSES" on the phone Find hint.
+
+**After (`styles/kit.css` only):** `.sf-confirm__body`, `.sf-confirm__note` and `.sf-find__hint` use `text-wrap: balance`, so each block breaks into even lines. No size, colour, selector or ID changes. Checked popup-confirm, popup-confirm-danger and popup-find at 390×844, 960×540, 1280×720 and 1920×1080. Shots: `ui-shots/polish103/{before,before-danger,after,after2}/`, `compare-confirm-{960x540,390x844}.png`.
+
 ## Pause dial in a narrow, tall window — 761–960 wide (ui-polish-107)
 
 **Before (master e648f4eac4):** the dial carries at most nine stops, and the width split spent them in list order. At 761–820 wide SHIP took the last spare stop, so REFERENCE (four verbs) stayed whole and RECORDS WALL ran off the right edge (780×700: x 721–812; 761×800: x 767–858, unreachable). The dial grows with the window's height, so taller narrow windows were worse. The key strip also wrapped ←→ ITEM under ESC from 761 to ~830 wide.
