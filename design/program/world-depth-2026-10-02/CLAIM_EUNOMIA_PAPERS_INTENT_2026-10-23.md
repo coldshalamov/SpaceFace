@@ -37,3 +37,10 @@ Test supported own/legacy/foreign-title pods; unrequested unrelated cargo remain
 Baseline diagnostic and notes independently preserved/read back as3members,5251bytes,SHA2567b1c8bd7663ec91d3c5b57eb2afd41afe3d792567373cc17407b2ec626a5ff4c. Later remap findings are appended locally and require a subsequent recovery version. Ten relevant owner/data blobs matched public master45a97fdbda62611cc13001bd16790f8afa844753; full dependency closure audit was not renewed for the initial probe. Preserve that limitation.
 
 No aggregate or test/anvil-receiver-delivery.test.mjs, no canonical dirty checkout/index mutation, no external execution tasks, browser retries, credentials, merge or deployment. Publish only reviewed coherent draft increment with exact remote verification. All older held operations remain unchanged.
+
+
+## Exact-scope amendment,04:40 UTC
+
+Allocate test/next-wave-law-06.test.mjs to replace the former automatic-market-wash expectation with deliberate confirmation while retaining fee/legality assertions. No open PR exact-path hit found.
+
+Allocate only the delivered Tethys entrance-parcel sentence at current src/ui/station/barContacts.js line1174 to explain choosing a nearby pod and reviewing its cut in Market. PR480 has separate imports/contact-choice/Ilex reply hunks at lines6/563/718/1123; preserve them exactly, no broader contact edits. The actual world entrance unlock is cargo:caughtByNet delivery of unscanned contraband, independent of washing; no world/mission/unlock edit is allocated. Recheck exact current sources/owners before delivery.
