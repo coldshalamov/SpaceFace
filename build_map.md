@@ -654,7 +654,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | run-memory | devin-fleet-oct20 | `worldOneOffs.js`, `scanReveal.js`, `shipCapabilities.js`, `story/campaign47a/embodiedMissions.js`, B7 board hunk of `missions.js`, `story/endings/lifeLedger.js` (§31 THE LONG GAME) | 399, 400 |
 | hull-commit | devin-fleet-oct20 | `data/ships.js`, `systems/ships.js` refit/resale, `data/modules.js`, `techVerbLadder.js`, `shipLedger.js` (§31 THE LONG GAME) | 401, 469 |
 | works | devin-fleet-oct20 | `data/automation.js`, `automation.js`, `alphabet.js`, `claims.js`, `data/sites.js`, `siteProduction.js`, `crafting.js`, automation-panel composer (§31 THE LONG GAME) | 402, 466, 403 |
-| chain-ear | codex-bm30 | `audio/audioSystem.js` stunt/stinger handlers, `scoreDirector.js`, `themeMatrix.js`, `themeCompose.js`, `bandBeds.js` (§31 THE EAR) | 404, 405, 470 |
+| chain-ear | done (devin-25-oct22) | `audio/audioSystem.js` stunt/stinger handlers, `scoreDirector.js`, `themeMatrix.js`, `themeCompose.js`, `bandBeds.js` (§31 THE EAR) | - |
 | theater | codex-bm30 | `killReplay.js`, `sim/killcamTape.js`, `killcamStage.js`, `presentation/momentMachine/`, `flightFootage.js`, `footageVideoCodec.js`, `clipExport.js`, `replay.js`, `clips.js`, `gameOver.js`; the master-bus tap hunk of `audioSystem.js` serial with `chain-ear` (§31 THE SHOW) | 406, 407 |
 | front-door | free | `src/sim/titleAttract*.js`, `render/titleAttractStage.js`, `scripts/bake-title-attract.mjs` (§31 THE SHOW) | 408 |
 | sentences | devin-fleet-oct20 | `ui/captions.js`, `masslineInstrument.js` captions, `src/localization/` overlays and glossary, `settings.js` game speed, `core/timeEffects.js` (§31 THE SHOW) | 409, 410 |
@@ -662,7 +662,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | monoliths | free | `render/renderer.js`, `systems/missions.js`, `systems/traffic.js` — behaviour-preserving splits, one file at a time, only while no claimed seam lists the file (§31 THE MACHINE) | 412, 413 |
 | toolchain | free | `package.json`, `package-lock.json`, three/Rapier/Electron adapters, `scripts/AGENTS.md` script tiers (§31 THE MACHINE) | 414, 415 |
 | rope-scale | devin-fleet-oct20 | `masslineTelemetry.js` tension read-out, `cargoCustody.js` declared-vs-true mass, customs prompt hunk of `lawSecurity.js`, contract templates in `economyContracts.js` (§31.5) | 423, 444 |
-| hull-ghost | devin-fleet-oct20 | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 424, 425 |
+| hull-ghost | devin-fleet-oct20 | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 425 |
 | first-look | free | the clean-flight-plane guard, camera distance review, passable near-field dust, hero-hull art — coordinate with L-PICTURE (§31.5, §31.6) | 427, 428 |
 | stranger-hud | devin-fleet-oct20 | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 457 |
 | set-pieces | free | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks (§31.5) | 430 |
@@ -1053,8 +1053,8 @@ production units, and never build what they write.
 | 401 | AL-LONG-3 | Hulls you commit to — two irreversible refits per hull; ladder to hour 15; deed-priced resale; AL-LG-10/11/12 inside (§31.3) | BUILD | OPEN |
 | 402 | AL-LONG-4 | One works — one recipe per product, relay chain with per-hop receipts, outpost refinery retired with save migration; AL-LG-13/14 inside (§31.3) | BUILD | OPEN — claim refinery runs the site recipe book, forwards output to a same-sector relay with per-hop receipts, stranded pre-402 inputs collectible (fleet oct20); remaining: outpost refinery retirement |
 | 403 | AL-LONG-5 | Write the drone — ≤6-step composed loops with refusal reasons; AL-LG-15 inside (§31.3) | BUILD | OPEN — after 402 |
-| 404 | AL-EAR-1 | The chain sings — CV-EAR next slice; AL-PR-01…06 inside (§31.3) | BUILD | OPEN |
-| 405 | AL-EAR-2 | Twenty-five sectors, twenty-five beds — composed beds from the existing score identities (§31.3) | BUILD | OPEN |
+| 404 | AL-EAR-1 | The chain sings — CV-EAR next slice; AL-PR-01…06 inside (§31.3) | BUILD | DONE devin-25-oct22 |
+| 405 | AL-EAR-2 | Twenty-five sectors, twenty-five beds — composed beds from the existing score identities (§31.3) | BUILD | DONE devin-25-oct22 |
 | 406 | AL-SHOW-1 | The rope on tape — adventure tape records tether/field; adventure death kill-cam; AL-PR-09/10 inside (§31.3) | BUILD | OPEN |
 | 407 | AL-SHOW-2 | Theater — re-render from tape with the planned camera, scrub, photo cam, export ≥30 fps with sound; AL-PR-11/12 inside (§31.3) | BUILD | OPEN — after 406 |
 | 408 | AL-SHOW-3 | The front door shows the verb — attract tape v2 with catch→swing→release→impact; AL-PR-07/08 inside; no title music (owner question) (§31.3) | BUILD | OPEN |
@@ -1073,7 +1073,7 @@ production units, and never build what they write.
 | 421 | SEED-META | Seed feat-based achievements/titles from the 16 witnessed tricks; no grind counters (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
 | 422 | SEED-STRANGER | Seed TEACH/PRO lines from a recorded first-30-minute stranger route (§29 bundles, player-truth actor) (§31.3) | SEED | DONE devin-ten-oct22 (21452bddf9) |
 | 423 | AL-STORY-1 | The rope is a scale — towing reveals true mass against the declared manifest, so a mass discrepancy is a clue, contraband or a frame (generalises 47-A's evidence spindle) (§31.5) | BUILD | OPEN |
-| 424 | AL-STORY-2 | The hull ghost — Captain Maera Vols speaks in flight about real events: stunts, near-misses, sectors she remembers, the story (§31.5) | BUILD | OPEN |
+| 424 | AL-STORY-2 | The hull ghost — Captain Maera Vols speaks in flight about real events: stunts, near-misses, sectors she remembers, the story (§31.5) | BUILD | DONE devin-25-oct22 |
 | 425 | AL-STORY-3 | Faces on the radio — in-flight transmissions show the speaker's portrait with a voiced bark, for the cast and for station locals (§31.5) | BUILD | OPEN — after 424; owner ruling needed: `src/ui/AGENTS.md` bans pilot portraits in the flight HUD, so until ruled the portrait shows on the station comms screen and the in-flight line carries name, voice and caption only |
 | 426 | AL-STORY-4 | Coldburn Rey, a rival with a face — a recurring rival hauler who bids on your contracts, races your deliveries, and can be robbed or rescued; he remembers (§31.5) | BUILD | DONE devin-25-oct22 |
 | 427 | AL-LOOK-1 | Fill the frame without filling the path — readable hull scale, passable near-field dust, depth layers above/below the flight plane, yielding traffic; no new obstacles (clean-flight-plane law §31.6; guarded by 443) (§31.5) | ART | OPEN — coordinate with L-PICTURE; take only while that lane is quiet |
@@ -1116,7 +1116,7 @@ production units, and never build what they write.
 | 467 | RC-MISSION-VOICE | Missions with a voice — bounty memory and lines, unique heist methods and casing, payday receipt, retry changes the room, Clause Gambit (§32.7) | BUILD | OPEN |
 | 468 | RC-DISCOVERY-SHOWN | Discovery you can see and hear — Field Notes, taxonomy, comms styling, discovery toasts, creature/machine sound, Helios tease, Suhl's Clauses (§32.7) | BUILD | OPEN — M3 |
 | 469 | RC-FIT-VISIBLE | The fit shows on the hull — verb modules drawn, earned livery, felt synergies, research screen fixes (§32.7) | BUILD | OPEN — after 401 in the seam |
-| 470 | RC-VOICES | Voices and space in the mix — per-line barks, threat ear, room presets, heat in the score, idents, mono, night mode (§32.7) | BUILD | OPEN — after 404/405 in the seam |
+| 470 | RC-VOICES | Voices and space in the mix — per-line barks, threat ear, room presets, heat in the score, idents, mono, night mode (§32.7) | BUILD | DONE devin-25-oct22 |
 | 471 | RC-RECORDS | Records that tell stories — Records Wall, working photo Look, empty-state copy, Today's board, Pact dial, Range Licence (§32.7) | BUILD | OPEN |
 | 472 | RC-VENUES | Toys out of the drawer — venue/race event cards, minigames from the world, Ring-Out, Toll Threading, Hot Tow, Wreck Strip, Spill Catch (§32.7) | BUILD | OPEN — after 395 in the seam |
 | 473 | RC-FRONT-DOOR | A fast, kind front door — interactive title ≤10 s, mm:ss clock, destination slate, first-light preset, settings density (§32.7) | BUILD | OPEN — M1; coordinate with L-MACHINE shader admission |

@@ -194,6 +194,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'ambient',
   'audio:cue',
   'audio:outputDeviceChanged',
+  'barkDirector:voice',
   'borrowedSun:lost',
   'borrowedSun:notice',
   'borrowedSun:offer',

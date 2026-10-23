@@ -64,6 +64,10 @@ import {
   sectorBedToBandIntent,
 } from './themeMatrix.js';
 import { scoreNoteHz, PHASE_QUANTIZE_BARS } from './scoreDirector.js';
+import { stuntBankTier, stuntGridTime, stuntLinkRate, stuntScoreBpm } from './stuntScore.js';
+import { cachedBarkBuffer, barkPlaybackRate } from './barkPcmCache.js';
+import { applyOutputMix, heatScoreLift, stationIdentNotes } from './outputMix.js';
+import { createThreatEar } from './threatEar.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 import { leftoverMechanicLines } from '../story/mechanicVoice.js';
@@ -993,7 +997,6 @@ const SCOOP_CHIME_RATES = Object.freeze([1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.
 // Stunt chain ladder (CV-EAR) — each player trick in the active combo plucks one step higher.
 // The step reads stuntCombo's own acts.length (the real link count, already bumped before the
 // event lands), so a combo reset drops the pitch back to the bottom for free.
-const STUNT_CHAIN_RATES = Object.freeze([1, 1.125, 1.25, 1.5, 1.667, 2.0]);
 
 const COLLISION_TIER_RECIPES = Object.freeze({
   kiss: 'sfx_dock_clunk',
@@ -2408,6 +2411,9 @@ export const audio = {
     // A re-init replaces the sample runtime wholesale; dispose the old one first so in-flight
     // fetch/decode work from the previous generation cannot populate a dead store.
     if (rt._samples && typeof rt._samples.dispose === 'function') rt._samples.dispose();
+    if (rt._barkPcmCache) rt._barkPcmCache.clear();
+    if (rt._threatEar) rt._threatEar.destroy();
+    rt._threatEar = null;
     rt._samples = createSampleRuntime(); // PQ-158.00 sample library (promise-driven, never per-frame)
     rt._nextVoiceId = 1;
     rt._lastDamageT = -1e9;       // sim-time of last player damage (for inCombatRecent)
@@ -3834,6 +3840,7 @@ export const audio = {
     const rt = this.rt;
     rt._paused = !!paused;
     if (paused) {
+      if (rt._threatEar) rt._threatEar.update(this.state, null, false);
       // Sustained combat/work loops ride buses the pause path does not duck — end them and drop
       // the desire flags so _frame cannot resurrect them under the menu. A beam still firing
       // re-arms through combat:fire on the first resumed tick; drillGrind re-derives from state.
@@ -3927,6 +3934,7 @@ export const audio = {
   _applySettings() {
     const rt = this.rt; if (!rt.ctx) return;
     const a = (this.state.settings && this.state.settings.audio) || {};
+    applyOutputMix(rt, a);
     const muted = this._isMuted();
     const t = rt.ctx.currentTime;
     const cache = rt._busGainCache || (rt._busGainCache = Object.create(null));
@@ -4159,13 +4167,13 @@ export const audio = {
     // full synth voice (no gap, no pop) and schedules the decode that makes the next cue hybrid.
     // PQ-158.01: a collision cue carrying a ladder cell swaps the generic recipe sample for the
     // designed material/force sample; the recipe and its synth law stay exactly as they were.
-    const sampleBinding = rt._samples
+    const sampleBinding = opts.barkPcmBuffer ? { share: 1, gain: 1, rate: 1 } : rt._samples
       ? (opts.ladderId ? resolveLadderBinding(opts.ladderId) : null)
         || (opts.barkSampleId ? resolveBarkSampleBinding(opts.barkSampleId) : null)
         || resolveSampleBinding(recipeId)
       : null;
     const useSample = !!(sampleBinding && sampleBinding.share > 0);
-    const sampleBuffer = useSample ? rt._samples.acquire(sampleBinding.sampleId) : null;
+    const sampleBuffer = opts.barkPcmBuffer || (useSample ? rt._samples.acquire(sampleBinding.sampleId) : null);
     const synthPeak = sampleBuffer ? peak * (1 - sampleBinding.share) : peak;
 
     let targetBus = rt.sfxBus;
@@ -5056,8 +5064,8 @@ export const audio = {
     this.play('sfx_vent_chime', { position, gain: 0.35, rate: 0.9 });
   },
 
-  // Stunt chain (CV-EAR slice 3): each player trick in the live combo plucks one step up the
-  // pentatonic ladder, read from the combo's own link count (state.stunts.combo.acts — the act
+  // Stunt chain: each player trick plucks one in-mode step up the
+  // diatonic ladder, read from the combo's own link count (state.stunts.combo.acts — the act
   // is committed before stunt:trickDetected lands). trickAmended upgrades the same link and
   // never reaches this handler; stunt:bridge plays nothing (the near-miss bark already speaks).
   _onStuntTrickDetected(trick) {
@@ -5068,13 +5076,71 @@ export const audio = {
     if (playerId != null && trick.actorId != null && trick.actorId !== playerId) return;
     const combo = this.state && this.state.stunts && this.state.stunts.combo;
     const acts = combo && Array.isArray(combo.acts) ? combo.acts.length : 0;
-    const step = Math.min(Math.max(0, acts - 1), STUNT_CHAIN_RATES.length - 1);
-    this.play('sfx_stunt_link', { gain: 0.45, rate: STUNT_CHAIN_RATES[step] });
+    this.rt._stuntLift = swarmChainLift(acts);
+    this.rt._stuntLiftUntil = 0;
+    this.rt._musicDirty = true;
+    this.play('sfx_stunt_link', {
+      gain: 0.45, rate: stuntLinkRate(acts, this.rt._scoreIdentity), lockRate: true,
+    });
   },
 
   _onStuntStyleBanked(bank) {
     if (!bank) return;
-    this.play('sfx_stunt_bank', { gain: 0.6 });
+    const rt = this.rt;
+    const now = rt.ctx ? rt.ctx.currentTime : 0;
+    const tier = stuntBankTier(bank);
+    rt._stuntLiftUntil = now + 1.2;
+    rt._stuntFuseKey = null;
+    rt._musicDirty = true;
+    const t = this._stuntGridTime(now);
+    this.play('sfx_stunt_bank', {
+      gain: [0.45, 0.65, 0.85][tier], rate: this._noteFreq('A', 3 + tier) / 660,
+      startTime: t + tier * 60 / stuntScoreBpm(rt.musicState) / 4, lockRate: true,
+    });
+    // Small bank: a single resolution. Solid: dominant→tonic. Big: the full rising cadence.
+    for (let i = 0; i < tier; i++) this.play('sfx_stunt_link', {
+      gain: 0.3, rate: this._noteFreq(i ? 'G' : 'E', 4 + tier - 1) / 880,
+      startTime: t + i * 60 / stuntScoreBpm(rt.musicState) / 4, lockRate: true,
+    });
+  },
+
+  _stuntGridTime(now, stride = 1) {
+    const rt = this.rt;
+    const bpm = stuntScoreBpm(rt.musicState);
+    const key = rt.musicState === 'combat' ? 'C' : rt.musicState === 'tense' ? 'B' : rt.musicState === 'docked' ? 'D' : 'A';
+    const stem = rt.stems && rt.stems[key];
+    const anchor = stem && typeof stem.nextBoundary === 'function' ? stem.nextBoundary(1) : 0;
+    return stuntGridTime(now, anchor, bpm, stride);
+  },
+
+  _stuntScoreLift() {
+    const rt = this.rt;
+    const combo = this.state && this.state.stunts && this.state.stunts.combo;
+    const active = combo && Array.isArray(combo.acts) ? combo.acts.length : 0;
+    const now = rt.ctx ? rt.ctx.currentTime : 0;
+    const tail = rt._stuntLiftUntil > now ? (rt._stuntLift || 0) * Math.min(1, (rt._stuntLiftUntil - now) / 1.2) : 0;
+    const heatLevel = Number.isFinite(rt._scoreHeatLevel) ? rt._scoreHeatLevel : heatLevelFor(this.state?.player?.heat || 0);
+    return Math.max(swarmChainLift(rt._swarmChain), swarmChainLift(active), tail, heatScoreLift(heatLevel));
+  },
+
+  _tickStuntFuse() {
+    const rt = this.rt;
+    const combo = this.state && this.state.stunts && this.state.stunts.combo;
+    const remaining = combo ? (combo.deadlineTick - this.state.tick) / 60 : -1;
+    if (!combo || !combo.activeCount || remaining <= 0 || remaining > 1) {
+      rt._stuntFuseKey = null;
+      return;
+    }
+    const now = rt.ctx.currentTime;
+    const t = this._stuntGridTime(now, remaining > 0.6 ? 4 : remaining > 0.25 ? 2 : 1);
+    if (t - now >= remaining) return;
+    const key = `${combo.deadlineTick}:${Math.round(t * 10000)}`;
+    if (rt._stuntFuseKey === key) return;
+    rt._stuntFuseKey = key;
+    this.play('sfx_stunt_link', {
+      gain: 0.12 + (1 - remaining) * 0.08, rate: this._noteFreq('E', 5) / 880,
+      startTime: t, lockRate: true,
+    });
   },
 
   // Cargo jettison (HUD cargo panel → cargo.dumpCargo): pods leaving the hold are a world act
@@ -6058,6 +6124,10 @@ export const audio = {
     this._defer(() => this.play('sfx_ui_confirm', { gain: 0.6, rate: 0.7 }), 180);
     this.rt._docked = true;
     this.rt._dockStationId = p && p.stationId ? p.stationId : null;
+    const identNow = this.rt.ctx ? this.rt.ctx.currentTime : 0;
+    stationIdentNotes(this.rt._dockStationId).forEach((note, i) => this.play('sfx_stunt_link', {
+      gain: 0.19, rate: this._noteFreq(note, 5) / 880, lockRate: true, startTime: identNow + 0.22 + i * 0.14,
+    }));
     this._syncEnvironmentMix(true);
     this._markMusicDirty();
     // Start ambient station hum loop (faction-tinted when possible)
@@ -6176,6 +6246,10 @@ export const audio = {
   _onHeatChanged(p) {
     if (!p) return;
     const level = Number.isFinite(p.level) ? p.level : 0;
+    if (this.rt) {
+      this.rt._scoreHeatLevel = p.wanted === false ? 0 : level;
+      this.rt._musicDirty = true;
+    }
     if (p.wantedCrossed && !p.wanted) {
       // importance 0.8 = critical voice: the relief sting survives a combat squelch window,
       // mirroring the escalation alarm's immunity.
@@ -6550,7 +6624,9 @@ export const audio = {
     this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain, startTime: t0 });
     const body = this.play(resolved.recipeId, {
       gain: resolved.gain,
-      rate: resolved.speech.rate,
+      rate: barkPlaybackRate(resolved),
+      barkPcmBuffer: ctx && ctx.state === 'running' && !this._isMuted()
+        ? cachedBarkBuffer(ctx, rt._barkPcmCache || (rt._barkPcmCache = new Map()), resolved) : null,
       barkSampleId: resolved.sampleId,
       critical: true,
       duckSeconds: BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS + COMMS_DUCK.releasePadS,
@@ -6616,7 +6692,9 @@ export const audio = {
     this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain * 0.8, startTime: t0 });
     this.play(resolved.recipeId, {
       gain: resolved.gain,
-      rate: resolved.speech.rate,
+      rate: barkPlaybackRate(resolved),
+      barkPcmBuffer: ctx && ctx.state === 'running' && !this._isMuted()
+        ? cachedBarkBuffer(ctx, rt._barkPcmCache || (rt._barkPcmCache = new Map()), resolved) : null,
       barkSampleId: resolved.sampleId,
       critical: true,
       duckSeconds: span + COMMS_DUCK.releasePadS,
@@ -6728,7 +6806,7 @@ export const audio = {
       wanted,
       sectorId: rt._themeSectorId,
       factionId: rt._themeFactionId,
-      swarmLift: swarmChainLift(rt._swarmChain),
+      swarmLift: this._stuntScoreLift(),
     });
     rt._themeMatrix = theme;
     // THE EAR: the sector's key and mode move with the sector, never mid-sector.
@@ -6826,11 +6904,19 @@ export const audio = {
       return;
     }
     const isCritical = importance >= PRIORITY_DUCK_THRESHOLD || !!opts.duck || !!(signature && signature.warning);
+    const ratedMoment = id === 'moment.stinger';
+    const clearCadence = id === 'swarm.clearResolve';
     const voice = this.play(rid, {
       gain: opts.gain == null ? 0.8 : opts.gain,
       position: opts.position || null,
-      rate: opts.rate || 1,
+      rate: ratedMoment ? this._noteFreq('A', 2) / 110 : clearCadence ? this._noteFreq('A', 4) / (AUDIO_RECIPE_BY_ID[rid].baseFreq || 440) : (opts.rate || 1),
+      startTime: ratedMoment || clearCadence ? this._stuntGridTime(nowS) : undefined,
+      lockRate: ratedMoment || clearCadence,
       critical: isCritical,
+    });
+    if (clearCadence) this.play('sfx_stunt_link', {
+      gain: 0.3, rate: this._noteFreq('E', 5) / 880, lockRate: true,
+      startTime: this._stuntGridTime(nowS) + 60 / stuntScoreBpm(this.rt.musicState) / 4,
     });
     if (rid === 'sfx_travel_arrival') this._playJumpArrivalLayer(opts, isCritical);
     else if (rid === 'sfx_travel_settle' || rid === 'sfx_travel_interdiction') {
@@ -7566,6 +7652,10 @@ export const audio = {
     const player = state.entities.get(state.playerId);
     let docked = !!(rt._docked || (player && player.flags && player.flags.docked) || state.ui.docked);
     const context = resolveAudioThreatContext(state, player, rt);
+    if (rt.ctx && typeof rt.ctx.createOscillator === 'function') {
+      if (!rt._threatEar) rt._threatEar = createThreatEar(rt.ctx, rt.combatBus);
+      rt._threatEar.update(state, player, !rt._paused && !docked && !this._isMuted());
+    }
     const threat = context.threat;
     rt.threat = threat;
     rt.threatContext = context;
@@ -7606,7 +7696,7 @@ export const audio = {
       sectorId: rt._themeSectorId,
       factionId: rt._themeFactionId,
       // SWARM-06: the kill chain's lift — the same theme row, mixed hotter as the run climbs.
-      swarmLift: swarmChainLift(rt._swarmChain),
+      swarmLift: this._stuntScoreLift(),
       working: work.working,
       workPresence: work.presence,
     });
@@ -7866,6 +7956,7 @@ export const audio = {
         rt._musicDirty = false;
       }
       this._tickAlarms();
+      this._tickStuntFuse();
       // Psychoacoustic drama pollers — hull depressurization muffle + the dead-trigger clack.
       // Both are pure sim reads and parameter smoothing; no allocation on this path.
       this._updateHullBreach(now, dt);

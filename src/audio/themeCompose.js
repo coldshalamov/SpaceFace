@@ -11,6 +11,7 @@ import {
   SECTOR_BEDS,
   resolveSectorBed,
 } from './themeMatrix.js';
+import { renderComposedSectorBedPcm } from './sectorScoreBeds.js';
 
 export const THEME_SAMPLE_RATE = 32000;
 export const THEME_STEM_SECONDS = 4;
@@ -112,6 +113,7 @@ export function renderMotifLeadPcm(motif, options = {}) {
 
 export function renderSectorBedPcm(bed, options = {}) {
   const row = bed && bed.hzA ? bed : resolveSectorBed(bed);
+  if (row.composition) return renderComposedSectorBedPcm(row, { ...options, sampleRate: options.sampleRate || THEME_SAMPLE_RATE });
   const sr = options.sampleRate || THEME_SAMPLE_RATE;
   const seconds = options.seconds == null ? THEME_BED_SECONDS : options.seconds;
   const n = Math.max(1, Math.round(seconds * sr));
