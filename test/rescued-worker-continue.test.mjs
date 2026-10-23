@@ -11,10 +11,11 @@ import {normalizeRescuedWorkers} from '../src/systems/rescuedWorkerReturn.js';
 import {SECTORS} from '../src/data/sectors.js';
 import {activityPocketsForSector} from '../src/data/sectorActivityPockets.js';
 import {rescuedWorkerMemoryFor,createContactHailOffer,contactHailAvailability} from '../src/data/contactHail.js';
+import {world} from '../src/systems/world.js';
 const SECTOR='sector_rhea_cinder';
 function boot(){
  const storage=new Map();globalThis.localStorage={get length(){return storage.size},key(i){return [...storage.keys()][i]??null},getItem(k){return storage.get(k)??null},setItem(k,v){storage.set(k,String(v))},removeItem(k){storage.delete(k)}};
- const sim=createSimulation({seed:4242,systems:[uniqueWrecks,traffic,npcJobsRuntime,save]});
+ const sim=createSimulation({seed:4242,systems:[world,uniqueWrecks,traffic,npcJobsRuntime,save]});
  const {state,bus}=sim;state.mode='flight';state.world.currentSectorId=SECTOR;state.onboarding={active:false,finished:true};
  const player=sim.spawn({type:'ship',team:0,pos:{x:0,z:0},hull:100});state.playerId=player.id;
  const sector=SECTORS.find(s=>s.id===SECTOR);
@@ -28,7 +29,7 @@ function boot(){
  bus.emit('survivorPod:ejected',{victimId:worker.id});
  const host=sim.registry.get('uniqueWrecks'), saver=sim.registry.get('save');
  const rec=()=>Object.values(state.player.uniqueWrecks.rescuedWorkers.people)[0];
- const hulls=()=>[...state.entities.values()].filter(e=>e.alive!==false&&e.data?.worldRecordId===recordId);
+ const hulls=()=>[...state.entities.values()].filter(e=>e.alive!==false&&e.data?.worldRecordId===rec().worldRecordId);
  const rescue=(outcome='rescued')=>bus.emit('survivorPod:resolved',{id:'rescue:rhea:one',victimId:worker.id,outcome,t:state.simTime});
  const reload=async()=>{assert.equal(saver.save('quick'),true);assert.equal(await saver.load('latest'),true);};
  const due=()=>{state.simTime=Math.max(state.simTime,100);host._rescuedWorkers.sync();};
@@ -59,11 +60,11 @@ test('save while adrift still schedules the later rescue instead of fabricating 
 test('returned worker keeps first remembered hail through Save, then acknowledgement survives another Continue',async()=>{
  const t=boot();try{
   t.rescue();t.due();assert.ok(rescuedWorkerMemoryFor(t.state,t.hulls()[0]));
-  await t.reload();assert.equal(t.hulls().length,1);const hull=t.hulls()[0];assert.equal(t.rec().hailAcknowledgedAtS,null);assert.ok(rescuedWorkerMemoryFor(t.state,hull));
+  await t.reload();t.due();assert.equal(t.hulls().length,1);const hull=t.hulls()[0];assert.equal(t.rec().hailAcknowledgedAtS,null);assert.ok(rescuedWorkerMemoryFor(t.state,hull));
   const first=offer(t,hull);assert.match(first.lines.join(' '),/YOU PULLED MY POD/);
   // Continue remaps entity ids; use the actual rematerialized same-record hull.
   t.bus.emit('contactHail:offer',first);const ack=t.rec().hailAcknowledgedAtS;assert.equal(ack,t.state.simTime);
-  await t.reload();assert.equal(t.rec().hailAcknowledgedAtS,ack);assert.equal(rescuedWorkerMemoryFor(t.state,t.hulls()[0]),null);
+  await t.reload();t.due();assert.equal(t.rec().hailAcknowledgedAtS,ack);assert.equal(rescuedWorkerMemoryFor(t.state,t.hulls()[0]),null);
   assert.doesNotMatch(offer(t,t.hulls()[0]).lines.join(' '),/YOU PULLED MY POD/);
  }finally{t.close();}
 });
