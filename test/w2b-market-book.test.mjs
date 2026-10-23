@@ -5,7 +5,7 @@ import test from 'node:test';
 import { createSimulation } from '../src/core/sim.js';
 import { economy } from '../src/systems/economy.js';
 import { cargo } from '../src/systems/cargo.js';
-import { buildCargoManifest, POD_INTAKE_LAW } from '../src/economy/freightCausality.js';
+import { buildArrivalIntent, buildCargoManifest, POD_INTAKE_LAW } from '../src/economy/freightCausality.js';
 
 const SEED = 4242;
 const STATION = 'station_ceres';
@@ -37,7 +37,10 @@ function boot(t, { numericTarget = false } = {}) {
     assert.equal(intent.result?.ok, true, intent.result && intent.result.reason);
     return intent.result.share;
   };
-  return { sim, state, bus, econ, station, order, buy };
+  const arrival = buildArrivalIntent({
+    seed: SEED, ...order, freighterId: freighterKey, manifest, sectorId: state.world.currentSectorId,
+  });
+  return { sim, state, bus, econ, station, order, buy, arrival, manifest };
 }
 
 // -- O16: expiry sweep -------------------------------------------------------------------
@@ -91,6 +94,45 @@ test('malformed book rows are discarded, rows without a usable deadline settle a
   assert.equal(book.open.length, 0);
   assert.deepEqual(book.settled.map((row) => row.id), ['no-deadline']);
   assert.equal(book.settled[0].outcome, 'expired');
+});
+
+test('an arrival after the deadline but before the next sweep expires the share and slip instead of paying', (t) => {
+  const h = boot(t);
+  const share = h.buy();
+  const now = h.state.simTime;
+  const slip = {
+    id: 'slip-w2b-late', stationId: STATION, freighterKey: 'w2b-freighter-4242', manifestId: null, dockSeq: 0,
+    commodityId: ORE, qty: 5, lockedBuyCr: 1000, feeCr: 3, boughtAt: now, expiresAt: now + 600,
+  };
+  h.state.economy.forwardSlips.open.push(slip);
+  // The deadline passes at share.expiresAt; the freighter lands one second later, before any sweep.
+  h.state.simTime = Math.max(share.expiresAt, slip.expiresAt) + 1;
+  const credits = h.state.player.credits;
+  const expired = [];
+  h.bus.on('economy:marketContractExpired', (p) => expired.push(p));
+  h.bus.emit('freight:arrival', h.arrival);
+  assert.equal(h.state.player.credits, credits, 'an overdue position pays nothing on arrival');
+  assert.equal(h.state.economy.convoyShares.open.length, 0);
+  assert.equal(h.state.economy.convoyShares.settled.at(-1).outcome, 'expired');
+  assert.equal(h.state.economy.convoyShares.settled.at(-1).payoutCr, 0);
+  assert.ok(expired.some((p) => p.kind === 'convoy-share' && p.id === share.id));
+  const slipRow = h.state.economy.forwardSlips.settled.find((r) => r.id === slip.id);
+  assert.ok(slipRow, 'the arrival carries an ore trade, so the slip is settled by it');
+  assert.equal(slipRow.outcome, 'expired', 'a slip the arrival would have landed settles as expired');
+  assert.equal(slipRow.payoutCr, 0);
+  assert.equal(h.state.economy.forwardSlips.open.length, 0);
+  h.bus.emit('freight:arrival', { ...h.arrival });
+  assert.equal(h.state.player.credits, credits, 'a replay still pays nothing');
+});
+
+test('an arrival inside the deadline still pays the share once', (t) => {
+  const h = boot(t);
+  const share = h.buy();
+  h.state.simTime = share.expiresAt - 1;
+  const credits = h.state.player.credits;
+  h.bus.emit('freight:arrival', h.arrival);
+  assert.equal(h.state.player.credits, credits + share.payoutCr);
+  assert.equal(h.state.economy.convoyShares.settled.at(-1).outcome, 'arrived');
 });
 
 // -- O43b: canonical station id finds the lane -------------------------------------------

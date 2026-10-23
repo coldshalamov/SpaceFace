@@ -3814,6 +3814,13 @@ export const economy = {
     const intentManifestId = intent.manifestId != null ? String(intent.manifestId) : null;
     const manifestMatch = (row) => !intentManifestId || !row || row.manifestId == null
       || String(row.manifestId) === intentManifestId;
+    // A position past its deadline is already worthless: an arrival that lands between the
+    // deadline and the next 5 s sweep must settle it as expired (the sweep's own rule), not pay it.
+    const overdue = (row) => !(Number(row.expiresAt) > at);
+    const expireOverdue = (book, row, label) => {
+      book.settled.push({ ...row, outcome: 'expired', settledAt: at, payoutCr: 0 });
+      this.bus.emit('economy:marketContractExpired', { kind: label, id: row.id, stationId: row.stationId });
+    };
     const stillOpen = [];
     for (const row of econ.convoyShares.open) {
       if (!row || row.stationId !== stationId || dockSeq == null || row.dockSeq !== dockSeq
@@ -3821,6 +3828,7 @@ export const economy = {
         stillOpen.push(row);
         continue;
       }
+      if (overdue(row)) { expireOverdue(econ.convoyShares, row, 'convoy-share'); continue; }
       const settled = { ...row, outcome: 'arrived', settledAt: at, intentId: intent.intentId || null };
       econ.convoyShares.settled.push(settled);
       if (settled.payoutCr > 0) this.grantCredits(settled.payoutCr, 'market:convoy-share:arrival');
@@ -3839,6 +3847,7 @@ export const economy = {
       }
       const trade = trades.find((t) => t && t.commodityId === row.commodityId) || null;
       if (!trade) { slipsOpen.push(row); continue; }
+      if (overdue(row)) { expireOverdue(econ.forwardSlips, row, 'forward-slip'); continue; }
       const entry = market && market[row.commodityId];
       const arrivalBuyCr = Number(entry && (entry.lastBuy != null ? entry.lastBuy : entry.buy)) || 0;
       const payoutCr = settleForwardSlip({ lockedBuyCr: row.lockedBuyCr, arrivalBuyCr, qty: row.qty });

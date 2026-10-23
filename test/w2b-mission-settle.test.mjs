@@ -11,6 +11,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { buildRecoveryPlan } from '../src/combat/playerDefeat.js';
 import { combat } from '../src/systems/combat.js';
+import { factions as factionsProto } from '../src/systems/factions.js';
 import { addCargo, removeCargo } from '../src/systems/cargo.js';
 import {
   CONTRACT_47A_B0_TAG,
@@ -242,29 +243,84 @@ function accept(world, offer) {
 const grants = (bus, id) => bus.log.filter((e) => e.name === 'economy:grantCredits'
   && e.payload.reason === `mission:${id}`);
 
-test('a throwing debrief on completion still frees the slot and pays exactly once', () => {
-  const world = deathWorld();
-  const mission = accept(world, plainOffer('offer_w2b_o19a'));
-  const original = world.missions._emitMissionDebrief;
-  world.missions._emitMissionDebrief = () => { throw new Error('debrief blew up'); };
-  const index = world.state.missions.active.indexOf(mission);
-  assert.throws(() => world.missions._completeMission(mission, index), /debrief blew up/);
-  assert.equal(world.state.missions.active.length, 0, 'no ghost row eats a slot');
+test('a throwing debrief cannot cost the completion: reward, reputation, announcement and slot all land once', () => {
+  // Real factions system on the same bus: completion reputation rides `mission:completed`.
+  const state = createGameState(4242);
+  state.mode = 'flight';
+  state.settings.gameplay.tutorialHints = false;
+  state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume: 1000, capMass: 1000 };
+  const bus = createBus();
+  const log = [];
+  for (const name of ['mission:completed', 'economy:grantCredits', 'faction:repDelta', 'mission:updated']) {
+    bus.on(name, (p) => log.push({ name, payload: p }));
+  }
+  const missions = Object.assign({}, missionsProto);
+  const factions = Object.create(factionsProto);
+  const helpers = { hash32, mulberry32, voice: { say: () => true } };
+  const slots = { missions, factions };
+  const ctx = { state, bus, helpers, registry: { get: (id) => slots[id] || null } };
+  factions.init(ctx);
+  missions.init(ctx);
+  state.factions.faction_mts = { ...state.factions.faction_mts, rep: 500 };
+  const offer = plainOffer('offer_w2b_o19a');
+  bus.emit('mission:offered', offer);
+  state.missions.boards[offer.stationId] = state.missions.boards[offer.stationId] || { refreshEpoch: 0, slots: [offer] };
+  bus.emit('ui:acceptMission', { missionId: offer.id });
+  const mission = state.missions.active.find((m) => m.sourceOfferId === offer.id);
+  assert.ok(mission, 'accepted');
+  const repBefore = state.factions.faction_mts.rep;
+  const errors = [];
+  const originalError = console.error;
+  console.error = (...args) => { errors.push(args.join(' ')); };
+  missions._emitMissionDebrief = () => { throw new Error('debrief blew up'); };
+  try {
+    missions._completeMission(mission, state.missions.active.indexOf(mission));
+  } finally {
+    console.error = originalError;
+  }
+  assert.equal(state.missions.active.some((m) => m.id === mission.id), false, 'no ghost row eats a slot');
   assert.equal(mission.status, 'completed');
-  assert.equal(grants(world.bus, mission.id).length, 1, 'the reward landed once');
+  assert.equal(log.filter((e) => e.name === 'economy:grantCredits' && e.payload.reason === `mission:${mission.id}`).length, 1,
+    'the reward landed once');
+  assert.equal(log.filter((e) => e.name === 'mission:completed' && e.payload.missionId === mission.id).length, 1,
+    'the completion announcement fired despite the debrief throwing');
+  assert.ok(state.factions.faction_mts.rep > repBefore, 'factions granted completion reputation from it');
+  assert.ok(errors.some((line) => /completion debrief failed/.test(line)), 'the optional failure was reported, not lost');
+  const receipt = state.missions.receipts.find((r) => r.missionId === mission.id);
+  assert.equal(receipt.outcome, 'completed');
 
-  // Re-settling the same instance pays nothing more.
-  world.missions._emitMissionDebrief = original;
-  world.missions._completeMission(mission, 0);
-  assert.equal(grants(world.bus, mission.id).length, 1);
-  assert.equal(world.state.missions.active.length, 0);
+  // Re-settling the same instance pays and announces nothing more.
+  missions._completeMission(mission, 0);
+  assert.equal(log.filter((e) => e.name === 'economy:grantCredits' && e.payload.reason === `mission:${mission.id}`).length, 1);
+  assert.equal(log.filter((e) => e.name === 'mission:completed').length, 1);
 });
 
-test('a throw during failure or expiry also removes the row', () => {
+test('a throwing story transition still announces the completion (reputation) and frees the slot', () => {
+  const world = deathWorld();
+  const mission = accept(world, plainOffer('offer_w2b_o19e'));
+  world.missions._advanceStoryChain = () => { throw new Error('story blew up'); };
+  const index = world.state.missions.active.indexOf(mission);
+  assert.throws(() => world.missions._completeMission(mission, index), /story blew up/);
+  assert.equal(count(world.bus, 'mission:completed', (p) => p.missionId === mission.id), 1,
+    'the core notification fires on the way out');
+  assert.equal(world.state.missions.active.some((m) => m.id === mission.id), false);
+  assert.equal(grants(world.bus, mission.id).length, 1);
+});
+
+/** Run `fn` with console.error muted (the contained optional failure is reported there). */
+function silenced(fn) {
+  const original = console.error;
+  console.error = () => {};
+  try { return fn(); } finally { console.error = original; }
+}
+
+test('a throwing debrief during failure or expiry cannot un-settle it; the row leaves', () => {
   const failing = deathWorld();
   const m1 = accept(failing, plainOffer('offer_w2b_o19b'));
   failing.missions._emitMissionDebrief = () => { throw new Error('boom'); };
-  assert.throws(() => failing.missions._failMission(m1, 0, 'abandoned'), /boom/);
+  silenced(() => failing.missions._failMission(m1, 0, 'abandoned'));
+  assert.equal(count(failing.bus, 'mission:failed', (p) => p.missionId === m1.id), 1,
+    'the failure announcement (reputation penalty rides it) fires despite the debrief throwing');
   assert.equal(failing.state.missions.active.some((r) => r.id === m1.id), false);
   assert.ok(failing.state.missions.active.every((r) => r.status === 'active'));
   assert.equal(m1.status, 'failed');
@@ -272,7 +328,9 @@ test('a throw during failure or expiry also removes the row', () => {
   const expiring = deathWorld();
   const m2 = accept(expiring, plainOffer('offer_w2b_o19c'));
   expiring.missions._emitMissionDebrief = () => { throw new Error('boom'); };
-  assert.throws(() => expiring.missions._expireMission(m2, 0), /boom/);
+  silenced(() => expiring.missions._expireMission(m2, 0));
+  assert.equal(count(expiring.bus, 'mission:expired', (p) => p.missionId === m2.id), 1,
+    'the expiry announcement fires despite the debrief throwing');
   // An expired contract may leave its refiled successor behind (live, active); the expired row
   // itself is gone.
   assert.equal(expiring.state.missions.active.some((r) => r.id === m2.id), false);

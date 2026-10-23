@@ -9527,6 +9527,16 @@ export const missions = {
     }
   },
 
+  /** Presentation that follows a settlement (debrief popups). A throw is reported and contained:
+   *  the contract is already paid, receipted, cleaned up and announced, and nothing may unwind it. */
+  _settleOptional(label, fn) {
+    try {
+      fn();
+    } catch (err) {
+      console.error(`[missions] ${label} failed after the contract settled`, err);
+    }
+  },
+
   /** Remove a row whose settlement flipped its status, if the body did not get to remove it. */
   _dropSettledRow(m, index) {
     if (m && m.status !== 'active') this._removeActive(m.id, index);
@@ -9706,21 +9716,9 @@ export const missions = {
       ...(clauseSettlement.unmet.length ? { termsUnmet: [...clauseSettlement.unmet] } : {}),
     });
 
-    this._emitMissionDebrief(m, 'completed', null, {
-      rewardCr: displayRewardCr,
-      // RC-467: the premium and the deposit are itemized from the settlement already computed
-      // above — a gambit contract only, so every other receipt note keeps its shipped shape.
-      ...(clauseGambitMeta(m)
-        ? {
-          clauseSettlement,
-          collateralRefundCr: Math.max(0, Math.round(Number(m.collateral_cr) || 0)),
-        }
-        : {}),
-    });
-    const completionText = isZeroPayLandmarkMission(m, displayRewardCr)
-      ? `Mission complete: ${m.title} — field record filed; no credits issued.`
-      : `Mission complete: ${m.title} +${displayRewardCr} cr${researchPoints > 0 ? ` +${researchPoints} RP` : ''}`;
-    this.bus.emit('toast', { text: completionText, kind: 'success', ttl: 4 });
+    // Canonical settlement first: rewards, receipt, cleanup, successor, story and the
+    // `mission:completed` notification (factions grants completion reputation from it). The
+    // debrief popup, toast and celebration cue are presentation and run last, below.
     this._cleanupTargets(m);
     // Keep the settled chain visible while ensureBoard refreshes the destination board. Otherwise
     // a completion that crosses a board epoch can seed a second opening before its next stage lands.
@@ -9732,12 +9730,33 @@ export const missions = {
     if (m.chainNextSeed != null) this._tryChain(m);
 
     // ── story chain progress (B5 branch chains) ──
-    this._advanceEmbodiedStoryMission(m);
-    this._completeContract47aB4Intro(m);
-    this._advanceStoryChain(m);
-    this._completeContract47aB7Operation(m);
+    // The completion notification is the reward's last leg (reputation rides it), so a throw in a
+    // story transition must not swallow it: it fires on the way out either way.
+    try {
+      this._advanceEmbodiedStoryMission(m);
+      this._completeContract47aB4Intro(m);
+      this._advanceStoryChain(m);
+      this._completeContract47aB7Operation(m);
+    } finally {
+      this.bus.emit('mission:completed', completedPayload);
+    }
 
-    this.bus.emit('mission:completed', completedPayload);
+    // ── optional presentation: may fail without costing the settled contract anything ──
+    this._settleOptional('completion debrief', () => this._emitMissionDebrief(m, 'completed', null, {
+      rewardCr: displayRewardCr,
+      // RC-467: the premium and the deposit are itemized from the settlement already computed
+      // above — a gambit contract only, so every other receipt note keeps its shipped shape.
+      ...(clauseGambitMeta(m)
+        ? {
+          clauseSettlement,
+          collateralRefundCr: Math.max(0, Math.round(Number(m.collateral_cr) || 0)),
+        }
+        : {}),
+    }));
+    const completionText = isZeroPayLandmarkMission(m, displayRewardCr)
+      ? `Mission complete: ${m.title} — field record filed; no credits issued.`
+      : `Mission complete: ${m.title} +${displayRewardCr} cr${researchPoints > 0 ? ` +${researchPoints} RP` : ''}`;
+    this.bus.emit('toast', { text: completionText, kind: 'success', ttl: 4 });
     // GF-4: a bigger celebratory ring + light burst at the player on completion (the triumphant
     // chord + music duck fire from audioSystem's mission:completed subscription). 'branch' lane
     // resolves to a gold echo-ring in vfx._presentationStyle — reads as a resolved/rewarded beat.
@@ -10139,7 +10158,6 @@ export const missions = {
       // Mutation provenance rides the receipt only when a mutation actually happened.
       ...(mutation ? { mutatedToMissionId: mutation.missionId, mutationTag: mutation.tag } : {}),
     });
-    this._emitMissionDebrief(m, 'failed', reason || 'failed');
     // Recovery must be physically present before public failure observers run. Those observers may
     // render or inspect the promised next station synchronously from mission:failed.
     this._boardSetPieceTransition(m, setPieceTransition);
@@ -10154,6 +10172,12 @@ export const missions = {
       ...(mutation ? { mutatedToMissionId: mutation.missionId, mutationTag: mutation.tag } : {}),
       ...setPieceEventFields(m, setPieceTransition),
     });
+    this._recordStoryMissionFailure(m, reason || 'failed');
+    this._cleanupTargets(m);
+    this._removeActive(m.id, index);
+    this.bus.emit('mission:updated', { missionId: m.id });
+    // Presentation last: the debrief popup and toast may fail without un-settling anything above.
+    this._settleOptional('failure debrief', () => this._emitMissionDebrief(m, 'failed', reason || 'failed'));
     // A mutated failure is not a scolding: the toast says what the situation turned INTO.
     // A voided contract is not a scolding either: it says the job is gone and the deposit is back.
     if (mutation) {
@@ -10175,10 +10199,6 @@ export const missions = {
         ttl: 4,
       });
     }
-    this._recordStoryMissionFailure(m, reason || 'failed');
-    this._cleanupTargets(m);
-    this._removeActive(m.id, index);
-    this.bus.emit('mission:updated', { missionId: m.id });
   },
 
   _expireMission(m, index) {
@@ -10214,7 +10234,6 @@ export const missions = {
       setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
       ...(mutation ? { mutatedToMissionId: mutation.missionId, mutationTag: mutation.tag } : {}),
     });
-    this._emitMissionDebrief(m, 'expired', 'deadline');
     this._boardSetPieceTransition(m, setPieceTransition);
     this.bus.emit('mission:expired', {
       missionId: m.id,
@@ -10225,14 +10244,16 @@ export const missions = {
       ...(mutation ? { mutatedToMissionId: mutation.missionId, mutationTag: mutation.tag } : {}),
       ...setPieceEventFields(m, setPieceTransition),
     });
+    this._cleanupTargets(m);
+    this._removeActive(m.id, index);
+    this.bus.emit('mission:updated', { missionId: m.id });
+    // Presentation last (see _failMissionBody): a throwing debrief cannot un-settle the expiry.
+    this._settleOptional('expiry debrief', () => this._emitMissionDebrief(m, 'expired', 'deadline'));
     this.bus.emit('toast', {
       text: mutation ? mutation.toastText : `Mission expired: ${m.title}`,
       kind: 'warn',
       ttl: mutation ? 5 : 4,
     });
-    this._cleanupTargets(m);
-    this._removeActive(m.id, index);
-    this.bus.emit('mission:updated', { missionId: m.id });
   },
 
   _removeActive(missionId, hintIndex) {
