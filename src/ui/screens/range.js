@@ -1,4 +1,5 @@
 import { dressLampKey } from '../orrery/lampKey.js';
+import { awardRangeLicence, readRangeLicence, storeRangeLicence, rangeMedalLabel } from '../rangeLicence.js';
 import { SHIPS } from '../../data/ships.js';
 import { ENEMY_TYPES } from '../../data/enemies.js';
 import { masslineCounterByHead } from '../../data/masslineCounters.js';
@@ -3198,6 +3199,7 @@ export const rangeScreen = {
     this._subject = resolveSubject(state);
     this._enteredFromShip = !!(this._subject && this._subject.fromShip);
     this._cleared = ensureRangeCleared(state);
+    this._licence = readRangeLicence();
     this._flown = new Set();
     if (!this._bestByRung) this._bestByRung = new Map();
     this._ghostTrail = [];
@@ -3986,7 +3988,10 @@ export const rangeScreen = {
     const clock = `${this._runElapsed(sim).toFixed(1)}s`;
     if (this._els.runClock.textContent !== clock) this._els.runClock.textContent = clock;
     const best = this._bestByRung && this._bestByRung.get(sim.id);
-    const bestText = best > 0 ? `Best ${best.toFixed(1)}s` : 'Best —';
+    const medal = rangeMedalLabel(this._licence, sim.id);
+    const savedBest = this._licence?.rungs?.[sim.id]?.bestS;
+    const bestTime = best > 0 ? best : savedBest;
+    const bestText = bestTime > 0 ? `Licence ${medal} · Best ${bestTime.toFixed(1)}s` : 'Licence — Gold: clear within 30s; Silver: 60s';
     if (this._els.runBest.textContent !== bestText) this._els.runBest.textContent = bestText;
     const label = `Run progress. ${gate}. Elapsed ${clock}. ${bestText}.`;
     if (this._els.runItem.getAttribute('aria-label') !== label) this._els.runItem.setAttribute('aria-label', label);
@@ -4603,6 +4608,7 @@ export const rangeScreen = {
       if (!this._bestByRung) this._bestByRung = new Map();
       const prev = this._bestByRung.get(sim.id);
       if (!(prev > 0) || sim.endS < prev) this._bestByRung.set(sim.id, sim.endS);
+      this._licence = storeRangeLicence(awardRangeLicence(this._licence, sim.id, sim.endS));
     }
     sim.player.vx = 0;
     sim.player.vz = 0;
