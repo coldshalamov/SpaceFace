@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace current execution checkpoint
 
-Updated 2026-10-23 05:31 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
+Updated 2026-10-23 05:45 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
 
 ## Durable scope and evidence
 
@@ -63,13 +63,23 @@ Each was independently read back; local coherent preservation also verified. Nev
 
 New actual cold-drill geometry preview delivered03:58:640x480,37626B,SHA3bab537003c0f6d1cf625530b76b131cb13fdf2c17d5dd6b75625d7ad9172ecf. Exact release source22572B,Git836f3ed68d0bbf6642309f5a448eb12c76d672ec,SHA6ecf03f02e43f7db1367360263f382890b85e9010b1c563885dc28b1c21815c0. Base-color geometry only, not new model/final textures/live placement. Cargo-package preview and earlier asset evidence remain archived.
 
+## Rhea rescued worker Continue delivered, 05:45 UTC
+
+[Draft PR526](https://github.com/coldshalamov/SpaceFace/pull/526) delivers four verified paths at **7b08cfd34e3ef98470cf64d6beecf4dfc3217ec9**, four public commits beginning frome9ddde445e94c9a438790712b595f71613f46c96. Root independently verified the four-path compare and public ancestry; publisher verified all four full remote contents. Source614c960256b9f8fdf42c4c489a6cb2c68269c130; tested0215531fb0e9504dc2c2988c40d347af242904; packaged06a60d546bf8d12c1f4acd26604dd1693aa7ab8; report54c444bcd7d322d788804ba43b1706cf799b88f6.
+
+Existing rescued worker normalizer converted absent events to0. The two-line guard preserves null/undefined while retaining genuinezero and legacy numeric coercion. Actual authored Rhea miner placement, original job, Save/Continue-remapped hull, first remembered hail and final loss are tested. Baseline15pass/7fail; candidate22/22 plus9existing owner regressions =31distinct; root/reviewer reruns overlap.991ESM input manifest543b51d0b49b740a10297a755f3fa90d4340559a5199c55294b66a869f50534e. Fixture casualty/pod events and direct sector-state switch are disclosed; no native flight/full transition/game-camera acceptance. Does not guess-repair already-resaved corrupt zeros. Shared Save/traffic/job/custody owners untouched.
+
+Final4fullsource recovery29382B SHA6e0df569b531dad023d75fccbe2d72e1e4d5fbf2cc2acd7398ea2e7565c790d4 and17evidence files343359B independently read back; restoration map7136B SHA4a71dfc2239e3911638ab94ba1f75c34130ca8c065a815efb35104945a94a731. Exact source-only local commit retained privately. Rejected stale-hull fixtures and root duplicate-layered-loader error preserved; direct module run verified22/22. No private ancestry published.
+
+Mastere9ddde differs from testedcec514 only in UI-bench utility/docs, outside loaded closure. CI owner follows PR526 exact head to terminal; no success inferred from queued/no checks. [Full report](https://github.com/coldshalamov/SpaceFace/blob/7b08cfd34e3ef98470cf64d6beecf4dfc3217ec9/design/program/world-depth-2026-10-02/RHEA_WORKER_CONTINUE_2026-10-23.md). All game/sector goals remain open.
+
 ## Eunomia delivered, 05:31 UTC
 
 [Draft PR523](https://github.com/coldshalamov/SpaceFace/pull/523) is open/draft/unmerged at **2e971d9e31a3decdebab7abffb5467b1d0528b56**, sole parent50d285fd9d6e013c5bd7bda59df097c615bdd933. Exact13path diff and all13remote full blob contents verified. Normal station Market now asks for one specific physical pod and quoted cut; dock/open no longer charges for unrelated nearby hot cargo. Existing economy atomic authority, titles, Save/customs policy, BUY and physical Tethys entrance route remain unchanged. [Evidence and limitations](https://github.com/coldshalamov/SpaceFace/blob/2e971d9e31a3decdebab7abffb5467b1d0528b56/design/program/world-depth-2026-10-02/EUNOMIA_PAPERS_INTENT_2026-10-23.md).
 
 Current five named files pass52/52, independently rerun by root.1182ESM inputs verified; manifest6b433b248609486c373b2d7dfbed86c6810ea988616f40e69e38f51387167104. Old-base six-file53/53 remains historical evidence. Current production-worker case is BLOCKED before initialization by public onboarding7530734662abb091cdb7fe68864a3aef08ddc0eb importing absent onboarding/powerSituations.js. Exact public404 and standalone public-only import with no Eunomia overrides reproduce it. Introducing commitb6b5e686818d061bced96a064eafeb410332ff28 omitted that module; existing row546 adopted owner should supply intended implementation or withdraw incomplete hunk. No stub/import suppression or competing onboarding implementation.
 
-CI check39906015614/#5875 and mobile39906015797/#508 are queued, not passed. Publisher observes exact runs to terminal without rerun/cancel. Master advanced during submission tocec514c06b17b2cead29febb836c494da63e3e35; only saveLayouts and UI review changed, disjoint. PR merge-base remains50d285. Final13fullsource recovery102635B SHA68b30a1f47af45e247488b80c1d5bbd0fa7e4ce489705c126fcdf5de3d4f742f plus12current diagnostic/evidence files473214B were independently read back. Existing source is locally committed separately; no private recovery ancestry published.
+CI check39906015614/#5875 remains in progress at05:40; mobile39906015797/#508 ended failure. Both mobile jobs failed their shared regression step, including the independently established missing onboarding module; two mobile-probe-startup errors remain unattributed without base comparison. Later browser steps were skipped, not accepted. Publisher observes exact runs to terminal without rerun/cancel. Master advanced during submission tocec514c06b17b2cead29febb836c494da63e3e35; only saveLayouts and UI review changed, disjoint. PR merge-base remains50d285. Final13fullsource recovery102635B SHA68b30a1f47af45e247488b80c1d5bbd0fa7e4ce489705c126fcdf5de3d4f742f plus12current diagnostic/evidence files473214B were independently read back. Existing source is locally committed separately; no private recovery ancestry published.
 
 Next: follow exact CI and the existing upstream prerequisite, finish permitted ordinary/visual/performance acceptance when available; meanwhile inspect one next noncompeting ordinary sector experience against actual code/register. All ten outcomes and older holds remain open.
 
