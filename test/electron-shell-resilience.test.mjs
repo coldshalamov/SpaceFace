@@ -640,6 +640,110 @@ test('recovery unit: unarmed, destroyed, failed reloads and a missing dialog are
   }
 });
 
+// A renderer death reported while the Wait / Reload box is already open used to clear the hang
+// timer and drop the death; answering Wait then left a dead window with no reload, box or timer.
+test('recovery unit: a renderer death behind an open hang dialog is handled once the box is answered', async () => {
+  const h = await loadShell();
+  try {
+    const { createRendererRecovery } = h.exports;
+    const make = ({ quitting = false } = {}) => {
+      const loads = [];
+      const boxes = [];
+      const timers = [];
+      const state = { quitting, kills: 0, answer: null };
+      let clockNow = EPOCH;
+      const contents = emitter({
+        isDestroyed() { return false; },
+        loadURL(url) { loads.push(url); return Promise.resolve(); },
+        forcefullyCrashRenderer() { state.kills += 1; },
+      });
+      const win = emitter({ webContents: contents, destroyed: false, isDestroyed() { return this.destroyed; } });
+      const recovery = createRendererRecovery({
+        win,
+        gameUrl: 'http://127.0.0.1:41788/',
+        dialogApi: {
+          showMessageBox(...args) {
+            boxes.push(args[args.length - 1]);
+            // The box stays open until the test answers it.
+            return new Promise((resolve) => { state.answer = (response) => resolve({ response }); });
+          },
+        },
+        quitApp() { state.quit = true; },
+        now: () => clockNow,
+        setTimer: (fn, ms) => { const t = { fn, ms, cleared: false, unref() {} }; timers.push(t); return t; },
+        clearTimer: (t) => { t.cleared = true; },
+        isQuitting: () => state.quitting,
+      });
+      recovery.arm();
+      const openHangBox = async () => {
+        recovery.onUnresponsive();
+        timers[timers.length - 1].fn();
+        await settle();
+        assert.equal(boxes.length, 1, 'the hang box is open');
+      };
+      return { recovery, win, loads, boxes, timers, state, openHangBox, tick(ms) { clockNow += ms; } };
+    };
+
+    // Wait: the held death reloads the game instead of stranding the window.
+    const waited = make();
+    await waited.openHangBox();
+    waited.recovery.onGone({}, { reason: 'crashed' });
+    await settle();
+    assert.equal(waited.loads.length, 0, 'nothing is reloaded under an open box');
+    const armedBefore = waited.timers.length;
+    waited.state.answer(0);
+    await settle();
+    assert.equal(waited.loads.length, 1, 'Wait after a crash still restarts the game');
+    assert.equal(waited.state.kills, 0);
+    assert.equal(waited.boxes.length, 1, 'the first death in the window reloads quietly');
+    assert.equal(waited.timers.length, armedBefore, 'no hang timer is re-armed against a restarted window');
+
+    // Reload: the dead renderer is not killed again, and the held death is not reloaded twice.
+    const reloaded = make();
+    await reloaded.openHangBox();
+    reloaded.recovery.onGone({}, { reason: 'oom' });
+    reloaded.state.answer(1);
+    await settle();
+    assert.equal(reloaded.loads.length, 1, 'exactly one reload');
+    assert.equal(reloaded.state.kills, 0, 'there is no live renderer left to end');
+
+    // A second death inside the budget window, held behind the box, asks Reload / Quit after Wait.
+    const twice = make();
+    twice.recovery.onGone({}, { reason: 'crashed' });
+    await settle();
+    assert.equal(twice.loads.length, 1);
+    twice.tick(20 * 1000);
+    await twice.openHangBox();
+    twice.recovery.onGone({}, { reason: 'crashed' });
+    twice.state.answer(0);
+    await settle();
+    assert.equal(twice.boxes.length, 2, 'the crash question is asked, not dropped');
+    assert.deepEqual([...twice.boxes[1].buttons], ['Reload', 'Quit']);
+    twice.state.answer(1);
+    await settle();
+    assert.equal(twice.state.quit, true);
+
+    // The window is rechecked after the answer: destroyed or quitting means no reload.
+    const closed = make();
+    await closed.openHangBox();
+    closed.recovery.onGone({}, { reason: 'crashed' });
+    closed.win.destroyed = true;
+    closed.state.answer(0);
+    await settle();
+    assert.equal(closed.loads.length, 0, 'a window closed behind the box is left alone');
+
+    const leaving = make();
+    await leaving.openHangBox();
+    leaving.recovery.onGone({}, { reason: 'crashed' });
+    leaving.state.quitting = true;
+    leaving.state.answer(0);
+    await settle();
+    assert.equal(leaving.loads.length, 0, 'a quit that began behind the box is left alone');
+  } finally {
+    h.cleanup();
+  }
+});
+
 // ── 3. Safe graphics after a GPU fault ────────────────────────────────────────────────────────
 
 const freshRenderer = ({ reportsDir, clock }) => seedReport(reportsDir, 'latest.json', {

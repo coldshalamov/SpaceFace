@@ -100,7 +100,6 @@ const SG02_STALL_NOTICE_MS = 3000;
 const SG02_STALL_NOTICE_TICKS = 120;
 // A longer silence between stalled ticks is a pause or a throttled tab, not time spent stalled.
 const SG02_STALL_GAP_MS = 1500;
-const SG02_STALL_TOAST = 'Flight systems are still starting. If your ship stays still, reload the game.';
 
 // The optic grammar's one friendly-fire opening (build_map §24 "Your own grenade"):
 // a prism splinter (opticGeneration >= 1) may strike the hull that lit the ring.
@@ -1036,7 +1035,9 @@ export const physics = {
    * The dynamic authority is missing on a tick. Failed starts only dedupWarn and retry on a backoff
    * (15 s up to 120 s), and flightV3 emits no motion without the authority — so the ship sat dead
    * with no word to the player. Once a failed start has left it missing for SG02_STALL_NOTICE_MS (and
-   * a minimum count of live-flight ticks) say so once per stall: `physics:authorityStalled` plus a plain toast.
+   * a minimum count of live-flight ticks) say so once per stall with `physics:authorityStalled`; the
+   * receipt lane turns that event into the player's line (src/ui/toasts.js). No bus `toast` is emitted
+   * here: the notice is gated by wall time, and sim listeners hear every toast.
    * Only live flight counts; menus and pauses are not a stall. Notification only: no sim state moves.
    */
   _noteSg02Unavailable(state) {
@@ -1066,7 +1067,6 @@ export const physics = {
       stalledMs: Math.round(now - this._sg02StallSince),
       retryInMs: Math.round(rapierRuntimeBlockedRemainingMs()),
     });
-    this.bus?.emit?.('toast', { text: SG02_STALL_TOAST, kind: 'warn', ttl: 10 });
   },
 
   /** The authority is present and about to step: end any stall, announcing recovery if one was reported. */

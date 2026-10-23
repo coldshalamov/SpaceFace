@@ -953,6 +953,9 @@ function createRendererRecovery({
   let disposed = false;
   let lastAutoReloadAt = null;
   let dialogOpen = false;
+  // A renderer death reported while a dialog is already open (the hang box, or a failed restart's
+  // box). Kept so it is handled once the box is answered, instead of being dropped with its timer.
+  let pendingGone = null;
   let unresponsive = false;
   let unresponsiveTimer = null;
   let ignoreGoneUntil = 0;
@@ -1033,8 +1036,15 @@ function createRendererRecovery({
       cancelId: 1,
       noLink: true,
     });
-    if (response === 0) reloadGame();
-    else if (response === 1) quitApp();
+    if (response === 0) {
+      pendingGone = null;
+      reloadGame();
+    } else if (response === 1) {
+      pendingGone = null;
+      quitApp();
+    } else {
+      settlePendingGone();
+    }
   }
 
   async function offerUnresponsiveChoice() {
@@ -1050,8 +1060,14 @@ function createRendererRecovery({
       noLink: true,
     });
     if (response === 1) {
+      // A renderer that already died while the box was up has nothing left to end.
+      const alreadyGone = pendingGone !== null;
+      pendingGone = null;
       unresponsive = false;
-      reloadGame({ fromHang: true });
+      reloadGame({ fromHang: !alreadyGone });
+    } else if (pendingGone !== null) {
+      // Wait was chosen, but the renderer died behind the box: waiting cannot help a dead window.
+      settlePendingGone();
     } else if (unresponsive && live() && !isQuitting()) {
       armUnresponsiveTimer(UNRESPONSIVE_RECHECK_MS);
     }
@@ -1068,7 +1084,16 @@ function createRendererRecovery({
       ignoreGoneUntil = 0;
       return;
     }
-    if (dialogOpen) return;
+    if (dialogOpen) {
+      pendingGone = { reason };
+      return;
+    }
+    recoverFromGone(reason);
+  }
+
+  // The recovery proper: one automatic reload per window, then ask. It also runs for a death held
+  // behind a dialog (settlePendingGone), once the answer is in and the window state is rechecked.
+  function recoverFromGone(reason) {
     const at = now();
     if (lastAutoReloadAt === null || at - lastAutoReloadAt >= RENDERER_AUTO_RELOAD_WINDOW_MS) {
       lastAutoReloadAt = at;
@@ -1077,6 +1102,13 @@ function createRendererRecovery({
       return;
     }
     void offerGoneChoice('The game window stopped working again.');
+  }
+
+  function settlePendingGone() {
+    const held = pendingGone;
+    pendingGone = null;
+    if (held === null || !armed || !live() || isQuitting()) return;
+    recoverFromGone(held.reason);
   }
 
   function onUnresponsive() {
@@ -1104,6 +1136,7 @@ function createRendererRecovery({
 
   function dispose() {
     disposed = true;
+    pendingGone = null;
     clearUnresponsiveTimer();
   }
 

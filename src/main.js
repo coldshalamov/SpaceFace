@@ -109,8 +109,9 @@ async function boot() {
     const runTransitionGuard = createRunTransitionGuard();
     timeEffects.set('runtime:boot-menu', { scale: 0 });
     const bus = createBus();
-    // Capture the bus for the error boundary here, not via window.SF (stripped from retail bundles).
-    attachErrorBoundary({ bus, getState: () => state });
+    // Arm the error boundary here, not via window.SF (stripped from retail bundles). Its line reaches
+    // the player through the presentation-only receipt route, never a bus `toast` that sim listeners hear.
+    attachErrorBoundary({ getState: () => state });
     installGameStartRecovery(bus);
     // PQ-160.01: rated moments mark clip windows on the live bus so Pause → Clips lists them.
     // Production entity:killed has no tick; stamp sim tick + world seed onto the receipt.

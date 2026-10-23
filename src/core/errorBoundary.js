@@ -4,31 +4,58 @@
 // the player saw a frozen game and a beta tester had nothing to copy into a report. This module
 //  - keeps the last RING_MAX errors (message, short stack head, mode, sim time) for the
 //    diagnostics report (src/ui/diagnosticsReport.js), and
-//  - tells the player once per TOAST_COOLDOWN_MS that something went wrong, over the event bus
-//    main.js hands it. It does NOT read `window.SF`: that handle exists only inside
-//    SF_DEBUG_ONLY blocks that the retail bundle strips, so a boundary that used it was silent
-//    in exactly the build players run.
+//  - tells the player once per TOAST_COOLDOWN_MS that something went wrong, through the
+//    presentation-only receipt route (src/core/receiptPresenter.js), never the event bus: the
+//    notice is raised by the wall clock, and a bus `toast` is heard by simulation listeners too.
+//    It does NOT read `window.SF`: that handle exists only inside SF_DEBUG_ONLY blocks that the
+//    retail bundle strips, so a boundary that used it was silent in exactly the build players run.
 //
 // Defensive by construction: the boundary guards everything else, so nothing here may throw.
 // Pure of main.js (which runs boot() at import time) so the behaviour is unit-testable.
 
+import { presentReceipt } from './receiptPresenter.js';
+
 export const RING_MAX = 20;
 export const TOAST_COOLDOWN_MS = 10000;
 const MESSAGE_MAX = 240;
+const INPUT_MAX = 20000;
 const STACK_LINES = 3;
 const STACK_LINE_MAX = 160;
 
 // Strip the machine-specific part of any path or URL: a stack line from an Electron build or a
 // failed fetch carries `file:///C:/Users/<name>/...`, which must never reach a pasted report.
 // Each match collapses to its file name, keeping any `:line:col` tail, e.g. `main.js:12:5`.
+//
+// Covered: Windows drive and `\\?\` paths, UNC shares (`\\HOME-SERVER\Users\...`), file and
+// http(s)/blob URLs, POSIX home trees (/Users, /home, /root, WSL /mnt/c/Users). An account or
+// folder name may hold spaces ("Jane Doe"), and a JSON-escaped path doubles every backslash, so
+// separators match as runs. A POSIX or file-URL folder name is up to four space-joined words that
+// a slash follows directly, which keeps the sweep off the prose around a path. A home folder with
+// nothing after it ("scandir '/Users/Jane Doe'") collapses to `<path>`, never to the account name.
+const SEP = String.raw`[\\/]+`;
+const DIR_WORD = String.raw`(?:[^\\/\s*?"<>|()']|'(?=[^\\/\s*?"<>|()']))+`; // an apostrophe only inside a name (O'Brien)
+const DIR_NAME = `${DIR_WORD}(?: ${DIR_WORD}){0,3}`;
+const LAST_WORD = String.raw`[^\\/\s*?"<>|()']*`;
+const WIN_DIR = String.raw`(?:[^\\/:*?"<>|\r\n]+[\\/]+)*[^\\/:*?"<>|\s]*`;
+const AFTER_BARE_HOME = String.raw`(?!'[^\\/\s*?"<>|()'])(?=['")\]<>,;]|$)`;
 const PATH_RE = new RegExp([
-  // Windows drive path; directory segments may contain spaces ("C:\Users\John Smith\...").
-  '[A-Za-z]:[\\\\/](?:[^\\\\/:*?"<>|\\r\\n]+[\\\\/])*[^\\\\/:*?"<>|\\s]*',
-  // file:// and http(s):// URLs.
-  '(?:file|https?|blob):\\/\\/[^\\s()\'"<>]*',
-  // POSIX home directories.
-  '\\/(?:Users|home)\\/[^\\s()\'"<>]*',
+  // A home folder that ends the path.
+  String.raw`(?:\/mnt\/[A-Za-z])?\/(?:Users|home)\/` + DIR_NAME + AFTER_BARE_HOME,
+  String.raw`[A-Za-z]:` + SEP + String.raw`(?:Users|Documents and Settings)` + SEP + DIR_NAME + AFTER_BARE_HOME,
+  // Windows drive path, optionally `\\?\`-prefixed; directory segments may contain spaces.
+  String.raw`(?:\\{2}\?\\)?[A-Za-z]:` + SEP + WIN_DIR,
+  // UNC share: \\server\share\... (a JSON-escaped one has four leading backslashes; the bound keeps
+  // a long run of backslashes from costing quadratic time).
+  String.raw`\\{2,4}[^\\/\s:*?"<>|]+` + SEP + String.raw`[^\\/\s:*?"<>|]+(?:` + SEP + String.raw`(?:[^\\/:*?"<>|\r\n]+[\\/]+)*[^\\/:*?"<>|\s]*)?`,
+  // file:// URLs, which can carry a raw space in a folder name.
+  String.raw`file:\/\/[^\/\s()'"<>]*\/+(?:` + DIR_NAME + String.raw`[\\/]+)*` + LAST_WORD,
+  // http(s):// and blob: URLs.
+  String.raw`(?:https?|blob):\/\/[^\s()'"<>]*`,
+  // POSIX home trees.
+  String.raw`(?:\/mnt\/[A-Za-z])?\/(?:Users|home|root)\/(?:` + DIR_NAME + String.raw`\/+)*` + LAST_WORD,
 ].join('|'), 'g');
+
+const BARE_HOME_RE = /^(?:(?:\/mnt\/[A-Za-z])?\/(?:Users|home)\/[^\\/]+|[A-Za-z]:[\\/]+(?:Users|Documents and Settings)[\\/]+[^\\/]+)$/;
 
 function collapsePath(token) {
   let t = token.replace(/[?#][^\s):]*/, '');
@@ -39,6 +66,9 @@ function collapsePath(token) {
   const last = parts.length ? parts[parts.length - 1] : '';
   // Nothing nameable left (a bare drive root): say so rather than leave a hole.
   if (!last || /^[A-Za-z]:$/.test(last)) return '<path>' + tailText;
+  // A bare share or home folder: its last word is a share or account name, not a file name.
+  if (/^\\\\[^?]/.test(token) && parts.length <= 2) return '<path>' + tailText;
+  if (BARE_HOME_RE.test(t)) return '<path>' + tailText;
   return last + tailText;
 }
 
@@ -46,6 +76,8 @@ function collapsePath(token) {
 export function sanitizeErrorText(text, max = MESSAGE_MAX) {
   let s;
   try { s = String(text == null ? '' : text); } catch (_) { s = '(unprintable)'; }
+  // Only the head is ever kept, and a pasted error can be a megabyte of minified source.
+  if (s.length > INPUT_MAX) s = s.slice(0, INPUT_MAX);
   s = s.replace(PATH_RE, collapsePath);
   s = s.replace(/\s+/g, ' ').trim();
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
@@ -79,14 +111,16 @@ function defaultNow() {
 /**
  * createErrorBoundary({ now, log }) -> { install, attach, record, recent, reset }
  *  - install(target)  listen for `error` / `unhandledrejection` on a window-like target.
- *  - attach({ bus, getState })  the toast route. Errors before attach are ringed, never toasted.
+ *  - attach({ getState, present })  the toast route: `present(spec)` shows a receipt (default: the
+ *    shared presentation-only presenter, never the event bus). Errors before attach are ringed,
+ *    never toasted.
  *  - record(label, err, { silent })  put one error in the ring (and toast when attached + off
  *    cooldown, unless silent).
  *  - recent()  copy of the ring, oldest first.
  */
 export function createErrorBoundary({ now = defaultNow, log } = {}) {
   const ring = [];
-  let bus = null;
+  let present = null;
   let getState = null;
   let lastToastAt = -Infinity;
   let suppressed = 0;
@@ -107,16 +141,17 @@ export function createErrorBoundary({ now = defaultNow, log } = {}) {
   }
 
   function toast() {
-    if (!bus || typeof bus.emit !== 'function') return;
+    if (typeof present !== 'function') return;
     const t = now();
     if (t - lastToastAt < TOAST_COOLDOWN_MS) { suppressed += 1; return; }
     const extra = suppressed;
-    suppressed = 0;
-    lastToastAt = t;
     const text = extra > 0
       ? `Something went wrong again — ${extra + 1} errors were logged. If the game stops responding, reload it.`
       : 'Something went wrong, and the error was logged. If the game stops responding, reload it.';
-    try { bus.emit('toast', { text, kind: 'warn', ttl: 6 }); } catch (_) { /* never throw from the boundary */ }
+    let shown = false;
+    try { shown = present({ text, kind: 'warn', ttl: 6 }) !== false; } catch (_) { /* never throw from the boundary */ }
+    // A line nobody could show (the receipt lane is not up yet) spends neither the cooldown nor the count.
+    if (shown) { suppressed = 0; lastToastAt = t; }
   }
 
   function record(label, err, opts) {
@@ -152,12 +187,12 @@ export function createErrorBoundary({ now = defaultNow, log } = {}) {
   return {
     install,
     attach(opts) {
-      bus = opts && opts.bus ? opts.bus : null;
+      present = opts && typeof opts.present === 'function' ? opts.present : (opts ? presentReceipt : null);
       getState = opts && typeof opts.getState === 'function' ? opts.getState : null;
     },
     record,
     recent: () => ring.map((e) => ({ ...e })),
-    reset() { ring.length = 0; bus = null; getState = null; lastToastAt = -Infinity; suppressed = 0; },
+    reset() { ring.length = 0; present = null; getState = null; lastToastAt = -Infinity; suppressed = 0; },
   };
 }
 
@@ -168,7 +203,7 @@ const shared = createErrorBoundary();
 export function installGlobalErrorBoundary(target = (typeof window !== 'undefined' ? window : null)) {
   return shared.install(target);
 }
-/** Hand the boundary the live bus (and a state reader for mode / sim time). */
+/** Arm the receipt route (and hand over a state reader for mode / sim time). */
 export function attachErrorBoundary(opts) { shared.attach(opts); }
 /** Put an error in the ring from a caught site (e.g. a boot failure) without a global event. */
 export function recordRuntimeError(label, err, opts) { return shared.record(label, err, opts); }
