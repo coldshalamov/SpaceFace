@@ -110,16 +110,22 @@ function sectorDisplayName(sectorId, sectorNames) {
 /**
  * The DESTINATION detail line.
  *
- * Three genuinely different states, three different sentences. The one that matters is the middle
- * one: a contract destination with no course laid must say BOTH where you are going and that
- * nothing is plotted, or the row reads as a plotted route and the pilot wonders why the ribbon is
- * empty.
+ * Four genuinely different states, four different sentences. The one that matters is the second: a
+ * contract destination with no course laid must say BOTH where you are going and that nothing is
+ * plotted, or the row reads as a plotted route and the pilot wonders why the ribbon is empty.
+ *
+ * `local` comes before `unreachable` on purpose. When the contract sends you to a station in the
+ * sector you are already flying in there is nothing to plot and no charted path to find, so
+ * "no known route from here yet" was a plain falsehood about a berth a few minutes away.
  */
 function destinationDetail(destination) {
   if (!destination) return 'Accept a contract, click a station or gate on the chart, or double-click a sector';
   if (destination.planned) {
     const n = destination.legCount;
     return `${destination.legsRemaining} of ${n} leg${n === 1 ? '' : 's'} remaining`;
+  }
+  if (destination.local) {
+    return 'Contract destination — in this sector, no jump route to plan';
   }
   if (destination.unreachable) {
     // Never a silent absence: the row states the blocker rather than leaving a dash.
@@ -141,6 +147,8 @@ function nextLegAbsentValue() {
 
 function nextLegDetail(nextLeg, destination) {
   if (!nextLeg) {
+    // No jump leg is the whole truth for a destination in this sector: it is not a missing answer.
+    if (destination && destination.local) return 'In this sector — follow the marker, no jump leg';
     if (destination && destination.unreachable) return 'No known path — explore the space between first';
     if (destination && !destination.planned) return 'Press Plot Course to plan the route';
     return '';
@@ -192,6 +200,9 @@ export function resolveMapNavContext(input = {}) {
     ? resolveDeepSpaceAddress(playerGlobal, src.atlas ? { atlas: src.atlas } : {})
     : null;
   const locationLabel = address ? formatAddressLabel(address) : 'POSITION UNKNOWN';
+  // The sector the pilot is actually in — the address when the caller did not name one. A contract
+  // whose destination sector is this one needs no jump, which the destination row must say.
+  const playerSectorId = src.playerSectorId || (address ? address.sectorId : null) || null;
 
   // ---- 2. WHAT AM I TRACKING ----------------------------------------------------------------
   const goal = src.goal && typeof src.goal === 'object' ? src.goal : null;
@@ -262,6 +273,10 @@ export function resolveMapNavContext(input = {}) {
     const legCount = planned && executor && Number.isFinite(executor.legCount) && executor.legCount > 0
       ? executor.legCount
       : legs.length;
+    // An unplotted mission destination in the pilot's own sector: there is no jump to find, so it
+    // is a LOCAL destination rather than an unreachable one.
+    const local = !planned && !!missionDestSectorId && !!playerSectorId
+      && String(playerSectorId) === missionDestSectorId;
     destination = Object.freeze({
       sectorId: destSectorId,
       sectorName: sectorDisplayName(destSectorId, sectorNames),
@@ -279,8 +294,10 @@ export function resolveMapNavContext(input = {}) {
       source: planned ? 'route' : 'mission',
       missionId: !planned && missionDest ? (missionDest.missionId || null) : null,
       stationId: !planned && missionDest ? (missionDest.stationId || null) : null,
+      /** Set when a mission destination is in the sector the pilot is already in — no jump needed. */
+      local,
       /** Set when a mission destination is known but no charted path to it could be previewed. */
-      unreachable: !planned && !previewUsable,
+      unreachable: !planned && !previewUsable && !local,
     });
   }
 
@@ -369,7 +386,7 @@ export function resolveMapNavContext(input = {}) {
   return Object.freeze({
     schema: MAP_NAV_CONTEXT_SCHEMA,
     playerGlobal: playerGlobal ? Object.freeze({ x: playerGlobal.x, z: playerGlobal.z }) : null,
-    playerSectorId: src.playerSectorId || (address ? address.sectorId : null) || null,
+    playerSectorId,
     address,
     locationLabel,
     objective,
