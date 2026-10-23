@@ -5,11 +5,12 @@
 // established. Pure and DOM-free so the no-false-witness rule is unit-testable:
 // suspicion without a receipt yields no reason, and a record carrying neither
 // witnesses nor a jurisdiction renders the kind alone — never an invented witness.
-import { heatClearSecondsForLevel, heatLevelFor } from '../systems/heat.js';
+import { heatClearSecondsForLevel, heatLevelFor, wantedTierInfo } from '../systems/heat.js';
 import { SECTORS } from '../data/sectors.js';
 
 export const WANTED_KIND_LABELS = Object.freeze({
   payload_theft: 'CARGO THEFT',
+  vessel_theft: 'SHIP THEFT',
   unlawful_kill: 'KILL',
   lawful_kill: 'LAW KILL',
   reckless_kill: 'RECKLESS KILL',
@@ -67,8 +68,7 @@ export function wantedAlertText(value, reason, refresh) {
   const why = reason || '';
   const clear = wantedClearClause(value);
   if (refresh) {
-    const v = Number(value) || 0;
-    const tier = v >= 0.6 ? 'HIGH' : v >= 0.35 ? 'MODERATE' : 'LOW';
+    const tier = wantedTierInfo(value).label;
     return 'WANTED (' + tier + ') · HUNTERS INBOUND' + clear + why;
   }
   return 'WANTED · LAW ENFORCEMENT ACTIVE' + clear + why;

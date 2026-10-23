@@ -111,7 +111,7 @@ const RECKLESS_KILL_FRACTION = 0.5;
 // A validated incident of a kind this table does not price still raises SOMETHING. Silence would
 // make every future crime type free until someone remembered to add a row here.
 const INCIDENT_HEAT_DEFAULT = 0.12;
-const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT });
+const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT, vessel_theft: THEFT_INCIDENT });
 
 // Paying a posted bounty visibly cools the ledger: every credit of settled bounty quiets the
 // hunt a little, capped so a fat payoff never launders a massacre in one receipt.

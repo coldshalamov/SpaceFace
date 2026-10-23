@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_trade_lane_hunt_verge_layers_none",
   "title": "LAMP ON THE TRADE LANE",
   "factionId": "faction_verge_layers",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Track the mark",
-      "playerLine": "I will follow the lamp trail, slow and outside your line."
+      "label": "Take the wake station behind the lead",
+      "playerLine": "I fall in behind your wake at matched speed and hold it for the six-count through Trade Lane."
     },
     {
       "id": "b",
-      "label": "Share the bearing",
-      "playerLine": "Send me the last bearing before the mark went cold."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, VERGE — send the relief to Trade Lane instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the search",
-      "playerLine": "I am not joining this hunt. Keep trade lane clear."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, VERGE — my hull is leaving Trade Lane."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +52,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "VERGE: We found the lamp trail crossing trade lane. Stay outside it.",
+      "line": "VERGE: We found the lamp trail crossing trade lane. Stay outside it. — LAMP ON THE TRADE LANE.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +66,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The search grid has a gap where the old beacon failed.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +78,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "VERGE reads each empty square before moving the scope.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +90,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The lamp has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +102,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Boost all you like; trade lane keeps its own volume.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +122,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "VERGE: Holding. The lane keeps its own clock.",
+      "line": "VERGE: Fall in behind our wake — sixty to a hundred-eighty, matched speed, six-count. — LAMP ON THE TRADE LANE.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +132,73 @@ const spec = {
       "windowS": 56,
       "motion": "depart",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "The mark held. Your bearing put the trail back together.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_trade_lane_hunt_verge_layers_none:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "VERGE: Time ran out on the work ask — LAMP ON THE TRADE LANE. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "trail",
+          "of": "hull_0",
+          "min": 60,
+          "max": 180,
+          "holdS": 6,
+          "maxRelSpeed": 8,
+          "leaderProgress": 100
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "VERGE: Time ran out on the work ask — LAMP ON THE TRADE LANE. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "VERGE: Time ran out on the work ask — LAMP ON THE TRADE LANE. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 42,
       "reason": "lived_trade_lane_hunt_verge_layers_none",
       "next": "rep_a"
     },
@@ -168,24 +211,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_verge_layers",
+      "delta": 3,
+      "reason": "lived_trade_lane_hunt_verge_layers_none:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Bearing shared. VERGE kept the original search lead.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_verge_layers",
-      "delta": 2,
-      "reason": "lived_trade_lane_hunt_verge_layers_none",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +238,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left. The lamp trail kept crossing trade lane.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_verge_layers",
-      "delta": -1,
-      "reason": "lived_trade_lane_hunt_verge_layers_none",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +296,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Track the mark",
-      "playerLine": "I will follow the lamp trail, slow and outside your line."
+      "label": "Take the wake station behind the lead",
+      "playerLine": "I fall in behind your wake at matched speed and hold it for the six-count through Trade Lane."
     },
     {
       "id": "b",
-      "label": "Share the bearing",
-      "playerLine": "Send me the last bearing before the mark went cold."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, VERGE — send the relief to Trade Lane instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the search",
-      "playerLine": "I am not joining this hunt. Keep trade lane clear."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, VERGE — my hull is leaving Trade Lane."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The mark held. Your bearing put the trail back together.",
-    "b": "Bearing shared. VERGE kept the original search lead.",
-    "c": "You left. The lamp trail kept crossing trade lane."
+    "a": "You rode the wake station behind the lead while it made its hundred at Trade Lane. — LAMP ON THE TRADE LANE.",
+    "b": "24 cr funded the relief call — VERGE sends the shift at Trade Lane on your credit. — LAMP ON THE TRADE LANE.",
+    "c": "You left Trade Lane. The work stayed with the crew that owned it. — LAMP ON THE TRADE LANE."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "trail",
+    "hasProp": false
   }
 });

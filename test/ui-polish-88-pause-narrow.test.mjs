@@ -346,6 +346,12 @@ test('d-pad off the 1280 dial falls back to geometry, and only onto focusable ta
     assert.equal(upTarget, spatialFocusTarget(all, list[0], 'up'));
     assert.ok(upTarget === contract, 'Up from Resume -> the contract link');
     assert.equal(typeof upTarget.focus, 'function');
+    // Down from the contract link enters its row at the first verb, not the one under the link
+    const downTarget = padFocusTarget(all, contract, 'down');
+    const geoDown = spatialFocusTarget(all, contract, 'down');
+    const rowOf = (b) => { for (let p = b; p; p = p.parentElement) { const g = p.getAttribute && p.getAttribute('data-group'); if (g != null) return g; } return null; };
+    assert.ok(rowOf(downTarget) == null || rowOf(downTarget) === rowOf(geoDown), 'stays in the row geometry picked');
+    assert.equal(downTarget, list.find((b) => (rowOf(geoDown) == null ? b === geoDown : rowOf(b) === rowOf(geoDown))), 'Down from the contract link -> that row\'s first verb');
     assert.equal(upTarget.getAttribute('tabindex'), '0', 'the link takes focus');
     const last = by('Main Menu');
     assert.equal(padFocusTarget(all, last, 'down'), null, 'nothing below Main Menu: Down stops');

@@ -239,6 +239,8 @@ import {
   wormholeGateCheck,
   computeDiscoveredRoute,
 } from './routePlanner.js';
+import { gateTollFor } from '../data/travelChoices.js';
+import { auditEdgeKey, gateTransitClosed } from '../data/worldPressure.js';
 import { removeCargo } from './cargo.js';
 import { Masks } from '../core/entity.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
@@ -4432,12 +4434,12 @@ export const world = {
     return true;
   },
 
-  _directHostileSpawnPos(sector, active, rng, origin, minRadius, maxRadius) {
+  _directHostileSpawnPos(sector, active, rng, origin, minRadius, maxRadius, bearing = null) {
     const o = origin || { x: 0, z: 0 };
     const lo = Math.max(1, minRadius || AMBUSH_SPAWN_MIN_RADIUS);
     const hi = Math.max(lo + 1, maxRadius || AMBUSH_SPAWN_MAX_RADIUS);
     for (let attempt = 0; attempt < DIRECT_HOSTILE_SPAWN_ATTEMPTS; attempt++) {
-      const ang = rng() * Math.PI * 2;
+      const ang = Number.isFinite(bearing) ? bearing + (rng() - 0.5) * 0.4 : rng() * Math.PI * 2;
       const r = lo + rng() * (hi - lo);
       const pos = { x: o.x + Math.cos(ang) * r, z: o.z + Math.sin(ang) * r };
       if (this._directHostileSpawnIsSafe(pos, sector, active, lo)) return pos;
@@ -5539,6 +5541,20 @@ export const world = {
         fromPos,
         playerId: state.playerId,
       };
+      // The pull is decided at departure. Arrival consumes this same bearing, so the
+      // warning describes the fight that will actually appear after the crossing.
+      jump._interdiction = null;
+      if (jump.via === 'drive') {
+        const target = state.world.sectors[jump.targetSectorId] || SECTOR_BY_ID.get(jump.targetSectorId);
+        const chance = this._interdictChance(target, 'drive', drive);
+        if (state.rng() < chance) {
+          jump._interdiction = { bearing: state.rng() * Math.PI * 2, pull: chance,
+            count: 1 + Math.floor(state.rng() * (1 + (target?.tier || 0))) };
+          startPayload.interdiction = { ...jump._interdiction };
+          this.bus.emit('jump:interdictionWarning', { ...jump._interdiction, targetSectorId: jump.targetSectorId });
+          this.bus.emit('toast', { text: `Interdiction pull ${Math.round(chance * 100)}% · bearing ${Math.round(jump._interdiction.bearing * 180 / Math.PI)}°`, kind: 'warn', ttl: 3 });
+        }
+      }
       if (jump._unfiled === true) startPayload.unfiled = true;
       this.bus.emit('jump:start', startPayload);
     }
@@ -5559,26 +5575,22 @@ export const world = {
     const sector = state.world.sectors[target] || SECTOR_BY_ID.get(target);
     const drive = this._activeDrive();
 
-    // Roll interdiction (drive only) BEFORE we re-seed in enterSector, using the core sim RNG.
-    let interdicted = false, ambushCount = 0;
-    if (via === 'drive') {
-      const chance = this._interdictChance(sector, via, drive);
-      interdicted = state.rng() < chance;
-    }
+    const warning = via === 'drive' ? jump._interdiction : null;
+    const interdicted = !!warning;
+    let ambushCount = 0;
 
     // Intentional jump: residency plan + place player at target entry. Does not global-wipe
     // other bounded residents (scoped demote/evict only when over the materialization cap).
     this.enterSector(target, { fromJump: true, via, fromSectorId });
 
     if (via === 'drive' && interdicted) {
-      const tier = sector ? sector.tier : 0;
-      const requestedAmbushCount = 1 + Math.floor(state.rng() * (1 + tier));
-      ambushCount = this._spawnAmbush(sector, requestedAmbushCount).length;
+      ambushCount = this._spawnAmbush(sector, warning.count, null, null, null, warning.bearing).length;
     }
 
     const player = state.entities.get(state.playerId);
     const toPos = player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
-    const arrivePayload = { sectorId: target, interdicted, ambushCount, toPos, playerId: state.playerId };
+    const arrivePayload = { sectorId: target, interdicted, ambushCount, toPos, playerId: state.playerId,
+      ...(warning ? { interdiction: { ...warning } } : {}) };
     if (unfiled) arrivePayload.unfiled = true;
     this.bus.emit('jump:arrive', arrivePayload);
 
@@ -5592,9 +5604,10 @@ export const world = {
     jump._fuelCost = 0;
     jump._unfiled = false;
     jump._unfiledConfirmed = false;
+    jump._interdiction = null;
   },
 
-  _spawnAmbush(sector, count, origin = null, enemyTypeId = null, requestMeta = null) {
+  _spawnAmbush(sector, count, origin = null, enemyTypeId = null, requestMeta = null, bearing = null) {
     if (!sector || count <= 0) return [];
     const player = this.state.entities.get(this.state.playerId);
     const active = this.state.world.activeSector || null;
@@ -5619,7 +5632,7 @@ export const world = {
       for (let i = 0; i < grant; i++) {
         const typeId = enemyTypeId || pool[Math.floor(rng() * pool.length)];
         const level = Math.round(lvLo + (lvHi - lvLo) * 0.6);
-        const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, AMBUSH_SPAWN_MIN_RADIUS, AMBUSH_SPAWN_MAX_RADIUS);
+        const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, AMBUSH_SPAWN_MIN_RADIUS, AMBUSH_SPAWN_MAX_RADIUS, bearing);
         if (!pos) continue;
         const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos, { startedTick: this.state.tick });
         tagAiSpawnContext(spec, sector, sector, origin ? 'spawn_request' : 'interdiction');
@@ -5741,6 +5754,15 @@ export const world = {
     via = (via === 'gate' || via === 'drive') ? via : 'gate';
     const drive = this._activeDrive();
     if (via === 'drive' && !this._hasDrive()) return reject('no_drive');
+
+    // §34 row 521: a welded audit gate refuses gate transit — the Helix weld is
+    // on the road itself. The jump drive still flies the same edge, so no
+    // sector is stranded; the closure only lengthens the tolled route.
+    if (via === 'gate' && isNeighbor && gateTransitClosed(state, cur, targetSectorId)) {
+      const gates = state.worldPressure && state.worldPressure.gates;
+      const audit = gates && gates[auditEdgeKey(cur, targetSectorId)];
+      return reject('gate_closed', { gateName: audit && audit.gateName || null });
+    }
 
     // combat lock blocks the start unless a hot-jump drive
     if (this._combatLock && !(via === 'drive' && drive.hotJump)) return reject('combat_lock');
@@ -5880,6 +5902,7 @@ export const world = {
   _onRequestRoute({ targetSectorId, mode }) {
     const route = this.computeRoute(targetSectorId, mode || 'fuel');
     this.state.nav.route = route;
+    this.state.nav.autoTravel = !!route;
     return route;
   },
 
@@ -5939,6 +5962,7 @@ export const world = {
         label,
         arrivalRadius,
         status: 'armed',
+        ...(payload.rendezvous === true && stableTarget ? { rendezvous: true } : {}),
       };
       if (stableTarget) this.state.nav.autopilot.stable = stableTarget;
       this.bus.emit('nav:waypoint', this.state.nav.waypoint);
@@ -7282,8 +7306,7 @@ export const world = {
   },
 
   _gateToll(sector) {
-    if (!sector) return 0;
-    return sector.security > 0.6 ? Math.round(50 + 200 * sector.security) : 0;
+    return gateTollFor(sector);
   },
 
   // =========================================================================================

@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_refinery_approach_trade_none_follow_on",
   "title": "CAN ON THE REFINERY APPROACH",
   "factionId": "faction_free",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Take the lot",
-      "playerLine": "I will take the can if the seal still reads clean."
+      "label": "Relay the can past both hulls",
+      "playerLine": "I carry the can past your hull, then the far one — in that order — and let it rest."
     },
     {
       "id": "b",
-      "label": "Change the terms",
-      "playerLine": "Cut the price or split the can across both holds."
+      "label": "Sponsor relief — 18 cr",
+      "playerLine": "Take 18 cr, BUOY — send the relief to Refinery Approach instead of my hands."
     },
     {
       "id": "c",
-      "label": "Pass the trade",
-      "playerLine": "No deal from me. Keep the can off my manifest."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, BUOY — my hull is leaving Refinery Approach."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "CAN",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "BUOY: The can is the whole lot. refinery approach has room to bargain.",
+      "line": "BUOY: The can is the whole lot. refinery approach has room to bargain. — CAN ON THE REFINERY APPROACH.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The price is chalked on a panel that still has heat.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "BUOY weighs the seal before looking at the buyer.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The can has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Boost all you like; refinery approach keeps its own volume.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "BUOY: Holding. The lane keeps its own clock.",
+      "line": "BUOY: Carry the can past our hull, then the far hull, in that order. Release and let it rest. — CAN ON THE REFINERY APPROACH.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,17 +142,86 @@ const spec = {
       "windowS": 56,
       "motion": "ring",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Lot transferred. The seal stayed legible through the handoff.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 18,
+      "reason": "lived_refinery_approach_trade_none_follow_on:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "BUOY: Time ran out on the work ask — CAN ON THE REFINERY APPROACH. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "displaced",
+          "dist": 120
+        },
+        {
+          "kind": "near",
+          "subject": "prop",
+          "of": "hull_0",
+          "dist": 60
+        },
+        {
+          "kind": "near",
+          "subject": "prop",
+          "of": "hull_1",
+          "dist": 60
+        },
+        {
+          "kind": "released"
+        },
+        {
+          "kind": "settled",
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "BUOY: Time ran out on the work ask — CAN ON THE REFINERY APPROACH. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "BUOY: Time ran out on the work ask — CAN ON THE REFINERY APPROACH. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
@@ -168,24 +239,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_free",
+      "delta": 3,
+      "reason": "lived_refinery_approach_trade_none_follow_on:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Terms changed. BUOY wrote the smaller number by hand.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_free",
-      "delta": 2,
-      "reason": "lived_refinery_approach_trade_none_follow_on",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +266,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You passed. Their can goes back under the tarp.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_free",
-      "delta": -1,
-      "reason": "lived_refinery_approach_trade_none_follow_on",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +324,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Take the lot",
-      "playerLine": "I will take the can if the seal still reads clean."
+      "label": "Relay the can past both hulls",
+      "playerLine": "I carry the can past your hull, then the far one — in that order — and let it rest."
     },
     {
       "id": "b",
-      "label": "Change the terms",
-      "playerLine": "Cut the price or split the can across both holds."
+      "label": "Sponsor relief — 18 cr",
+      "playerLine": "Take 18 cr, BUOY — send the relief to Refinery Approach instead of my hands."
     },
     {
       "id": "c",
-      "label": "Pass the trade",
-      "playerLine": "No deal from me. Keep the can off my manifest."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, BUOY — my hull is leaving Refinery Approach."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Lot transferred. The seal stayed legible through the handoff.",
-    "b": "Terms changed. BUOY wrote the smaller number by hand.",
-    "c": "You passed. Their can goes back under the tarp."
+    "a": "The can passed both hulls in order and rests loose at Refinery Approach. — CAN ON THE REFINERY APPROACH.",
+    "b": "18 cr funded the relief call — BUOY sends the shift at Refinery Approach on your credit. — CAN ON THE REFINERY APPROACH.",
+    "c": "You left Refinery Approach. The work stayed with the crew that owned it. — CAN ON THE REFINERY APPROACH."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "relay",
+    "hasProp": true
   }
 });

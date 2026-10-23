@@ -41,6 +41,7 @@ import { installPhysicsVenueHooks, mountPhysicsVenueHud } from './physicsVenues.
 import { mountSpectrumOverlay } from '../render/spectrum/overlay.js';
 import { createPhysicalJobsPrompt } from './physicalJobsPrompt.js';
 import { createBlackFlagPrompt } from './blackFlag.js';
+import { createLogbookRecap } from './logbookRecap.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
@@ -129,6 +130,8 @@ import { createHud } from './hud.js';
 import { createBandHud } from './bandHud.js';
 import { createWorldObjectInteraction } from './worldObjectInteraction.js';
 import { createAftermathChoicePrompt } from './aftermathChoicePrompt.js';
+import { createLongBerthPrompt } from './longBerthPrompt.js';
+import { createCrewPrompt } from './crewPrompt.js';
 import { createEncounterChoicePrompt } from './encounterChoicePrompt.js';
 import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
 import { createPromptDeck } from './promptDeck.js';
@@ -194,6 +197,7 @@ const SCREEN_MODULES = [
   // from Pause. Reads the same ledger the Steam mirror sends from.
   { path: './screens/achievements.js', load: () => import('./screens/achievements.js'), name: 'achievementsScreen' },
   { path: './screens/statistics.js', load: () => import('./screens/statistics.js'), name: 'statisticsScreen' },
+  { path: './screens/manifest.js', load: () => import('./screens/manifest.js'), name: 'manifestScreen' },
   { path: './screens/codex.js', load: () => import('./screens/codex.js'), name: 'codexScreen' },
   { path: './screens/missionLog.js', load: () => import('./screens/missionLog.js'), name: 'missionLogScreen' },
   // Wave B11 — Physics lab / Sandbox toy on front door.
@@ -624,6 +628,14 @@ export const ui = {
       this.aftermathChoicePrompt.destroy();
     }
     this.aftermathChoicePrompt = null;
+    if (this.longBerthPrompt && typeof this.longBerthPrompt.destroy === 'function') {
+      this.longBerthPrompt.destroy();
+    }
+    this.longBerthPrompt = null;
+    if (this.crewPrompt && typeof this.crewPrompt.destroy === 'function') {
+      this.crewPrompt.destroy();
+    }
+    this.crewPrompt = null;
     destroyCommsOwner(this);
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
@@ -737,6 +749,8 @@ export const ui = {
     this.physicalJobsPrompt = createPhysicalJobsPrompt(this.ctx);
     this.blackFlagPrompt?.dispose();
     this.blackFlagPrompt = createBlackFlagPrompt(this.ctx);
+    this.logbookRecap?.dispose();
+    this.logbookRecap = createLogbookRecap(this.ctx);
     if (typeof this._racingArmOff === 'function') {
       try { this._racingArmOff(); } catch (_) { /* previous init */ }
     }
@@ -833,6 +847,8 @@ export const ui = {
     this.promptDeck = createPromptDeck(ctx);
     this.encounterChoicePrompt = createEncounterChoicePrompt(ctx);
     this.aftermathChoicePrompt = createAftermathChoicePrompt(ctx);
+    this.longBerthPrompt = createLongBerthPrompt(ctx);
+    this.crewPrompt = createCrewPrompt(ctx);
     this.lawfulInspectionPrompt = createLawfulInspectionPrompt(ctx);
 
     // Wingman command radial (Micro-Loops) — a quick fleet-command wheel on the Z key.
@@ -1912,6 +1928,7 @@ export const ui = {
       this.spectrumOverlay?.frame(st);
       this.physicalJobsPrompt?.frame();
       this.blackFlagPrompt?.frame();
+      this.logbookRecap?.frame();
       // Authored capital warnings draw over the flight picture and hold still while the sim is
       // frozen; the mount clears its canvas outside flight so menus never inherit a stale warning.
       if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function') {
@@ -1937,6 +1954,8 @@ export const ui = {
   destroy() {
     this.blackFlagPrompt?.dispose();
     this.blackFlagPrompt = null;
+    this.logbookRecap?.dispose();
+    this.logbookRecap = null;
     invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
@@ -1963,6 +1982,14 @@ export const ui = {
       this.aftermathChoicePrompt.destroy();
     }
     this.aftermathChoicePrompt = null;
+    if (this.longBerthPrompt && typeof this.longBerthPrompt.destroy === 'function') {
+      this.longBerthPrompt.destroy();
+    }
+    this.longBerthPrompt = null;
+    if (this.crewPrompt && typeof this.crewPrompt.destroy === 'function') {
+      this.crewPrompt.destroy();
+    }
+    this.crewPrompt = null;
     destroyCommsOwner(this);
     destroyMarketNewsOwner(this);
     if (this.nemesisComms && typeof this.nemesisComms.dispose === 'function') this.nemesisComms.dispose();

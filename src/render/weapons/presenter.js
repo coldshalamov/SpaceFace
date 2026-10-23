@@ -10,7 +10,7 @@ import { HeavyImpactVfx } from './heavyImpactVfx.js';
 import { WeaponRibbonPool } from './ribbonPool.js';
 import { DistortionField } from './distortionField.js';
 import { WeaponLightPool } from './weaponLights.js';
-import { HullScorchPool, heatForWeaponVariant } from './contactMarks.js';
+import { HullScorchPool, heatForWeaponVariant, CONTACT_MARK_KINDS } from './contactMarks.js';
 import { weaponEffectSeed } from './energyBoltPool.js';
 import { planPlayerSurfaceSplash } from './playerSurfaceSplash.js';
 import { QuarksVfxSystem } from '../vfx/quarksSystem.js';
@@ -1009,7 +1009,8 @@ export class WeaponVfxPresenter {
       Number.isFinite(nz) ? nz : 0,
     );
     const scorch = this._flashSpec(6.0, size, size * 0.72, 1);
-    hexColor('#ff7a2a', _color);
+    // A gouge is a chip in the stone. Heat still rides the slot; the face itself is pale rock.
+    hexColor(markKind === CONTACT_MARK_KINDS.gouge ? '#c8c0a8' : '#ff7a2a', _color);
     this.scorches.spawn({
       targetId: targetId != null ? targetId : null,
       localX: captured.x,

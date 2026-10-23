@@ -41,7 +41,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'masslineImpactDamage', 'lootShards', 'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens', 'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads', 'terrainAnchors', 'jettisonImpulse', 'volatileExposure', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
-  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'scissorwake',
+  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake',
   // Nemesis packet: the arc engine (nemesis) decides and schedules, the encounter host
   // (nemesisEncounter) drains one spawn request per fixed step, and nemesisSignals routes
   // voice/toast receipts — event-only, registered but never ticked.
@@ -60,7 +60,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
-  'drill', 'claims', 'beacons', 'bandRadio', 'v2FlavorRuntime', 'onboarding', 'masslineHud',
+  'drill', 'claims', 'beacons', 'bandRadio', 'v2FlavorRuntime', 'longBerth', 'crew', 'onboarding', 'masslineHud',
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
   // miningHud: the mining beam's vent/rich-core/seam instrument — event-mirrored, DOM-guarded,
   // ticks only to place the world-anchored dial (same posture as the sibling HUDs).
@@ -70,11 +70,23 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // init order matters (bus subscriptions); all are deliberately absent from
   // PRODUCTION_UPDATE_ORDER.
   'impoundPayPrompt', 'warrantOfferPrompt', 'moralTrapPrompt', 'wreckChoicePrompt', 'stuckTowPrompt',
+  // deedRecord: the world-remembers ledger was a lookup-only entry — it materialized but never
+  // initialized, so its receipt listeners never attached and the deed record stayed empty in
+  // production (found while wiring PULSE-HISTORY). Event-only: no update, no clock.
+  'deedRecord',
+  // historyWear (PULSE-HISTORY, row 440): event-only like the prompts — it listens on
+  // lossLedger:recorded and dock:docked, projects the deed ledger into trinket/decal intents and
+  // memorial arrays, and is deliberately absent from PRODUCTION_UPDATE_ORDER.
+  'historyWear',
   'cargoConscience', 'securityReadoutSystem', 'priceForecastSystem', 'contractClausesSystem',
   'moralTrapSystem',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
   // transition announcer — both slow observers on the calendar clock.
-  'mail', 'worldClock',
+  // worldPressure (§34 rows 520–523): the tide/gate-audit/slow-gray owner — reads
+  // settled aftermath + understory facts, writes only state.worldPressure.
+  // lineProgression (rows 498–501): the Line's tonnage/class/strain memory — listens on
+  // the tether bus, writes only state.lineProgression.
+  'mail', 'worldClock', 'worldPressure', 'lineProgression',
   'render', 'vfx', 'feel', 'audio', 'ui', 'save',
 ]);
 
@@ -112,7 +124,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'volatileExposure', 'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'crafting', 'economy', 'intervention', 'world',
   'heistFacilities',
-  'regionalEcology', 'tensionDirector', 'encounterDirector', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
+  'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'stationServices',
   'difficultyDirector', 'gateControlDirector',
   'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
@@ -121,6 +133,11 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // sensor model, formation lock, coupler snap, flag-flip/lien dwell, and pylon claims all
   // read the settled post-physics positions of this tick, so they sit after 'factions'.
   'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
+  // faction-strange rows 517–532: gardens/trains/cull/liens/redaction/choir/court/homesteads
+  // tick real per-step work (biomass digest, anchor/lien dwell, court sessions) — init-only
+  // registration would silently never run their update().
+  'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens',
+  'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads',
   'sectorSim', 'towlineTable', 'borrowedVoice', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
   'liveCareerLadderBranches', 'story', 'scenarioRuntime',
   // survivalWave: materializes the planned wave through spawnBudget and reports the cleared
@@ -141,7 +158,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // once per body and reads the same settled phase — after swarmJuice so the cohort stamps
   // precede the HUDs' readout this tick.
   'swarmElites',
-  'heat', 'traffic', 'drill', 'claims', 'chronicler',
+  'heat', 'traffic', 'drill', 'claims', 'chronicler', 'longBerth', 'crew',
   'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'gyreHud', 'planetHud', 'miningHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
   // and census this tick advanced to; DOM-guarded so Node no-ops.
@@ -162,7 +179,11 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'voiceArbiter',
   // PULSE-MAIL / PULSE-TIME: mail delivery and calendar announcements run after the story
   // and deed systems so same-tick triggers resolve before letters and headlines go out.
-  'mail', 'worldClock',
+  // worldPressure: the day-scale tide/audit/gray pass runs on the same calendar cadence,
+  // after story and salvage so the day's clears and beats are settled facts when it reads.
+  // lineProgression: ticks the held-mass strain clock off the same settled tick the tether
+  // owner produced; its bus listeners do the tonnage crediting.
+  'mail', 'worldClock', 'worldPressure', 'lineProgression',
   'save',
 ]);
 
@@ -285,7 +306,7 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   'pirateRumor', 'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'gateControlDirector',
   'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
   'factions', 'sectorSim', 'missions', 'careerOrigins', 'careerLadders', 'liveCareerLadderBranches',
-  'story', 'scenarioRuntime', 'drill', 'claims', 'bandRadio', 'onboarding', 'save',
+  'story', 'scenarioRuntime', 'drill', 'claims', 'bandRadio', 'onboarding', 'save', 'longBerth', 'crew',
   // Ecology/morale are event-driven; the 60 Hz tick only expires or reseeds. 2 Hz is enough.
   'aftermathWrecks', 'wingMorale',
   // Event-driven owners whose update() is an empty registry placeholder.
@@ -303,6 +324,9 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // PULSE rows 435/439: letter delivery evaluates at most once a second; the calendar's
   // transition announcements are day-scale work — 2 Hz is generous for both.
   'mail', 'worldClock',
+  // §34 rows 520–523: tide/audit/gray all step on the 600 s world day; the only
+  // sub-day work is a cheap same-sector scaffold check — 2 Hz is plenty.
+  'worldPressure',
 ]);
 
 /**
@@ -342,7 +366,7 @@ export function calendarCohortTickMod(id) {
 
 export const NEAR_CLOCK_IDS = Object.freeze([
   'flybyFocus', 'scanner', 'spectrum', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',
-  'pirateDisengage', 'aiSlot', 'aiPorts', 'aiEncounter', 'traffic', 'titles', 'planetRuntime',
+  'pirateDisengage', 'aiSlot', 'aiEncounter', 'traffic', 'titles',
   'towlineTable', 'borrowedVoice', 'npcJobsRuntime',
   // Observer receipts; primary ticks already throttle internally. Catch-up extra steps
   // must not rescan the island just to notice a flee flag.
@@ -366,6 +390,10 @@ export const NEAR_CLOCK_IDS = Object.freeze([
 export const TABLE_CLOCK_IDS = Object.freeze([
   // Input and control owners — per-tick player intent and assists.
   'input', 'autoTargetAssist', 'bulletTime', 'cloak', 'actions', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'mercyService', 'wreckCourt',
+  // Physical-integration owners that feed the physics step. A control or impulse is consumed once
+  // per fixed step, so on a catch-up frame they must run on every step, not once per frame:
+  // aiPorts flushes (and replays) the AI's maneuvers, planetRuntime queues planet drag/heat/harvest.
+  'aiPorts', 'planetRuntime',
   // Flight + physics authorities: single writers of position/velocity.
   'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack', 'secondRinse',
   // Nemesis: arc engine cadence + per-fixed-step spawn-request drain.
@@ -380,6 +408,9 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud',
   // Combat island: damage/attachment/custody owners at combat cadence.
   'combat', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
+  'lineProgression',
+  // rockCore: flail chain constraint must resolve on the 60 Hz step (5-link stability proof).
+  'rockCore',
   // Massline physics owners (throws, snares, impact resolution move or damage bodies).
   'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   // Debris/damage owners with live bodies or timed expiry.
@@ -402,6 +433,9 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // §34 faction-signature owners — per-step kinematics (formation lock, coupler snap,
   // pylon settle, false-flag deviation, sweep-ring read). Calendar would miss the motion.
   'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
+  // faction-strange owners — per-step faction work on the same settled tick.
+  'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens',
+  'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads',
 ]);
 
 const CLOCK_BY_ID = new Map();

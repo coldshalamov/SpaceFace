@@ -218,6 +218,17 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { margin:0 !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge:not(.sf-slot-badge--calm)::before { content:none; }
 }
+/* ui-polish-102: the deckplate's old ≤1100 stack hid the hull (and the vacant word), but the orrery keeps the hull beside
+   the reading down to 791 (the stacked band hides the whole stage), so 791–1100 showed an empty berth ring. They come back. */
+@media (max-width:1100px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .sf-save-stage > :is(.k-stage__poster, .k-world--stage) { display:block; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .sf-save-stage.is-vacant > .sf-save-vacant { display:grid; }
+}
+/* ui-polish-100: at 1200–1599 the reading column is ~360px, so the context line at .2em tracking broke
+   "QUICK SAVE · CURRENT · / FLOWN 9/22/2026" onto two lines at 1280×720. It closes up to .06em (headroom for "FLOWN 29 DAYS AGO") and reads on one line. */
+@media (min-width:1200px) and (max-width:1599px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.06em; }
+}
 /* ≤860px-wide desktop: the strip under the hull is ~300–390px for five stations, so a slot's name,
    badge and line set smaller and tighter and neighbouring words keep a gap (at 761 they touched) */
 @media (max-width:860px) {
@@ -332,6 +343,21 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { letter-spacing:.04em !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.04em; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__num { white-space:normal; }
+}
+/* ui-polish-98: the stacked page at 641–790 × 461–749 (narrower and ≤460-tall windows keep their own rules) runs ~630–710px, so on a
+   790×461–561 window EXPORT / IMPORT / BACK and 12–15 lines sat under the fold until the page was scrolled, and a
+   probe at the frame took no click on them. The way back moves up beside the title (top right), so the three are on
+   screen and take a click without a scroll and nothing scrolls under a pinned bar (#516's first cut pinned it to the foot,
+   which covered LOAD at 461 tall and the strip's labels at 500). */
+@media (min-width:641px) and (max-width:790px) and (min-height:461px) and (max-height:749px) {
+  /* the way back rides the title's row (top right), so it is on screen without a scroll and nothing scrolls under it */
+  html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:12px !important; row-gap:6px !important;
+    grid-template-columns:minmax(0, 1fr) auto !important; grid-template-rows:max-content max-content minmax(max-content, 1fr) !important;
+    grid-template-areas:"title foot" "page page" "hang hang" !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-title { font-size:34px !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-emph { margin-top:4px; margin-bottom:8px; font-size:13px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-stage__foot.sf-save-ledger { gap:4px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-foot { align-self:start; justify-self:end; gap:22px; padding-top:4px !important; }
 }
 /* ui-polish-92: from 791 (the stack's edge) to ~940 wide above 460 tall the strip sits beside the reading with
    ~67-80px stations: QUICK's CURRENT ran into SLOT 1 and each filed save's line broke mid-word ("Adventur /

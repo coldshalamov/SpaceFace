@@ -17,19 +17,47 @@
 // dismissed or expires, focus moves to the nearest remaining toast, else a valid previous
 // control / active-screen fallback — never silently to body when a restorable target exists.
 
+import { setReceiptPresenter } from '../core/receiptPresenter.js';
 import { isVoiceOwnedAlertToast } from './alerts.js';
-import { admitReceipt, RECEIPT_MAX, stuntDetectionReceipt } from './hudAttention.js';
+import { admitReceipt, markFirstUseHint, RECEIPT_MAX, shouldShowFirstUseHint, stuntDetectionReceipt } from './hudAttention.js';
 import { jumpAbortReceipt } from './jumpNotice.js';
 import { resolveObjectiveHudLayout } from './hud.js';
 import { glyphSvg } from './glyphs.js';
 import { bindAutomationPayoffUi } from './automationPayoff.js';
 import { counterplayDoctrineById } from '../ai/counterplay/catalog.js';
 import { bindReturningPilotSummary } from './dockArrival.js';
+import { createToastActionButton, normalizeToastAction, pickEvictionVictim, runToastAction } from './toastAction.js';
 
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
 // font-specific glyph coverage and read as a different visual language from the HUD line set).
 const KIND_ICON = { success: 'ok', good: 'ok', error: 'err', danger: 'err', warn: 'warn', info: 'info', stunt: 'info', credits: 'credits', rep: 'rep', discovery: 'unknown' };
+
+/** The first successful autosave after a new game, once per profile. Never a per-write receipt. */
+export function progressSavedReceipt(state, timing) {
+  if (!state || !state.player || !timing || typeof timing !== 'object') return null;
+  if (timing.ok === false) return null;
+  const slot = String(timing.slot || '');
+  const autosave = timing.autosave === true || slot === 'auto' || slot === 'autosave';
+  if (!autosave) return null;
+  const gameplay = state.settings && state.settings.gameplay;
+  if (gameplay && gameplay.tutorialHints === false) return null;
+  if (!shouldShowFirstUseHint(state.player.hints, 'progressSaved')) return null;
+  const line = 'Progress saved';
+  if (!admitReceipt({ text: line, kind: 'info' }).admit) return null;
+  state.player.hints = markFirstUseHint(state.player.hints, 'progressSaved');
+  return line;
+}
+
+function bindProgressSavedReceipt(bus, getState) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('save:completed', (timing) => {
+    const state = typeof getState === 'function' ? getState() : null;
+    const line = progressSavedReceipt(state, timing);
+    if (!line || typeof bus.emit !== 'function') return;
+    bus.emit('toast', { text: line, kind: 'info', ttl: 6 });
+  });
+}
 
 export function createToasts(ctx) {
   const { bus } = ctx;
@@ -174,23 +202,25 @@ export function createToasts(ctx) {
     });
   }
 
-  function push({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '' } = {}) {
-    if (!root || !text) return;
+  // Returns true when the receipt was drawn (or folded into a live card) and false when it was
+  // refused, so a once-only notice sent through the presenter can tell it was never seen.
+  function push({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '', action = null } = {}) {
+    if (!root || !text) return false;
     ensureConnected();
     // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for
     // telemetry/golden parity, but that floor is presented top-center by alerts.js (voice:surface).
     // Rendering it here too would double the voice, so drop it. Mechanical action toasts (no
     // _fromVoice — buy/sell/errors/pickups) are unaffected: they are an allowed separate channel.
-    if (_fromVoice) return;
+    if (_fromVoice) return false;
     // Parallel short-status mirrors of arbiter-owned alert keys (CARGO FULL, SHIELDS DOWN, …).
     // floatingText and legacy bridges may still emit these; the floor already speaks them once.
     // Long tutorial lines and transaction ACKs are not in the owned set and still render.
-    if (isVoiceOwnedAlertToast(text)) return;
+    if (isVoiceOwnedAlertToast(text)) return false;
     const job = typeof document !== 'undefined' && document.body && document.body.dataset
       ? document.body.dataset.sfHudJob
       : '';
     const decision = admitReceipt({ text, kind, channel, _fromVoice, combat: job === 'fight' || job === 'hurt' });
-    if (!decision.admit) return;
+    if (!decision.admit) return false;
     // Grouping: if an identical toast (same text + kind) is already live and recent (within 2.5s of
     // its birth), collapse into it — bump a count badge and refresh its TTL instead of stacking N
     // copies ("Platinum x1" five times becomes "Platinum x1 ×5"). Keeps the feed readable under
@@ -235,7 +265,7 @@ export function createToasts(ctx) {
         r.el.setAttribute('aria-label', text + ' (×' + r.count + ', dismiss)');
         announceStatus(text, r.count);
         recomputeNextWake();
-        return;
+        return true;
       }
     }
     const el = document.createElement('div');
@@ -254,6 +284,9 @@ export function createToasts(ctx) {
     decay.className = 'sf-toast__decay';
     decay.setAttribute('aria-hidden', 'true');
     el.append(icon, body, decay);
+    // An offer receipt's one button (toastAction.js); the card is then a plain group, not a dismiss control.
+    const act = normalizeToastAction(action);
+    if (act) el.appendChild(createToastActionButton(act, () => { dismiss(rec); runToastAction(act); }));
     // Guarded like lampKey: headless Mini-DOM harnesses stub style as a plain object.
     if (el.style && typeof el.style.setProperty === 'function') {
       el.style.setProperty('--sf-toast-ttl', `${(normalizeTtlMs(ttl) / 1000).toFixed(2)}s`);
@@ -262,22 +295,28 @@ export function createToasts(ctx) {
     // keyboard users (Enter/Space) and to AT as a dismissible control.
     // Do NOT put aria-live on the card — announcement is via #toast-live (status once).
     // Do NOT call focus() — status must not steal keyboard focus from flight/UI.
-    el.setAttribute('role', 'button');
-    el.setAttribute('tabindex', '0');
-    el.setAttribute('aria-label', text + ' (dismiss)');
+    if (act) {
+      el.setAttribute('role', 'group');
+      el.setAttribute('aria-label', text);
+    } else {
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('aria-label', text + ' (dismiss)');
+    }
     el.addEventListener('click', () => dismiss(rec));
     el.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); dismiss(rec); }
     });
     // newest on top; #toast-live is sr-only and rides to the end of the flex stack via prepend
     root.prepend(el);
-    const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1 };
+    const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1, action: act };
     live.unshift(rec);
     announceStatus(text, 1);
     recomputeNextWake();
     // animate in next frame
     requestAnimationFrame(() => el.classList.add('sf-toast--in'));
-    while (live.length > MAX) dismiss(live[live.length - 1]);
+    while (live.length > MAX) dismiss(pickEvictionVictim(live));
+    return true;
   }
 
   function dismiss(rec, opts = {}) {
@@ -347,6 +386,20 @@ export function createToasts(ctx) {
   }
 
   bus.on('toast', push);
+  // Notices the wall clock raises (the retail error line, the slow-frame offer, the physics stall)
+  // come in here, not over the bus: sim listeners hear every bus toast (core/receiptPresenter.js).
+  // The audio system gives every bus toast a UI click; a presented one keeps it through `audio:cue`
+  // (a main-side type no sim system subscribes to), and only when the receipt really showed.
+  function present(spec) {
+    const shown = push(spec) === true;
+    if (shown && !(spec && (spec.silent === true || spec.audio === false))) {
+      try { bus.emit('audio:cue', { id: spec.kind === 'error' ? 'error' : 'click' }); } catch (_) { /* a missing cue is not a failure */ }
+    }
+    return shown;
+  }
+  setReceiptPresenter(present);
+  bindPhysicsStallReceipt(bus, present);
+  bindProgressSavedReceipt(bus, () => ctx.state);
   // Session boundary (SF-283): receipts live when a save loads or a new run starts were minted by
   // the pre-save session — dismiss them rather than letting their TTL finish over the restored
   // scene. Bound BEFORE the bind*Ui calls below: automationPayoff emits its "while you were away"
@@ -360,7 +413,7 @@ export function createToasts(ctx) {
   bindExportRecoveryToasts(bus);
   bindSlingPassReceipts(bus);
   bindCounterplayReceipts(bus);
-  bindCapitalBossReceipts(bus);
+  bindCapitalBossReceipts(bus, () => ctx.state);
   bindAutomationPayoffUi(bus, () => ctx.state);
   bindReturningPilotSummary(bus, ctx && ctx.state);
 
@@ -581,16 +634,148 @@ export function capitalBossWarningReceipt(payload) {
     channel: 'capitalBoss', castId: payload.castId, fightId: payload.fightId, simTime: payload.simTime };
 }
 
-export function bindCapitalBossReceipts(bus) {
+export function capitalBossStartedReceipt(payload) {
+  const name = String(payload?.name || '').trim();
+  const lesson = String(payload?.lesson || '').trim();
+  if (!name || !lesson || payload?.fightId == null) return null;
+  return {
+    text: `${name} — ${lesson}`,
+    kind: 'info',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossActReceipt(payload) {
+  const title = String(payload?.title || '').trim();
+  if (!title || payload?.fightId == null || !Number.isInteger(payload.index)) return null;
+  return {
+    text: title,
+    kind: 'info',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+    index: payload.index,
+  };
+}
+
+export function capitalBossCounteredReceipt(payload) {
+  if (!payload || payload.reason !== 'subsystem_disabled') return null;
+  const title = String(payload.title || '').trim();
+  if (!title) return null;
+  return {
+    text: `${title} — the part you broke cancelled it`,
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossExposureReceipt(payload) {
+  if (!payload || payload.exposure == null) return null;
+  const title = String(payload.title || '').trim();
+  if (!title) return null;
+  return {
+    text: `EXPOSED — ${title}. Throw now`,
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossDisarmedReceipt(payload) {
+  if (!payload || payload.fightId == null) return null;
+  return {
+    text: 'Disarmed — finish it',
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossHitReceipt(payload, playerId) {
+  if (!payload || playerId == null || payload.targetId !== playerId) return null;
+  const title = String(payload.title || '').trim();
+  if (!title) return null;
+  return {
+    text: `${title} landed`,
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+    castId: payload.castId,
+  };
+}
+
+export function bindCapitalBossReceipts(bus, getState) {
   if (!bus || typeof bus.on !== 'function') return;
   const seen = new Set();
+  const started = new Set();
+  const acts = new Set();
+  const disarmed = new Set();
+  const castTitles = new Map();
+  const toast = (receipt) => {
+    if (receipt && typeof bus.emit === 'function') bus.emit('toast', receipt);
+  };
+  const playerId = () => {
+    const state = typeof getState === 'function' ? getState() : null;
+    return state && state.playerId != null ? state.playerId : null;
+  };
   bus.on('capitalBoss:telegraph', (payload) => {
     if (!payload || seen.has(payload.castId) || typeof bus.emit !== 'function') return;
+    if (payload.castId != null && payload.title) {
+      castTitles.set(payload.castId, { fightId: payload.fightId, title: payload.title });
+      if (castTitles.size > 64) castTitles.delete(castTitles.keys().next().value);
+    }
     const receipt = capitalBossWarningReceipt(payload);
     if (!receipt) return;
     seen.add(payload.castId);
     if (seen.size > 64) seen.delete(seen.values().next().value);
     bus.emit('toast', receipt);
+  });
+  bus.on('capitalBoss:started', (payload) => {
+    if (!payload || started.has(payload.fightId)) return;
+    const receipt = capitalBossStartedReceipt(payload);
+    if (!receipt) return;
+    started.add(payload.fightId);
+    toast(receipt);
+  });
+  bus.on('capitalBoss:actChanged', (payload) => {
+    if (!payload) return;
+    const key = `${payload.fightId}:${payload.index}`;
+    if (acts.has(key)) return;
+    const receipt = capitalBossActReceipt(payload);
+    if (!receipt) return;
+    acts.add(key);
+    toast(receipt);
+  });
+  bus.on('capitalBoss:countered', (payload) => toast(capitalBossCounteredReceipt(payload)));
+  bus.on('capitalBoss:recovery', (payload) => toast(capitalBossExposureReceipt(payload)));
+  bus.on('capitalBoss:disarmed', (payload) => {
+    if (!payload || disarmed.has(payload.fightId)) return;
+    const receipt = capitalBossDisarmedReceipt(payload);
+    if (!receipt) return;
+    disarmed.add(payload.fightId);
+    toast(receipt);
+  });
+  bus.on('capitalBoss:hit', (payload) => {
+    if (!payload) return;
+    const remembered = castTitles.get(payload.castId);
+    toast(capitalBossHitReceipt({
+      ...payload,
+      title: payload.title || remembered?.title,
+    }, playerId()));
+  });
+  bus.on('capitalBoss:ended', (payload) => {
+    const fightId = payload && payload.fightId;
+    if (fightId == null) return;
+    for (const [castId, row] of castTitles) {
+      if (row.fightId === fightId) castTitles.delete(castId);
+    }
   });
 }
 
@@ -628,6 +813,21 @@ export function bindExportRecoveryToasts(bus) {
     if (!spec || typeof bus.emit !== 'function') return;
     bus.emit('toast', spec);
   });
+}
+
+export const PHYSICS_STALL_RECEIPT = Object.freeze({
+  text: 'Flight systems are still starting. If your ship stays still, reload the game.',
+  kind: 'warn',
+  ttl: 10,
+});
+
+/**
+ * `physics:authorityStalled` becomes one receipt. It is shown directly rather than re-emitted as a
+ * bus `toast`: the stall is called by wall time, and every sim listener hears a bus toast.
+ */
+export function bindPhysicsStallReceipt(bus, show) {
+  if (!bus || typeof bus.on !== 'function' || typeof show !== 'function') return;
+  bus.on('physics:authorityStalled', () => { show({ ...PHYSICS_STALL_RECEIPT }); });
 }
 
 export function bindJumpDenialToasts(bus, getState) {

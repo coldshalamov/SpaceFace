@@ -38,6 +38,7 @@ import {
 } from '../data/swarmMode.js';
 import { validateCombatChoreography } from '../presentation/combatChoreography.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
+import { CIRCUIT_VIEW_AHEAD } from './survivalCircuit.js';
 import {
   SURVIVAL_SPAWN_DISTANCE,
   levelForWave,
@@ -46,6 +47,21 @@ import {
 import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
 
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
+
+// Three rooted sacs, ahead of the ship, with the far edge inside the swarm picture.
+const CIRCUIT_NODE_SPOTS = Object.freeze([
+  Object.freeze({ x: -38, z: 86 }),
+  Object.freeze({ x: 0, z: 108 }),
+  Object.freeze({ x: 40, z: 88 }),
+]);
+
+// A core that fell outside the picture is brought forward onto one of these spots.
+const CIRCUIT_CORE_SPOTS = Object.freeze([
+  Object.freeze({ x: -46, z: 64 }),
+  Object.freeze({ x: -16, z: 92 }),
+  Object.freeze({ x: 18, z: 90 }),
+  Object.freeze({ x: 48, z: 66 }),
+]);
 
 /**
  * The opening lesson's pack hold is a ceiling, not a sentence. The tick the board has nothing
@@ -210,6 +226,7 @@ export const survivalWave = {
     this._reinforceSwarm(run);
     this._releaseStragglers();
     this._commitLastStand();
+    this._tickCircuitObjective();
     this._publishWaveProgress();
     this._checkCleared(run);
   },
@@ -251,7 +268,20 @@ export const survivalWave = {
     this._wave = wave;
     this._plan = plan;
     this._sourcePlan = sourcePlan;
+    if (swarm && swarm.circuit && typeof swarm.circuit === 'object') {
+      swarm.circuit = {
+        ...swarm.circuit,
+        fill: 0,
+        nodesMarked: 0,
+        nodesDown: 0,
+        commanderMarked: false,
+        commanderDown: false,
+      };
+    }
     this._swarm = swarm;
+    this._circuitCores = [];
+    this._coresFound = 0;
+    this._placeCircuitMark();
     this._pending = plan.schedule.map((entry, index) => ({ entry, index }));
     // A later Swarm wave opens the same way the first one does after its lesson: batch by batch,
     // a breath apart, so the escalation reads as packs arriving instead of one dump in 3 s.
@@ -453,10 +483,271 @@ export const survivalWave = {
   },
 
   _resolveCohort(id) {
-    if (!this._cohort || !this._cohort.delete(id)) return;
+    if (!this._cohort) return;
+    const entry = this._cohort.get(id);
+    if (!entry || !this._cohort.delete(id)) return;
+    this._noteCircuitResolution(entry);
     this._bossIds.delete(id);
     this._resolved += 1;
     this._publishThreat();
+  },
+
+  _markCircuitMember(member) {
+    const spec = this._swarm && this._swarm.circuit;
+    const entity = member && member.entity;
+    if (!spec || !entity) return;
+    if (spec.kind === 'nodes' && (spec.nodesMarked || 0) < (spec.nodeCount || 0)) {
+      member.circuitNode = true;
+      entity.data = entity.data || {};
+      entity.data.circuitNode = true;
+      entity.data.scanLabel = 'Hive node';
+      const index = spec.nodesMarked || 0;
+      const spot = CIRCUIT_NODE_SPOTS[index % CIRCUIT_NODE_SPOTS.length];
+      const player = this._playerPos();
+      const origin = player && Number.isFinite(player.x) && Number.isFinite(player.z)
+        ? player
+        : (entity.pos || { x: 0, z: 0 });
+      const radius = Number(entity.radius) > 0 ? Number(entity.radius) : 8;
+      const dist = Math.hypot(spot.x, spot.z);
+      const maxCenter = Math.max(0, CIRCUIT_VIEW_AHEAD - radius);
+      let center = dist;
+      if (center > maxCenter) center = maxCenter;
+      const outside = Math.min(radius + 8, maxCenter);
+      if (center < outside) center = outside;
+      const scale = dist > 0 ? center / dist : 1;
+      const x = origin.x + spot.x * scale;
+      const z = origin.z + spot.z * scale;
+      member.root = { x, z };
+      if (!entity.pos) entity.pos = { x, z };
+      else { entity.pos.x = x; entity.pos.z = z; }
+      if (entity.vel) { entity.vel.x = 0; entity.vel.z = 0; }
+      spec.nodesMarked = index + 1;
+    } else if (spec.kind === 'commander' && !spec.commanderMarked) {
+      member.circuitCommander = true;
+      entity.data = entity.data || {};
+      entity.data.circuitCommander = true;
+      entity.data.callsign = spec.commanderName;
+      entity.data.scanLabel = spec.commanderName;
+      spec.commanderMarked = true;
+    }
+  },
+
+  _noteCircuitResolution(entry) {
+    const spec = this._swarm && this._swarm.circuit;
+    if (!spec || !entry) return;
+    if (spec.kind === 'nodes' && entry.circuitNode) spec.nodesDown = (spec.nodesDown || 0) + 1;
+    if (spec.kind === 'commander' && entry.circuitCommander) {
+      spec.commanderDown = true;
+      this._emit('run:objectiveKill', {
+        name: spec.commanderName,
+        word: `${spec.commanderName} down`,
+      });
+    }
+    if (spec.kind === 'collect' && (this._circuitCores?.length || 0) < (spec.coreCount || 0)) {
+      const pos = entry.entity && entry.entity.pos;
+      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) this._dropCircuitCore(pos);
+    }
+  },
+
+  _forgetSpawn(id) {
+    if (id == null) return;
+    const remove = this.helpers && this.helpers.removeEntity;
+    if (typeof remove === 'function') {
+      remove(id, { immediate: true });
+      return;
+    }
+    const entities = this.state && this.state.entities;
+    if (entities && typeof entities.delete === 'function') entities.delete(id);
+  },
+
+  /**
+   * Keep a core that already fell in front of the ship. Anything outside that picture
+   * is set down on a forward spot so the token can be seen and flown to.
+   */
+  _circuitCorePos(pos) {
+    const player = this._playerPos();
+    const radius = 6;
+    if (player && pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+      && Number.isFinite(player.x) && Number.isFinite(player.z)) {
+      const dx = pos.x - player.x;
+      const dz = pos.z - player.z;
+      const dist = Math.hypot(dx, dz);
+      if (dz > 16 && Math.abs(dx) <= 80 && dist > 12 && dist + radius <= CIRCUIT_VIEW_AHEAD) {
+        return { x: pos.x, z: pos.z };
+      }
+    }
+    const index = this._circuitCores ? this._circuitCores.length : 0;
+    const spot = CIRCUIT_CORE_SPOTS[index % CIRCUIT_CORE_SPOTS.length];
+    const origin = player && Number.isFinite(player.x) && Number.isFinite(player.z)
+      ? player
+      : (pos || { x: 0, z: 0 });
+    return { x: origin.x + spot.x, z: origin.z + spot.z };
+  },
+
+  /** A core is a marker in the fight, not a credit chip and not an invisible coordinate. */
+  _dropCircuitCore(pos) {
+    const placed = this._circuitCorePos(pos);
+    const core = { x: placed.x, z: placed.z, taken: false, markId: null };
+    if (!this._circuitCores) this._circuitCores = [];
+    this._circuitCores.push(core);
+    this._ensureCircuitCoreMark(core);
+  },
+
+  _ensureCircuitCoreMark(core) {
+    if (!core || core.taken) return;
+    const entities = this.state && this.state.entities;
+    const existing = core.markId != null && entities && typeof entities.get === 'function'
+      ? entities.get(core.markId)
+      : null;
+    const onSpot = existing && existing.alive !== false && existing.pos
+      && existing.collides === false && existing.physicsBody === false
+      && existing.data && existing.data.circuitCore === true
+      && Math.hypot(existing.pos.x - core.x, existing.pos.z - core.z) < 1;
+    if (onSpot) return;
+    if (core.markId != null) this._forgetSpawn(core.markId);
+    core.markId = null;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function') return;
+    const entity = spawn({
+      type: 'beacon',
+      pos: { x: core.x, z: core.z },
+      vel: { x: 0, z: 0 },
+      radius: 6,
+      mass: 1,
+      collides: false,
+      physicsBody: false,
+      hull: 1,
+      hullMax: 1,
+      data: {
+        parentType: 'story_prop',
+        scanLabel: 'Core',
+        storyPropKind: 'circuit_core',
+        circuitCore: true,
+        tetherable: false,
+        masslineTetherable: false,
+      },
+    });
+    core.markId = entity && entity.id != null ? entity.id : null;
+  },
+
+  _takeCircuitCore(core) {
+    if (!core || core.taken) return;
+    core.taken = true;
+    this._coresFound = (this._coresFound || 0) + 1;
+    this._forgetSpawn(core.markId);
+    core.markId = null;
+  },
+
+  _clearCircuitCores() {
+    for (const core of this._circuitCores || []) {
+      if (core && core.markId != null) this._forgetSpawn(core.markId);
+    }
+    this._circuitCores = [];
+  },
+
+  _clearCircuitMark() {
+    const id = this._circuitMarkId;
+    this._circuitMarkId = null;
+    if (id == null) return;
+    const remove = this.helpers && this.helpers.removeEntity;
+    if (typeof remove === 'function') {
+      remove(id, { immediate: true });
+      return;
+    }
+    const entities = this.state && this.state.entities;
+    if (entities && typeof entities.delete === 'function') entities.delete(id);
+  },
+
+  /** A beacon the renderer already draws, sitting on the ring or the gate. Not a combatant. */
+  _placeCircuitMark() {
+    const spec = this._swarm && this._swarm.circuit;
+    if (!spec || (spec.kind !== 'hold' && spec.kind !== 'reach')) return;
+    const spot = spec.kind === 'hold' ? spec.zone : spec.gate;
+    if (!spot || !Number.isFinite(spot.x) || !Number.isFinite(spot.z)) return;
+    const entities = this.state && this.state.entities;
+    const existing = this._circuitMarkId != null && entities && typeof entities.get === 'function'
+      ? entities.get(this._circuitMarkId)
+      : null;
+    const onSpot = existing && existing.alive !== false && existing.pos
+      && existing.collides === false && existing.physicsBody === false
+      && existing.data && existing.data.circuitMark === true
+      && Number(existing.data.ringRadius) === Number(spot.radius)
+      && Math.hypot(existing.pos.x - spot.x, existing.pos.z - spot.z) < 1;
+    if (onSpot) return;
+    if (existing) this._clearCircuitMark();
+    this._circuitMarkId = null;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function') return;
+    const entity = spawn({
+      type: 'beacon',
+      pos: { x: spot.x, z: spot.z },
+      vel: { x: 0, z: 0 },
+      radius: 8,
+      mass: 1,
+      collides: false,
+      physicsBody: false,
+      hull: 1,
+      hullMax: 1,
+      data: {
+        parentType: 'story_prop',
+        scanLabel: spec.kind === 'hold' ? 'Hold ring' : 'Gate',
+        storyPropKind: 'circuit_mark',
+        circuitMark: true,
+        ringRadius: spot.radius,
+        tetherable: false,
+        masslineTetherable: false,
+      },
+    });
+    this._circuitMarkId = entity && entity.id != null ? entity.id : null;
+  },
+
+  _playerPos() {
+    const state = this.state;
+    const player = state?.entities?.get?.(state.playerId);
+    if (!player || player.alive === false || !player.pos) return null;
+    return player.pos;
+  },
+
+  _tickCircuitObjective() {
+    const spec = this._swarm && this._swarm.circuit;
+    if (!spec) return;
+    if (spec.kind === 'nodes') {
+      for (const member of this._cohort.values()) {
+        if (!member.circuitNode || !member.entity || !member.root || !member.entity.pos) continue;
+        member.entity.pos.x = member.root.x;
+        member.entity.pos.z = member.root.z;
+        if (member.entity.vel) { member.entity.vel.x = 0; member.entity.vel.z = 0; }
+      }
+      return;
+    }
+    const pos = this._playerPos();
+    if ((spec.kind === 'hold' || spec.kind === 'reach') && pos) {
+      this._placeCircuitMark();
+      const zone = spec.kind === 'hold' ? spec.zone : spec.gate;
+      const inside = !!(zone && Math.hypot(pos.x - zone.x, pos.z - zone.z) <= zone.radius);
+      if (inside) spec.fill = (spec.fill || 0) + 1;
+      // The gate is a sit, the same as the hold. Leaving drains the clock; dipping in and out does not add up.
+      else spec.fill = Math.max(0, (spec.fill || 0) - 1);
+      return;
+    }
+    if (spec.kind !== 'collect' || !pos) return;
+    for (const core of this._circuitCores || []) {
+      if (core.taken) continue;
+      this._ensureCircuitCoreMark(core);
+      if (Math.hypot(pos.x - core.x, pos.z - core.z) <= 48) this._takeCircuitCore(core);
+    }
+  },
+
+  _circuitObjectiveMet() {
+    const spec = this._swarm && this._swarm.circuit;
+    if (!spec) return false;
+    if (spec.kind === 'nodes') {
+      return (spec.nodesMarked || 0) >= (spec.nodeCount || 0) && (spec.nodesDown || 0) >= (spec.nodeCount || 0);
+    }
+    if (spec.kind === 'hold' || spec.kind === 'reach') return (spec.fill || 0) >= (spec.need || 1);
+    if (spec.kind === 'collect') return (this._coresFound || 0) >= (spec.coreCount || 0);
+    if (spec.kind === 'commander') return spec.commanderMarked === true && spec.commanderDown === true;
+    return false;
   },
 
   /** Hand the live wave census to runSession, the only writer of state.run. */
@@ -513,7 +804,12 @@ export const survivalWave = {
       // A debut body is owed like a champion is owed (SF-064): the wave's staged introduction
       // must not be silently dropped because the room happened to be full when its tick came.
       // The same debt applies to a mass-gap wall's late heavies (SF-062) — they ARE the lesson.
-      if (this._swarm && entry.champion !== true && entry.debut !== true && entry.wall !== true) {
+      const spec = this._swarm && this._swarm.circuit;
+      const oweObjective = !!spec && (
+        (spec.kind === 'commander' && !spec.commanderMarked)
+        || (spec.kind === 'nodes' && (spec.nodesMarked || 0) < (spec.nodeCount || 0))
+      );
+      if (this._swarm && entry.champion !== true && entry.debut !== true && entry.wall !== true && !oweObjective) {
         count = Math.min(count, Math.max(0, this._concurrent - this._cohort.size));
         if (count <= 0) continue;
       }
@@ -553,12 +849,12 @@ export const survivalWave = {
       for (const id of receipt.spawnedIds) {
         // Record the spawned OBJECT, not just the id: entity ids recycle through freeIds inside
         // a step, so the kill/destroy seams resolve membership by identity, never by id alone.
-        this._cohort.set(id, {
-          role: entry.role,
-          entity: this.state && this.state.entities && typeof this.state.entities.get === 'function'
-            ? this.state.entities.get(id) || null
-            : null,
-        });
+        const admitted = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(id) || null
+          : null;
+        const member = { role: entry.role, entity: admitted };
+        this._markCircuitMember(member);
+        this._cohort.set(id, member);
         // The champion is the wave's WORK, not one more body in the count. Remembering which hulls
         // they are means a kill quota met on chaff cannot end a boss wave with the boss still
         // flying — and because the marker is a FLAG rather than an enemy id, a wave can owe a wing
@@ -581,7 +877,9 @@ export const survivalWave = {
       // A champion refused by the budget is still owed; ordinary reinforcements cannot replace it.
       // The same is true of a staged debut, a wall's heavies, or an act round's staged body: a
       // staged body must land, not vanish.
-      if (this._swarm?.killTarget && (receipt.deferred > 0 || entry.champion === true || entry.debut === true || entry.wall === true || entry.staged === true)
+      const stillOwed = this._swarm?.circuit?.kind === 'commander' && !this._swarm.circuit.commanderMarked
+        || this._swarm?.circuit?.kind === 'nodes' && (this._swarm.circuit.nodesMarked || 0) < (this._swarm.circuit.nodeCount || 0);
+      if ((this._swarm?.killTarget || stillOwed) && (receipt.deferred > 0 || entry.champion === true || entry.debut === true || entry.wall === true || entry.staged === true || stillOwed)
         && receipt.admitted < count) {
         this._pending[write++] = { ...item, entry: { ...entry, count: count - receipt.admitted,
           atTick: this._cursor + SWARM_SPAWN_RETRY_TICKS } };
@@ -734,6 +1032,12 @@ export const survivalWave = {
     for (const [id, member] of this._cohort) {
       const entity = this._resolveCohortEntity(id, member);
       if (!entity || entity.alive === false || !entity.pos || !entity.data?.ai) continue;
+      // A hive node is a rooted sac, not a shooter. Hold the gun for the whole round.
+      if (entity.data.circuitNode === true) {
+        entity.data.ai.swarmFireHeld = true;
+        entity.data.ai.swarmFireHoldUntil = now + 2 / 60;
+        continue;
+      }
       // Opt-in bracket. The default plate stays on entity.radius so a hull without
       // this field cannot grow a halo. The stroke stays just outside the hull
       // (see SWARM_THREAT_MARK_SCALE). The in-hull glyph is what lifts the dark
@@ -1089,6 +1393,36 @@ export const survivalWave = {
     if (this._swarm) {
       if (run.phase !== 'active') return;
       if (!playerIsAlive(this.state)) return;
+      const specKind = this._swarm.circuit?.kind;
+      if (specKind === 'nodes' || specKind === 'hold' || specKind === 'collect'
+        || specKind === 'commander' || specKind === 'reach') {
+        if (!this._circuitObjectiveMet()) return;
+        const spec = this._swarm.circuit;
+        this._cleared = true;
+        this._active = false;
+        this._publishWaveProgress({ force: true });
+        this._emit(WAVE_CLEARED_SEAM, {
+          wave: this._wave,
+          completionKind: specKind,
+          objectiveName: spec.commanderName || null,
+          killWord: specKind === 'commander' ? `${spec.commanderName} down` : null,
+          found: specKind === 'collect' ? this._coresFound
+            : specKind === 'nodes' ? spec.nodesDown
+              : specKind === 'commander' ? 1
+                : spec.fill,
+          total: spec.need,
+          durationTicks: this._durationTicks,
+          requested: this._requestedTotal,
+          admitted: this._admittedTotal,
+          killed: this._resolved,
+          survivors: this._cohort.size,
+          disabledSurvivors: this._disabledCohortCount(),
+          starved: false,
+          tick: this._cursor,
+          runWave: run && Number.isInteger(run.wave) ? run.wave : this._wave,
+        });
+        return;
+      }
       const durationSeconds = this._durationSeconds();
       if (this._swarm.killTarget) {
         if (this._admittedTotal < this._plannedBodies || this._pending.length || this._actionableCohortCount() > 0) return;
@@ -1170,6 +1504,9 @@ export const survivalWave = {
     this._lessonReleased = false;
     this._lessonOpenedAt = null;
     this._bossIds = new Set();
+    this._clearCircuitMark();
+    this._clearCircuitCores();
+    this._coresFound = 0;
     // A capital champion's fight record never outlives its wave: terminal, surviving or
     // run-ended, the next wave (or teardown) starts from an empty fight ledger.
     if (this._capitalFightId) {
@@ -1254,9 +1591,34 @@ export const survivalWave = {
     if (!this._swarm) return;
     // SWARM-08 B5 — the journey descriptor rides every progress receipt so a HUD can name the
     // stage and local round while paused on the armory (the plan itself is not replayed).
-    const circuit = this._swarm.circuit && typeof this._swarm.circuit === 'object'
-      ? { stage: this._swarm.circuit.stage, localRound: this._swarm.circuit.localRound, kind: this._swarm.circuit.kind }
+    const spec = this._swarm.circuit && typeof this._swarm.circuit === 'object' ? this._swarm.circuit : null;
+    const circuit = spec
+      ? { stage: spec.stage, localRound: spec.localRound, kind: spec.kind }
       : null;
+    if (spec && (spec.kind === 'collect' || spec.kind === 'hold' || spec.kind === 'reach'
+      || spec.kind === 'nodes' || spec.kind === 'commander')) {
+      const found = spec.kind === 'collect' ? (this._coresFound || 0)
+        : spec.kind === 'nodes' ? (spec.nodesDown || 0)
+          : spec.kind === 'commander' ? (spec.commanderDown ? 1 : 0)
+            : (spec.fill || 0);
+      const total = spec.kind === 'collect' ? spec.coreCount
+        : spec.kind === 'nodes' ? spec.nodeCount
+          : (spec.need || 1);
+      const stamp = `${spec.kind}:${found}`;
+      if (!force && stamp === this._lastProgressSecond) return;
+      this._lastProgressSecond = stamp;
+      this._emit('run:waveProgress', {
+        wave: this._wave,
+        completionKind: spec.kind,
+        found,
+        total,
+        remainingTicks: spec.kind === 'hold' || spec.kind === 'reach' ? Math.max(0, (spec.need || 0) - found) : null,
+        durationTicks: spec.kind === 'hold' || spec.kind === 'reach' ? spec.need : null,
+        killWord: spec.kind === 'commander' ? spec.commanderName : null,
+        circuit,
+      });
+      return;
+    }
     if (this._plan?.swarm?.killTarget > 0) {
       const remaining = Math.max(0, this._plannedBodies - this._resolved);
       if (!force && remaining === this._lastProgressSecond) return;

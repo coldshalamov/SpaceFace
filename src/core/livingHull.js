@@ -22,6 +22,10 @@ export const LIVING_HULL_GRIME_PER_CYCLE = 0.09;
 export const LIVING_HULL_HISTORY_VERSION = 2;
 export const LIVING_HULL_SCAR_MAX = 24;
 export const LIVING_HULL_RENOWN_MAX = 8;
+// PULSE-HISTORY — the cockpit shelf is smaller than the scar list: each keepsake is one kind of
+// deed, so a capped handful covers the whole keepsake table in data/historyWear.js.
+export const LIVING_HULL_TRINKET_MAX = 12;
+const TRINKET_LABEL_MAX = 64;
 
 /** How the hull got marked. `weapon` = a shot that reached armour/hull; `slam` = a real contact. */
 export const LIVING_HULL_SCAR_CAUSES = Object.freeze(['weapon', 'slam']);
@@ -116,6 +120,38 @@ export function normalizeHullRenown(input) {
   });
 }
 
+/**
+ * One cockpit keepsake — the shelf next to the tally marks. id is the stable trinket id from
+ * data/historyWear.js (dedupe key); label is the noun the shelf shows; deedId names the durable
+ * receipt that granted it so the row can answer "where did this come from".
+ */
+export function normalizeHullTrinket(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const id = clippedText(input.id, RENOWN_ID_MAX);
+  const label = clippedText(input.label, TRINKET_LABEL_MAX);
+  if (!id || !label) return null;
+  return Object.freeze({
+    id,
+    label,
+    deedId: clippedText(input.deedId, RENOWN_ID_MAX),
+    atT: finiteNonNegative(input.atT, 0),
+  });
+}
+
+function normalizeTrinketList(input) {
+  if (!Array.isArray(input) || !input.length) return null;
+  const out = [];
+  const seen = new Set();
+  for (const raw of input) {
+    const trinket = normalizeHullTrinket(raw);
+    if (!trinket || seen.has(trinket.id)) continue;
+    seen.add(trinket.id);
+    out.push(trinket);
+    if (out.length >= LIVING_HULL_TRINKET_MAX) break;
+  }
+  return out.length ? Object.freeze(out) : null;
+}
+
 function normalizeScarList(input) {
   if (!Array.isArray(input) || !input.length) return null;
   const out = [];
@@ -191,9 +227,11 @@ export function normalizeLivingHull(input, simTime = 0) {
   };
   const scars = normalizeScarList(input.scars);
   const renown = normalizeRenownList(input.renown);
+  const trinkets = normalizeTrinketList(input.trinkets);
   if (scars) record.scars = scars;
   if (renown) record.renown = renown;
-  if (scars || renown) record.historyVersion = LIVING_HULL_HISTORY_VERSION;
+  if (trinkets) record.trinkets = trinkets;
+  if (scars || renown || trinkets) record.historyVersion = LIVING_HULL_HISTORY_VERSION;
   return Object.freeze(record);
 }
 
@@ -217,6 +255,12 @@ export function livingHullPatchedScars(input) {
 export function livingHullRenown(input) {
   const hull = normalizeLivingHull(input, 0);
   return hull.renown || EMPTY_LIST;
+}
+
+/** Keepsakes earned from real deeds, oldest first. Frozen; readers never own the array. */
+export function livingHullTrinkets(input) {
+  const hull = normalizeLivingHull(input, 0);
+  return hull.trinkets || EMPTY_LIST;
 }
 
 /**
@@ -324,6 +368,26 @@ export function livingHullWithRenown(input, act, simTime = 0) {
   });
 }
 
+/**
+ * Put one keepsake on the cockpit shelf. Idempotent by trinket id — the same deed receipt replayed
+ * grants nothing twice. Same return-the-same-record rule as the scar reducer.
+ */
+export function livingHullWithTrinket(input, trinket, simTime = 0) {
+  const hull = normalizeLivingHull(input, simTime);
+  const next = normalizeHullTrinket(trinket);
+  if (!next) return hull;
+  const current = hull.trinkets || EMPTY_LIST;
+  for (const existing of current) if (existing.id === next.id) return hull;
+  const list = current.length >= LIVING_HULL_TRINKET_MAX ? current.slice(1) : current.slice();
+  list.push(next);
+  return Object.freeze({
+    ...hull,
+    trinkets: Object.freeze(list),
+    historyVersion: LIVING_HULL_HISTORY_VERSION,
+    updatedAtT: finiteNonNegative(simTime, hull.updatedAtT),
+  });
+}
+
 export function livingHullWithVent(input, simTime = 0) {
   const hull = normalizeLivingHull(input, simTime);
   if (hull.heatScorch >= LIVING_HULL_HEAT_SCORCH_MAX) return hull;
@@ -381,6 +445,17 @@ function sameRenownList(left, right) {
   return true;
 }
 
+function sameTrinketList(left, right) {
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index++) {
+    const a = left[index];
+    const b = right[index];
+    if (a.id !== b.id || a.label !== b.label || a.deedId !== b.deedId
+      || a.atT !== b.atT) return false;
+  }
+  return true;
+}
+
 export function sameLivingHull(a, b) {
   const left = normalizeLivingHull(a, 0);
   const right = normalizeLivingHull(b, 0);
@@ -393,5 +468,6 @@ export function sameLivingHull(a, b) {
     && left.graffitiAuthor === right.graffitiAuthor
     && left.updatedAtT === right.updatedAtT
     && sameScarList(left.scars || EMPTY_LIST, right.scars || EMPTY_LIST)
-    && sameRenownList(left.renown || EMPTY_LIST, right.renown || EMPTY_LIST);
+    && sameRenownList(left.renown || EMPTY_LIST, right.renown || EMPTY_LIST)
+    && sameTrinketList(left.trinkets || EMPTY_LIST, right.trinkets || EMPTY_LIST);
 }

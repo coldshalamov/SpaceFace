@@ -244,6 +244,175 @@ export const CANDLE_FLEET_PIT_BEARING = Object.freeze({
   }),
 });
 
+// SEED-SC-05 — the Scar Bazaar's surplus move. Stolen cargo comes in under the upturned deck;
+// the surplus leaves as a filed count, not a Concord warrant.
+export const KEPLER_SURPLUS_MOVE = Object.freeze({
+  id: 'landmark_kepler_surplus_move',
+  sectorId: 'sector_kepler_scar',
+  poiId: 'poi_kepler_hulk',
+  targetRef: 'landmark_kepler_flight_deck',
+  stationId: 'station_kepler_scar',
+  factionId: 'faction_reach',
+  targetLocalPos: Object.freeze({ x: 40, z: 720 }),
+  maxRangeWu: 300,
+  poiLabel: 'The Flight Deck',
+  rewardCr: 880,
+  minRep: -1000,
+  riskTier: 1,
+  title: 'The Flight Deck: Surplus Move',
+  brief: 'Hold under the upturned deck and file one close count of what the stalls are moving out.',
+  summary: 'Stolen cargo comes in under the Void-Reach. The Bazaar pays a Reach pilot to file the surplus that leaves, taken at the deck, not copied from a Concord ledger.',
+  causeTag: 'landmark:kepler_surplus_move',
+  causeFingerprint: 'landmark:kepler:surplus-move:v1',
+  causeLine: 'The stalls under the capsized carrier move more out than they admit in.',
+  successText: 'Surplus filed. The Bazaar paid for the outbound count and kept the inbound names off the sheet.',
+  artifact: Object.freeze({
+    id: 'artifact_kepler_surplus_tally',
+    title: 'Kepler · Surplus Tally',
+    body: 'One close pass under the upturned deck separates stall noise from outbound lots. The surplus is real, the names are not, and the Reach price is already on the sheet.',
+  }),
+});
+
+// SEED-SC-07 — carry the shrine readings out of a sector that otherwise stays empty.
+export const ORCUS_SHRINE_READINGS = Object.freeze({
+  id: 'landmark_orcus_shrine_readings',
+  sectorId: 'sector_orcus_shadow',
+  poiId: 'poi_orcus_plinth',
+  targetRef: 'landmark_orcus_shadow_plinth',
+  stationId: 'station_orcus_shadow',
+  factionId: 'faction_archive',
+  targetLocalPos: Object.freeze({ x: 980, z: -540 }),
+  maxRangeWu: 300,
+  poiLabel: 'Shadow Plinth',
+  rewardCr: 960,
+  minRep: -1000,
+  riskTier: 2,
+  title: 'The Shadow Plinth: Shrine Readings',
+  brief: 'Take one close reading off the plinth that faces the signal, then file it at the Shadow Cache.',
+  summary: 'The Orcus Signal answers every scan one pulse late. The Cache pays for the plinth reading carried back through the shadow, not for a second station.',
+  causeTag: 'landmark:orcus_shrine_readings',
+  causeFingerprint: 'landmark:orcus:shrine-readings:v1',
+  causeLine: 'The plinth faces a signal that has no source, and the Cache will not send its own boat.',
+  successText: 'Readings filed. The Cache logged the late pulse and paid without lighting the lane.',
+  artifact: Object.freeze({
+    id: 'artifact_orcus_plinth_reading',
+    title: 'Orcus · Plinth Reading',
+    body: 'The plinth returns the same scan it was given, one pulse late. Carried to the Cache, the delay is the reading. Nothing else in the shadow answered.',
+  }),
+});
+
+// SEED-SC-10 — survey the fissure and sell the fracture reading. The fissure keeps no lore id.
+export const HAUMEA_FRACTURE_READING = Object.freeze({
+  id: 'landmark_haumea_fracture_reading',
+  sectorId: 'sector_haumea_rift',
+  poiId: 'poi_haumea_fissure',
+  targetRef: 'landmark_haumea_fissure',
+  stationId: 'station_haumea_rift',
+  factionId: 'faction_free',
+  targetLocalPos: Object.freeze({ x: 0, z: 180 }),
+  maxRangeWu: 300,
+  poiLabel: 'Ice Fissure Signal',
+  rewardCr: 720,
+  minRep: -1000,
+  riskTier: 1,
+  title: 'The Ice Fissure Signal: Fracture Reading',
+  brief: 'Hold over the fissure mouth and file one close fracture reading at the observatory.',
+  summary: 'The rift is the machine. Rift Observatory buys one fracture reading taken at the mouth, not a bounty and not a second name for the ice.',
+  causeTag: 'landmark:haumea_fracture_reading',
+  causeFingerprint: 'landmark:haumea:fracture-reading:v1',
+  causeLine: 'The fissure keeps answering in ice, and the observatory will pay for the shape of the answer.',
+  successText: 'Fracture reading filed. The observatory paid for the crack and left the ice unnamed.',
+  artifact: Object.freeze({
+    id: 'artifact_haumea_fracture_reading',
+    title: 'Haumea · Fracture Reading',
+    body: 'One close pass resolves the mouth into a repeating split, deeper than the sheet and quieter than the buoy. The observatory files the shape. The fissure stays a fissure.',
+  }),
+});
+
+// SEED-SC-14 — cut ice and put it on the waystation scale the same shift.
+export const NEREID_SAME_SHIFT_ICE = Object.freeze({
+  id: 'landmark_nereid_same_shift_ice',
+  sectorId: 'sector_nereid_shoal',
+  poiId: 'poi_nereid_wreck',
+  targetRef: 'landmark_nereid_ice_hull',
+  stationId: 'station_nereid',
+  factionId: 'faction_dmc',
+  targetLocalPos: Object.freeze({ x: 1280, z: 720 }),
+  maxRangeWu: 300,
+  poiLabel: 'Ice-Hull Wreck',
+  rewardCr: 640,
+  minRep: -1000,
+  riskTier: 1,
+  title: 'The Shoal: Same-Shift Ice',
+  brief: 'Cut one close reading off the ice hull and file the weight at the waystation before the shift turns.',
+  summary: 'Shoal crews sell ice the shift they cut it. The waystation scale pays for a reading taken on the hull, under the Collective cut, not for a smuggling desk.',
+  causeTag: 'landmark:nereid_same_shift_ice',
+  causeFingerprint: 'landmark:nereid:same-shift-ice:v1',
+  causeLine: 'The ice on that hull is still the shift\'s cargo if somebody weighs it before the dock turns.',
+  successText: 'Weight filed. The waystation paid the same-shift cut and sent the number to the claim.',
+  artifact: Object.freeze({
+    id: 'artifact_nereid_shift_weight',
+    title: 'Nereid · Shift Weight',
+    body: 'One close pass on the ice hull returns a weight the waystation will take before the shift ends. The claim\'s cut is already on the ticket. Nothing in the number is hidden freight.',
+  }),
+});
+
+// SEED-SC-16 — sound the well and file it with the Quiet.
+export const PROTEUS_WELL_SOUNDING = Object.freeze({
+  id: 'landmark_proteus_well_sounding',
+  sectorId: 'sector_proteus_well',
+  poiId: 'poi_proteus_hulk',
+  targetRef: 'landmark_proteus_funnel',
+  stationId: 'station_proteus',
+  factionId: 'faction_quiet',
+  targetLocalPos: Object.freeze({ x: 1120, z: 860 }),
+  maxRangeWu: 300,
+  poiLabel: 'The Funnel',
+  rewardCr: 1100,
+  minRep: -1000,
+  riskTier: 2,
+  title: 'The Funnel: Sound the Well',
+  brief: 'Hold in the funnel throat and file one close sounding at the Proteus Den.',
+  summary: 'The den buys findings. One sounding taken in the well, filed with the Quiet, is the work. The berth stays gated. This is not a survey board.',
+  causeTag: 'landmark:proteus_well_sounding',
+  causeFingerprint: 'landmark:proteus:well-sounding:v1',
+  causeLine: 'The funnel returns more mass than the hull explains, and the den will pay for the sounding.',
+  successText: 'Sounding filed. The Quiet logged the extra mass and paid without opening a public board.',
+  artifact: Object.freeze({
+    id: 'artifact_proteus_well_sounding',
+    title: 'Proteus · Well Sounding',
+    body: 'A close pass down the funnel resolves a floor that returns more mass than the visible hull. The den files the difference. The well stays the well.',
+  }),
+});
+
+// SEED-SC-19 — the fence's only job is the licensed plate. The black market stays.
+export const EUNOMIA_LICENSED_PLATE = Object.freeze({
+  id: 'landmark_eunomia_licensed_plate',
+  sectorId: 'sector_eunomia_gulf',
+  poiId: 'poi_eunomia_ledger',
+  targetRef: 'landmark_eunomia_ledger_plate',
+  stationId: 'station_eunomia',
+  factionId: 'faction_understory',
+  targetLocalPos: Object.freeze({ x: -920, z: 480 }),
+  maxRangeWu: 300,
+  poiLabel: 'Gulf Ledger Plate',
+  rewardCr: 840,
+  minRep: -1000,
+  riskTier: 1,
+  title: 'The Gulf Fence: Licensed Plate',
+  brief: 'Read the ledger plate under the board seal and file the cut at the Eunomia Fence.',
+  summary: 'The fence is the only reason to arrive. One plate reading, taken under the board seal and filed at the berth, is the licensed work. Concord does not post here.',
+  causeTag: 'landmark:eunomia_licensed_plate',
+  causeFingerprint: 'landmark:eunomia:licensed-plate:v1',
+  causeLine: 'The gulf plate carries a Vael seal and a cut the fence will pay a pilot to confirm.',
+  successText: 'Plate filed. The fence paid the cut and left the black-market berth exactly as it was.',
+  artifact: Object.freeze({
+    id: 'artifact_eunomia_plate_cut',
+    title: 'Eunomia · Plate Cut',
+    body: 'The ledger plate resolves under the board seal into one licensed cut and no Concord mark. The fence keeps the market. The plate keeps the seal.',
+  }),
+});
+
 const LANDMARK_QUESTS = Object.freeze([
   CAVED_SHAFT_PROBE,
   SHARD_SPHERE_SONG,
@@ -253,6 +422,12 @@ const LANDMARK_QUESTS = Object.freeze([
   METRONOME_OFFBEAT_WINDOW,
   RINGWORLD_GRID_READING,
   CANDLE_FLEET_PIT_BEARING,
+  KEPLER_SURPLUS_MOVE,
+  ORCUS_SHRINE_READINGS,
+  HAUMEA_FRACTURE_READING,
+  NEREID_SAME_SHIFT_ICE,
+  PROTEUS_WELL_SOUNDING,
+  EUNOMIA_LICENSED_PLATE,
 ]);
 const LANDMARK_QUEST_BY_ID = new Map(LANDMARK_QUESTS.map((definition) => [definition.id, definition]));
 

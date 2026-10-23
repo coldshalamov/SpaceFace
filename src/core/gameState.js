@@ -114,7 +114,9 @@ function defaultSettings() {
   };
 }
 
-function defaultPlayer() {
+// The player record a New Game starts from. Exported so a save restore can lay a snapshot over the
+// SAME defaults instead of over whatever the run being left had accumulated.
+export function defaultPlayer() {
   return {
     credits: 0, debt: 0, bounty: 0,
     // WANTED heat (V2 §20b / cut-list #15): 0..1 scalar that rises with piracy/contraband/unprovoked

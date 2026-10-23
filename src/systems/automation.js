@@ -591,6 +591,9 @@ export const automation = {
     // every button (buyDrone/hireTrader/buildOutpost/recall/assignRoute/dismiss/decommission/order*/
     // assignFleet) through this one event; `order` is the verb we switch on.
     bus.on('ui:fleetOrder', (p) => { if (p) this.handleOrder(p); });
+    import('../ui/automationSummary.js').then((mod) => {
+      if (mod && typeof mod.installAutomationLossSummary === 'function') mod.installAutomationLossSummary();
+    }).catch(() => {});
     bus.on('ui:wingOrder', (p) => { if (p) this.handleWingOrder(p); });
 
     // Combat dealing damage to one of our assets (drone group / outpost / fleet ship).
@@ -618,6 +621,7 @@ export const automation = {
     // materialize only the restored current-sector ledger.
     bus.on('save:loaded', () => {
       this._saveRestoring = false;
+      this._registry?.get?.('claims')?.migrateRetiredRefineries?.();
       this.runOfflineCatchup();
       this._syncOutpostPresence(this.state.automation);
       // Respawn current-sector drone hulls now — deferring to the first update would drop that
@@ -2097,6 +2101,7 @@ export const automation = {
   },
 
   _advanceOutpost(o, def, dt, a) {
+    if (def.retiredInto) return null;
     if (o.status === 'distressed') return null;
     if (o.status === 'raided') {
       const blockedS = Math.min(Math.max(0, dt), Math.max(0, Number(o.raidCooldown) || 0));
@@ -2807,6 +2812,10 @@ export const automation = {
   buildOutpost(defId) {
     const def = OUTPOST_BY_ID.get(defId);
     if (!def) return false;
+    if (def.retiredInto) {
+      this.toast('Refinery outposts are now Industrial Refinery claims. Claim a body and commission its refinery.', 'info');
+      return false;
+    }
     if (!this._researchedTech('tech_outpost_charter')) {
       this.toast('Research required: ' + techDisplayName('tech_outpost_charter'), 'error');
       return false;
@@ -2927,7 +2936,10 @@ export const automation = {
       recordOperationWithdrawal(inst, shipmentUsed(inst));
       breakdown = cycleSnapshot(inst, 0);
     }
-    this.meta().lostAssetsLog.push({ kind, id: inst.id, value: value || 0, t: this.state.simTime || 0, ...(breakdown ? { breakdown } : {}) });
+    this.meta().lostAssetsLog.push({
+      kind, id: inst.id, value: value || 0, sectorId: sectorId || null,
+      t: this.state.simTime || 0, ...(breakdown ? { breakdown } : {}),
+    });
     this.bus.emit('automation:assetLost', {
       kind,
       id: inst.id,

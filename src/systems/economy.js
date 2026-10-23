@@ -97,6 +97,7 @@ import { exposedDeadDropStacks, takeExposedDeadDrop } from './boreDeadDrop.js';
 import { allRegionalPressureRecipes, pressureRecipesForRegion } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState, rankServiceDiscount } from './factions.js';
+import { endingStationTradeMults } from '../story/endings/worldAfter.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { contaminationSaleMult } from '../data/alienEcology.js'; // AE-077/078 biohazard market policy
@@ -1164,7 +1165,7 @@ function restoreMarketPlayState(state, raw) {
       ? cloneSaveTree(penn.byStation) : {},
   };
   econ.podIntakeReceipts = Array.isArray(data.podIntakeReceipts)
-    ? cloneSaveTree(data.podIntakeReceipts) : [];
+    ? cloneSaveTree(data.podIntakeReceipts).slice(-POD_INTAKE_LAW.maxAccepted) : [];
   return econ;
 }
 
@@ -2727,6 +2728,9 @@ export const economy = {
     // separately from scarcity, fees and stale intel (board row 321).
     const standingOnly = commodityStandingMultipliers(spread, standingBase, {});
     const standing = commodityStandingMultipliers(spread, standingBase, conditionMult);
+    const endingTerms = endingStationTradeMults(state, stationId);
+    standing.buy *= endingTerms.buy;
+    standing.sell *= endingTerms.sell;
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.
@@ -3628,9 +3632,10 @@ export const economy = {
 
   /**
    * The Dump Chute: one jettisoned pod becomes credits at the documented discount and real stock
-   * in the receiving market. Committed under `pod-intake:<intakeId>` so a retry republishes the
-   * receipt instead of paying twice. The physical pod is consumed only when the runtime hands us
-   * a live one and a removal helper.
+   * in the receiving market. Committed in the bounded pod-intake receipt ring (newest
+   * POD_INTAKE_LAW.maxAccepted, saved with the market-play slice) so a retry republishes the
+   * receipt instead of paying twice — never in the unbounded `committedIntents` journal. The
+   * physical pod is consumed only when the runtime hands us a live one and a removal helper.
    */
   applyPodIntake(payload) {
     const state = this.state;
@@ -3649,32 +3654,34 @@ export const economy = {
     const market = state.economy.markets[stationId] || this.ensureMarket(stationId, info.type, info.size);
     const entry = market && market[commodityId];
     if (!entry) return { ok: false, reason: 'untraded' };
-    const intents = ensureCommittedIntents(state);
-    const intentKey = 'pod-intake:' + intakeId;
-    const prior = intents[intentKey];
     const receipt = { intakeId, stationId, commodityId, qty, podId: p.podId != null ? String(p.podId) : null };
+    // Duplicate rejection reads the bounded receipt ring (newest POD_INTAKE_LAW.maxAccepted
+    // intakes). The old per-intake `committedIntents` entry grew by one full receipt per pod
+    // forever and rode the save wholesale.
+    const prior = econ.podIntakeReceipts.find((row) => row && row.intakeId === intakeId);
     if (prior) {
-      const prev = prior.receipt || {};
-      if (prev.stationId !== stationId || prev.commodityId !== commodityId || prev.qty !== qty) {
+      if (prior.stationId !== stationId || prior.commodityId !== commodityId || prior.qty !== qty) {
         return { ok: false, reason: 'receipt_conflict' };
       }
-      const settled = prior.result || {};
-      this.bus.emit('economy:podIntakeAccepted', { ...prev, valueCr: settled.valueCr || 0, duplicate: true });
-      return { ok: true, duplicate: true, ...settled };
+      const settled = {
+        ok: true, intakeId, stationId: prior.stationId, commodityId: prior.commodityId,
+        qty: prior.qty, valueCr: prior.valueCr || 0,
+      };
+      this.bus.emit('economy:podIntakeAccepted', { ...settled, podId: prior.podId, duplicate: true });
+      return { ...settled, duplicate: true };
     }
     if (!this._consumeIntakePod(receipt.podId)) return { ok: false, reason: 'pod_missing' };
     const unitPriceCr = Math.max(0, Number(entry.lastSell != null ? entry.lastSell : entry.sell) || 0);
     const valueCr = podIntakeValueCr({ unitPriceCr, qty });
     const result = { ok: true, intakeId, stationId, commodityId, qty, valueCr };
     // Commit before any credit/stock write so a re-entrant retry observes the settled receipt.
-    intents[intentKey] = { receipt: { ...receipt }, result: { ...result } };
-    this._notePodIntake(stationId);
-    this.grantCredits(valueCr, 'market:pod-intake');
-    this.applyStockPressure(stationId, commodityId, 'sell', qty);
     econ.podIntakeReceipts.push({ ...receipt, valueCr, at: Number(state.simTime) || 0 });
     if (econ.podIntakeReceipts.length > POD_INTAKE_LAW.maxAccepted) {
       econ.podIntakeReceipts.splice(0, econ.podIntakeReceipts.length - POD_INTAKE_LAW.maxAccepted);
     }
+    this._notePodIntake(stationId);
+    this.grantCredits(valueCr, 'market:pod-intake');
+    this.applyStockPressure(stationId, commodityId, 'sell', qty);
     this.bus.emit('economy:podIntakeAccepted', { ...result, duplicate: false });
     this.bus.emit('toast', {
       text: `Dump Chute — ${qty}u ${def.name} taken at ${Math.round(POD_INTAKE_LAW.payFrac * 100)}% of dock rate, ${valueCr} cr`,
@@ -3770,6 +3777,15 @@ export const economy = {
     this.bus.emit('economy:auditorTally', {
       stationId, tally: row.tally, scanMult: auditorScanMultiplier(row.tally),
     });
+    // One dump is a lead. Five is a pattern. The dumps between stay quiet.
+    if (row.tally === 1 || row.tally === 5) {
+      const { voice, name } = stationVoiceFor(this.state, stationId);
+      const word = row.tally === 1 ? 'a lead' : 'a pattern';
+      this.bus.emit('toast', {
+        text: `${voice}, ${name}: Auditor Penn has ${word} on the Dump Chute.`,
+        kind: 'warn', ttl: 5,
+      });
+    }
   },
 
   /** Penn's live lead at a berth (0 when nothing was dumped inside his window). */
@@ -3807,6 +3823,13 @@ export const economy = {
     const intentManifestId = intent.manifestId != null ? String(intent.manifestId) : null;
     const manifestMatch = (row) => !intentManifestId || !row || row.manifestId == null
       || String(row.manifestId) === intentManifestId;
+    // A position past its deadline is already worthless: an arrival that lands between the
+    // deadline and the next 5 s sweep must settle it as expired (the sweep's own rule), not pay it.
+    const overdue = (row) => !(Number(row.expiresAt) > at);
+    const expireOverdue = (book, row, label) => {
+      book.settled.push({ ...row, outcome: 'expired', settledAt: at, payoutCr: 0 });
+      this.bus.emit('economy:marketContractExpired', { kind: label, id: row.id, stationId: row.stationId });
+    };
     const stillOpen = [];
     for (const row of econ.convoyShares.open) {
       if (!row || row.stationId !== stationId || dockSeq == null || row.dockSeq !== dockSeq
@@ -3814,6 +3837,7 @@ export const economy = {
         stillOpen.push(row);
         continue;
       }
+      if (overdue(row)) { expireOverdue(econ.convoyShares, row, 'convoy-share'); continue; }
       const settled = { ...row, outcome: 'arrived', settledAt: at, intentId: intent.intentId || null };
       econ.convoyShares.settled.push(settled);
       if (settled.payoutCr > 0) this.grantCredits(settled.payoutCr, 'market:convoy-share:arrival');
@@ -3832,6 +3856,7 @@ export const economy = {
       }
       const trade = trades.find((t) => t && t.commodityId === row.commodityId) || null;
       if (!trade) { slipsOpen.push(row); continue; }
+      if (overdue(row)) { expireOverdue(econ.forwardSlips, row, 'forward-slip'); continue; }
       const entry = market && market[row.commodityId];
       const arrivalBuyCr = Number(entry && (entry.lastBuy != null ? entry.lastBuy : entry.buy)) || 0;
       const payoutCr = settleForwardSlip({ lockedBuyCr: row.lockedBuyCr, arrivalBuyCr, qty: row.qty });
@@ -3921,10 +3946,20 @@ export const economy = {
       cause: 'freight_loss',
       freighterKey: intent.freighterKey || null,
     };
+    const armed = econ.coldChain[stationId];
     this.bus.emit('economy:coldChainArmed', {
       stationId,
-      commodityIds: econ.coldChain[stationId].commodityIds.slice(),
-      untilSimTime: econ.coldChain[stationId].untilSimTime,
+      commodityIds: armed.commodityIds.slice(),
+      untilSimTime: armed.untilSimTime,
+    });
+    const { voice, name } = stationVoiceFor(state, stationId);
+    const labels = armed.commodityIds.map((cid) => {
+      const def = commodityDef(state, cid);
+      return (def && def.name) || cid;
+    });
+    this.bus.emit('toast', {
+      text: `${voice}, ${name}: Cold chain broken — ${labels.join(', ')} spoiling.`,
+      kind: 'warn', ttl: 6,
     });
   },
 
@@ -3936,7 +3971,11 @@ export const economy = {
     const expire = (book, label) => {
       const open = [];
       for (const row of book.open) {
-        if (!row || !(Number(row.expiresAt) > now)) { open.push(row); continue; }
+        // A malformed row (not an object) carries no stake we can name: discard it.
+        if (!row || typeof row !== 'object') continue;
+        // A contract stays open while its deadline is still ahead; one with no usable deadline
+        // is settled as expired rather than held open forever.
+        if (Number(row.expiresAt) > now) { open.push(row); continue; }
         const settled = { ...row, outcome: 'expired', settledAt: now, payoutCr: 0 };
         book.settled.push(settled);
         this.bus.emit('economy:marketContractExpired', { kind: label, id: row.id, stationId: row.stationId });
@@ -4517,7 +4556,7 @@ export const economy = {
       rec.cause = 'ore_flood';
       rec.atT = now;
       if (wasOn) continue;
-      const { lawful } = stationVoiceFor(state, st.id);
+      const { voice, name, lawful } = stationVoiceFor(state, st.id);
       const receipt = {
         schemaVersion: 1, stationId: st.id, sectorId: p.sectorId, factionId: info.factionId || null, lawful,
         commodityId: p.commodityId || null, yieldU: Number(p.yieldU) || 0, boomUntil: rec.boomUntil,
@@ -4525,6 +4564,10 @@ export const economy = {
       };
       receipts.push(receipt);
       this.bus.emit('station:boom', receipt);
+      this.bus.emit('toast', {
+        text: `${voice}, ${name}: ${CONDITION_LINES.boom}`,
+        kind: 'info', ttl: 5,
+      });
     }
     return receipts;
   },
@@ -5382,18 +5425,31 @@ export const economy = {
     // successor) can route back through the patrol's lawful jurisdiction rather than only the
     // station the proximity case happened to name.
     if (p.patrolId != null) scannedPayload.patrolId = p.patrolId;
+    // The detection roll is decided BEFORE the scan is announced so the announcement can carry
+    // the real verdict. `hasContraband` still means "contraband was aboard when the scan ran"
+    // (customs UI, mid-scan dump window); `detected` is whether the scanner actually read it.
+    // Contracts bust and confiscation clauses breach on `detected`, never on the bare scan —
+    // an evaded sweep keeps the run alive. Packets from outside runScan carry no `detected` key
+    // and read as detected, so a hand-emitted bust keeps its old meaning. Scan odds are pure
+    // reads and the roll is the only rng draw here, so draw order is unchanged.
+    let factionId;
+    let detected = false;
+    if (hasContraband) {
+      const security = p.security != null ? p.security : this.currentSecurity();
+      const cloak = (p.scannerCloak != null ? p.scannerCloak : this.scannerCloak(state));
+      factionId = p.factionId || (p.patrolId && this.factionOfEntity(p.patrolId)) || this.scanningFaction(state);
+      const hotMap = state.player.customsHotUntil || null;
+      const hot = hotUntilActive(hotMap, state.simTime, factionId);
+      const pScan = this.auditorScanChance({
+        security, cloak, hot, stationId: p.stationId || null,
+      });
+      const roll = this._rng();
+      detected = !(roll > pScan);
+      scannedPayload.detected = detected;
+    }
     this.bus.emit('player:scannedByPatrol', scannedPayload);
     if (!hasContraband) return { found: false };
-    const security = p.security != null ? p.security : this.currentSecurity();
-    const cloak = (p.scannerCloak != null ? p.scannerCloak : this.scannerCloak(state));
-    const factionId = p.factionId || (p.patrolId && this.factionOfEntity(p.patrolId)) || this.scanningFaction(state);
-    const hotMap = state.player.customsHotUntil || null;
-    const hot = hotUntilActive(hotMap, state.simTime, factionId);
-    const pScan = this.auditorScanChance({
-      security, cloak, hot, stationId: p.stationId || null,
-    });
-    const roll = this._rng();
-    if (roll > pScan) {
+    if (!detected) {
       if (factionId) this._markFactionGatesHot(factionId);
       return { found: false, evaded: true }; // evaded; this faction's gates remember the run
     }
@@ -5975,6 +6031,12 @@ export const economy = {
     if (data.committedIntents && typeof data.committedIntents === 'object'
       && !Array.isArray(data.committedIntents) && Object.keys(data.committedIntents).length) {
       econ.committedIntents = cloneSaveTree(data.committedIntents);
+      // Dump Chute intakes used to be journaled here, one full receipt per pod, forever. The
+      // bounded pod-intake receipt ring now owns duplicate rejection; shed the old rows on load.
+      for (const key of Object.keys(econ.committedIntents)) {
+        if (key.startsWith('pod-intake:')) delete econ.committedIntents[key];
+      }
+      if (!Object.keys(econ.committedIntents).length) delete econ.committedIntents;
     } else {
       delete econ.committedIntents;
     }

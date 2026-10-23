@@ -13,6 +13,7 @@ import {
 } from '../data/survivalWaves.js';
 import { COMBAT_LAB_ARENAS } from '../data/combatLabSetups.js';
 import { SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
+import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 
 export { SURVIVAL_BOSS_CIRCUIT, SURVIVAL_BOSS_CIRCUIT_LENGTH, SURVIVAL_LIVE_CIRCUIT_ARENAS };
 
@@ -34,6 +35,53 @@ export const CIRCUIT_STAGE_COUNT = 4;
 export const CIRCUIT_ROUNDS_PER_STAGE = 4;
 export const CIRCUIT_TOTAL_ROUNDS = CIRCUIT_STAGE_COUNT * CIRCUIT_ROUNDS_PER_STAGE;
 export const CIRCUIT_SURVIVE_TICKS = 3600;
+export const CIRCUIT_NODE_COUNT = 3;
+export const CIRCUIT_CORE_COUNT = 4;
+export const CIRCUIT_HOLD_TICKS = 600;
+export const CIRCUIT_REACH_TICKS = 180;
+// Offsets from the ship at the moment the round is planned. The swarm chase camera
+// (zoom 235, fov 50, tilt 60) shows about 170 units of ground ahead of the ship.
+// CIRCUIT_VIEW_AHEAD sits inside that, so each disc's far edge is on screen while the
+// ship still starts outside the disc. The 760 debris keep is not the picture.
+export const CIRCUIT_VIEW_AHEAD = 160;
+export const CIRCUIT_HOLD_ZONE = Object.freeze({ x: 0, z: 72, radius: 44 });
+export const CIRCUIT_REACH_GATE = Object.freeze({ x: 0, z: 112, radius: 30 });
+export const CIRCUIT_COMMANDER_NAME = promotedPilotIdentity(4242, 'circuit-commander').name;
+
+/** Cohort slots that are a different contract. Local 2 stays survive. The last round stays the champion. */
+const CIRCUIT_SPECIAL_KIND = Object.freeze({
+  '2:1': 'nodes',
+  '2:3': 'hold',
+  '3:1': 'collect',
+  '3:3': 'commander',
+  '4:1': 'reach',
+});
+
+/** The room the live run relocated the player into, or the origin when the arena is unknown. */
+export function circuitArenaSpawn(arenaId) {
+  const arena = COMBAT_LAB_ARENAS.find((row) => row && row.id === arenaId);
+  const spawn = arena && arena.spawnPos;
+  if (spawn && Number.isFinite(spawn.x) && Number.isFinite(spawn.z)) return { x: spawn.x, z: spawn.z };
+  return { x: 0, z: 0 };
+}
+
+function resolveSpotOrigin(arenaId, origin) {
+  if (origin && Number.isFinite(origin.x) && Number.isFinite(origin.z)) {
+    return { x: origin.x, z: origin.z };
+  }
+  return circuitArenaSpawn(arenaId);
+}
+
+function circuitSpot(arenaId, offset, origin) {
+  const room = resolveSpotOrigin(arenaId, origin);
+  return { x: room.x + offset.x, z: room.z + offset.z, radius: offset.radius };
+}
+
+export function circuitFightScale(fight) {
+  if (fight === 'elite') return { pressureMul: 1.25, earnMul: 1.35 };
+  if (fight === 'challenge') return { pressureMul: 1.5, earnMul: 1.6 };
+  return { pressureMul: 1, earnMul: 1 };
+}
 
 /** Authored champion per stage, as SWARM_BOSS_ROTATION ids. */
 export const CIRCUIT_BOSS_SEQUENCE = Object.freeze([
@@ -141,7 +189,9 @@ export function circuitRecordIdentity(raw) {
       if (entry.arenaId !== raw.startArenaId || entry.nodeId !== raw.startArenaId) return null;
     } else if (!CIRCUIT_DESTINATIONS[stage].some(dest =>
       dest.arenaId === entry.arenaId && dest.nodeId === entry.nodeId)) return null;
-    route.push({ stage, arenaId: entry.arenaId, nodeId: entry.nodeId });
+    const row = { stage, arenaId: entry.arenaId, nodeId: entry.nodeId };
+    if (entry.fight === 'elite' || entry.fight === 'challenge') row.fight = entry.fight;
+    route.push(row);
   }
   return { version: CIRCUIT_VERSION, startArenaId: raw.startArenaId, route };
 }
@@ -203,7 +253,7 @@ export function createCircuitState(startArenaId, nodeId) {
  * The descriptor for a Circuit round, or null when `wave` is past the Circuit (overtime, done,
  * or not a Circuit at all). Pure.
  */
-export function circuitRoundFor(run, wave) {
+export function circuitRoundFor(run, wave, origin = null) {
   const circuit = circuitFor(run);
   if (!circuit) return null;
   if (circuit.status === 'completed') return null;
@@ -214,13 +264,28 @@ export function circuitRoundFor(run, wave) {
   let kind = 'cohort';
   if (localRound === 2) kind = 'survive';
   else if (localRound === CIRCUIT_ROUNDS_PER_STAGE) kind = 'boss';
+  else if (CIRCUIT_SPECIAL_KIND[`${stage}:${localRound}`]) kind = CIRCUIT_SPECIAL_KIND[`${stage}:${localRound}`];
   const bossId = kind === 'boss' ? (CIRCUIT_BOSS_SEQUENCE[stage - 1] || null) : null;
+  const routeEntry = (circuit.route || []).find((entry) => entry && entry.stage === stage) || null;
+  const fight = routeEntry && (routeEntry.fight === 'elite' || routeEntry.fight === 'challenge')
+    ? routeEntry.fight : null;
+  const scale = circuitFightScale(fight);
   return {
     stage,
     localRound,
     kind,
     bossId,
     surviveTicks: kind === 'survive' ? CIRCUIT_SURVIVE_TICKS : null,
+    fight,
+    pressureMul: scale.pressureMul,
+    earnMul: scale.earnMul,
+    commanderName: kind === 'commander' ? CIRCUIT_COMMANDER_NAME : null,
+    nodeCount: kind === 'nodes' ? CIRCUIT_NODE_COUNT : null,
+    coreCount: kind === 'collect' ? CIRCUIT_CORE_COUNT : null,
+    holdTicks: kind === 'hold' ? CIRCUIT_HOLD_TICKS : null,
+    reachTicks: kind === 'reach' ? CIRCUIT_REACH_TICKS : null,
+    zone: kind === 'hold' ? circuitSpot(run && run.arenaId, CIRCUIT_HOLD_ZONE, origin) : null,
+    gate: kind === 'reach' ? circuitSpot(run && run.arenaId, CIRCUIT_REACH_GATE, origin) : null,
   };
 }
 
@@ -231,14 +296,15 @@ export function circuitBossFor(bossId) {
 }
 
 /** Reserved choice-id shapes carried over the existing draft-pick intent. */
-export function circuitChoiceId(kind, { arenaId = null, wave = 0, revision = 1 } = {}) {
+export function circuitChoiceId(kind, { arenaId = null, wave = 0, revision = 1, fight = null } = {}) {
   const rev = Number.isInteger(revision) && revision > 0 ? revision : 1;
   const w = Number.isInteger(wave) ? wave : 0;
   if (kind === 'start') return `circuit_start_w${w}_r${rev}`;
   if (kind === 'finish') return `circuit_finish_w${w}_r${rev}`;
   if (kind === 'overtime') return `circuit_overtime_w${w}_r${rev}`;
   if (kind === 'route' && typeof arenaId === 'string' && arenaId) {
-    return `circuit_route_${arenaId}_w${w}_r${rev}`;
+    const suffix = fight === 'elite' || fight === 'challenge' ? `_${fight}` : '';
+    return `circuit_route_${arenaId}${suffix}_w${w}_r${rev}`;
   }
   return null;
 }
@@ -246,9 +312,15 @@ export function circuitChoiceId(kind, { arenaId = null, wave = 0, revision = 1 }
 /** Parse a reserved Circuit choice id, or null when it is an ordinary offer id. */
 export function parseCircuitChoiceId(id) {
   if (typeof id !== 'string' || !id.startsWith('circuit_')) return null;
-  const route = /^circuit_route_([a-z0-9_]+)_w(\d+)_r(\d+)$/.exec(id);
+  const route = /^circuit_route_(.+?)(?:_(elite|challenge))?_w(\d+)_r(\d+)$/.exec(id);
   if (route) {
-    return { kind: 'route', arenaId: route[1], wave: Number(route[2]), revision: Number(route[3]) };
+    return {
+      kind: 'route',
+      arenaId: route[1],
+      fight: route[2] || null,
+      wave: Number(route[3]),
+      revision: Number(route[4]),
+    };
   }
   const simple = /^circuit_(start|finish|overtime)_w(\d+)_r(\d+)$/.exec(id);
   if (simple) {
@@ -286,17 +358,31 @@ export function circuitChoicesFor(run) {
   if (circuit.status === 'route') {
     const nextStage = circuit.clearedStages + 1;
     const destinations = CIRCUIT_DESTINATIONS[nextStage] || [];
-    return destinations.map((dest) => ({
-      id: circuitChoiceId('route', { arenaId: dest.arenaId, wave, revision }),
-      kind: 'route',
-      stage: nextStage,
-      arenaId: dest.arenaId,
-      nodeId: dest.nodeId,
-      label: dest.label,
-      line: dest.line,
-      wave,
-      revision,
-    }));
+    return destinations.flatMap((dest) => {
+      const ordinary = {
+        id: circuitChoiceId('route', { arenaId: dest.arenaId, wave, revision }),
+        kind: 'route',
+        stage: nextStage,
+        arenaId: dest.arenaId,
+        nodeId: dest.nodeId,
+        fight: null,
+        label: dest.label,
+        line: dest.line,
+        wave,
+        revision,
+      };
+      return [ordinary, ...['elite', 'challenge'].map((fight) => {
+        const scale = circuitFightScale(fight);
+        const word = fight === 'elite' ? 'Elite' : 'Challenge';
+        return {
+          ...ordinary,
+          id: circuitChoiceId('route', { arenaId: dest.arenaId, wave, revision, fight }),
+          fight,
+          label: `${word} · ${dest.label}`,
+          line: `${dest.line} Pressure ×${scale.pressureMul}, purse ×${scale.earnMul}. The ordinary room is still a choice.`,
+        };
+      })];
+    });
   }
   if (circuit.status === 'finale') {
     return [

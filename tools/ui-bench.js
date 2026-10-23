@@ -9,7 +9,8 @@
 import { createGameState } from '../src/core/gameState.js';
 import { createScreenMemory } from '../src/ui/screenMemory.js';
 import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
-import { CONTRACT_47A_B0_BODY } from '../src/data/narrative.js';
+import { missions } from '../src/systems/missions.js';
+import { buildDefeatReceipt } from '../src/combat/playerDefeat.js';
 import { createRunState } from '../src/core/runState.js';
 import { runSession } from '../src/systems/runSession.js';
 import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
@@ -118,42 +119,25 @@ function note(line) {
 /** The state the screens read. A real GameState from the game's own factory, then seeded with the
  *  situation the screens have to draw (a tracked contract, a waypoint, a save, some cargo). */
 function seededState() {
-  const state = createGameState(47);
+  const state = createGameState(4242);
   state.mode = 'flight';
-  state.meta.seed = 47;
+  state.meta.seed = 4242;
   state.meta.lastSavedAt = '2026-09-15T20:57:46.000Z';
   state.save.currentSlot = 'quick';
-  state.ui.trackedMissionId = 'mission_helios_run';
-  // RC-48 — the tracked row is the real opening contract's installed shape, not a
-  // title-only shell: the log then renders its actual terms (pending payment, the
-  // 12.4t mass note, authorization and code) instead of the generic fallbacks.
-  state.missions.active = [{
-    id: 'mission_helios_run',
-    status: 'active',
-    type: 'salvage_retrieval',
-    title: CONTRACT_47A_B0_BODY.title,
-    summary: CONTRACT_47A_B0_BODY.summary,
-    description: CONTRACT_47A_B0_BODY.fullText,
-    authorization: CONTRACT_47A_B0_BODY.authorization,
-    objectiveProgress: 0,
-    objectiveTarget: 1,
-    deadline_s: null,
-    reward_cr: 0,
-    collateral_cr: 0,
-    riskTier: 0,
-    factionId: null,
-    distance: 600,
-    destStationId: 'station_helios',
-    destSectorId: 'sector_helios_prime',
-    storyTag: 'campaign47a:b0:recovery',
-    campaign47aBeat: 0,
-    params: {
-      cmdtyId: 'cmdty_47a_assay_sample', qty: 1, sampleRecovered: false, samplePos: null,
-      massAcceptT: CONTRACT_47A_B0_BODY.massAcceptT, massDeliverT: CONTRACT_47A_B0_BODY.massDeliverT,
-      authorization: CONTRACT_47A_B0_BODY.authorization, code: CONTRACT_47A_B0_BODY.code,
-      contractId: CONTRACT_47A_B0_BODY.contractId,
-    },
-  }];
+  // RC-48 / R479 — the tracked row is the real opening contract, installed by the game's own
+  // cold-start path rather than a hand-shaped stand-in: `_installContract47aColdStart` builds the
+  // instance through `_instanceFromOffer` (authored title/terms, pending payment, the mass note,
+  // authorization and code) and sets `ui.trackedMissionId` itself. The real page `bus` does not
+  // exist yet at this point in the module, so the owner init runs over an inert stub — the
+  // installer only emits, which the stub swallows. Never append a second 47-A entry.
+  const missionOwner = Object.create(missions);
+  missionOwner.init({
+    state,
+    bus: { on: () => () => {}, once: () => () => {}, off() {}, emit() {} },
+    helpers: {},
+    registry: { get: () => null },
+  });
+  missionOwner._installContract47aColdStart();
   // The board the docked station posts: the game's own offers, so the contracts tab is reviewed full.
   state.missions.boards = { station_helios: structuredClone(BENCH_HELIOS_BOARD) };
   state.nav.waypoint = {
@@ -393,6 +377,107 @@ function seedCrucibleShot(screenId, shot) {
       ? { ruleset: 'swarm', phase: 'refit', wave: 10, credits: 212, score: 3040, ...loadout }
       : { ruleset: 'scored', phase: 'refit', wave: 30, credits: 240, score: 4820, ...loadout });
   }
+}
+
+/**
+ * A gameOver shot (catalog `defeat: 'populated' | 'empty'`). The populated plate is told from a
+ * REAL defeat receipt — `buildDefeatReceipt` over the bench state, a Reach raider entity, and a
+ * lethal hull breach — so the attacker, faction, weapon, direction, recovery berth, cost and
+ * cargo-loss lines all resolve through the game's own catalogs instead of a hand-shaped copy.
+ * The sortie tape and "this hull lasted" read the same session telemetry ring the live route
+ * feeds (`window.__SF_TELEMETRY__`), so the shot mounts a real ring: a deathLog entry and the
+ * events that sortie actually logged.
+ *
+ * `defeat: 'empty'` mounts the same screen over a state with nothing recorded — the honest
+ * empty plate, not a receipt with its fields blanked.
+ */
+const BENCH_KILLER_ID = 9;
+let gameOverRestore = null;
+
+function unseedGameOverShot(gameState) {
+  if (!gameOverRestore) return;
+  const restore = gameOverRestore;
+  gameOverRestore = null;
+  if (restore.killer) gameState.entities.set(BENCH_KILLER_ID, restore.killer);
+  else gameState.entities.delete(BENCH_KILLER_ID);
+  gameState.player.cargo = restore.cargo;
+  gameState.player.stats = restore.stats;
+  gameState.meta.playtimeS = restore.playtimeS;
+  if (restore.saveSlots === undefined) delete gameState.save.slots;
+  else gameState.save.slots = restore.saveSlots;
+  if (gameState.combat) gameState.combat.lastPlayerDefeat = restore.defeat;
+  window.__SF_TELEMETRY__ = restore.telemetry;
+}
+
+function seedGameOverShot(gameState, shot) {
+  unseedGameOverShot(gameState);
+  gameState.combat = gameState.combat || { beams: [] };
+  gameOverRestore = {
+    killer: gameState.entities.get(BENCH_KILLER_ID) || null,
+    cargo: structuredClone(gameState.player.cargo),
+    stats: structuredClone(gameState.player.stats),
+    playtimeS: gameState.meta && gameState.meta.playtimeS,
+    saveSlots: gameState.save ? gameState.save.slots : undefined,
+    defeat: gameState.combat.lastPlayerDefeat || null,
+    telemetry: window.__SF_TELEMETRY__ || null,
+  };
+  if (shot.defeat === 'empty') {
+    gameState.combat.lastPlayerDefeat = null;
+    window.__SF_TELEMETRY__ = null;
+    return;
+  }
+  // A career a couple of hours old, ended on this hull's eighth minute — the ring, the career
+  // record and the "Load latest" verb all have something true to say.
+  gameState.meta.playtimeS = 9420;
+  Object.assign(gameState.player.stats, {
+    missionsDone: 3, kills: 12, tradesCount: 9, lifetimeProfit: 18400, biggestSingleProfit: 2200,
+  });
+  gameState.save = gameState.save || {};
+  gameState.save.slots = {
+    auto: { savedAt: '2026-09-15T20:41:02.000Z', playtimeS: 8600, sectorName: 'Helios Prime' },
+  };
+  // The manifest the recovery plan halves: 6u iron ore + 3u consumer goods is 4u lost.
+  gameState.player.cargo = {
+    items: { cmdty_ore_iron: 6, cmdty_consumer_goods: 3 },
+    usedVolume: 9, usedMass: 6.3, capVolume: 40, capMass: 60,
+  };
+  // A real Reach raider astern of the player hull, so impactDirection reads AFT through the
+  // same math the live hit ran — never a direction string authored into the fixture.
+  const killer = {
+    id: BENCH_KILLER_ID, type: 'ship', alive: true, team: 2, radius: 14, rot: 0.4,
+    pos: { x: -58, y: 0, z: 12 }, vel: { x: 30, y: 0, z: 6 }, angVel: 0,
+    factionId: 'faction_reach',
+    data: { enemyTypeId: 'corsair_raider', defId: 'ship_hornet', callsign: 'REACH KITE' },
+  };
+  gameState.entities.set(BENCH_KILLER_ID, killer);
+  const player = gameState.entities.get(gameState.playerId);
+  const receipt = buildDefeatReceipt(gameState, player, BENCH_KILLER_ID, {
+    weaponId: 'wpn_autocannon_m',
+    dominantLayer: 'hull',
+    context: 'combat',
+    result: { after: { shield: 0, shieldMax: 100, armor: 0, armorMax: 30, hull: 0, hullMax: 100 } },
+    packet: { hit: { pos: { x: -30, z: 6 } } },
+  });
+  gameState.combat.lastPlayerDefeat = receipt;
+  // The black-box ring the tape scrubs: launch-to-loss with the events a real sortie logs.
+  const lossAt = 9_000_000;
+  window.__SF_TELEMETRY__ = {
+    getSessionStats: () => ({
+      deathLog: [{
+        cause: 'ship:corsair_raider', killerName: 'Corsair Raider', killerType: 'corsair_raider',
+        killerFaction: 'faction_reach', lifespanMs: 504_000, atMs: lossAt,
+        telegraphed: true, telegraphLeadTicks: 25,
+      }],
+    }),
+    getRecentEvents: () => [
+      { atMs: 8_505_000, type: 'dock:docked', data: { stationId: 'station_helios' } },
+      { atMs: 8_520_000, type: 'mission:accepted', data: {} },
+      { atMs: 8_640_000, type: 'jump:arrive', data: { sectorId: 'sector_io_reach' } },
+      { atMs: 8_800_000, type: 'entity:killed', data: { victimClass: 'pirate' } },
+      { atMs: 8_900_000, type: 'economy:tradeCompleted', data: { side: 'sell' } },
+      { atMs: 8_960_000, type: 'entity:killed', data: { victimClass: 'pirate' } },
+    ],
+  };
 }
 
 /**
@@ -921,6 +1006,9 @@ async function goto(rawId) {
   // canSave() needs a non-zero player id, and the seeded hull sits at id 0.
   rekeyPlayer(shot.live ? 1 : 0);
   state.meta.playtimeS = shot.live ? 5260 : 0;
+  // A shot can ask for its own run seed (`seed:` in the catalog) so populated and empty plates of
+  // the same screen are provably different fixtures, not one shared seed re-dressed.
+  state.meta.seed = Number.isFinite(shot.seed) ? shot.seed : 4242;
   // A shot with `research` mounts that career's researched nodes and a research-point balance.
   state.player.researchedNodes = Array.isArray(shot.research) ? shot.research.slice() : [];
   state.player.researchPoints = Array.isArray(shot.research) ? 30 : 0;
@@ -987,6 +1075,9 @@ async function goto(rawId) {
         restoreBaseline();
         seedCrucibleShot(id, shot);
       }
+      // Restore a previous gameOver fixture before the seeds below snapshot state it dirtied
+      // (cargo, career stats, save slots, the killer entity, telemetry, the receipt itself).
+      unseedGameOverShot(state);
       // A footprint shot mounts over a lived-in record (tools/ui-bench-footprint.js); every other shot over none.
       if (id === 'footprint') seedFootprintShot(state, shot.footprint || 'wanted'); else unseedFootprintShot(state);
       // A drill shot with `drill:` mounts over a worked claim, a base shot with `base:` over a
@@ -1000,6 +1091,9 @@ async function goto(rawId) {
         seedRecordShot(state);
         (await import('../src/ui/screens/codex.js')).requestCodexTab('Figures');
       } else unseedRecordShot(state);
+      // A gameOver shot mounts over a real buildDefeatReceipt fixture (populated, the default)
+      // or a clean slate (`defeat: 'empty'`); every other screen mounted over the baseline above.
+      if (id === 'gameOver') seedGameOverShot(state, shot);
       const screen = await loader();
       const ctx = { state, bus, screenManager: manager, registry, screenMemory, writeStorePage() {}, publishStoreStill() {} };
       screen.mount(root, ctx);

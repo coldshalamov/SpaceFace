@@ -1,0 +1,8 @@
+src/data/worldOneOffs.js
+src/systems/shipCapabilities.js
+src/systems/scanReveal.js
+src/ui/signalInvestigationPrompt.js
+test/al-long-1-revisit-4242.test.mjs
+design/program/agentic-run-oct20/out/R399/protected.txt
+design/program/agentic-run-oct20/out/R399/files.txt
+design/program/agentic-run-oct20/out/R399/report.md

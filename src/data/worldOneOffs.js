@@ -155,6 +155,11 @@ export const WORLD_ONE_OFFS = Object.freeze([
     spin: 0,
     radius: 12,
     physicalBody: Object.freeze({ mass: 140 }),
+    // AL-LONG-01 — the one door that names a tool, not a number: load and release an
+    // Elastic Whip on the disputed keg. The scan admits only a fit whose line carries the
+    // real head under its own runtime flag; the ordinary line's "holds any swing" rating
+    // is not the answer.
+    revisitNeed: Object.freeze({ kind: 'line', speedWuPerS: 100, headId: 'elastic_whip' }),
     why: 'Concord seized it, Meridian billed for it, and the count will not run until the desks agree. It has been "temporary" for a year.',
   }),
   Object.freeze({
@@ -234,6 +239,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     spin: 0.12,
     radius: 12,
     physicalBody: Object.freeze({ mass: 90 }),
+    // AL-LONG-01 — a real capability door: the scan quotes the live tow class against her
+    // 90 t, so the return action is getting the keg under way once the line can take it.
+    revisitNeed: Object.freeze({ kind: 'tow', massT: 90 }),
     why: 'The yard lends it out and nobody logs the return. Every green pilot has had to go around it once.',
   }),
   Object.freeze({
@@ -379,6 +387,10 @@ export const WORLD_ONE_OFFS = Object.freeze([
     spin: 0.05,
     radius: 18,
     physicalBody: Object.freeze({ mass: 150 }),
+    // AL-LONG-01 — the return action is hauling the 150 t impounded bulk out: the scan
+    // quotes the live tow class against her real mass, so she reads "not yet" until the
+    // line can take it.
+    revisitNeed: Object.freeze({ kind: 'tow', massT: 150 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_container_rack_abandoned', dx: 48, dz: 12, rot: 0.6, radius: 12 }),
@@ -530,6 +542,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     spin: 0.08,
     radius: 18,
     physicalBody: Object.freeze({ mass: 240 }),
+    // AL-LONG-01 — same tow door as the shelf, one class up: the 240 t frozen-pour tank
+    // clears only for a fit whose tow class covers her real mass.
+    revisitNeed: Object.freeze({ kind: 'tow', massT: 240 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_ore_bulk_container', dx: 70, dz: 80, rot: 1.5, radius: 10 }),
@@ -686,6 +701,10 @@ export const WORLD_ONE_OFFS = Object.freeze([
     spin: 0.05,
     radius: 10,
     physicalBody: Object.freeze({ mass: 90 }),
+    // AL-LONG-01 — a field door, not a tow: put a Signal Decoy Buoy in the water beside the
+    // waiting delivery. The decoy kind is deliberate — it is the countermeasure that deploys
+    // without an inbound seeker; chaff and ECM only answer a live one.
+    revisitNeed: Object.freeze({ kind: 'field', fieldKind: 'decoy', radiusWu: 620 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_freight_platform', dx: -30, dz: 14, rot: 0.3, radius: 18 }),

@@ -17,6 +17,12 @@ const RESULT_TTL_S = 10;
 
 const DECK_ID_RESULT = 'signal:results';
 const DECK_ID_CODEX = 'signal:codex';
+// The capability verdict lives on its own decision: a scan result card is replaced wholesale
+// by the next `signal:scanResults` batch (Spectrum publishes its own row after the scanner),
+// and a replaceable row is where a door read goes to die. The verdict is durable knowledge —
+// the fit did or did not open a named door — so only a later batch that carries verdict parts
+// may refresh it; every other publisher leaves it standing until it expires.
+const DECK_ID_CAPABILITY = 'signal:capability';
 
 function safeRecord(payload) {
   const row = payload && payload.primary;
@@ -72,6 +78,22 @@ export function tethysCodexTargetForCompletion(state, payload) {
   return { sectorId: discovery.sectorId, poiId: discovery.poiId };
 }
 
+// One verdict per physical door across the whole batch: the body's own row and the text-only
+// copies lifted onto the lesson rows share a doorKey, so dedupe by it and prefer the lifted
+// copy — it names the door in its sentence, the body's own row does not.
+function capabilityVerdicts(payload) {
+  const rows = payload && Array.isArray(payload.signals) ? payload.signals : [];
+  const byDoor = new Map();
+  for (const row of rows) {
+    const part = row && row.discovery && row.discovery.parts && row.discovery.parts['SF-174'];
+    if (!part || typeof part.sentence !== 'string' || !part.sentence) continue;
+    const key = String(part.doorKey || part.sentence);
+    const prev = byDoor.get(key);
+    if (!prev || (part.lifted === true && prev.lifted !== true)) byDoor.set(key, part);
+  }
+  return [...byDoor.values()];
+}
+
 export function createSignalInvestigationPrompt(ctx = {}) {
   const state = ctx.state || {};
   const bus = ctx.bus;
@@ -79,10 +101,70 @@ export function createSignalInvestigationPrompt(ctx = {}) {
 
   function deckFor() { return getPromptDeck(); }
 
+  // Live union of door verdicts for the current pulse: the dedicated
+  // scan:capabilityVerdicts event is authoritative (it sees every door in reach, uncapped);
+  // the capped signal batch may only ADD verdicts, never shrink the set — otherwise a
+  // six-row cap carrying a subset would erase doors the pulse already proved.
+  const capabilityDoors = new Map();
+  const mergeDoors = (parts) => {
+    const now = Number(state.simTime || 0);
+    // Entries outlive their card's own TTL only on the union path — a stale door can
+    // never resurrect inside a later scan's verdict set.
+    for (const [key, entry] of capabilityDoors) {
+      if (now - (entry._at || 0) > RESULT_TTL_S) capabilityDoors.delete(key);
+    }
+    for (const part of parts) {
+      const key = String(part.doorKey || part.sentence);
+      const prev = capabilityDoors.get(key);
+      if (!prev || (part.lifted === true && prev.lifted !== true)) {
+        capabilityDoors.set(key, { ...part, _at: now });
+      }
+    }
+    return [...capabilityDoors.values()];
+  };
+
+  const offerCapability = (deck, doors) => deck.offerDecision({
+    id: DECK_ID_CAPABILITY,
+    kind: 'info',
+    sender: 'FIT CHECK',
+    statusFlag: doors.length === 1
+      ? String(doors[0].verdict || '').toUpperCase()
+      : `${doors.length} DOORS`,
+    headline: doors.length === 1 ? 'CAPABILITY DOOR' : 'CAPABILITY DOORS',
+    detail: doors.map((part) => part.cardSentence || part.sentence).join(' ').slice(0, 480),
+    ttlAt: Number(state.simTime || 0) + RESULT_TTL_S,
+    choices: [],
+    onExpire: () => {},
+  });
+
+  // The dedicated verdict event is computed on the pulse itself (scanReveal), never from
+  // the capped signal list — a crowded scan that drops every lesson row still paints the
+  // door. An empty batch clears the card: the door left the reveal reach.
+  const showCapabilityVerdicts = (payload) => {
+    const deck = deckFor();
+    if (!deck) return false;
+    capabilityDoors.clear();
+    const doors = Array.isArray(payload && payload.verdicts) ? payload.verdicts : [];
+    const now = Number(state.simTime || 0);
+    for (const part of doors) {
+      capabilityDoors.set(String(part.doorKey || part.sentence), { ...part, _at: now });
+    }
+    if (!doors.length) {
+      deck.resolveDecision(DECK_ID_CAPABILITY);
+      return false;
+    }
+    return offerCapability(deck, doors);
+  };
+
   const showResults = (payload) => {
     const deck = deckFor();
+    if (!deck) return false;
+    const doors = capabilityVerdicts(payload);
+    if (doors.length) {
+      offerCapability(deck, mergeDoors(doors));
+    }
     const record = safeRecord(payload);
-    if (!deck || !record) return false;
+    if (!record) return false;
     return deck.offerDecision({
       id: DECK_ID_RESULT,
       kind: 'info',
@@ -180,6 +262,7 @@ export function createSignalInvestigationPrompt(ctx = {}) {
   }
 
   bus.on('signal:scanResults', showResults);
+  bus.on('scan:capabilityVerdicts', showCapabilityVerdicts);
   bus.on('signal:tracked', showTracked);
   bus.on('signal:investigating', showInvestigating);
   bus.on('signal:investigated', showInvestigated);
@@ -192,11 +275,21 @@ export function createSignalInvestigationPrompt(ctx = {}) {
     hide: () => {
       const deck = deckFor();
       if (!deck) return false;
-      return deck.resolveDecision(DECK_ID_RESULT) | deck.resolveDecision(DECK_ID_CODEX);
+      return deck.resolveDecision(DECK_ID_RESULT) | deck.resolveDecision(DECK_ID_CODEX)
+        | deck.resolveDecision(DECK_ID_CAPABILITY);
     },
     destroy: () => {
+      // Teardown owns its open decisions too — a torn-down adapter must not leave its
+      // capability card on the deck.
+      const deck = deckFor();
+      if (deck) {
+        deck.resolveDecision(DECK_ID_RESULT);
+        deck.resolveDecision(DECK_ID_CODEX);
+        deck.resolveDecision(DECK_ID_CAPABILITY);
+      }
       for (const [event, handler] of [
-        ['signal:scanResults', showResults], ['signal:tracked', showTracked],
+        ['signal:scanResults', showResults], ['scan:capabilityVerdicts', showCapabilityVerdicts],
+        ['signal:tracked', showTracked],
         ['signal:investigating', showInvestigating], ['signal:investigated', showInvestigated],
       ]) {
         try { bus.off && bus.off(event, handler); } catch (_) {}

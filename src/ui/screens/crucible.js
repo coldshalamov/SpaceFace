@@ -11,6 +11,7 @@
 // results unit test mounts the plate against a minimal fake document.
 
 import { COMBAT_LAB_ARENAS, COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
+import { todayRankedRuns } from '../../chronicler/recordsWall.js';
 import { SHIPS } from '../../data/ships.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { IS_DEMO } from '../../core/demoMode.js';
@@ -545,6 +546,18 @@ export function todayBoardFigures(profile, dateKey) {
 
 const OUTCOME_WORD = Object.freeze({ victory: 'WON', defeat: 'LOST', aborted: 'LEFT' });
 
+export function renderTodayBoard(profile, dateKey) {
+  const board = el('section', 'sf-crd-today');
+  board.setAttribute('aria-label', "Today's local daily board");
+  board.appendChild(el('p', 'k-caps', `Today · ${dateKey} · local daily runs`));
+  const ranked = todayRankedRuns(profile, dateKey);
+  if (!ranked.length) board.appendChild(el('p', 'k-sentence', 'No daily result yet. Fly Today’s challenge to put a run on this board.'));
+  const list = el('ol', 'k-rows');
+  for (const run of ranked) list.appendChild(el('li', 'k-row k-row--static',
+    `${run.rank}. ${run.score} points · wave ${run.wave} · seed ${run.seed}`));
+  board.appendChild(list); return board;
+}
+
 /** The most recent runs, newest first. History is stored oldest→newest (settleCrucibleRun
  *  appends); the door reads the tail. Never re-sorted by score — the order is the record. */
 export function recentRunRows(profile, limit = 5) {
@@ -602,6 +615,14 @@ function renderRecordCorner(profile, dateKey) {
   if (today) {
     corner.appendChild(heroBlock(String(today.score), 'today · score', 'sf-crd-fig'));
     corner.appendChild(heroBlock(String(today.wave), 'today · wave', 'sf-crd-fig'));
+  }
+  const ranked = todayRankedRuns(profile, dateKey);
+  if (ranked.length) {
+    const board = el('ol', 'k-rows');
+    board.setAttribute('aria-label', "Today's local daily board");
+    for (const run of ranked) board.appendChild(el('li', 'k-row k-row--static',
+      `${run.rank}. ${run.score} points · wave ${run.wave} · seed ${run.seed}`));
+    corner.appendChild(board);
   }
   for (const f of lifetimeFigures(profile)) {
     corner.appendChild(heroBlock(String(f.value), f.label.toLowerCase(), 'sf-crd-fig'));
@@ -1539,9 +1560,10 @@ export const crucibleScreen = {
     if (earnedDoor.trials.includes('trial_one_hull')) modifierChoices.push({ id: 'one_hull', label: 'One hull' });
     if (earnedDoor.trials.includes('trial_one_weapon')) modifierChoices.push({ id: 'one_weapon', label: 'One weapon' });
     if (modifierChoices.length) {
-      const modBody = settingRow('Modifiers', 'sf-crd-row--modifiers');
+      const modBody = settingRow('Pact', 'sf-crd-row--modifiers');
       const modList = el('ul', 'k-words k-words--row sf-crd-modifiers');
-      modList.setAttribute('aria-label', 'Earned modifiers');
+      modList.setAttribute('aria-label', 'Pact: stack earned rule changes');
+      modBody.appendChild(el('p', 'k-sentence', 'Stack the rules you want to face. Copy code carries the whole pact.'));
       for (const choice of modifierChoices) {
         const button = word(choice.label, 'k-word--fine sf-crd-modifier');
         button.dataset.modifierId = choice.id;
@@ -2115,11 +2137,16 @@ export const crucibleScreen = {
         const recSum = el('summary', 'k-t-fine fh-legend', 'Records & challenges');
         paintLegend(recSum, false);
         records.appendChild(recSum);
+        let todayBoard = renderTodayBoard(doorProfile, dailySnapshot.dateKey);
+        records.appendChild(todayBoard);
         records.appendChild(renderRecordRows(doorProfile, { onPractice: practiceFromLine }));
         let localBoard = renderCabinetBoard(rootEl.ownerDocument || document, doorProfile);
         records.appendChild(localBoard);
         this._refreshCabinetBoard = () => {
-          const next = renderCabinetBoard(rootEl.ownerDocument || document, loadCrucibleMeta());
+          const profile = loadCrucibleMeta();
+          const nextToday = renderTodayBoard(profile, dailySnapshot.dateKey);
+          records.replaceChild(nextToday, todayBoard); todayBoard = nextToday;
+          const next = renderCabinetBoard(rootEl.ownerDocument || document, profile);
           records.removeChild(localBoard); localBoard = next; records.appendChild(localBoard);
         };
         stage.appendChild(records);

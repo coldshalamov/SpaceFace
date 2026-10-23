@@ -25,6 +25,8 @@ import { openReplay, requestReplaySeek, resolveReplayRecording } from './replay.
 import { laneSetMode } from '../../core/simLaneCommands.js';
 import { analyzeMomentStream } from '../../presentation/momentMachine/index.js';
 import { installFlightFootage, getFlightFootage, createFootageViewer, resolveFlightClipFrames, encodeFlightVideo } from './flightFootage.js';
+import { installReplayAudioTape, getReplayAudioTape } from '../../audio/replayAudioTape.js';
+import { exportTheaterClip } from './theaterExport.js';
 import {
   CLIP_EXPORT_FORMATS,
   CLIP_EXPORT_UNAVAILABLE,
@@ -50,6 +52,7 @@ let clipUnsub = null;
 let amendUnsub = null;
 let resetUnsub = null;
 let openState = null;
+let clipStateOf = () => null;
 // Amended grades keyed by the original moment tick and trick. Delete rebuilds clip ids,
 // and an amendment's own tick is later than the clip, so the reel must not key on either.
 const amendedGradeByKey = new Map();
@@ -74,6 +77,8 @@ export function getClipDirector() {
  */
 export function installLiveClipDirector(bus, options = {}) {
   installFlightFootage(bus, options);
+  clipStateOf = options.stateOf || (() => null);
+  installReplayAudioTape(bus, options);
   if (!clipDirector) clipDirector = createClipDirector();
   if (clipUnsub) {
     try { clipUnsub(); } catch { /* best-effort */ }
@@ -99,6 +104,8 @@ export function installLiveClipDirector(bus, options = {}) {
 
 /** Drop the live subscription. Does not clear recorded clips. */
 export function uninstallLiveClipDirector() {
+  getReplayAudioTape()?.dispose();
+  clipStateOf = () => null;
   releaseClipDownloadURLs();
   resetUnsub?.(); resetUnsub = null;
   getFlightFootage()?.dispose();
@@ -141,19 +148,28 @@ function withAmendedGrade(clip) {
   return { ...clip, rarity: grade };
 }
 
+/** A Death clip stays on the reel when a voyage-log kill shares its tick. Other raw clips still yield. */
+export function clipKeptBesideMoments(clip, moments) {
+  if (!clip) return false;
+  if (clip.kind === 'death') return true;
+  const list = Array.isArray(moments) ? moments : [];
+  return !list.some((moment) => moment && moment.payoffTick === clip.momentTick);
+}
+
 function listedClips(director) {
   const list = director && typeof director.list === 'function' ? director.list() : [];
   const raw = Array.isArray(list) ? list.map(withAmendedGrade) : [];
-  const recording = getFlightFootage()?.recording();
+  const state = clipStateOf();
+  const recording = state?.replay?.recording || getFlightFootage()?.recording();
   if (!recording) return raw;
-  const analysis = analyzeMomentStream({ adventureTape: recording });
+  const analysis = analyzeMomentStream({ adventureTape: recording, chronicle: state?.chronicler, locale: state?.settings?.locale });
   const moments = analysis.selection?.ranked || [];
   return moments.map((moment) => ({ id: moment.id, kind: moment.shape === 'logged_stunt' ? 'trick' : moment.shape === 'logged_kill' ? 'kill' : 'moment',
     label: moment.label, momentTick: moment.payoffTick, startTick: Math.max(recording.absoluteBaseTick, moment.inTick),
     endTick: Math.min(recording.absoluteBaseTick + recording.ticks - 1, moment.outTick),
     tickRate: 60, seconds: (Math.min(recording.absoluteBaseTick + recording.ticks - 1, moment.outTick)
       - Math.max(recording.absoluteBaseTick, moment.inTick)) / 60, rating: moment.score, moment }))
-    .concat(raw.filter((clip) => !moments.some((moment) => moment.payoffTick === clip.momentTick)));
+    .concat(raw.filter((clip) => clipKeptBesideMoments(clip, moments)));
 }
 
 function noteMomentAmendment(moment) {
@@ -285,8 +301,25 @@ export function exportClip(clip, options = {}) {
   };
 }
 
+/**
+ * SEED-SE-16 — the theater render is the fast route, not a gate. These rendered-tape refusals
+ * mean the recording exists but the machinery does not (no sound window, no tape renderer, no
+ * video encoder); the path was built to fall through to the flight-video encoder in exactly
+ * this case, so a clip inside the tape but outside the recorded-sound window still exports
+ * picture. A user cancel or a failed file save is terminal and returns as-is.
+ */
+const THEATER_FALLTHROUGH_REASONS = new Set(['recorded-sound-unavailable', 'tape-renderer-unavailable', 'video-encoder-unavailable']);
+
+export function theaterRefusalFallsThrough(theater) {
+  return !!theater && theater.ok === false && THEATER_FALLTHROUGH_REASONS.has(theater.reason);
+}
+
 /** Genuine captured pixels only. Browser video may use WebM when MP4 is unavailable. */
 export async function exportRecordedClip(clip, options = {}) {
+  if (options.format === 'mp4' || options.format === 'webm') {
+    const theater = await exportTheaterClip(clip, { ...options, state: options.state || clipStateOf() });
+    if (!theaterRefusalFallsThrough(theater)) return theater;
+  }
   let encoded;
   if (options.format === 'mp4' || options.format === 'webm') encoded = await encodeFlightVideo(clip, options);
   else {
@@ -309,7 +342,7 @@ export async function exportLoggedMoment(ctx, options = {}) {
   const analysis = analyzeMomentStream({ adventureTape: resolveReplayRecording(ctx), chronicle: ctx?.state?.chronicler });
   const moment = analysis.selection?.ranked?.[0];
   if (!moment) return { ok: false, reason: 'no-logged-moment', applied: true };
-  return exportRecordedClip({ id: moment.id, startTick: moment.inTick, endTick: moment.outTick }, options);
+  return exportRecordedClip({ id: moment.id, startTick: moment.inTick, endTick: moment.outTick, moment }, { ...options, state: ctx?.state });
 }
 
 function stopPlayback() {
@@ -887,9 +920,9 @@ async function doExport(view) {
   const win = trimmedWindow(clip, view.trims);
   const shaped = { ...clip, startTick: win.startTick, endTick: win.endTick, seconds: (win.endTick - win.startTick) / win.tickRate };
   view.exportController = new AbortController();
-  if (view.readout) view.readout.textContent = 'ENCODING RECORDED FLIGHT…';
+  if (view.readout) view.readout.textContent = 'RENDERING CLIP…';
   let outcome;
-  try { outcome = await exportRecordedClip(shaped, { format: view.format, signal: view.exportController.signal }); }
+  try { outcome = await exportRecordedClip(shaped, { format: view.format, signal: view.exportController.signal, state: view.ctx?.state }); }
   catch (error) { outcome = { ok: false, reason: error.name === 'AbortError' ? 'cancelled' : 'encoding-failed' }; }
   finally { view.exportController = null; }
   if (view.disposed) return;
@@ -965,7 +998,7 @@ function doDelete(view) {
   if (view.readout) {
     view.readout.textContent = view.clips.length
       ? 'DELETED ' + (clip.label || 'MOMENT') + ' — ' + view.clips.length + ' LEFT'
-      : 'REEL EMPTY — FLY TO MAKE ONE';
+      : 'Choose FLY TO MAKE ONE, then fight or perform a tether trick. Open Pause → Media → Clips, choose a moment, then EXPORT.';
   }
   cue('confirm');
 }
@@ -1124,7 +1157,7 @@ function buildDial(view) {
 }
 
 function reelLegend(view) {
-  if (!view.clips.length) return 'LAND A NAMED STUNT OR A KILL — THE REEL CATCHES IT HERE';
+  if (!view.clips.length) return 'Choose FLY TO MAKE ONE, then fight or perform a tether trick. Open Pause → Media → Clips, choose a moment, then EXPORT.';
   return 'DRAG A WINDOW EDGE TO RESIZE · [ AND ] TRIM · ARROW KEYS SCRUB';
 }
 
@@ -1162,7 +1195,7 @@ function buildContent(container, ctx) {
 
   const view = {
     container, ctx, director, clips,
-    chosenIdx: 0, trims: new Map(), format: 'gif',
+    chosenIdx: 0, trims: new Map(), format: 'mp4',
     disposed: false, raf: null, ro: null,
     railHost: null, railSvg: null, platesHost: null, geo: null,
     handNode: null, handSpring: null, handX: 0,

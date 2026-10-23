@@ -34,7 +34,7 @@
 //   faction_pitborn      Pitborn    — escaped yard scrapper, kin-talk, scrap prices, Concord-hate
 //   faction_understory   Understory — saprophyte keeper, decay-as-harvest, eerie gentleness
 //   faction_verge_layers Verge-Layer— precursor gate-auditor, interrogative, ancient patience
-// (Helix is canonically voiceless — it has no corpus on purpose.)
+//   faction_helix        Helix      — tariff clerk; the invoice and the fine are the same hand
 
 // The code faction ids with a voice corpus, exported for validators/consumers.
 // Appended ids keep earlier indices stable: the generated line_*.wav corpus is indexed by
@@ -43,7 +43,7 @@ export const BARK_FACTIONS = [
   'faction_scn', 'faction_mts', 'faction_dmc', 'faction_reach',
   'faction_quiet', 'faction_choir', 'faction_free', 'faction_vael',
   'faction_archive', 'faction_fulfillment', 'faction_pitborn',
-  'faction_understory', 'faction_verge_layers',
+  'faction_understory', 'faction_verge_layers', 'faction_helix',
 ];
 
 // The core situations every faction is guaranteed to cover.
@@ -833,6 +833,62 @@ export const BARKS = {
       'We hold the crossing even broken. Assistance preserves the gate.',
     ],
   },
+  faction_helix: {
+    scan: [
+      'Lawful interdiction. Helix variance: read the invoice first.',
+      'Helix variance. Your registry is already written on the invoice.',
+      'Helix variance. State the hold before the fine writes itself.',
+      'Helix variance. Unmasked cutter, and your heading is already filed.',
+    ],
+    warn: [
+      'Under orders. Helix variance: correct course or the fine posts.',
+      'Helix variance. This lane is tariffed. Hold for the invoice.',
+      'Helix variance. Your heading is off the posted lane. Reduce speed.',
+      'Helix variance. The Directorate does not warn twice.',
+    ],
+    'demand-cargo': [
+      'Helix variance. The invoice and the fine are written in the same hand.',
+      'Helix variance. Jettison the flagged cargo. The invoice already names it.',
+      'Helix variance. Seizure is posted. Cut thrust and open the hold.',
+      'Read the invoice first. Helix variance has already reassigned the goods.',
+    ],
+    attack: [
+      'Lawful interdiction. Helix variance: the warning period has expired.',
+      'Under orders. Helix variance: weapons are the fine you refused.',
+      'Helix variance. The invoice is closed and the hull is the collateral.',
+      'Helix variance. Directorate fire, and this engagement is already filed.',
+    ],
+    flee: [
+      'Helix variance. The cutter breaks off and the invoice does not.',
+      'Helix variance. We withdraw, and the fine stays on your registry.',
+      'Helix variance. Engagement suspended. Collection continues by paper.',
+      'Helix variance. Drive clear. The file on your hull stays open.',
+    ],
+    reinforce: [
+      'Helix variance. A second cutter is on the invoice. Hold your vector.',
+      'Helix variance. The file asked for more hulls, and they are inbound.',
+      'Helix variance. Reinforcement is posted. This is not a negotiation.',
+      'Helix variance. Another Directorate hull has your name. Under orders.',
+    ],
+    taunt: [
+      'Helix variance. You are arguing with a document, and the document is winning.',
+      'Helix variance. Your thrust does not amend the invoice.',
+      'Helix variance. We have your registry, your cargo, and your time.',
+      'Read the invoice first. Helix variance says you are late for that.',
+    ],
+    'patrol-greeting': [
+      'Helix variance. Directorate patrol. Your transit is tolerated and itemized.',
+      'Helix variance. Lawful passage. Keep the hold matched to the filing.',
+      'Helix variance. Channel clear. Cross on the posted heading.',
+      'Under orders. Helix variance lets a clean registry through. Stay clean.',
+    ],
+    distress: [
+      'Helix variance: cutter disabled, and the invoice still wants an answer.',
+      'Helix variance: hull failing, lawful aid requested before the file closes.',
+      'Helix variance: adrift with an open seizure, and aid is billable.',
+      'Helix variance: cutter dark, and the Directorate asks any lawful hull to answer.',
+    ],
+  },
 };
 
 /**
@@ -970,6 +1026,12 @@ export const HULL_RECOGNITION = Object.freeze({
     '{ship} transits again. The gate keeps every inscription.',
     'Assessment: the {ship}, a {class} of record. Its file is ancient.',
     '{ship}. The lattice does not forget a signature.',
+  ]),
+  faction_helix: Object.freeze([
+    'Helix registry match: {ship}, and the invoice already knows this {class}.',
+    '{ship} on the Helix board, with prior fines riding the hull.',
+    'That is the {ship}, a {class} with an open Helix file.',
+    '{ship}, and Helix does not need a second look.',
   ]),
 });
 
@@ -1231,6 +1293,24 @@ export const HISTORY_RECOGNITION = Object.freeze({
     offers_work: Object.freeze([
       '{captain} inscribed {ship} as gate-true. A rare entry.',
       '{captain} stands surety for {ship} at the lattice. The record honors it.',
+    ]),
+  }),
+  faction_helix: Object.freeze({
+    kills: Object.freeze([
+      '{kills} Helix hulls charged to {ship}, and the invoice grew.',
+      '{ship} owes the Helix books {kills} cutters.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} carries a Helix warrant with {ship} on the first line.',
+      '{captain} was assigned {ship} by Helix, and the assignment does not expire.',
+    ]),
+    fears: Object.freeze([
+      '{captain} rerouted rather than bill {ship} for Helix again.',
+      '{captain} left the lane when {ship} arrived, and Helix noted the absence.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} marks {ship} paid current on the Helix file.',
+      '{captain} will sign for {ship}, and Helix honors a clean file.',
     ]),
   }),
 });
@@ -1551,6 +1631,61 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
   ], true),
 });
 
+// ── Captain Maera Vols: in-flight commentary (build-map row 424) ─────────────────────────────
+//
+// The Hull Ghost rides the player's hull after the Helios yard (campaign47a G15). These are her
+// finite flight lines: one authored sentence per event kind, selected by src/ui/voiceArbiter.js.
+// Data only — matching, rate limits and session memory live in the arbiter, so commentary never
+// enters the save. Stable `maera_*` ids: adding a line is additive; changing the text of a used id
+// would change what a reviewed fixture session said. `maxAgeS` is how long a captured event stays
+// speakable; a warning about a round already gone stale is worse than silence.
+const maeraLine = (id, event, category, text, extra = {}) => Object.freeze({
+  id,
+  event,
+  category,
+  text,
+  warning: false,
+  maxAgeS: 300,
+  ...extra,
+});
+
+export const MAERA_FLIGHT_LINES = Object.freeze([
+  maeraLine('maera_helios', 'sector:enter', 'sector',
+    'Helios. They kept the lamps. Changed the names on the berths.',
+    { sectorId: 'sector_helios_prime' }),
+  maeraLine('maera_ceres', 'sector:enter', 'sector',
+    'Ceres. We used to count the lights coming home.',
+    { sectorId: 'sector_ceres_belt' }),
+  maeraLine('maera_undock', 'dock:undocked', 'departure',
+    'You took her out again. I keep expecting the old crew.'),
+  maeraLine('maera_latch', 'tether:attached', 'line',
+    'She still takes a line. I wondered what else they had stripped.'),
+  maeraLine('maera_release', 'tether:released', 'line',
+    'There it goes. The hull remembers the weight a moment longer.'),
+  maeraLine('maera_cargo', 'pickup:collected', 'cargo',
+    'Something aboard. For a moment I thought I heard the others.'),
+  maeraLine('maera_sale', 'economy:tradeCompleted', 'cargo',
+    'Cargo gone. The empty hold always sounded louder.'),
+  maeraLine('maera_story_1', 'story:beatAdvanced', 'story',
+    'A signature moves a problem. It does not make it disappear.',
+    { storyToIndex: 1 }),
+  maeraLine('maera_story_2', 'story:beatAdvanced', 'story',
+    'Keep the original. Copies learn to agree with whoever owns them.',
+    { storyToIndex: 2 }),
+  maeraLine('maera_needle', 'stunt:trickDetected', 'stunt',
+    'That gap was narrower in my day. Or I was wider.',
+    { trickId: 'needle_thread', maxAgeS: 30 }),
+  maeraLine('maera_bank', 'stunt:trickDetected', 'stunt',
+    'You made the wall do the turning. I should have thought of that.',
+    { trickId: 'bank_job', maxAgeS: 30 }),
+  maeraLine('maera_stunt', 'stunt:trickDetected', 'stunt',
+    'They will call that luck. I felt when you chose it.',
+    { maxAgeS: 30 }),
+  maeraLine('maera_near_miss', 'projectile:nearMiss', 'near_miss',
+    'Rounds across the bow. Keep the hull moving.',
+    { warning: true, maxAgeS: 3 }),
+]);
+
 // ── Station-bar generated contacts: greeting + approach voice ────────────────────────────────
 //
 // Generated bar contacts (ui/station/barContacts.js) carry a factionId but used to share one
@@ -1721,6 +1856,18 @@ export const BAR_GREETING_BARKS = Object.freeze({
       'The prism pours. Your account is inscribed on receipt.',
     ]),
   }),
+  faction_helix: Object.freeze({
+    any: Object.freeze([
+      'Helix variance. Read the invoice first.',
+      'Under orders. Sit, then speak to Helix.',
+      'Your approach is a Helix variance. State it.',
+      'No action required until you order.',
+    ]),
+    barkeep: Object.freeze([
+      'The pour is itemized. Name the Helix tab.',
+      'Service sits on the invoice. Helix variance.',
+    ]),
+  }),
 });
 
 export const BAR_APPROACH_BARKS = Object.freeze({
@@ -1789,6 +1936,12 @@ export const BAR_APPROACH_BARKS = Object.freeze({
     'Their attention arrives before their eyes do. Speak.',
     'A facet turns toward you. The audit is informal — for now.',
     'They regard you the way a gate regards a crossing. Ask.',
+  ]),
+  faction_helix: Object.freeze([
+    'They open the Helix file before they look up.',
+    'A clerk nods. Ask the Helix variance.',
+    'Helix attention. Speak to the variance.',
+    'They wait. The Helix file is already listening.',
   ]),
 });
 
@@ -1912,6 +2065,12 @@ export const WITNESS_CRIME_BARKS = Object.freeze({
     'The crossing registered a closure. Your signature is on it.',
     'Destruction inside the audit is still an audit item. It is yours now.',
   ]),
+  faction_helix: Object.freeze([
+    'Helix watched that hull end, and your registry is on the statement.',
+    'A death in tariff space is a Helix filing, and the filing names you.',
+    'Helix saw the hull come apart, and the invoice already has the transponder.',
+    'Helix witness statement: that loss is yours, and the fine follows the registry.',
+  ]),
 });
 
 /**
@@ -2012,6 +2171,12 @@ export const PURSUIT_BARKS = Object.freeze({
     'Evasion increases the interval, not the outcome.',
     'The prism tracks every crossing. There is no outside the lattice.',
   ]),
+  faction_helix: Object.freeze([
+    'Flight does not close the Helix invoice, and the cutters are already on your heading.',
+    'You are running from a Helix document that travels faster than your drive.',
+    'Helix is under orders to stay with you until the fine is posted on the hull.',
+    'The Helix pursuit is a collection on paper, and paper does not get tired.',
+  ]),
 });
 
 /** One pursuit-chatter line for the chasing faction. Deterministic; falls back to faction_free. */
@@ -2105,6 +2270,12 @@ export const SURRENDER_BARKS = Object.freeze({
     'Stand down at this crossing. The lattice accepts halted accounts.',
     'Stop your engines. Compliance is the shortest route out of this.',
     'Hold still for the prism. A closed crossing may reopen.',
+  ]),
+  faction_helix: Object.freeze([
+    'Cut thrust and the Helix invoice stops growing.',
+    'Power down, and the Helix seizure stays a fine instead of a wreck.',
+    'Hold position, because Helix compliance is the cheapest line left.',
+    'Yield the helm, because Helix prefers a living debtor.',
   ]),
 });
 
@@ -2200,6 +2371,12 @@ export const ESCAPE_TAUNT_BARKS = Object.freeze({
     'You exited this gate. Every gate is the same gate.',
     'Escape logged as transit. Your file follows the lattice.',
     'A deferred inscription. The lattice has outwaited stars.',
+  ]),
+  faction_helix: Object.freeze([
+    'You left weapons range, and the Helix invoice left with you.',
+    'Distance is not a Helix settlement, and the fine keeps your name.',
+    'Run, because Helix collection does not require the same sector.',
+    'Escape noted, and the next Helix cutter already has your heading.',
   ]),
 });
 
@@ -2697,6 +2874,7 @@ export default {
   BARK_FACTIONS,
   BARK_SITUATIONS,
   CONTACT_VOICE_REGISTERS,
+  MAERA_FLIGHT_LINES,
   HULL_RECOGNITION,
   HISTORY_RECOGNITION,
   WITNESS_CRIME_BARKS,

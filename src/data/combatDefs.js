@@ -393,6 +393,19 @@ export const ATTACHMENT_DEFS = Object.freeze([
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },
   {
+    // Row 484 ROCK-FLAIL: a chained link riding the massline — a wreck lashed behind the
+    // active catch so the Line ends in a flail of hulls, not a single stone. No reel, no
+    // winch block: the link is dead mass on the rope, bounded by rockCore's chain solver.
+    id: 'attachment_flail_link', version: 1,
+    sourceSocketTags: ['massline'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    break: { maxTension: 14000, maxImpulse: 900, maxYank: 800, graceTicks: 6 },
+    spring: { K: 150, zeta: 0.85, captureS: 0.30, maxStretchRatio: 0.9 },
+    massline: { enabled: true, automaticBreakPolicy: 'extreme_load_only' },
+    limits: { maxPerOwner: 5 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
+  {
     id: 'tether_standard', version: 1,
     sourceSocketTags: ['tether_spool'], targetSocketTags: ['tether'],
     ownership: { policy: 'initiator', transferable: true },

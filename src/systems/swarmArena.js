@@ -723,6 +723,18 @@ export const swarmArena = {
     return n;
   },
 
+  /**
+   * Row-270 legendary seam: the Domino director asks the Brood owner to shove its own cells,
+   * because only the engine may write its typed buffers. The request is the same geometry the
+   * ship path uses ({ x, z, radiusWu, maxDvWuS }); the engine applies the identical radial
+   * falloff inside its own storage and reports how many cells moved. Dead engine → 0.
+   */
+  applyLegendaryShove(request) {
+    const brood = this._brood;
+    if (!brood || typeof brood.applyLegendaryShove !== 'function') return 0;
+    return brood.applyLegendaryShove(request) || 0;
+  },
+
   _onWavePlanned(payload) {
     const run = liveSwarmRun(this.state);
     if (!run) return;

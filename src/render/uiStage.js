@@ -42,6 +42,7 @@ import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 import { yieldToBrowser } from './startupGpuResidency.js';
 import { buildTitleAttractStage } from './titleAttractStage.js';
 import { buildKillcamStage } from './killcamStage.js';
+import { takeKillcamTape } from '../sim/killcamTape.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
@@ -231,6 +232,22 @@ const SCENES = Object.freeze({
     props: [],
   },
 
+  'adventure-killcam': {
+    live: 'killcam',
+    sky: {
+      zenith: 0x060c16, horizon: 0x14273d, ground: 0x03070d,
+      horizonSoftness: 0.42, stars: 0.55, starSeed: 4242,
+    },
+    fog: { color: 0x091422, density: 0.002 },
+    lights: {
+      key: { color: 0xffcf9e, intensity: 2.0, dir: [-0.38, 0.72, 0.5], shadow: false },
+      rim: { color: 0x7fa8ff, intensity: 1.0, dir: [0.72, 0.3, -0.6] },
+      hemi: { sky: 0x25303a, ground: 0x060a10, intensity: 0.55 },
+      ambient: { color: 0x101218, intensity: 0.42 }, practicals: [],
+    },
+    camera: { at: [0, 84, 120], target: [0, 0, 0], fov: 42 },
+    drift: { yaw: 0, pitch: 0, period: 70 }, props: [],
+  },
   'held-world': null,
 });
 
@@ -342,10 +359,10 @@ export function uiStageRequestFor(state) {
   // title's stage scene draws behind it for nothing. When the veil is up there is no stage
   // request; if the load fails, the menu re-requests through syncVisibility as usual.
   if (typeof document !== 'undefined' && document.querySelector('.sf-continue-fade')) return null;
-  const request = state.ui.stageRequest;
+  const request = state.ui.theater?.request || state.ui.stageRequest;
   if (!request || typeof request !== 'object') return null;
   const scene = typeof request.scene === 'string' ? request.scene : null;
-  if (!scene || !(scene in SCENES)) return null;
+  if (!scene || (!(scene in SCENES) && scene !== 'replay-theater')) return null;
   if (SCENES[scene] === null) return null; // held-world: the frozen picture is already correct.
   return request;
 }
@@ -375,6 +392,8 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   const hullFile = hullFileForRequest(request);
   if (stage && stage.id !== sceneId) releaseUiStage('scene-swap');
   else if (stage && stage.hullFile !== hullFile) releaseUiStage('hull-swap');
+  else if (stage?.live?.tape && request.tape && stage.live.tape !== request.tape) releaseUiStage('tape-swap');
+  else if (stage?.request?.control !== request.control) releaseUiStage('transport-swap');
   if (!stage && prewarm) {
     // The approach already built this stage. Adopt it whole — its content chain keeps running if
     // the player docked before it finished — and only a request it cannot satisfy rebuilds.
@@ -393,6 +412,8 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   if (!stage) {
     try {
       stage = buildStage(sceneId, renderer, request, hullFile, {
+        environment: sceneId === 'replay-theater' || SCENES[sceneId]?.live === 'killcam' || SCENES[sceneId]?.live === 'titleAttract'
+          ? state.render?.envMap || state.render?.scene?.environment || null : null,
         isRequested: () => {
           const current = uiStageRequestFor(state);
           return current?.scene === sceneId && hullFileForRequest(current) === hullFile;
@@ -408,6 +429,18 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   }
 
   stage.request = request;
+  // Replay keeps the flight scene's authored reflection light. Bare metal cannot
+  // answer a sun/rim rig without that shared environment; the stage never owns it.
+  const environment = state.render?.envMap || state.render?.scene?.environment;
+  if ((stage.spec.live === 'killcam' || stage.spec.live === 'titleAttract') && environment && stage.scene.environment !== environment) stage.scene.environment = environment;
+  if (request.control && stage.live?.ready && !request.control.renderAt) {
+    const captureOwner = stage;
+    captureOwner.capture = (width, height) => captureUiStageFrame(captureOwner, renderer, state, width, height);
+    request.control.renderAt = captureOwner.capture;
+  }
+  // Offline export owns the shared renderer until the next yielded frame. The
+  // underlying preview holds; it does not pay a second draw between encoded frames.
+  if (request.control?.exporting && stage.hullDrawn) return true;
   const dt = Number.isFinite(frameDt) ? Math.min(0.1, Math.max(0, frameDt)) : 0;
   stage.clock += motionAllowed(state) ? dt : 0;
 
@@ -530,6 +563,8 @@ export function warmUiStagePrewarm({ render, state } = {}) {
 
 function disposeBuilt(dying, reason) {
   dying.disposed = true;
+  dying.captureTarget?.dispose();
+  if (dying.request?.control && dying.request.control.renderAt === dying.capture) dying.request.control.renderAt = null;
   // Release the stage's residency owner first: mounted props/hull were pinned under it, so this
   // is the moment they drop to soft-cache leases the byte budgets can reclaim. Without it the
   // decoded stage set would stay session-pinned forever.
@@ -665,10 +700,11 @@ function publishStatus(request, status) {
 }
 
 function buildStage(id, renderer, request, hullFile, options = {}) {
-  const spec = SCENES[id];
+  const spec = SCENES[id] || (id === 'replay-theater' ? SCENES['adventure-killcam'] : null);
   if (!spec) throw new Error(`unknown ui stage "${id}"`);
 
   const { scene, camera } = stageShellFor(id, spec);
+  scene.environment = options.environment || null;
 
   const sky = buildSky(spec.sky);
   scene.add(sky);
@@ -782,7 +818,7 @@ async function loadSceneContent(built, renderer, request) {
     try {
       live = await buildKillcamStage(built, {
         loadPart: (file, slot, partOptions) => loadPart(file, renderer, slot, built, partOptions),
-      });
+      }, { tape: built.request.tape, control: built.request.control });
     } catch (error) {
       lastError = error && error.message ? error.message : String(error);
       console.warn('[uiStage] kill-cam content failed; the plate stays', error);
@@ -1264,9 +1300,9 @@ function applyCamera(built, time) {
   camera.lookAt(_stageTarget);
 }
 
-function drawStage(built, renderer, state, dt = 0) {
+function drawStage(built, renderer, state, dt = 0, target = null) {
   const size = renderer.getSize(_stageSize);
-  const aspect = size.y > 0 ? size.x / size.y : 16 / 9;
+  const aspect = target ? target.width / target.height : size.y > 0 ? size.x / size.y : 16 / 9;
   if (Math.abs(built.camera.aspect - aspect) > 1e-4) {
     built.camera.aspect = aspect;
     built.camera.updateProjectionMatrix();
@@ -1275,7 +1311,7 @@ function drawStage(built, renderer, state, dt = 0) {
   // orbit follows the fight, not the authored drift). A throwing live update must not
   // kill the draw — the frame still renders whatever was posed last.
   if (built.live && typeof built.live.update === 'function') {
-    try { built.live.update(built, dt); }
+    try { built.live.update(built, dt, state); }
     catch (error) {
       if (!built.liveUpdateWarned) { built.liveUpdateWarned = true; console.warn('[uiStage] live update failed', error); }
     }
@@ -1295,7 +1331,7 @@ function drawStage(built, renderer, state, dt = 0) {
   const previousClear = renderer.getClearColor(_stageClear);
   const previousClearAlpha = renderer.getClearAlpha();
   try {
-    renderer.setRenderTarget(null);
+    renderer.setRenderTarget(target);
     renderer.autoClear = true;
     renderer.shadowMap.enabled = built.rig.shadows;
     renderer.setClearColor(built.spec.sky.ground, 1);
@@ -1308,6 +1344,30 @@ function drawStage(built, renderer, state, dt = 0) {
   }
   built.frames++;
   if (state && state.render) state.render.uiStageFrames = (state.render.uiStageFrames || 0) + 1;
+}
+
+/** A fresh tape render on the existing context; no resize or second WebGL canvas. */
+function captureUiStageFrame(built, renderer, state, width, height) {
+  if (built.disposed || !built.hullDrawn || !built.live) return null;
+  const w = Math.max(1, Math.min(1280, width | 0)), h = Math.max(1, Math.min(720, height | 0));
+  if (!built.captureTarget || built.captureTarget.width !== w || built.captureTarget.height !== h) {
+    built.captureTarget?.dispose();
+    built.captureTarget = new THREE.WebGLRenderTarget(w, h, { depthBuffer: true });
+    // Video encoders consume display RGB, matching the visible canvas. A default
+    // linear render target would bake the same scene several stops too dark.
+    built.captureTarget.texture.colorSpace = renderer.outputColorSpace || THREE.SRGBColorSpace;
+    built.captureRaw = new Uint8Array(w * h * 4);
+    built.capturePixels = new Uint8ClampedArray(w * h * 4);
+  }
+  const aspect = built.camera.aspect;
+  try {
+    drawStage(built, renderer, state, 0, built.captureTarget);
+    renderer.readRenderTargetPixels(built.captureTarget, 0, 0, w, h, built.captureRaw);
+    // WebGL rows start at the bottom. The 2D/video contract starts at the top.
+    const row = w * 4;
+    for (let y = 0; y < h; y++) built.capturePixels.set(built.captureRaw.subarray((h - 1 - y) * row, (h - y) * row), y * row);
+    return { width: w, height: h, data: built.capturePixels };
+  } finally { built.camera.aspect = aspect; built.camera.updateProjectionMatrix(); }
 }
 
 /** Presentation-side clock for the admission milestones. Never on the simulation path. */

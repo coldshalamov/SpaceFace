@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_nebula_fog_yard_dmc_k1",
   "title": "SCOOP ON THE NEBULA FOG",
   "factionId": "faction_dmc",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Take the tool",
-      "playerLine": "I will take the scoop tool and finish the loose bracket."
+      "label": "Tow the scoop to the receiver",
+      "playerLine": "I will put my line on the scoop and settle it at the receiver hull myself."
     },
     {
       "id": "b",
-      "label": "Call relief",
-      "playerLine": "Send the next shift before the yard light goes dark."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, FOREMAN — send the relief to Nebula Fog instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the shift",
-      "playerLine": "I cannot stay. Leave the scoop for the next crew."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, FOREMAN — my hull is leaving Nebula Fog."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "SCOOP",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "FOREMAN: The scoop needs a hand at nebula fog. The shift is already short.",
+      "line": "FOREMAN: The scoop needs a hand at nebula fog. The shift is already short. — SCOOP ON THE NEBULA FOG.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The work light marks one empty station on the bench.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "FOREMAN records the tool before recording the delay.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The scoop has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Boost all you like; nebula fog keeps its own volume.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "FOREMAN: Holding. The lane keeps its own clock.",
+      "line": "FOREMAN: Tether the scoop, haul it to the receiver hull, let go, and let it drift to rest within thirty. — SCOOP ON THE NEBULA FOG.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +142,81 @@ const spec = {
       "windowS": 56,
       "motion": "orbit",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Bracket seated. The work light held through the last turn.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_nebula_fog_yard_dmc_k1:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "FOREMAN: Time ran out on the work ask — SCOOP ON THE NEBULA FOG. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "displaced",
+          "dist": 120
+        },
+        {
+          "kind": "released"
+        },
+        {
+          "kind": "parked",
+          "at": "hull_0",
+          "dist": 30,
+          "maxSpeed": 3,
+          "holdS": 3
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "FOREMAN: Time ran out on the work ask — SCOOP ON THE NEBULA FOG. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "FOREMAN: Time ran out on the work ask — SCOOP ON THE NEBULA FOG. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 48,
       "reason": "lived_nebula_fog_yard_dmc_k1",
       "next": "rep_a"
     },
@@ -168,24 +229,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_dmc",
+      "delta": 3,
+      "reason": "lived_nebula_fog_yard_dmc_k1:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Relief called. FOREMAN kept the tool on the bench.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_dmc",
-      "delta": 2,
-      "reason": "lived_nebula_fog_yard_dmc_k1",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +256,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left. The unfinished scoop stayed inside the yard line.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_dmc",
-      "delta": -1,
-      "reason": "lived_nebula_fog_yard_dmc_k1",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +314,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Take the tool",
-      "playerLine": "I will take the scoop tool and finish the loose bracket."
+      "label": "Tow the scoop to the receiver",
+      "playerLine": "I will put my line on the scoop and settle it at the receiver hull myself."
     },
     {
       "id": "b",
-      "label": "Call relief",
-      "playerLine": "Send the next shift before the yard light goes dark."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, FOREMAN — send the relief to Nebula Fog instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the shift",
-      "playerLine": "I cannot stay. Leave the scoop for the next crew."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, FOREMAN — my hull is leaving Nebula Fog."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Bracket seated. The work light held through the last turn.",
-    "b": "Relief called. FOREMAN kept the tool on the bench.",
-    "c": "You left. The unfinished scoop stayed inside the yard line."
+    "a": "The scoop came in on your line and rests inside thirty of the receiver at Nebula Fog. — SCOOP ON THE NEBULA FOG.",
+    "b": "24 cr funded the relief call — FOREMAN sends the shift at Nebula Fog on your credit. — SCOOP ON THE NEBULA FOG.",
+    "c": "You left Nebula Fog. The work stayed with the crew that owned it. — SCOOP ON THE NEBULA FOG."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "tow_settle",
+    "hasProp": true
   }
 });

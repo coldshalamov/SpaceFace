@@ -220,6 +220,8 @@ export function stepPropulsion(args = {}) {
   try {
     if (!(dt > 0)) return idleResult(body, profile, runtime, input);
 
+    if (input.rendezvous) return stepRendezvous(body, input, profile, runtime, environment, dt);
+
     if (validDrawFlight(input.drawFlight) && !input.brake) {
       return stepDrawFlight(body, input, profile, runtime, environment, dt);
     }
@@ -429,6 +431,36 @@ function stepDrawFlight(body, input, profile, runtime, environment, dt) {
       drawFlight: { speedCommand: motion.cap, turnRate: motion.turnRate,
         exhausted: !!input.drawFlight.exhausted },
     },
+  });
+}
+
+// An explicitly engaged flight computer may command a moving frame. This is a bounded
+// thruster servo, not a velocity write; collisions, missing drives and inertia still matter.
+function stepRendezvous(body, input, profile, runtime, environment, dt) {
+  const axes = localAxes(body.rot);
+  const error = sub2(input.rendezvous.velocity, body.vel);
+  const forwardError = error.x * axes.fx + error.z * axes.fz;
+  const lateralError = error.x * axes.rx + error.z * axes.rz;
+  let limits;
+  if (profile.family === DRIVE_FAMILIES.GRAVIMETRIC) {
+    const accel = positive(profile.maxAccel, 80), brake = positive(profile.maxBrakeAccel, accel);
+    limits = { forward: accel * channelScale('forward'), reverse: brake * channelScale('reverse'), strafe: accel * channelScale('strafe') };
+  } else {
+    const reaction = profile.family === DRIVE_FAMILIES.PULSE_PLATE
+      ? { ...profile, mainAccel: profile.rcsForwardAccel, reverseAccel: profile.rcsReverseAccel, strafeAccel: profile.rcsStrafeAccel }
+      : profile.family === DRIVE_FAMILIES.SAIL
+        ? { ...profile, mainAccel: profile.trimAccel, reverseAccel: profile.trimAccel, strafeAccel: profile.trimAccel } : profile;
+    limits = reactionLimits(reaction, 1);
+  }
+  const local = { forward: clamp(forwardError * 1.8, -limits.reverse, limits.forward), lateral: clamp(lateralError * 1.8, -limits.strafe, limits.strafe) };
+  const accel = add2(localToWorld(local, axes), environmentalDragAcceleration(body, environment));
+  const yaw = computeHeadingControl(body, input.rendezvous.heading, profile, dt, input);
+  const demand = resourceDemand(profile, accel, false, dt);
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt);
+  return makeResult({ body, profile, input, runtime: nextRuntime, acceleration: accel,
+    angularAcceleration: yaw.angularAcceleration, maxSpeed: Infinity, demand,
+    events: transitionEvents(runtime, nextRuntime, input, profile),
+    telemetry: { driveState: 'rendezvous', targetYawRate: yaw.targetYawRate, environmentalAcceleration: environmentalDragAcceleration(body, environment) },
   });
 }
 
@@ -1581,6 +1613,9 @@ function normalizeBody(body = {}, out = null) {
 function normalizeInput(input = {}, out = null, subs = null) {
   const o = out || {};
   o.drawFlight = validDrawFlight(input.drawFlight) ? input.drawFlight : null;
+  const rendezvous = input.rendezvous;
+  o.rendezvous = rendezvous && Number.isFinite(rendezvous.velocity?.x) && Number.isFinite(rendezvous.velocity?.z)
+    && Number.isFinite(rendezvous.heading) ? rendezvous : null;
   o.throttle = clamp(finite(input.throttle ?? input.moveZ, 0), -1, 1);
   o.strafe = clamp(finite(input.strafe ?? input.moveX, 0), -1, 1);
   o.turn = clamp(finite(input.turn ?? input.turnIntent, 0), -1, 1);

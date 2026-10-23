@@ -158,6 +158,21 @@ export function scoreMasslineTarget(player, target, opts = {}) {
     return gated(id, 'blocked', 'line of sight obstructed');
   }
 
+  // Row 483 (ROCK-KATAMARI) opt-in gate: when the caller passes the Line rating tier
+  // (opts.lineTier) plus a required-tier resolver (opts.throwTierOf), a body whose throw
+  // class exceeds the Line's rating gates to 'immovable' — physics honesty: the Line
+  // cannot budge it. Strictly opt-in: absent either option the legacy path is unchanged.
+  if (Number.isFinite(opts.lineTier) && typeof opts.throwTierOf === 'function') {
+    // Authored teaching bodies (the onboarding derelict) are scripted catches —
+    // the rating lesson must never gate the lesson itself.
+    const need = target && target.data && target.data.onboarding === true
+      ? NaN
+      : Number(opts.throwTierOf(target));
+    if (Number.isFinite(need) && need > opts.lineTier) {
+      return gated(id, 'immovable', `line tier ${need} required`);
+    }
+  }
+
   const dx = finite(target.pos.x, 0) - finite(player.pos.x, 0);
   const dz = finite(target.pos.z, 0) - finite(player.pos.z, 0);
   const distance = Math.hypot(dx, dz);

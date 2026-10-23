@@ -50,11 +50,66 @@ import {
   FENCE_ROUTE_LEG_WINDOW, fenceAmbushChance, fenceDealShape, fenceForStation, fenceRouteReady,
   fenceRowOf,
 } from '../data/fences.js'; // READ-ONLY (U-B: fences with faces; fenceDesk is the ledger's writer)
+import {
+  massDeclarationForTarget, massDiscrepancy, normalizeMassScaleState, physicalMassT,
+} from './cargoCustody.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const TYPE_BY_ID = new Map(MISSION_TYPES.map((t) => [t.type, t]));
+
+// AL-STORY-1 (row 423) — three authored "manifest declaration" cases. Each posts a real
+// native tow_recovery whose params.massU equals the DECLARED weight on the papers; the
+// body itself is heavier. Nothing about the measured value appears in the offer — the
+// only honest way to learn it is to load the rope and hold it, then keep the slip.
+const MASS_SCALE_CONTRACTS = Object.freeze([
+  Object.freeze({
+    kind: 'weight_audit', stationId: 'station_helios', declaredMassT: 20,
+    issuer: 'Helios Variance Office', reference: '47-A',
+    title: 'Manifest audit — declared 20 t',
+    brief: 'The Variance Office wants this recovered unit audited against its papers, not its weight on faith. The manifest declaration is 20 t. Load it on the line and hold — the rope reads the true weight. Keep the weight slip and file it at customs.',
+    summary: 'A recovery whose manifest declaration is 20 t. Weigh it on the line; file the slip at customs.',
+  }),
+  Object.freeze({
+    kind: 'sealed_recovery', stationId: 'station_smuggler', declaredMassT: 24,
+    issuer: 'Oriel Pask', reference: 'sealed consignment',
+    title: 'Sealed recovery — declared 24 t',
+    brief: 'A sealed consignment, declared 24 t on paper and worth whatever it actually weighs. Recover it — but read it on the line before you land it. Keep the weight slip; Oriel reads scales.',
+    summary: 'Sealed cargo, declared 24 t. Weigh it before you land it; the slip is the negotiation.',
+  }),
+  Object.freeze({
+    kind: 'carrier_frame', stationId: 'station_ceres', declaredMassT: 32,
+    issuer: 'Ceres Dock Registrar', reference: 'disputed declaration',
+    title: 'Carrier declaration — declared 32 t, disputed',
+    brief: 'A carrier filed a 32 t declaration on this unit and the registrar doubts it. Tow it, let the line give the true reading, and file the weight slip at customs — the issuer’s papers are the thing on trial, not yours.',
+    summary: 'A disputed manifest: declared 32 t. The rope gives the reading; customs files it against the issuer.',
+  }),
+]);
+
+// Only kinds/stations with an authored customs outcome may be selected for filing — the
+// sealed-recovery slip has no customs outcome and is never pickable.
+const MASS_SCALE_FILING_OUTCOMES = Object.freeze({
+  weight_audit: Object.freeze({ stationId: 'station_helios', outcome: 'mass_discrepancy_filed', statusText: 'WEIGHT SLIP FILED' }),
+  carrier_frame: Object.freeze({ stationId: 'station_ceres', outcome: 'mass_frame_disputed', statusText: 'ISSUER DISPUTED' }),
+});
+
+// The first validated discrepancy gets one objective-channel caption: the line has
+// established an undeclared load, the slip is kept, and the next action is named.
+function massScaleCaptionText(decl, disc) {
+  const declared = disc.declaredMassT;
+  const measured = disc.measuredMassT;
+  switch (decl.kind) {
+    case 'weight_audit':
+      return `Manifest declares ${declared} t — the line reads ${measured} t. The declaration was wrong. Keep the weight slip; file it at customs.`;
+    case 'sealed_recovery':
+      return `Papers declare ${declared} t and the rope reads ${measured} t — something undeclared is in there. Keep the slip; Oriel reads scales.`;
+    case 'carrier_frame':
+      return `The carrier declared ${declared} t; the line reads ${measured} t. That disputes the issuer's declaration, not your papers. File the slip at customs.`;
+    default:
+      return `Manifest declares ${declared} t — the line reads ${measured} t. Keep the weight slip.`;
+  }
+}
 
 // station id → { id, name, type, factionId, sectorId } (same derivation missions/economy use).
 const STATION_INFO = new Map();
@@ -203,6 +258,50 @@ export const economyContracts = {
       if (fence && p.pendingStationId) this._postRouteLeg(fence, p.pendingStationId, true);
     };
     this.bus.on('fence:routeLegDue', this._onRouteLegDue);
+    // AL-STORY-1 — the durable receivers for the rope's measurement and the customs filing.
+    this._onMassWeighed = (p) => this._recordMassWeigh(p);
+    this.bus.on('tether:massWeighed', this._onMassWeighed);
+    this._onMassScaleCompleted = (p) => this._recordMassScaleCompletion(p);
+    this.bus.on('mission:completed', this._onMassScaleCompleted);
+    this._onMassSlipFiled = (p) => this._recordMassSlipFiling(p);
+    this.bus.on('customs:massSlipFiled', this._onMassSlipFiled);
+    // Filed-slip notices are held while docked (the toast feed is invisible under
+    // ui-modal-open); undock re-presents them on the first flight frame, once each.
+    this._onMassScaleUndock = () => {
+      const ms = this.state && this.state.economyContracts && this.state.economyContracts.massScale;
+      const queue = ms && ms.pendingNotices;
+      if (!queue || !queue.length) return;
+      ms.pendingNotices = [];
+      for (const notice of queue) this.bus.emit('toast', { text: notice.text, kind: 'info', ttl: 10 });
+    };
+    this.bus.on('dock:undocked', this._onMassScaleUndock);
+    // A docked save restores into flight with no dock:undocked (the save owner's
+    // reconciliation clears docking itself). The toast presenter mounts after this
+    // handler, so the load only marks the drain due — update() paints the notices on
+    // the first visible-flight tick, exactly once.
+    this._massScaleDrainDue = false;
+    this._onMassScaleLoaded = () => { this._massScaleDrainDue = true; };
+    this.bus.on('save:loaded', this._onMassScaleLoaded);
+    // economyContracts is NOT in PRODUCTION_UPDATE_ORDER — its update() never runs on the
+    // real route. The drain rides `economy:tick`, which the economy system (in the order)
+    // emits unconditionally on every update; `save:loaded` only marks the drain due, and
+    // the first visible-flight tick paints the notices once.
+    this._onMassScaleTick = () => this._drainMassScaleNotices();
+    this.bus.on('economy:tick', this._onMassScaleTick);
+  },
+
+  _drainMassScaleNotices() {
+    if (!this._massScaleDrainDue) return;
+    const st = this.state;
+    if (!st || st.mode !== 'flight') return;
+    const docked = !!(st.ui && st.ui.docked) || !!(st.player && st.player.flags && st.player.flags.docked);
+    if (docked) return;
+    this._massScaleDrainDue = false;
+    this._onMassScaleUndock();
+  },
+
+  update() {
+    this._drainMassScaleNotices();
   },
 
   newGame() {
@@ -221,6 +320,9 @@ export const economyContracts = {
       evaluatedEpochByStation: { ...own.evaluatedEpochByStation },
       firstTradeOffered: !!own.firstTradeOffered,
       ...(own.shortageRepairs ? { shortageRepairs: JSON.parse(JSON.stringify(own.shortageRepairs)) } : {}),
+      // AL-STORY-1: present only after the first validated write — old saves and byte-sensitive
+      // sim snapshots must not grow a placeholder key.
+      ...(own.massScale ? { massScale: normalizeMassScaleState(own.massScale) } : {}),
     };
   },
 
@@ -238,6 +340,9 @@ export const economyContracts = {
       firstTradeOffered: !!(data && data.firstTradeOffered),
       ...(data && data.shortageRepairs && typeof data.shortageRepairs === 'object'
         ? { shortageRepairs: JSON.parse(JSON.stringify(data.shortageRepairs)) } : {}),
+      // Only materialize when the save actually carries the slice — an old save means empty.
+      ...(data && data.massScale && typeof data.massScale === 'object'
+        ? { massScale: normalizeMassScaleState(data.massScale) } : {}),
     };
   },
 
@@ -354,44 +459,340 @@ export const economyContracts = {
       // Dedupe per station-epoch: one field evaluation lands on the board per epoch.
       // "Evaluated" is committed ONLY when the epoch's offer actually boarded; a refused
       // offer leaves the epoch open so the identical seeded row retries on a later dock.
-      if (isStationEpochEvaluated(own, stationId, epoch)) return;
-
-      // NXB-043 — one evaluation may carry TWO rows: when the same feedstock is starving
-      // two reachable yards, both bids post so the player sees the real competition.
-      const offers = this.planOffers(info, epoch);
-      if (!offers.length) { markStationEpochEvaluated(own, stationId, epoch); return; }
-      const fieldClass = offerClassFor(offers[0]);
-      if (fieldClass && emittedClasses.has(fieldClass)) {
-        markStationEpochEvaluated(own, stationId, epoch);
-        return;
-      }
-
-      // EMIT-ONLY: never writes state.missions — missions.js owns boards/active. The pair is
-      // one evaluation: the class guard applies to it, not between its own rows.
-      let boardedAny = false;
-      for (const offer of offers) {
-        if (this._offerOnBoard(stationId, offer.id)) {
-          boardedAny = true; // boarded earlier — dedupe, silent
-          continue;
+      if (!isStationEpochEvaluated(own, stationId, epoch)) {
+        // NXB-043 — one evaluation may carry TWO rows: when the same feedstock is starving
+        // two reachable yards, both bids post so the player sees the real competition.
+        const offers = this.planOffers(info, epoch);
+        if (!offers.length) markStationEpochEvaluated(own, stationId, epoch);
+        else {
+          const fieldClass = offerClassFor(offers[0]);
+          if (fieldClass && emittedClasses.has(fieldClass)) {
+            markStationEpochEvaluated(own, stationId, epoch);
+          } else {
+            // EMIT-ONLY: never writes state.missions — missions.js owns boards/active. The pair
+            // is one evaluation: the class guard applies to it, not between its own rows.
+            let boardedAny = false;
+            for (const offer of offers) {
+              if (this._offerOnBoard(stationId, offer.id)) {
+                boardedAny = true; // boarded earlier — dedupe, silent
+                continue;
+              }
+              if (!this._emitOfferForBoard(stationId, offer)) continue; // refused — retry stays open below
+              boardedAny = true; // confirmed boarding this emit
+              if (!isOnboardingActive(this.state)) {
+                // One news line per row, through the arbiter (falls back to a toast like marketNews).
+                const line = `Contract posted at ${info.name}: ${offer.title}`;
+                const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
+                  ? this.helpers.voice.say({ channel: 'news', text: line, kind: 'contract' })
+                  : false;
+                if (!said) this.bus.emit('toast', { text: line, kind: 'info', ttl: 4 });
+              }
+            }
+            if (boardedAny) {
+              if (fieldClass) emittedClasses.add(fieldClass);
+              markStationEpochEvaluated(own, stationId, epoch);
+            }
+            // else: the board refused every row — the epoch stays open; the seeded offers retry.
+          }
         }
-        if (!this._emitOfferForBoard(stationId, offer)) continue; // refused — retry stays open below
-        boardedAny = true; // confirmed boarding this emit
-        if (!isOnboardingActive(this.state)) {
-          // One news line per row, through the arbiter (falls back to a toast like marketNews).
-          const line = `Contract posted at ${info.name}: ${offer.title}`;
-          const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
-            ? this.helpers.voice.say({ channel: 'news', text: line, kind: 'contract' })
-            : false;
-          if (!said) this.bus.emit('toast', { text: line, kind: 'info', ttl: 4 });
-        }
       }
-      if (boardedAny) {
-        if (fieldClass) emittedClasses.add(fieldClass);
-        markStationEpochEvaluated(own, stationId, epoch);
-      }
-      // else: the board refused every row — the epoch stays open; the seeded offers retry.
+
+      // AL-STORY-1 — the manifest-declaration attempt runs AFTER the deniable job and the
+      // ordinary field evaluation get their shots at the single economyContract board row,
+      // on EVERY dock and outside the epoch latch: a refused row retries on the next dock,
+      // never starves the field cadence into silence.
+      this._offerMassScale(info, epoch);
     } catch (err) {
       dedupError('economyContracts/dock-docked', '[economyContracts] dock:docked', err);
+    }
+  },
+
+  /**
+   * AL-STORY-1 — plan one authored manifest-declaration case as a native tow_recovery.
+   * params.massU is the DECLARED weight on the papers (the spawned body is heavier at the
+   * 40 t native minimum); params.massDeclaration carries the audit metadata the custody
+   * helpers re-read when the rope reports. No measured weight anywhere in the offer.
+   */
+  planMassScaleOffer(info, epoch, spec) {
+    const params = {
+      massU: spec.declaredMassT,
+      taskTime: 40,
+      physicalVerb: 'tow',
+      completionMethods: ['tow_in', 'sling_in'],
+      fValue: 1,
+      massDeclaration: {
+        version: 1,
+        kind: spec.kind,
+        declaredMassT: spec.declaredMassT,
+        issuer: spec.issuer,
+        reference: spec.reference,
+        targetSlot: 0,
+      },
+    };
+    const terms = quoteMissionEconomics({
+      type: 'tow_recovery', tier: info.tier || 0, riskTier: 0, distance: 600, params,
+    });
+    return {
+      id: `eco_mass_scale_${spec.kind}_${info.id}`,
+      source: 'economyContract',
+      type: 'tow_recovery',
+      stationId: info.id,
+      factionId: info.factionId,
+      destStationId: info.id,
+      destSectorId: info.sectorId,
+      distance: 600,
+      riskTier: 0,
+      params,
+      reward_cr: terms.rewardCr,
+      collateral_cr: 0,
+      duration_s: terms.deadlineS,
+      time_limit_s: terms.deadlineS,
+      expiresAtEpoch: epoch + 8,
+      economyTerms: terms,
+      storyTag: null,
+      title: spec.title,
+      brief: spec.brief,
+      summary: spec.summary,
+      cause: { tag: 'mass_scale', kind: spec.kind, issuer: spec.issuer },
+    };
+  },
+
+  /**
+   * Post this station's authored case — non-returning, so the ordinary field evaluation
+   * below it keeps its epoch latch. Eligibility is the serialized onboarding record being
+   * present AND inactive: bare harnesses (no state.onboarding) stay suppressed, real
+   * pilots who finished or opted out are eligible. Skip a completed case or a row still
+   * on the board/in the active list; an unfinished abandoned row stays recoverable by
+   * re-emitting on a later dock.
+   */
+  _offerMassScale(info, epoch) {
+    const state = this.state;
+    const onboarding = state && state.onboarding;
+    if (!onboarding || isOnboardingActive(state)) return;
+    const ms = state.economyContracts && state.economyContracts.massScale;
+    // The earned fence leg goes first: once the sealed slip physically exists it is the row
+    // the pilot earned, so it claims the single economyContract slot ahead of a re-emitted
+    // (recoverable) parent offer.
+    this._offerMassScaleFence(info);
+    for (const spec of MASS_SCALE_CONTRACTS) {
+      if (spec.stationId !== info.id) continue;
+      const offerId = `eco_mass_scale_${spec.kind}_${info.id}`;
+      if (ms && ms.completed && ms.completed[offerId]) continue;
+      if (this._offerOnBoard(info.id, offerId)) continue;
+      this._emitOfferForBoard(info.id, this.planMassScaleOffer(info, epoch, spec));
+    }
+  },
+
+  /**
+   * Oriel's follow-up: once a validated sealed-recovery slip physically exists, she posts
+   * one real courier leg through the same board emission. No slip, no offer. The row is
+   * attempted on every dock like its parent until boarded/completed.
+   */
+  _offerMassScaleFence(info) {
+    if (!info || info.id !== 'station_smuggler') return;
+    const ms = this.state && this.state.economyContracts && this.state.economyContracts.massScale;
+    if (!ms || !ms.slips) return;
+    const slip = Object.keys(ms.slips).map((k) => ms.slips[k])
+      .filter((s) => s && s.kind === 'sealed_recovery' && s.issuingStationId === 'station_smuggler')
+      .sort((a, b) => {
+        const ta = Number.isFinite(Number(a.weighedTick)) ? Number(a.weighedTick) : Infinity;
+        const tb = Number.isFinite(Number(b.weighedTick)) ? Number(b.weighedTick) : Infinity;
+        return ta - tb || String(a.slipId).localeCompare(String(b.slipId));
+      })[0];
+    if (!slip) return;
+    const offerId = `eco_mass_scale_fence_${slip.slipId}`;
+    const fence = ms.fenceOffers && ms.fenceOffers[slip.slipId];
+    if (fence && fence.completed) return;
+    if (this._offerOnBoard(info.id, offerId)) return;
+    this._emitOfferForBoard(info.id, this.planMassScaleFenceOffer(info, slip));
+  },
+
+  /** The earned courier leg: preloaded sealed cargo, native cargo_delivery, Ceres berth. */
+  planMassScaleFenceOffer(info, slip) {
+    const dest = STATION_INFO.get('station_ceres');
+    const params = { cmdtyId: 'cmdty_narcotics', qty: 1, taskTime: 40, fValue: 1 };
+    const terms = quoteMissionEconomics({
+      type: 'cargo_delivery',
+      tier: Math.max(info.tier || 0, (dest && dest.tier) || 0),
+      riskTier: 0, distance: 600, params, preloadedCargo: true,
+    });
+    return {
+      id: `eco_mass_scale_fence_${slip.slipId}`,
+      source: 'economyContract',
+      type: 'cargo_delivery',
+      stationId: info.id,
+      factionId: info.factionId,
+      destStationId: 'station_ceres',
+      destSectorId: dest ? dest.sectorId : info.sectorId,
+      distance: 600,
+      riskTier: 0,
+      preloadedCargo: true,
+      params,
+      reward_cr: terms.rewardCr,
+      collateral_cr: 0,
+      duration_s: terms.deadlineS,
+      time_limit_s: terms.deadlineS,
+      economyTerms: terms,
+      storyTag: null,
+      title: 'Oriel Pask: one sealed unit to Ceres',
+      brief: `You already know what the line said — declared ${slip.declaredMassT} t, reading ${slip.measuredMassT} t. That much silence that heavy does not ride a public manifest. Carry one sealed unit to Ceres for me. You earned the ask by holding a scale nobody else bothers to keep.`,
+      summary: 'One sealed unit, preloaded, to Ceres. Offered because the rope proved the manifest lied.',
+      cause: { tag: 'mass_scale_fence', massSlipId: slip.slipId, fenceId: 'fence_oriel_pask' },
+    };
+  },
+
+  /**
+   * The lazily created massScale slice — ABSENT until the first validated write so old
+   * saves and byte-sensitive sim snapshots never see a placeholder key.
+   */
+  _massScaleState() {
+    const own = this._ensureState();
+    own.massScale = normalizeMassScaleState(own.massScale);
+    return own.massScale;
+  },
+
+  /**
+   * tether:massWeighed → keep the durable slip. The event is only the notification: the
+   * live target, its active mission, the declaration, and the body's authored mass are
+   * all re-derived here, so a fabricated event with a valid-looking number files nothing.
+   */
+  _recordMassWeigh(payload) {
+    try {
+      const state = this.state;
+      if (!state || !payload || !payload.slipId || payload.targetId == null) return;
+      const target = state.entities && state.entities.get
+        ? state.entities.get(payload.targetId) : null;
+      const decl = target && massDeclarationForTarget(state, target);
+      const measuredMassT = decl && physicalMassT(target);
+      if (!decl || measuredMassT == null) return;
+      // The event is a notification, not evidence: the telemetry owner's own projection must
+      // carry this exact measurement and the live rope must still point at the body it
+      // weighed. A fabricated emit with a valid-looking slipId but no owner-side proof
+      // files nothing.
+      const tele = state.player && state.player.masslineTelemetry;
+      const mw = tele && tele.massWeighing;
+      const tether = state.player && state.player.tether;
+      if (!mw || mw.slipId !== payload.slipId || mw.targetId !== payload.targetId
+          || Number(mw.targetSlot) !== decl.targetSlot
+          || !Number.isFinite(Number(mw.measuredMassT))
+          || Math.abs(Number(mw.measuredMassT) - measuredMassT) > 1e-6
+          // The event payload must repeat the owner's own measurement — a forged emit
+          // quoting any other mass is refused even when the rope and projection are real.
+          || !Number.isFinite(Number(payload.measuredMassT))
+          || Math.abs(Number(payload.measuredMassT) - Number(mw.measuredMassT)) > 1e-6
+          || !tether || tether.active !== true || tether.targetId !== payload.targetId) return;
+      const disc = massDiscrepancy(decl.declaredMassT, measuredMassT);
+      const slipId = `mass-slip:${decl.sourceOfferId}:${decl.targetSlot}`;
+      if (!disc || payload.slipId !== slipId
+          || Number(payload.targetSlot) !== decl.targetSlot
+          || String(payload.missionId) !== String(decl.missionId)
+          || String(payload.sourceOfferId) !== String(decl.sourceOfferId)
+          || String(payload.kind) !== String(decl.kind)) return;
+      const ms = this._massScaleState();
+      if (ms.slips[slipId]) return; // durable dedupe — the slip is already kept
+      ms.slips[slipId] = {
+        slipId,
+        sourceOfferId: decl.sourceOfferId,
+        missionId: decl.missionId,
+        kind: decl.kind,
+        issuer: decl.issuer,
+        reference: decl.reference,
+        targetSlot: decl.targetSlot,
+        declaredMassT: disc.declaredMassT,
+        measuredMassT: disc.measuredMassT,
+        deltaMassT: disc.deltaMassT,
+        ratio: disc.ratio,
+        discrepant: disc.discrepant,
+        issuingStationId: decl.issuingStationId,
+        weighedTick: Number.isFinite(Number(payload.tick))
+          ? Math.trunc(Number(payload.tick))
+          : (Number.isFinite(state.tick) ? state.tick | 0 : null),
+        weighedSimTime: Number.isFinite(Number(payload.simTime))
+          ? Number(payload.simTime)
+          : (Number.isFinite(state.simTime) ? state.simTime : null),
+        filedAtStations: {},
+      };
+      // First validated discrepancy — one objective-channel explanation through the voice
+      // arbiter (a toast stands in only for harnesses with no voice helper).
+      const caption = massScaleCaptionText(decl, disc);
+      const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
+        ? this.helpers.voice.say({ channel: 'objective', id: `mass-scale:${slipId}`, text: caption, kind: 'objective', ttl: 8 })
+        : false;
+      if (!said) this.bus.emit('toast', { text: caption, kind: 'info', ttl: 8 });
+    } catch (err) {
+      dedupError('economyContracts/massWeighed', '[economyContracts] tether:massWeighed', err);
+    }
+  },
+
+  /** mission:completed → close the authored case (or spend the fence leg). Payment stays
+      with missions/economy; we only close our own bookkeeping so no second reward exists. */
+  _recordMassScaleCompletion(payload) {
+    try {
+      const missionId = payload && payload.missionId;
+      if (missionId == null) return;
+      const missions = this.state && this.state.missions;
+      const row = (Array.isArray(missions && missions.receipts) ? missions.receipts : [])
+        .concat(Array.isArray(missions && missions.active) ? missions.active : [])
+        .find((m) => m && (String(m.id) === String(missionId) || String(m.missionId) === String(missionId)));
+      // The event's own sourceOfferId is authoritative (missions carries it); the mission row
+      // lookup and the legacy id-equals-offer convention are fallbacks for older emitters.
+      const sourceOfferId = payload.sourceOfferId != null ? String(payload.sourceOfferId)
+        : (row && row.sourceOfferId != null ? String(row.sourceOfferId)
+          : (String(missionId).startsWith('eco_mass_scale_') ? String(missionId) : null));
+      if (!sourceOfferId || !sourceOfferId.startsWith('eco_mass_scale_')) return;
+      const ms = this._massScaleState();
+      if (sourceOfferId.startsWith('eco_mass_scale_fence_')) {
+        const slipId = sourceOfferId.slice('eco_mass_scale_fence_'.length);
+        if (!ms.fenceOffers[slipId]) ms.fenceOffers[slipId] = { offerId: sourceOfferId, completed: true };
+        else ms.fenceOffers[slipId].completed = true;
+        return;
+      }
+      ms.completed[sourceOfferId] = true;
+    } catch (err) {
+      dedupError('economyContracts/massScaleComplete', '[economyContracts] mission:completed', err);
+    }
+  },
+
+  /**
+   * customs:massSlipFiled → record the station filing on OUR slip only after validating
+   * the acknowledgment against it. The audit slip filed at Helios additionally earns the
+   * one Kessler line — registered through the story owner, never a story flag of ours.
+   */
+  _recordMassSlipFiling(payload) {
+    try {
+      const state = this.state;
+      if (!state || !payload || !payload.slipId || !payload.stationId || !payload.outcome) return;
+      const ms = this._massScaleState();
+      const slip = ms.slips[payload.slipId];
+      if (!slip) return; // an acknowledgment about evidence we do not hold files nothing
+      if (String(slip.issuingStationId) !== String(payload.stationId)) return;
+      const spec = MASS_SCALE_FILING_OUTCOMES[slip.kind];
+      if (!spec || spec.outcome !== payload.outcome) return;
+      if (slip.filedAtStations[payload.stationId]) return;
+      slip.filedAtStations[payload.stationId] = {
+        outcome: payload.outcome,
+        tick: Number.isFinite(state.tick) ? state.tick | 0 : null,
+        simTime: Number.isFinite(state.simTime) ? state.simTime : null,
+      };
+      // The law surface that issued this is dock-scoped and the toast feed is invisible
+      // under ui-modal-open — hold the notice until undock and re-present it on the first
+      // flight frame, so "WEIGHT SLIP FILED"/"ISSUER DISPUTED" is a line the player reads,
+      // never one that expired unseen. Persisted in this slice, so a reload still delivers it.
+      if (typeof payload.text === 'string' && payload.text) {
+        const queue = ms.pendingNotices || (ms.pendingNotices = []);
+        if (queue.length < 8) queue.push({ text: payload.text, statusText: payload.statusText ?? null });
+      }
+      if (slip.kind === 'weight_audit' && payload.stationId === 'station_helios' && !slip.storyLine) {
+        slip.storyLine = true;
+        this.bus.emit('ambientComms:register', {
+          id: 'mass_scale_47a_weight_slip',
+          sender: 'KESSLER',
+          line: 'That slip you just filed — a manifest reading twenty under its own rope. I have seen that exact lie before: it is the same shape as 47-A. Keep the original slip. Whoever stamps that variance tends to erase the other copy.',
+          persistent: true,
+        });
+      }
+    } catch (err) {
+      dedupError('economyContracts/massSlipFiled', '[economyContracts] customs:massSlipFiled', err);
     }
   },
 
@@ -1132,6 +1533,18 @@ export const economyContracts = {
     if (this.bus && this.bus.off && this._onDocked) this.bus.off('dock:docked', this._onDocked);
     if (this.bus && this.bus.off && this._onRouteLegDue) this.bus.off('fence:routeLegDue', this._onRouteLegDue);
     this._onRouteLegDue = null;
+    if (this.bus && this.bus.off && this._onMassWeighed) this.bus.off('tether:massWeighed', this._onMassWeighed);
+    if (this.bus && this.bus.off && this._onMassScaleCompleted) this.bus.off('mission:completed', this._onMassScaleCompleted);
+    if (this.bus && this.bus.off && this._onMassSlipFiled) this.bus.off('customs:massSlipFiled', this._onMassSlipFiled);
+    if (this.bus && this.bus.off && this._onMassScaleUndock) this.bus.off('dock:undocked', this._onMassScaleUndock);
+    if (this.bus && this.bus.off && this._onMassScaleLoaded) this.bus.off('save:loaded', this._onMassScaleLoaded);
+    this._onMassScaleLoaded = null;
+    if (this.bus && this.bus.off && this._onMassScaleTick) this.bus.off('economy:tick', this._onMassScaleTick);
+    this._onMassScaleTick = null;
+    this._onMassWeighed = null;
+    this._onMassScaleCompleted = null;
+    this._onMassSlipFiled = null;
+    this._onMassScaleUndock = null;
     if (this.bus && this._onStarted) this.bus.off('game:started', this._onStarted);
     this._onOfferBoarded = null;
     this._deniableLatch = null;

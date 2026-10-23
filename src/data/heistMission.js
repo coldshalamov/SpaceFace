@@ -24,6 +24,7 @@
 import {
   BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
   HEIST_CAPSULE_RUN_VARIANT_ID,
+  PQ019_OBSERVE,
 } from './heistFacilities.js';
 
 export const PQ019C_HEIST_TYPE = 'heist_intercept';
@@ -33,6 +34,92 @@ export const PQ019C_HEIST_STATION_ID = 'station_tethys';
 export const PQ019C_HEIST_SECTOR_ID = 'sector_tethys_junction';
 /** The Quiet keep the fence. They are the offering faction, so they own the rep outcome. */
 export const PQ019C_HEIST_FACTION_ID = 'faction_quiet';
+
+// ── RC-MISSION-VOICE: one unique method each, plus the Case File ───────────────
+//
+// Every Tethys board row names its own way in — the method line is the job's voice, not a
+// tutorial. Beside it rides the Case File: the four durable `heistFacilities.observed` facts
+// the player can case in person (scan pulse, tailing the crew, watching a catch). Learn three
+// of the four and the row opens a THIRD method — the quiet way that only exists because you
+// watched first.
+export const HEIST_CASE_FILE = Object.freeze({
+  capsule_run: Object.freeze({
+    // The whole observable set — the run is the big job; everything the yard can teach is in play.
+    factIds: Object.freeze(Object.keys(PQ019_OBSERVE.facts)),
+    factLabels: Object.freeze({
+      launcher_schedule: 'launch cadence',
+      catcher_receiver: 'the lawful receiver',
+      fence_receiver: 'the fence',
+      crew_route: 'the crew route',
+    }),
+    casedAt: 3,
+    methods: Object.freeze([
+      'Fly the arc — meet the capsule in the open between throw and catch.',
+      'Work the corridor — the shell sheds transfer pods along the lane; collect what drops.',
+      'Case file full — hit it on the fence-side leg. You know the receiver, the cadence, and the crew route. Pick the moment.',
+    ]),
+  }),
+  third_shift: Object.freeze({
+    factIds: Object.freeze(['launcher_schedule', 'catcher_receiver', 'crew_route']),
+    factLabels: Object.freeze({
+      launcher_schedule: 'launch cadence',
+      catcher_receiver: 'the catcher fork',
+      crew_route: 'the crew route',
+    }),
+    casedAt: 2,
+    methods: Object.freeze([
+      'Catch and carry — latch the assembly and tow it home through the fork under a hundred.',
+      'Herd it — a tumbling load answers thrusters as honest as a line.',
+      'Case file full — arrive on the crew’s own cadence and the pickets never form.',
+    ]),
+  }),
+  counterweight: Object.freeze({
+    factIds: Object.freeze(['launcher_schedule', 'crew_route']),
+    factLabels: Object.freeze({
+      launcher_schedule: 'the yard schedule',
+      crew_route: 'the tug’s route',
+    }),
+    casedAt: 2,
+    methods: Object.freeze([
+      'Hold the cradle — dead mass on the plate keeps the gate open while the tug works.',
+      'Sacrifice a crate — a sealed transfer box on the cradle is balance enough.',
+      'Case file full — the yard’s cadence says when the tug rests; stage the ballast before the shift.',
+    ]),
+  }),
+});
+
+/**
+ * Project the durable observation ledger onto one heist's case file. `observed` is
+ * `state.heistFacilities.observed` ({ factId: {atTick, method, detail} }); absent/foreign values
+ * read as an empty file. Returns { learned, total, known, unknown, cased }.
+ */
+export function heistCaseFile(kind, observed) {
+  const def = HEIST_CASE_FILE[kind];
+  const facts = observed && typeof observed === 'object' ? observed : {};
+  if (!def) return { learned: 0, total: 0, known: [], unknown: [], cased: false };
+  const known = [];
+  const unknown = [];
+  for (const factId of def.factIds) {
+    (facts[factId] ? known : unknown).push(def.factLabels[factId] || factId);
+  }
+  const learned = known.length;
+  return { learned, total: def.factIds.length, known, unknown, cased: learned >= def.casedAt };
+}
+
+/** The offer's method lines — the third only exists once the room is cased. */
+export function heistMethodsFor(kind, cased) {
+  const def = HEIST_CASE_FILE[kind];
+  if (!def) return [];
+  return def.methods.slice(0, cased ? 3 : 2);
+}
+
+/** One line of offer copy for the case file — knowns named, unknowns still dark. */
+export function heistCaseFileLine(caseFile) {
+  if (!caseFile || !caseFile.total) return '';
+  const known = caseFile.known.length ? `known: ${caseFile.known.join(', ')}` : 'nothing cased';
+  const unknown = caseFile.unknown.length ? ` — dark: ${caseFile.unknown.join(', ')}` : '';
+  return `CASE FILE ${caseFile.learned}/${caseFile.total} — ${known}${unknown}.`;
+}
 
 /**
  * Selected tuning.
@@ -161,12 +248,14 @@ const RECOVERY_TITLE = 'Capsule Run — Second Pass';
  *
  * `attempt` 0 is the standing contract; `attempt` 1 is the reduced-stake recovery row.
  */
-export function buildHeistOffer({ epoch = 0, attempt = 0, sourceMissionId = null } = {}) {
+export function buildHeistOffer({ epoch = 0, attempt = 0, sourceMissionId = null, observed = null } = {}) {
   const isRecovery = attempt > 0;
   const payout = isRecovery ? PQ019C_HEIST_TUNING.recoveryPayoutCr : PQ019C_HEIST_TUNING.payoutCr;
   const id = isRecovery
     ? `heist_tethys_capsule_run_recovery_${attempt}_${sourceMissionId || 'x'}`
     : 'heist_tethys_capsule_run';
+  const caseFile = heistCaseFile('capsule_run', observed);
+  const methods = heistMethodsFor('capsule_run', caseFile.cased);
   return {
     id,
     type: PQ019C_HEIST_TYPE,
@@ -193,6 +282,11 @@ export function buildHeistOffer({ epoch = 0, attempt = 0, sourceMissionId = null
       // Authored per-contract policy. A recovery row never grants another recovery.
       recoveryEnabled: isRecovery ? false : PQ019C_HEIST_TUNING.recoveryEnabled,
       fValue: 1,
+      // RC-MISSION-VOICE: the job speaks its way in. `methods`/`caseFile` are player-facing
+      // casing; `retryWatch` is the room change a second attempt physically carries.
+      methods,
+      caseFile: { learned: caseFile.learned, total: caseFile.total, cased: caseFile.cased },
+      ...(isRecovery ? { retryWatch: true } : {}),
     },
     title: isRecovery ? RECOVERY_TITLE : BASE_TITLE,
     brief: isRecovery
@@ -203,10 +297,13 @@ export function buildHeistOffer({ epoch = 0, attempt = 0, sourceMissionId = null
       ? 'Reduced-stake second pass on the Tethys capsule run.'
       : 'Intercept a lawful cargo capsule in flight and deliver it to the Quiet fence.',
     description: isRecovery
-      ? 'The Quiet will fund one more attempt at a reduced rate. There is no third.'
+      ? 'The Quiet will fund one more attempt at a reduced rate. There is no third. '
+        + 'The yard watched the first one — expect company holding the corridor this time. '
+        + `METHODS: ${methods.join(' ')} ${heistCaseFileLine(caseFile)}`
       : 'Tethys Surface Launcher throws a sealed capsule on a fixed arc to the Concord Lawful '
         + 'Catcher. The Quiet want it at their own receiver instead. Nothing about the flight is '
-        + 'scripted: it is mass on a trajectory, and it is yours if you can hold it.',
+        + 'scripted: it is mass on a trajectory, and it is yours if you can hold it. '
+        + `METHODS: ${methods.join(' ')} ${heistCaseFileLine(caseFile)}`,
     authorization: 'QUIET — UNLOGGED',
     adminField: 'NO MANIFEST · NO RECOURSE',
     expiresAtEpoch: null,
@@ -308,6 +405,21 @@ export const BREAKAWAY_WRECK_RECOVERY = Object.freeze({
   victimLabel: 'SP-07 Assembly',
 });
 
+/**
+ * RC-MISSION-VOICE — a retry changes the room. The Capsule Run's recovery row (`attempt > 0`)
+ * carries `params.retryWatch`: the yard watched the first lift fail, so the second run launches
+ * into a lane the scavengers already staked out — two light hulls posted on the corridor, spawned
+ * through the same budgeted pressure path the Third Shift uses. No specialist, no respawn: one
+ * bounded picket that exists because the room remembers.
+ */
+export const RETRY_WATCH_PRESSURE = Object.freeze({
+  lightPool: Object.freeze(['wasp_swarmer', 'reaver_pirate']),
+  lightCount: 2,
+  lightLevel: 3,
+  spawnDistanceWu: 680,
+  motive: 'contested_mechanism',
+});
+
 /** Terminal outcome -> settlement for the lawful recovery. A settled arrival is the only payday. */
 export const BREAKAWAY_TERMINAL_SETTLEMENT = Object.freeze({
   lawful_arrival_observed: Object.freeze({ settlement: 'complete', reason: null }),
@@ -351,7 +463,9 @@ export const BREAKAWAY_CUE_TEXT = Object.freeze({
  * Build the Third Shift offer. Deterministic, like `buildHeistOffer`, so a board refresh, a save
  * round-trip and a fresh boot all agree on its identity.
  */
-export function buildBreakawayOffer({ epoch = 0 } = {}) {
+export function buildBreakawayOffer({ epoch = 0, observed = null } = {}) {
+  const caseFile = heistCaseFile('third_shift', observed);
+  const methods = heistMethodsFor('third_shift', caseFile.cased);
   return {
     id: 'breakaway_tethys_third_shift',
     type: BREAKAWAY_RECOVERY_TYPE,
@@ -378,6 +492,8 @@ export function buildBreakawayOffer({ epoch = 0 } = {}) {
       unlaunchedWindowTicks: BREAKAWAY_HEIST_TUNING.unlaunchedWindowTicks,
       recoveryEnabled: BREAKAWAY_HEIST_TUNING.recoveryEnabled,
       fValue: 1,
+      methods,
+      caseFile: { learned: caseFile.learned, total: caseFile.total, cased: caseFile.cased },
     },
     title: 'The Third Shift — SP-07 Recovery',
     brief: 'A flywheel assembly broke away from the Tethys launcher. Bring it home through the Concord catcher fork.',
@@ -387,7 +503,8 @@ export function buildBreakawayOffer({ epoch = 0 } = {}) {
       + 'Concord Lawful Catcher fork under 100 WU/s. The fork brakes the load itself; custody passes only '
       + 'once it comes to rest. Deliver it in good condition and Concord adds a bonus. The Quiet want the '
       + 'same assembly at their own receiver and pay cash off the books, but the lawful contract logs the '
-      + 'recovery — their money leaves that log open.',
+      + 'recovery — their money leaves that log open. '
+      + `METHODS: ${methods.join(' ')} ${heistCaseFileLine(caseFile)}`,
     authorization: 'CONCORD — LOGGED RECOVERY',
     adminField: 'MANIFEST SP-07 · LAWFUL SALVAGE',
     expiresAtEpoch: null,
@@ -449,7 +566,9 @@ export const COUNTERWEIGHT_CUE_TEXT = Object.freeze({
  * Build the counterweight-watch offer. Deterministic like `buildHeistOffer`, so a board refresh,
  * a save round-trip and a fresh boot all agree on its identity.
  */
-export function buildCounterweightOffer({ epoch = 0 } = {}) {
+export function buildCounterweightOffer({ epoch = 0, observed = null } = {}) {
+  const caseFile = heistCaseFile('counterweight', observed);
+  const methods = heistMethodsFor('counterweight', caseFile.cased);
   return {
     id: 'counterweight_tethys_yard_watch',
     type: COUNTERWEIGHT_WATCH_TYPE,
@@ -473,6 +592,8 @@ export function buildCounterweightOffer({ epoch = 0 } = {}) {
       legsRequired: COUNTERWEIGHT_WATCH_TUNING.legsRequired,
       completionBonusCr: COUNTERWEIGHT_WATCH_TUNING.completionBonusCr,
       fValue: 1,
+      methods,
+      caseFile: { learned: caseFile.learned, total: caseFile.total, cased: caseFile.cased },
     },
     title: 'The Counterweight — Yard Watch',
     brief: 'Hold the transfer-yard gate open on its counterweight while the tug walks two sealed crates through.',
@@ -481,7 +602,8 @@ export function buildCounterweightOffer({ epoch = 0 } = {}) {
       + 'or any heavy body the cradle accepts — and the door slides clear. While it is open the yard '
       + 'tug carries its sealed crates to the receiver pad. Lose the balance mid-carry and the carry '
       + 'holds where it is; lose the tug or a crate and the manifest is smaller. The yard pays for '
-      + 'what actually crosses.',
+      + 'what actually crosses. '
+      + `METHODS: ${methods.join(' ')} ${heistCaseFileLine(caseFile)}`,
     authorization: 'MTS — LOGGED WATCH',
     adminField: 'MANIFEST 2 CRATES · PAID PER DELIVERY',
     expiresAtEpoch: null,

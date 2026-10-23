@@ -7,6 +7,9 @@
 //     keeps its own lifetime copy because telemetry sessions reset every boot and rotate out after 25.
 //   • `crucible` rules read the local Crucible profile that survivalRecords settles exactly once per
 //     run (sf.save.crucible_meta): lifetime runs, deepest wave, and the daily board.
+//   • `trick` rules are one-time feats. They read a player `stunt:trickDetected` receipt the stunt
+//     grammar already emits. They are not counters: there is no target, and an amended episode does
+//     not announce the same feat again.
 //
 // Ids are forever: they key the saved ledger, the Steam API names and the localization keys. Adding
 // an achievement is additive; renaming or removing one strands every player who already earned it.
@@ -271,6 +274,152 @@ export const ACHIEVEMENTS = Object.freeze([
     icon: 'icon-tow',
     rule: { source: 'counter', key: 'throws', target: 50 },
   }),
+  // Trick feats — one deed, once. The ledger reads stunt:trickDetected; it does not count tricks.
+  achievement({
+    id: 'two_hulls_one_rope',
+    category: 'massline',
+    name: 'Two Hulls, One Rope',
+    description: 'Release one ship under load into another hull.',
+    icon: 'icon-wreck',
+    rule: { source: 'trick', trickId: 'bolas' },
+  }),
+  achievement({
+    id: 'keep_the_heavy_end',
+    category: 'massline',
+    name: 'Keep the Heavy End Moving',
+    description: 'Kill with the mass that is still on the line.',
+    icon: 'icon-freighter',
+    rule: { source: 'trick', trickId: 'wrecking_ball' },
+  }),
+  achievement({
+    id: 'watch_the_cable',
+    category: 'massline',
+    name: 'Watch the Cable',
+    description: 'Kill a hull that crosses a loaded tether.',
+    icon: 'icon-warning',
+    rule: { source: 'trick', trickId: 'clothesline' },
+  }),
+  achievement({
+    id: 'one_mistake_three_wrecks',
+    category: 'massline',
+    name: 'One Mistake, Three Wrecks',
+    description: 'Wreck three or more hulls in one throw.',
+    icon: 'icon-derelict',
+    rule: { source: 'trick', minCollateral: 3 },
+  }),
+  achievement({
+    id: 'still_flying',
+    category: 'massline',
+    name: 'Still Flying',
+    description: 'Clear a kill-shot by a hair.',
+    icon: 'icon-shield',
+    rule: { source: 'trick', trickId: 'near_miss' },
+  }),
+  achievement({
+    id: 'dragged_all_the_way',
+    category: 'massline',
+    name: 'Dragged All the Way In',
+    description: 'Tow a hostile into a fatal collision.',
+    icon: 'icon-target',
+    rule: { source: 'trick', trickId: 'tow_kill' },
+  }),
+  achievement({
+    id: 'the_rock_won',
+    category: 'massline',
+    name: 'The Rock Won',
+    description: 'Redirect a body into terrain for the kill.',
+    icon: 'icon-asteroid',
+    rule: { source: 'trick', trickId: 'rock_discovery' },
+  }),
+  achievement({
+    id: 'out_the_other_side',
+    category: 'massline',
+    name: 'Out the Other Side',
+    description: 'Let a gravity well carry a body into a kill.',
+    icon: 'icon-well',
+    rule: { source: 'trick', trickId: 'well_golf' },
+  }),
+  achievement({
+    id: 'one_job_left',
+    category: 'massline',
+    name: 'One Job Left',
+    description: 'Put a wreck back in motion for a kill.',
+    icon: 'icon-hull',
+    rule: { source: 'trick', trickId: 'dead_mans_mass' },
+  }),
+  achievement({
+    id: 'cover_not_guaranteed',
+    category: 'massline',
+    name: 'Cover Is Not a Guarantee',
+    description: 'Bank a shot around cover that kills.',
+    icon: 'icon-cone',
+    rule: { source: 'trick', trickId: 'bank_job' },
+  }),
+  achievement({
+    id: 'back_with_your_name',
+    category: 'massline',
+    name: 'Back With Your Name On It',
+    description: 'Return hostile ordnance to kill its owner.',
+    icon: 'icon-munitions',
+    rule: { source: 'trick', trickId: 'return_to_sender' },
+  }),
+  achievement({
+    id: 'rode_the_blast',
+    category: 'massline',
+    name: 'Rode the Blast',
+    description: "Ride a blast's momentum clear of a threat.",
+    icon: 'icon-fire',
+    rule: { source: 'trick', trickId: 'kickstart' },
+  }),
+  achievement({
+    id: 'you_fit',
+    category: 'massline',
+    name: 'You Fit',
+    description: 'Escape through a moving gap between two hulls.',
+    icon: 'icon-repel',
+    rule: { source: 'trick', trickId: 'needle_thread' },
+  }),
+  achievement({
+    id: 'second_impulse',
+    category: 'massline',
+    name: 'Second Impulse',
+    description: 'Correct a body with a second impulse into a kill.',
+    icon: 'icon-energy',
+    rule: { source: 'trick', trickId: 'one_two' },
+  }),
+  achievement({
+    id: 'rope_well_wreck',
+    category: 'massline',
+    name: 'Rope, Well, Wreck',
+    description: 'Pass a body from a rope through a well into a wreck.',
+    hidden: true,
+    icon: 'icon-pod',
+    rule: { source: 'trick', trickId: 'slingshot_golf' },
+  }),
+  achievement({
+    id: 'two_hulls_one_rock',
+    category: 'massline',
+    name: 'Two Hulls, One Rope, One Rock',
+    description: 'Drive a Twin Bridle pair into terrain.',
+    icon: 'icon-patrol',
+    rule: { source: 'trick', variantId: 'bolas_pair' },
+  }),
+  achievement({
+    id: 'his_own_wingman',
+    category: 'massline',
+    name: 'His Own Wingman',
+    description: 'Shove a wreck into a hull of its own faction.',
+    icon: 'icon-pirate',
+    rule: { source: 'trick', variantId: 'own_wingman' },
+  }),
+  achievement({
+    id: 'perfect_cut',
+    category: 'massline',
+    name: 'Perfect Cut',
+    description: 'Land a razor-rated release that kills.',
+    icon: 'icon-weapon',
+    rule: { source: 'trick', razorKill: true },
+  }),
 ]);
 
 const BY_ID = new Map(ACHIEVEMENTS.map((def) => [def.id, def]));
@@ -312,7 +461,28 @@ export function describeAchievementRule(def) {
     const f = CRUCIBLE_FACTS[rule.key];
     return `crucible.${rule.key} >= ${rule.target} (${f ? `${f.path}: ${f.meaning}` : 'unknown fact'})`;
   }
+  if (rule.source === 'trick') {
+    if (typeof rule.trickId === 'string') return `player stunt:trickDetected trickId ${rule.trickId} once`;
+    if (typeof rule.variantId === 'string') return `player stunt:trickDetected variantId ${rule.variantId} once`;
+    if (Number.isInteger(rule.minCollateral)) return `player stunt:trickDetected collateralCount >= ${rule.minCollateral} once`;
+    if (rule.razorKill === true) return 'player stunt:trickDetected razor release that kills, once';
+  }
   return 'unknown rule';
+}
+
+/** A trick feat names exactly one predicate and never a grind count. */
+export function trickFeatRuleIssues(rule) {
+  if (!rule || rule.source !== 'trick') return ['not a trick rule'];
+  const named = ['trickId', 'variantId', 'minCollateral', 'razorKill'].filter((key) => rule[key] != null);
+  const issues = [];
+  if (named.length !== 1) issues.push('trick feat names exactly one predicate');
+  if (rule.trickId != null && (typeof rule.trickId !== 'string' || rule.trickId.length === 0)) issues.push('trickId must be a non-empty string');
+  if (rule.variantId != null && (typeof rule.variantId !== 'string' || rule.variantId.length === 0)) issues.push('variantId must be a non-empty string');
+  if (rule.minCollateral != null && (!Number.isInteger(rule.minCollateral) || rule.minCollateral < 2)) issues.push('minCollateral must be an integer >= 2');
+  if (rule.razorKill != null && rule.razorKill !== true) issues.push('razorKill must be true');
+  if (rule.target != null) issues.push('trick feats have no count target');
+  if (rule.key != null) issues.push('trick feats are not counters');
+  return issues;
 }
 
 /** Structural validation shared by the tests and the Steamworks export. */
@@ -335,14 +505,16 @@ export function validateAchievementDefinitions(defs = ACHIEVEMENTS) {
     if (typeof def.hidden !== 'boolean') issues.push(`${at}: hidden must be boolean`);
     if (typeof def.icon !== 'string' || !ACHIEVEMENT_ICON_PATTERN.test(def.icon)) issues.push(`${at}: icon must name a kit glyph (icon-*)`);
     const rule = def.rule;
-    if (!rule || (rule.source !== 'counter' && rule.source !== 'crucible')) {
-      issues.push(`${at}: rule source must be counter or crucible`);
+    if (!rule || (rule.source !== 'counter' && rule.source !== 'crucible' && rule.source !== 'trick')) {
+      issues.push(`${at}: rule source must be counter, crucible, or trick`);
     } else if (rule.source === 'counter' && !ACHIEVEMENT_COUNTERS[rule.key]) {
       issues.push(`${at}: unknown counter ${rule.key}`);
     } else if (rule.source === 'crucible' && !CRUCIBLE_FACTS[rule.key]) {
       issues.push(`${at}: unknown crucible fact ${rule.key}`);
+    } else if (rule.source === 'trick') {
+      for (const issue of trickFeatRuleIssues(rule)) issues.push(`${at}: ${issue}`);
     }
-    if (!rule || !Number.isInteger(rule.target) || rule.target < 1) issues.push(`${at}: target must be a positive integer`);
+    if (rule && rule.source !== 'trick' && (!Number.isInteger(rule.target) || rule.target < 1)) issues.push(`${at}: target must be a positive integer`);
     if (def.nameKey !== `achievements.${def.id}.name` || def.descriptionKey !== `achievements.${def.id}.description`) {
       issues.push(`${at}: localization keys must derive from the id`);
     }

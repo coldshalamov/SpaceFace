@@ -22,6 +22,30 @@ const { COLS, ROWS, MOVE_HOLD_DELAY_S, MOVE_CRUISE_INTERVAL_S } = DRILL_CONST;
 
 export const MODES = Object.freeze({ DRIVE: 'drive', BUILD: 'build' });
 
+// The charge quote the screen speaks at arm time: cost, what the blast banks, what it
+// spills to a full hold, and the hazards in the cut — the numbers the preview already
+// computed, never a second math pass. Null when there is nothing honest to quote. Pure:
+// lives here so tests and the worker-lane screen path share one formatter.
+export function chargeQuoteText(pv) {
+  if (!pv || !pv.ok) return null;
+  const oreWord = (id) => String(id || '').replace(/^cmdty_(ore_)?/, '');
+  const list = (map) => Object.entries(map || {}).filter(([, q]) => q > 0)
+    .map(([id, q]) => `${q}u ${oreWord(id)}`).join(' · ');
+  const parts = [`${pv.payloadLabel || 'Bore charge'} — ${pv.cost > 0 ? `${pv.cost} cr` : 'from stock'}`];
+  const banked = list(pv.yields);
+  if (banked) parts.push(`banks ${banked}`);
+  const spilled = list(pv.spill);
+  if (spilled) parts.push(`spills ${spilled}`);
+  const hazards = [];
+  if (pv.selfDanger) hazards.push('backblast');
+  if (pv.tierBlocked > 0) hazards.push(`${pv.tierBlocked} too hard`);
+  if (pv.gasCount > 0) hazards.push(`${pv.gasCount} gas`);
+  if (pv.structureSurvives) hazards.push('housing survives');
+  if (hazards.length) parts.push(hazards.join(' · '));
+  parts.push('— face the cut, then R again to set it. Esc backs off.');
+  return parts.join(' ');
+}
+
 // Asteroid Ops is a modal control surface, but its mode controller intentionally leaves
 // non-console keys unhandled for the global UI router. Claim only keys the console consumed so a
 // Build command cannot also activate a focused button, and so Escape changes exactly one layer:

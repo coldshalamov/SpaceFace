@@ -18,9 +18,10 @@
 // `outputs.kind` tells the crafting system where the product lands: modules→ownedModules, weapons→
 // ownedWeapons, commodity→cargo, ship→crafted ship grant (added to ownedShips).
 //
-// Pure data, no imports. IDs use bp_ prefix. Cross-refs validated by check-data-refs.
+// IDs use bp_ prefix. Commodity bills are projected from the site recipe book.
+import { MATERIAL_RECIPE_BY_GOOD } from './sites.js';
 
-export const BLUEPRINTS = [
+const BLUEPRINT_DEFINITIONS = [
 
   // ===================================================================================
   // TIER 1 — REFINE  (raw ore → refined materials). The miner's entry into manufacturing.
@@ -165,6 +166,18 @@ export const BLUEPRINTS = [
     desc: 'Build a Drifter — a versatile multirole hull for the independent captain.',
   },
 ];
+
+// Paid pre-unification queue jobs retain the output for which their inputs were consumed.
+export const LEGACY_MATERIAL_OUTPUTS = Object.freeze(Object.fromEntries(BLUEPRINT_DEFINITIONS
+  .filter(blueprint => blueprint.outputs.kind === 'commodity')
+  .map(blueprint => [blueprint.id, Object.freeze({ ...blueprint.outputs })])));
+export const BLUEPRINTS = BLUEPRINT_DEFINITIONS.map(blueprint => {
+  const recipe = blueprint.outputs.kind === 'commodity' && MATERIAL_RECIPE_BY_GOOD[blueprint.outputs.id];
+  if (!recipe) return blueprint;
+  return { ...blueprint, inputs: { ...recipe.inputs },
+    outputs: { ...blueprint.outputs, qty: recipe.output[blueprint.outputs.id] },
+    desc: `${recipe.name}. The same material bill applies at a site and at this bench.` };
+});
 
 // Quick lookup maps (populated by the crafting system on init).
 export const BLUEPRINT_BY_ID = new Map(BLUEPRINTS.map((b) => [b.id, b]));

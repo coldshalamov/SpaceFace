@@ -291,6 +291,13 @@ export function injectHudCss() {
      monospace + accent-colored so it reads as a multiplier, not part of the message. */
   .sf-toast__count { font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-cyan); margin-left:6px;
     padding:0; }
+  /* An offer receipt's one button (toasts.js registerToastAction): a lit word with a hairline under
+     it, not a boxed control. It is the only tab stop on its card, so it carries its own focus ring. */
+  .sf-toast__action { appearance:none; background:none; border:0; border-bottom:1px solid currentColor; border-radius:0;
+    color:var(--hud-cyan); font:inherit; padding:0 2px; margin-left:8px; flex:none; cursor:pointer; }
+  .sf-toast__action:hover { text-shadow:0 0 10px rgb(255 255 255 / .28); }
+  .sf-toast__action:focus-visible { outline:2px solid var(--hud-cyan); outline-offset:3px; }
+  body.ui-modal-open .sf-toast__action { pointer-events:none; cursor:default; }
 
   /* ===== watch list (PQ-183.01) — pinned readings in the receipts lane ===== */
   /* The pinned stack sits above the transient receipts in the same lane. Thin lines, no box:

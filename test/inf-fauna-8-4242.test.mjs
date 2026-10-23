@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { ALIEN_SITES, FIELD_LANGUAGE } from '../src/data/alienEcology.js';
 import { ensureAlienEcologyState } from '../src/data/alienEcologyState.js';
 import { mulberry32, hash32 } from '../src/core/rng.js';
-import { materializeAlienEcology, tickAlienEcology } from '../src/systems/alienEcology.js';
+import { handleAlienEcologyEvent, materializeAlienEcology, tickAlienEcology } from '../src/systems/alienEcology.js';
 import { faunaFieldNote } from '../src/ui/targetPanel.js';
 
 function makeWorld(sectorId) {
@@ -76,6 +76,7 @@ test('the cold bell names itself and tolls only when the player is in reach of t
   assert.ok(toll, 'the bell tolls on the band');
   assert.equal(toll.p.from, 'Cold Bell');
   assert.equal(toll.p.text, 'Cold Bell tolls on the band — it rings before the radiation front arrives.');
+  handleAlienEcologyEvent(world, 'scan:pulse', { source: 'player-scanner', pos: { ...bell.pos }, radius: 100 });
   const note = faunaFieldNote(bell, state);
   assert.ok(note && note.includes('TOLLS AHEAD OF THE FRONT'));
 });

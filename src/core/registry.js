@@ -61,8 +61,13 @@ import { shipjack } from '../systems/shipjack.js';
 import { custodyConsequences } from '../systems/custodyConsequences.js';
 import { aceMemory } from '../systems/aceMemory.js';
 import { deedRecord } from '../systems/deedRecord.js';
+import { historyWear } from '../systems/historyWear.js';
+import { longBerth } from '../systems/longBerth.js';
+import { crew } from '../systems/crew.js';
 import { mail } from '../systems/mail.js';
 import { worldClock } from '../systems/worldClock.js';
+import { worldPressure } from '../systems/worldPressure.js';
+import { lineProgression } from '../systems/lineProgression.js';
 import { barkDirector } from '../systems/barkDirector.js';
 import { stuntGrammar } from '../systems/stuntGrammar.js';
 import { aiPorts } from '../systems/aiPorts.js';
@@ -169,7 +174,7 @@ import { ships } from '../systems/ships.js';
 import { crafting } from '../systems/crafting.js';
 import { heat } from '../systems/heat.js';
 import { traffic } from '../systems/traffic.js';
-import { drill, drillReadView } from '../systems/drill.js';
+import { drill, drillReadView, CHARGE_PAYLOAD_ORDER } from '../systems/drill.js';
 import { intervention } from '../systems/intervention.js';
 import { claims, claimsReadView } from '../systems/claims.js';
 import { beacons } from '../systems/beacons.js';
@@ -179,6 +184,7 @@ import { spawnBudget } from '../systems/spawnBudget.js';            // single sh
 import { regionalEcology } from '../systems/regionalEcology.js';     // M4 persistent regional simulation inputs
 import { tensionDirector } from '../systems/tensionDirector.js'; // session-scale pacing owner
 import { encounterDirector } from '../systems/encounterDirector.js'; // zone-anchored living-universe encounters
+import { rockCore } from '../systems/rockCore.js'; // rows 482-485: Line rating, flail, rock-gun ledger
 import { nemesis } from '../systems/nemesis.js'; // adaptive named-rival arc engine (state.nemesis)
 import { nemesisEncounter } from '../systems/nemesisEncounter.js'; // spawn-host adapter (state.nemesisDeployment)
 import { nemesisSignals } from '../systems/nemesisSignals.js'; // event-only voice/toast router
@@ -639,6 +645,9 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['regionalEcology', regionalEcology],
     ['tensionDirector', tensionDirector],
     ['encounterDirector', encounterDirector],
+    // rockCore runs after the encounter directors: its flail constraint resolves post-physics
+    // and its kill ledger reads entity:killed the same tick.
+    ['rockCore', rockCore],
     // Nemesis packet (Counterexample): engine -> encounter host -> tacticalAI fixed-step order
     // is owned by the authoritative manifest; nemesisSignals is event-only (init, no update).
     ['nemesis', nemesis],
@@ -690,9 +699,12 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['crafting', crafting],
     ['heat', heat],
     ['deedRecord', deedRecord],   // THE WORLD REMEMBERS: listener-only ledger of player deeds under state.story.record
+    ['historyWear', historyWear], // PULSE-HISTORY: deeds → trinkets/decal/graffiti; loss ledger → memorial arrays
     ['traffic', traffic],
     ['drill', drill],
     ['claims', claims],
+    ['longBerth', longBerth], // GOLD-HOME: tow/restore/yard persistence on the abandoned tug
+    ['crew', crew], // GOLD-CREW: roster, perks via efficiencyMods, banter, loyalty, injury/loss
     ['beacons', beacons],
     ['bandRadio', bandRadio],
     ['v2FlavorRuntime', v2FlavorRuntime],
@@ -724,6 +736,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['moralTrapSystem', moralTrapSystem],
     ['mail', mail],               // PULSE-MAIL: triggered letter delivery under state.mail
     ['worldClock', worldClock],   // PULSE-TIME: world calendar transition announcer
+    ['worldPressure', worldPressure], // §34 rows 520–523: tide/audits/gray + colossus remains
+    ['lineProgression', lineProgression], // LINE-03/04/05 rows 498–501: tonnage, class, strain
     ['render', render],
     ['vfx', vfx],
     ['feel', feel],
@@ -1329,6 +1343,36 @@ export function createRegistry(ctx) {
             return ready;
           },
           end: (opts) => { drillCall('end', { opts }); return null; },
+          // Bore-charge verbs ship as drillCall descriptors like begin/pulseScan; the
+          // boolean answers mirror-read the lane's last-settled drill state (same
+          // ≤1-tick staleness contract as pulseScan's ready).
+          armCharge: () => {
+            const d = st && st.drill;
+            const ready = !!(d && d.active && !d.charge && !(Number(d.chargeCooldown) > 0));
+            if (ready && !d.chargeArmed) drillCall('armCharge');
+            return ready;
+          },
+          disarmCharge: () => {
+            const armed = !!(st && st.drill && st.drill.chargeArmed);
+            if (armed) drillCall('disarmCharge');
+            return armed;
+          },
+          setChargeAim: (col, row) => { drillCall('setChargeAim', { col, row }); },
+          cycleChargePayload: () => {
+            const d = st && st.drill;
+            if (!d || !d.active || !d.chargeArmed) return null;
+            drillCall('cycleChargePayload');
+            const idx = CHARGE_PAYLOAD_ORDER.indexOf(d.chargePayload);
+            return CHARGE_PAYLOAD_ORDER[(idx + 1) % CHARGE_PAYLOAD_ORDER.length] || 'blast';
+          },
+          // The plant's own preview is the gate on the worker too: the op ships and the
+          // worker-side plantCharge refuses+warns on the bridge if the mirror was stale.
+          plantCharge: () => {
+            const active = !!(st && st.drill && st.drill.active);
+            if (active) drillCall('plantCharge');
+            return active;
+          },
+          chargePreview: () => readView.chargePreview(),
           getDrillTier: () => readView.getDrillTier(),
           getDrillDPS: () => readView.getDrillDPS(),
           getTargetTelemetry: (col, row) => readView.getTargetTelemetry(col, row),

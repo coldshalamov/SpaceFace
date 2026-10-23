@@ -42,6 +42,8 @@ test('seed 4242: crossing mining-noise danger plays one ducked alert', () => {
   assert.equal(played[0].opts.duck, true);
   assert.equal(played[0].opts.rate, 0.72);
   assert.equal(played[0].opts.critical, true);
+  assert.equal(cue.caption, undefined);
+  assert.equal(played[0].opts.captionOwned, true);
 
   assert.ok(playAdmittedEarCue(host, miningNoiseDangerCue({ level: 71, threshold: 70 }), 10 + MINING_NOISE_ADMIT_TICKS));
   assert.equal(played.length, 2);

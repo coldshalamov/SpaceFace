@@ -26,7 +26,9 @@ test('the ricochet starter and a full swarm draft stay inside the fight', () => 
     assert.equal(isSwarmRelevantDef(def), true, row.defId);
     assert.ok(swarmFightReason(def).length >= 12, row.defId);
     if (MODULES.some((m) => m.id === row.defId)) {
-      assert.ok(def.swarmReason && def.swarmReason.length >= 12, row.defId);
+      // The catalog annotates its own copies — authored defs stay unstamped, so the
+      // public accessor is the honest read for the reason the shelf prints.
+      assert.ok(swarmFightReason(def).length >= 12, row.defId);
     }
     assert.equal(HARNESS_IRRELEVANT.test(def.name || ''), false, def.name);
   }
@@ -56,8 +58,7 @@ test('the ricochet starter and a full swarm draft stay inside the fight', () => 
     assert.equal(isSwarmRelevantDef(def), true, offer.defId);
     const onModuleTable = MODULES.some((row) => row.id === offer.defId);
     if (onModuleTable) {
-      assert.equal(typeof def.swarmReason, 'string', offer.defId);
-      assert.ok(def.swarmReason.length >= 12, offer.defId);
+      assert.ok(swarmFightReason(def).length >= 12, offer.defId);
     }
     assert.ok(swarmFightReason(def).length >= 12, offer.defId);
     assert.ok(typeof offer.blurb === 'string' && offer.blurb.length >= 12, offer.defId);
@@ -105,8 +106,11 @@ test('a live swarm run parks the campaign objective and gives it back after', ()
 });
 
 test('the adventure yard line ignores a stamped swarmReason', () => {
-  const mod = MODULES.find((row) => typeof row.swarmReason === 'string' && row.swarmReason.length >= 12);
-  assert.ok(mod, 'a fight module carries a swarmReason');
+  const base = MODULES.find((row) => isSwarmRelevantDef(row));
+  assert.ok(base, 'a fight module exists for the stamp test');
+  // The catalog owns the stamp on its copies; the test stamps a copy the same way to
+  // prove the yard sentence reads the authored line, never the swarm shelf reason.
+  const mod = { ...base };
   const copy = { ...mod, swarmReason: 'SWARM-ONLY-REASON that the yard must not read.' };
   assert.equal(arsenalSentence(copy), arsenalSentence(mod));
   assert.equal(arsenalSentence(copy).includes('SWARM-ONLY-REASON'), false);

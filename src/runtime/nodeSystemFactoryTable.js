@@ -162,12 +162,15 @@ import { traffic } from '../systems/traffic.js';
 import { drill } from '../systems/drill.js';
 import { intervention } from '../systems/intervention.js';
 import { claims } from '../systems/claims.js';
+import { longBerth } from '../systems/longBerth.js';
+import { crew } from '../systems/crew.js';
 import { beacons } from '../systems/beacons.js';
 import { onboarding } from '../systems/onboarding.js';
 import { spawnBudget } from '../systems/spawnBudget.js';
 import { regionalEcology } from '../systems/regionalEcology.js';
 import { tensionDirector } from '../systems/tensionDirector.js';
 import { encounterDirector } from '../systems/encounterDirector.js';
+import { rockCore } from '../systems/rockCore.js';
 import { nemesis } from '../systems/nemesis.js';
 import { nemesisEncounter } from '../systems/nemesisEncounter.js';
 import { nemesisSignals } from '../systems/nemesisSignals.js';
@@ -209,7 +212,11 @@ import { contractClausesSystem } from '../systems/contractClauses.js';
 import { moralTrapSystem } from '../systems/moralTrap.js';
 import { mail } from '../systems/mail.js';
 import { worldClock } from '../systems/worldClock.js';
+import { worldPressure } from '../systems/worldPressure.js';
+import { lineProgression } from '../systems/lineProgression.js';
 import { lossLedger } from '../systems/lossLedger.js';
+import { deedRecord } from '../systems/deedRecord.js';
+import { historyWear } from '../systems/historyWear.js';
 import { provenanceLedger } from '../systems/provenanceLedger.js';
 import { factionPresence } from '../systems/factionPresence.js';
 import { bandRadio } from '../systems/bandRadio.js';
@@ -368,6 +375,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['wingmen', wingmen],
     ['intervention', intervention],
     ['lossLedger', lossLedger],
+    ['deedRecord', deedRecord],
+    ['historyWear', historyWear],
     ['provenanceLedger', provenanceLedger],
     ['chronicler', chronicler],
     ['factionPresence', factionPresence],
@@ -390,6 +399,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['regionalEcology', regionalEcology],
     ['tensionDirector', tensionDirector],
     ['encounterDirector', encounterDirector],
+    ['rockCore', rockCore],
     ['nemesis', nemesis],
     ['nemesisEncounter', nemesisEncounter],
     ['nemesisSignals', nemesisSignals],
@@ -438,6 +448,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['traffic', traffic],
     ['drill', drill],
     ['claims', claims],
+    ['longBerth', longBerth],
+    ['crew', crew],
     ['beacons', beacons],
     ['bandRadio', bandRadio],
     ['v2FlavorRuntime', v2FlavorRuntime],
@@ -471,6 +483,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['moralTrapSystem', moralTrapSystem],
     ['mail', mail],
     ['worldClock', worldClock],
+    ['worldPressure', worldPressure],
+    ['lineProgression', lineProgression],
     ['save', save],
   ];
 

@@ -6,7 +6,7 @@
 // Single-writer: drill owns only state.drill (the field + avatar + accumulator). Ore grants route
 // through cargo.addCargo. Determinism: the field is seeded by the asteroid's id (V2 §32 seed model)
 // so the same asteroid drills the same way every visit.
-import { addCargo } from './cargo.js';
+import { addCargo, cargoUnitVolume } from './cargo.js';
 import { ORES } from '../data/mining.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { recordFieldExtraction, fieldMemoryReadout } from './fieldDepletion.js';
@@ -444,7 +444,7 @@ function settleBlastYield(host, d, rockEnt, col, row, ore, yieldU) {
   return added;
 }
 
-function chargeRefusalText(reason, cost = CHARGE_COST_CR) {
+export function chargeRefusalText(reason, cost = CHARGE_COST_CR) {
   switch (reason) {
     case 'armed': return 'A charge is already cooking — stand clear.';
     case 'cooldown': return 'The boom arm is still retracting.';
@@ -1284,6 +1284,29 @@ export const drill = {
     ctx.drill = this;
     // live drill state; null when inactive (no asteroid being drilled)
     this.state.drill = null;
+    // A paid, cooking charge must never vanish into an exit save: saveSystem emits
+    // 'save:started' BEFORE the envelope capture on every write, and 'exit_to_menu' is the
+    // reason both the unload flush (pagehide/beforeunload) and the in-app exit use for the
+    // final autosave. Settle the charge here — the same cook-off an early retract performs —
+    // so the captured state always carries the blast for the debit. Ordinary saves leave
+    // the fuse alone; serialize() settles too, as inert-looking defense in depth.
+    this._onSaveStarted = () => {
+      // Any save — quick F5/F9 over the drill modal, periodic autosave, or the exit flush —
+      // must never capture a paid charge without its blast. Cook it off at the boundary the
+      // save owner emits before the envelope is built, the same settle an early retract runs.
+      const d = this.state && this.state.drill;
+      if (d && d.charge) this._detonateCharge(d);
+    };
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('save:started', this._onSaveStarted);
+    }
+  },
+
+  destroy() {
+    if (this.bus && typeof this.bus.off === 'function' && this._onSaveStarted) {
+      this.bus.off('save:started', this._onSaveStarted);
+    }
+    this._onSaveStarted = null;
   },
 
   // Each rock remembers how much deep-core yield remains and refills slowly over sim time, so
@@ -1525,7 +1548,12 @@ export const drill = {
 
   // Drill sessions are intentionally transient. Cargo already lives under the canonical cargo
   // writer; resuming a half-cleared procedural bore after load would duplicate authority.
+  // A paid, cooking charge is never carried silently into a capture: the envelope is written
+  // after this runs, so settling it here — the same cook-off an early retract performs —
+  // means the debit inside any written save always has its blast, never a missing charge.
   serialize() {
+    const d = this.state.drill;
+    if (d && d.charge) this._detonateCharge(d);
     return null;
   },
 
@@ -1672,6 +1700,13 @@ export const drill = {
     return avail > 0 ? Math.max(1, Math.floor(avail * CHARGE_YIELD_FRACTION)) : 0;
   },
 
+  // The addCargo volume floor for one ore line — resolved through cargo's own commodity
+  // resolution (cargoUnitVolume shares defOf + volumePerUnit with addCargo), so fractional
+  // volumes quote exactly what the hold accepts.
+  _blastQuoteVolPerUnit(commodityId) {
+    return cargoUnitVolume(this.state, commodityId);
+  },
+
   // The pattern the charge would touch, clipped to the field, every cell carrying its verdict —
   // the permanent consequence previewed at decision time (design law), not a surprise on the far
   // side of the fuse. `ok`/`reason` is also the plant gate, so the quote can never lie.
@@ -1687,10 +1722,21 @@ export const drill = {
     const cost = stock > 0 ? 0 : def.cost;
     const cells = [];
     const yields = {};
+    const spill = {};
     let willBreak = 0, gasCount = 0, ventCount = 0, softenCount = 0, tierBlocked = 0, structureBlocked = 0;
     // A blast debits the rock budget per vein it eats, so the quote must drain the same shadow:
     // pricing every vein off the full pool over-promises what the detonation can pay.
     let quoteBudget = Number.isFinite(d.rockBudget) ? d.rockBudget : Number.POSITIVE_INFINITY;
+    // …and the hold drains the same way in the same order: settleBlastYield banks only what
+    // addCargo takes, so the quote walks remaining cargo volume cell for cell and splits
+    // banked ore from ore the blast loses to a full hold. The shadow is addCargo's own
+    // usedVolume accumulation — recomputed per vein in detonation order, not a single
+    // subtracted free-volume number — so a multi-vein fractional remainder quotes what the
+    // real blast banks (Codex round-4: 44 diamonds, veins of 2+9 → 6 banked, not 5).
+    const quoteHold = this.state.player && this.state.player.cargo;
+    const quoteUncapped = !quoteHold;
+    const quoteCap = quoteUncapped ? Number.POSITIVE_INFINITY : (Number(quoteHold.capVolume) || 0);
+    let quoteUsed = quoteUncapped ? 0 : (Number(quoteHold.usedVolume) || 0);
     for (const { col, row } of this._chargePattern(anchor, payload)) {
       const tile = d.field[col] && d.field[col][row];
       // Machine housing is stamped on HOLLOW cells — check the stamp first, or the empty
@@ -1731,7 +1777,16 @@ export const drill = {
       cells.push({ col, row, type: tile.type, verdict, ore: tile.ore || null, fault: !!tile.fault, rich: !!tile.rich });
       if (tile.type === 'vein' && tile.ore) {
         const take = this._blastYieldQuote(d, tile.yieldU, quoteBudget);
-        if (take > 0) yields[tile.ore] = (yields[tile.ore] || 0) + take;
+        if (take > 0) {
+          const volPerU = this._blastQuoteVolPerUnit(tile.ore);
+          const banked = volPerU === 0 || quoteUncapped ? take
+            : (!Number.isFinite(quoteCap - quoteUsed) ? 0
+              : Math.max(0, Math.min(take, Math.floor((quoteCap - quoteUsed) / volPerU))));
+          if (banked > 0) yields[tile.ore] = (yields[tile.ore] || 0) + banked;
+          const lost = take - banked;
+          if (lost > 0) spill[tile.ore] = (spill[tile.ore] || 0) + lost;
+          if (Number.isFinite(quoteCap)) quoteUsed += banked * volPerU;
+        }
         // settleBlastYield debits the whole avail, not merely the banked fraction — mirror that.
         const avail = Math.min(Math.max(0, Math.floor(Number(tile.yieldU) || 0)), Math.floor(quoteBudget));
         if (Number.isFinite(quoteBudget)) quoteBudget = Math.max(0, quoteBudget - avail);
@@ -1771,6 +1826,7 @@ export const drill = {
       // Housing inside the cut survives the blast — the bracket names it, the charge still seats.
       structureSurvives: structureBlocked,
       yields,
+      spill,
       selfDanger,
     };
   },

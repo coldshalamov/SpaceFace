@@ -62,6 +62,13 @@ export const gateControlDirector = {
       this._onGone = (p) => this._onEntityDestroyed(p);
       this._onExit = (p) => this._onSectorExit(p);
       this._onLoaded = () => this._onSaveLoaded();
+      this._onFlip = payload => {
+        if (!payload?.sectorId) return;
+        const own = ensureState(this.state);
+        for (const key of Object.keys(own.lastSceneAt)) {
+          if (key.startsWith(`${payload.sectorId}>`)) delete own.lastSceneAt[key];
+        }
+      };
       this.bus.on('jump:chargeStart', this._onCharge);
       this.bus.on('jump:start', this._onJump);
       this.bus.on('jump:arrive', this._onJump);        // belt-and-braces (resolve if start was missed)
@@ -69,6 +76,7 @@ export const gateControlDirector = {
       this.bus.on('entity:destroyed', this._onGone);
       this.bus.on('sector:exit', this._onExit);
       this.bus.on('save:loaded', this._onLoaded);
+      this.bus.on('conflict:flip', this._onFlip);
     }
   },
 
@@ -100,7 +108,7 @@ export const gateControlDirector = {
     if (Number.isFinite(last) && now - last < REPEAT_COOLDOWN_S) return;
 
     const sector = activeSector(state);
-    const factionId = sector && sector.factionId || null;
+    const factionId = state.world?.sectors?.[sectorId]?.owner || sector?.factionId || null;
     const security = Number.isFinite(sector && sector.security) ? sector.security : 0.5;
     const wanted = this._isWanted(state);
     const day = Math.floor(now / DAY_SECONDS);
@@ -265,8 +273,10 @@ export const gateControlDirector = {
       if (this._onGone) this.bus.off('entity:destroyed', this._onGone);
       if (this._onExit) this.bus.off('sector:exit', this._onExit);
       if (this._onLoaded) this.bus.off('save:loaded', this._onLoaded);
+      if (this._onFlip) this.bus.off('conflict:flip', this._onFlip);
     }
     this._onCharge = this._onJump = this._onAbort = this._onGone = this._onExit = this._onLoaded = null;
+    this._onFlip = null;
   },
 };
 

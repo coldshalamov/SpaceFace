@@ -18,6 +18,7 @@ import { WEAPONS } from './weapons.js';
 import { FACTION_KITS } from './factions/index.js';
 import { SECTORS } from './sectors.js';
 import { FAUNA_SPECIES } from './alienFauna.js';
+import { faunaFamily } from './discoveryPresentation.js';
 import { FIGURES } from './narrative.js';
 import { hash32 } from '../core/rng.js';
 
@@ -40,7 +41,7 @@ export const CODEX_LOCKED_HINTS = Object.freeze({
   weapons: 'A mounting you have never held. Salvage, buy, or fit it.',
   factions: 'A flag you have not flown under or been billed by.',
   sectors: 'Off the edge of your chart. Jump there.',
-  species: 'No field evidence. Find what it sheds, or go deeper than the beacon roads.',
+  species: 'No field notes for this organism. Pulse the scanner across a living return to file its behaviour page.',
   figures: 'A name the story has not spoken to you yet.',
 });
 
@@ -419,12 +420,14 @@ function sectorBody(def) {
 
 function speciesBody(def) {
   const sentences = [];
+  const family = faunaFamily(def.id);
+  sentences.push(`Field family: ${family.name}. ${family.note}`);
   if (def.note) sentences.push(def.note.charAt(0).toUpperCase() + def.note.slice(1));
   const anatomy = def.anatomy || {};
   const tissue = [anatomy.hostTissue, anatomy.fungalTissue].filter(Boolean).join(' over ');
   if (tissue) sentences.push(`Tissue reads as ${tissue}.`);
   if (def.role) sentences.push(`Behaves as a ${def.role}${def.capturable ? '; a live one fits in a specimen jar, which is more than most crews get' : ''}.`);
-  if (def.coherenceLoss) sentences.push('Coherence loss on record; it does not survive being understood.');
+  if (def.coherenceLoss) sentences.push('A broken relay changes its response. Watch the organism again before closing in.');
   return sentences.join(' ');
 }
 

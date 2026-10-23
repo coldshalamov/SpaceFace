@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_anomaly_deep_puzzle_helix_follow_on",
   "title": "GEL ON THE ANOMALY DEEP",
   "factionId": "faction_helix",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Check the first mark",
-      "playerLine": "I will check the gel mark against the older count."
+      "label": "Work the gel under line load",
+      "playerLine": "Line on the gel — I hold real load for the two-count before I cut it loose."
     },
     {
       "id": "b",
-      "label": "Compare both books",
-      "playerLine": "Put both ledgers side by side and read the gap aloud."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, HX-12 — send the relief to Anomaly Deep instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave it unsolved",
-      "playerLine": "I will not guess. Leave the gel count open."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, HX-12 — my hull is leaving Anomaly Deep."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "GEL",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "HX-12 — VARIANCE FILE OPEN. GEL IS IN THE LANE. NO ACTION REQUIRED.",
+      "line": "HX-12 — VARIANCE FILE OPEN. GEL IS IN THE LANE. NO ACTION REQUIRED. — GEL ON THE ANOMALY DEEP.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The answer is written in the part the clerk crossed out.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "HX-12 keeps the pencil beside the blank, not the sum.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The gel has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "The anomaly deep hums at one level. Your throttle is not it.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "HX-12: We hold. Quiet engines, patient hands.",
+      "line": "HX-12: Line on the gel, pull it onto the hook — hold real line load a two-count — then cut the line. — GEL ON THE ANOMALY DEEP.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,17 +142,70 @@ const spec = {
       "windowS": 56,
       "motion": "orbit",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "First mark checked. The mismatch begins one line below it.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_anomaly_deep_puzzle_helix_follow_on:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "HX-12: Time ran out on the work ask — GEL ON THE ANOMALY DEEP. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "strained",
+          "loadMin": 0.35,
+          "holdS": 2
+        },
+        {
+          "kind": "released"
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "HX-12: Time ran out on the work ask — GEL ON THE ANOMALY DEEP. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "HX-12: Time ran out on the work ask — GEL ON THE ANOMALY DEEP. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
@@ -168,24 +223,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_helix",
+      "delta": 3,
+      "reason": "lived_anomaly_deep_puzzle_helix_follow_on:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Books compared. HX-12 found the same missing entry twice.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_helix",
-      "delta": 2,
-      "reason": "lived_anomaly_deep_puzzle_helix_follow_on",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +250,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left it open. The count still waits at anomaly deep.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_helix",
-      "delta": -1,
-      "reason": "lived_anomaly_deep_puzzle_helix_follow_on",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +308,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Check the first mark",
-      "playerLine": "I will check the gel mark against the older count."
+      "label": "Work the gel under line load",
+      "playerLine": "Line on the gel — I hold real load for the two-count before I cut it loose."
     },
     {
       "id": "b",
-      "label": "Compare both books",
-      "playerLine": "Put both ledgers side by side and read the gap aloud."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, HX-12 — send the relief to Anomaly Deep instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave it unsolved",
-      "playerLine": "I will not guess. Leave the gel count open."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, HX-12 — my hull is leaving Anomaly Deep."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "First mark checked. The mismatch begins one line below it.",
-    "b": "Books compared. HX-12 found the same missing entry twice.",
-    "c": "You left it open. The count still waits at anomaly deep."
+    "a": "The gel rode real line load at Anomaly Deep before you cut it free. — GEL ON THE ANOMALY DEEP.",
+    "b": "24 cr funded the relief call — HX-12 sends the shift at Anomaly Deep on your credit. — GEL ON THE ANOMALY DEEP.",
+    "c": "You left Anomaly Deep. The work stayed with the crew that owned it. — GEL ON THE ANOMALY DEEP."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "strain",
+    "hasProp": true
   }
 });

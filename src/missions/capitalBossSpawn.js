@@ -15,6 +15,50 @@ export function decorateCapitalBossSpawnSpec(spec,actor,encounter,{missionId,ind
   }
   return spec;
 }
+/**
+ * Swarm champions have no mission row, so the hull arrives from the wave and the throw-mass
+ * never did. Place each non-hull actor once, on the boss's pose, through the same ledger a
+ * mission uses. A filled slot is a tombstone: a second start does not mint another rock.
+ */
+export function spawnSwarmCapitalBallast({ fightId, encounter, boss, ledger, spawnEntity }) {
+  if (!fightId || !encounter || !boss || !boss.pos || !ledger || typeof spawnEntity !== 'function') {
+    throw new TypeError('Swarm ballast needs the fight, the placed boss, a ledger, and a spawn port');
+  }
+  const offsets = encounter.score && encounter.score.arena && encounter.score.arena.ballastOffsets;
+  if (!offsets || !offsets.length) return [];
+  const bossSpawn = { pos: { x: boss.pos.x, z: boss.pos.z }, rot: boss.rot || 0 };
+  const ids = [];
+  for (const actor of encounter.actors || []) {
+    if (!actor || actor.role === 'capital_hull') continue;
+    const want = Math.max(1, actor.count || 1);
+    for (let actorIndex = 0; actorIndex < want; actorIndex++) {
+      const anchored = capitalBossBallastPosition(encounter, bossSpawn, actorIndex);
+      const spec = {
+        type: actor.kind === 'asteroid' ? 'asteroid' : 'wreck',
+        team: 2,
+        pos: { x: anchored.x, z: anchored.z },
+        vel: { x: 0, z: 0 },
+        rot: boss.rot || 0,
+        radius: actor.radius || 12,
+        mass: actor.mass || 40,
+        hull: actor.hull || 80,
+        hullMax: actor.hull || 80,
+        collides: true,
+        data: {
+          tetherable: actor.tetherable !== false,
+          physicalRole: actor.role,
+          scanLabel: actor.scanLabel || actor.role,
+          capitalBossActorKey: `${fightId}/${actor.role}/${actorIndex}`,
+          capitalBossEncounterId: encounter.id,
+        },
+        flags: { persistent: true },
+      };
+      const entity = spawnCapitalActorOnce({ ledger, spec, spawnEntity });
+      if (entity && entity.id != null) ids.push(entity.id);
+    }
+  }
+  return ids;
+}
 /** Authored offset helper for initial layout only; never call to move an existing actor. */
 export function capitalBossBallastPosition(encounter,bossSpawn,index) {
   const offsets=encounter.score.arena.ballastOffsets;

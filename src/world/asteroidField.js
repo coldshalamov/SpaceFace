@@ -310,12 +310,14 @@ export function queryAsteroidField(state, pos, radius, out = []) {
   return out;
 }
 
-// ── Massline obstruction (AL-HF-08) ──────────────────────────────────────────────────────────
-// A Massline cannot pass through rock. These are read-only geometry queries used by latch
-// ADMISSION only: they never promote a record, never advance it, never initialize physics
-// metadata, and never touch the field version, so asking "is this line clear?" cannot change
-// what the world is doing. The tether system must never consult them about a line it already
-// carries — an obstruction is a reason not to start a latch, never a reason to sever one.
+// ── Massline obstruction (AL-HF-08, SEED-HF-08) ──────────────────────────────────────────────
+// A Massline cannot pass through rock, a live wreck, or a station hull. These are read-only
+// geometry queries used by latch ADMISSION only: they never promote a record, never advance it,
+// never initialize physics metadata, and never touch the field version, so asking "is this line
+// clear?" cannot change what the world is doing. The tether system must never consult them about
+// a line it already carries — an obstruction is a reason not to start a latch, never a reason to
+// sever one. Ships and drones stay out: they are dodgeable clutter, not terrain. Wrecks and
+// stations use their stored pose; only dormant field rocks keep the ballistic drift below.
 const MASSLINE_SEGMENT_EPS = 1e-9;
 // Parameter tolerance along the unit chord. The attachment segment is OPEN at both endpoints, so a
 // disc that only touches one of them is not an obstruction — the rock sits inside the target's own
@@ -343,7 +345,9 @@ function masslineObstacleRadius(rock) {
 function masslineObstacleXZ(rock, simTime, out) {
   const px = finite(rock && rock.pos && rock.pos.x);
   const pz = finite(rock && rock.pos && rock.pos.z);
-  if (!rock || rock.fieldResident !== true) {
+  // Drift is the dormant-rock catch-up only. A wreck or station hull, even one mistakenly
+  // stamped field-resident, stays on its stored pose — the drift formula itself is unchanged.
+  if (!rock || rock.fieldResident !== true || rock.type !== 'asteroid') {
     out.x = px;
     out.z = pz;
     return out;
@@ -361,7 +365,10 @@ function masslineObstacleXZ(rock, simTime, out) {
 }
 
 function masslineObstacleEligible(rock) {
-  if (!rock || rock.alive === false || rock.type !== 'asteroid') return false;
+  if (!rock || rock.alive === false) return false;
+  const type = rock.type;
+  // Live wrecks and station hulls block like rock. Ships and drones do not.
+  if (type !== 'asteroid' && type !== 'wreck' && type !== 'station') return false;
   if (rock.collides === false || rock.physicsBody === false) return false;
   return true;
 }
@@ -397,6 +404,10 @@ export function collectMasslineObstructionRocks(state, bounds, out = []) {
   const live = indexedTypeScan(state, 'asteroids');
   for (let i = 0; i < live.length; i++) {
     const entity = live[i];
+    // Hulls are a separate pass. An unready index serves entityList for every bucket, and
+    // eligibility now includes wrecks and stations — keeping this loop asteroid-only stops
+    // that fallback from recording the same hull twice.
+    if (!entity || entity.type !== 'asteroid') continue;
     if (!masslineObstacleEligible(entity) || !entity.pos) continue;
     const radius = masslineObstacleRadius(entity);
     if (!(radius > 0)) continue;
@@ -405,11 +416,17 @@ export function collectMasslineObstructionRocks(state, bounds, out = []) {
     rocks.push(entity);
   }
 
+  // Live wrecks and station hulls. An unready index makes every bucket the same entityList,
+  // so that case is one pass — a ready index keeps wrecks and stations in separate buckets.
+  appendLiveMasslineHulls(state, rocks, minX, minZ, maxX, maxZ);
+
   const field = state.world && state.world.asteroidField;
   const dormant = field && Array.isArray(field.rocks) ? field.rocks : null;
   if (!dormant) return rocks;
   for (let i = 0; i < dormant.length; i++) {
     const rec = dormant[i];
+    // Dormant drift stays asteroid-only. A non-rock row in the field is not a hull obstacle.
+    if (!rec || rec.type !== 'asteroid') continue;
     // A promoted row keeps its identity on the live entity; it is no longer a dormant obstacle.
     if (!masslineObstacleEligible(rec) || rec.liveEntityId != null || !rec.pos) continue;
     const radius = masslineObstacleRadius(rec);
@@ -419,6 +436,29 @@ export function collectMasslineObstructionRocks(state, bounds, out = []) {
     rocks.push(rec);
   }
   return rocks;
+}
+
+function appendLiveMasslineHulls(state, rocks, minX, minZ, maxX, maxZ) {
+  const index = state && state.entityIndex;
+  const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && (Array.isArray(index.wrecks) || Array.isArray(index.stations)));
+  const lists = indexed
+    ? [index.wrecks, index.stations]
+    : [state && state.entityList];
+  for (let b = 0; b < lists.length; b++) {
+    const list = lists[b];
+    if (!Array.isArray(list)) continue;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (!entity || (entity.type !== 'wreck' && entity.type !== 'station')) continue;
+      if (!masslineObstacleEligible(entity) || !entity.pos) continue;
+      const radius = masslineObstacleRadius(entity);
+      if (!(radius > 0)) continue;
+      if (!discOverlapsBounds(finite(entity.pos.x), finite(entity.pos.z), radius,
+        minX, minZ, maxX, maxZ)) continue;
+      rocks.push(entity);
+    }
+  }
 }
 
 /** Endpoint identities that can never obstruct their own line — including a dormant record and
@@ -433,7 +473,8 @@ function masslineEndpointIds(player, target) {
 }
 
 /**
- * Does the open attachment segment from `sourceWorld` to `targetWorld` pass through rock?
+ * Does the open attachment segment from `sourceWorld` to `targetWorld` pass through rock,
+ * a live wreck, or a station hull?
  * Pure geometry: quadratic segment-vs-disc against the open span, no cable thickness, no
  * sampling, no tuning. A tangent that lands inside the segment blocks; a disc that only touches
  * an endpoint, or lies wholly before or after it, does not. Zero-length finite segments are

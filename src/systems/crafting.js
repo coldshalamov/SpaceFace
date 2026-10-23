@@ -11,7 +11,7 @@
 // and grants the product on completion. Refining stays near-instant; ship manufacturing takes long
 // enough that planning your production is a real decision. Recipes with timeS:0 remain instant for
 // backward compatibility (basic refining).
-import { BLUEPRINTS, BLUEPRINT_BY_ID } from '../data/blueprints.js';
+import { BLUEPRINTS, BLUEPRINT_BY_ID, LEGACY_MATERIAL_OUTPUTS } from '../data/blueprints.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { techDisplayName } from '../data/tech.js';
@@ -159,9 +159,20 @@ function normalizeQueues(raw) {
       total,
       done: false,
       stationId: typeof job.stationId === 'string' ? job.stationId : stationId,
+      product: committedProduct(job, bp),
     };
   }
   return queues;
+}
+
+function committedProduct(job, blueprint) {
+  const current = blueprint.outputs;
+  const legacy = LEGACY_MATERIAL_OUTPUTS[blueprint.id];
+  const saved = job.product || job.bp?.outputs;
+  if (saved?.kind === current.kind && saved.id === current.id
+    && Number.isInteger(saved.qty) && saved.qty > 0
+    && saved.qty <= Math.max(current.qty || 1, legacy?.qty || 1)) return { ...saved };
+  return { ...(legacy || current) };
 }
 
 export const crafting = {
@@ -345,7 +356,7 @@ export const crafting = {
     // enqueue the job — materials already consumed; product granted on completion via update().
     // Store bpId only (NOT the bp object) so the queue is plain serializable data with no live refs.
     const queues = this.state.crafting.queues;
-    queues[sid] = { bpId, elapsed: 0, total, done: false, stationId: sid };
+    queues[sid] = { bpId, elapsed: 0, total, done: false, stationId: sid, product: { ...bp.outputs } };
     this.bus.emit('craft:queueChanged', { stationId: sid, active: true });
     this.bus.emit('audio:cue', { id: 'confirm' });
     this.bus.emit('toast', { text: 'Fabrication started: ' + bp.name + ' (' + Math.round(total) + 's)', kind: 'info', ttl: 3 });
@@ -384,7 +395,7 @@ export const crafting = {
     const bp = job.bp || BLUEPRINT_BY_ID.get(job.bpId);
     if (!bp) return false;
     const ships = this._ships;
-    const out = bp.outputs;
+    const out = committedProduct(job, bp);
     let grantMsg = '';
     if (out.kind === 'commodity') {
       if (!cargoCanFit(this.state, out.id, out.qty)) return false;

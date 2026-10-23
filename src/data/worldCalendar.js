@@ -40,7 +40,8 @@ function stationOffsetS(stationId) {
 
 /** Which watch a berth is on right now. Pure. */
 export function stationShiftAt(stationId, simTime) {
-  const t = ((Number(simTime) || 0) + stationOffsetS(stationId)) % CAL_DAY_S;
+  const berthTime = (Number(simTime) || 0) + stationOffsetS(stationId);
+  const t = berthTime % CAL_DAY_S;
   const dayFrac = t / CAL_DAY_S;
   let index = 0;
   for (let i = 0; i < STATION_SHIFTS.length; i++) {
@@ -55,6 +56,11 @@ export function stationShiftAt(stationId, simTime) {
     index,
     id: shift.id,
     name: shift.name,
+    // The berth's own watch-day: it turns over when this berth's first watch begins, not at the
+    // world's midnight. (watchDay, index) names one watch occurrence, so announcements key on it;
+    // the world day (calendarAt().day) turns at a different moment and would split a watch that
+    // straddles it into two "new" watches.
+    watchDay: Math.floor(Math.max(0, berthTime) / CAL_DAY_S),
     dayFrac,
     endsInS,
     // The last 90 s of a watch is "shift end" — the crew is walking off the floor.

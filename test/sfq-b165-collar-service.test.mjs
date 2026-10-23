@@ -17,7 +17,7 @@ import {
   serializeAlienEcologyState,
   tickAlienEcology,
 } from '../src/systems/alienEcology.js';
-import { commsToastSpec } from '../src/ui/floatingText.js';
+import { discoveryCommsPayload } from '../src/ui/comms.js';
 
 const dock = ALIEN_SITES.breathing_dock;
 const CLOSE = dock.arrivalBands.close;
@@ -135,9 +135,9 @@ test('the collar berth closes for the carrier and the other work stays open', ()
   assert.equal(COLLAR_HELD.includes('quiet tender'), true);
   assert.equal(COLLAR_CLEAR.includes('take a ship'), true);
   assert.equal(COLLAR_RESTORED.includes('clear again'), true);
-  const heldNotice = commsToastSpec({ from: dock.name, kind: 'ecology', text: COLLAR_HELD }).text;
-  const clearNotice = commsToastSpec({ from: dock.name, kind: 'ecology', text: COLLAR_CLEAR }).text;
-  const restoredNotice = commsToastSpec({ from: dock.name, kind: 'ecology', text: COLLAR_RESTORED }).text;
+  const heldNotice = discoveryCommsPayload({ from: dock.name, kind: 'ecology', text: COLLAR_HELD }).text;
+  const clearNotice = discoveryCommsPayload({ from: dock.name, kind: 'ecology', text: COLLAR_CLEAR }).text;
+  const restoredNotice = discoveryCommsPayload({ from: dock.name, kind: 'ecology', text: COLLAR_RESTORED }).text;
   assert.equal(heldNotice.includes('...'), false);
   assert.equal(heldNotice.toLowerCase().includes('a mark on the carrier opens the collar'), true);
   assert.equal(heldNotice.toLowerCase().includes('quiet tender'), true);

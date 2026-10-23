@@ -1,6 +1,8 @@
 // Catch-up and clock policy. Extra fixed steps keep the table clock plus due calendar owners.
 // Calendar owners run at 2 Hz (or on clockWake.calendar). Glass/HUD/voice never
-// run on extra catch-up steps. Near owners run on the primary tick, not catch-up.
+// run on extra catch-up steps. Near owners run on the primary tick, not catch-up. Anything that
+// feeds the physics step (a control or impulse consumed once per fixed step) is NOT a near owner:
+// aiPorts and planetRuntime are table clocks, or an N-step frame would give them 1/N of their input.
 //
 // The 60 Hz tick is the atomic deterministic unit: RNG draw order, the
 // InputCommandSnapshot publish contract, TTL/corpse/event ordering, pose + dirty

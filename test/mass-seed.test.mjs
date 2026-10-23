@@ -748,11 +748,13 @@ test('old saves: missing player.massSeed defaults to ready; _restorePlayer merge
   deployNow(t);
   assert.equal(t.state.massSeed.phase, 'travel', 'old save can deploy immediately');
 
-  // Merge semantics: a blob WITHOUT the key preserves live defaults; a blob WITH it wins.
+  // Merge semantics: a blob WITHOUT the key restores the New Game default (ready) — never the
+  // live run's cooldown (W2-A/O9: a load is the save's player over defaults, not over the old run);
+  // a blob WITH it wins.
   save.state = t.state;
   t.state.player.massSeed.cooldownUntil = 55;
   save._restorePlayer({ credits: 42 });
-  assert.equal(t.state.player.massSeed.cooldownUntil, 55, 'absent key → live value preserved');
+  assert.equal(t.state.player.massSeed.cooldownUntil, 0, 'absent key → default (ready), not the live value');
   assert.equal(t.state.player.credits, 42, 'other keys restore normally');
   save._restorePlayer({ massSeed: { cooldownUntil: 77 } });
   assert.equal(t.state.player.massSeed.cooldownUntil, 77, 'present key → saved value wins');

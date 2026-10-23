@@ -51,6 +51,7 @@ export function distressCallCue(payload) {
     key: `distress:${caller}`,
     gapTicks: DISTRESS_ADMIT_TICKS,
     critical: true,
+    caption: 'Mayday.',
     // The traffic owner already admitted this radio call to the receiver (1800 WU).
     // Positional playback would silently cull it at the much shorter physical hearing edge.
     position: null,
@@ -102,6 +103,9 @@ export function miningNoiseDangerCue(payload) {
     critical: true,
     duck: true,
     position: null,
+    // Same siren as a warrant, but this crossing is not a warrant. The playback
+    // caption for that siren must not say the player is wanted.
+    captionOwned: true,
   };
 }
 
@@ -110,12 +114,18 @@ export function playAdmittedEarCue(host, cue, nowTick) {
   const rt = host.rt || (host.rt = {});
   const book = rt._combatFeedbackAdmit || (rt._combatFeedbackAdmit = Object.create(null));
   if (!admitEarCue(book, cue.key, nowTick, cue.gapTicks)) return null;
+  if (cue.caption && typeof host._emitPresentationCaption === 'function') {
+    host._emitPresentationCaption(cue.caption, { channel: 'cue' });
+  }
   return host.play(cue.recipeId, {
     gain: cue.gain,
     position: cue.position,
     critical: cue.critical === true,
     duck: cue.duck === true,
     rate: Number.isFinite(cue.rate) ? cue.rate : undefined,
+    // A cue that already spoke, or that must stay wordless, owns the caption.
+    // Playback must not add the recipe's own line on top.
+    captionOwned: cue.captionOwned === true || typeof cue.caption === 'string',
   });
 }
 

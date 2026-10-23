@@ -13,6 +13,7 @@ import {
 import { normalizeCombatDoctrineId } from './combatDoctrine.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 import { TWIST_CLAUSES, WING_COMPOSITION_GRAMMAR } from '../data/combatDefs.js';
+import { squadCallsign } from '../data/factionDoctrines.js';
 
 const DEFAULTS = Object.freeze({
   formation: 'wedge',
@@ -48,10 +49,12 @@ export class SquadCommander {
     const factionBehavior = normalizeFactionBehaviorProfile(definition.factionBehavior)
       || members.map((member) => member.factionBehavior).find(Boolean)
       || null;
+    const faction = definition.faction || 'unknown';
     const state = {
       id: definition.id,
       doctrine: definition.doctrine || 'balanced',
-      faction: definition.faction || 'unknown',
+      faction,
+      callsign: squadCallsign(faction, this.seed, definition.id),
       formation: factionBehavior ? factionBehavior.liveFormation : (definition.formation || this.config.formation),
       formationSpacing: Number(definition.formationSpacing) || this.config.formationSpacing,
       formationBound: Number(definition.formationBound) || this.config.formationBound,
@@ -181,6 +184,7 @@ export class SquadCommander {
         objective = freezeObjective(ObjectiveKind.RETREAT, null, 'wounded_corridor', freeze, undefined, {
           flightPoint: freeze({ x: withdrawal.corridor.x, z: withdrawal.corridor.z }),
           cue: withdrawal.announce ? 'fighting_retreat' : null,
+          speech: withdrawal.announce ? squadSpeech(squad.callsign, 'bark') : null,
         });
       } else if (withdrawal && member.id === withdrawal.coverId) {
         objective = freezeObjective(ObjectiveKind.SCREEN, focus ? focus.id : null, 'covering_withdrawal', freeze,
@@ -196,6 +200,7 @@ export class SquadCommander {
         combatDoctrineId: member.combatDoctrineId,
         factionBehavior: member.factionBehavior || squad.factionBehavior,
         role,
+        callsign: squad.callsign,
         wingRole: squad.composition ? squad.composition.roles.get(member.id) || null : null,
         twist: squad.composition ? squad.composition.twist : null,
         tactic: selected.id,
@@ -244,6 +249,7 @@ export class SquadCommander {
       squadId,
       tick,
       tactic: selected.id,
+      callsign: squad.callsign,
       focusTargetId: focus ? focus.id : null,
       directives,
     });
@@ -810,6 +816,7 @@ function freezeObjective(kind, targetId, reason, freeze = Object.freeze, targetO
   if (targetObserved !== undefined) out.targetObserved = targetObserved;
   if (extra && extra.flightPoint) out.flightPoint = extra.flightPoint;
   if (extra && extra.cue) out.cue = extra.cue;
+  if (extra && extra.speech) out.speech = extra.speech;
   return freeze(out);
 }
 
@@ -1073,11 +1080,21 @@ function capabilitySet(squad, perceptions, scratch = null) {
   return out;
 }
 
+/** Hail, bark, or receipt in the squad's own callsign. Flavor only — no orders. */
+export function squadSpeech(callsign, kind) {
+  if (typeof callsign !== 'string' || !callsign) return null;
+  if (kind === 'hail') return `${callsign}: holding the picture.`;
+  if (kind === 'bark') return `${callsign}: contact on the wing.`;
+  if (kind === 'receipt') return `${callsign}: the order is closed.`;
+  return null;
+}
+
 function freezeSquad(squad) {
   return Object.freeze({
     id: squad.id,
     doctrine: squad.doctrine,
     faction: squad.faction,
+    callsign: squad.callsign,
     formation: squad.formation,
     formationBound: squad.formationBound,
     factionBehavior: squad.factionBehavior,

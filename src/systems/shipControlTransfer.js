@@ -43,6 +43,15 @@ function planAdmission(owner, to, vesselId) {
       if (!defId) continue;
       owned.fittedInstances[slot] ||= { instanceId: owner.nextInstanceId(), defId,
         provenance: { vesselId, source: 'shipjack_capture' } };
+      const instance = owned.fittedInstances[slot];
+      const provenance = instance.provenance && typeof instance.provenance === 'object' ? instance.provenance
+        : typeof instance.provenance === 'string' ? { label: instance.provenance } : {};
+      // An existing older source remains the forensic owner; capture cannot wash its trail.
+      if (!provenance.sourceVesselId && !provenance.vesselId) {
+        instance.provenance = { ...provenance, sourceVesselId: vesselId, source: provenance.source || 'shipjack_capture', titleAtCapture: title || 'disputed' };
+      } else if (!provenance.titleAtCapture && (provenance.sourceVesselId || provenance.vesselId) === vesselId) {
+        instance.provenance = { ...provenance, titleAtCapture: title || 'disputed' };
+      }
       const component = COMPONENTS.get(defId);
       const key = component?.slotType === 'engine' ? 'subsystem_drive'
         : component?.slotType === 'sensor' ? 'subsystem_sensor'

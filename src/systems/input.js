@@ -63,7 +63,7 @@ import { resolveWorldPresentationEntity } from '../world/presentationSources.js'
 import { resolveSteeringView } from './racingSteer.js';
 import { noteSwarmPilotAction, swarmPilotIsActing } from './swarmSafety.js';
 import {
-  POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower,
+  POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
 } from './powerVerbs.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
@@ -1186,6 +1186,11 @@ export const input = {
         if (d.op === 'begin' && typeof drill.begin === 'function') drill.begin(d.asteroidId);
         else if (d.op === 'pulseScan' && typeof drill.pulseScan === 'function') drill.pulseScan();
         else if (d.op === 'end' && typeof drill.end === 'function') drill.end(d.opts);
+        else if (d.op === 'armCharge' && typeof drill.armCharge === 'function') drill.armCharge();
+        else if (d.op === 'disarmCharge' && typeof drill.disarmCharge === 'function') drill.disarmCharge();
+        else if (d.op === 'setChargeAim' && typeof drill.setChargeAim === 'function') drill.setChargeAim(d.col, d.row);
+        else if (d.op === 'cycleChargePayload' && typeof drill.cycleChargePayload === 'function') drill.cycleChargePayload();
+        else if (d.op === 'plantCharge' && typeof drill.plantCharge === 'function') drill.plantCharge();
         break;
       }
       case 'gamepadFrame':
@@ -1680,6 +1685,8 @@ export const input = {
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
       siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false,
       jettisonLotAll: false, gyreSnare: false,
+      // The five powers' read surface ({ held, pressed } once sampled; null = untouched).
+      pull: null, shove: null, pin: null, bomb: null, rig: null,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     const flightInputNeutralized = shouldNeutralizeFlightInput(state, modalInputActive());
@@ -1705,6 +1712,9 @@ export const input = {
       acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false; acts.jettisonLotAll = false;
       // A screen, dock or death over a power grip cancels it: the key-up afterwards fires nothing.
       this._cancelPowerHolds(state);
+      // The power read slots neutralize with the rest of the contract — a key still physically
+      // held through the modal must not keep a stale {held:true} on the other side.
+      acts.pull = acts.shove = acts.pin = acts.bomb = acts.rig = null;
       // The gyre verb rides the same modal-preservation contract as massline: a screen
       // opening must NOT synthesize a falling edge — zeroing it here would bowl the clump
       // out from under a held key (and re-fire the beam on close). The lash stays held
@@ -2149,6 +2159,15 @@ export const input = {
     const pinEdge = edge('pin') || this._padEdge(gp, 'pin');
     const bombEdge = edge('bomb') || this._padEdge(gp, 'bomb');
     const rigEdge = edge('rig') || this._padEdge(gp, 'rig');
+    // Row 546: the merged hold lands on each power's own action slot so the held-key preview
+    // (data/powerPreview.powerHeld) and the first-ten-minute situations can see which power the
+    // pilot is gripping. The internal flags below stay the fire contract; these are the read
+    // surface only — { held, pressed }, same shape a touch/pad action publishes.
+    acts.pull = { held: this._held(state, 'pull') || this._padHeld(gp, 'pull'), pressed: pullEdge };
+    acts.shove = { held: this._held(state, 'shove') || this._padHeld(gp, 'shove'), pressed: shoveEdge };
+    acts.pin = { held: this._held(state, 'pin') || this._padHeld(gp, 'pin'), pressed: pinEdge };
+    acts.bomb = { held: this._held(state, 'bomb') || this._padHeld(gp, 'bomb'), pressed: bombEdge };
+    acts.rig = { held: this._held(state, 'rig') || this._padHeld(gp, 'rig'), pressed: rigEdge };
     // Row 493 — hold to preview, release to use. A press grips the power (the preview draws what it
     // will move); letting go fires it, and a whole tap between two updates fires at once. A screen,
     // focus loss, a sector change or a fenced pad cancels the grip without firing. Settings →
@@ -2157,7 +2176,11 @@ export const input = {
     const fire = this._resolvePowerFire(state, gp, { pull: pullEdge, shove: shoveEdge, pin: pinEdge, bomb: bombEdge, rig: rigEdge });
     const bombThrowsCharge = fire.bomb && bombUsesCharge(state);
     acts.chargeThrow = bombThrowsCharge;
-    acts.dropBomb = fire.bomb && !bombThrowsCharge;
+    // SEED-SW-01/03 — the stocked swarm charges (smart bomb, then lance) are the next ordnance
+    // in the fallback before the bay's own bomb. The director owns the resolution; this only
+    // routes the press, with no new power slot or key.
+    acts.swarmBombThrow = fire.bomb && !bombThrowsCharge && !!swarmBombSelection(state);
+    acts.dropBomb = fire.bomb && !bombThrowsCharge && !acts.swarmBombThrow;
     acts.chargeDetonate = fire.shove;
     acts.scanPulse = edge('scanPulse') || this._padEdge(gp, 'scanPulse');
     acts.cruise = edge('cruise') || this._padEdge(gp, 'cruise');

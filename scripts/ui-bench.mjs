@@ -91,6 +91,34 @@ async function settleAnimations(page) {
       if (!running.length) break;
       await new Promise(resolve => requestAnimationFrame(() => resolve()));
     }
+    // Async posters (decoding="async", e.g. the Save/Load hull) and rAF text effects (orrery decrypt,
+    // rolling counters) are not Web Animations, so finish() never reaches them: wait for every shown
+    // image to decode and for the page text to hold still, each with a short cap.
+    const capped = (promise, ms) => Promise.race([promise, new Promise(resolve => setTimeout(resolve, ms))]);
+    const shown = [...document.images].filter(img => img.getAttribute('src') && !img.hidden);
+    await capped(Promise.all(shown.map(img => (img.complete ? Promise.resolve() : new Promise(resolve => {
+      img.addEventListener('load', resolve, { once: true });
+      img.addEventListener('error', resolve, { once: true });
+    })).then(() => img.decode()).catch(() => {}))), 4000);
+    // Fast path: most screens have no text effect running, so one frame-plus-a-beat of identical
+    // text with no decrypt noise glyphs (text.js NOISE blocks) is enough. Only a moving page pays
+    // for the 120ms quiet polls; a once-a-second clock rarely ticks inside the 50ms sample.
+    const NOISE_BLOCKS = /[\u2596-\u259F]/;
+    const textQuietBy = Date.now() + 2500;
+    let last = document.body.innerText;
+    await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 50)));
+    const sample = document.body.innerText;
+    const moving = sample !== last || NOISE_BLOCKS.test(sample);
+    last = sample;
+    for (let still = moving ? 0 : 2; still < 2 && Date.now() < textQuietBy;) {
+      await new Promise(resolve => setTimeout(resolve, 120));
+      const now = document.body.innerText;
+      still = now === last ? still + 1 : 0;
+      last = now;
+      // A live ticker (clock, sim readout) never holds still: past the longest decrypt run
+      // (~300ms + 70ms stagger per cell) with no noise glyphs left, stop waiting on it.
+      if (Date.now() > textQuietBy - 1700 && !NOISE_BLOCKS.test(now)) break;
+    }
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   });
 }

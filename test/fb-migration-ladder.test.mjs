@@ -12,7 +12,11 @@ import { readSaveVersion, runMigrations, save } from '../src/save/saveSystem.js'
 import { COORDINATE_SCHEMA } from '../src/core/coordinates.js';
 import { sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
 
-const FIXTURE_VERSIONS = Array.from({ length: CURRENT_VERSION }, (_, i) => i + 1);
+// The minimal ladder fixtures stop at v14; v15 and later are real captures under fixtures/saves/
+// (test/save-old-version-continue-matrix.test.mjs and test/w2a-frozen-envelopes.test.mjs walk those).
+// Every ladder fixture still migrates through ALL later steps to CURRENT_VERSION.
+const LAST_FIXTURE_VERSION = 14;
+const FIXTURE_VERSIONS = Array.from({ length: LAST_FIXTURE_VERSION }, (_, i) => i + 1);
 
 function fixture(version) {
   const name = `fb-save-v${String(version).padStart(2, '0')}.json`;
@@ -29,7 +33,7 @@ const CERES = sectorGlobalOrigin('sector_ceres_belt');
 const GLOBAL_PLAYER_POS = { x: 512 + CERES.x, z: -256 + CERES.z };
 
 test('every fixture version migrates to current, validates, and re-runs as a no-op', () => {
-  assert.equal(CURRENT_VERSION, 14, 'ladder assumes v14; extend fixtures when the schema bumps');
+  assert.ok(CURRENT_VERSION >= LAST_FIXTURE_VERSION, 'the ladder fixtures never outrun the schema');
   for (const version of FIXTURE_VERSIONS) {
     const envelope = fixture(version);
     assert.equal(envelope.fmt, 'spaceface-save');
@@ -96,7 +100,7 @@ test('the v1 fixture walks all thirteen steps and each step is re-runnable on it
     v = step.to;
   }
   assert.equal(v, CURRENT_VERSION);
-  assert.equal(seen.length, CURRENT_VERSION - 1, 'thirteen contiguous steps v1→v14');
+  assert.equal(seen.length, CURRENT_VERSION - 1, 'one contiguous step per version, v1 up to current');
   assert.deepEqual(seen, Array.from({ length: CURRENT_VERSION - 1 }, (_, i) => `v${i + 1}→v${i + 2}`),
     'the chain is contiguous, one step per version, no gaps or skips');
 });
@@ -110,7 +114,7 @@ test('readSaveVersion refuses versions above current with the named reason', () 
     assert.deepEqual(readSaveVersion(bad), { ok: false, reason: 'bad_format' }, `version ${String(bad)}`);
   }
   // Integration: the same named reason surfaces through the prepare lane, before migration.
-  const newer = { ...fixture(CURRENT_VERSION), version: CURRENT_VERSION + 1 };
+  const newer = { ...fixture(LAST_FIXTURE_VERSION), version: CURRENT_VERSION + 1 };
   const prepared = save._prepareEnvelopeString(JSON.stringify(newer));
   assert.equal(prepared.ok, false);
   assert.equal(prepared.reason, 'newer_version');

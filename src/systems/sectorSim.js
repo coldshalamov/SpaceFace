@@ -11,6 +11,7 @@
 //
 // No agent population is simulated. Complexity is O((V + E) * factions) per coarse field step.
 import { SECTORS, dangerIndex, dangerTier } from '../data/sectors.js';
+import { replayWorldConsequences } from '../story/endings/worldAfter.js';
 import { FACTION_META } from '../data/factions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { dedupError } from '../core/warnDedup.js';
@@ -135,6 +136,10 @@ export const sectorSim = {
     // Event-to-field boundary. These are impulses, not random walks: player/NPC outcomes become
     // bounded sources which then diffuse/decay under the same deterministic kernel.
     this.bus.on('sectorsim:impulse', (p) => this.injectImpulse(p));
+    this.bus.on('postEndingReplay:cycleCompleted', () => {
+      const field = this._ensureField();
+      this._projectLegacyDrift(field);
+    });
     this.bus.on('economy:tradeCompleted', (p) => this._onTradeCompleted(p));
     this.bus.on('interdiction:triggered', (p) => this.injectImpulse({
       kind: 'interdiction', sectorId: p && p.sectorId, danger: 0.035,
@@ -282,7 +287,23 @@ export const sectorSim = {
         }
       }
     }
+    this._applyReplayConsequences(ss.field);
     return ss.field;
+  },
+
+  _applyReplayConsequences(field) {
+    // Permanent signed bounds, applied by the existing danger writer. Never accumulate a new
+    // impulse each day: protection remains protection and a black channel remains dangerous.
+    for (const row of replayWorldConsequences(this.state)) {
+      const node = field?.nodes?.[row.sectorId];
+      const base = SECTOR_BY_ID.get(row.sectorId);
+      if (!node || !base) continue;
+      const target = clamp(dangerIndex(base) + row.danger, 0, 1);
+      node.danger = row.danger >= 0 ? Math.max(node.danger, target) : Math.min(node.danger, target);
+      node.pricePressure = row.pricePressure >= 0
+        ? Math.max(node.pricePressure, row.pricePressure) : Math.min(node.pricePressure, row.pricePressure);
+      node.driver = { ...node.driver, danger: 'post_ending_route', pricePressure: 'post_ending_route' };
+    }
   },
 
   _sectorRec(sectorId) {
@@ -337,6 +358,7 @@ export const sectorSim = {
     });
 
     // Commit only after the pure step succeeds. An exception never consumes queued world events.
+    this._applyReplayConsequences(next);
     ss.field = next;
     if (pending.length) ss.impulses.splice(0, pending.length);
     ss.meta.modelVersion = SECTOR_FIELD_VERSION;
@@ -738,6 +760,12 @@ export const sectorSim = {
     }
     ss.meta.pendingTransit = null;
     this.bus.emit('sectorsim:transitOutcome', { sectorId: to, via, incident, damage, forecast });
+    if (incident && damage > 0) {
+      this.bus.emit('toast', {
+        text: `The ${via} crossing bit the hull — ${damage} damage.`,
+        kind: 'warn', ttl: 5,
+      });
+    }
   },
 
   // ------------------------------------------------------------------------------------------

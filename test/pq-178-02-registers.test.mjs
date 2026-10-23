@@ -222,8 +222,8 @@ test(`seed ${BLIND_PROOF_SEED}: live corpus sweep assigns with zero misassigned`
   const tally = `total=${total} assigned=${assigned} misassigned=${misassigned} null=${unassignable}`;
   console.log(`[pq-178.02 corpus] seed=${BLIND_PROOF_SEED} ${tally}`);
 
-  // Helix has no bark table; its register rests on its cited narrative comm.
-  assert.equal(BARKS.faction_helix, undefined);
+  // Helix speaks from its own bark table. The sheet example is still the cited comm.
+  assert.ok(BARKS.faction_helix && BARKS.faction_helix.scan.length >= 4);
   assert.ok(total > 200, tally);
 
   // Precise: never puts a live bark on the wrong house.

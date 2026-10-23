@@ -24,13 +24,42 @@ import { hash32, mulberry32 } from '../core/rng.js';
 export const MTS_TOLL_MAX_SEC = 0.6;
 export const WING_MAX = 2;
 
-// One inline comms line per scene type. Callsigns identify the speaker and factual copy reflects the
+// Comms variants per scene type. Callsigns identify the speaker and factual copy reflects the
 // actual scene outcome. Silent scenes carry no line. variantRoll picks among a type's lines.
+// The decision table does not read this list — only the chosen string changes.
 const LINES = Object.freeze({
-  mts_toll: Object.freeze(['MERIDIAN LANE CONTROL: transit levy assessed. Clear on payment.']),
-  scn_scan: Object.freeze(['CONCORD CHECKPOINT: hold your vector for a routine hold scan.']),
-  queue:    Object.freeze(['GATE CONTROL: you are in the queue. Hold the lane.']),
-  hostile:  Object.freeze(['GATE WATCH: your registry is flagged. Stand down for inspection.']),
+  mts_toll: Object.freeze([
+    'MERIDIAN LANE CONTROL: transit levy assessed. Clear on payment.',
+    'MERIDIAN LANE CONTROL: levy is on the board. Pay it and the lane opens.',
+    'MERIDIAN LANE CONTROL: toll window is live. Clearance follows the count.',
+    'MERIDIAN LANE CONTROL: transit fee posted. Hold until the ledger takes it.',
+    'MERIDIAN LANE CONTROL: this gate bills the crossing. Payment clears the vector.',
+    'MERIDIAN LANE CONTROL: levy stands. The lane stays shut until it is paid.',
+  ]),
+  scn_scan: Object.freeze([
+    'CONCORD CHECKPOINT: hold your vector for a routine hold scan.',
+    'CONCORD CHECKPOINT: scan wing is forming. Keep the lane.',
+    'CONCORD CHECKPOINT: hold scan in progress. Do not drift the gate.',
+    'CONCORD CHECKPOINT: registry check. Stay on the painted vector.',
+    'CONCORD CHECKPOINT: routine scan. Wing is already in the lane.',
+    'CONCORD CHECKPOINT: hold position. The scan reads the hull, not the story.',
+  ]),
+  queue: Object.freeze([
+    'GATE CONTROL: you are in the queue. Hold the lane.',
+    'GATE CONTROL: queue holds. Keep your interval.',
+    'GATE CONTROL: one ahead. Do not close the gap.',
+    'GATE CONTROL: lane is metered. Wait for the clear.',
+    'GATE CONTROL: sequence is live. Hold station in the queue.',
+    'GATE CONTROL: traffic is stacked. Your slot is not yet called.',
+  ]),
+  hostile: Object.freeze([
+    'GATE WATCH: your registry is flagged. Stand down for inspection.',
+    'GATE WATCH: you are flagged. Kill your burn and hold.',
+    'GATE WATCH: this gate does not clear you. Stand down.',
+    'GATE WATCH: inspection order. Registry flagged. Weapons cold.',
+    'GATE WATCH: registry mismatch. Stand down. Do not transit.',
+    'GATE WATCH: you are flagged. Watch is on the gate. Stand down.',
+  ]),
 });
 
 function silent() { return { type: 'silent', comms: null, tollAmount: 0, scanWing: 0 }; }

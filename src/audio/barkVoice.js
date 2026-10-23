@@ -1,6 +1,6 @@
-// PQ-158.04 — directed synthetic voice for the 439-line bark corpus.
+// PQ-158.04 — directed synthetic voice for the 471-line bark corpus.
 //
-// Thirteen faction registers + the mechanic. No recorded actors. Speech params, radio processing,
+// Fourteen faction registers + the mechanic. No recorded actors. Speech params, radio processing,
 // and caption text are pure functions of (faction, situation, line). Sim RNG is never read.
 // Agents run scripts/generate-bark-voice.mjs to emit representative WAVs.
 
@@ -11,9 +11,12 @@ import { detectPitchHz, decodePcmWav } from './themeCompose.js';
 export const BARK_VOICE_SEED = 15804;
 // Authored count follows the BARKS table (deep-faction + distress additions raised it past
 // the original 437); this pin exists so unauthored corpus drift fails loudly.
-export const BARK_CORPUS_TARGET = 439;
+export const BARK_CORPUS_TARGET = 471;
 
 export const BARK_RECIPE_ID = 'sfx_bark_radio';
+
+/** Named-contact bark registers ride the faction pipeline without joining the corpus. */
+export const CONTACT_MAERA_ID = 'contact_maera_vols';
 
 function hash32(text) {
   const s = String(text || '');
@@ -40,7 +43,7 @@ function register(id, label, spec) {
   });
 }
 
-// Thirteen registers a stranger can tell apart blind: pitch, cadence, filter, and grit.
+// Fourteen registers a stranger can tell apart blind: pitch, cadence, filter, and grit.
 export const FACTION_VOICE_REGISTERS = Object.freeze({
   faction_scn: register('faction_scn', 'Concord', {
     sampleId: 'bark_scn', f0: 110, pitch: 0.88, rate: 0.94,
@@ -114,6 +117,12 @@ export const FACTION_VOICE_REGISTERS = Object.freeze({
     filterHz: 2600, q: 4.5, noise: 0.05, bandpassLo: 540, bandpassHi: 3600, drive: 0.15,
     formants: [900, 1550, 2900],
   }),
+  faction_helix: register('faction_helix', 'Helix', {
+    // Tariff clerk: clipped and clean, between Reach and the Choir so the fine has its own pitch.
+    sampleId: 'bark_helix', f0: 163, pitch: 1.10, rate: 0.98,
+    filterHz: 1900, q: 1.2, noise: 0.03, bandpassLo: 460, bandpassHi: 3100, drive: 0.05,
+    formants: [640, 1500, 2750],
+  }),
 });
 
 export const MECHANIC_VOICE_REGISTER = register('mechanic', 'Mechanic', {
@@ -129,6 +138,16 @@ export const INSTRUCTOR_VOICE_REGISTER = register('instructor', 'Instructor', {
   sampleId: 'bark_instructor', f0: 118, pitch: 0.92, rate: 0.96,
   filterHz: 1500, q: 0.9, noise: 0.01, bandpassLo: 340, bandpassHi: 2700, drive: 0.04,
   formants: [520, 1180, 2450],
+});
+
+// The Hull Ghost: Captain Maera Vols, a tired DMC hull captain heard on the player's own radio
+// (build-map row 424). Her room is one step darker than the Drift house she flew for: same low
+// fundamental and formant bed, slower cadence, cleaner radio grit — the bandpass sits where a
+// yard-channel handset lives. Reuses the manifest-backed bark_dmc sample body.
+export const MAERA_VOICE_REGISTER = register('contact_maera_vols', 'Captain Maera Vols', {
+  sampleId: 'bark_dmc', f0: 95, pitch: 0.82, rate: 0.82,
+  filterHz: 900, q: 1.4, noise: 0.10, bandpassLo: 280, bandpassHi: 2200, drive: 0.12,
+  formants: [550, 1000, 2300],
 });
 
 // Representative instructor lines. The register WAV body is rendered from the first; every tutorial
@@ -151,6 +170,7 @@ export const MECHANIC_LINES = Object.freeze([
 
 export function resolveVoiceRegister(factionId, mechanic = false) {
   if (mechanic || factionId === 'mechanic') return MECHANIC_VOICE_REGISTER;
+  if (factionId === CONTACT_MAERA_ID) return MAERA_VOICE_REGISTER;
   return FACTION_VOICE_REGISTERS[factionId] || FACTION_VOICE_REGISTERS.faction_free;
 }
 
@@ -166,9 +186,12 @@ function durationS(line, rate) {
  */
 export function resolveBarkVoice(input = {}) {
   const mechanic = !!(input.mechanic || input.kind === 'mechanic' || input.factionId === 'mechanic');
-  const factionId = mechanic
-    ? 'mechanic'
-    : (input.factionId && FACTION_VOICE_REGISTERS[input.factionId] ? input.factionId : 'faction_free');
+  // The Hull Ghost is a named contact, not a faction (no BARK_FACTIONS entry, no theme sting).
+  const maera = !mechanic && input.factionId === CONTACT_MAERA_ID;
+  let factionId = 'faction_free';
+  if (mechanic) factionId = 'mechanic';
+  else if (maera) factionId = CONTACT_MAERA_ID;
+  else if (input.factionId && FACTION_VOICE_REGISTERS[input.factionId]) factionId = input.factionId;
   const situation = mechanic
     ? 'berth'
     : (BARK_SITUATIONS.includes(input.situation) || BARK_EVENT_SITUATIONS.includes(input.situation)
@@ -188,7 +211,9 @@ export function resolveBarkVoice(input = {}) {
   return Object.freeze({
     schema: 'spaceface.barkVoice.v1',
     seed: BARK_VOICE_SEED,
-    factionId,
+    // A named contact reports no faction: the audio consumer must not start a house theme sting
+    // (instructor precedent).
+    factionId: maera ? null : factionId,
     situation,
     mechanic,
     registerId: register.id,
@@ -212,7 +237,7 @@ export function resolveBarkVoice(input = {}) {
       noise: register.noise,
       drive: register.drive,
     }),
-    gain: mechanic ? 0.72 : 0.8,
+    gain: maera ? 0.66 : (mechanic ? 0.72 : 0.8),
     assertive: situation === 'attack' || situation === 'warn' || situation === 'demand-cargo',
     hash: h,
   });

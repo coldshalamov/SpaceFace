@@ -9,16 +9,45 @@ import { masslineInstrumentCaption, resolveMasslineInstrument } from '../audio/m
 
 export const CAPTIONS_SEED = 16501;
 
-export const AUDIO_CUE_CAPTIONS = Object.freeze({
-  well: 'Gravity well',
-  repulsor: 'Repulsor deployed',
-  cone: 'Cone deployed',
-  skim: 'Skim sheet deployed',
-  seed: 'Seed deployed',
-  taut: 'Line taut',
-  tetherTaut: 'Line taut',
-  telegraph: 'Incoming telegraph',
+// `text` is a recognized localization field. The extractor does not read bare values,
+// and it does not scan src/audio, so these rows are the inventory source for the
+// accessibility cues and for MASSLINE_CAPTIONS.
+export const ACCESSIBILITY_CAPTION_COPY = Object.freeze({
+  well: Object.freeze({ text: 'Gravity well' }),
+  repulsor: Object.freeze({ text: 'Repulsor deployed' }),
+  cone: Object.freeze({ text: 'Cone deployed' }),
+  skim: Object.freeze({ text: 'Skim sheet deployed' }),
+  seed: Object.freeze({ text: 'Seed deployed' }),
+  taut: Object.freeze({ text: 'Line taut' }),
+  telegraph: Object.freeze({ text: 'Incoming telegraph' }),
 });
+
+export const MASSLINE_CAPTION_COPY = Object.freeze({
+  attach: Object.freeze({ text: 'Massline attached.' }),
+  strain: Object.freeze({ text: 'Massline strain.' }),
+  reel: Object.freeze({ text: 'Massline reel.' }),
+  release: Object.freeze({ text: 'Massline release.' }),
+  break: Object.freeze({ text: 'Massline break.' }),
+  bridle: Object.freeze({ text: 'Twin bridle chord.' }),
+});
+
+export const AUDIO_CUE_CAPTIONS = Object.freeze({
+  well: ACCESSIBILITY_CAPTION_COPY.well.text,
+  repulsor: ACCESSIBILITY_CAPTION_COPY.repulsor.text,
+  cone: ACCESSIBILITY_CAPTION_COPY.cone.text,
+  skim: ACCESSIBILITY_CAPTION_COPY.skim.text,
+  seed: ACCESSIBILITY_CAPTION_COPY.seed.text,
+  taut: ACCESSIBILITY_CAPTION_COPY.taut.text,
+  tetherTaut: ACCESSIBILITY_CAPTION_COPY.taut.text,
+  telegraph: ACCESSIBILITY_CAPTION_COPY.telegraph.text,
+});
+
+export function localizableCaptionMessages() {
+  const out = [];
+  for (const row of Object.values(ACCESSIBILITY_CAPTION_COPY)) out.push(row.text);
+  for (const row of Object.values(MASSLINE_CAPTION_COPY)) out.push(row.text);
+  return out;
+}
 
 export const ACCESSIBILITY_AUDIO_CUE_TABLE = Object.freeze({
   well: Object.freeze({
@@ -101,10 +130,43 @@ export function resolveAccessibilityCue(kind, flagOrSettings) {
   return ACCESSIBILITY_AUDIO_CUE_TABLE[key] || null;
 }
 
-export function audioCueCaption(kind, audioCuesFlag) {
+/**
+ * Clock hour for the position that pans a cue. Same ship-local axes as
+ * resolvePlayerDamageAudioSignature: nose is (cos rot, sin rot), positive pan is right.
+ * 12 is ahead. A missing pose, or a source on the listener, has no direction.
+ */
+export function clockFromPanPosition(position, listener) {
+  if (!position || !listener) return null;
+  const lx = Number(listener.x);
+  const lz = Number(listener.z);
+  const sx = Number(position.x);
+  const sz = Number(position.z);
+  if (![lx, lz, sx, sz].every(Number.isFinite)) return null;
+  const dx = sx - lx;
+  const dz = sz - lz;
+  const len = Math.hypot(dx, dz);
+  if (!(len > 1e-6)) return null;
+  const rot = Number(listener.rot) || 0;
+  const forward = (dx * Math.cos(rot) + dz * Math.sin(rot)) / len;
+  const right = (dx * -Math.sin(rot) + dz * Math.cos(rot)) / len;
+  const degrees = (Math.atan2(right, forward) * 180 / Math.PI + 360) % 360;
+  return Math.round(degrees / 30) % 12 || 12;
+}
+
+function withClockCaption(text, clock) {
+  if (!clock || !text) return text;
+  const base = String(text).replace(/[.\s]+$/, '');
+  return `${base}, ${clock} o'clock.`;
+}
+
+export function audioCueCaption(kind, audioCuesFlag, place) {
   const cue = resolveAccessibilityCue(kind, audioCuesFlag);
   if (!cue) return null;
-  return { text: cue.caption, channel: 'cue', kind: cue.kind };
+  const clock = place ? clockFromPanPosition(place.position, place.listener) : null;
+  const text = clock ? withClockCaption(cue.caption, clock) : cue.caption;
+  return clock
+    ? { text, channel: 'cue', kind: cue.kind, clock }
+    : { text, channel: 'cue', kind: cue.kind };
 }
 
 export function captionMasslineEvent(eventName, payload, captionsOn) {
@@ -134,8 +196,45 @@ const EXPLICIT_RECIPE_CAPTIONS = Object.freeze({
   sfx_kill_confirm: Object.freeze({ text: 'Kill confirmed.', urgency: 'high', event: 'kill.confirm' }),
   'sfx.killConfirmed': Object.freeze({ text: 'Kill confirmed.', urgency: 'high', event: 'kill.confirm' }),
   'sfx.killCapital': Object.freeze({ text: 'Capital destroyed.', urgency: 'high', event: 'kill.capital' }),
-  sfx_massline_release: Object.freeze({ text: 'Massline release.', urgency: 'normal', event: 'massline.release' }),
-  'sfx.tetherSnap': Object.freeze({ text: 'Massline break.', urgency: 'high', event: 'massline.break' }),
+  sfx_massline_release: Object.freeze({ text: 'The line lets go.', urgency: 'normal', event: 'massline.release' }),
+  'sfx.tetherSnap': Object.freeze({ text: 'The line snaps.', urgency: 'high', event: 'massline.break' }),
+  sfx_firsthour_coldopen: Object.freeze({ text: 'The shift begins.', urgency: 'normal', event: 'onboarding.open' }),
+  sfx_moment_stinger: Object.freeze({ text: 'A moment lands.', urgency: 'normal', event: 'onboarding.moment' }),
+  sfx_accel_transition: Object.freeze({ text: 'Thrusters come up.', urgency: 'normal', event: 'flight.thrust' }),
+  sfx_engine_thrust: Object.freeze({ text: 'Thrusters burning.', urgency: 'normal', event: 'flight.thrust' }),
+  sfx_engine_boost: Object.freeze({ text: 'Boost engaged.', urgency: 'normal', event: 'flight.boost' }),
+  sfx_boost_whoosh: Object.freeze({ text: 'Boost kick.', urgency: 'normal', event: 'flight.boost' }),
+  sfx_brake_bite: Object.freeze({ text: 'Brakes bite.', urgency: 'warn', event: 'flight.brake' }),
+  sfx_rcs_hiss: Object.freeze({ text: 'Attitude jets hiss.', urgency: 'normal', event: 'flight.rcs' }),
+  sfx_mining_scan_pulse: Object.freeze({ text: 'Scanner pulse.', urgency: 'normal', event: 'mining.scan' }),
+  sfx_mining_beam: Object.freeze({ text: 'Mining beam on.', urgency: 'normal', event: 'mining.beam' }),
+  sfx_mining_impact: Object.freeze({ text: 'The rock chips.', urgency: 'normal', event: 'mining.impact' }),
+  sfx_mining_cutter_lock: Object.freeze({ text: 'Beam locked on the seam.', urgency: 'normal', event: 'mining.lock' }),
+  sfx_wpn_pulse_laser: Object.freeze({ text: 'Pulse laser fires.', urgency: 'high', event: 'weapon.pulse' }),
+  sfx_bark_radio: Object.freeze({ text: 'The instructor speaks.', urgency: 'speech', event: 'comms.instructor' }),
+  sfx_comms_key_click: Object.freeze({ text: 'Radio keys open.', urgency: 'speech', event: 'comms.key' }),
+  sfx_comms_squelch_tail: Object.freeze({ text: 'Radio closes.', urgency: 'speech', event: 'comms.squelch' }),
+  sfx_squelch_story: Object.freeze({ text: 'Story channel opens.', urgency: 'speech', event: 'comms.story' }),
+  sfx_wanted_alert: Object.freeze({ text: 'You are wanted.', urgency: 'high', event: 'heat.wanted' }),
+  sfx_wanted_clear: Object.freeze({ text: 'The warrant clears.', urgency: 'normal', event: 'heat.clear' }),
+  'sfx.shieldBreak': Object.freeze({ text: 'Shields down.', urgency: 'high', event: 'shield.break' }),
+  sfx_shield_blowout_discharge: Object.freeze({ text: 'Shields blow out.', urgency: 'high', event: 'shield.blowout' }),
+  sfx_reactor_overload: Object.freeze({ text: 'The reactor runs away.', urgency: 'high', event: 'kill.overload' }),
+  'sfx.tetherLatch': Object.freeze({ text: 'Massline attached.', urgency: 'normal', event: 'massline.attach' }),
+  sfx_tether_latch_lock: Object.freeze({ text: 'The latch locks.', urgency: 'normal', event: 'massline.latch' }),
+  sfx_tether_strain_creak: Object.freeze({ text: 'The line is straining.', urgency: 'warn', event: 'massline.strain' }),
+  sfx_massline_reel_whine: Object.freeze({ text: 'The winch reels in.', urgency: 'normal', event: 'massline.reel' }),
+  sfx_tether_crack: Object.freeze({ text: 'The cable cracks.', urgency: 'high', event: 'massline.crack' }),
+  sfx_tether_twang: Object.freeze({ text: 'The line cuts free.', urgency: 'high', event: 'massline.cut' }),
+  sfx_massline_throw: Object.freeze({ text: 'The throw leaves the hand.', urgency: 'normal', event: 'massline.throw' }),
+  sfx_dock_clunk: Object.freeze({ text: 'Docking clamp seats.', urgency: 'normal', event: 'dock.clamp' }),
+  sfx_undock_release: Object.freeze({ text: 'Leaving the dock.', urgency: 'normal', event: 'dock.undock' }),
+  sfx_dock_capture: Object.freeze({ text: 'The capture lane holds.', urgency: 'normal', event: 'dock.capture' }),
+  sfx_station_hum: Object.freeze({ text: 'The station hums.', urgency: 'normal', event: 'dock.hum' }),
+  sfx_field_deploy_well: Object.freeze({ text: 'Gravity well deploys.', urgency: 'normal', event: 'field.well' }),
+  sfx_field_deploy_repulsor: Object.freeze({ text: 'Repulsor deploys.', urgency: 'normal', event: 'field.repulsor' }),
+  sfx_field_deploy_cone: Object.freeze({ text: 'Cone deploys.', urgency: 'normal', event: 'field.cone' }),
+  sfx_encounter_escalation: Object.freeze({ text: 'Incoming telegraph.', urgency: 'high', event: 'encounter.telegraph' }),
   sfx_cash_register: Object.freeze({ text: 'Credits received.', urgency: 'normal', event: 'money.register' }),
   sfx_mission_accept: Object.freeze({ text: 'Mission accepted.', urgency: 'normal', event: 'mission.accept' }),
   sfx_mission_complete: Object.freeze({ text: 'Mission complete.', urgency: 'normal', event: 'mission.complete' }),
@@ -162,15 +261,17 @@ function familyCaption(recipeId, recipe) {
 }
 
 /** FB-123 — every non-blip recipe resolves to a caption. Missing rows fall back to the family. */
-export function captionForGameplayRecipe(recipeId, recipe) {
+export function captionForGameplayRecipe(recipeId, recipe, place) {
   if (!recipeId || isUiBlipRecipe(recipeId)) return null;
   const explicit = EXPLICIT_RECIPE_CAPTIONS[recipeId];
   const family = explicit || familyCaption(recipeId, recipe);
+  const clock = place ? clockFromPanPosition(place.position, place.listener) : null;
   return Object.freeze({
     recipeId,
-    text: family.text,
+    text: clock ? withClockCaption(family.text, clock) : family.text,
     urgency: family.urgency,
     event: family.event,
+    ...(clock ? { clock } : {}),
   });
 }
 

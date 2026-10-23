@@ -13,6 +13,7 @@ import { survivalArena } from '../src/systems/survivalArena.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
+import { MAX_LINES_PER_WAVE, NAMED_KILL_PRIORITY, survivalAnnounce } from '../src/systems/survivalAnnounce.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import {
   CIRCUIT_BOSS_SEQUENCE,
@@ -20,6 +21,7 @@ import {
   CIRCUIT_STAGE_COUNT,
   CIRCUIT_SURVIVE_TICKS,
   CIRCUIT_TOTAL_ROUNDS,
+  CIRCUIT_VIEW_AHEAD,
   circuitArenaLine,
   circuitBossFor,
   circuitChoiceId,
@@ -432,6 +434,133 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.equal(receipt.tick, CIRCUIT_SURVIVE_TICKS);
       assert.ok(receipt.survivors > 0, 'survivors are left flying, not deleted for a clear');
       assert.equal(h.player.alive, true);
+    } else if (round.kind === 'hold' || round.kind === 'reach') {
+      const before = clearedCount(h);
+      const zone = round.kind === 'hold' ? lastPlan(h).swarm.circuit.zone : lastPlan(h).swarm.circuit.gate;
+      const mark = [...h.state.entities.values()].find((entity) => entity.data && entity.data.circuitMark);
+      assert.ok(mark, `${round.kind} plants a beacon on the spot`);
+      assert.equal(mark.physicsBody, false, 'the mark is not a solid body');
+      assert.equal(mark.collides, false);
+      assert.equal(mark.data.ringRadius, zone.radius, 'the drawn circle is the circle the clock uses');
+      assert.ok(Math.hypot(mark.pos.x - zone.x, mark.pos.z - zone.z) < 1, 'the beacon sits on the spot');
+      const shipDist = Math.hypot(h.player.pos.x - zone.x, h.player.pos.z - zone.z);
+      assert.ok(shipDist > zone.radius, 'the ship is not already standing in the spot');
+      assert.ok(shipDist + zone.radius <= CIRCUIT_VIEW_AHEAD, 'the whole ring is in the picture the ship sees');
+      h.player.pos.x = 0;
+      h.player.pos.z = 0;
+      killEverything(h);
+      step(h, 30);
+      assert.equal(clearedCount(h), before, 'kills do not finish a zone round');
+      h.player.pos.x = zone.x;
+      h.player.pos.z = zone.z;
+      step(h, 40);
+      const dipped = survivalWave._swarm.circuit.fill;
+      assert.ok(dipped >= 30, 'standing in the spot fills the clock');
+      h.player.pos.x = 0;
+      h.player.pos.z = 0;
+      step(h, 30);
+      assert.ok(survivalWave._swarm.circuit.fill < dipped, 'leaving the spot drains the clock');
+      assert.equal(clearedCount(h), before, 'a dip does not finish the sit');
+      h.player.pos.x = zone.x;
+      h.player.pos.z = zone.z;
+      step(h, lastPlan(h).swarm.circuit.need);
+      assert.equal(clearedCount(h), before + 1, `${round.kind} fills on presence`);
+      const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
+      assert.equal(receipt.completionKind, round.kind);
+    } else if (round.kind === 'collect') {
+      const before = clearedCount(h);
+      const need = lastPlan(h).swarm.circuit.coreCount;
+      for (let i = 0; i < 80 && (survivalWave._circuitCores?.length || 0) < need; i++) {
+        killEverything(h);
+        step(h, 10);
+      }
+      assert.equal(clearedCount(h), before, 'cores on the field do not finish the round');
+      const planted = survivalWave._circuitCores || [];
+      assert.equal(planted.length, need, 'the round spills one marker per core');
+      for (const core of planted) {
+        const mark = [...h.state.entities.values()].find((entity) => entity.data && entity.data.circuitCore
+          && entity.alive !== false && entity.pos
+          && Math.hypot(entity.pos.x - core.x, entity.pos.z - core.z) < 1);
+        assert.ok(mark, 'each core is a marker in the fight');
+        assert.equal(mark.physicsBody, false, 'a core is not a solid body');
+        assert.equal(mark.collides, false);
+        assert.notEqual(mark.data.wallet, 'run', 'a core is not a credit chip');
+        const dist = Math.hypot(core.x - h.player.pos.x, core.z - h.player.pos.z);
+        assert.ok(dist > 12, 'a core is not sitting on the ship');
+        assert.ok(core.z > h.player.pos.z, 'a core is ahead of the ship');
+        assert.ok(dist + 6 <= CIRCUIT_VIEW_AHEAD + 0.01, 'a core stays inside the swarm picture');
+      }
+      for (const core of planted) {
+        h.player.pos.x = core.x;
+        h.player.pos.z = core.z;
+        step(h, 1);
+      }
+      assert.equal(clearedCount(h), before + 1, 'the last core finishes the round');
+      const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
+      assert.equal(receipt.completionKind, 'collect');
+      assert.equal(receipt.found, need);
+    } else if (round.kind === 'nodes') {
+      const landed = tickUntil(h, () => {
+        let n = 0;
+        for (const entity of h.state.entities.values()) {
+          if (entity && entity.alive !== false && entity.data && entity.data.circuitNode) n += 1;
+        }
+        return n >= 3;
+      }, 800);
+      assert.ok(landed, 'three hive nodes take the field');
+      const nodes = [...h.state.entities.values()].filter((entity) => entity && entity.alive !== false
+        && entity.data && entity.data.circuitNode);
+      assert.equal(nodes.length, 3, 'the nodes are this wave\'s own bodies');
+      for (const node of nodes) {
+        const dist = Math.hypot(node.pos.x - h.player.pos.x, node.pos.z - h.player.pos.z);
+        const radius = Number(node.radius) > 0 ? node.radius : 8;
+        assert.ok(dist > 4, 'a node is planted ahead of the ship');
+        assert.ok(dist + radius <= CIRCUIT_VIEW_AHEAD + 0.01, 'a node stays inside the swarm picture');
+        assert.equal(node.data.scanLabel, 'Hive node');
+        if (node.data.ai) assert.equal(node.data.ai.swarmFireHeld, true, 'a node does not shoot');
+      }
+      const packBefore = [...h.state.entities.values()].filter((entity) => entity && entity.alive !== false
+        && entity.id !== h.player.id && !(entity.data && entity.data.circuitNode));
+      const before = clearedCount(h);
+      for (const node of nodes) {
+        node.alive = false;
+        h.bus.emit('entity:killed', { id: node.id });
+      }
+      step(h, 5);
+      assert.equal(clearedCount(h), before + 1, 'the last node ends the round');
+      const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
+      assert.equal(receipt.completionKind, 'nodes');
+      if (packBefore.length > 0) {
+        const still = [...h.state.entities.values()].filter((entity) => entity && entity.alive !== false
+          && entity.id !== h.player.id && !(entity.data && entity.data.circuitNode));
+        assert.ok(still.length > 0, 'the pack is still flying when the nodes are gone');
+      }
+    } else if (round.kind === 'commander') {
+      const landed = tickUntil(h, () => {
+        for (const entity of h.state.entities.values()) {
+          if (entity && entity.alive !== false && entity.data && entity.data.circuitCommander) return true;
+        }
+        return false;
+      }, 800);
+      assert.ok(landed, 'the commander takes the field');
+      const commander = [...h.state.entities.values()].find((entity) => entity && entity.alive !== false
+        && entity.data && entity.data.circuitCommander);
+      assert.equal(commander.data.scanLabel, round.commanderName);
+      assert.equal(commander.data.callsign, round.commanderName);
+      assert.notEqual(commander.data.swarmChampion, true, 'the commander is not a second stage boss');
+      survivalAnnounce.init(h.ctx);
+      survivalAnnounce._wave = h.state.run.wave;
+      survivalAnnounce._linesThisWave = MAX_LINES_PER_WAVE;
+      clearCohortRound(h);
+      const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
+      assert.equal(receipt.completionKind, 'commander');
+      assert.equal(receipt.objectiveName, round.commanderName);
+      assert.equal(receipt.killWord, `${round.commanderName} down`);
+      const down = named(h.emitted, 'voice:say').find((entry) => entry.payload
+        && entry.payload.text === `${round.commanderName} down`);
+      assert.ok(down, 'the kill line is spoken');
+      assert.equal(down.payload.priority, NAMED_KILL_PRIORITY, 'the kill line speaks over a line that is already up');
+      survivalAnnounce.destroy();
     } else {
       clearCohortRound(h);
       const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
@@ -445,8 +574,9 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.equal(after.status, 'route');
       assert.equal(after.clearedStages, wave / 4);
       const choices = circuitChoicesFor(h.state.run);
-      assert.equal(choices.length, 2, 'each stage offers two destinations');
-      const choice = choices[0];
+      assert.equal(choices.filter((entry) => !entry.fight).length, 2, 'each stage offers two ordinary destinations');
+      assert.equal(choices.length, 6, 'elite and challenge sit beside them and can be refused');
+      const choice = choices.find((entry) => !entry.fight);
       const applied = choose(h, choice.id);
       assert.equal(applied.accepted, true, applied.reason);
       assert.equal(h.state.run.arenaId, choice.arenaId, 'the destination is installed before the next plan');
@@ -658,8 +788,9 @@ test('Circuit boss rounds force their stage champion and wave ten suppresses the
     });
     assert.equal(plan.swarm.requireBoss, false, `wave ${wave} has no cadence champion`);
     assert.equal(plan.swarm.bossId, null);
+    const specialObjective = { 5: 'nodes', 7: 'hold', 9: 'collect', 11: 'commander', 13: 'reach' };
     assert.equal(plan.objective.kind, wave === 2 || wave === 6 || wave === 10 || wave === 14
-      ? 'survive' : 'resolve_hostiles');
+      ? 'survive' : (specialObjective[wave] || 'resolve_hostiles'));
   }
   for (const wave of [4, 8, 12, 16]) {
     const round = circuitRoundFor(run, wave);
@@ -740,7 +871,9 @@ test('presentation names survive rounds, stages, route progress and the finale',
   const panel = circuitPanelLines(run);
   assert.equal(panel.heading, 'The Circuit');
   assert.match(panel.status, /Choose where stage 2 fights/);
-  assert.deepEqual(panel.choices.map((c) => c.kind), ['route', 'route']);
+  assert.deepEqual(panel.choices.filter((c) => !c.fight).map((c) => c.kind), ['route', 'route']);
+  assert.equal(panel.choices.filter((c) => c.fight === 'elite').length, 2);
+  assert.equal(panel.choices.filter((c) => c.fight === 'challenge').length, 2);
   const names = panel.choices.map((c) => c.label);
   assert.ok(names.includes(CIRCUIT_DESTINATIONS[2][0].label));
   assert.ok(names.includes(CIRCUIT_DESTINATIONS[2][1].label));
@@ -931,8 +1064,9 @@ test('both destinations at every boundary are authored arenas with their own law
       const first = circuitChoicesFor(run);
       const second = circuitChoicesFor(run);
       assert.deepEqual(first, second, 'identical state yields identical descriptors');
-      assert.equal(first.length, 2);
-      const choice = first.find((entry) => entry.arenaId === dest.arenaId);
+      assert.equal(first.filter((entry) => !entry.fight).length, 2);
+      assert.equal(first.length, 6);
+      const choice = first.find((entry) => entry.arenaId === dest.arenaId && !entry.fight);
       assert.ok(choice, `${dest.arenaId} is offered at stage ${stage}`);
       assert.equal(choice.line, dest.line);
       const wave = run.wave + 1;
@@ -1092,7 +1226,8 @@ test('Circuit choice controls are native buttons and activate through the draft-
     crucibleDraftScreen._paintCircuitChoices.call(screen, {
       bus: { emit: (event, payload) => emitted.push({ event, payload }) },
     }, choices);
-    assert.equal(list.children.length, 2);
+    assert.equal(list.children.length, choices.length);
+    assert.equal(choices.filter((choice) => !choice.fight).length, 2);
     for (const [index, item] of list.children.entries()) {
       const button = item.children[0];
       assert.equal(button.tag, 'button');
@@ -1105,7 +1240,7 @@ test('Circuit choice controls are native buttons and activate through the draft-
         'the physical-law line is visible before commitment');
       button.listeners.click();
     }
-    assert.deepEqual(emitted.map((row) => row.event), ['run:draftPickRequested', 'run:draftPickRequested']);
+    assert.deepEqual(emitted.map((row) => row.event), choices.map(() => 'run:draftPickRequested'));
     assert.deepEqual(emitted.map((row) => row.payload.offerId), choices.map((choice) => choice.id));
   } finally {
     globalThis.document = oldDocument;

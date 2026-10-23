@@ -18,7 +18,7 @@ test('seed 4242 the wanted alert names the clear time', () => {
   const first = wantedAlertText(heat, '', false);
   const refresh = wantedAlertText(heat, ' · KILL', true);
   assert.equal(first, `WANTED · LAW ENFORCEMENT ACTIVE · clears in ${seconds}s`);
-  assert.equal(refresh, `WANTED (LOW) · HUNTERS INBOUND · clears in ${seconds}s · KILL`);
+  assert.equal(refresh, `WANTED (fine/scan) · HUNTERS INBOUND · clears in ${seconds}s · KILL`);
   assert.equal(wantedAlertText(0, '', false).includes('clears in'), false);
   const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
   assert.match(hud, /wantedAlertText\(v, reason, false\)/);

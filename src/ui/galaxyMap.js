@@ -38,6 +38,7 @@ import { dressLampKey } from './orrery/lampKey.js';
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { gateTollFor } from '../data/travelChoices.js';
 import { wreckEcologyMarkers } from './wreckEcologyMarkers.js';
 import { chartMarkSizes } from '../data/modelTruth.js';
 import { asteroidScanGlyph } from '../data/mining.js';
@@ -53,6 +54,11 @@ import {
   SECTOR_ORIGIN_LATTICE_WU,
 } from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat, zoneAt } from '../data/sectorZones.js';
+import {
+  auditEdgeKey,
+  gateAuditCatalogEntry,
+  tideBand,
+} from '../data/worldPressure.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
 import { dpIcon, injectDeckplate } from './deckplate/index.js';
@@ -1050,6 +1056,51 @@ function sectorRecordById(state, id) {
 }
 
 /**
+ * The toll a one-hop jump into `sectorId` will charge. Live security wins; the
+ * catalog fills a chart node that has not copied the number yet. Same law as
+ * world `_gateToll` (`gateTollFor`): security must be above 0.6.
+ */
+export function jumpTollCr(state, sectorId) {
+  if (!sectorId) return 0;
+  const live = sectorRecordById(state, sectorId);
+  const catalog = SECTOR_BY_ID.get(sectorId);
+  const security = live && live.security != null ? live.security
+    : catalog && catalog.security != null ? catalog.security
+    : null;
+  return gateTollFor({ security });
+}
+
+function attachJumpToll(state, action) {
+  if (!action || action.kind !== 'jump') return action;
+  const tollCr = jumpTollCr(state, action.targetSectorId);
+  action.tollCr = tollCr;
+  action.tollLine = tollCr > 0 ? `${tollCr} cr toll` : '';
+  return action;
+}
+
+/** One line under the jump verb. The verb label itself stays the pinned words. */
+function paintJumpToll(btn, primary) {
+  if (!btn || typeof document === 'undefined' || typeof btn.insertAdjacentElement !== 'function') return;
+  const text = primary && primary.tollLine ? primary.tollLine : '';
+  const title = text || '';
+  if (btn.getAttribute('data-toll') !== title) btn.setAttribute('data-toll', title);
+  const parent = btn.parentElement;
+  if (!parent || typeof parent.querySelector !== 'function') return;
+  let note = parent.querySelector('#gm-jump-toll');
+  if (!text) {
+    if (note && note.remove) note.remove();
+    return;
+  }
+  if (!note) {
+    note = document.createElement('div');
+    note.id = 'gm-jump-toll';
+    note.className = 'gm-ins-note';
+    btn.insertAdjacentElement('afterend', note);
+  }
+  if (note.textContent !== text) note.textContent = text;
+}
+
+/**
  * How many berths a sector offers — the bead count on its sigil.
  *
  * Gates are excluded on purpose: a bead reads as "somewhere you can dock and trade", and a gate is
@@ -1590,6 +1641,8 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
 export function buildGalaxyModel(state) {
   const records = sectorRecords(state);
   const curId = currentSectorId(state);
+  const wp = state && state.worldPressure && typeof state.worldPressure === 'object'
+    ? state.worldPressure : null;
   const story = state && state.story || {};
   const verge = story.verge && typeof story.verge === 'object' ? story.verge : {};
   const storyFlags = {
@@ -1642,6 +1695,10 @@ export function buildGalaxyModel(state) {
       bearingCount,
       neighbors: Array.isArray(s.neighbors) ? s.neighbors.slice() : [],
       presence,
+      // §34 row 520/523: the Bloom tide line, read straight off the persisted
+      // worldPressure bag — null where the sector is not yet charted.
+      tide: charted ? (Number((wp && wp.tide && wp.tide[s.id]) || 0)) : null,
+      tideBand: charted ? tideBand((wp && wp.tide && wp.tide[s.id]) || 0) : null,
       searchText: [
         s.name || s.id,
         factionNameOf(s.factionId),
@@ -1662,11 +1719,24 @@ export function buildGalaxyModel(state) {
       const other = nodeById.get(nb);
       if (!other) continue;
       const bothCharted = node.charted && other.charted;
+      // §34 rows 521/523: the road's audit state, read off the persisted bag —
+      // 'welding' shows the scaffold's progress, 'closed' shows the sealed lane.
+      // Catalog-only edges surface as 'scheduled' once their Book is on the wire.
+      const auditRec = wp && wp.gates && wp.gates[auditEdgeKey(node.id, nb)] || null;
+      const auditCat = auditRec ? null : gateAuditCatalogEntry(node.id, nb);
       edges.push({
         from: node.id, to: nb,
         ax: node.x, ay: node.y, bx: other.x, by: other.y,
         charted: bothCharted,
         trade: bothCharted, // a charted-to-charted link is a usable trade lane
+        audit: auditRec ? {
+          status: auditRec.status, book: auditRec.book, weld: auditRec.weld,
+          gateName: auditRec.gateName, docket: auditRec.docket,
+          closed: auditRec.status === 'closed',
+        } : (auditCat && bothCharted ? {
+          status: 'scheduled', book: auditCat.book, weld: 0,
+          gateName: auditCat.gateName, docket: auditCat.docket, closed: false,
+        } : null),
       });
     }
   }
@@ -1701,7 +1771,140 @@ export function buildGalaxyModel(state) {
     };
   }
 
-  return { level: 'galaxy', currentSectorId: curId, nodes, edges, player: playerMark };
+  return {
+    level: 'galaxy', currentSectorId: curId, nodes, edges, player: playerMark,
+    worldMarks: buildWorldReceiptMarks(state, nodeById),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// §34 row 523 — the chart keeps the receipt.
+//
+// Every mark below is READ-ONLY over a persisted fact, in the same graph-draw frame
+// the galaxy nodes use (global WU ÷ SECTOR_ORIGIN_LATTICE_WU):
+//
+//   tide        state.worldPressure.tide              — the Bloom tide line (per-node too)
+//   gates       state.worldPressure.gates (+catalog)  — audit docket/weld/sealed on the lane
+//   structures  state.claims.bodies (owned) + state.frontier.homesteads — your stations
+//   gardens     state.understory.gardens              — fed Understory gardens
+//   litPaths    claims body infrastructure            — commissioned throughlines
+//   trophyWall  state.claims.legendaryHeads           — the ace heads on your wall
+//   colossus    state.worldPressure.colossusRemains   — where a colossus fell
+//
+// UI only reads; it never writes the facts. A mark with no charted endpoint is kept
+// off the chart — the map shows what you know.
+export function buildWorldReceiptMarks(state, nodeById) {
+  const wp = state && state.worldPressure && typeof state.worldPressure === 'object'
+    ? state.worldPressure : null;
+  const claims = state && state.claims && typeof state.claims === 'object' ? state.claims : null;
+  const frontier = state && state.frontier && typeof state.frontier === 'object' ? state.frontier : null;
+  const understory = state && state.understory && typeof state.understory === 'object' ? state.understory : null;
+  const at = (sectorId) => (nodeById && nodeById.get(sectorId)) || null;
+  const chartedAt = (sectorId) => {
+    const n = at(sectorId);
+    return n && n.charted ? n : null;
+  };
+  const toDraw = (x, z) => ({ x: (Number(x) || 0) / SECTOR_ORIGIN_LATTICE_WU, z: (Number(z) || 0) / SECTOR_ORIGIN_LATTICE_WU });
+
+  const marks = {
+    tide: [], gates: [], structures: [], gardens: [], litPaths: [], trophyWall: null, colossus: [],
+  };
+
+  if (wp && wp.tide && typeof wp.tide === 'object') {
+    for (const [sectorId, level] of Object.entries(wp.tide)) {
+      const n = chartedAt(sectorId);
+      if (!n) continue;
+      marks.tide.push({ sectorId, level: Number(level) || 0, band: tideBand(level), x: n.x, y: n.y });
+    }
+  }
+  if (wp && wp.gates && typeof wp.gates === 'object') {
+    for (const rec of Object.values(wp.gates)) {
+      const na = at(rec && rec.a), nb = at(rec && rec.b);
+      if (!na || !nb || !(na.charted || nb.charted)) continue;
+      marks.gates.push({
+        key: rec.key, a: rec.a, b: rec.b, ax: na.x, ay: na.y, bx: nb.x, by: nb.y,
+        status: rec.status, book: rec.book, weld: rec.weld,
+        gateName: rec.gateName, docket: rec.docket, closed: rec.status === 'closed',
+        vergeLaw: rec.vergeLaw === true,
+      });
+    }
+  }
+  if (claims && Array.isArray(claims.bodies)) {
+    for (const body of claims.bodies) {
+      if (!body || body.owned !== true) continue;
+      const n = chartedAt(body.sectorId);
+      if (!n) continue;
+      marks.structures.push({
+        id: body.id, kind: 'claim', sectorId: body.sectorId,
+        name: body.name || 'Claimed body',
+        spec: body.spec && body.spec.id || null,
+        x: n.x, y: n.y,
+      });
+      const infra = body.infrastructure;
+      if (infra && infra.from && infra.to) {
+        const f = toDraw(infra.from.x, infra.from.z);
+        const t = toDraw(infra.to.x, infra.to.z);
+        const spt = infra.support ? toDraw(infra.support.x, infra.support.z) : { x: (f.x + t.x) / 2, z: (f.z + t.z) / 2 };
+        marks.litPaths.push({
+          id: infra.id || `infra:${body.id}`, sectorId: body.sectorId,
+          stage: infra.stage || 'offline', operational: infra.operational === true,
+          from: f, support: spt, to: t,
+        });
+      }
+    }
+  }
+  if (frontier && Array.isArray(frontier.homesteads)) {
+    for (const rec of frontier.homesteads) {
+      if (!rec || !rec.sectorId) continue;
+      const n = chartedAt(rec.sectorId);
+      if (!n) continue;
+      marks.structures.push({
+        id: rec.entityId || rec.homesteadId || `hs:${rec.sectorId}:${marks.structures.length}`,
+        kind: 'homestead', sectorId: rec.sectorId,
+        name: 'Homestead',
+        modules: Array.isArray(rec.modules) ? rec.modules.slice() : [],
+        stranded: rec.stranded === true,
+        x: n.x, y: n.y,
+      });
+    }
+  }
+  if (understory && understory.gardens && typeof understory.gardens === 'object') {
+    for (const [id, g] of Object.entries(understory.gardens)) {
+      if (!g || !g.sectorId) continue;
+      const n = chartedAt(g.sectorId);
+      if (!n) continue;
+      marks.gardens.push({
+        id, sectorId: g.sectorId, stage: Number(g.stage) || 0,
+        fedMass: Number(g.fedMass) || 0, x: n.x, y: n.y,
+      });
+    }
+  }
+  const heads = claims && claims.legendaryHeads && Array.isArray(claims.legendaryHeads.heads)
+    ? claims.legendaryHeads.heads : null;
+  if (heads && heads.length) {
+    // The wall hangs where the yard is: the first owned claim. Heads in the hold of a
+    // ship with no wall do not paint — the mark is a place, not a ledger count.
+    const wallBody = (claims.bodies || []).find((b) => b && b.owned === true);
+    const wallNode = wallBody ? chartedAt(wallBody.sectorId) : null;
+    marks.trophyWall = {
+      count: heads.length,
+      heads: heads.map((h) => ({
+        tier: h && h.tier, aceName: h && h.aceName || 'an ace', name: h && h.name || null,
+      })),
+      x: wallNode ? wallNode.x : null,
+      y: wallNode ? wallNode.y : null,
+      sectorId: wallBody ? wallBody.sectorId : null,
+    };
+  }
+  if (wp && Array.isArray(wp.colossusRemains)) {
+    for (const r of wp.colossusRemains) {
+      if (!r || !r.sectorId) continue;
+      const n = chartedAt(r.sectorId);
+      if (!n) continue;
+      marks.colossus.push({ id: r.id, name: r.name, sectorId: r.sectorId, x: n.x, y: n.y, at: r.at });
+    }
+  }
+  return marks;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2400,12 +2603,12 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
     const sectorId = target.sectorId || target.id;
     if (!sectorId) return null;
     if (isOneHopNeighbor(state, sectorId)) {
-      return {
+      return attachJumpToll(state, {
         kind: 'jump',
         label: 'Set Course & Jump',
         targetSectorId: sectorId,
         coursePayload: coursePayload || { type: 'sector', sectorId, path: null, label: target.name || sectorId },
-      };
+      });
     }
     return {
       kind: 'route',
@@ -2428,12 +2631,12 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
     const dest = target.targetSectorId || target.gateTo || null;
     // In-range jump from a selected physical gate (player already approached).
     if (dest && isOneHopNeighbor(state, dest) && isPlayerInGateRange(state, target)) {
-      return {
+      return attachJumpToll(state, {
         kind: 'jump',
         label: 'Jump',
         targetSectorId: dest,
         coursePayload: coursePayload || { type: 'sector', sectorId: dest, path: null, label: target.name || dest },
-      };
+      });
     }
     return {
       kind: 'waypoint',
@@ -2446,12 +2649,12 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
   if (!coursePayload) return null;
   if (coursePayload.type === 'sector' && coursePayload.sectorId) {
     if (isOneHopNeighbor(state, coursePayload.sectorId)) {
-      return {
+      return attachJumpToll(state, {
         kind: 'jump',
         label: 'Set Course & Jump',
         targetSectorId: coursePayload.sectorId,
         coursePayload,
-      };
+      });
     }
     return {
       kind: 'route',
@@ -3067,10 +3270,11 @@ export function bestKnownSectorMarket(state, sector, commodityId) {
   };
 }
 
-function memoryTint(ageS) {
-  if (ageS < 600) return { key: 'fresh', color: '#dfeeff', italic: false }; // phosphor: a fresh reading
-  if (ageS < 3600) return { key: 'mid', color: INK.ink0, italic: false };
-  return { key: 'old', color: INK.ink2, italic: true };
+export function memoryTint(ageS) {
+  const alpha = Math.max(0.35, 1 - Math.max(0, Number(ageS) || 0) / 9000);
+  if (ageS < 600) return { key: 'fresh', color: '#dfeeff', italic: false, alpha }; // phosphor: a fresh reading
+  if (ageS < 3600) return { key: 'mid', color: INK.ink0, italic: false, alpha };
+  return { key: 'old', color: INK.ink2, italic: true, alpha };
 }
 
 function ageText(ageS) {
@@ -5899,6 +6103,7 @@ _stepAnimation(now) {
       enhanceInspectorSections(detailsEl, { tab: this._activeTab });
     }
     if (btn.textContent !== buttonLabel) btn.textContent = buttonLabel;
+    paintJumpToll(btn, primary);
     if (primary && primary.coursePayload) {
       if (btn.hidden) btn.hidden = false;
       if (btn.disabled) btn.disabled = false;
@@ -7377,12 +7582,16 @@ _stepAnimation(now) {
     }
     const rows = [];
     const shapes = [];
-    for (const [mode, label] of [['fuel', 'Cheapest'], ['hops', 'Fewest jumps']]) {
+    const choices = [['fuel', 'Cheapest'], ['hops', 'Fewest jumps'],
+      ['gate', 'Two Roads · tolled gates'], ['dark', 'Two Roads · dark lane']];
+    if (state.world?.currentSectorId === 'sector_ceres_belt') choices.push(['spine', 'Freight Spine · three rings']);
+    for (const [mode, label] of choices) {
       let alt = null;
       try { alt = world.computeRoute(dest, mode); } catch { alt = null; }
       if (!alt || !Array.isArray(alt.legs) || !alt.legs.length) continue;
       const same = !!plottedLegs && alt.legs.length === plottedLegs.length
-        && alt.legs.every((l, i) => l.to === plottedLegs[i].to);
+        && alt.legs.every((l, i) => l.to === plottedLegs[i].to
+          && (l.travelVia || 'gate') === (plottedLegs[i].travelVia || 'gate'));
       const worst = alt.legs.reduce((m, l) => Math.max(m, Number(l.interdict) || 0), 0);
       shapes.push(alt.legs.map((l) => l.to).join('>'));
       // `data-route-option` is the SEMANTIC hook: "this element is one weighable way of getting
@@ -7392,7 +7601,7 @@ _stepAnimation(now) {
         data-rail-alt="${mode}" data-route-option="${mode}"${same ? ' aria-selected="true"' : ''}
         data-route-hops="${alt.legs.length}" data-route-fuel="${Math.round(alt.totalFuel || 0)}">
         <span class="gm-rail-item-t k-row__name">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
-        <span class="gm-rail-item-s k-row__sub">${alt.legs.length} hop${alt.legs.length === 1 ? '' : 's'} · ${Math.round(alt.totalFuel || 0)}F · worst leg ${Math.round(worst * 100)}% interdict · ETA by fuel burn</span>
+        <span class="gm-rail-item-s k-row__sub">${alt.totalHops} hop${alt.totalHops === 1 ? '' : 's'} · ${Math.round(alt.totalFuel || 0)}F${Number.isFinite(alt.totalToll) ? ` · ${alt.totalToll} cr toll` : ''} · worst leg ${Math.round(worst * 100)}% interdict${mode === 'spine' ? ' · fly the marked Ceres approach' : ''}</span>
       </button>`);
     }
     if (!rows.length) return '<div class="gm-ins-note">No alternative path to that sector through charted space.</div>';
@@ -9015,7 +9224,124 @@ _draw() {
   },
 
   // --- GALAXY DRAW ---
-_drawGalaxy(g, state, w, h) {
+  // §34 row 523: persisted world receipts painted on the chart. Every mark comes from
+  // model.worldMarks — the reader over the persisted facts; nothing is invented here.
+  _drawWorldReceipts(g, model, sx, sy, tokenR) {
+    const marks = model && model.worldMarks;
+    if (!marks) return;
+    const GARDEN_RGB = '126,196,140';
+
+    // The tide line: a second ring outside the token — film thin, bloom broken, choked heavy.
+    for (const t of marks.tide || []) {
+      if (!t || t.band === 'clear' || t.band == null) continue;
+      const x = sx(t.x), y = sy(t.y);
+      const spec = t.band === 'choked'
+        ? { band: 6, bandA: 0.3, edge: 2, edgeA: 0.8 }
+        : t.band === 'bloom'
+          ? { band: 5, bandA: 0.24, edge: 1.6, edgeA: 0.62, dash: [5, 4] }
+          : { band: 4, bandA: 0.18, edge: 1.3, edgeA: 0.45, dash: [3, 5] };
+      drawBandRing(g, x, y, tokenR + 7, { rgb: GARDEN_RGB, ...spec });
+    }
+
+    // Gate audits: the weld is on the road — a seal bar across the lane midpoint when closed,
+    // a weld-progress arc while the scaffold stands. Scheduled-but-unbuilt stays off.
+    for (const gate of marks.gates || []) {
+      if (!gate || (!gate.closed && !Number.isFinite(Number(gate.weld)))) continue;
+      const ax = sx(gate.ax), ay = sy(gate.ay), bx = sx(gate.bx), by = sy(gate.by);
+      const mx = (ax + bx) / 2, my = (ay + by) / 2;
+      const ang = Math.atan2(by - ay, bx - ax);
+      const nx = -Math.sin(ang), ny = Math.cos(ang);
+      if (gate.closed) {
+        drawBand(g, (c) => { c.moveTo(mx - nx * 9, my - ny * 9); c.lineTo(mx + nx * 9, my + ny * 9); },
+          { rgb: '255,80,56', band: 6, bandA: 0.3, edge: 2.2, edgeA: 0.9 });
+        drawBead(g, mx, my, 2.4, { rgb: '255,80,56', a: 0.95 });
+      } else {
+        const weld = Math.max(0.12, Math.min(1, Number(gate.weld) || 0));
+        drawBandRing(g, mx, my, 6.5, { rgb: '255,217,140', band: 4, bandA: 0.22, edge: 1.5, edgeA: 0.7,
+          from: -Math.PI / 2, to: -Math.PI / 2 + Math.PI * 2 * weld });
+      }
+    }
+
+    // Node-side badges, stacked at the token's lower-right: structures, gardens, lit paths,
+    // the trophy wall and colossus remains — one small mark per persisted fact.
+    const badges = new Map();
+    const take = (sectorId, fn) => {
+      if (!sectorId) return;
+      const list = badges.get(sectorId) || [];
+      list.push(fn);
+      badges.set(sectorId, list);
+    };
+    for (const s of marks.structures || []) {
+      take(s.sectorId, (g2, x, y) => {
+        if (s.kind === 'homestead') {
+          g2.save();
+          g2.fillStyle = CHART_INK.phos(s.stranded ? 0.45 : 0.9);
+          g2.fillRect(x - 3.5, y - 3.5, 7, 7);
+          g2.restore();
+        } else {
+          g2.save();
+          g2.fillStyle = CHART_INK.lit(0.95);
+          g2.beginPath();
+          g2.moveTo(x, y - 4.5); g2.lineTo(x + 4.5, y); g2.lineTo(x, y + 4.5); g2.lineTo(x - 4.5, y);
+          g2.closePath(); g2.fill();
+          g2.restore();
+        }
+      });
+    }
+    for (const gd of marks.gardens || []) {
+      take(gd.sectorId, (g2, x, y) => drawBead(g2, x, y, 3, { rgb: GARDEN_RGB, a: 0.95 }));
+    }
+    for (const lp of marks.litPaths || []) {
+      take(lp.sectorId, (g2, x, y) => {
+        drawBand(g2, (c) => { c.moveTo(x - 5, y + 2); c.lineTo(x, y - 3); c.lineTo(x + 5, y + 2); },
+          { rgb: '255,217,140', band: 3, bandA: lp.operational ? 0.3 : 0.14, edge: 1.2, edgeA: lp.operational ? 0.9 : 0.45 });
+      });
+    }
+    if (marks.trophyWall && marks.trophyWall.x != null) {
+      take(marks.trophyWall.sectorId, (g2, x, y) => {
+        g2.save();
+        g2.fillStyle = CHART_INK.hand(0.95);
+        g2.beginPath();
+        g2.moveTo(x, y - 5); g2.lineTo(x + 1.6, y - 1.6); g2.lineTo(x + 5, y - 1.6);
+        g2.lineTo(x + 2.4, y + 0.8); g2.lineTo(x + 3.6, y + 5); g2.lineTo(x, y + 2.2);
+        g2.lineTo(x - 3.6, y + 5); g2.lineTo(x - 2.4, y + 0.8); g2.lineTo(x - 5, y - 1.6);
+        g2.lineTo(x - 1.6, y - 1.6);
+        g2.closePath(); g2.fill();
+        g2.restore();
+        g2.save();
+        g2.font = chartFont(700, 10);
+        g2.fillStyle = CHART_INK.hand(0.9);
+        g2.textAlign = 'left'; g2.textBaseline = 'middle';
+        g2.fillText(String(marks.trophyWall.count), x + 7, y);
+        g2.restore();
+      });
+    }
+    for (const r of marks.colossus || []) {
+      take(r.sectorId, (g2, x, y) => {
+        g2.save();
+        g2.strokeStyle = CHART_INK.bone(0.9);
+        g2.lineWidth = 1.6;
+        g2.beginPath();
+        g2.moveTo(x - 3.5, y - 3.5); g2.lineTo(x + 3.5, y + 3.5);
+        g2.moveTo(x + 3.5, y - 3.5); g2.lineTo(x - 3.5, y + 3.5);
+        g2.stroke();
+        g2.restore();
+        drawBandRing(g2, x, y, 5.5, { band: 3, bandA: 0.16, edge: 1, edgeA: 0.5 });
+      });
+    }
+    for (const [sectorId, fns] of badges) {
+      const n = (model.nodes || []).find((node) => node.id === sectorId);
+      if (!n) continue;
+      const bx = sx(n.x) + tokenR + 6;
+      let by = sy(n.y) - tokenR * 0.4;
+      for (const fn of fns) {
+        fn(g, bx, by);
+        by += 14;
+      }
+    }
+  },
+
+  _drawGalaxy(g, state, w, h) {
     const model = buildGalaxyModel(state);
     const visiblePresence = visibleGalaxyPresence(model, this._layers.faction);
     setMapCanvasAriaLabel(this._canvas, 'galaxy', visiblePresence, {
@@ -9393,6 +9719,7 @@ _drawGalaxy(g, state, w, h) {
         if (marketData) {
           const tint = memoryTint(marketData.ageS);
           g.save();
+          g.globalAlpha *= tint.alpha;
           g.font = chartFont(650, 12, { stretch: 'normal' });
           g.textAlign = 'left'; g.textBaseline = 'middle';
           g.lineJoin = 'round';
@@ -9433,6 +9760,10 @@ _drawGalaxy(g, state, w, h) {
         }
       }
     }
+
+    // §34 row 523: the chart keeps the receipt — tide, gate welds, your structures,
+    // gardens, lit paths, the trophy wall and where a colossus fell.
+    this._drawWorldReceipts(g, model, sx, sy, tokenR);
 
     // The map fades out over the field's last 48 px rather than stopping at a straight cut.
     {

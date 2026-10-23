@@ -115,6 +115,8 @@ import { MILL_ARENA_ID, planMillInstall } from './asteroidMillArena.js';
 import { HIVE_ARENA_ID, planHiveInstall } from './theHiveArena.js';
 import { orbitNodePose } from '../combat/orbitNodes.js';
 import { createSwarmEventDirector, swarmEventFrame, bearingPoint } from './swarmEvents.js';
+import { createSwarmLegendaryDirector } from './swarmLegendaries.js';
+import { createSwarmCallinsDirector } from './swarmCallins.js';
 import { swarmEventFor } from '../data/swarmEvents.js';
 
 export { CINDER_ARENA_ID, CRYO_ARENA_ID, LAGRANGE_ARENA_ID, STORM_ARENA_ID, MILL_ARENA_ID, HIVE_ARENA_ID };
@@ -1019,7 +1021,17 @@ export const survivalArena = {
     // the same seams this system already owns, ticking inside this update() before fields run.
     this._swarmEvents = createSwarmEventDirector(ctx);
     this._swarmEvents.init();
+    // Row-270 — the room legendary director is hosted on the same slot for the same reason:
+    // a Heart field registered here is felt by this tick's field pass, a Domino impulse queued
+    // here is solved by this tick's physics pass, and death callbacks stay enqueue-only.
+    this._legendaries = createSwarmLegendaryDirector(ctx);
+    this._legendaries.init();
+    // SEED-SW-01..07 — the call-in director rides the same fixed slot: the bomb edge is resolved
+    // here, and the wave teardown removes every called body with the room.
+    this._callins = createSwarmCallinsDirector(ctx);
+    this._callins.init();
     if (!this.bus || typeof this.bus.on !== 'function') return;
+    this._unsubs.push(this.bus.on('run:modifierRecorded', (p) => this._onCallinRecorded(p)));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     // ---------------------------------------------------------------------------------------
     // PQ-210.00 roster prewarm: BUILT, TESTED, AND DELIBERATELY NOT SUBSCRIBED (2026-09-21).
@@ -1081,6 +1093,8 @@ export const survivalArena = {
 
   destroy() {
     if (this._swarmEvents) this._swarmEvents.destroy();
+    if (this._legendaries) this._legendaries.destroy();
+    if (this._callins) this._callins.destroy();
     this._teardown('destroy');
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
@@ -1128,6 +1142,10 @@ export const survivalArena = {
   // plates bank shots. A missing law id, or no live Survival run, is an immediate no-op.
   update(_dt, state) {
     const st = state || this.state;
+    // The legendary director ticks ahead of the survival gate on purpose: when the run is gone
+    // it must still run once to release its field and drop its pending shoves.
+    if (this._legendaries) this._legendaries.update(_dt, st);
+    if (this._callins) this._callins.update(_dt, st);
     if (!liveSurvivalRun(st)) return;
     if (this._cycleMachinery) {
       const system = this._fieldsSystem();
@@ -1158,6 +1176,18 @@ export const survivalArena = {
   },
 
   // ---- install --------------------------------------------------------------
+
+  /** SEED-SW-04..07 — a bought call-in charge deploys as soon as the ledger records it. */
+  _onCallinRecorded(payload) {
+    const record = payload && payload.record;
+    if (!record || record.kind !== 'swarm_callin') return;
+    const called = record.callinId === 'turret_drop' || record.callinId === 'drone_wing'
+      || record.callinId === 'shield_dome' || record.callinId === 'decoy';
+    if (!called || !this._callins) return;
+    const run = this._liveSwarmRun ? this._liveSwarmRun(this.state) : (this.state && this.state.run);
+    if (!run) return;
+    this._callins.callIn(this.state, run, record.callinId);
+  },
 
   _onWavePlanned(payload) {
     // Re-entrant: wave N+1 can never stack its room on top of wave N's.
@@ -1397,6 +1427,10 @@ export const survivalArena = {
     // The director calms first: a surge mid-window restores authored strengths onto fields that
     // still exist, and its own pulse field unregisters before the room's ledger clears.
     if (this._swarmEvents) this._swarmEvents.teardown(reason);
+    // The legendary director calms with the room: pending shoves and the Heart well release on
+    // wave clear / run end / new game. Purchases are untouched — they live on the run record.
+    if (this._legendaries) this._legendaries.teardown(reason);
+    if (this._callins) this._callins.teardown(reason);
     // NXB-019 — a swarm wave clear is a preparation interval: the cover the player displaced
     // and the wrecks/supplies it left are the next round's terrain, not trash. Fields, mines
     // and room solids are per-wave law and still release; anchor rocks retain their bodies

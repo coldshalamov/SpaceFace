@@ -114,6 +114,9 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 #screens .orr-newgame .orr-ng-stat b i { font-style:normal; font-size: 12px; margin-left:3px; color:rgb(232 226 212 / .55); letter-spacing:.1em; }
 #screens .orr-newgame .orr-ng-stat span { margin-top:2px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size: 12px; letter-spacing:.24em;
   text-transform:uppercase; color:rgb(232 226 212 / .55); }
+/* SEED-ST-02 — the Line stat's measure gloss: sentence case under the label, not another shouted tag. */
+#screens .orr-newgame .orr-ng-stat .orr-ng-stat__gloss { margin-top:1px; font-size:12px; letter-spacing:.04em; text-transform:none;
+  color:rgb(232 226 212 / .5); }
 /* the loadout: one module a line, the size a small ringed tag */
 #screens .orr-newgame .orr-ng-caption .k-words--row { flex-direction:column; gap:5px; }
 #screens .orr-newgame .orr-ng-caption .k-words--row .fh-legend { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%;

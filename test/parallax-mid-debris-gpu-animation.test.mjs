@@ -150,7 +150,8 @@ test('seating rock surface maps updates band materials and opening packages with
   const stack = parallaxLayers.init(scene, state, null, state.render.sectorPalette);
 
   try {
-    assert.equal(parallaxLayers.activeGroups().length, 3, 'exposes the three parallax band groups');
+    assert.equal(parallaxLayers.activeGroups().length, Object.keys(parallaxLayers.PARALLAX_BANDS).length,
+      'exposes every declared parallax band group');
     const midMesh = findMidMesh(stack);
     const textureStub = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
     textureStub.needsUpdate = true;

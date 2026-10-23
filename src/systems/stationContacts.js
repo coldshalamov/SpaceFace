@@ -3,6 +3,8 @@
 
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
+import { hash32 } from '../core/rng.js';
+import { createManifestTable } from './manifestGame.js';
 import {
   CONTACT_COUNTER_DEFS,
   createInitialStationContactCounters,
@@ -229,12 +231,22 @@ export const stationContacts = {
     ensureContactBag(this.state);
     ensureCounterBag(this.state);
     ensureLifeState(this.state);
+    this._manifestTable?.dispose();
+    this._manifestTable = createManifestTable(ctx);
     const on = (event, handler) => {
       this.bus.on(event, handler);
       this._subs.push([event, handler]);
     };
     on('ui:talkContact', (payload = {}) => this._recordTalk(payload));
     on('stationContact:counterDelta', (payload = {}) => this._recordCounterDelta(payload));
+    on('stationContact:manifestWon', (payload = {}) => {
+      const id = String(payload.contactId || '');
+      if (!id.startsWith('contact_') || !payload.matchId) return;
+      const bag = ensureContactBag(this.state), record = normalizeStationContactRecord(bag[id]);
+      record.flags.manifest_won = true;
+      bag[id] = record;
+      this.bus.emit('stationContact:changed', { contactId: id, record });
+    });
     on('freight:arrival', (payload = {}) => {
       this._recordFreight(payload, 'arrival');
       this._noteYuneCleanArrival(payload);
@@ -255,6 +267,21 @@ export const stationContacts = {
     on('machine:appealAccepted', (payload = {}) => this._noteSuhlClause(payload));
     on('uniqueWreck:resolved', (payload = {}) => this._noteSennaName(payload));
     on('module:purchased', (payload = {}) => this._noteZellInstall(payload));
+    on('orrinWitness:submitted', p => this._rememberCastDeed('orrin.case', p?.sourceId, 1));
+    on('economy:tradeCompleted', p => {
+      if (p?.side !== 'sell' || !(p.qty > 0) || !p.receiptId) return;
+      if (p.commodityId === 'cmdty_scrap_metal') this._rememberCastDeed('latch.child', p.receiptId, 1);
+      const commodity = COMMODITIES.find(def => def.id === p.commodityId);
+      if (p.stationId === 'station_sker' && ['contraband', 'illegal'].includes(commodity?.legality)) {
+        this._rememberCastDeed('vane.favor', p.receiptId, 1);
+      }
+    });
+    on('captain:remembered', p => {
+      if (p?.captainId === 'captain:coldburn-rey' && ['robbed', 'rescued'].includes(p.outcome)) {
+        this._rememberCastDeed('coldburn.grudge', `${p.outcome}:${p.t}`, p.outcome === 'robbed' ? 1 : -1);
+      }
+    });
+    on('encounter:resolved', () => this._reconcileVolsBusiness());
     on('save:restoring', () => this._clearVonnFreightReceipts());
     on('vestaOreCache:resolved', (payload = {}) => {
       if (payload.recordId === 'vesta-ore-cache:shift-end:v1') this._reconcileDossArchive('vesta-resolved');
@@ -269,11 +296,14 @@ export const stationContacts = {
       this._normalizeRescueNotices();
       this._normalizeDeeds();
       this._syncWitnessSeamVoice();
+      this._reconcileVolsBusiness();
     });
     this._reconcileDossArchive('init');
+    this._reconcileVolsBusiness();
   },
 
   newGame() {
+    this._manifestTable?.reset();
     if (!this.state) return;
     this.state.player.stationContacts = {};
     this.state.player.stationContactCounters = createInitialStationContactCounters();
@@ -286,6 +316,28 @@ export const stationContacts = {
   _recordCounterDelta(payload) {
     if (!payload || typeof payload !== 'object') return;
     this._applyCounterDelta(payload.trackerId, payload.delta, payload.reason);
+  },
+
+  // Receipts live with the contact record and survive reload. Replayed owner events
+  // must not make an original, a cargo sale, or a single answer count twice.
+  _rememberCastDeed(trackerId, receiptId, amount) {
+    const def = CONTACT_COUNTER_DEFS[trackerId];
+    if (!def || receiptId == null || receiptId === '') return false;
+    const bag = ensureContactBag(this.state);
+    const record = normalizeStationContactRecord(bag[def.contactId]);
+    const key = `cast_${hash32(trackerId, String(receiptId)).toString(36)}`;
+    if (record.flags[key]) return false;
+    if (!this._applyCounterDelta(trackerId, amount, String(receiptId))) return false;
+    record.flags[key] = true;
+    bag[def.contactId] = record;
+    return true;
+  },
+
+  _reconcileVolsBusiness() {
+    const flags = this.state?.story?.flags || {};
+    for (const key of ['volsEchoUnlocked', 'volsBlackBoxRecovered', 'volsLetterCarried']) {
+      if (flags[key]) this._rememberCastDeed('vols.business', key, 1);
+    }
   },
 
   /**
@@ -371,6 +423,16 @@ export const stationContacts = {
       ...(rescueMemory ? { rescueMemory } : {}),
     });
     bag[contactId] = next;
+    if (contactId === 'contact_lira_vonn' && choice === 'interview' && firstMeaningfulChoice) {
+      this._rememberCastDeed('vonn.interviews', 'first-on-record-interview', 1);
+    }
+    if (contactId === 'contact_question') {
+      const item = { sample: 'cmdty_47a_assay_sample', ledger: 'cmdty_personal_ledger', navigation: 'cmdty_navigational_data' }[choice];
+      const cargo = this.state?.player?.cargo || {};
+      if (item && ((Number(cargo.items?.[item]) || 0) > 0 || cargo.persistent?.includes(item))) {
+        this._rememberCastDeed('question.answers', item, 1);
+      }
+    }
     this.bus.emit('stationContact:changed', { contactId, record: { ...next, flags: { ...next.flags } } });
   },
 
@@ -737,6 +799,7 @@ export const stationContacts = {
   },
 
   destroy() {
+    this._manifestTable?.dispose(); this._manifestTable = null;
     for (const [event, handler] of (this._subs || [])) this.bus.off(event, handler);
     this._subs = [];
     this._clearVonnFreightReceipts();

@@ -100,7 +100,7 @@ Shots: `ui-shots/polish36/{before-tabs,after1,after2}/` plus `compare-*.png`.
 - At ≤1100×≤640 the credits numeral is 48px×scale and the hull record reads in two columns, with keys sized to their words, so LOAD ends 30px above the foot.
 - 1280 and 1920 change only in the grid areas. Phone (portrait and landscape) is untouched. The empty slot (`save-load-empty`) is clean at every size. Selectors and IDs are unchanged.
 
-Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 1920×1080, phone), iterations in `iter1`–`iter6`. Bench note: the readings' decode animation is sometimes caught mid-scramble (for example "03:4█ &3"); that's the capture timing, not the layout.
+Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 1920×1080, phone), iterations in `iter1`–`iter6`. Bench note: `ui-bench` used to catch the readings mid-decrypt ("03:4█ &3") and shoot before the hull posters decoded, so 1920 and slot posters sometimes showed empty berths. Fixed in ui-polish-101: settle now waits for shown images to decode and page text to hold still. **Open:** at ≤1100px wide the big berth ring still shows with no hull (`.k-stage__poster` is `display:none` there).
 
 ## Station berth — session notes (2026-10-12, ui-polish-10)
 
@@ -1784,7 +1784,7 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 
 **Checked:** bench clean (no tangled, cut-off or offscreen type; primary controls reachable) at 960×540, 1280×720, 1920×1080, 761×800, 820×600 and 860×800, with the control walk at each. Phone unaffected (desktop-only selectors).
 
-**Leftover:** at 1280×720 the context line still wraps "DAYS AGO" onto a second line.
+**Leftover:** ~~at 1280×720 the context line still wraps "DAYS AGO" onto a second line~~ (fixed in ui-polish-100, see § Save/Load context line at 1200–1599).
 
 ## Save/Load: the context line wraps between readings, not inside one (ui-polish-82)
 
@@ -1861,7 +1861,7 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 
 **After (`pause.js` one line, `pauseLayouts.js` one `max-width:760px` block scoped to `:not([data-sf-mobile="1"])`):** windows ≤760 wide take the existing phone column, and the sheet gives it the phone sheet's flow (one scroll owner, rows that wrap, a single-column body, 20–48px margins). 0 findings at 390×844, 600×800, 700×800, 701×800; 700×500 and 760×700 only report verbs below the fold of the scrolling list. 960×540, 1280×720, 1920×1080 and the real phone (`--phone` 390×844) are unchanged. Selectors and IDs are unchanged.
 
-**Still open:** at 761–~790 wide the dial's REFERENCE bank runs STATISTICS past the right edge.
+**Still open:** ~~at 761–~790 wide the dial's REFERENCE bank runs STATISTICS past the right edge~~ (fixed in ui-polish-107, see § Pause dial in a narrow, tall window).
 
 ### ui-polish-88 review fixes (#499, after Code Work's 227ae0e47a hand-back)
 - pause.js watches `matchMedia('(max-width:760px)')` and remounts when the window crosses 760 (and on show if it crossed while covered); classes are reset first so the dial and the column never stack.
@@ -1958,3 +1958,70 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`saveLayouts.js`, desktop only):** the short-desktop page now starts at 791 wide (was 861) up to 560 tall. In 791–860 × 461–560 the strip's ~62px stations are too narrow for QUICK's CURRENT badge (it ran into SLOT 1 and its credits even with no tracking), so the badge steps aside there; the reading's context line still says "QUICK SAVE · CURRENT". No selector or ID changes.
 
 **Checked:** probe and rect check on `save-load` and `save-load-empty` at 791×461, 820×480, 860×461, 860×480, 860×500, 860×560, 861×461, 960×540 and 1280×720: 0 overlaps, 0 off-frame, 0 dead buttons, nothing under 12px. 790×461 is outside the band (stacked, scrolling page) and unchanged from master. 860×560 now uses the short page (clean on both). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish97/compare/`.
+
+## Save/Load: the stacked page's way back on screen at 641–790 × 461–749 (ui-polish-98)
+
+**Before (master 5e5b619b57):** at 641–790 × 461–749 the stacked page runs ~630–710px in a scrolling root, so EXPORT / IMPORT / BACK (and 12–15 text lines at 461–561 tall) sat under the fold and took no click until the page was scrolled.
+
+**After (`saveLayouts.js`, desktop only):** in `(min-width:641px) and (max-width:790px) and (min-height:461px) and (max-height:749px)` the way back moves into the title's row, top right (`grid-template-areas:"title foot" "page page" "hang hang"`), not pinned, so nothing scrolls under it; the title takes the short-desktop size (34px) and the subtitle gets 8px under it. ≤640 wide and ≤460 tall keep their own rules. No selector or ID changes. (A first cut pinned the foot with `position:sticky`; it covered LOAD at 461 tall and the strip's labels at 500, and was dropped. A ≤739 × ≤460 clause was dropped too: it put EXPORT under the LOAD title at 390×700.)
+
+**Checked (review-516/c2):** probe (text overlap, off-frame, `elementFromPoint` on every button and input, foot vs title/subtitle rects) on `save-load` and `save-load-empty` at 641/739/740/790 × 461/500/561/700/749, 760×461, 700×500, 700×700: EXPORT / IMPORT / BACK in view and clickable without a scroll, no title/foot overlap, off-frame text 15→11 (461), 14→10 (500), 12→4–5 (561), 3→0 (700). 640×*, *×460, *×750, 791×*, 390×700, 390×460, 500×460/600, 600×460/700/800, 960×540, 1280×720, 1366×768, 1440×900, 1920×1080, 390×844 and 375×667 phones render identical to master (layout rect hashes). Type floor OK. Shots: `/workspace/orchestra/state/review-516/c2/side-by-side-516-c2.png`.
+
+## Save/Load context line at 1200–1599 (ui-polish-100)
+
+**Before (master f56dfa6d32):** at 1280×720 the reading column is ~360px, so the context line at .2em tracking broke as "QUICK SAVE · CURRENT · / FLOWN 9/22/2026" and pushed the title and the reading down a line.
+
+**After (`saveLayouts.js`, desktop only):** in `(min-width:1200px) and (max-width:1599px)` the context line is tracked at .06em and reads on one line, with room for the longer "FLOWN 29 DAYS AGO". Size stays 12px. ≤1199 and ≥1600 keep their rules. No selector or ID changes.
+
+**Checked:** ui-bench `save-load` clean at 1200×720, 1280×720, 1440×900 and 1599×900; 960×540, 1920×1080 and 390×844 are outside the query. Type floor OK. Shots: `ui-shots/polish100/{before,after,after2}/`.
+
+## Save/Load hull at 791–1100 wide (ui-polish-102)
+
+**Before (master cec514c06b):** at 791–1100 wide the berth ring stood empty beside the reading (960×540, 1100×720, 800×600). The deckplate's old ≤1100 stack still hid `.k-stage__poster`, `.k-world--stage` and the vacant word, but the orrery keeps the stage beside the reading down to 791 (the stacked band hides the whole stage).
+
+**After (`saveLayouts.js`, desktop only, `max-width:1100px`):** the hull (and on an empty slot, the vacant word's layer) shows again, as above 1100. No selector or ID changes; phone and the stacked band are untouched.
+
+**Checked:** bench `save-load` and `save-load-empty` at 800×600, 960×540, 1100×720, 1280×720; phone 390×844. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish102/`.
+
+## Station rail help lines in windows up to 900 tall (ui-polish-108)
+
+**Before (master e648f4eac4):** 674c3ac9a7 put each destination's help line under its name, so the rail grew four to eight lines tall. At 960×540 the Market body vanished behind it, and at 1024×768 and 1100×700 BUY and SELL sat under the rail (bench `station-market`: 2 and 5 unreachable). The seven names shared equal columns, so SHIPWORKS and INDUSTRY ran together.
+
+**After (`styles/station.css` only, desktop 641+ wide and ≤900 tall):** the help line leaves the flow and shows as a small caption above its own name on hover or keyboard focus, not on the open tab. The names sit on one line at their own width, the dock lets the caption out of its scroller, and the foot steps above the body only while a caption shows. The aria-label still speaks the line. Windows over 900 tall (1920×1080) and phones are unchanged.
+
+**Checked:** bench `station-market` 1024×768 2→0 unreachable; names fit the dock at 651×700, 720×600, 760×800, 900×600, 960×540, 1280×720 and 1366×768. Type floor OK; `inf50-seed-wl-desk` 4/4. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish108/`.
+
+**Leftovers:** the Market body is still short at 960×540 (one register row) and at 1100×700 and 1280×720 BUY sits below the console's fold; at 1280×720 the hull-repair decision pushes the console down. Phone (390×844) Market runs off the right edge (pre-existing).
+
+## Dialog copy wraps without orphans (2026-10-23, ui-polish-103)
+
+**Before:** the confirm body, the danger note and the Find hint used the browser's default wrap, so short last words hung alone: "your hold." at 960 and 1920, "undone." on Sell ship at 1920, and "ESC CLOSES" on the phone Find hint.
+
+**After (`styles/kit.css` only):** `.sf-confirm__body`, `.sf-confirm__note` and `.sf-find__hint` use `text-wrap: balance`, so each block breaks into even lines. No size, colour, selector or ID changes. Checked popup-confirm, popup-confirm-danger and popup-find at 390×844, 960×540, 1280×720 and 1920×1080. Shots: `ui-shots/polish103/{before,before-danger,after,after2}/`, `compare-confirm-{960x540,390x844}.png`.
+
+## Pause dial in a narrow, tall window — 761–960 wide (ui-polish-107)
+
+**Before (master e648f4eac4):** the dial carries at most nine stops, and the width split spent them in list order. At 761–820 wide SHIP took the last spare stop, so REFERENCE (four verbs) stayed whole and RECORDS WALL ran off the right edge (780×700: x 721–812; 761×800: x 767–858, unreachable). The dial grows with the window's height, so taller narrow windows were worse. The key strip also wrapped ←→ ITEM under ESC from 761 to ~830 wide.
+
+**After:**
+- `arcRail.js` `splitGroupedRowsForWidth`: spare stops go to the rows that overrun furthest first (ties keep list order). When the budget covers every overrun, the result is the same as before.
+- `pauseLayouts.js` exports `PAUSE_COLUMN_QUERY`: ≤760 wide as before, plus narrow windows too tall for the dial (bench-measured: the dial fits while W ≥ ~780 + 0.3·(H − 700), stepped in bands up to 960 wide). The column CSS and `pause.js` (mount and the resize watcher) use the same query.
+- The tighter key strip now runs to 840 wide, with the last verb's margin dropped, so the strip stays on one line.
+
+**Checked:** bench `pause` clean at 761×636, 780×700, 800×700, 820×700, 840×600, 849×832, 899×932, 900×600, 960×540, 1280×720, 1920×1080 and 390×844. 761×800 is now the column (clean). 779×700 and 799×766 are the column and only report the last verbs below the fold of the scrolling list, as 760×700 did. Focused tests pass: `orrery-arcrail-width`, `pause-save-line`, `pq-194-06-pause-shell`, `sf-275-pause-ownership`, `shell-focus-pause-release`, `wave-c3-pause-kit`. In `ui-polish-88-pause-narrow`, the three 1280-dial d-pad tests fail the same way on master. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish107/`, `compare-pause-{780x700,761x800}.png`.
+## Help in a narrow desktop window, and the Research foot (ui-polish-106)
+
+**Before (master 93706e9ff0):** at ≤760 wide (taller than 460) nothing composed Help on a desktop: the 172px section ladder kept its column, EVERY KEY ran off the right edge ("Steer left (yaw + ban…"), and the rig's "PRESS ANY KEY · THE RIG LIGHTS…" echo printed over CLOSE (bench: 11 findings at 390×844). On Research (phone and ≤760), the docked foot was 97% opaque, so the reading's REQUIRES / "No prerequisites." ghosted through Back.
+
+**After:** `helpLayouts.js`, desktop only, `(max-width:760px) and (min-height:461px)`: one column (title, the sections as one scrolling row of words on a rule, the stage, Close). Controls gives the stage to EVERY KEY (the rig sleeps, as at ≤460 tall). Ships / Commodities / Ores scroll as one column (list, instrument at 320px, reading); Factions shows the crest ring at 380px over its reading, and at ≤560 only the chosen, hovered or focused crest shows its name (the east/west names ran off the window; each crest keeps its aria-label). `constellationLayouts.js`: the ≤760 Research foot is fully opaque. No selector or ID changes; the phone (`data-sf-mobile`), ≤460 tall, and ≥761 are untouched.
+
+**Checked:** bench `help --walk` through all six sections at 390×844, 600×800 and 760×900: 0 findings (was 11 at 390×844). `tech-tree` at 390×844 phone: no ghost under Back (the bench's BURIED note is the page's fold under the docked foot, by design). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish106/`.
+
+**Leftover:** on the phone, Help's Factions shows no crest ring (the orbit collapses to 0 height), so only Concord can be read.
+## Entity dossier drawer: no stacked labels, phone width, verbs in reach (ui-polish-104)
+
+**Before (master 3d1bd1d756):** the dossier deck is a fixed-height flex column, so a long record shrank every section to fit and each label printed over the value under it (960×540: FLEET DOCTRINE on the controls line, PLACES on Choir Ascending Chorus, POWERS on Vesta Forge, The Vael under CLOSE). On a phone the sheet was 48vw with 88px of left padding, a ~60px column that set "Ascendant Choir" one letter a line.
+
+**After (`styles/ui.css`, `.sf-drawer--entity` only):** sections keep their height and the deck scrolls; the verbs (OPEN ON THE CHART / WATCH / CLOSE) are sticky at the foot on an opaque band, so they stay in reach. At ≤760 tall the gaps close up. At ≤640 wide the sheet is full width and opaque, with 20px gutters and a 44px close button. The crest's hairline is dropped when the facts' own top rule follows it. No selector, ID or JS changes.
+
+**Checked:** ui-bench `popup-dossier` at 390×844, 960×540, 1280×720, 1920×1080: no ON TOP OF inside the drawer (the remaining findings are the station under it). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish104/` (`compare-dossier-*.png`).

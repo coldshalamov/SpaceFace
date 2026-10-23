@@ -15,7 +15,7 @@ import {
   serializeAlienEcologyState,
   tickAlienEcology,
 } from '../src/systems/alienEcology.js';
-import { commsToastSpec } from '../src/ui/floatingText.js';
+import { discoveryCommsPayload } from '../src/ui/comms.js';
 
 const ship = ALIEN_SITES.warm_freighter;
 const CLOSE = ship.arrivalBands.close;
@@ -124,8 +124,8 @@ test('waste heat shelters the cysts and holds the eels, and cutting it swaps tha
   assert.deepEqual(stepWasteHeat(true, 'cut'), { online: false, text: HEAT_OFF });
   assert.deepEqual(stepWasteHeat(false, 'cut'), { online: true, text: HEAT_ON });
   assert.deepEqual(stepWasteHeat(true, 'wait'), { online: true, text: null });
-  const onNotice = commsToastSpec({ from: ship.name, kind: 'ecology', text: HEAT_ON }).text;
-  const offNotice = commsToastSpec({ from: ship.name, kind: 'ecology', text: HEAT_OFF }).text;
+  const onNotice = discoveryCommsPayload({ from: ship.name, kind: 'ecology', text: HEAT_ON }).text;
+  const offNotice = discoveryCommsPayload({ from: ship.name, kind: 'ecology', text: HEAT_OFF }).text;
   assert.equal(onNotice.includes('...'), false);
   assert.equal(offNotice.includes('...'), false);
   assert.equal(onNotice.toLowerCase().includes('cysts live in the waste heat'), true);

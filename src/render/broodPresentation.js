@@ -25,8 +25,13 @@ const FAMILY_N = SWARM_BROOD_FAMILIES.length;
 const FAMILY_STRETCH = Object.freeze([
   Object.freeze([1.0, 1.0, 1.0]),     // mite
   Object.freeze([1.05, 1.35, 1.1]),   // spitter
+  Object.freeze([0.9, 1.25, 0.9]),    // spore_drift — a fat drifting seed
   Object.freeze([1.55, 0.85, 0.85]),  // charger
+  Object.freeze([1.15, 1.45, 1.15]),  // lantern_cyst — a round lit bomb
   Object.freeze([0.8, 0.75, 1.35]),   // leecher
+  Object.freeze([1.25, 0.7, 1.5]),    // glassback — a flat armored shell
+  Object.freeze([1.9, 0.55, 0.65]),   // wake_eel — long ribbon
+  Object.freeze([0.95, 1.5, 1.35]),   // bellows — a swelling sac
 ]);
 
 /**

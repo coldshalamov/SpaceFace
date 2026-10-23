@@ -32,12 +32,19 @@ test('seed 4242: a mayday routed to the player plays once', () => {
   assert.equal(cue.critical, true);
 
   const played = [];
-  const host = { play(id, opts) { played.push({ id, opts }); return { id }; } };
+  const captions = [];
+  const host = {
+    play(id, opts) { played.push({ id, opts }); return { id }; },
+    _emitPresentationCaption(text) { captions.push(text); },
+  };
   assert.ok(playAdmittedEarCue(host, cue, 10));
+  assert.deepEqual(captions, ['Mayday.']);
   assert.equal(playAdmittedEarCue(host, cue, 10 + DISTRESS_ADMIT_TICKS - 1), null);
+  assert.equal(captions.length, 1);
   assert.equal(played.length, 1);
   assert.equal(played[0].id, DISTRESS_CALL_RECIPE);
   assert.equal(played[0].opts.gain, 0.62);
+  assert.equal(played[0].opts.captionOwned, true);
 
   const src = readFileSync(new URL('../src/audio/audioSystem.js', import.meta.url), 'utf8');
   assert.match(src, /bus\.on\('distress:call'/);

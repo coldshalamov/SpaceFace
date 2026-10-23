@@ -642,6 +642,22 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { font-size:12px !important; line-height:13px !important;
     white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
 }
+/* ---- 651–1100 × 461–600 desktop (e.g. 960×540): the stage is ~157px tall and the console's
+   dial, total, QUOTE BREAKDOWN and verbs stood 190px, so BUY 1 / SELL sat 33px below it, under the
+   berth's UNDOCK key and out of reach. The dial sets at 84px, the total and the breakdown on single
+   lines, and the rows close up, so the verbs end inside the stage. */
+@media (min-width:651px) and (max-width:1100px) and (min-height:461px) and (max-height:600px) {
+  ${MD} .sx-trade { row-gap:2px !important; }
+  ${MD} .sx-trade > .sx-qty { height:94px; }
+  ${MD} .sx-qty .orr-qdial { left:31px; width:84px; height:84px; }
+  ${MD} .sx-qty .sx-qty__in { top:19px; height:26px !important; font-size:22px !important; line-height:26px !important; }
+  ${MD} .sx-qty .sx-qty__k { left:31px; width:84px; top:46px; letter-spacing:0 !important; }
+  ${MD} .sx-qty .sx-qty__words { top:76px; }
+  ${MD} .so-trade-total { line-height:16px !important; height:17px; align-content:center; }
+  ${MD} .so-trade-total > strong { line-height:16px !important; }
+  ${MD} .so-trade-breakdown > summary { line-height:15px !important; padding:0 !important; margin:0 !important; }
+  ${MD} .sx-trade__go.orr-lampkey { min-height:24px !important; }
+}
 /* ---- 651–1100 × ≤460 desktop (e.g. 844×390): the panel's rows sized to the 345px list, so the
    index and the stage ran ~110px past the berth's tab cell and a pending decision (REPAIR NOW / FLY
    DAMAGED) sat below it, out of reach. The row now fits the cell (no gap to an empty second row);

@@ -12,7 +12,9 @@ export function createAlienEcologyState() {
     // Verge-Layer posture toward the player (doc 12): one of ALIEN_MACHINE_PROTOCOLS.
     machineProtocol: 'unknown',
     // Scanner/encyclopedia taxonomy unlocks (doc 09 rewards).
-    taxonomy: {},
+    // Old saves without this bag retain their earned global-revelation vocabulary.
+    // New runs file each species only after an actual scanner pulse reaches it.
+    taxonomy: { scannedSpecies: {} },
     // Per-site aftermath records keyed by ALIEN_SITES siteId.
     sites: {},
     // AE-076 ship biofilm exposure (0..1) — accrues in contaminated space, decays in clean.

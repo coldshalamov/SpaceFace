@@ -127,20 +127,24 @@ export const worldClock = {
 
     // Shift change at the docked berth — the PA says whose watch just started.
     if (cal.shift) {
-      const key = `shift:${stationId}:${cal.day}:${cal.shift.index}`;
+      // One watch occurrence = this berth's watch-day + the watch index. The berth's clock is
+      // offset from the world's, so keying on cal.day would announce a watch twice when it
+      // straddles the world midnight (and the popup id below must follow the same occurrence).
+      const key = `shift:${stationId}:${cal.shift.watchDay}:${cal.shift.index}`;
       emitOnce(key, () => {
         this._popup({
           sender: stationNameOf(s, stationId),
           text: `${cap(cal.shift.name)} is on the floor.${cal.festival ? ' ' + (cal.festival.barLine || '') : ''}`,
           event: 'calendar:shiftChanged',
-          payload: { stationId, shift: cal.shift.id, index: cal.shift.index, day: cal.day },
+          payload: { stationId, shift: cal.shift.id, index: cal.shift.index, day: cal.day, watchDay: cal.shift.watchDay },
+          popupKey: `${stationId}:${cal.shift.watchDay}:${cal.shift.index}`,
         });
       });
     }
 
     // Rush hour edge at the docked berth.
     if (cal.rush && cal.rush.active) {
-      const key = `rush:${stationId}:${cal.day}:${cal.rush.kind}:${cal.shift.index}`;
+      const key = `rush:${stationId}:${cal.shift.watchDay}:${cal.rush.kind}:${cal.shift.index}`;
       emitOnce(key, () => {
         this.bus && this.bus.emit('calendar:rushHour', {
           stationId, kind: cal.rush.kind, label: cal.rush.label, active: true,
@@ -149,16 +153,17 @@ export const worldClock = {
           sender: 'Dock control',
           text: `Traffic advisory: ${cal.rush.label}. Hold your lane.`,
           event: null,
+          popupKey: `rush:${stationId}:${cal.shift.watchDay}:${cal.rush.kind}:${cal.shift.index}`,
         });
       });
     }
   },
 
-  _popup({ sender, text, event, payload }) {
+  _popup({ sender, text, event, payload, popupKey }) {
     if (!this.bus || typeof this.bus.emit !== 'function') return;
     if (event && payload) this.bus.emit(event, payload);
     this.bus.emit('comms:popup', {
-      id: `cal:${(event || 'note').replace(/[^a-z0-9]+/gi, '-')}:${payload && payload.day != null ? payload.day : ''}`,
+      id: `cal:${(event || 'note').replace(/[^a-z0-9]+/gi, '-')}:${popupKey != null ? popupKey : (payload && payload.day != null ? payload.day : '')}`,
       sender, text, category: 'ambient', ttl: 7,
     });
   },

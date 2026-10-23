@@ -7,18 +7,20 @@
 //   hull/shield/armour  p.hull/hullMax · p.shield/shieldMax · p.armorHp/armorMax
 //   energy              p.cap/capMax                      (the live HUD reads cap, not energy)
 //   heat                weaponHeatSummary(p.data.weapons)
-//   speed / reference   |p.vel| · p.maxSpeed
+//   speed / reference   |p.vel| · governed combat speed (legacy maxSpeed only when the hull has no drive)
 //   speed ceiling       state.input.travelDrive.ceiling, else resolveTravelCeiling(profile) — the V-MAX the
 //                       travel tape already prints, so the Speed Dial's last blade is the same number
 //   boost               p.boost.energy / p.boost.max · p.flags.boosting (the afterburner is burning)
 //   drift               atan2(vel) − p.rot                 (same frame as playerDefeat.impactDirection)
 //   ordnance            readRailModel(state, simTime)     (slots 1..9, states ready/armed/cooling/…)
-//   tether              masslineInstrumentReadout(tether) + the attached body's mass
+//   tether              masslineInstrumentReadout(tether) + the attached body's mass — for a
+//                       declared manifest, only the measurement the loaded rope earned
 import { weaponHeatSummary } from '../weaponHeat.js';
 import { BOMB_SLOT_INDEX, readRailModel, RAIL_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
 import { masslineInstrumentReadout } from '../hudAttention.js';
+import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCustody.js';
 import { SHIPS } from '../../data/ships.js';
-import { resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
+import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { resolveTravelCeiling } from '../../core/flight/propulsionKernel.js';
 import { travelFlag } from '../../data/featureFlags.js';
 import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
@@ -168,6 +170,23 @@ export function readSpeedCeiling(state, p) {
   try { return finite(resolveTravelCeiling(resolvePropulsionProfile(p, state))); } catch { return 0; }
 }
 
+/** True when the hull published a drive. Live ships stamp propulsion, not driveId. */
+function hullHasAuthoredDrive(p) {
+  if (!p) return false;
+  if (p.driveId || (p.data && p.data.driveId)) return true;
+  const derived = p.data && p.data.derived;
+  if (derived && (derived.driveId || derived.propulsion)) return true;
+  if (p.propulsion) return true;
+  if (p.flightModel && p.flightModel.propulsion) return true;
+  return false;
+}
+
+/** The dial's Ref mark is the speed the governor holds, not the legacy derived top speed. */
+function clusterSpeedRef(p, state) {
+  const governed = hullHasAuthoredDrive(p) ? resolveGovernedCombatSpeed(p, state) : 0;
+  return governed > 0 ? governed : (p && p.maxSpeed);
+}
+
 /** The Cluster's model for this frame; only the caller's tracker and heat scratch are updated. */
 export function readClusterModel(state, p, { tracker = null, ordnance = null, bindings = null, speedMax = 0, weaponHeatScratch = null } = {}) {
   if (!p) return null;
@@ -189,10 +208,36 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
   const ml = masslineInstrumentReadout(tether);
   let tetherModel = null;
   if (ml) {
-    const attachedId = tether.attachmentId ?? tether.targetId ?? tether.payloadId;
+    // tether.attachmentId is an attachment identity (`att_000001`), never an entity id —
+    // the body it names lives in the attachment ledger. tether.targetId/payloadId are
+    // already entity ids, so they resolve directly as the fallback.
+    const ledger = state.combat && state.combat.attachments && state.combat.attachments.byId;
+    const attachment = tether.attachmentId != null && ledger ? ledger[String(tether.attachmentId)] : null;
+    const attachedId = attachment && attachment.targetId != null
+      ? attachment.targetId
+      : (tether.targetId ?? tether.payloadId);
     const body = attachedId != null && state.entities && typeof state.entities.get === 'function' ? state.entities.get(attachedId) : null;
-    const mass = Math.round(finite((body && ((body.physicsBody && body.physicsBody.mass) || body.mass)) || 0));
-    tetherModel = { state: 'Payload', mass: mass > 0 ? mass : 1, strain: ml.load };
+    let mass = physicalMassT(body);
+    const decl = mass != null ? massDeclarationForTarget(state, body) : null;
+    if (decl) {
+      // The rope is a scale: for a declared manifest the only honest tonnage is the
+      // measurement the loaded line earned — the durable slip is the record of it, and
+      // the live telemetry projection mirrors the same slipId while the latch holds.
+      // Before the dwell completes the readout is honestly unknown; the body's hidden
+      // stamp and the manifest's claim are both kept off the glass.
+      mass = null;
+      const slipId = `mass-slip:${decl.sourceOfferId}:${decl.targetSlot}`;
+      const slips = state.economyContracts && state.economyContracts.massScale
+        ? state.economyContracts.massScale.slips : null;
+      const slip = slips && slips[slipId];
+      const slipMass = slip && Number(slip.measuredMassT);
+      const mw = player.masslineTelemetry && player.masslineTelemetry.massWeighing;
+      const mwMass = mw && mw.slipId === slipId && mw.targetId === body.id
+        ? Number(mw.measuredMassT) : NaN;
+      if (Number.isFinite(slipMass) && slipMass > 0) mass = slipMass;
+      else if (Number.isFinite(mwMass) && mwMass > 0) mass = mwMass;
+    }
+    tetherModel = { state: 'Payload', mass: mass != null && mass > 0 ? Math.round(mass) : null, strain: ml.load };
   }
   return {
     hull: finite(p.hull), hullMax: finite(p.hullMax, 1),
@@ -200,7 +245,7 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
     armor: finite(p.armorHp), armorMax: finite(p.armorMax, 0),
     energy: finite(p.cap), energyMax: finite(p.capMax, 0),
     heat: finite(heat && heat.frac),
-    speed, speedRef: finite(p.maxSpeed, 180), speedMax: finite(speedMax),
+    speed, speedRef: finite(clusterSpeedRef(p, state), 180), speedMax: finite(speedMax),
     boost: p.boost && p.boost.max > 0 ? Math.max(0, Math.min(1, p.boost.energy / p.boost.max)) : 0,
     boosting: !!(p.flags && p.flags.boosting),
     // burning, not recovering: the dial's DRIVE tag and halo belong to a spooling or engaged drive only

@@ -185,7 +185,9 @@ test('the mark roll is a pure function of (seed, offer id, sector, tier) — a f
     label: 'PIKE SORROW — WARRANT',
     role: 'board_writ',
     archetype: 'wasp_swarmer',
-    factionId: 'faction_reach',
+    // RC-MISSION-VOICE: the flag FITS the sector — the Charon Expanse's only presence is the
+    // Drift Miners Collective, so its writ names a Drift defector, not a hardcoded Reach mark.
+    factionId: 'faction_dmc',
     zoneId: 'zone_charon_pylon_field',
     placeName: 'Quarantine Pylon Field',
   });

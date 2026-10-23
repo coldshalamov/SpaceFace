@@ -86,6 +86,7 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'combat.player.hit': 'presentation.combat.player_hit',
   'combat.player.kill': 'presentation.combat.player_kill',
   'tether.attach': 'presentation.tether.attach',
+  'tether.line_on_you': 'presentation.tether.attach',
   'tether.near_break': 'presentation.tether.near_break',
   'tether.break': 'presentation.tether.break',
   'tether.break.overload': 'presentation.tether.break',
@@ -130,6 +131,7 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
 const UI_CUES = Object.freeze({
   'combat.player.kill': uiCue('presentation:combat:player-kill', 'info', 'TARGET DESTROYED', 1.4),
   'tether.attach': uiCue('presentation:tether:attach', 'info', 'MASSLINE ATTACHED', 1.4),
+  'tether.line_on_you': uiCue('presentation:tether:line-on-you', 'warn', 'LINE ON YOU', 1.8),
   'tether.near_break': uiCue('presentation:tether:near-break', 'warn', 'MASSLINE STRAIN', 1.2),
   'tether.break': uiCue('presentation:tether:break', 'danger', 'MASSLINE BROKEN', 1.8),
   'tether.break.overload': uiCue('presentation:tether:break-overload', 'warn', 'OVERLOAD BREAK', 1.8),
@@ -168,6 +170,7 @@ const UI_CUES = Object.freeze({
 const CAPTIONS = Object.freeze({
   'combat.player.kill': 'Target destroyed.',
   'tether.attach': 'Massline attached.',
+  'tether.line_on_you': 'A hostile line is on your hull.',
   'tether.near_break': 'Massline strain rising.',
   'tether.break': 'Massline broken.',
   'tether.break.overload': 'Massline overloaded and parted.',
@@ -196,6 +199,9 @@ const CAPTIONS = Object.freeze({
   'fields.cluster_detonate': 'Cluster detonation — the clump cooked off.',
   'fields.cluster_detonate.cascade': 'Mass cascade — the whole cluster went.',
   'freight.cargo_spilled': 'Cargo adrift — check ownership before recovery.',
+  'travel.jump.committed': 'Jump committed.',
+  'travel.arrival.oriented': 'Arrived.',
+  'travel.interdiction.triggered': 'Interdicted.',
 });
 
 export const presentationAdapters = {
@@ -637,11 +643,12 @@ export const presentationAdapters = {
   _applyUi(cue) {
     const def = UI_CUES[cue && cue.id];
     if (!def) return null;
+    const impact = masslineImpactTier(cue);
     const payload = {
       key: def.key,
-      sev: def.sev,
-      text: playerSubsystemLine(cue, this.state) || def.text,
-      ttl: def.ttl,
+      sev: impact ? impact.sev : def.sev,
+      text: playerSubsystemLine(cue, this.state) || enemySubsystemLine(cue, this.state) || (impact ? impact.text : def.text),
+      ttl: impact ? impact.ttl : def.ttl,
       cueId: cue.id,
       lane: cue.lanes && cue.lanes.ui || null,
       shape: shapeForCue(cue.id),
@@ -656,7 +663,8 @@ export const presentationAdapters = {
     // PQ-023 family (e): an owner-supplied accessibilityText outranks the static table. The table
     // can only say one fixed sentence per cue id, which cannot name WHICH component failed. Cues
     // that supply nothing keep their existing table entry unchanged.
-    const text = (cue && cue.accessibilityText) || playerSubsystemLine(cue, this.state) || CAPTIONS[cue && cue.id];
+    const impact = masslineImpactTier(cue);
+    const text = (cue && cue.accessibilityText) || playerSubsystemLine(cue, this.state) || enemySubsystemLine(cue, this.state) || (impact && impact.caption) || CAPTIONS[cue && cue.id];
     if (!text) return null;
     const payload = {
       id: cue.id,
@@ -673,7 +681,7 @@ export const presentationAdapters = {
   },
 };
 
-/** The player's own part, named. Another hull keeps the generic table line. */
+/** The player's own part, named in a full sentence. */
 function playerSubsystemLine(cue, state) {
   if (!cue || (cue.id !== 'subsystem.disabled' && cue.id !== 'subsystem.restored')) return null;
   if (!state || cue.targetId == null || cue.targetId !== state.playerId) return null;
@@ -699,8 +707,53 @@ function playerSubsystemLine(cue, state) {
   return 'Reactor out — the ship is starving';
 }
 
+/** Another hull's broken part, named. The player's own lines stay the long sentences above. */
+export function enemySubsystemLine(cue, state) {
+  if (!cue || cue.id !== 'subsystem.disabled') return null;
+  if (!state || cue.targetId == null || cue.targetId === state.playerId) return null;
+  const id = String(cue.subsystemId || '').toLowerCase();
+  let part = null;
+  if (id.includes('clamp')) part = 'CLAMP';
+  else if (id.includes('tether') || id.includes('spool')) part = 'SPOOL';
+  else if (id.includes('drive') || id.includes('engine') || id.includes('thrust')) part = 'DRIVE';
+  else if (id.includes('weapon') || id.includes('hardpoint') || id.includes('turret') || id.includes('gun')) part = 'GUNS';
+  else if (id.includes('sensor') || id.includes('comms') || id.includes('scanner')) part = 'SENSORS';
+  else if (id.includes('shield')) part = 'SHIELDS';
+  else if (id.includes('life') || id.includes('support')) part = 'LIFE SUPPORT';
+  else if (id.includes('power') || id.includes('reactor')) part = 'REACTOR';
+  return part ? `${part} DISABLED` : null;
+}
+
 function uiCue(key, sev, text, ttl, audioOwnedByPresentation = false) {
   return Object.freeze({ key, sev, text, ttl, audioOwnedByPresentation });
+}
+
+// Glance, solid, and crushing already ride the whip record. One branch on that rating;
+// the MASSLINE IMPACT key stays the lane. Solid keeps the payoff info tier.
+function masslineImpactRating(cue) {
+  const named = cue && (cue.rating || (cue.payload && cue.payload.rating));
+  if (named === 'crushing' || named === 'solid' || named === 'glance') return named;
+  const tags = cue && cue.tags;
+  if (!Array.isArray(tags)) return null;
+  if (tags.includes('crushing')) return 'crushing';
+  if (tags.includes('solid')) return 'solid';
+  if (tags.includes('glance')) return 'glance';
+  return null;
+}
+
+function masslineImpactTier(cue) {
+  if (!cue || cue.id !== 'tether.whip_impact') return null;
+  const rating = masslineImpactRating(cue);
+  if (rating === 'crushing') {
+    return { sev: 'warn', text: 'MASSLINE CRUSHING', ttl: 2.2, caption: 'Crushing massline impact.' };
+  }
+  if (rating === 'solid') {
+    return { sev: 'info', text: 'MASSLINE IMPACT', ttl: 1.4, caption: 'Massline impact landed.' };
+  }
+  if (rating === 'glance') {
+    return { sev: 'info', text: 'MASSLINE GLANCE', ttl: 0.8, caption: 'Glancing massline impact.' };
+  }
+  return null;
 }
 
 function onboardingOwnsSignalAnnouncement(state, cue) {

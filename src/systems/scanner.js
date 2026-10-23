@@ -4,6 +4,7 @@
 // plain data fields that UI/render layers can read. No wall-clock; durations are simTime-based.
 // Ghost reveal uses entity-keyed deterministic streams (hash32), not ambient Math.random.
 import { asteroidScanGlyph } from '../data/mining.js';
+import { ionStormBlackout } from '../data/environmentalMachinery.js';
 import { mothlightScannerReading } from '../data/mothlight.js';
 import { borrowedVoiceScannerReading } from './borrowedVoice.js';
 
@@ -103,6 +104,7 @@ const HAIL_REFUSAL_TEXT = Object.freeze({
 
 /** 'out' when the sensor bank is dead, 'jammed' when a status killed the capability, else null. */
 export function playerSensorBlock(state, player) {
+  if (ionStormBlackout(state, player)) return 'jammed';
   const book = state && state.combat && state.combat.entities;
   if (!book || !player || player.id == null) return null;
   const runtime = book[String(player.id)];

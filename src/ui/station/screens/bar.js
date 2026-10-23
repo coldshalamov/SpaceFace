@@ -1,4 +1,5 @@
 import { barFrameHtml } from '../../views/stationFrames.js';
+import { stationRegularRecognition } from '../stationArrival.js';
 // src/ui/station/screens/bar.js — "Bar": the conversation as a kit panel (Frontend Task C §1.8).
 // Left: who is here tonight as a column of words, then the leads as rows (survey data and board
 // jobs with a priced / named verb). Right: the contact's role, name and portrait (the one image
@@ -139,6 +140,7 @@ export function createBarScreen(ctx) {
   railEl.setAttribute('role', 'tablist');
 
   let selectedId = null;
+  let visible = false;
   let saidText = null;   // what the selected contact just said
   // ORRERY (design/frontend/ORRERY.md §6 Bar): the portrait as cinema, the line typed as it is
   // spoken with a Waveform breathing under the name, the words resolving on arrival.
@@ -366,8 +368,8 @@ export function createBarScreen(ctx) {
         const on = c.id === selectedId;
         return (
           `<li><button type="button" ${stationControlAttrs('contact')} class="k-word k-word--emph sx-bar-row${on ? ' is-active' : ''}" data-contact="${escapeHtml(c.id)}" role="tab" aria-selected="${on}"${on ? ' aria-current="true"' : ''} tabindex="${on ? 0 : -1}">` +
-            `${escapeHtml(c.name || 'Contact')}` +
-            `<span class="k-word-sub sx-bar-row__role">${escapeHtml(roleLabel(c.role))}</span>` +
+            `${c.memoryGlyph ? `<span aria-label="Contact record">${escapeHtml(c.memoryGlyph)}</span> ` : ''}${escapeHtml(c.name || 'Contact')}` +
+            `<span class="k-word-sub sx-bar-row__role">${escapeHtml(roleLabel(c.role))} · ${escapeHtml(stationRegularRecognition(state, c).label)}</span>` +
           `</button></li>`
         );
       }).join('') +
@@ -388,7 +390,8 @@ export function createBarScreen(ctx) {
     let memLine = '';
     try { memLine = stationContactMemoryLine(memory, c.line) || c.line || ''; } catch (_) { memLine = c.line || ''; }
     // A contact with something to say about the pilot says it first, even if you have met before.
-    if (c.deedId) memLine = c.line;
+    if (c.deedId || c.trackerId) memLine = c.line;
+    memLine = `${stationRegularRecognition(state, c).reaction} ${memLine}`.trim();
     const choices = (() => { try { return getChoices(c.role, c) || []; } catch (_) { return []; } })();
 
     stageEl.innerHTML =
@@ -542,7 +545,7 @@ export function createBarScreen(ctx) {
         : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
       // the board verb carries the board's count; the intel facts live on the Missions tab (the count is
       // the one that matters here, so it rides the verb instead of a block of its own)
-      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li></ul>` +
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li><li><button type="button" class="k-word k-word--fine" data-play-manifest>Play Manifest</button></li></ul>` +
       `<div class="sx-bar__intel" hidden><p class="k-caps sx-intel__head">Intel</p>${intelHtml}</div>`;
     dressLeads();
     leadsKeysHint();
@@ -770,6 +773,11 @@ export function createBarScreen(ctx) {
       };
     }
     saidText = (result && result.text) || 'They shrug.';
+    if (result?.missionOffer && ctx.bus) ctx.bus.emit('comms:popup', {
+      id: `bar-lead:${c.id}:${result.missionOffer.id || choiceId}`,
+      sender: c.name || 'Contact', contactId: c.id, text: saidText,
+      category: 'story', ttl: Math.max(8, Math.ceil(saidText.length / 18)), persist: true,
+    });
     pendingMissionOffer = result && result.missionOffer || null;
     pendingFrontierRumorOffer = result && result.frontierRumorOffer || null;
     acceptedMissionId = null;
@@ -778,6 +786,13 @@ export function createBarScreen(ctx) {
   });
 
   leadsEl.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-play-manifest]')) {
+      const opponent = selected(ctx.state || {});
+      if (!opponent || !ctx.bus) return;
+      ctx.state.ui.manifestOpponent = { id: opponent.id, name: opponent.name };
+      ctx.bus.emit('ui:pushScreen', { id: 'manifest', source: 'station-bar' });
+      return;
+    }
     const sv = ev.target.closest('[data-survey]');
     if (sv && !sv.disabled) {
       if (ctx.bus) {
@@ -801,11 +816,20 @@ export function createBarScreen(ctx) {
   watchEvents();
   watchComms();
 
+  const offRecognition = ['stationContact:changed', 'faction:repChanged'].map((event) => {
+    const handler = () => { if (visible) renderAll(ctx.state || {}); };
+    ctx.bus?.on(event, handler);
+    return () => ctx.bus?.off(event, handler);
+  });
+
   return {
     el,
-    onShow(c) { renderAll((c || ctx).state || {}); },
+    onShow(c) { visible = true; renderAll((c || ctx).state || {}); },
+    onHide() { visible = false; },
     refresh(c) { renderAll((c || ctx).state || {}); },
     dispose() {
+      visible = false;
+      offRecognition.forEach((off) => off());
       pinnedContact = null;
       if (typeof offDockDeed === 'function') offDockDeed();
       if (dial) { try { dial.dispose(); } catch (_) {} dial = null; }

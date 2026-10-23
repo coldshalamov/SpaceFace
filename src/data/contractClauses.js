@@ -74,9 +74,12 @@ export const CONTRACT_CLAUSES = Object.freeze({
     prose: 'Deliver the cargo unopened — no customs confiscation.',
     rewardMult: 1.10,
     breachOn(payload, ctx) {
-      // A scan that finds contraband (hasContraband) breaches the intact-cargo clause. (The actual
-      // confiscation is the engine's; this clause is the contractual fine print on top.)
-      return !!(payload && payload.hasContraband);
+      // A scan that actually reads the contraband breaches the intact-cargo clause. The scan
+      // packet carries the engine's detection roll as `detected`; an EVADED sweep
+      // (detected === false) confiscates nothing, so it leaves the clause standing. A packet
+      // with no `detected` key (hand-emitted) keeps the old reading: contraband aboard = busted.
+      // (The actual confiscation is the engine's; this clause is the contractual fine print.)
+      return !!(payload && payload.hasContraband && payload.detected !== false);
     },
   }),
 

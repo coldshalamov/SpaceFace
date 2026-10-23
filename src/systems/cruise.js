@@ -68,11 +68,17 @@ export const cruise = {
     this.bus.on('combat:fire', (p) => {
       if (p && p.ownerId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.FIRED);
     });
-    // Interdiction hook (encounter director ambush shape): an external snare drops cruise with
-    // the full SNARED stumble. Only meaningful while cruising — otherwise a strict no-op.
+    // Give the pilot one steering window before an external snare takes the drive.
     this.bus.on('cruise:snareRequest', (p) => {
       const c = this._ensureCruise(this.state);
-      if (c.phase === 'cruising') this._drop(DROP_REASONS.SNARED, p && p.sourceId);
+      if (c.phase !== 'cruising' || c.wrestle) return;
+      const player = this.state.entities.get(this.state.playerId);
+      if (!player) return;
+      const side = String(p?.sourceId || '').length % 2 ? 1 : -1;
+      c.wrestle = { sourceId: p?.sourceId ?? null, remainingS: 1.5, heldS: 0,
+        escapeBearing: wrapAngle((player.rot || 0) + side * Math.PI / 4) };
+      this.bus.emit('cruise:wrestleStarted', { ...c.wrestle, playerId: this.state.playerId });
+      this.bus.emit('toast', { text: 'Mass snare — turn into the broken arc', kind: 'warn', ttl: 1.5 });
     });
   },
 
@@ -122,6 +128,19 @@ export const cruise = {
     }
 
     if (cruise.phase === 'cruising') {
+      const w = cruise.wrestle;
+      if (w) {
+        w.remainingS = Math.max(0, w.remainingS - dt);
+        const aligned = Math.abs(wrapAngle((player.rot || 0) - w.escapeBearing)) <= Math.PI / 9;
+        w.heldS = aligned ? w.heldS + dt : 0;
+        if (w.heldS >= 0.18) {
+          cruise.wrestle = null;
+          this.bus.emit('cruise:wrestleEscaped', { sourceId: w.sourceId, playerId: state.playerId });
+          this.bus.emit('toast', { text: 'Snare slipped — cruise held', kind: 'success', ttl: 2 });
+        } else if (w.remainingS <= 0) {
+          this._drop(DROP_REASONS.SNARED, w.sourceId);
+        }
+      }
       // Mass-lock drop is checked every tick while cruising.
       if (this._massLocked(player, state)) {
         this._drop(DROP_REASONS.MASSLOCK);
@@ -203,6 +222,7 @@ export const cruise = {
     if (cruise.phase === 'off') return;
     const was = cruise.phase;
     cruise.phase = 'off';
+    cruise.wrestle = null;
     cruise.t = 0;
     // Re-arm cooldown: a drop inside the window does not stack a second yaw stumble — under
     // sustained real fire the stick otherwise stays spongy for as long as the hits keep landing.

@@ -32,7 +32,8 @@ owner changes. Captured membership is provisional; registration is a separate tr
 Ordinary station switching still uses the existing contract, with saved parked damage
 restored rather than healed. Target locks, cruise, weapons and Massline have explicit
 handoff policies. A persisted transfer journal rejects repeated commands. The diagnostic
-kill switch is `state.flags.disableShipControlTransfer`.
+kill switch is `state.flags.blackFlagControlTransfer = false` (or
+`state.settings.gameplay.shipjackHandoff = false`).
 
 The contest reads actual shields, drive/weapon capability, line of sight, relative speed,
 spin and a generation-validated live Massline attachment. Entry speed is 14 WU/s with
@@ -40,6 +41,10 @@ spin and a generation-validated live Massline attachment. Entry speed is 14 WU/s
 body driven toward the moving aft port. It must match motion and dwell to open a finite
 window. This is the physical timing stunt; broader stunt/device acceptance is unfinished.
 Pulse isolation and temporary shutdown affect the combat/flight owners, not just a label.
+An explicit moving-target rendezvous holds an 80–100 WU trailing position using bounded
+thruster forces, real authority and resource demand. It matches velocity rather than parking
+at absolute rest. Manual input cancels it; targets beyond the available flight envelope are
+refused. A native Rapier fixture holds a ballistic 44 WU/s target inside the boarding bands.
 
 ## Conservation and persistence
 
@@ -83,10 +88,25 @@ considered but are not claimed as shipped systems.
 
 ## Verification and open acceptance
 
-77 focused checks passed across state, combat, handoff, actual runtime owners, yards,
+Component resale is owned by `ships.sellModule`; pure quotes and inspection findings
+come from `shipjack/componentProvenance.js`. Registry sends an exact-instance quote through
+`ui:shipjack`. `player.moduleSales` stores at most 1,024 terminal receipts and fails closed
+on malformed/saturated input. Save restoration clears absent journals, preventing a later
+slot's sales from leaking into an earlier campaign. Honest yards reject disputed parts;
+named fences pay a condition-based cut. Ordinary unfit, refit, yard extraction and shell
+return preserve the first source, including after save/load. Installed parts remain
+detectable by capable inspectors even in an otherwise clean hull.
+
+Focused checks passed across state, combat, handoff, actual runtime owners, yards,
 fleet retrieval, mission settlement and UI/content. Independent economic review found
 ordinary resale bypassing title and station switching healing parked damage; both were
-fixed with regressions. A 10,000-event normalization test produced 168,089 JSON bytes
+fixed with regressions. Actual save-envelope continuation also exposed an unusable receiving
+port and dock suspension preventing ready extraction settlement; both were corrected. Job
+quotes now bind economic facts rather than invalidating work on a narrative ledger notice.
+The latest owned batch passed 122/122 Black Flag, public-dialog and surrender-recovery
+checks (`node --test --test-concurrency=1 test/black-flag*.test.mjs
+test/player-truth-first-light.test.mjs test/surrender-recovery.test.mjs`).
+A 10,000-event normalization test produced 168,089 JSON bytes
 under the configured caps. That is a bounded fixture, not a whole-save measurement.
 
 Desktop and 390px touch station benches rendered and exercised quote/back controls.
@@ -95,11 +115,46 @@ terms, Massline, port access and helm claim. They exposed opener steering and a 
 handoff range, both corrected. Complete browser monetization/save/reload and illicit
 prototype playthrough acceptance are still pending. No full-game performance claim.
 
+The later public route isolated a real owner conflict: hailing an evacuated frame created
+a crew surrender record, whose escape/despawn timer removed the prize. Empty frames now
+skip that crew path; powerless crewed surrenderers retry escape only after actual drive
+restoration. A recycled numeric body ID can no longer redirect the recovery course.
+Lost physical signals retain a plain-language last-trajectory record without inventing
+destruction, ownership changes or a paid recovery of an unconfirmed body. Tow requires
+a generation-valid Massline to that exact hull, independently of peaceful crew terms.
+The live scanner emits `scan:pulse`; custody and the flight panel now consume that actual
+owner event. Dismissing a link and reselecting the same vessel reopens it. Unarmed fits
+read as “no armed hardpoints” instead of reporting a healthy generic weapon subsystem
+as a live gun.
+
+Starter recovery keeps the real Mule and its real mass. A living, actually drive-disabled
+hull with generation-valid peaceful recovery consent can accept a basic Massline as a
+tow load. Rocks, powered defenders, armed autonomous frames, occlusion and stale actors
+retain their gates. Scored selection and Ctrl-nearest revalidate the same rule; existing
+scripted onboarding catches retain their exemption. Six native integration checks passed.
+Two adjacent tether tests still fail identically with pre-change owner source: a missing
+`root.remove` in a UI mock and a T04 fixture selecting station 52 instead of hostile 50.
+
 The broad baseline run did not pass: golden hash mismatches, an unrelated automation
 assertion and a Massline timeout remain. Committed HEAD also mismatched the V3 golden,
 but feature snapshot equivalence has not been established. Player-truth failed at the
-opening First light prompt; its public route handler was corrected and needs acceptance.
+opening First light prompt, then a later candidate timed out during page navigation; its
+public dialog handler was corrected, but the gate still has no gameplay acceptance.
 Do not treat these as a passed gameplay landing gate.
+
+Two causal continuations passed through checksum-valid `save.serialize()` → `loadEnvelope()`.
+These are source integration fixtures, not browser transcripts:
+
+- Lawful: hail Empty Seat → honor crew passage → secure its damaged frame → receive at
+  Helios → save/load → return for 1,071 credits plus 300 employer wages → save/load → retry
+  the return. Final: 6,371 credits from 5,000, one retained hull, seven original iron,
+  no loose modules, claimant title returned; no second payout.
+- Illicit: disable Blackbird → secure disputed custody → transfer the physical helm,
+  leaving Hitch and seven iron → save/load → reverse into Hitch → deliver to Tethys
+  Trade Hub → honest yard refuses sale/title → unload two electronics → repair the
+  unique governor for 5,040 → extract that same instance for 1,120 → save/load → retry
+  both services. Final: 4,440 credits from 10,000 plus 600 wages, two hulls, one repaired
+  governor, retained freight, Blackbird's drive missing and title disputed.
 
 Missing from the full commission: the complete four-act campaign; rival cutter custody
 AI; counter-theft raids; insurance fraud and lender negotiation; recurring recovery-agent
@@ -107,3 +162,10 @@ careers; broad fleet employment; bespoke Forge clamp/cradle/cutter assets; compr
 normal-camera, mobile GPU, audio and end-to-end save acceptance. Twelve bounded job
 patterns reuse real verbs; they are not eighteen independent new mechanics. The expansion
 must remain a draft until these gaps and the player-truth gate are resolved.
+
+Living-pilot NPC rescue remains incomplete. A native attempt using the existing SF-138
+tender reached the port but left its passenger orbiting outside the authored 20 WU /
+12 WU/s berth. The frame coupler deliberately applies radial force without transverse
+frame matching (`sg02DynamicBodyOwner._applyFrameCoupler`). Unvalidated controller changes
+were removed. Distress currently marks a truthful beacon; it does not advertise accepted
+dispatch. Retained-hull reversal and player-controlled Massline towing remain available.

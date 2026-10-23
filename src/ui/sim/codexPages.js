@@ -105,6 +105,7 @@ function ecologyState(state) {
   return {
     evidenceCount: Object.keys(evidence).length,
     wrenRecognized: ae && ae.wrenRecognized === true,
+    scannedSpecies: ae?.taxonomy?.scannedSpecies,
   };
 }
 
@@ -112,6 +113,12 @@ function speciesDiscovered(state, discoveredCommodities) {
   const found = new Set();
   const ecology = ecologyState(state);
   for (const [speciesId, def] of Object.entries(FAUNA_SPECIES)) {
+    // New campaigns earn each behaviour page on its own physical scan. Legacy archives keep
+    // their already-earned global evidence gates rather than losing pages during an upgrade.
+    if (ecology.scannedSpecies && typeof ecology.scannedSpecies === 'object') {
+      if (ecology.scannedSpecies[speciesId]) found.add(speciesId);
+      continue;
+    }
     const drop = FAUNA_DROPS && FAUNA_DROPS[speciesId];
     if (drop && drop.commodityId && discoveredCommodities.has(drop.commodityId)) {
       found.add(speciesId);

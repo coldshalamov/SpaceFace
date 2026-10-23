@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_radiation_field_yard_choir_none",
   "title": "SLOT ON THE RADIATION FIELD",
   "factionId": "faction_choir",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Take the tool",
-      "playerLine": "I will take the slot tool and finish the loose bracket."
+      "label": "Relay the slot past both hulls",
+      "playerLine": "I carry the slot past your hull, then the far one — in that order — and let it rest."
     },
     {
       "id": "b",
-      "label": "Call relief",
-      "playerLine": "Send the next shift before the yard light goes dark."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, CANTOR — send the relief to Radiation Field instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the shift",
-      "playerLine": "I cannot stay. Leave the slot for the next crew."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, CANTOR — my hull is leaving Radiation Field."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "SLOT",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "CANTOR: The slot needs a hand at radiation field. The shift is already short.",
+      "line": "CANTOR: The slot needs a hand at radiation field. The shift is already short. — SLOT ON THE RADIATION FIELD.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The work light marks one empty station on the bench.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "CANTOR records the tool before recording the delay.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The slot has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Nobody in radiation field looks up for engine noise.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: No hurry in this berth. Hold.",
+      "line": "CANTOR: Carry the slot past our hull, then the far hull, in that order. Release and let it rest. — SLOT ON THE RADIATION FIELD.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +142,91 @@ const spec = {
       "windowS": 56,
       "motion": "orbit",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Bracket seated. The work light held through the last turn.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_radiation_field_yard_choir_none:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "CANTOR: Time ran out on the work ask — SLOT ON THE RADIATION FIELD. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "displaced",
+          "dist": 120
+        },
+        {
+          "kind": "near",
+          "subject": "prop",
+          "of": "hull_0",
+          "dist": 60
+        },
+        {
+          "kind": "near",
+          "subject": "prop",
+          "of": "hull_1",
+          "dist": 60
+        },
+        {
+          "kind": "released"
+        },
+        {
+          "kind": "settled",
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "CANTOR: Time ran out on the work ask — SLOT ON THE RADIATION FIELD. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "CANTOR: Time ran out on the work ask — SLOT ON THE RADIATION FIELD. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 48,
       "reason": "lived_radiation_field_yard_choir_none",
       "next": "rep_a"
     },
@@ -168,24 +239,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_choir",
+      "delta": 3,
+      "reason": "lived_radiation_field_yard_choir_none:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Relief called. CANTOR kept the tool on the bench.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_choir",
-      "delta": 2,
-      "reason": "lived_radiation_field_yard_choir_none",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +266,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left. The unfinished slot stayed inside the yard line.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_choir",
-      "delta": -1,
-      "reason": "lived_radiation_field_yard_choir_none",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +324,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Take the tool",
-      "playerLine": "I will take the slot tool and finish the loose bracket."
+      "label": "Relay the slot past both hulls",
+      "playerLine": "I carry the slot past your hull, then the far one — in that order — and let it rest."
     },
     {
       "id": "b",
-      "label": "Call relief",
-      "playerLine": "Send the next shift before the yard light goes dark."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, CANTOR — send the relief to Radiation Field instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the shift",
-      "playerLine": "I cannot stay. Leave the slot for the next crew."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, CANTOR — my hull is leaving Radiation Field."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Bracket seated. The work light held through the last turn.",
-    "b": "Relief called. CANTOR kept the tool on the bench.",
-    "c": "You left. The unfinished slot stayed inside the yard line."
+    "a": "The slot passed both hulls in order and rests loose at Radiation Field. — SLOT ON THE RADIATION FIELD.",
+    "b": "24 cr funded the relief call — CANTOR sends the shift at Radiation Field on your credit. — SLOT ON THE RADIATION FIELD.",
+    "c": "You left Radiation Field. The work stayed with the crew that owned it. — SLOT ON THE RADIATION FIELD."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "relay",
+    "hasProp": true
   }
 });

@@ -79,7 +79,9 @@ export function quoteFingerprint(vessel, owned, stationId, action, slotIndex, sa
     owned?.fittedInstances?.[i]?.instanceId || null, owned?.fittedInstances?.[i]?.condition ?? 1]);
   const location = vessel?.location || {};
   const signature = vessel?.signature || {};
-  return hash32(JSON.stringify([vessel?.vesselId, vessel?.revision || 0, vessel?.title,
+  // Narrative notices advance the ledger revision during a booked job. They do not
+  // change its price or inventory. Bind the actual economic/custody facts instead.
+  return hash32(JSON.stringify([vessel?.vesselId, vessel?.generation || '', owned?.defId, vessel?.title,
     vessel?.custodian, vessel?.recognizedOwner, vessel?.lienCr || 0,vessel?.proofRecorded===true,vessel?.crewSafe===true,
     [componentCondition(vessel?.condition?.hull), vessel?.condition?.driveMissing === true],
     [location.kind || '', location.sectorId || '', location.stationId || ''],

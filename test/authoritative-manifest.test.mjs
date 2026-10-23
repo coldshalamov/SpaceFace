@@ -110,8 +110,22 @@ test('production init + update order lengths match the live browser baseline', (
   // 222 -> 224 init / 164 -> 166 update: PULSE-MAIL (mail) and PULSE-TIME (worldClock) join
   // both orders on the calendar clock — letter delivery evaluates once a second, calendar
   // announcements are day-scale.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 224);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 166);
+  // 224 -> 227 init / 166 -> 169 update: LINE-03 (lineProgression) joins both orders on the
+  // table clock — the winch-heat strain clock ticks every fixed step. Interleaved foreign
+  // lane systems moved the counted baseline; assert the live totals.
+  // 169 -> 177 update: faction-strange owners (understoryGardens, fulfillmentRoutes,
+  // pitbornCull, vaelLiens, archiveRedaction, choirResonance, vergeCourt,
+  // frontierHomesteads) join the update order on the table clock — they were init-only
+  // and their update() never ran in production (R-04fe464 review fix).
+  // 227 -> 229 init: PULSE-HISTORY (row 440) registers deedRecord (world-remembers ledger —
+  // lookup-only since creation, never initialized in production) and historyWear (event-only
+  // trinket/decal/graffiti projector). Neither ticks.
+  // 229 -> 230 init / 177 -> 178 update: GOLD-HOME (row 445) registers longBerth — the claim /
+  // restore / yard scan ticks on the calendar clock.
+  // 230 -> 231 init / 178 -> 179 update: GOLD-CREW (row 446) registers crew — recruit scan,
+  // perk writes, banter, loyalty, and injury recovery tick on the calendar clock.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 231);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 179);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

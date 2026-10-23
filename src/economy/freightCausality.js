@@ -687,9 +687,20 @@ export function inboundFreightLanes(state, stationId, opts = {}) {
     ? state.traffic.freighters
     : [];
   const priceFor = typeof opts.unitPriceFor === 'function' ? opts.unitPriceFor : null;
+  // A live record's `targetId` is the destination's numeric ENTITY id; the berth asks by its
+  // canonical station id. Resolve the entity and compare its `data.stationId` (a record that
+  // already names the canonical id keeps matching).
+  const entities = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities : null;
+  const targetsStation = (rec) => {
+    if (rec.targetId == null) return false;
+    if (rec.targetId === stationId) return true;
+    const target = entities ? (entities.get(rec.targetId) ?? entities.get(Number(rec.targetId))) : null;
+    return !!target && !!target.data && target.data.stationId === stationId;
+  };
   const lanes = [];
   for (const rec of freighters) {
-    if (!rec || rec.targetId !== stationId) continue;
+    if (!rec || !targetsStation(rec)) continue;
     const manifest = rec.manifest;
     if (!manifest || !Array.isArray(manifest.lines) || !manifest.lines.length) continue;
     const lines = [];

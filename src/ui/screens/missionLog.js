@@ -19,6 +19,7 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { confirm } from '../confirm.js';
 import { FACTION_META } from '../../data/factions.js';
 import { STORY_BEATS } from '../../data/missions.js';
+import { CONTRACT_47A_B0_BODY } from '../../data/narrative.js';
 import { postEndingReplayChain } from '../../data/postEndingReplayChains.js';
 import {
   evaluateEndingEligibility,
@@ -26,6 +27,7 @@ import {
 } from '../../story/endings/eligibility.js';
 import { ENDING_IDS, endingDef } from '../../story/endings/endingDefs.js';
 import { escapeHtml } from '../comms.js';
+import { isStorySpineContract, STORY_SPINE_KEEP_TEXT } from '../../data/storySpine.js';
 import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
 import { missionNextActionRow } from '../sim/missionNextAction.js';
 import { BINDINGS } from '../bindings.js';
@@ -560,6 +562,15 @@ function nextStepText(m, state) {
     const choice = titleCaseWords(p.wreckChoiceId || 'wreck outcome');
     return `Next: confirm ${choice} for ${wreckName}; this is a disposition receipt, not a freight handoff.`;
   }
+  // 47-A is a salvage-assay job, not freight: before the sample is recovered the work is at the
+  // wreck, and after it the work is the hand-over. The generic carry lane ("load the rest before
+  // Helios Station") reads as a purchase the contract never asked for.
+  const paperwork = contract47aPaperwork(m);
+  if (paperwork) {
+    return paperwork.sampleRecovered
+      ? `Next: carry the recovered assay sample to ${dest} and hand it to the administrator's desk.`
+      : `Next: recover the assay sample at the marked wreck, then carry it to ${dest}.`;
+  }
   // SF-246: the shared sim row knows the phase the static type-switch cannot see — a held
   // contract term, a wiped-out hunt, a hold short of the manifest, a berth a sector away.
   // Set-piece lanes above keep their authored lines; every other phase falls to the switch.
@@ -874,17 +885,44 @@ function isRiskWork(m) {
   return !!(m && (DANGEROUS_MISSION_TYPES.has(m.type) || missionRiskTier(m) >= 2));
 }
 
+/**
+ * The B0 cold-start contract's authored paperwork, read off the live mission instance.
+ *
+ * 47-A pays nothing on acceptance ("STATUS: OPEN / PAYMENT: PENDING" in the contract body), so the
+ * generic projection had only "close cleanly" to say about a contract the player is holding right
+ * now. These are the contract's own numbers and identifiers, carried on `params` by the mission
+ * installer (`_installContract47aColdStart`), with the authored body as the fallback — nothing here
+ * is invented and no payout is implied.
+ */
+function contract47aPaperwork(m) {
+  const p = (m && m.params) || {};
+  if (p.contractId !== CONTRACT_47A_B0_BODY.contractId) return null;
+  const mass = Number(p.massAcceptT);
+  return {
+    massAcceptT: Number.isFinite(mass) ? mass : CONTRACT_47A_B0_BODY.massAcceptT,
+    massDeliverT: Number.isFinite(Number(p.massDeliverT))
+      ? Number(p.massDeliverT)
+      : CONTRACT_47A_B0_BODY.massDeliverT,
+    authorization: p.authorization || (m && m.authorization) || CONTRACT_47A_B0_BODY.authorization,
+    code: p.code || CONTRACT_47A_B0_BODY.code,
+    sampleRecovered: p.sampleRecovered === true,
+  };
+}
+
 export function activeMissionContractTerms(m, state) {
   if (!m) return [];
   const terms = [];
   const consequences = missionConsequenceSummary(m);
+  const paperwork = contract47aPaperwork(m);
   const pays = [];
   if (consequences.reward > 0) pays.push('+' + formatCredits(consequences.reward));
   if (consequences.repReward > 0) pays.push('+' + consequences.repReward + ' rep');
   terms.push({
     kind: 'ok',
     label: 'Pays',
-    text: pays.length ? pays.join(' / ') : 'close cleanly',
+    text: pays.length
+      ? pays.join(' / ')
+      : (paperwork ? 'Payment pending — nothing released on acceptance' : 'close cleanly'),
   });
 
   const pacing = missionTimePacing(m, state);
@@ -902,6 +940,20 @@ export function activeMissionContractTerms(m, state) {
     label: 'Risk',
     text: 'R' + risk + ' / ' + missionRouteTermText(state, m),
   });
+
+  // 47-A's own ledger lines: the accepted mass, who authorized the recovery, and the contract code
+  // the player will be asked for. Pending payment is stated above, never dressed up as a payout.
+  if (paperwork) {
+    terms.push({
+      kind: 'info',
+      label: 'Mass',
+      text: paperwork.massDeliverT > 0
+        ? `${paperwork.massAcceptT}t on accept / ${paperwork.massDeliverT}t on delivery`
+        : `${paperwork.massAcceptT}t on accept / reconciled to log on delivery`,
+    });
+    terms.push({ kind: 'info', label: 'Auth', text: paperwork.authorization });
+    terms.push({ kind: 'info', label: 'Code', text: paperwork.code });
+  }
 
   if (consequences.collateral > 0) {
     terms.push({
@@ -967,6 +1019,9 @@ const TERM_LABELS = Object.freeze({
   Pays: 'Pays',
   Clock: 'Timer',
   Risk: 'Route and risk',
+  Mass: 'Mass on accept',
+  Auth: 'Authorization',
+  Code: 'Contract code',
   Stake: 'Stake',
   Paid: 'Paid up front',
   Clause: 'Clause',
@@ -1103,6 +1158,21 @@ function mapActionButtonAttrs(mapAction, missionId) {
     + (pos && Number.isFinite(pos.z) ? ' data-map-pos-z="' + escapeHtml(String(pos.z)) + '"' : '')
     + (mapAction.source ? ' data-map-source="' + escapeHtml(mapAction.source) + '"' : '')
     + ' data-mid="' + escapeHtml(missionId || mapAction.missionId || '') + '"';
+}
+
+/**
+ * The focused contract's last verb. Ordinary work gets the red Abandon word. A story-spine
+ * contract (the opening 47-A recovery and every later campaign leg) is the story's own rail:
+ * abandoning it left an empty log, so the same slot carries a short note instead — and
+ * missions.abandonMission refuses the intent even if something else sends it.
+ */
+export function abandonSlotHtml(m, titleText) {
+  if (isStorySpineContract(m)) {
+    return '<li><div class="k-word-sub sf-mlog-story-note" data-story-spine="true">'
+      + escapeHtml(STORY_SPINE_KEEP_TEXT) + '</div></li>';
+  }
+  return '<li><button class="k-word k-word--emph k-word--danger sf-mlog-btn-abandon" type="button" data-act="abandon" data-mid="'
+    + escapeHtml(m.id) + '" aria-label="' + escapeHtml('Abandon ' + titleText) + '">Abandon</button></li>';
 }
 
 /**
@@ -3018,7 +3088,7 @@ export const missionLogScreen = {
           ? '<li><button class="k-word k-word--emph sf-mlog-btn-map" type="button" data-act="openMap"' + mapActionButtonAttrs(mapAction, m.id) + ' aria-label="' + escapeHtml(mapAction.title) + '">Open on the chart</button>' +
             '<div class="k-word-sub">' + escapeHtml(wordText(mapAction.label)) + '</div></li>'
           : '') +
-        '<li><button class="k-word k-word--emph k-word--danger sf-mlog-btn-abandon" type="button" data-act="abandon" data-mid="' + escapeHtml(m.id) + '" aria-label="' + escapeHtml('Abandon ' + titleText) + '">Abandon</button></li>' +
+        abandonSlotHtml(m, titleText) +
       '</ul>';
     side.appendChild(btns);
     card.appendChild(side);

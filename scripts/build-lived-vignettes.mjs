@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Writes externalOnly lived-vignette encounter modules (orders 372+).
 // Re-run is deterministic. Then run scripts/build-encounter-index.mjs.
-import { mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateEncounterShape } from '../src/data/encounters/shape.js';
@@ -775,7 +775,382 @@ const COLOR_PAUSE_S = 1;
 // RC-14 — a toll is a debit: "Pay the count" charges the count instead of granting it.
 const TOLL_CR = 36;
 
+// SEED-PC-08 — one generated choice opens only when the hull has the named hardware.
+// The interpreter hides it; this stamp is what a regen writes onto that scene.
+const HARDWARE_CHOICE = Object.freeze({
+  twelve_degrees: Object.freeze({ id: 'a', requires: Object.freeze({ module: 'mod_heat_lure_s' }) }),
+});
+
+// ── RC-459: the thirty curated, physically gated lived vignettes ─────────────────────────
+// Each recipe names ordered physical work for choice a (steps the interpreter's `await`
+// verb evaluates), the sponsor cost/meet for b, and the decline-depart for c. Copy is
+// built per scene from the real noun/voice/place so no two scenes transmit the same line.
+const RC459_REWARDS = {
+  patrol: [0, 18], hunt: [42, 24], distress: [60, 30], salvage: [54, 24], trade: [36, 18],
+  convoy: [48, 24], claim: [42, 24], anomaly: [48, 30], wreck: [54, 24], yard: [48, 24],
+  archive: [24, 18], escort: [48, 24], puzzle: [36, 24], wake: [18, 12],
+};
+
+// Physical step sets, keyed by recipe kind. Role names are the generated cast roles
+// (hull_0..hull_n) plus 'prop'; the interpreter resolves them against live.ids.
+const RC459_STEPS = {
+  tow_settle: [
+    { kind: 'latched' }, { kind: 'displaced', dist: 120 }, { kind: 'released' },
+    { kind: 'parked', at: 'hull_0', dist: 30, maxSpeed: 3, holdS: 3 },
+  ],
+  tow_clear: [
+    { kind: 'latched' }, { kind: 'displaced', dist: 120 }, { kind: 'released' },
+    { kind: 'settled', maxSpeed: 5, holdS: 2 },
+  ],
+  relay: [
+    { kind: 'latched' }, { kind: 'displaced', dist: 120 },
+    { kind: 'near', subject: 'prop', of: 'hull_0', dist: 60 },
+    { kind: 'near', subject: 'prop', of: 'hull_1', dist: 60 },
+    { kind: 'released' }, { kind: 'settled', maxSpeed: 5, holdS: 2 },
+  ],
+  park_tight: [
+    { kind: 'latched' }, { kind: 'displaced', dist: 120 }, { kind: 'released' },
+    { kind: 'parked', at: 'hull_0', dist: 20, maxSpeed: 2, holdS: 4 },
+  ],
+  clear_scav: [
+    { kind: 'latched' }, { kind: 'displaced', dist: 120 },
+    { kind: 'clearOfActors', of: ['hull_0', 'hull_1'], dist: 180 },
+    { kind: 'released' }, { kind: 'settled', maxSpeed: 5, holdS: 2 },
+  ],
+  deliver_second: [
+    { kind: 'latched' }, { kind: 'displaced', dist: 120 },
+    { kind: 'released' }, { kind: 'parked', at: 'hull_1', dist: 30, maxSpeed: 3, holdS: 3 },
+  ],
+  match_lead: [
+    { kind: 'formation', of: 'hull_0', min: 60, max: 180, holdS: 8, leaderProgress: 100 },
+  ],
+  trail: [
+    { kind: 'trail', of: 'hull_0', min: 60, max: 180, holdS: 6, maxRelSpeed: 8, leaderProgress: 100 },
+  ],
+  gap_formation: [
+    { kind: 'gapCross', of: ['hull_0', 'hull_1'], within: 60 },
+    { kind: 'formation', of: 'hull_0', min: 60, max: 180, holdS: 8, leaderProgress: 100 },
+  ],
+  visit_ab: [{ kind: 'visit', of: 'hull_0' }, { kind: 'visit', of: 'hull_1' }],
+  visit_aba: [{ kind: 'visit', of: 'hull_0' }, { kind: 'visit', of: 'hull_1' }, { kind: 'visit', of: 'hull_0' }],
+  sides: [{ kind: 'oppositeSides', of: 'hull_0', min: 100, max: 160, travel: 120 }],
+  inspect: [{ kind: 'meet', of: 'hull_0', dist: 60, maxSpeed: 5, holdS: 2 }],
+  strain: [
+    { kind: 'latched' }, { kind: 'strained', loadMin: 0.35, holdS: 2 }, { kind: 'released' },
+  ],
+  toll_pass: [{ kind: 'oppositeSides', of: 'hull_0', min: 100, max: 160, travel: 120 }],
+  toll_weight: [
+    { kind: 'latched' }, { kind: 'displaced', dist: 120 }, { kind: 'released' },
+    { kind: 'settled', maxSpeed: 5, holdS: 2 },
+  ],
+};
+
+// order → recipe. keepMotion where the cast still moves (escort/procession verbs);
+// cast: 3 where the recipe needs a second hull and the scene only spawned one.
+const RC459_RECIPES = {
+  401: { kind: 'tow_settle', prop: true },
+  402: { kind: 'visit_ab', cast: 2 },
+  403: { kind: 'match_lead', keepMotion: true },
+  404: { kind: 'visit_aba', cast: 2 },
+  405: { kind: 'inspect' },
+  406: { kind: 'trail', keepMotion: true },
+  407: { kind: 'tow_clear', prop: true },
+  408: { kind: 'tow_settle', prop: true },
+  409: { kind: 'relay', prop: true, cast: 2 },
+  410: { kind: 'gap_formation', cast: 2, keepMotion: true },
+  411: { kind: 'park_tight', prop: true },
+  412: { kind: 'sides' },
+  413: { kind: 'clear_scav', cast: 2, prop: true },
+  414: { kind: 'relay', prop: true, cast: 2 },
+  415: { kind: 'visit_aba', cast: 2 },
+  416: { kind: 'trail', keepMotion: true },
+  417: { kind: 'strain', prop: true },
+  418: { kind: 'park_tight', prop: true },
+  419: { kind: 'visit_ab', cast: 2 },
+  420: { kind: 'tow_clear', prop: true },
+  421: { kind: 'relay', prop: true, cast: 2 },
+  422: { kind: 'strain', prop: true },
+  423: { kind: 'match_lead', keepMotion: true },
+  424: { kind: 'park_tight', prop: true },
+  425: { kind: 'sides' },
+  426: { kind: 'deliver_second', cast: 2, prop: true },
+  427: { kind: 'park_tight', prop: true },
+  428: { kind: 'inspect' },
+  429: { kind: 'gap_formation', cast: 2, keepMotion: true },
+  536: { kind: 'toll', prop: true },
+};
+
+// Per-kind physical instruction (work_line), choice labels, player lines, and receipts.
+// ${noun}, ${voice}, ${placeLabel}, ${aCost}, ${bCost} are filled per scene — every
+// transmitted string names the actual work, the actual price, and the scene's own place,
+// so no two curated vignettes transmit the same line.
+const RC459_COPY = {
+  tow_settle: {
+    instruction: '${voice}: Tether the ${noun}, haul it to the receiver hull, let go, and let it drift to rest within thirty.',
+    aLabel: 'Tow the ${noun} to the receiver',
+    aLine: 'I will put my line on the ${noun} and settle it at the receiver hull myself.',
+    aReceipt: 'The ${noun} came in on your line and rests inside thirty of the receiver at ${placeLabel}.',
+  },
+  tow_clear: {
+    instruction: '${voice}: Line on the ${noun}. Drag it past the hundred-twenty mark, drop the line, let it settle.',
+    aLabel: 'Drag the ${noun} clear of the lane',
+    aLine: 'Line on the ${noun} — I pull it a hundred-twenty out of the ${placeLabel} lane and let it settle.',
+    aReceipt: 'The ${noun} drifted a hundred-twenty clear of its berth at ${placeLabel} and settled on its own.',
+  },
+  relay: {
+    instruction: '${voice}: Carry the ${noun} past our hull, then the far hull, in that order. Release and let it rest.',
+    aLabel: 'Relay the ${noun} past both hulls',
+    aLine: 'I carry the ${noun} past your hull, then the far one — in that order — and let it rest.',
+    aReceipt: 'The ${noun} passed both hulls in order and rests loose at ${placeLabel}.',
+  },
+  park_tight: {
+    instruction: '${voice}: Park the ${noun} inside twenty of the receiver, dead slow for a four-count.',
+    aLabel: 'Park the ${noun} beside the receiver',
+    aLine: 'I set the ${noun} inside twenty of your receiver hull and hold it dead slow for the count.',
+    aReceipt: 'The ${noun} sits parked inside twenty of the receiver at ${placeLabel}, delivered dead slow.',
+  },
+  clear_scav: {
+    instruction: '${voice}: Drag the ${noun} a hundred-eighty clear of both scavenger hulls, release, settle.',
+    aLabel: 'Haul the ${noun} clear of both hulls',
+    aLine: 'I drag the ${noun} a hundred-eighty off both scavenger hulls and leave it settled.',
+    aReceipt: 'The ${noun} rests a hundred-eighty clear of both scavenger hulls at ${placeLabel}.',
+  },
+  deliver_second: {
+    instruction: '${voice}: The ${noun} goes to the second hull, not ours. Tow it there, release, park it inside thirty.',
+    aLabel: 'Deliver the ${noun} to the second hull',
+    aLine: 'The ${noun} berths at the second hull — I tow it there and park it inside thirty.',
+    aReceipt: 'The ${noun} is parked inside thirty of the second hull at ${placeLabel} — the first kept its hands off.',
+  },
+  match_lead: {
+    instruction: '${voice}: Hold station sixty to a hundred-eighty off our bow while we make a hundred on the lead.',
+    aLabel: 'Match the lead through ${placeLabel}',
+    aLine: 'I hold station off your bow while your lead makes its hundred through ${placeLabel}.',
+    aReceipt: 'You held station off the lead for the whole hundred it made at ${placeLabel}.',
+  },
+  trail: {
+    instruction: '${voice}: Fall in behind our wake — sixty to a hundred-eighty, matched speed, six-count.',
+    aLabel: 'Take the wake station behind the lead',
+    aLine: 'I fall in behind your wake at matched speed and hold it for the six-count through ${placeLabel}.',
+    aReceipt: 'You rode the wake station behind the lead while it made its hundred at ${placeLabel}.',
+  },
+  gap_formation: {
+    instruction: '${voice}: Thread the gap between the two escort hulls, then hold formation off the lead.',
+    aLabel: 'Thread the escort gap, then hold formation',
+    aLine: 'I cross between the escort pair and hold formation off your lead through ${placeLabel}.',
+    aReceipt: 'You threaded the gap between the escorts and held formation off the lead at ${placeLabel}.',
+  },
+  visit_ab: {
+    instruction: '${voice}: Read both hulls in order — ours first, then theirs. Enter each seventy ring.',
+    aLabel: 'Read both hulls in order',
+    aLine: 'I enter each ring in turn — your hull first, then the far one at ${placeLabel}.',
+    aReceipt: 'Both hulls read in order — the ${placeLabel} record has its comparison.',
+  },
+  visit_aba: {
+    instruction: '${voice}: Ours, theirs, ours again. Three separate ring entries — the record needs the round trip.',
+    aLabel: 'Make the round trip between hulls',
+    aLine: 'Ours, theirs, ours again — three separate ring entries logged at ${placeLabel}.',
+    aReceipt: 'The round trip is logged — three separate ring entries at ${placeLabel}.',
+  },
+  sides: {
+    instruction: '${voice}: Circle us — start one side, cross a hundred-twenty through to the other, inside the hundred-sixty band.',
+    aLabel: 'Circle to the far side of the hull',
+    aLine: 'I cross a hundred-twenty of your flank to the far side, inside the band at ${placeLabel}.',
+    aReceipt: 'You crossed to the hull\'s far side inside the band at ${placeLabel}.',
+  },
+  inspect: {
+    instruction: '${voice}: Bring your hull inside sixty of us and hold dead slow for a two-count — the scan needs a clean read.',
+    aLabel: 'Submit to the close scan',
+    aLine: 'I bring my hull inside sixty and hold dead slow for your scan at ${placeLabel}.',
+    aReceipt: 'The close scan is logged — your hull held dead slow inside sixty at ${placeLabel}.',
+  },
+  strain: {
+    instruction: '${voice}: Line on the ${noun}, pull it onto the hook — hold real line load a two-count — then cut the line.',
+    aLabel: 'Work the ${noun} under line load',
+    aLine: 'Line on the ${noun} — I hold real load for the two-count before I cut it loose.',
+    aReceipt: 'The ${noun} rode real line load at ${placeLabel} before you cut it free.',
+  },
+  toll: {
+    instruction: '${voice}: ${aCost} cr clears the count — then pass the hull on the far side, inside the band. Or tow our ${noun} a hundred-twenty clear.',
+    aLabel: 'Pay the count — 36 cr',
+    aLine: 'Take thirty-six, ${voice} — my hull passes the marker on the far side at ${placeLabel}.',
+    aReceipt: 'Thirty-six paid, and your hull passed the marker on the far side at ${placeLabel}.',
+    bLabel: 'Tow the ${noun} clear of the lane',
+    bLine: 'No coin — I tow your ${noun} a hundred-twenty clear of the ${placeLabel} lane and let it settle.',
+    bReceipt: 'The ${noun} moved a hundred-twenty clear of the ${placeLabel} lane — no coin moved.',
+  },
+};
+
+// Shared curated choice frames: `b` is the paid sponsor branch (its price rides on the
+// label, never hidden), `c` is the clean decline. The toll branch overrides above.
+const RC459_B_LABEL = 'Sponsor relief — ${bCost} cr';
+const RC459_B_LINE = 'Take ${bCost} cr, ${voice} — send the relief to ${placeLabel} instead of my hands.';
+const RC459_B_RECEIPT = '${bCost} cr funded the relief call — ${voice} sends the shift at ${placeLabel} on your credit.';
+const RC459_C_LABEL = 'Decline and depart';
+const RC459_C_LINE = 'Not my work, ${voice} — my hull is leaving ${placeLabel}.';
+const RC459_C_RECEIPT = 'You left ${placeLabel}. The work stayed with the crew that owned it.';
+const RC459_TOLL_C_LINE = 'No coin and no tow, ${voice} — my hull departs ${placeLabel}.';
+
+function curatedValues(row, recipe) {
+  const isToll = recipe.kind === 'toll';
+  const [grantA, chargeB] = RC459_REWARDS[row.situation] || [0, 0];
+  return {
+    // The noun the copy speaks matches the prop's scan label so the words name what the
+    // player actually sees on the hook.
+    noun: String(row.prop || (row.title || 'canister').split(' ')[0]).toLowerCase(),
+    voice: row.voice,
+    placeLabel: row.place.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase()),
+    aCost: isToll ? 36 : grantA,
+    bCost: chargeB,
+  };
+}
+
+function curatedFill(row, recipe) {
+  const values = curatedValues(row, recipe);
+  return (tpl) => String(tpl).replace(/\$\{(noun|voice|placeLabel|aCost|bCost)\}/g, (_, k) => values[k]);
+}
+
+// Choice rows for a curated scene: `a` names the physical job, `b` names its price on the
+// label and the sponsor frame in the line, `c` declines clean. The toll overrides b with
+// its real physical ask — the counterweight tow — instead of a charge.
+function curatedChoiceRows(row, recipe) {
+  const copy = RC459_COPY[recipe.kind];
+  const fill = curatedFill(row, recipe);
+  const isToll = recipe.kind === 'toll';
+  return [
+    { id: 'a', label: fill(copy.aLabel), playerLine: fill(copy.aLine) },
+    {
+      id: 'b',
+      label: fill(isToll ? copy.bLabel : RC459_B_LABEL),
+      playerLine: fill(isToll ? copy.bLine : RC459_B_LINE),
+    },
+    {
+      id: 'c',
+      label: RC459_C_LABEL,
+      playerLine: fill(isToll ? RC459_TOLL_C_LINE : RC459_C_LINE),
+    },
+  ];
+}
+
+// Receipts speak what actually happened: `a` is the physical job done, `b` acknowledges
+// the funded relief (or the moved counterweight on the toll), `c` is the departure.
+function curatedReceipts(row, recipe) {
+  const copy = RC459_COPY[recipe.kind];
+  const fill = curatedFill(row, recipe);
+  const isToll = recipe.kind === 'toll';
+  return {
+    a: fill(copy.aReceipt),
+    b: fill(isToll ? copy.bReceipt : RC459_B_RECEIPT),
+    c: fill(isToll ? 'You left the ${noun} on their board and cleared ${placeLabel}.' : RC459_C_RECEIPT),
+  };
+}
+
+function curatedPhases(row, recipe) {
+  const motion = MOTION[row.verb];
+  const isToll = recipe.kind === 'toll';
+  const copy = RC459_COPY[recipe.kind];
+  const [grantA, chargeB] = RC459_REWARDS[row.situation] || [0, 0];
+  const values = curatedValues(row, recipe);
+  const fill = curatedFill(row, recipe);
+  const placeLabel = values.placeLabel;
+  // Once-ever scenes never repeat a transmitted line: every spoken string carries the
+  // scene's own place so two curated vignettes can never read the same words.
+  const tail = ` — ${row.title}.`;
+  const phases = [
+    { id: 'spawn', verb: 'spawn', next: recipe.prop ? 'prop' : 'hail' },
+  ];
+  if (recipe.prop) {
+    phases.push({
+      id: 'prop', verb: 'prop',
+      scanLabel: row.prop || (row.title || 'canister').split(' ')[0],
+      dx: 54, dz: -28, radius: 9, mass: 48, next: 'hail',
+    });
+  } else if (row.prop) {
+    // Baseline phase ID retained as a dormant noop (compatibility): the old module ran a
+    // real prop phase here; the curated recipe does not need it, but the ID survives.
+    phases.push({ id: 'prop', verb: 'noop' });
+  }
+  phases.push({ id: 'hail', verb: 'say', line: row.hail + tail, channel: 'info', primary: true, next: 'move' });
+  phases.push({ id: 'move', verb: 'motion', seconds: MOVE_S, motion, next: 'a0' });
+  row.color.forEach((line, index) => {
+    const sayId = `a${index}`;
+    const pauseId = `p${index}`;
+    const next = index === row.color.length - 1 ? 'work' : `a${index + 1}`;
+    // The stock color lines were filler; the phase IDs stay as dormant no-ops and the
+    // pauses keep the authored pre-offer budget. Only factual copy transmits now.
+    phases.push({ id: sayId, verb: 'noop', next: pauseId });
+    phases.push({ id: pauseId, verb: 'motion', seconds: COLOR_PAUSE_S, motion, next });
+  });
+  phases.push({
+    id: 'work',
+    verb: 'motion',
+    seconds: Math.max(2, PRE_OFFER_BUDGET_S - MOVE_S - COLOR_PAUSE_S * row.color.length),
+    motion,
+    next: 'work_line',
+  });
+  phases.push({
+    id: 'work_line',
+    verb: 'say',
+    line: fill(copy.instruction) + tail,
+    channel: 'info',
+    next: 'offer',
+  });
+  const onChoice = isToll
+    ? { a: 'charge_a', b: 'await_b', c: 'await_c' }
+    : { a: 'await_a', b: 'charge_b', c: 'await_c' };
+  phases.push({ id: 'offer', verb: 'offer', windowS: 56, motion, onChoice });
+
+  const aSteps = isToll ? RC459_STEPS.toll_pass : RC459_STEPS[recipe.kind];
+  const bSteps = isToll
+    ? RC459_STEPS.toll_weight
+    : [{ kind: 'meet', of: 'hull_0', dist: 60, maxSpeed: 5, holdS: 2 }];
+  if (isToll) {
+    phases.push({ id: 'charge_a', verb: 'charge', amount: 36, reason: row.id, next: 'await_a' });
+  } else {
+    phases.push({ id: 'charge_b', verb: 'charge', amount: chargeB, reason: `${row.id}:sponsor`, next: 'await_b' });
+  }
+  for (const [choiceId, stepsList, nextPhase] of [
+    ['a', aSteps, 'grant_a'],
+    ['b', bSteps, 'rep_b'],
+    ['c', [{ kind: 'depart', dist: 180, far: 1000 }], 'done_c'],
+  ]) {
+    phases.push({
+      id: `await_${choiceId}`,
+      verb: 'await',
+      timeoutS: 120,
+      timeoutLine: isToll && choiceId === 'a'
+        ? `${row.voice}: Count paid, no pass. The lane reopens when the hull crosses — or the count stands and we log the stop at ${placeLabel}.`
+        : `${row.voice}: Time ran out on the ${String(row.prop || 'work').toLowerCase()} ask — ${row.title}. Nothing owed either way — the lane forgets it.`,
+      keepMotion: recipe.keepMotion === true,
+      steps: stepsList,
+      next: nextPhase,
+    });
+  }
+  phases.push({ id: 'grant_a', verb: 'grant', amount: isToll ? 0 : grantA, reason: row.id, next: 'rep_a' });
+  phases.push({ id: 'rep_a', verb: 'rep', factionId: row.factionId, delta: 2, reason: row.id, next: 'done_a' });
+  phases.push({ id: 'rep_b', verb: 'rep', factionId: row.factionId, delta: isToll ? 1 : 3, reason: `${row.id}:sponsor`, next: 'done_b' });
+  // Legacy phase IDs stay (dormant no-ops) so compiled references and phase-ID sets survive;
+  // the receipts ride d.resolve alone — say_* must not repeat them.
+  for (const choiceId of ['a', 'b', 'c']) {
+    phases.push({ id: `say_${choiceId}`, verb: 'noop' });
+    phases.push({ id: `done_${choiceId}`, verb: 'resolve', outcome: choiceId });
+  }
+  phases.push({ id: 'cost_a', verb: 'noop' });
+  phases.push({ id: 'rep_c', verb: 'noop' });
+  phases.push({ id: 'grant_b', verb: 'noop' });
+  return phases;
+}
+
+function stampHardwareChoice(row) {
+  const gate = HARDWARE_CHOICE[row.id];
+  if (!gate || !Array.isArray(row.choices)) return;
+  const choice = row.choices.find((entry) => entry && entry.id === gate.id);
+  if (!choice || choice.requires) return;
+  choice.requires = { module: gate.requires.module };
+}
+
 function phasesFor(row) {
+  const recipe = RC459_RECIPES[row.order];
+  if (recipe) return curatedPhases(row, recipe);
   const motion = MOTION[row.verb];
   const phases = [
     { id: 'spawn', verb: 'spawn', next: row.prop ? 'prop' : 'hail' },
@@ -827,17 +1202,22 @@ function phasesFor(row) {
   return phases;
 }
 
-function emit(row) {
+function rowText(row) {
+  stampHardwareChoice(row);
+  const recipe = RC459_RECIPES[row.order] || null;
+  const choices = recipe ? curatedChoiceRows(row, recipe) : row.choices;
   const cast = [];
   const arch = ARCH[row.actor];
   const offsets = [[0, 0], [-150, 90], [160, 70]];
-  for (let i = 0; i < row.cast; i++) {
+  const castCount = recipe && Number(recipe.cast) ? Math.max(row.cast, recipe.cast) : row.cast;
+  for (let i = 0; i < castCount; i++) {
+    const off = offsets[i % offsets.length];
     cast.push({
       role: `hull_${i}`,
       archetype: arch,
       factionId: row.factionId,
-      dx: offsets[i][0],
-      dz: offsets[i][1],
+      dx: i < offsets.length ? off[0] : -80 - 140 * (i - offsets.length + 1),
+      dz: i < offsets.length ? off[1] : -110,
       scanLabel: `${row.voice} ${i + 1}`,
     });
   }
@@ -847,8 +1227,8 @@ function emit(row) {
     factionId: row.factionId,
     start: 'spawn',
     cast,
-    choices: row.choices,
-    timeoutChoice: row.choices[row.choices.length - 1].id,
+    choices,
+    timeoutChoice: choices[choices.length - 1].id,
     phases: phasesFor(row),
   };
   const trigger = {
@@ -878,19 +1258,36 @@ function emit(row) {
     title: row.title,
     primaryLine: row.hail,
     factionId: row.factionId,
-    choices: row.choices,
+    choices,
     timeoutChoice: spec.timeoutChoice,
-    receipts: row.receipts,
+    receipts: recipe
+      // Once-ever scenes must each speak their own closing line — the recipe receipt
+      // already names the scene's noun/place/price; the title tail keeps it unique.
+      ? Object.fromEntries(Object.entries(curatedReceipts(row, recipe)).map(([k, line]) => [
+        k, `${line} — ${row.title}.`,
+      ]))
+      : row.receipts,
   };
-  const text = `// ${row.title} — lived vignette. External-only: the day planner must not roll this.\n`
+  // Curated modules mark themselves for live rotation and carry the physical recipe the
+  // director prefers in the first hour. spec is exported so the focused test can inspect
+  // the actual compiled inputs; compatibility modules keep spec private.
+  if (recipe) {
+    body.livedRotation = true;
+    body.livedPhysical = { recipeId: recipe.kind, hasProp: recipe.prop === true };
+  }
+  const specLine = recipe ? `export const spec = ` : `const spec = `;
+  return `// ${row.title} — lived vignette. External-only: the day planner must not roll this.\n`
     + `import { deepFreeze, defineEncounter } from './catalog.js';\n`
     + `import { compileVignette } from '../../systems/vignetteInterpreter.js';\n\n`
-    + `const spec = ${JSON.stringify(spec, null, 2)};\n\n`
+    + `${specLine}${JSON.stringify(spec, null, 2)};\n\n`
     + `export const encounterOrder = ${row.order};\n`
     + `export const trigger = deepFreeze(${JSON.stringify(trigger, null, 2)});\n`
     + `export const runtime = compileVignette(spec);\n`
     + `export default defineEncounter(trigger, ${JSON.stringify(body, null, 2)});\n`;
-  writeFileSync(join(DIR, row.file), text);
+}
+
+function emit(row) {
+  writeFileSync(join(DIR, row.file), rowText(row));
 }
 
 // RC-14 — ambient choice 'a' is not always paid work. fare_dodger_chase settles the
@@ -1040,6 +1437,25 @@ for (const row of ambientRows) {
   if (existingIds.has(row.encounterId)) throw new Error(`id collides with shipped encounter ${row.encounterId}`);
 }
 const keep = new Set([...names, ...ambientRows.map((row) => row.file)]);
+// --row=459 regenerates ONLY the thirty curated modules: no ambient pass, no stale-file
+// sweep, no roster or index writes. Write-if-changed so the pathspec stays tight.
+const row459 = process.argv.includes('--row=459') || process.argv.some((a) => a === '--row' && process.argv[process.argv.indexOf(a) + 1] === '459');
+if (row459) {
+  let written = 0;
+  const curatedRows = all.filter((row) => RC459_RECIPES[row.order]);
+  if (curatedRows.length !== Object.keys(RC459_RECIPES).length) {
+    const missing = Object.keys(RC459_RECIPES).filter((o) => !curatedRows.some((r) => r.order === Number(o)));
+    throw new Error(`--row=459: generated scene list does not cover orders ${missing.join(',')}`);
+  }
+  for (const row of curatedRows) {
+    const path = join(DIR, row.file);
+    const before = existsSync(path) ? readFileSync(path, 'utf8') : null;
+    const text = rowText(row);
+    if (before !== text) { writeFileSync(path, text); written++; }
+  }
+  console.log(`--row=459: regenerated ${written} of ${curatedRows.length} curated modules (unchanged skipped)`);
+  process.exit(0);
+}
 for (const name of readdirSync(DIR)) {
   // The sweep covers 4-digit orders too: a generated scene parked at e.g. 1300- to free
   // a 3-digit slot keeps its generated header, and leaving it would ship a duplicate

@@ -202,6 +202,12 @@ export const WITNESS_THEFT_BARKS = Object.freeze({
     'The crossing registered a removal. Your signature is on it.',
     'Theft inside the audit is still an audit item. It is yours now.',
   ]),
+  faction_helix: Object.freeze([
+    'Helix watched the cargo leave its owner, and the filing names your registry.',
+    'Freight taken in tariff space is a Helix filing, and the filing names you.',
+    'Helix saw the hold open and the goods change hands, and the invoice saw it too.',
+    'Helix witness statement: that taking is yours, and the fee follows the registry.',
+  ]),
 });
 
 /**
@@ -570,6 +576,12 @@ export const STUNT_BARKS = Object.freeze({
     'The prism records a {title}. Unusual transits are the memorable ones.',
     '{title}, inscribed. The audit adds your maneuver to the gates\' history.',
     'Observed: {title}. The lattice has seen many crossings; that one was new.',
+  ]),
+  faction_helix: Object.freeze([
+    'Helix note: that {title} is outside the flight plan and on the invoice.',
+    'A {title}, and Helix is under orders to log it before admiring it.',
+    'Helix observed {title}. Read the invoice first, then the telemetry.',
+    'Lawful interdiction paused for one {title}, and the Helix file did not pause.',
   ]),
 });
 

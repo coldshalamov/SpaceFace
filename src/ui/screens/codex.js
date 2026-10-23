@@ -40,7 +40,9 @@ import { dressLampKey } from '../orrery/lampKey.js';
 import { uniqueWreckById } from '../../data/uniqueWrecks.js';
 import { knownAces, stanceForRecord, rememberedBarkFor } from '../../data/namedAces.js';
 import { FACTION_LABELS } from '../../data/encounters.js';
-import { buildStoryView, rankViews, recallText } from '../../chronicler/narrative.js';
+import { logbookEntries } from '../../chronicler/logbook.js';
+import { logbookStill } from '../logbookMedia.js';
+import { decodedSuhlClauses, namesForTheDead } from '../../data/discoveryPresentation.js';
 import { hash32 } from '../../core/rng.js';
 import { recordSectionModel } from './codexRecord.js';
 
@@ -495,7 +497,6 @@ const CHAIN_OUTCOME_VERB = Object.freeze({
   raided: 'raided',
   witnessed_only: 'witnessed',
 });
-const WORLD_STORY_CAP = 16;
 const CODEX_PLATE_ROOT = 'assets/ui/generated/codex/';
 const CODEX_ENTRY_ROOT = CODEX_PLATE_ROOT + 'entries/';
 const CODEX_WRECK_ART = Object.freeze({
@@ -631,23 +632,19 @@ export function worldCodexEntries(state) {
     });
   }
 
-  // Chronicler stories — the recall text, cited back to its record revision.
+  // The pilot's logbook follows time, preserving the Chronicler's evidence and house voice.
   const stories = state && state.chronicler && Array.isArray(state.chronicler.stories)
     ? state.chronicler.stories : [];
   if (stories.length) {
-    const now = state && Number.isFinite(state.simTime) ? state.simTime : 0;
-    const views = rankViews(
-      stories.map((story) => story && buildStoryView(story)).filter(Boolean),
-      {}, now,
-    ).slice(0, WORLD_STORY_CAP);
-    for (const view of views) {
+    for (const view of logbookEntries(state, { opening: false })) {
+      const still = logbookStill(state, view);
       groups.stories.push({
         id: `world:story:${view.id}:r${view.revision}`,
-        art: codexEntryArt('chronicler-story'),
+        art: still ? { src: still, kind: 'still' } : codexEntryArt('chronicler-story'),
         name: view.title || 'A recorded story',
-        sub: 'Chronicler record',
+        sub: 'Pilot’s logbook',
         meta: view.kind || 'record',
-        body: recallText(view, now),
+        body: view.body,
         note: `Cited ${view.id}:r${view.revision}.`,
       });
     }
@@ -923,6 +920,10 @@ export const codexScreen = {
   onShow(ctx) {
     this._ctx = ctx;
     this._visible = true;
+    this._logbookOff?.();
+    this._logbookOff = ctx?.bus?.on?.('logbook:stillReady', () => {
+      if (this._visible && this._activeTab === 'World' && this._body) this._render(ctx);
+    });
     // Consume both requests once. A valid plate is more specific than a tab request; a stale plate
     // fails closed and leaves the ordinary requested tab available.
     const requestedTab = _requestedTab;
@@ -968,6 +969,7 @@ export const codexScreen = {
   },
   onHide() {
     this._visible = false;
+    this._logbookOff?.(); this._logbookOff = null;
     try { cue('close'); } catch (_) {}
     // Release the ledger's image request when the codex hides; no rebuild happens here.
     if (this._ledgerPanel) { try { this._ledgerPanel.onHide(); } catch (_) {} }
@@ -1497,7 +1499,20 @@ export const codexScreen = {
     this._section('Unique Wrecks', toEntries(groups.wrecks), 'No unique wreck bears your record yet.');
     this._section('Captains', toEntries(groups.aces), 'No captain remembers you by name.');
     this._section('Held Against You', toEntries(groups.chains), 'Nothing is held against you.');
-    this._section('Stories', toEntries(groups.stories), 'The chronicler holds no story of yours yet.');
+    const journal = groups.stories.length ? groups.stories : logbookEntries(ctx?.state).map(entry => ({
+      id: 'world:logbook:opening', name: entry.title, sub: 'Pilot’s logbook', body: entry.body,
+      art: codexEntryArt('chronicler-story'),
+    }));
+    this._section('Pilot’s logbook', toEntries(journal));
+    this._section('Suhl’s Clauses', toEntries(decodedSuhlClauses(ctx?.state).map(row => ({
+      id: `world:clause:${row.index}`, name: `Clause ${row.index + 1}`, sub: 'Accepted comparison',
+      body: row.text, note: `Comparison ${row.incidentId}.`, art: codexEntryArt('chronicler-story'),
+    }))), 'An accepted machine appeal earns a decoded clause. The transcript stays sealed until then.');
+    this._section('Names for the Dead', toEntries(namesForTheDead(ctx?.state).map(row => ({
+      id: `world:dead:${row.id}`, name: row.name, sub: row.place, body: row.body,
+      note: `Recorded at ${Math.floor(row.at / 60)}:${String(Math.floor(row.at % 60)).padStart(2, '0')}. Cited ${row.citation}.`,
+      art: codexEntryArt('chronicler-story'),
+    }))), 'No named loss is recorded. This page never fills the silence with invented people.');
   },
 
   _renderDiscoveries(ctx) {

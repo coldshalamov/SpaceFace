@@ -60,6 +60,17 @@ import {
 import { WEAPONS } from '../data/weapons.js';
 import { buildSlotList, fits, getDerivedStats } from './ships.js';
 import { swarmHullPrice } from '../data/swarmCatalog.js';
+import {
+  SWARM_CALLIN_CATALOG,
+  SWARM_CALLIN_MAX_PER_TYPE,
+  SWARM_CALLIN_RECORD_KIND,
+  SWARM_LEGENDARY_RECORD_KIND,
+  SWARM_ROOM_LEGENDARIES,
+  ownedSwarmLegendaryIds,
+  swarmCallinById,
+  swarmCallinCount,
+  swarmLegendaryById,
+} from '../data/swarmDraft.js';
 import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCrossover.js';
 import {
   brokerMultiplier,
@@ -276,14 +287,17 @@ export const survivalDraft = {
           : entry.service === 'ordnance' && (entry._serviceCharges || 0) >= SWARM_ORDNANCE_RACK_MAX
             ? 'Rack already full'
             : null;
+      // A legendary the run already owns stays visible but is never buyable again — not "Done"
+      // like a consumed weld: the row is the room upgrade's receipt, so it says what it is.
+      const legendaryOwned = entry.service === 'legendary' && entry._legendaryOwned === true;
       // A hull already on the manifest is a switch, not a sale — "bought this armory" must not
       // freeze it, or buying a second hull locks the first out of the cradle for the round.
       const spent = purchased && entry.kind !== SWARM_HULL_OFFER_KIND;
       rows.push({ ...entry, purchased,
         held: !!(this._locked && this._locked.id === entry.id),
         lockedIn: !!(this._lockedInto && this._lockedInto.has(entry.id)),
-        available: !spent && !blocked && run.credits >= entry.price,
-        unavailableReason: spent ? 'Done' : blocked
+        available: !spent && !blocked && !legendaryOwned && run.credits >= entry.price,
+        unavailableReason: legendaryOwned ? 'Owned for this run' : spent ? 'Done' : blocked
           || (run.credits < entry.price ? `Save ${entry.price - run.credits} more cr` : null) });
     }
     return rows;
@@ -1105,6 +1119,39 @@ export const survivalDraft = {
       price: ask(SWARM_ORDNANCE_PRICE), category: 'Service', slotLabel: 'Cargo',
       _serviceCharges: held,
     });
+    // SWARM-07 B7 (row 270) — the room-control legendaries ride the service counter, gated on
+    // cleared waves like every other armory row. They are not fittings: no defId, no slotIndex,
+    // no demo. Ownership is derived afresh from the run's own modifier ledger on every refresh —
+    // a bought row stays on the shelf, marked, because the shelf is the receipt.
+    const ownedLegendaries = new Set(ownedSwarmLegendaryIds(run));
+    const clearedWave = Number.isInteger(run.wave) ? run.wave : 0;
+    for (const entry of SWARM_ROOM_LEGENDARIES) {
+      if (clearedWave < entry.fromWave) continue;
+      extras.push({
+        id: entry.offerId, kind: SWARM_SERVICE_OFFER_KIND, service: 'legendary',
+        legendaryId: entry.id,
+        verb: entry.verb, name: entry.name,
+        blurb: entry.blurb,
+        price: ask(entry.price), category: entry.category, slotLabel: entry.slotLabel,
+        _legendaryOwned: ownedLegendaries.has(entry.id),
+      });
+    }
+    // SEED-SW-01..07 — the call-in charges ride the same service counter as spent stock: the row
+    // shows the held count, a restock appends a run record, and firing spends one. The cap keeps
+    // a charge a rack, not a vault.
+    for (const entry of SWARM_CALLIN_CATALOG) {
+      if (clearedWave < entry.fromWave) continue;
+      const held = swarmCallinCount(run, entry.id);
+      if (held >= SWARM_CALLIN_MAX_PER_TYPE) continue;
+      extras.push({
+        id: entry.offerId, kind: SWARM_SERVICE_OFFER_KIND, service: 'callin',
+        callinId: entry.id,
+        verb: entry.verb, name: entry.name,
+        blurb: entry.blurb,
+        price: ask(entry.price), category: entry.category, slotLabel: entry.slotLabel,
+        _callinHeld: held,
+      });
+    }
     const cargoUsed = player && player.cargo && Number.isFinite(player.cargo.usedVolume)
       ? player.cargo.usedVolume : 0;
     const ownedList = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
@@ -1350,6 +1397,81 @@ export const survivalDraft = {
       }
       this._purchased.add(pending.id);
       this._notice = `${added} impulse charge${added === 1 ? '' : 's'} racked.`;
+      this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+      return;
+    }
+    if (pending.service === 'legendary') {
+      // Room legendaries are run records, not cargo and not fittings: the wallet has already
+      // taken the credits, so the only work left is the ledger row the rest of the run reads.
+      // Every refusal refunds — the record is the purchase, and a purchase that cannot be
+      // recorded cannot have happened.
+      const run = liveSurvivalRun(this.state);
+      const entry = swarmLegendaryById(pending.legendaryId);
+      if (!run || run.phase !== 'draft' || !entry || entry.offerId !== pending.id) {
+        refund(`That room upgrade is no longer on the shelf. ${pending.price} cr refunded.`);
+        return;
+      }
+      if (ownedSwarmLegendaryIds(run).includes(entry.id)) {
+        refund(`${entry.name} is already yours this run. ${pending.price} cr refunded.`);
+        return;
+      }
+      this._purchased.add(pending.id);
+      this._emit('run:modifierRecordRequested', {
+        record: {
+          kind: SWARM_LEGENDARY_RECORD_KIND, offerId: pending.id,
+          legendaryId: entry.id, name: entry.name,
+          wave: Math.max(1, this._wave),
+        },
+        draft: {
+          wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id,
+        },
+        wave: this._wave,
+      });
+      // The wallet answers synchronously and so does the ledger: by here the run either holds
+      // the record or it never will. A purchase the ledger would not keep is a failed purchase,
+      // so the credits go back rather than buying silence.
+      const committed = liveSurvivalRun(this.state);
+      if (!committed || !ownedSwarmLegendaryIds(committed).includes(entry.id)) {
+        this._purchased.delete(pending.id);
+        refund(`${entry.name} would not stay on the manifest. ${pending.price} cr refunded.`);
+        return;
+      }
+      this._notice = `${entry.name} fitted to the room — it holds until the run does not.`;
+      this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+      return;
+    }
+    if (pending.service === 'callin') {
+      // SEED-SW-01..07 — a charge is stock: the wallet has taken the credits, so the only work
+      // is one more count on the run's own ledger. Every refusal refunds.
+      const run = liveSurvivalRun(this.state);
+      const entry = swarmCallinById(pending.callinId);
+      if (!run || run.phase !== 'draft' || !entry || entry.offerId !== pending.id) {
+        refund(`That charge is no longer on the shelf. ${pending.price} cr refunded.`);
+        return;
+      }
+      if (swarmCallinCount(run, entry.id) >= SWARM_CALLIN_MAX_PER_TYPE) {
+        refund(`The ${entry.name} rack is full. ${pending.price} cr refunded.`);
+        return;
+      }
+      this._purchased.add(pending.id);
+      this._emit('run:modifierRecordRequested', {
+        record: {
+          kind: SWARM_CALLIN_RECORD_KIND, offerId: pending.id,
+          callinId: entry.id, name: entry.name, count: 1,
+          wave: Math.max(1, this._wave),
+        },
+        draft: {
+          wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id,
+        },
+        wave: this._wave,
+      });
+      const committed = liveSurvivalRun(this.state);
+      if (!committed || swarmCallinCount(committed, entry.id) <= pending._callinHeld) {
+        this._purchased.delete(pending.id);
+        refund(`The ${entry.name} would not stay on the manifest. ${pending.price} cr refunded.`);
+        return;
+      }
+      this._notice = `${entry.name} racked (${swarmCallinCount(committed, entry.id)} held).`;
       this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
       return;
     }

@@ -130,6 +130,15 @@ export function createSortieTape({ host, onScrub = null } = {}) {
 
   const empty = () => !(model.lengthS > 0);
 
+  /** A word's drawn width in this tape's own face (the estimate where nothing is laid out, as in tests). */
+  function textW(text, cls, estimate) {
+    const probe = Object.assign(svg('text', { x: 0, y: -100, class: cls }), { textContent: text });
+    staticG.appendChild(probe);
+    const drawn = typeof probe.getComputedTextLength === 'function' ? probe.getComputedTextLength() : 0;
+    probe.remove();
+    return drawn > 0 ? drawn : estimate;
+  }
+
   function x(t) { return geo ? geo.x0 + (geo.x1 - geo.x0) * Math.max(0, Math.min(1, t / model.lengthS)) : 0; }
   function tAt(px) { return geo ? Math.max(0, Math.min(model.lengthS, ((px - geo.x0) / (geo.x1 - geo.x0)) * model.lengthS)) : 0; }
 
@@ -142,10 +151,12 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     if (!(W > 0) || !(H > 0)) { geo = null; return; }
     layer.setAttribute('viewBox', `0 0 ${f(W)} ${f(H)}`);
     // rows (px): event labels, band, ticks and times, the readout under the cursor
-    const legendW = Math.min(170, Math.max(120, W * 0.09));
+    // a narrow tape (a phone) lifts its legend onto one line over the channel and gives the channel the width
+    const narrow = W < 560;
+    const legendW = narrow ? 0 : Math.min(170, Math.max(120, W * 0.09));
     const x0 = legendW;
     const x1 = W - 34;
-    const bandTop = Math.round(H * 0.4);
+    const bandTop = Math.round(H * 0.4) + (narrow ? 20 : 0);
     const k = Math.max(1, Math.min(1.45, H / 150));
     if (host.style && typeof host.style.setProperty === 'function') host.style.setProperty('--tape-k', k.toFixed(3));
     geoK = k;
@@ -153,9 +164,10 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     const bandBot = bandTop + bandH;
     const mid = bandTop + bandH / 2;
     geo = { W, H, x0, x1, bandTop, bandBot, mid, k };
+    const legendX = narrow ? textW('LAST SORTIE', 'orr-tape__legend', 11 * 9.6 * k) + 22 * k : 0;
     staticG.append(
-      Object.assign(svg('text', { x: 0, y: bandTop + 4, class: 'orr-tape__legend' }), { textContent: 'LAST SORTIE' }),
-      Object.assign(svg('text', { x: 0, y: bandTop + 20, class: 'orr-tape__legend orr-tape__legend--sub' }), { textContent: 'BLACK BOX' }),
+      Object.assign(svg('text', { x: 0, y: narrow ? 13 : bandTop + 4, class: 'orr-tape__legend' }), { textContent: 'LAST SORTIE' }),
+      Object.assign(svg('text', { x: f(legendX), y: narrow ? 13 : bandTop + 20, class: 'orr-tape__legend orr-tape__legend--sub' }), { textContent: 'BLACK BOX' }),
     );
     // the ruler: a baseline the length of the sortie; the played length is drawn over it as light
     staticG.appendChild(svg('path', { class: 'orr-tape__base', d: `M ${f(x0)} ${f(mid)} L ${f(x1)} ${f(mid)}` }));
@@ -199,7 +211,10 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     const tickTime = (t) => (t % 60 === 0 && t >= 60 ? (t >= 3600 ? fmtSortieTime(t) : `${Math.round(t / 60)}m`) : fmtSortieTime(t));
     const minor = major / (major >= 60 ? 6 : 5);
     // the kill's word stands under the channel's far end, in the time row
-    const killW = ((`LOST · ${fmtSortieTime(L)}`).length * 7.6 + 12) * k;
+    const killText = `LOST · ${fmtSortieTime(L)}`;
+    const killW = textW(killText, 'orr-tape__kill-word', killText.length * 7.6 * k) + 12 * k;
+    const launchW = textW('LAUNCH', 'orr-tape__time', 6 * 7.6 * k);
+    let lastTimeHi = x0 + launchW;
     const minD = [];
     const majD = [];
     for (let t = 0; t <= L + 1e-6; t += minor) {
@@ -207,9 +222,17 @@ export function createSortieTape({ host, onScrub = null } = {}) {
       const xx = f(x(t));
       if (isMajor) majD.push(`M ${xx} ${f(mid)} L ${xx} ${f(bandBot + 11 * k)}`);
       else minD.push(`M ${xx} ${f(mid)} L ${xx} ${f(mid + 7 * k)}`);
-      if (isMajor && x1 - x(t) > killW + 14 && (t === 0 || x(t) - x0 > 96 * k)) {
-        staticG.appendChild(Object.assign(svg('text', { x: xx, y: f(bandBot + 26 * k), 'text-anchor': t === 0 ? 'start' : 'middle', class: 'orr-tape__time' }),
-          { textContent: t === 0 ? 'LAUNCH' : tickTime(t) }));
+      if (isMajor) {
+        // a minute's word stands only where it clears LAUNCH, the word before it and LOST at the far end
+        const word = t === 0 ? 'LAUNCH' : tickTime(t);
+        const tw = t === 0 ? launchW : textW(word, 'orr-tape__time', word.length * 7.6 * k);
+        const lo = t === 0 ? x(t) : x(t) - tw / 2;
+        const hi = lo + tw;
+        if (x1 - killW - 14 > hi && (t === 0 || (lo > lastTimeHi + 18 * k && x(t) - x0 > 96 * k))) {
+          staticG.appendChild(Object.assign(svg('text', { x: xx, y: f(bandBot + 26 * k), 'text-anchor': t === 0 ? 'start' : 'middle', class: 'orr-tape__time' }),
+            { textContent: word }));
+          lastTimeHi = hi;
+        }
       }
     }
     staticG.appendChild(svg('path', { class: 'orr-tape__minor', d: minD.join(' ') }));
@@ -223,10 +246,13 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     const placed = [];
     for (const ev of model.events) {
       const xx = x(ev.t);
-      if (x1 - xx < 40) continue; // the kill owns the far end
-      const w = (String(ev.label).length * 7.4 + 8) * k;
-      const lo = xx - w / 2;
-      const hi = xx + w / 2;
+      if (foldsIntoLoss(ev)) continue; // the killing blow is the loss's own mark
+      const upper = String(ev.label).toUpperCase();
+      const w = textW(upper, 'orr-tape__label', upper.length * 7.4 * k) + 8 * k;
+      // the word slides along its row to stay inside the tape; its mark stays on the moment
+      const cx = Math.max(w / 2 - 4 * k, Math.min(W - w / 2, xx));
+      const lo = cx - w / 2;
+      const hi = cx + w / 2;
       let row = -1;
       for (let r = 0; r < rows.length && row < 0; r += 1) {
         const clearWords = rows[r].every(([p, q]) => hi < p - 10 || lo > q + 10);
@@ -240,10 +266,10 @@ export function createSortieTape({ host, onScrub = null } = {}) {
       staticG.appendChild(svg('path', { class: `orr-tape__mark${ev.threat ? ' orr-tape__mark--threat' : ''}`, d: `M ${f(xx)} ${top + 4} L ${f(xx)} ${bandTop + bandH / 2}` }));
       staticG.appendChild(svg('circle', { class: `orr-tape__dot${ev.threat ? ' orr-tape__dot--threat' : ''}`, cx: f(xx), cy: bandTop + bandH / 2, r: 3.2 }));
       if (row >= 0) {
-        rows[row].push([xx - w / 2, xx + w / 2]);
+        rows[row].push([lo, hi]);
         placed.push(ev);
-        const word = Object.assign(svg('text', { x: f(xx), y: top, 'text-anchor': 'middle', class: `orr-tape__label${ev.threat ? ' orr-tape__label--threat' : ''}` }),
-          { textContent: String(ev.label).toUpperCase() });
+        const word = Object.assign(svg('text', { x: f(cx), y: top, 'text-anchor': 'middle', class: `orr-tape__label${ev.threat ? ' orr-tape__label--threat' : ''}` }),
+          { textContent: upper });
         labelFor.set(ev, word);
         staticG.appendChild(word);
       }
@@ -269,13 +295,28 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   /** One button per stop, seated on the channel at its moment. */
   function buildStops() {
     stopsLayer.textContent = '';
-    stopEls = stops().map((t) => {
+    const ts = stops();
+    const at = (t) => (t >= model.lengthS - 0.5 ? geo.x1 - 22 * geo.k : x(t));
+    const xs = ts.map(at);
+    stopEls = ts.map((t, i) => {
       const b = doc.createElement('button');
       b.type = 'button';
       b.className = 'orr-tape__stop';
       b.tabIndex = -1;
-      b.style.left = `${f(t >= model.lengthS - 0.5 ? geo.x1 - 22 * geo.k : x(t))}px`;
+      // close stops split the gap between them, so each target is its own (22px where there is room);
+      // a squeezed stop keeps at least 12px and takes half the channel's height instead, upper and
+      // lower halves alternating, so squeezed neighbours never share a pixel
+      const lo = i > 0 ? Math.max(xs[i] - 11, (xs[i - 1] + xs[i]) / 2) : xs[i] - 11;
+      const hi = i < xs.length - 1 ? Math.min(xs[i] + 11, (xs[i] + xs[i + 1]) / 2) : xs[i] + 11;
+      b.style.left = `${f(xs[i])}px`;
       b.style.top = `${f(geo.mid)}px`;
+      if (hi - lo < 21.5) {
+        const w = Math.max(12, 2 * Math.min(xs[i] - lo, hi - xs[i]), hi - lo);
+        b.style.width = `${f(Math.min(22, w))}px`;
+        b.style.marginLeft = `${f(-Math.min(22, w) / 2)}px`;
+        b.style.height = '11px';
+        b.style.marginTop = i % 2 ? '0px' : '-11px';
+      }
       const ev = model.events.find((e) => e.t === t);
       const word = t >= model.lengthS - 0.5 ? (model.killLabel || 'the loss') : t === 0 ? 'launch' : ev ? ev.label : '';
       b.setAttribute('aria-label', `${fmtSortieTime(t)}${word ? ', ' + word : ''}`);
@@ -336,7 +377,10 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   }
 
   // stops: the launch, every event, the loss
-  const stops = () => [0, ...model.events.map((e) => e.t), model.lengthS].sort((a, b) => a - b);
+  // the killing blow (its warning, or anything in the loss's last second) at the far end is the loss's
+  // stop, not a second one; every other event keeps its own stop, however close to the end
+  const foldsIntoLoss = (e) => !!geo && geo.x1 - x(e.t) < 40 && (e.kind === 'telegraph' || model.lengthS - e.t <= 1);
+  const stops = () => [0, ...model.events.filter((e) => !foldsIntoLoss(e)).map((e) => e.t), model.lengthS].sort((a, b) => a - b).filter((t, i, a) => i === 0 || t !== a[i - 1]);
   let press = null;
   const hostX = (event) => event.clientX - host.getBoundingClientRect().left;
   const onDown = (event) => {
@@ -377,6 +421,12 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   host.addEventListener('keydown', onKey);
   let ro = null;
   if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => draw()); ro.observe(host); }
+  // the words are measured, so draw again once the label face has loaded (a fallback face measures narrow)
+  let disposed = false;
+  const fonts = doc.fonts;
+  const onFonts = () => { if (!disposed) draw(); };
+  if (fonts && fonts.ready && typeof fonts.ready.then === 'function') fonts.ready.then(onFonts, () => {});
+  if (fonts && typeof fonts.addEventListener === 'function') fonts.addEventListener('loadingdone', onFonts);
 
   return {
     paint(next) {
@@ -391,6 +441,8 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     set,
     layout: draw,
     dispose() {
+      disposed = true;
+      if (fonts && typeof fonts.removeEventListener === 'function') fonts.removeEventListener('loadingdone', onFonts);
       if (ro) ro.disconnect();
       if (emptyTextObs) { emptyTextObs.disconnect(); emptyTextObs = null; }
       host.removeEventListener('pointerdown', onDown);
