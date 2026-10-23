@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace current execution checkpoint
 
-Updated 2026-10-23 05:54 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
+Updated 2026-10-23 06:17 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
 
 ## Durable scope and evidence
 
@@ -63,6 +63,24 @@ Each was independently read back; local coherent preservation also verified. Nev
 
 New actual cold-drill geometry preview delivered03:58:640x480,37626B,SHA3bab537003c0f6d1cf625530b76b131cb13fdf2c17d5dd6b75625d7ad9172ecf. Exact release source22572B,Git836f3ed68d0bbf6642309f5a448eb12c76d672ec,SHA6ecf03f02e43f7db1367360263f382890b85e9010b1c563885dc28b1c21815c0. Base-color geometry only, not new model/final textures/live placement. Cargo-package preview and earlier asset evidence remain archived.
 
+## Choir service recovery delivered, current proof, 06:17 UTC
+
+[Draft PR528](https://github.com/coldshalamov/SpaceFace/pull/528) is open/draft/unmerged, mergeable at last read, head **d5e1a1da49585dfdba4877280f2efc96bca1db00**. Four public commits frome9ddde445e94c9a438790712b595f71613f46c96 change exactly four verified files: Choir helper51e53f41e499ef2acd9c9a7755b25c57ffaf7b77; testdb6371a96e921ce2ab6be2c9c02d07887e1ea3b9; package50e101da1c3de03ff15bc5f879b9d94c452c263a; report286f300619e53f7e7e65c5155e530b87439a9734. Root independently verified full diff/public chain, publisher full remote contents.
+
+Observed local runner displacement interrupts treatment, retains that person's bed, recommissions only existing job authority and starts a fresh45s stay after return. No new persistence fields/shared-owner/Mercy reward changes. Current-map/finite-coordinate observation guards cover initial admission and ongoing treatment without conflating absent/offscreen actors with displacement. Final17new+6berth+4Mercy=27distinct shipping/adjacent cases pass;3review-only edge probes separate. Baseline4pass/13fail. Root/reviewer17 reruns overlap. Owner-seam Save serialization is not full native Continue.
+
+Additional real native probe uses selected production-ordered physics/flight/jobs/combat/ships/economy owners and actual economy ticks. Approach finishes117.683s; one injected native-body displacement to2000; subsequent autonomous re-entry200.167s; departure245.167s after45s. Same entity/world record, zero remote completion; another20s proves no duplicate departure/successor. Not player-operated towing, native Save or full-world acceptance. Portable proof is being prepared for the existing PR, not a replacement controller.
+
+Final4fullsource recovery30915B SHA7dcbd61ed117f742034f10822f346389c6567debb63a15226a2275c48cce318f; complete21member recovery96499B SHA815f52fb229fb2271dcdb7e439eb1dd638f92fae934aed0ca378036effb50718 independently read back. New actual existing-Mule release geometry preview delivered06:01:39537B SHAc3ad43b0cc554489ce7f6412d527e09b496749d21b5a18a68b5e9f1e2159bb31. Actual source1d367b8174984e755ce67fcebe024e9a2e2505ca,22visible primitives/26412triangles. Simplified materials, no new ship/final-PBR/live-camera claim.
+
+CI39909821016/#5882 remains in progress, static1 still in Ceres precheck at06:16; no focused gate result yet. Existing noncandidate failures are not blanket-attributed. No rerun/cancel. Publisher owns exact CI, original implementer portable native proof, root recovery/handoff.
+
+## New upstream repair and Eunomia revalidation, 06:14 UTC
+
+Current master **6756adeac1cee7a7e8fc7c508378fd1282670f72** adds public inert powerSituations.js e46a30f226e1b8258713234ed70b7c29a82f3882 and mainMenu fix a5a40cbe9ff015a3be19c3cee2cec62315f2b56d via#525. The missing-module diagnosis below is historical, not a current blanket blocker. This upstream stub restores imports; it does not implement or accept the missing onboarding feature.
+
+Unchanged PR523 candidate now passes all53original checks on an isolated6756overlay, including actual production-worker quote/confirm/repeat transport.1619loadedESMinputs hash-verified. LogSHA38b1385c5017de8701f18d238be6b5eb1acc4ef408db3cfb74765f30a73e3c0d; auditSHA24bbdd58906731cf3a93a16b268889a7bc1c48c032d4b08eb22125339f4e04c7; summarySHA55d7f701036fe7304079262056334f2b9dcdaa26f0d0c04d0e986d8a7a4578e4. Intervening mainMenu/saveLayouts/ui-bench/docs not loaded; actual new powerSituations exact hash loaded. All9follow-up/native-proof recovery files101454B independently read back. No frozen13source changes, no CI rerun, no ordinary-flight/phone/visual acceptance. Old CI failure/skipped gate remains historical evidence.
+
 ## Rhea rescued worker Continue delivered, 05:45 UTC
 
 [Draft PR526](https://github.com/coldshalamov/SpaceFace/pull/526) delivers four verified paths at **7b08cfd34e3ef98470cf64d6beecf4dfc3217ec9**, four public commits beginning frome9ddde445e94c9a438790712b595f71613f46c96. Root independently verified the four-path compare and public ancestry; publisher verified all four full remote contents. Source614c960256b9f8fdf42c4c489a6cb2c68269c130; tested0215531fb0e9504dc2c2988c40d347af242904; packaged06a60d546bf8d12c1f4acd26604dd1693aa7ab8; report54c444bcd7d322d788804ba43b1706cf799b88f6.
@@ -71,7 +89,7 @@ Existing rescued worker normalizer converted absent events to0. The two-line gua
 
 Final4fullsource recovery29382B SHA6e0df569b531dad023d75fccbe2d72e1e4d5fbf2cc2acd7398ea2e7565c790d4 and17evidence files343359B independently read back; restoration map7136B SHA4a71dfc2239e3911638ab94ba1f75c34130ca8c065a815efb35104945a94a731. Exact source-only local commit retained privately. Rejected stale-hull fixtures and root duplicate-layered-loader error preserved; direct module run verified22/22. No private ancestry published.
 
-Mastere9ddde differs from testedcec514 only in UI-bench utility/docs, outside loaded closure. CI owner follows PR526 exact head to terminal; no success inferred from queued/no checks. [Full report](https://github.com/coldshalamov/SpaceFace/blob/7b08cfd34e3ef98470cf64d6beecf4dfc3217ec9/design/program/world-depth-2026-10-02/RHEA_WORKER_CONTINUE_2026-10-23.md). All game/sector goals remain open.
+Mastere9ddde differs from testedcec514 only in UI-bench utility/docs, outside loaded closure. PR526 CI39907432057/#5879 is terminal FAILURE. Its included focused gate maps static1job120262492899, but Orchard and Ceres prechecks failed and matrix runner skipped; no static1 artifact. Static2/3 reports each77/310 commands are not this gate's result.31local distinct cases remain valid, not a hosted pass. [Full report](https://github.com/coldshalamov/SpaceFace/blob/7b08cfd34e3ef98470cf64d6beecf4dfc3217ec9/design/program/world-depth-2026-10-02/RHEA_WORKER_CONTINUE_2026-10-23.md). All game/sector goals remain open.
 
 ## Eunomia delivered, 05:31 UTC
 

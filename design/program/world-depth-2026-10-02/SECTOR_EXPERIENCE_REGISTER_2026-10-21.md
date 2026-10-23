@@ -625,3 +625,14 @@ DraftPR526 head7b08cfd34e3ef98470cf64d6beecf4dfc3217ec9 corrects existing rescue
 Ordinary consequence: the returned person offers one remembered thanks through actual hail availability; that acknowledgement survives Continue. Later death is final, not a respawn loophole. Leaving/returning sector state gates return, and original workplace/identity remain. This uses existing assets and owners, adds no income/faction/controller/schema. No placement or lore was fabricated to mask a test gap.
 
 Baseline15/22 vs fixed22/22 plus9existing regressions; real traffic placement/jobs/Save-restored hull/hail owners, supplied casualty/ejection/rescue receipts.31distinct passes are not native combat/rescue flight/full transition/render/performance acceptance. Validzero preserved; already-resaved corruptzero values are not guessed away. Source published and recovery verified; sector and whole-game acceptance remain open.
+
+
+### Helios Choir medical service: interruption and autonomous return, 23 October2026 06:17 UTC
+
+DraftPR528 head d5e1a1da49585dfdba4877280f2efc96bca1db00 retains Last Light/Mercy and the bounded Vesper/Compline cast. Existing repairs, tow-rescue alternatives, handover news/reputation and90sMercy bed stay are unchanged. A local living relief runner pulled outside the existing berth envelope no longer receives45seconds of remote treatment. Her bed/person reservation persists; existing job owner brings her back, then a new uninterrupted stay completes once. Transition-only guidance explains interruption/return. Missing/offscreen/unobservable bodies are not guessed to be displaced. Finite-coordinate/current-map validation also gates first admission.
+
+27shipping/adjacent cases pass, plus3review-only probes. Separate real Rapier/flight/job/economy-tick probe: approach117.683, one injected displacement, autonomous re-entry200.167, departure245.167; same person, no remote completion, no duplicate next beat. This is not player-controlled towing/full-world or native Continue acceptance. Actual existingMule exported geometry inspected and previewed, no new asset or distinct-model count. Published/recoverable is not integrated/accepted; CI#5882 still active.
+
+### Eunomia follow-up, 23 October2026 06:14 UTC
+
+Upstream#525 restores the previously absent import using an inert public onboarding module. Unchanged PR523 now passes53/53 on6756current-source overlay,1619loadedESM inputs verified, including worker transport. The previous worker-startup blocker is resolved, not a current excuse to stop. This does not accept the inert onboarding feature or prove ordinary flight/visual/phone quality. Historical hosted CI remains failed with focused gate included-but-skipped after precheck.
