@@ -20,6 +20,7 @@ import {
   CIRCUIT_STAGE_COUNT,
   CIRCUIT_SURVIVE_TICKS,
   CIRCUIT_TOTAL_ROUNDS,
+  CIRCUIT_VIEW_AHEAD,
   circuitArenaLine,
   circuitBossFor,
   circuitChoiceId,
@@ -437,9 +438,12 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       const zone = round.kind === 'hold' ? lastPlan(h).swarm.circuit.zone : lastPlan(h).swarm.circuit.gate;
       const mark = [...h.state.entities.values()].find((entity) => entity.data && entity.data.circuitMark);
       assert.ok(mark, `${round.kind} plants a beacon on the spot`);
+      assert.equal(mark.physicsBody, false, 'the mark is not a solid body');
+      assert.equal(mark.collides, false);
       assert.ok(Math.hypot(mark.pos.x - zone.x, mark.pos.z - zone.z) < 1, 'the beacon sits on the spot');
-      assert.ok(Math.hypot(h.player.pos.x - zone.x, h.player.pos.z - zone.z) > zone.radius,
-        'the ship is not already standing in the spot');
+      const shipDist = Math.hypot(h.player.pos.x - zone.x, h.player.pos.z - zone.z);
+      assert.ok(shipDist > zone.radius, 'the ship is not already standing in the spot');
+      assert.ok(shipDist + zone.radius <= CIRCUIT_VIEW_AHEAD, 'the whole ring is in the picture the ship sees');
       h.player.pos.x = 0;
       h.player.pos.z = 0;
       killEverything(h);

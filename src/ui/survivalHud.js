@@ -357,8 +357,11 @@ export const survivalHud = {
         // A survive round's clock is the objective itself: the wait IS the win.
         const surviving = this._objectiveKind === 'survive';
         const zoned = this._objectiveKind === 'hold' || this._objectiveKind === 'reach';
-        const mark = zoned && circuitRound
-          ? (this._objectiveKind === 'hold' ? circuitRound.zone : circuitRound.gate)
+        const planned = this._plan && this._plan.swarm && this._plan.swarm.circuit;
+        const mark = zoned
+          ? (this._objectiveKind === 'hold'
+            ? (planned && planned.zone) || (circuitRound && circuitRound.zone)
+            : (planned && planned.gate) || (circuitRound && circuitRound.gate))
           : null;
         const player = st.entities && st.entities.get && st.entities.get(st.playerId);
         const glyph = circuitMarkGlyph(player, mark);

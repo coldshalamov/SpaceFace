@@ -9,8 +9,9 @@ import { OBJECTIVE_WORDS } from '../src/ui/survivalHud.js';
 import { SWARM_STAKES } from '../src/data/swarmStakes.js';
 import { COMBAT_LAB_ARENAS } from '../src/data/combatLabSetups.js';
 import {
-  CIRCUIT_COMMANDER_NAME, circuitChoicesFor, circuitFor, circuitRoundFor,
+  CIRCUIT_COMMANDER_NAME, CIRCUIT_VIEW_AHEAD, circuitChoicesFor, circuitFor, circuitRoundFor,
 } from '../src/systems/survivalCircuit.js';
+import { survivalRewards } from '../src/systems/survivalRewards.js';
 
 const SEED = 4242;
 const ARENA = 'helios_core';
@@ -49,7 +50,7 @@ test('seed 4242: later cohort slots name a different contract, and stage one doe
       const arena = COMBAT_LAB_ARENAS.find((row) => row.id === ARENA);
       const dist = Math.hypot(spot.x - arena.spawnPos.x, spot.z - arena.spawnPos.z);
       assert.ok(dist > spot.radius, `${kind} does not start under the ship`);
-      assert.ok(dist < 700, `${kind} stays in the room the ship is fighting in`);
+      assert.ok(dist + spot.radius <= CIRCUIT_VIEW_AHEAD, `${kind} stays inside the swarm picture`);
     }
   }
   const commander = circuitRoundFor(runAt(11), 11);
@@ -84,5 +85,11 @@ test('seed 4242: elite and challenge raise pressure and purse, and the ordinary 
   assert.ok(elite.swarm.concurrent > base.swarm.concurrent);
   assert.ok(elite.rewards.credits > base.rewards.credits);
   assert.deepEqual(elite.swarm.threats, base.swarm.threats);
+  const ordinaryPay = survivalRewards._creditScale(runAt(5));
+  const elitePay = survivalRewards._creditScale(eliteRun);
+  const challengePay = survivalRewards._creditScale(runAt(5, 'challenge'));
+  assert.equal(elitePay, ordinaryPay * 1.35, 'an elite stage pays the bigger purse on the chips');
+  assert.equal(challengePay, ordinaryPay * 1.6, 'a challenge stage pays the bigger purse on the chips');
+  assert.equal(survivalRewards._creditScale(runAt(1)), ordinaryPay, 'an ordinary round does not raise the purse');
   assert.deepEqual(SWARM_STAKES.map((row) => ({ ...row })), before);
 });

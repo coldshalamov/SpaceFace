@@ -561,7 +561,17 @@ export const survivalRun = {
     const act = (circuit || swarm) ? 0 : actIndexForWave(nextWave);
     // SWARM-08 B5 — the finite journey descriptor for this round, or null for ordinary Swarm,
     // the older Boss Circuit, and Circuit Overtime (waves 17+ plan as ordinary Swarm).
-    const journey = swarm && !circuit ? circuitRoundFor(run, nextWave) : null;
+    // The ring belongs to the fight the ship is in. A later stage changes the arena
+    // id and does not move the ship, so a catalog spawn would leave the ring behind.
+    const entities = this.state && this.state.entities;
+    const player = entities && this.state.playerId != null && typeof entities.get === 'function'
+      ? entities.get(this.state.playerId)
+      : null;
+    const origin = player && player.alive !== false && player.pos
+      && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z)
+      ? { x: player.pos.x, z: player.pos.z }
+      : null;
+    const journey = swarm && !circuit ? circuitRoundFor(run, nextWave, origin) : null;
     const plan = planWave({
       seed: run.seed,
       arenaId: run.arenaId,

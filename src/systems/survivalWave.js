@@ -538,7 +538,11 @@ export const survivalWave = {
     const existing = this._circuitMarkId != null && entities && typeof entities.get === 'function'
       ? entities.get(this._circuitMarkId)
       : null;
-    if (existing && existing.alive !== false) return;
+    const onSpot = existing && existing.alive !== false && existing.pos
+      && existing.collides === false && existing.physicsBody === false
+      && Math.hypot(existing.pos.x - spot.x, existing.pos.z - spot.z) < 1;
+    if (onSpot) return;
+    if (existing) this._clearCircuitMark();
     this._circuitMarkId = null;
     const spawn = this.helpers && this.helpers.spawnEntity;
     if (typeof spawn !== 'function') return;
@@ -549,6 +553,7 @@ export const survivalWave = {
       radius: 8,
       mass: 1,
       collides: false,
+      physicsBody: false,
       hull: 1,
       hullMax: 1,
       data: {
