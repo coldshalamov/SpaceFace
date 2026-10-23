@@ -84,6 +84,8 @@ Current save version: `19`
 - `tensionDirector`
 - `regionalEcology`
 - `stationServices`
+- `mail`
+- `calendar`
 - `onboarding`
 - `encounterDirector`
 - `worldNews`
@@ -169,6 +171,7 @@ Current save version: `19`
 | `$.bombs` | object | {} |
 | `$.borrowedVoice` | null | null |
 | `$.bracket` | object | {} |
+| `$.calendar` | object | {} |
 | `$.capitalBoss` | null | null |
 | `$.careerLadders` | object | {} |
 | `$.careerOrigins` | object | {} |
@@ -268,6 +271,7 @@ Current save version: `19`
 | `$.lineProgression` | object | {} |
 | `$.livingPoiBehaviors` | object | {} |
 | `$.lossLedger` | object | {} |
+| `$.mail` | object | {} |
 | `$.mercyService` | null | null |
 | `$.meta` | object | {} |
 | `$.meta.createdAt` | string | schema-fixture |

@@ -22,7 +22,9 @@ import { createDomainDiffer, applyDomainPathUpdate } from '../scripts/lib/simRea
 // v16: 7c46b0ced576f82b9bb1b28347a9c16e597945fc (native schema 4)
 // v17: ffb7dff92b8be65fef65d231488881670c998ae0 (native schema 4)
 // v18: current producer at capture; regeneration/provenance is beside the fixtures.
-const versions = [15, 16, 17, CURRENT_VERSION];
+// v19+: test/fixtures/saves/build-frozen.mjs migrates the v18 capture through the real ladder.
+// Every committed capture stays in the matrix after a schema bump; CURRENT_VERSION is added if new.
+const versions = [...new Set([15, 16, 17, 18, CURRENT_VERSION])];
 const massPerUnit = new Map(COMMODITIES.map(item => [item.id, item.massPerU]));
 const fixtureText = (version, attached) => readFileSync(new URL(
   `./fixtures/saves/continue-v${version}-${attached ? 'tether' : 'free'}.json`, import.meta.url), 'utf8');
