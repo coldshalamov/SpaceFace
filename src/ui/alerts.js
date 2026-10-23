@@ -18,6 +18,7 @@ import { BINDINGS, promptLabel } from './bindings.js';
 import { stationName } from './sectorLawPresenter.js';
 import { SECTORS } from '../data/sectors.js';
 import { hazardLanguageFor } from '../data/hazardLanguage.js';
+import { playerSubsystemNotice } from '../combat/subsystems.js';
 import {
   WORLD_FEEL_SEAM_IDS,
   admitWorldFeelSeam,
@@ -566,6 +567,16 @@ export function createAlerts(ctx) {
 
   // incoming fire on the player — transient one-shots → the one-voice floor ONLY (no parallel pill
   // or toast). shield-down is listed in VOICE_OWNED_ALERT_TEXTS so toasts.js drops any mirror.
+  bus.on('combat:subsystemDisabled', (p) => {
+    if (!p || p.targetId !== (ctx.state && ctx.state.playerId)) return;
+    const text = playerSubsystemNotice('disabled', p.subsystemId);
+    if (text) announce({ key: 'subsystem-' + p.subsystemId, sev: 'danger', text, ttl: 3 });
+  });
+  bus.on('combat:subsystemEnabled', (p) => {
+    if (!p || p.targetId !== (ctx.state && ctx.state.playerId)) return;
+    const text = playerSubsystemNotice('enabled', p.subsystemId);
+    if (text) announce({ key: 'subsystem-' + p.subsystemId, sev: 'info', text, ttl: 2.5 });
+  });
   bus.on('combat:damage', (p) => {
     if (!p || !p.isPlayer) return;
     if (p.brokeShield) announce({ key: 'shield-down', sev: 'danger', text: 'SHIELDS DOWN', ttl: 3 });

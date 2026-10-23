@@ -271,6 +271,53 @@ export function damageSubsystem(context, entity, runtime, subsystemId, incomingD
   return { subsystemId, applied, overflow, before, after: subsystem.health };
 }
 
+const SUBSYSTEM_NOTICE = Object.freeze({
+  subsystem_drive: Object.freeze(['Drive is out', 'Drive is back']),
+  subsystem_weapon: Object.freeze(['Guns are out', 'Guns are back']),
+  subsystem_sensor: Object.freeze(['Sensors are out', 'Sensors are back']),
+  subsystem_tether_spool: Object.freeze(['Line spool is out', 'Line spool is back']),
+  subsystem_power: Object.freeze(['Power is out', 'Power is back']),
+});
+
+/** Words for the player's own part dying or knitting back. Other hulls stay quiet. */
+export function playerSubsystemNotice(kind, subsystemId) {
+  const row = SUBSYSTEM_NOTICE[subsystemId];
+  if (!row) return null;
+  return kind === 'enabled' ? row[1] : row[0];
+}
+
+/**
+ * Knit one hull's field-repairable parts by the rate already on the def.
+ * A zero rate (a clamp, a last-argument row) stays broken. Docked hulls wait
+ * for the yard. The pending enable from the previous tick is applied first.
+ */
+export function stepFieldRepair(context, entity, runtime) {
+  if (!context || !entity || entity.alive === false || !runtime || !runtime.subsystems) {
+    return { healed: 0, enabled: false };
+  }
+  const state = context.state;
+  if (state && state.ui && state.ui.docked) return { healed: 0, enabled: false };
+  if (entity.flags && entity.flags.docked) return { healed: 0, enabled: false };
+  const enabled = applyPendingSubsystemTransitions(context, entity, runtime);
+  const catalog = context.catalog;
+  let healed = 0;
+  const ids = Object.keys(runtime.subsystems);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const row = runtime.subsystems[id];
+    if (!row) continue;
+    const max = Number(row.maxHealth);
+    const health = Number(row.health);
+    if (!(max > 0) || !(health < max)) continue;
+    const def = (catalog && catalog.subsystems && catalog.subsystems.get(id)) || row.def;
+    const rate = def && def.repair ? Number(def.repair.fieldRatePerTick) : 0;
+    if (!(rate > 0)) continue;
+    const result = repairSubsystem(context, entity, runtime, id, rate, 'field_repair');
+    healed += result.applied || 0;
+  }
+  return { healed, enabled: !!enabled };
+}
+
 export function repairSubsystem(context, entity, runtime, subsystemId, amount, reason = 'repair') {
   const subsystem = runtime && runtime.subsystems && runtime.subsystems[subsystemId];
   if (!subsystem || !(amount > 0)) return { applied: 0, health: subsystem ? subsystem.health : 0 };

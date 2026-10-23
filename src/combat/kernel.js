@@ -6,7 +6,7 @@ import { occupantGenerationOf } from '../core/entity.js';
 import { createStatusService } from './statuses.js';
 import { applyMomentumSink } from './momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID, SHIPJACK_SHUTDOWN_STATUS_ID, SHIPJACK_SHUTDOWN_STATUS_DEF } from '../data/combatDefs.js';
-import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSubsystem, damageSubsystem } from './subsystems.js';
+import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSubsystem, damageSubsystem, stepFieldRepair } from './subsystems.js';
 import { isBlackFlagAdventure } from '../shipjack/model.js';
 import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
 import { assertValidCombatCatalog } from './validate.js';
@@ -227,6 +227,7 @@ export function createCombatKernel(ctx, options = {}) {
     attachments,
     statuses,
     routeDamage,
+    stepPlayerFieldRepair,
     prePhysics,
     postPhysics,
     reconcilePhysicsAttachments,
@@ -410,6 +411,17 @@ export function createCombatKernel(ctx, options = {}) {
     if (identityTaken) return;
     removeCombatantRuntime(state, entityId);
     appendCombatTrace(state.combat, state.tick, 'combat.entityRemoved', { targetId: entityId });
+  }
+
+  function stepPlayerFieldRepair() {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player) return null;
+    const book = state.combat && state.combat.entities;
+    const runtime = book && book[String(player.id)];
+    if (!runtime) return null;
+    return stepFieldRepair(attachmentContext, player, runtime);
   }
 
   function repair(entityId, subsystemId, amount, reason = 'repair') {

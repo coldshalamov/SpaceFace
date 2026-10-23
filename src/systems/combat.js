@@ -1424,6 +1424,9 @@ export const combat = {
 
   update(dt, state) {
     ensureCombatRuntime(this);
+    if (this.kernel && typeof this.kernel.stepPlayerFieldRepair === 'function') {
+      this.kernel.stepPlayerFieldRepair();
+    }
     this._updateChargeCells(state);
     resetCombatDiagnostics(this._diag);
     state.combatRuntime = state.combatRuntime || {};
