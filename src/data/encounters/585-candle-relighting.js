@@ -11,6 +11,7 @@
 // through it.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { sectorGlobalOrigin } from '../../data/sectorCoordinates.js';
+import { modelTruthPlanarRadius } from '../../data/modelTruth.js';
 
 export const encounterOrder = 585;
 
@@ -21,8 +22,64 @@ export const encounterOrder = 585;
 // always clear neighbors — two pinned windows must never overlap-adjacent within a sector-day.
 const EARLY_WINDOW_S = deepFreeze([540, 810]);
 const WALK_DEADLINE_S = 300;
-const ARRIVAL_RANGE_WU = 110;
-const CRUISE_WU_S = 26;
+const ARRIVAL_RANGE_WU = 36; // two native HOLD arrival radii, maintained working vicinity
+const SETTLED_SPEED_WU_S = 4; // native HOLD brake threshold, not perfectly stationary
+const SERVICE_SECONDS = 8;
+const ORIGINAL_CAST = new WeakMap(); // transient identity only; live encounters are not saved
+const MEMORIAL_RADIUS_WU = 100; // sectorAnchors.js: the existing Candle Fleet body
+
+function hullRadius(entity) {
+  // Include the measured adopted skin as well as the gameplay radius; specialist hulls
+  // need not fit inside their archetype's small legacy collision circle.
+  return Math.max(1, Number(entity?.radius) || 0, modelTruthPlanarRadius(entity));
+}
+
+function workMarks(ids, state, memorial, direction) {
+  const radius = Math.max(...ids.map((id) => hullRadius(state.entities.get(id))));
+  const setback = MEMORIAL_RADIUS_WU + radius + ARRIVAL_RANGE_WU + 40;
+  const spacing = 2 * (radius + ARRIVAL_RANGE_WU) + 40;
+  const slots = [0, -1, 1, -2, 2];
+  // A near-side apron, not a ring through the memorial: the incoming column fans out
+  // before the body. The outer lamps never have to cross the dark plinth to find a mark.
+  return ids.map((id, index) => ({
+    id,
+    x: memorial.x - direction.x * setback - direction.z * slots[index] * spacing,
+    z: memorial.z - direction.z * setback + direction.x * slots[index] * spacing,
+  }));
+}
+
+function approachMark(entity, mark) {
+  if (!entity?.pos) return;
+  const data = entity.data || (entity.data = {});
+  const ai = data.ai || (data.ai = {});
+  ai.passive = true;
+  ai.allowPassiveManeuver = true;
+  ai.roe = 'hold_fire';
+  ai.activity = {
+    kind: 'hail_hold', reason: 'encounter:candle_relighting',
+    anchor: { x: mark.x, z: mark.z }, anchorVelocity: { x: 0, z: 0 },
+    targetId: null, preferredRange: 0,
+  };
+  const intent = data.intent || (data.intent = {});
+  intent.tx = mark.x; intent.tz = mark.z; intent.fire = false;
+}
+
+function settle(d, live, state, outcome) {
+  if (live.data.relightingResolved) return;
+  live.data.relightingResolved = true;
+  // The director schedules cleanup by numeric ids. Remove recycled identities from this
+  // encounter's list before handing it back, so no replacement receives a despawn order.
+  const originals = ORIGINAL_CAST.get(live) || [];
+  for (const id of [...(live.ids || [])]) {
+    if (originals.includes(state.entities.get(id))) continue;
+    // Retire only this encounter's stale membership through its existing owner. The
+    // normal entity:destroyed listener owns active-budget cleanup; do not forge that event.
+    d._noteLiveGone(state.encounterDirector, live, id, {});
+  }
+  // The director already saves its bounded receipt list. No new story ledger, reward,
+  // relit-candle counter, or restoration promise for the transient cast.
+  return d.resolve(live, outcome, { speak: true });
+}
 const WITNESS_RANGE_WU = 420;
 
 // The memorial's authored sector-local anchor (sectorAnchors.js); Helios is the one sector
@@ -36,32 +93,9 @@ function memorialPos() {
 function bearingFrom(from, to) {
   const dx = to.x - from.x;
   const dz = to.z - from.z;
-  const distance = Math.hypot(dx, dz) || 1;
+  const distance = Math.hypot(dx, dz);
+  if (distance < 1) return { x: 1, z: 0 };
   return { x: dx / distance, z: dz / distance };
-}
-
-// Same intent shape the lived vignettes write: passive + hold-fire + a transit anchor with a
-// matched velocity, so the shared tracker walks the hull instead of braking it to a stop.
-function walkIntent(entity, tx, tz, ux, uz) {
-  if (!entity || !entity.pos) return;
-  const data = entity.data || (entity.data = {});
-  const ai = data.ai || (data.ai = {});
-  ai.passive = true;
-  ai.allowPassiveManeuver = true;
-  ai.roe = 'hold_fire';
-  ai.activity = {
-    ...ai.activity,
-    kind: 'transit',
-    reason: 'encounter:candle_relighting',
-    anchor: { x: tx, z: tz },
-    anchorVelocity: { x: ux * CRUISE_WU_S, z: uz * CRUISE_WU_S },
-    targetId: null,
-    preferredRange: 0,
-  };
-  const intent = data.intent || (data.intent = {});
-  intent.tx = tx;
-  intent.tz = tz;
-  intent.fire = false;
 }
 
 const CAST = deepFreeze([
@@ -95,66 +129,54 @@ export const runtime = Object.freeze({
     }));
     const ids = d.spawnShips(live, live.plan.ships) || [];
     if (ids.length < CAST.length) return d.abort(live, 'spawn_failed');
+    ORIGINAL_CAST.set(live, ids.map(id => state.entities.get(id)));
     live.data.leadId = ids[0];
     live.data.memorial = memorial;
+    live.data.workMarks = workMarks(ids, state, memorial, dir);
     live.phase = 'walk';
-    // The column starts walking the frame it spawns in; the first carrot goes out now so the
-    // hulls never sit on the director's telegraph hold. Same per-hull bearing the tick uses.
-    for (const id of ids) {
-      const ship = state.entities.get(id);
-      if (!ship || !ship.pos) continue;
-      const own = bearingFrom(ship.pos, memorial);
-      walkIntent(ship, ship.pos.x + own.x * 200, ship.pos.z + own.z * 200, own.x, own.z);
-    }
+    for (const mark of live.data.workMarks) approachMark(state.entities.get(mark.id), mark);
     // The one primary line (one-voice law): who they are, where they are going, why follow.
     d.say(live, 'info',
-      'FLEET TENDERS: Relight run — twenty-four candles out to the Fleet. Walk the line if you like.',
+      'FLEET TENDERS: Relight run. We keep twenty-four lamps for the convoy; the last plinth stays dark. Walk with us.',
       null, { literal: true, primary: true });
   },
 
   tick(d, live, state, now) {
-    if (live.phase === 'done') return;
-    const memorial = live.data.memorial || memorialPos();
-    const ents = d.entsOf(live);
-    if (!ents.length) return d.resolve(live, 'lost', { speak: false });
-    const lead = live.data.leadId != null ? state.entities.get(live.data.leadId) : ents[0];
-    const walker = lead && lead.alive !== false && lead.pos ? lead : ents.find((e) => e.pos) || null;
-    if (!walker) return d.resolve(live, 'lost', { speak: false });
-    const dir = bearingFrom(walker.pos, memorial);
-    // Carrot a fixed distance ahead of each hull so the shared tracker keeps them walking at
-    // the cruise pace instead of decelerating onto a static point.
-    for (const ship of ents) {
-      if (!ship || !ship.pos) continue;
-      walkIntent(ship, ship.pos.x + dir.x * 200, ship.pos.z + dir.z * 200, dir.x, dir.z);
+    if (live.phase === 'done' || live.data.relightingResolved) return;
+    const marks = live.data.workMarks;
+    // Older in-memory records never imply that an unobserved shift finished. Saves omit
+    // live encounters entirely; do not counterfeit a replacement column here.
+    if (!Array.isArray(marks) || marks.length !== CAST.length) return settle(d, live, state, 'interrupted');
+    const original = ORIGINAL_CAST.get(live);
+    if (!original) return settle(d, live, state, 'interrupted');
+    let present = 0;
+    let settled = 0;
+    for (const [index, mark] of marks.entries()) {
+      const ship = state.entities.get(mark.id);
+      if (!ship || ship !== original[index] || ship.alive === false || !(ship.hull > 0) || !ship.pos) continue;
+      present++;
+      approachMark(ship, mark);
+      const speed = Math.hypot(ship.vel?.x ?? Infinity, ship.vel?.z ?? Infinity);
+      if (Math.hypot(ship.pos.x - mark.x, ship.pos.z - mark.z) <= ARRIVAL_RANGE_WU
+        && speed <= SETTLED_SPEED_WU_S) settled++;
     }
-    const dx = memorial.x - walker.pos.x;
-    const dz = memorial.z - walker.pos.z;
-    const arrived = (dx * dx + dz * dz) <= ARRIVAL_RANGE_WU * ARRIVAL_RANGE_WU;
-    if (!arrived && now < (live.deadlineAt || 0)) return;
-
-    const player = d.player && d.player();
-    let witnessed = false;
-    if (arrived && player && player.pos) {
-      const px = memorial.x - player.pos.x;
-      const pz = memorial.z - player.pos.z;
-      witnessed = (px * px + pz * pz) <= WITNESS_RANGE_WU * WITNESS_RANGE_WU;
-    }
-    if (!witnessed) {
-      d.emit('comms:log', {
-        from: 'FLEET TENDERS',
-        text: arrived
-          ? 'The lamps reach the Fleet and thin out. The dark plinth keeps its hour.'
-          : 'The relight run walks on without you. The candles will be lit either way.',
-        kind: 'encounter',
-      });
+    if (present < CAST.length) return settle(d, live, state, present ? 'interrupted' : 'lost');
+    if (settled === CAST.length) {
+      if (!Number.isFinite(live.data.serviceStartedAt)) live.data.serviceStartedAt = now;
+      live.phase = 'service';
+      if (now - live.data.serviceStartedAt >= SERVICE_SECONDS
+        && live.data.serviceStartedAt + SERVICE_SECONDS <= live.deadlineAt) {
+        const memorial = live.data.memorial;
+        const player = d.player && d.player();
+        const witnessed = player?.pos && Math.hypot(player.pos.x - memorial.x,
+          player.pos.z - memorial.z) <= WITNESS_RANGE_WU;
+        return settle(d, live, state, witnessed ? 'witnessed' : 'relit');
+      }
     } else {
-      d.emit('comms:log', {
-        from: 'FLEET TENDERS',
-        text: 'Twenty-four lit. The plinth stays dark. Bring a scanner close and it answers.',
-        kind: 'encounter',
-      });
+      delete live.data.serviceStartedAt;
+      live.phase = 'walk';
     }
-    return d.resolve(live, witnessed ? 'witnessed' : arrived ? 'relit' : 'walked_on', { speak: false });
+    if (now >= live.deadlineAt) return settle(d, live, state, settled ? 'partial' : 'walked_on');
   },
 });
 
@@ -189,5 +211,13 @@ export default defineEncounter(trigger, {
   motive: 'memorial_shift',
   engagementTrigger: 'hailed',
   noCombat: true,
-  primaryLine: 'FLEET TENDERS: Relight run — twenty-four candles out to the Fleet. Walk the line if you like.',
+  receipts: {
+    witnessed: 'FLEET TENDERS: Twenty-four tended. The last plinth stays dark. Bring a scanner close and it answers.',
+    relit: 'FLEET TENDERS: The column completed its watch at the Fleet. The last plinth stays dark.',
+    partial: 'FLEET TENDERS: Some lamps reached their marks. The watch is unfinished; we cannot call it lit.',
+    walked_on: 'FLEET TENDERS: Still short of the Fleet. The relight watch is delayed, not finished.',
+    interrupted: 'FLEET TENDERS: A tender is missing. Break off the relight watch; we are not all here.',
+    lost: 'FLEET TENDERS: The column is gone. No completed relight watch was recorded.',
+  },
+  primaryLine: 'FLEET TENDERS: Relight run. We keep twenty-four lamps for the convoy; the last plinth stays dark. Walk with us.',
 });
