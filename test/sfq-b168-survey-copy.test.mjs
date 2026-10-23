@@ -21,7 +21,7 @@ import {
   serializeAlienEcologyState,
   tickAlienEcology,
 } from '../src/systems/alienEcology.js';
-import { commsToastSpec } from '../src/ui/floatingText.js';
+import { discoveryCommsPayload } from '../src/ui/comms.js';
 
 const dock = ALIEN_SITES.breathing_dock;
 const deep = ALIEN_SITES.harvest_deep;
@@ -127,11 +127,11 @@ test('one heat note sells once and the page stays', () => {
     note: HEAT_TRIAL_NOTE, edge: true,
   });
   for (const line of [COPY_SOLD, COPY_STALE]) {
-    const notice = commsToastSpec({ from: 'Ash Cache', kind: 'ecology', text: line }).text;
+    const notice = discoveryCommsPayload({ from: 'Ash Cache', kind: 'ecology', text: line }).text;
     assert.equal(notice.includes('...'), false, notice);
   }
-  const sold = commsToastSpec({ from: 'Ash Cache', kind: 'ecology', text: COPY_SOLD }).text;
-  const stale = commsToastSpec({ from: 'Ash Cache', kind: 'ecology', text: COPY_STALE }).text;
+  const sold = discoveryCommsPayload({ from: 'Ash Cache', kind: 'ecology', text: COPY_SOLD }).text;
+  const stale = discoveryCommsPayload({ from: 'Ash Cache', kind: 'ecology', text: COPY_STALE }).text;
   assert.equal(sold.includes('You still have it'), true);
   assert.equal(stale.includes('pays nothing'), true);
 });

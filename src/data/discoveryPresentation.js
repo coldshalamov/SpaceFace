@@ -48,9 +48,12 @@ export function namesForTheDead(state) {
     const name = fact.subject?.name;
     if (fact.stage !== 'kill' || typeof name !== 'string' || /^(an? (unnamed|unknown) |unknown|unnamed|your ship$|a ship$)/i.test(name)) continue;
     const key = `${fact.subject?.key ?? name}:${fact.id}`;
+    const place = fact.sectorName || (typeof fact.sectorId === 'string'
+      ? fact.sectorId.replace(/^sector_/, '').replace(/_/g, ' ').replace(/\b[a-z]/g, letter => letter.toUpperCase())
+      : 'an unrecorded place');
     names.set(key, { id: fact.id, name, at: fact.t || 0,
-      place: fact.sectorName || fact.sectorId || 'an unrecorded place', citation: fact.id,
-      body: `${name}. Lost in ${fact.sectorName || fact.sectorId || 'an unrecorded place'}. The record names a lost hull; it makes no claim about who escaped.` });
+      place, citation: fact.id,
+      body: `${name}. Lost in ${place}. The record names a lost hull; it makes no claim about who escaped.` });
   }
   return [...names.values()].sort((a, b) => b.at - a.at || String(a.id).localeCompare(String(b.id))).slice(0, 32);
 }

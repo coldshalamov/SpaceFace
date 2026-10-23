@@ -46,6 +46,8 @@ import {
   faunaOrchardFogName, faunaBellInReach,
 } from '../data/alienFauna.js';
 import { resolveFaunaApproachDrive } from '../data/faunaMotionRead.js';
+import { faunaFamilyId, faunaFamily } from '../data/discoveryPresentation.js';
+import { tickDiscoverySound } from './discoverySound.js';
 import { noteHeatTrial } from '../data/heatProximityTrial.js';
 import { normalizeFoodWeb, stepFoodWeb } from '../data/faunaFoodWeb.js';
 import { echoApplies, stepEchoIndex, ECHO_REACH } from '../data/faunaRouteEcho.js';
@@ -1056,19 +1058,32 @@ export function handleAlienEcologyEvent(world, type, payload) {
       const origin = payload.pos;
       const radius = Math.max(0, Number(payload.radius) || 0);
       let count = 0;
+      const ae = ensureAlienEcologyState(state);
+      let filed = 0;
       for (const ent of indexedTypeScan(state, 'fauna')) {
         const eco = ent && ent.data && ent.data.ecology;
         if (!eco || ent.alive === false || eco.aggregate || eco.disguised || !ent.pos) continue;
         const siteDef = eco.siteId && ALIEN_SITES[eco.siteId];
-        if (siteDef && siteDef.nursery) continue;
         const species = faunaSpeciesById(eco.speciesId);
         const dist = Math.hypot(ent.pos.x - origin.x, ent.pos.z - origin.z);
-        if (dist > radius || !faunaScanFlinch(species, dist)) continue;
+        if (species && radius > 0 && dist <= radius) {
+          const ledger = ae.taxonomy.scannedSpecies ||= {};
+          if (!ledger[species.id]) {
+            ledger[species.id] = { at: state.simTime || 0, sectorId: state.world?.currentSectorId,
+              family: faunaFamilyId(species.id) };
+            setRevelation(state, 2);
+            filed += 1;
+            world.bus.emit('comms:log', { from: 'Field Notes', kind: 'ecology',
+              text: `${species.name} — ${faunaFamily(species.id).name}. ${species.note} Behaviour page filed in Codex / Catalog / Xenofauna.` });
+          }
+        }
+        if (siteDef?.nursery || dist > radius || !faunaScanFlinch(species, dist)) continue;
         eco.flinchUntil = (Number(state.simTime) || 0) + 4;
         eco.fleeFrom = { x: origin.x, z: origin.z };
         setDrive(eco, 'flee');
         count += 1;
       }
+      if (filed) { refreshAlienLabels(world); toast('Field Notes filed — the behaviour pages are in your Codex.', 'discovery', 5); }
       if (count > 0) toast('The veil rays flinch — the scan lights their membranes.', 'info', 4);
       break;
     }
@@ -1332,6 +1347,7 @@ export function tickAlienEcology(world, dt) {
   }
   const fauna = faunaCache.fauna;
   const shepherds = faunaCache.shepherds;
+  tickDiscoverySound(world, fauna, 'fauna', player, Number(state.simTime) || 0);
   // Note: no early return on empty fauna — vignettes, tolls, and relay pulses still fire
   // in contaminated sectors whose cast is empty (falseFauna sites, harvested-out sites).
 
@@ -2602,7 +2618,12 @@ export function deserializeAlienEcologyState(state, data) {
   if (data.chartFindings && typeof data.chartFindings === 'object') {
     ae.chartFindings = JSON.parse(JSON.stringify(data.chartFindings));
   }
-  if (data.taxonomy && typeof data.taxonomy === 'object') Object.assign(ae.taxonomy, data.taxonomy);
+  if (data.taxonomy && typeof data.taxonomy === 'object') {
+    Object.assign(ae.taxonomy, data.taxonomy);
+    // An older archive's global evidence was already earned. Do not let the fresh state's
+    // empty per-species bag silently lock those saved pages on Continue.
+    if (!Object.hasOwn(data.taxonomy, 'scannedSpecies')) delete ae.taxonomy.scannedSpecies;
+  }
   if (data.sites && typeof data.sites === 'object') {
     for (const [siteId, rec] of Object.entries(data.sites)) {
       if (!rec || typeof rec !== 'object') continue;
