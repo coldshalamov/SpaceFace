@@ -12,11 +12,8 @@
 
 | R-5a3c129 | 5a3c1298f0 | Rows 396/397/398/426/431/460 world-answers + station: ending presence, front flips, captain roster, Coldburn Rey, arrival, cast memory | Re-check the save/load round-trip of the four new serializables — captainRoster and coldburnRey (traffic serialize), standingOrders/captainOrderCycles (missions serialize), stationContactCounters deed-dedup flags — confirm a mid-session save restores each without double-firing receipts, and that a conflict:flip landing between two sectors cannot re-garrison pickets at the wrong gate | OPEN |
 
-| R-94dca2f | 94dca2f4c6 | Row 493: hold a power key to preview what it moves; let go to use it | Re-check that the preview stays read-only and truthful: holding each of the five keys must change no sim state (queryPhysicalBodies readOnly, view copies; a dormant field rock gains no physicsBody), and confirm the catch-up rule in input._resolvePowerFire (a queued second press, or a key press on an open grip, fires the earlier grip) cannot double-fire one physical press when a pad edge and a key edge land on the same update | OPEN |
-
 | R-187daf8 | 187daf8fa6 | Rows 493/496/502/477: held-key power preview, plain-verb HUD, LOG physics narrator, roster job phases | Re-check `powerPreviewPlan` determinism and cap: a held power must outline ≤24 bodies with no per-frame allocation, and the shove cone must exclude bodies behind the hull; also confirm `physicsLogSilent` stays quiet across a save/load inside a terminal mode | OPEN |
 
-| R-579d9e3 | 579d9e319 | Rows 490/491/492 fight-read: role engine glows, reversal governor, latch rim ring | Re-check that the reversal governor cannot lock a ship into a stale committed arc — a denied reversal holds `runtime.lastDesiredUnit` for up to 150 ticks, so confirm a target that crosses behind the ship mid-hold still gets re-approached on the next allowed reversal and that obstacle/emergency lanes always exempt | OPEN |
 | R-pulse | HEAD | pulse rows 433-441: signs, mail, codex, watches/festivals, roaming stories | Re-check worldClock's once-per-transition announcer across save/load — a saved mid-watch game must not re-speak the watch it already announced, and the dockingSessionKey fix must not reset the ad deck when lastDock exists | OPEN |
 
 | R-law-trade | HEAD | faction-law-trade rows 513-531: mass-signature stealth + 6 faction systems, 7 encounters | Re-check massSignature.js's sensor model: mass shadows and cold-coast must not leak through the scale-barge sweep — confirm a body inside a mass shadow still evades the Weighing sweep ring and decoy spoof only retargets heat-seekers, never fixed contacts | OPEN |
@@ -26,18 +23,6 @@
 | R-1edfe57 | 1edfe57623 | rock-core rows 486/487/509/510/511: substances, ladder bedrock, pack density, mass hit-stop | Re-check _ensureRockLadderBedrock: ladder boulders pin at golden-angle ring positions with zero rng, but confirm a field whose authored boulders already exceed ROCK_LADDER_MIN_PER_TIER on a band never double-spawns, and that rockTierForRadius band cutoffs (38/24/14/6) agree with the census tool | OPEN |
 
 | R-b8eaa2e | b8eaa2e5dc | glass rows 474/494: danger-quiet, presets, bingo fuel, release read, D240 tier gate | Re-check admitReceipt's flightGlassNever gate: the debug-stat regex (/[··].*·|VULN|[A-Z]—/) may catch legitimate receipt text containing an em-dash or two middots — confirm ordinary receipts like sortie tallies and faction lines still admit | OPEN |
-
-| R-7657b6e | 7657b6e63 | Grudge roe restore no longer disarms live foreign postures | Re-check that _endNpcGrudge's ownership proof (retaliationTargetId or activity reason === NPC_GRUDGE_REASON, non-null targetId, captured before restores, combat lock excluded) cannot mistake a grudge still owned by the record for a foreign takeover — i.e. that a grudge whose channels are still its own still restores the prior roe on expiry | OPEN |
-
-| R-e82cd26 | e82cd2668 | Row 393 AL-FIGHT-3: mass kills spill latchable charge cells | Re-check that a cell birthed from a whip kill can never be credited twice across a save/load boundary — the WeakSet claim resets on save:loaded while the entity round-trips only when attachment-retained, so confirm no re-collect path exists for a restored-then-detached cell | OPEN |
-
-| R-900186b | 900186b08 | Row 453 GOLD-CABINET: swarm cabinet attract tape, initials, local board, run card | Re-check that a remount/dispose mid-initials-entry cannot double-settle a run into the cabinet — the settle latch is cabinetEntryId on the result plus terminal-phase gating, and the initials band re-reads storage on remount | OPEN |
-
-| R-36df771 | 36df7712b | Row 403 AL-LONG-5: drone composer, warm flight restore, reaction slot truth | Re-check that a drone saved mid-INTERRUPT (template flee active over a custom loop) restores the right programMotion — the interrupt path clears g.programMotion via clearTemplate, so confirm no save writes a stale warm record for an interrupted group | OPEN |
-
-| R-c133f86 | c133f8670 | Row 481 (partial): arena kill words per swarm room | Re-check that a run saved mid-Circuit and restored in a different arena resumes the right vocabulary — run.arenaId is serialized but confirm the restored run's next kill reads the restored arena, not the default table | OPEN |
-
-| R-ecca50c | ecca50ccc | Row 429 (partial): stranger-readable HUD + wreck concealment | Re-check that concealment can't hide a LIVE ship: isWreckLike covers type wreck/fx/prop-likes — confirm no production path stamps kind/poiType/salvage on a live ship entity, and that ghost-ship 'unknown'→'ship' kind cycles stay unaffected | OPEN |
 
 # Landed review
 
