@@ -36,6 +36,12 @@ import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from './massSeed.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { lineSweepContact } from './masslineImpacts.js';
+import {
+  lineClassForIndex,
+  lineClassForTonnage,
+  normalizeLineProgression,
+  stampLineRecord,
+} from '../data/lineProgression.js';
 
 import { createCadenceWinch, stepCadenceWinch, readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
 // FB-013 — the copy owner for first-use lines. Pure data (no DOM, no Three.js), the same module
@@ -115,6 +121,11 @@ const NPC_ACE_BRIDLE_CUT_PHASES = new Set([
   'engine_flare', 'strike', 'commit', 'control', 'anchor_hold', 'broadside_fire', 'screen_hold', 'fire_window',
 ]);
 const STRAIN_EVENT_INTERVAL_S = 0.2;
+const LINE_OVERCLASS_HEAT_S = 7;
+const LINE_OVERCLASS_TURN_MIN = 0.45;
+const LINE_OVERCLASS_REEL_MIN = 0.28;
+const LINE_OVERCLASS_SNAP_GRACE_S = 2.5;
+const LINE_EXACT_MASS_T = 12.4;
 const RELATCH_COOLDOWN_S = 0.25;   // after cut/break — prevents same-press ghost re-latches
 const TAP_CUT_DELAY_S = 0.22;       // legacy direct-action path: hold becomes reel, tap becomes cut
 const CAPTURE_SLACK_S = 0.1;
@@ -236,6 +247,7 @@ export const tetherGameplay = {
     this._sweepCommitScratch = null;
     this._snag = null;
     this._snagMirror = null;
+    this._lineHold = null;
     this._snagScratch = [];
     this._snagQueryCenter = { x: 0, z: 0 };
     this._bridleAdoptionPending = true;
@@ -3335,7 +3347,11 @@ export function acquisitionDenialReason(entity, playerId) {
   const siteRole = entity.data?.role;
   if (siteRole === 'world_site_component' || siteRole === 'world_site_collision') return 'site-machinery';
   if (entity.data?.masslineTetherable === false || entity.flags?.masslineTetherable === false) return 'not-tetherable';
-  if (TRANSIENT_NON_TETHERABLE_TYPES.has(entity.type)) return 'not-tetherable';
+  // The mirror of isAttachable's gates includes its explicit-flag branch (AL-HF-07): a body the
+  // publish-eligibility path admits — the L torpedo — must never be quoted as not-tetherable.
+  const explicitlyTetherable = entity.data?.masslineTetherable === true
+    || entity.flags?.masslineTetherable === true;
+  if (!explicitlyTetherable && TRANSIENT_NON_TETHERABLE_TYPES.has(entity.type)) return 'not-tetherable';
   return 'target-lost';
 }
 
