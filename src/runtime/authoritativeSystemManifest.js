@@ -76,7 +76,9 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // transition announcer — both slow observers on the calendar clock.
   // worldPressure (§34 rows 520–523): the tide/gate-audit/slow-gray owner — reads
   // settled aftermath + understory facts, writes only state.worldPressure.
-  'mail', 'worldClock', 'worldPressure',
+  // lineProgression (rows 498–501): the Line's tonnage/class/strain memory — listens on
+  // the tether bus, writes only state.lineProgression.
+  'mail', 'worldClock', 'worldPressure', 'lineProgression',
   'render', 'vfx', 'feel', 'audio', 'ui', 'save',
 ]);
 
@@ -166,7 +168,9 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // and deed systems so same-tick triggers resolve before letters and headlines go out.
   // worldPressure: the day-scale tide/audit/gray pass runs on the same calendar cadence,
   // after story and salvage so the day's clears and beats are settled facts when it reads.
-  'mail', 'worldClock', 'worldPressure',
+  // lineProgression: ticks the held-mass strain clock off the same settled tick the tether
+  // owner produced; its bus listeners do the tonnage crediting.
+  'mail', 'worldClock', 'worldPressure', 'lineProgression',
   'save',
 ]);
 
@@ -387,6 +391,7 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud',
   // Combat island: damage/attachment/custody owners at combat cadence.
   'combat', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
+  'lineProgression',
   // rockCore: flail chain constraint must resolve on the 60 Hz step (5-link stability proof).
   'rockCore',
   // Massline physics owners (throws, snares, impact resolution move or damage bodies).

@@ -1723,6 +1723,11 @@ export const weapons = {
       // accelerate from launch speed to projSpeed over the projectile's flight
       data.projAccel = projSpeedMin != null ? Math.max(40, (projSpeed - projSpeedMin)) : 0;
       data.armed = true;
+      // AL-HF-07 — a capital torpedo is a catchable body: the Massline may latch it and throw
+      // it, and the catch never defuses it (the warhead packet and the fuse below keep running).
+      // The authored exception covers the L torpedo alone; every other projectile class,
+      // homing or not, stays untetherable through the same transient-type gate as before.
+      if ((def && def.id) === 'wpn_torpedo_l' || w.defId === 'wpn_torpedo_l') data.masslineTetherable = true;
       if (def.splashRadius != null) data.splashRadius = def.splashRadius;
       const splashDmg = Number.isFinite(w.splashDmg) ? w.splashDmg : def.splashDmg;
       if (splashDmg != null) data.splashDmg = splashDmg;

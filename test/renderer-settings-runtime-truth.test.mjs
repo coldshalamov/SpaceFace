@@ -320,8 +320,8 @@ test('static: applyRendererSize uses one route-owned scale and is used at boot +
   assert.match(rendererSource, /setContentScale\s*\(\s*dyn\s*\)/,
     '_applySize must forward dynResScale to bloom.setContentScale');
   assert.match(rendererSource,
-    /_dynResAllowed\s*=\s*gpu\.tier\s*===\s*['"]software['"]\s*\|\|\s*gpu\.tier\s*===\s*['"]integrated['"]/,
-    'dynRes allowed for software + integrated after the target-pool fix');
+    /_dynResAllowed\s*=\s*dynamicResolutionAllowedForTier\(\s*gpu\.tier\s*\)/,
+    'dynRes allowed for software + integrated + unknown via dynamicResolutionAllowedForTier');
 
   assert.match(
     rendererSource,

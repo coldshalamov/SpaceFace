@@ -10,6 +10,7 @@
 // (state.scanReveal) so a surveyed field stays surveyed. UI reads; AI/combat never do.
 import {
   SCAN_REVEAL_CLASS_RADIUS,
+  sensorRadiusMultForScan,
   buildShipScanReveal, buildWreckScanReveal, debrisCacheFor, sameScanReveal,
   spawnDebrisCachePods,
 } from '../data/scanReveal.js';
@@ -87,6 +88,48 @@ export const scanReveal = {
       if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('scan:shipRevealed', reveal);
     }
     this._scanWrecks(state, origin);
+    this._emitCapabilityVerdicts(state, origin);
+  },
+
+  // AL-LONG-1: the capability verdict must reach the prompt deck even when the scanner's
+  // six-row cap drops every row that would carry it — a crowded belt scan cannot silence a
+  // door the pilot needs to read. This event is computed from live entities on the pulse
+  // itself, never from the published signal list, so it is independent of the cap.
+  _emitCapabilityVerdicts(state, origin) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const point = xz(origin);
+    if (!point || !state.entities || typeof state.entities.values !== 'function') return;
+    // The door set uses the SAME reach the wreck reveal does — the authored class radius
+    // scaled by the fitted scanner profile, not the bare catalog value. A deepsurvey fit
+    // that legitimately sees a wreck at 2,600 WU must also see its door.
+    const revealRadius = SCAN_REVEAL_CLASS_RADIUS * sensorRadiusMultForScan(state);
+    const doors = [];
+    for (const entity of state.entities.values()) {
+      if (!entity || entity.type !== 'wreck' || entity.alive === false || !entity.pos) continue;
+      if (distXZ(point, entity.pos) <= revealRadius) doors.push(entity);
+    }
+    // Deterministic order: nearest first, ties by entity id — never Map insertion order.
+    doors.sort((a, b) => distXZ(point, a.pos) - distXZ(point, b.pos)
+      || String(a.id ?? '').localeCompare(String(b.id ?? '')));
+    const verdicts = [];
+    const seen = new Set();
+    for (const entity of doors) {
+      const part = capabilityLesson(state, entity);
+      if (!part) continue;
+      const key = String(part.doorKey || entity.id);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      // Same text-only shape the lesson-row lift uses: the verdict names its door and can
+      // never win a row's action selection.
+      const lifted = { ...part, pos: null, trackable: false, lifted: true };
+      if (lifted.cardSentence) lifted.sentence = lifted.cardSentence;
+      verdicts.push(lifted);
+    }
+    this.bus.emit('scan:capabilityVerdicts', {
+      tick: state.tick,
+      at: state.simTime || 0,
+      verdicts,
+    });
   },
 
   _scanWrecks(state, origin) {
@@ -676,14 +719,25 @@ function improvisedHitch(state, entity, need) {
 function capabilityLesson(state, entity) {
   const data = entity && entity.data || {};
   const tug = data.oneOffId === 'oneoff_abandoned_tug';
+  // One identity per physical door: the body's own scan row and the stripped copy lifted
+  // onto the lesson rows (below) carry the same key, so the prompt can dedupe the verdict
+  // no matter which rows a pulse happens to paint.
+  const doorKey = `door:${String(entity && entity.id != null ? entity.id : '?')}`;
   const oneOff = data.oneOffId
     ? WORLD_ONE_OFFS.find((row) => row.id === data.oneOffId)
     : null;
+  // `sentence` stays subjectless — the body's own row is its subject — but a standalone
+  // card (or a sentence appended under a different row) must name the door it judges.
+  const doorLabel = oneOff && oneOff.name ? String(oneOff.name).split(' — ')[0] : null;
   const needSpec = data.revisitNeed
     || (oneOff && oneOff.revisitNeed)
     || (tug ? { massT: TUG_NEED_MASS } : null);
   const door = revisitDoorState(
-    { derived: playerDerived(state), fittings: playerFittings(state) },
+    {
+      derived: playerDerived(state),
+      fittings: playerFittings(state),
+      features: state.runtime && state.runtime.features,
+    },
     needSpec,
   );
   if (!door) return null;
@@ -694,27 +748,25 @@ function capabilityLesson(state, entity) {
     let sentence;
     let improvised = false;
     if (door.kind === 'tow') {
-      const hitch = improvisedHitch(state, entity, door.required);
-      improvised = !!hitch;
-      const ready = door.ready || improvised;
-      if (improvised) {
-        sentence = `The load wants ${door.required} t of tow class. A hull already on the hitch will take it — ready.`;
-      } else if (ready) {
-        sentence = `The load wants ${door.required} t of tow class. Your line will take it — ready.`;
-      } else {
-        sentence = `The load wants ${door.required} t of tow class. This fit will not take it — not yet.`;
-      }
+      // An authored tow door names its own requirement: only the live fit's tow class opens
+      // it. A sufficiently heavy neighbour is not a tow class — the improvised-hitch read
+      // stays on the legacy bare-mass tug branch below, where it was written for.
+      sentence = door.ready
+        ? `The load wants ${door.required} t of tow class. Your line will take it — ready.`
+        : `The load wants ${door.required} t of tow class. This fit will not take it — not yet.`;
       return {
         sf: 'SF-174',
         sentence,
+        cardSentence: doorLabel ? `${doorLabel}: ${sentence}` : sentence,
         pos: xz(entity.pos),
         trackable: true,
         paid: 0,
         kind: door.kind,
+        doorKey,
         needMass: door.required,
         towClass: door.have,
-        ready,
-        verdict: ready ? 'ready' : 'not yet',
+        ready: door.ready,
+        verdict: door.ready ? 'ready' : 'not yet',
         improvised,
         interactionLocked: false,
         rewardReset: false,
@@ -727,10 +779,12 @@ function capabilityLesson(state, entity) {
       return {
         sf: 'SF-174',
         sentence,
+        cardSentence: doorLabel ? `${doorLabel}: ${sentence}` : sentence,
         pos: xz(entity.pos),
         trackable: true,
         paid: 0,
         kind: door.kind,
+        doorKey,
         required: door.required,
         have: door.have,
         ready: door.ready,
@@ -741,16 +795,31 @@ function capabilityLesson(state, entity) {
       };
     }
     if (door.kind === 'line') {
-      sentence = door.ready
-        ? `The swing wants a line rated for a ${door.required} WU/s load. ${door.reachable === false ? 'Your line holds anything you can build' : 'Your line holds'} — ready.`
-        : `The swing wants a line rated for a ${door.required} WU/s load. This line would part — not yet.`;
+      if (door.requiredHeadId) {
+        // A head-qualified door names the tool it wants: a missing or flag-disabled head is
+        // the refusal, a fitted head that cannot carry the rating is the load refusal.
+        const headWord = door.requiredHeadId === 'elastic_whip'
+          ? 'an Elastic Whip'
+          : `a ${door.requiredHeadId} head`;
+        sentence = door.ready
+          ? `The swing wants ${headWord} rated for a ${door.required} WU/s load. Your whip holds — ready.`
+          : door.headReady === false
+            ? `The swing wants ${headWord} rated for a ${door.required} WU/s load. This fit lacks the named head — not yet.`
+            : `The swing wants ${headWord} rated for a ${door.required} WU/s load. This line would part — not yet.`;
+      } else {
+        sentence = door.ready
+          ? `The swing wants a line rated for a ${door.required} WU/s load. ${door.reachable === false ? 'Your line holds anything you can build' : 'Your line holds'} — ready.`
+          : `The swing wants a line rated for a ${door.required} WU/s load. This line would part — not yet.`;
+      }
       return {
         sf: 'SF-174',
         sentence,
+        cardSentence: doorLabel ? `${doorLabel}: ${sentence}` : sentence,
         pos: xz(entity.pos),
         trackable: true,
         paid: 0,
         kind: door.kind,
+        doorKey,
         required: door.required,
         have: door.have,
         ready: door.ready,
@@ -768,10 +837,12 @@ function capabilityLesson(state, entity) {
     return {
       sf: 'SF-174',
       sentence,
+      cardSentence: doorLabel ? `${doorLabel}: ${sentence}` : sentence,
       pos: xz(entity.pos),
       trackable: true,
       paid: 0,
       kind: door.kind,
+      doorKey,
       required: door.required || wantLabel,
       have: door.have,
       ready: door.ready,
@@ -798,9 +869,11 @@ function capabilityLesson(state, entity) {
   return {
     sf: 'SF-174',
     sentence,
+    cardSentence: doorLabel ? `${doorLabel}: ${sentence}` : sentence,
     pos: xz(entity.pos),
     trackable: true,
     paid: 0,
+    doorKey,
     needMass: need,
     towClass: tow,
     ready,
@@ -1309,9 +1382,9 @@ function revealedBeyondPulse(state, origin) {
   return out;
 }
 
-function placeRow(id, range, part) {
+function placeRow(id, range, part, extra) {
   if (!part || !part.pos) return null;
-  const discovery = bundle([part]);
+  const discovery = bundle(extra ? [part, extra] : [part]);
   if (!discovery) return null;
   return {
     id,
@@ -1326,17 +1399,63 @@ function placeRow(id, range, part) {
   };
 }
 
+// The same verdict the body's own scan row computes, hoisted onto the lesson rows. The
+// honest gate is the supported reveal range itself — SCAN_REVEAL_CLASS_RADIUS, the same
+// radius the wreck reveal uses — not the tighter "nearby" set (a 1,300 WU wreck still
+// reveals, and its door must still paint). Null unless a gated wreck was actually inside
+// the pulse's reveal reach, so a scan that saw no door paints nothing new.
+function nearbyCapabilityPart(state, origin) {
+  const point = xz(origin);
+  if (!state || !point || !state.entities || typeof state.entities.values !== 'function') return null;
+  // Deterministic subject: the eligible gated wreck NEAREST the player inside the reveal
+  // radius, ties broken by entity id — never Map insertion order. Overlapping doors can
+  // no longer let an unrelated hulk supply every lesson's verdict.
+  // Same fitted reach as _emitCapabilityVerdicts — the lifted verdict must exist for every
+  // door the upgraded scanner can actually reveal, or the lesson row silently drops it.
+  const revealRadius = SCAN_REVEAL_CLASS_RADIUS * sensorRadiusMultForScan(state);
+  let best = null;
+  let bestPart = null;
+  let bestDist = Infinity;
+  let bestId = '';
+  for (const entity of state.entities.values()) {
+    if (!entity || entity.type !== 'wreck' || entity.alive === false || !entity.pos) continue;
+    const dist = distXZ(point, entity.pos);
+    if (dist > revealRadius) continue;
+    const idKey = String(entity.id ?? '');
+    if (dist < bestDist - 1e-9 || (Math.abs(dist - bestDist) <= 1e-9 && idKey < bestId)) {
+      const part = capabilityLesson(state, entity);
+      if (!part) continue;
+      best = entity; bestDist = dist; bestId = idKey; bestPart = part;
+    }
+  }
+  if (!best || !bestPart) return null;
+  // The verdict rides an unrelated lesson row's detail, so it must name its own subject —
+  // "The Disputed Keg: the fit opens it — ready" is truthful whichever row carries it —
+  // and it contributes TEXT ONLY: stripped of pos/trackable, the appended part can never
+  // win bundle()'s action selection, so every lesson row keeps its own Track target and
+  // its own trackability. The wreck's own scan row keeps the full part (its subject is
+  // itself) and the unprefixed sentence.
+  const part = { ...bestPart, pos: null, trackable: false, lifted: true };
+  if (part.cardSentence) part.sentence = part.cardSentence;
+  return part;
+}
+
 export function discoveryPlaceCandidates(state, origin, simTime = 0, nearby = []) {
   const point = xz(origin);
   if (!state || !point) return [];
   const rows = [];
   const push = (row) => { if (row) rows.push(row); };
-  push(placeRow('signal:discovery:SF-169', 1600, customsLesson()));
-  push(placeRow('signal:discovery:SF-177', 3600, pocketLesson(point)));
-  push(placeRow('signal:discovery:SF-176', 1600, sluiceLesson(simTime)));
-  push(placeRow('signal:discovery:SF-179', 1600, landmarkLesson()));
-  push(placeRow('signal:discovery:SF-170', 1600, deadMachineLesson(state)));
-  push(placeRow('signal:discovery:SF-172', 1800, shrineLesson()));
+  // AL-LONG-1 (row 399 rework): archive lessons sort ahead of the body's own return for the
+  // prompt's primary slot, so a scanned capability door must ride the lesson row's bundle —
+  // the lesson fact stays first in the sentence and the live verdict follows it. Null unless
+  // a gated one-off was actually inside this pulse, so nothing else changes.
+  const doorPart = nearbyCapabilityPart(state, point);
+  push(placeRow('signal:discovery:SF-169', 1600, customsLesson(), doorPart));
+  push(placeRow('signal:discovery:SF-177', 3600, pocketLesson(point), doorPart));
+  push(placeRow('signal:discovery:SF-176', 1600, sluiceLesson(simTime), doorPart));
+  push(placeRow('signal:discovery:SF-179', 1600, landmarkLesson(), doorPart));
+  push(placeRow('signal:discovery:SF-170', 1600, deadMachineLesson(state), doorPart));
+  push(placeRow('signal:discovery:SF-172', 1800, shrineLesson(), doorPart));
   const lives = liveTugs(state);
   const tugNear = lives.some((entity) => distXZ(point, entity.pos) <= SCAN_REVEAL_CLASS_RADIUS);
   if (!tugNear) {
@@ -1344,7 +1463,7 @@ export function discoveryPlaceCandidates(state, origin, simTime = 0, nearby = []
     const recorded = record.row && xz(record.row.pos);
     if (recorded && distXZ(point, recorded) <= 1600) {
       const part = yardTugPart(state, recorded, 0, simTime, null);
-      push(placeRow('signal:discovery:SF-173', 1600, part));
+      push(placeRow('signal:discovery:SF-173', 1600, part, doorPart));
     }
   }
   push(workerFallback(state, point, nearby));

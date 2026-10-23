@@ -54,6 +54,7 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { validateRunState } from '../core/runState.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { dominoDeltaVelocity } from './swarmLegendaries.js';
 import { playerTowedLure } from '../ai/towedLure.js';
 import { gateBearing } from './waveMaterialization.js';
 import { findSwarmArrival } from './swarmSafety.js';
@@ -207,6 +208,11 @@ export function createBroodEngine(deps = {}) {
   const teleX = new Float32Array(CAP);  // windup target point (marker/line end)
   const teleZ = new Float32Array(CAP);
   const teleDir = new Float32Array(CAP); // windup bearing (the charger's line)
+  // W-BLOOM-LOW authored laws: the bellows two-hit (first strike arms + starts the fuse)
+  // and the lantern cyst's prime clock (inside primeRange it counts down to self-burst).
+  const swellStage = new Uint8Array(CAP);
+  const swellUntil = new Float64Array(CAP);
+  const primeUntil = new Float64Array(CAP);
 
   // spatial hash
   const gridHead = new Int32Array(GRID_TABLE);
@@ -276,6 +282,22 @@ export function createBroodEngine(deps = {}) {
   const killScore = new Int32Array(CAUSE_N);
   const killPosX = new Float32Array(CAUSE_N);
   const killPosZ = new Float32Array(CAUSE_N);
+  // Row-270 Domino ledger: every CREDITED death leaves its own actual position here, in kill
+  // order. The per-cause killPosX/Z sample is one coordinate per cause and cannot say where a
+  // body died — Domino must radiate from each body, so each keeps a stable per-life key (the
+  // spawn serial for cells, the chain slot for segments, which never respawn) and its own
+  // coordinates. Retained scratch: the step allocates nothing; the emit below allocates only
+  // when a flush actually has deaths, exactly like the kill receipts it rides beside.
+  const deathScratch = [];
+  let deathScratchCount = 0;
+  function noteCreditedDeath(key, x, z) {
+    let rec = deathScratch[deathScratchCount];
+    if (!rec) { rec = { key: '', x: 0, z: 0 }; deathScratch[deathScratchCount] = rec; }
+    rec.key = key;
+    rec.x = finite(x);
+    rec.z = finite(z);
+    deathScratchCount += 1;
+  }
   const CAUSE_INDEX = {};
   SWARM_BROOD_KILL_CAUSES.forEach((cause, i) => { CAUSE_INDEX[cause] = i; });
 
@@ -354,7 +376,9 @@ export function createBroodEngine(deps = {}) {
 
   // --- family table mirror (numeric fields the hot loop reads, rebuilt on demand) ----------
 
-  const FAMILY_SLOT_MAX = 8;
+  // Sized from the authored roster, not a fixed capacity: every family the catalog can
+  // field must fit the mirror, or spawnWave silently drops its planned allocation.
+  const FAMILY_SLOT_MAX = Math.max(8, SWARM_BROOD_FAMILIES.length);
   const liveFamilyId = new Array(FAMILY_SLOT_MAX).fill(null);
   const liveFamilyDef = new Array(FAMILY_SLOT_MAX).fill(null);
   const liveFamilyRadius = new Float32Array(FAMILY_SLOT_MAX);
@@ -420,6 +444,8 @@ export function createBroodEngine(deps = {}) {
     hiveMode = false;
     sacBudget = 0;
     immediateQuota = Infinity;
+    // The Domino ledger dies with the room: an unflushed death must never shove in the next one.
+    deathScratchCount = 0;
     publish();
     void reason;
   }
@@ -506,6 +532,9 @@ export function createBroodEngine(deps = {}) {
     timer[slot] = 0;
     seedPhase[slot] = rng() * Math.PI * 2;
     serial[slot] = nextSerial++;
+    swellStage[slot] = 0;
+    swellUntil[slot] = 0;
+    primeUntil[slot] = 0;
     aliveCount += 1;
   }
 
@@ -731,6 +760,49 @@ export function createBroodEngine(deps = {}) {
           const seek = (diveT % 1) < 0.22 ? 26 : 9;
           ax += (dxp / dp) * seek;
           az += (dzp / dp) * seek;
+        }
+        // wake_eel `trails`: the eel does not seek the hull, it rides the wake — steer to
+        // a point astern of the signature's velocity so it wraps from behind.
+        if (def && def.trails) {
+          const tx = playerX - playerVX * 0.9;
+          const tz = playerZ - playerVZ * 0.9;
+          const tdx = tx - bx;
+          const tdz = tz - bz;
+          const td = Math.sqrt(tdx * tdx + tdz * tdz);
+          if (td > 1e-4) {
+            ax += (tdx / td) * 22;
+            az += (tdz / td) * 22;
+          }
+        }
+        // lantern_cyst `seeksHeat`+`primeRange`: inside the glow range the cyst primes —
+        // primeS later it detonates itself whether or not anything touched it.
+        if (def && def.primeRange > 0) {
+          if (dp <= def.primeRange) {
+            if (!primeUntil[i]) primeUntil[i] = simTime + (def.primeS || 1.1);
+          } else {
+            primeUntil[i] = 0;
+          }
+        }
+        // spore_drift `hazard`+`slowRadius`: the cloud is not an attack — inside it the
+        // signature decelerates as the haze clings to the hull.
+        if (def && def.hazard && def.slowRadius > 0 && dp < def.slowRadius
+            && signatureRef && signatureRef.vel) {
+          const speed = Math.hypot(playerVX, playerVZ);
+          if (speed > 1e-3) {
+            const decel = Math.min(speed, (def.slowAccel || 20) * dt);
+            signatureRef.vel.x -= (playerVX / speed) * decel;
+            signatureRef.vel.z -= (playerVZ / speed) * decel;
+          }
+        }
+        // bellows fuse: an armed bellows detonates on its own clock (swells two-hit law).
+        if (swellStage[i] === 1 && simTime >= swellUntil[i]) {
+          kill(i, 'explosive', px[i], pz[i]);
+          continue;
+        }
+        // lantern cyst prime fuse: the glow finished — it bursts.
+        if (primeUntil[i] && simTime >= primeUntil[i]) {
+          kill(i, 'explosive', px[i], pz[i]);
+          continue;
         }
 
         // -- the room's fields: the SAME kernel the ships feel, sampled at the brood's own point
@@ -1181,6 +1253,9 @@ export function createBroodEngine(deps = {}) {
     const pay = killPayFor(TENDRIL_SEG_PAY_FAMILY);
     killCredits[c] += pay.credits;
     killScore[c] += pay.score;
+    // The Domino receipt: the segment's own coordinates — not the blast sample — because the
+    // shove radiates from the body that died. Segments never respawn, so the slot is the life.
+    noteCreditedDeath(`seg:${i}`, segX[i], segZ[i]);
   }
 
   function stepTendril(state, dt, simTime) {
@@ -1374,6 +1449,7 @@ export function createBroodEngine(deps = {}) {
     creditedCount.fill(0);
     killCredits.fill(0);
     killScore.fill(0);
+    deathScratchCount = 0;
     for (let i = 0; i < CAP; i++) {
       if (!alive[i]) continue;
       const dx = px[i] - ex;
@@ -1405,8 +1481,82 @@ export function createBroodEngine(deps = {}) {
 
   // --- death bookkeeping -------------------------------------------------------------------
 
+  // W-BLOOM-LOW kill law: the authored family flags are binding. `massOnly` dies only by
+  // mass (collision/terrain — a gun or blast pings off the shell); `blastOnly` dies only
+  // by an explosion (a whip or a wall just blows the cloud around); `swells` is the
+  // two-hit rule — the first non-explosive strike arms the fuse instead of killing.
+  function killLawAllows(def, cause) {
+    if (!def) return true;
+    if (def.massOnly && cause !== 'collision' && cause !== 'terrain') return false;
+    if (def.blastOnly && cause !== 'explosive') return false;
+    return true;
+  }
+
+  let burstGuard = false;
+
+  // Post-death authored blasts: `burstRadius`+`burstDv` shove every nearby cell AND the
+  // hot signature (a cyst or bellows is a bomb whichever side throws it); `shardRadius`
+  // kills neighboring cells outright — the glassback shatter. One level deep, no chains.
+  function broodDeathBurst(i, def, credited) {
+    const bx = px[i];
+    const bz = pz[i];
+    const shardR = Number.isFinite(def.shardRadius) ? def.shardRadius : 0;
+    const burstR = Number.isFinite(def.burstRadius) ? def.burstRadius : 0;
+    const burstDv = Number.isFinite(def.burstDv) ? def.burstDv : 0;
+    if (burstR > 0 && burstDv > 0) {
+      const br2 = burstR * burstR;
+      for (let n = 0; n < CAP; n++) {
+        if (!alive[n] || n === i) continue;
+        const dx = px[n] - bx;
+        const dz = pz[n] - bz;
+        const d2 = dx * dx + dz * dz;
+        if (d2 > br2) continue;
+        const d = Math.sqrt(d2) || 1;
+        const falloff = 1 - d / burstR;
+        vx[n] += (dx / d) * burstDv * falloff;
+        vz[n] += (dz / d) * burstDv * falloff;
+      }
+      // The signature feels the same burst, scaled by mass — a bomb is a bomb.
+      if (signatureRef && signatureRef.vel) {
+        const pdx = playerX - bx;
+        const pdz = playerZ - bz;
+        const pd2 = pdx * pdx + pdz * pdz;
+        if (pd2 <= br2) {
+          const pd = Math.sqrt(pd2) || 1;
+          const share = Math.min(1, (liveFamilyMass[family[i]] || 10) / Math.max(1, playerMass));
+          const falloff = 1 - pd / burstR;
+          signatureRef.vel.x += (pdx / pd) * burstDv * falloff * share;
+          signatureRef.vel.z += (pdz / pd) * burstDv * falloff * share;
+        }
+      }
+      if (bus && typeof bus.emit === 'function') {
+        bus.emit('swarm:broodBurst', { familyId: liveFamilyId[family[i]], pos: { x: bx, z: bz }, radius: burstR });
+      }
+    }
+    if (shardR > 0 && !burstGuard) {
+      burstGuard = true;
+      const sr2 = shardR * shardR;
+      for (let n = 0; n < CAP; n++) {
+        if (!alive[n] || n === i) continue;
+        const dx = px[n] - bx;
+        const dz = pz[n] - bz;
+        if (dx * dx + dz * dz > sr2) continue;
+        kill(n, 'explosive', px[n], pz[n], credited);
+      }
+      burstGuard = false;
+    }
+  }
+
   function kill(i, cause, sampleX, sampleZ, credited = true) {
     if (!alive[i]) return;
+    const def = liveFamilyDef[family[i]];
+    if (!killLawAllows(def, cause)) return;
+    if (def && def.swells && cause !== 'explosive' && swellStage[i] === 0) {
+      // First strike inflates: the fuse starts, the second strike (or the clock) detonates.
+      swellStage[i] = 1;
+      swellUntil[i] = finite(getState()?.simTime) + (Number.isFinite(def.swellS) ? def.swellS : 2.6);
+      return;
+    }
     alive[i] = 0;
     aliveCount -= 1;
     const c = CAUSE_INDEX[cause];
@@ -1416,11 +1566,15 @@ export function createBroodEngine(deps = {}) {
       killPosX[c] = finite(sampleX);
       killPosZ[c] = finite(sampleZ);
     }
+    if (def && (def.burstRadius > 0 || def.shardRadius > 0)) broodDeathBurst(i, def, credited);
     if (!credited) return;
     creditedCount[c]++;
     const pay = killPayFor(liveFamilyId[family[i]]);
     killCredits[c] += pay.credits;
     killScore[c] += pay.score;
+    // Same Domino receipt as the chain: the cell's own last position, keyed by its spawn serial
+    // so a slot reused inside the wave still counts as a new death.
+    noteCreditedDeath(`cell:${serial[i]}`, px[i], pz[i]);
   }
 
   function flushKills(state) {
@@ -1456,10 +1610,22 @@ export function createBroodEngine(deps = {}) {
         });
       }
     }
+    // One batch, in kill order, on the same payable gate as the receipts above: these are the
+    // positions Domino shoves FROM. An unpaid room (draft phase, ended run, no flight) clears
+    // the ledger with the counters — a death that could not pay cannot shove.
+    if (canPay && deathScratchCount > 0) {
+      const deaths = [];
+      for (let d = 0; d < deathScratchCount; d++) {
+        const rec = deathScratch[d];
+        deaths.push({ key: rec.key, pos: { x: rec.x, z: rec.z } });
+      }
+      bus.emit('swarm:broodDeathPositions', { wave, deaths });
+    }
     killCount.fill(0);
     creditedCount.fill(0);
     killCredits.fill(0);
     killScore.fill(0);
+    deathScratchCount = 0;
   }
 
   // --- B4: the Hive's seams ------------------------------------------------------------
@@ -1500,6 +1666,36 @@ export function createBroodEngine(deps = {}) {
     publish();
   }
 
+  /**
+   * The Domino seam (row 270). The arena passes one credited death's actual position; this
+   * engine — the only writer of these buffers — adds the shared radial falloff to every living
+   * cell and chain segment around it. The velocity write is exactly what the room's own slams
+   * do (additive, integrated next step): the flock's step carries it, a freed segment keeps
+   * weaving faster, an attached one reads it as flex for a tick. Returns the count moved.
+   */
+  function applyLegendaryShove(request) {
+    const center = request && (request.center || request);
+    if (!center || !Number.isFinite(center.x) || !Number.isFinite(center.z)) return 0;
+    let moved = 0;
+    for (let i = 0; i < CAP; i++) {
+      if (!alive[i]) continue;
+      const dv = dominoDeltaVelocity(center, { x: px[i], z: pz[i] });
+      if (!dv.x && !dv.z) continue;
+      vx[i] += dv.x;
+      vz[i] += dv.z;
+      moved += 1;
+    }
+    for (let i = 0; i < TENDRIL_SEG_MAX; i++) {
+      if (!segAlive[i]) continue;
+      const dv = dominoDeltaVelocity(center, { x: segX[i], z: segZ[i] });
+      if (!dv.x && !dv.z) continue;
+      segVX[i] += dv.x;
+      segVZ[i] += dv.z;
+      moved += 1;
+    }
+    return moved;
+  }
+
   function publish() {
     view.aliveCount = aliveCount;
     view.pendingCount = pendingPlan ? pendingPlan.reduce((sum, part) => sum + part.count, 0) : 0;
@@ -1533,6 +1729,8 @@ export function createBroodEngine(deps = {}) {
     // B4 — the Hive's seams: sacs spend the wave's reserve, sacs drip acid.
     sacRelease,
     hivePool,
+    // Row-270 — the Domino shove lands here through the arena, never across the buffers' owner.
+    applyLegendaryShove,
     /** Live population figures, for tests and the lab overlay. */
     census() {
       return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget };
@@ -1555,6 +1753,7 @@ export function createBroodEngine(deps = {}) {
       creditedCount.fill(0);
       killCredits.fill(0);
       killScore.fill(0);
+      deathScratchCount = 0;
       kill(i, cause, px[i], pz[i]);
       flushKillsFrom(getState());
       publish();
@@ -1564,6 +1763,7 @@ export function createBroodEngine(deps = {}) {
       creditedCount.fill(0);
       killCredits.fill(0);
       killScore.fill(0);
+      deathScratchCount = 0;
       killSeg(i, cause, segX[i], segZ[i]);
       flushKillsFrom(getState());
       publish();

@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_colony_claim_mule_trader_named",
   "title": "BELL ON THE COLONY",
   "factionId": "faction_free",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Mark the boundary",
-      "playerLine": "I will mark the bell face and leave your cutters room."
+      "label": "Park the bell beside the receiver",
+      "playerLine": "I set the bell inside twenty of your receiver hull and hold it dead slow for the count."
     },
     {
       "id": "b",
-      "label": "Check the survey",
-      "playerLine": "Show me the survey pin before you call this ground yours."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, MOSS — send the relief to Colony instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the claim",
-      "playerLine": "I will not work it. Keep the bell inside your line."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, MOSS — my hull is leaving Colony."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "BELL",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "MOSS: The bell sits inside our claim at colony. Keep your cutter out.",
+      "line": "MOSS: The bell sits inside our claim at colony. Keep your cutter out. — BELL ON THE COLONY.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The claim pins lean away from the deepest cut.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "MOSS counts a boundary by the gaps between markers.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The bell has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Nobody in colony looks up for engine noise.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "MOSS: No hurry in this berth. Hold.",
+      "line": "MOSS: Park the bell inside twenty of the receiver, dead slow for a four-count. — BELL ON THE COLONY.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +142,81 @@ const spec = {
       "windowS": 56,
       "motion": "creep",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Boundary marked. Both cutter tracks stayed on their own side.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_colony_claim_mule_trader_named:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "MOSS: Time ran out on the work ask — BELL ON THE COLONY. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "displaced",
+          "dist": 120
+        },
+        {
+          "kind": "released"
+        },
+        {
+          "kind": "parked",
+          "at": "hull_0",
+          "dist": 20,
+          "maxSpeed": 2,
+          "holdS": 4
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "MOSS: Time ran out on the work ask — BELL ON THE COLONY. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "MOSS: Time ran out on the work ask — BELL ON THE COLONY. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 42,
       "reason": "lived_colony_claim_mule_trader_named",
       "next": "rep_a"
     },
@@ -168,24 +229,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_free",
+      "delta": 3,
+      "reason": "lived_colony_claim_mule_trader_named:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Survey checked. MOSS added one pin where the line bends.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_free",
-      "delta": 2,
-      "reason": "lived_colony_claim_mule_trader_named",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +256,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left. The bell face remains under their claim.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_free",
-      "delta": -1,
-      "reason": "lived_colony_claim_mule_trader_named",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +314,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Mark the boundary",
-      "playerLine": "I will mark the bell face and leave your cutters room."
+      "label": "Park the bell beside the receiver",
+      "playerLine": "I set the bell inside twenty of your receiver hull and hold it dead slow for the count."
     },
     {
       "id": "b",
-      "label": "Check the survey",
-      "playerLine": "Show me the survey pin before you call this ground yours."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, MOSS — send the relief to Colony instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the claim",
-      "playerLine": "I will not work it. Keep the bell inside your line."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, MOSS — my hull is leaving Colony."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Boundary marked. Both cutter tracks stayed on their own side.",
-    "b": "Survey checked. MOSS added one pin where the line bends.",
-    "c": "You left. The bell face remains under their claim."
+    "a": "The bell sits parked inside twenty of the receiver at Colony, delivered dead slow. — BELL ON THE COLONY.",
+    "b": "24 cr funded the relief call — MOSS sends the shift at Colony on your credit. — BELL ON THE COLONY.",
+    "c": "You left Colony. The work stayed with the crew that owned it. — BELL ON THE COLONY."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "park_tight",
+    "hasProp": true
   }
 });

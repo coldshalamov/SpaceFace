@@ -405,7 +405,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   place(payload, px + 36, py - 26);
   // hidden by visibility, not opacity: the arrival animation drives opacity and would flash it
   payload.style.visibility = 'hidden';
-  const massCounter = createCounter(massEl, { format: (n) => `${Math.round(n)} T` });
+  // An unweighed line prints the empty mark, never a number: the counter's own format owns
+  // the unknown reading so its digit layout still re-arms when the measurement lands.
+  const massCounter = createCounter(massEl, { format: (n) => (Number.isFinite(n) ? `${Math.round(n)} T` : '— T') });
 
   root.append(dial.el, energyRead, heatRead, legend, nextEl, payload);
 
@@ -522,11 +524,15 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     }
     // tether
     const t = d.tether || null;
-    const tethered = !!(t && t.state && t.state !== 'Idle' && Number(t.mass) > 0);
+    // The instrument answers the line, not the scale: tonnage is earned by the loaded
+    // dwell, so before the measurement the tether still draws and live strain still reads —
+    // only the mass numeral sits at the honest empty mark instead of a fabricated count.
+    const tethered = !!(t && t.state && t.state !== 'Idle');
     if (changed('tethered', tethered)) { tetherG.setAttribute('opacity', tethered ? '1' : '0'); payload.style.visibility = tethered ? 'visible' : 'hidden'; }
     if (tethered) {
       const st = Math.max(0, Math.min(1, Number(t.strain) || 0));
-      if (changed('mass', Math.round(Number(t.mass)))) massCounter.set(Number(t.mass));
+      const massShown = Number(t.mass) > 0 ? Math.round(Number(t.mass)) : null;
+      if (changed('mass', massShown)) massCounter.set(massShown == null ? NaN : massShown);
       strain.set(st);
       if (changed('strain', Math.round(st * 100))) {
         setSag(st);

@@ -21,6 +21,17 @@ function seenMap(dir) {
   return dir.stats.livedSeen;
 }
 
+// Once-ever rotation (row 459): a curated vignette that actually fired is out of the pool
+// for good — including one that fired and immediately aborted. A fumbled tow consumes the
+// scene; that permanence is the product intent, not an accident of the mechanism.
+function startedMap(dir) {
+  if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+  if (!dir.stats.livedStarted || typeof dir.stats.livedStarted !== 'object' || Array.isArray(dir.stats.livedStarted)) {
+    dir.stats.livedStarted = {};
+  }
+  return dir.stats.livedStarted;
+}
+
 function ambientLastAtMap(dir) {
   if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
   if (!dir.stats.ambientLastAt || typeof dir.stats.ambientLastAt !== 'object' || Array.isArray(dir.stats.ambientLastAt)) {
@@ -42,6 +53,8 @@ export function pickLivedVignette({
   candidates, overlay, seed, sectorId, zoneKey, day, now = 0, ambientLastAt = {},
 }) {
   if (!Array.isArray(candidates) || !candidates.length) return null;
+  // Ambient scenes keep their own lane: sector-filtered, 1200 s per-scene cooldown, and a
+  // per-scan bucket so the pick varies inside a day instead of freezing on one entry.
   const ambient = candidates
     .filter((enc) => enc && enc.ambientScene === true
       && Array.isArray(enc.sectorIds)
@@ -93,9 +106,11 @@ export function livedScenePlacement(player, seed, sectorId, zoneKey, day, encoun
   };
 }
 
-export function livedSceneRequestData({ ambient, overlay, seed, encounterId, day, axis }) {
+export function livedSceneRequestData({ ambient, overlay, seed, encounterId, day, axis, livedRotation }) {
   const data = {};
-  if (overlay && !ambient) {
+  // Curated scenes carry their own authored instruction — the six-line sector overlay
+  // would substitute for it at work_line time, so it is skipped for livedRotation entries.
+  if (overlay && !ambient && !livedRotation) {
     data.livedOverlay = {
       sectorId: overlay.sectorId,
       crew: overlay.crew,
@@ -170,15 +185,17 @@ export function tickLivedVignettes(runtime) {
   const zone = zoneAt(sectorId, local.x, local.z);
   if (!zone || !zone.type) return;
   const seen = seenMap(dir);
+  const started = startedMap(dir);
   const ambientLastAt = ambientLastAtMap(dir);
+  // Curated rotation only: `livedRotation` marks the thirty physically gated encounters.
+  // Ambient scenes and the rest of the compatibility catalog stay generated and playable
+  // through authored requests, but they no longer fire uninvited (row 459 — deliberate).
   const candidates = [];
   for (const enc of Object.values(ENCOUNTERS)) {
-    if (!enc || enc.livedVignette !== true) continue;
-    if (enc.ambientScene === true) {
-      candidates.push(enc);
-      continue;
-    }
-    if (seen[enc.id]) continue;
+    if (!enc || enc.livedVignette !== true || enc.livedRotation !== true) continue;
+    // `!= null`: a stamp of exactly 0 (a fire inside the first sim frame, or a
+    // round-tripped save) still means consumed — presence, not truthiness, is the check.
+    if (seen[enc.id] != null || started[enc.id] != null) continue;
     const zones = enc.zoneTypes || [];
     if (!zones.includes(zone.type)) continue;
     candidates.push(enc);
@@ -187,7 +204,15 @@ export function tickLivedVignettes(runtime) {
   const seed = (state.meta && state.meta.seed) || 1;
   const day = Math.floor(now / 600);
   const zoneKey = zone.id || zone.type;
-  const pick = pickLivedVignette({ candidates, overlay, seed, sectorId, zoneKey, day, now, ambientLastAt });
+  // First-hour prop preference (row 459): while eligible prop vignettes exist inside the
+  // first 3,600 s, the pick comes from that subset before any other preference applies.
+  // After the hour the full eligible curated pool shares the picker's seeded hash.
+  let pool = candidates;
+  if (now < 3600) {
+    const withProp = candidates.filter((enc) => enc.livedPhysical && enc.livedPhysical.hasProp === true);
+    if (withProp.length) pool = withProp;
+  }
+  const pick = pickLivedVignette({ candidates: pool, overlay, seed, sectorId, zoneKey, day, now, ambientLastAt });
   if (!pick) return;
   const ambient = pick.ambientScene === true;
   const placement = ambient
@@ -201,7 +226,9 @@ export function tickLivedVignettes(runtime) {
     encounterId: pick.id,
     day,
     axis: placement && placement.axis,
+    livedRotation: pick.livedRotation === true,
   });
+  const firedBefore = dir.stats && Number.isFinite(dir.stats.fired) ? dir.stats.fired : 0;
   const result = director.requestAuthoredEncounter({
     shapeId: pick.id,
     encounterId: `lived:${pick.id}`,
@@ -216,6 +243,11 @@ export function tickLivedVignettes(runtime) {
     force: true,
   });
   if (!dir.stats) dir.stats = {};
+  // Once-ever: a fire that reached the fired counter consumed the scene for this save —
+  // even one that fires and aborts on the same tick. A refusal that never fired stays
+  // retryable (the gap timer still throttles re-picks).
+  const firedAfter = Number.isFinite(dir.stats.fired) ? dir.stats.fired : 0;
+  if (firedAfter > firedBefore) startedMap(dir)[pick.id] = now;
   const stampedAt = Number(dir.lastAmbientAt);
   dir.stats.livedNextAt = livedNextAtFor(now, stampedAt, !!(result && result.ok));
   if (ambient && result && result.ok) ambientLastAt[pick.id] = now;

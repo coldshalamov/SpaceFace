@@ -4,7 +4,7 @@ import test from 'node:test';
 import { LOOP_FIXED_DT, startLoop, createSimulationRunner } from '../src/core/loop.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
-import { createRuntimeFailurePresenter } from '../src/ui/runtimeFailurePresenter.js';
+import { createRuntimeFailurePresenter, describeBootFailure } from '../src/ui/runtimeFailurePresenter.js';
 import { fakeDom, findAll } from './helpers/fake-dom.mjs';
 
 function createRaf() {
@@ -334,8 +334,9 @@ function createBootFixture() {
       const index = this.listeners.findIndex((l) => l.type === type && l.fn === fn);
       if (index >= 0) this.listeners.splice(index, 1);
     },
-    keydown(key, target = null) {
+    keydown(key, target = null, extra = {}) {
       const event = {
+        ...extra,
         key,
         target,
         defaultPrevented: false,
@@ -475,14 +476,25 @@ test('the restart verb fires on click and passes native Enter/Space, nothing els
   assert.deepEqual(order, ['global-capture', 'global-capture', 'global-capture'],
     'each blocked key stops in the presenter before any bubble listener runs');
 
+  // The pane now holds two controls (Retry, Copy details): Tab cycles between them, forward and
+  // back, and never leaves the dialog. (Deliberate change: it used to wrap onto the one control.)
   order.length = 0;
   fixture.focused.length = 0;
+  const copy = pane.sfCopyButton;
+  assert.ok(copy, 'the pane carries a Copy details control');
   const tab = fixture.host.keydown('Tab', verb);
   assert.equal(tab.defaultPrevented, true);
-  assert.equal(tab.stopped, true, 'Tab stops propagation after wrapping focus');
+  assert.equal(tab.stopped, true, 'Tab stops propagation after moving focus');
   assert.deepEqual(order, ['global-capture']);
-  assert.equal(fixture.focused[fixture.focused.length - 1], verb,
-    'Tab wraps back onto the one control in the dialog');
+  assert.equal(fixture.focused[fixture.focused.length - 1], copy, 'Tab moves from Retry to Copy details');
+  fixture.host.keydown('Tab', copy);
+  assert.equal(fixture.focused[fixture.focused.length - 1], verb, 'Tab wraps from Copy details back to Retry');
+  fixture.host.keydown('Tab', verb, { shiftKey: true });
+  assert.equal(fixture.focused[fixture.focused.length - 1], copy, 'Shift+Tab wraps backward onto Copy details');
+  fixture.host.keydown('Tab', null);
+  assert.equal(fixture.focused[fixture.focused.length - 1], verb, 'Tab from outside the dialog lands on Retry');
+  assert.equal(fixture.host.keydown('Enter', copy).defaultPrevented, false, 'native Enter on Copy details is allowed');
+  assert.equal(fixture.host.keydown(' ', copy).stopped, true);
 
   assert.equal(fixture.host.location.reloads, 0, 'no autonavigation happened');
   presenter.destroy();
@@ -542,4 +554,185 @@ test('the presenter stays inert when the boot overlay is absent', () => {
   assert.equal(presenter.show({ message: 'fault' }), false);
   assert.equal(restarts, 0);
   assert.doesNotThrow(() => presenter.destroy());
+});
+
+// ---------------------------------------------------------------------------------------------
+// "Copy details": the second control on the failure pane. A beta tester who hits a dead end can
+// put the diagnostics report plus the failure's code and wording on the clipboard and paste it
+// into an issue; if the clipboard refuses, the same text appears in a read-only box.
+
+async function settle() {
+  for (let i = 0; i < 4; i++) await Promise.resolve();
+}
+
+function mountWithCopy({ copyResult = true, state = { mode: 'flight', simTime: 12.5, tick: 750 } } = {}) {
+  const fixture = createBootFixture();
+  const copied = [];
+  let restarts = 0;
+  const presenter = createRuntimeFailurePresenter({
+    document: fixture.doc,
+    host: fixture.host,
+    onRestart() { restarts++; },
+    getDiagnosticsState: () => state,
+    copyText: (text) => {
+      copied.push(text);
+      if (copyResult === 'throw') throw new Error('clipboard exploded');
+      const value = typeof copyResult === 'function' ? copyResult() : copyResult;
+      return value instanceof Promise ? value : Promise.resolve(value);
+    },
+  });
+  return { fixture, presenter, copied, restarts: () => restarts };
+}
+
+function paneOf(fixture) {
+  return findAll(fixture.overlay, (n) => n.className.split(/\s+/).includes('sf-state'))[0];
+}
+
+test('Copy details sits beside Retry and copies the report with the failure code and wording', async () => {
+  const { fixture, presenter, copied, restarts } = mountWithCopy();
+  withDocument(fixture.doc, () => presenter.show({
+    message: 'fault-injection: broken component',
+    site: 'at registry.step',
+    tick: 12,
+    simTime: 4.5,
+  }));
+  const pane = paneOf(fixture);
+  const verb = pane.sfStateVerb;
+  const copy = pane.sfCopyButton;
+  assert.ok(copy, 'the pane mounts a Copy details control');
+  assert.equal(copy.querySelector('span').textContent, 'Copy details');
+  assert.equal(copy.getAttribute('type'), 'button');
+  assert.ok(copy.className.split(/\s+/).includes('sf-state__verb'), 'it reuses the kit verb class');
+  assert.equal(copy.parentNode, verb.parentNode, 'Copy details shares a row with Retry');
+  assert.equal(verb.parentNode.className, 'sf-state__actions');
+  assert.equal(verb.parentNode.children[0], verb, 'Retry stays first in reading and tab order');
+  assert.equal(pane.querySelector('.sf-state__verb'), verb, 'existing lookups still find Retry first');
+  const status = pane.querySelector('.sf-state__copy-status');
+  assert.equal(status.getAttribute('role'), 'status', 'the answer is announced');
+  assert.equal(status.textContent, '', 'silent until asked');
+  assert.equal(pane.sfReportBox.getAttribute('hidden'), '', 'the report box stays hidden while copying works');
+
+  withDocument(fixture.doc, () => copy.click());
+  await settle();
+  assert.equal(copied.length, 1);
+  assert.match(copied[0], /^SpaceFace diagnostics\n/);
+  assert.match(copied[0], /Mode: flight/, 'live game state is in the report');
+  assert.match(copied[0], /Code: FLIGHT_INTERRUPTED/);
+  assert.match(copied[0], /What: Flight interrupted/);
+  assert.match(copied[0], /Next step: Restart from the main menu to recover\./);
+  assert.match(copied[0], /Message: fault-injection: broken component/);
+  assert.match(copied[0], /Site: at registry\.step/);
+  assert.match(copied[0], /Tick: 12/);
+  assert.equal(status.textContent, 'Copied — paste it into your report.');
+  assert.equal(pane.sfReportShown, false);
+  assert.equal(restarts(), 0, 'copying never triggers Retry');
+  presenter.destroy();
+});
+
+test('a boot failure copies its named code and advice even before the game state exists', async () => {
+  const { fixture, presenter, copied } = mountWithCopy({ state: null });
+  withDocument(fixture.doc, () => presenter.show(describeBootFailure(
+    new Error('Unable to load scenario contract ./data/scenarios/47a.scenario.json: HTTP 404'))));
+  withDocument(fixture.doc, () => paneOf(fixture).sfCopyButton.click());
+  await settle();
+  assert.match(copied[0], /Game state: not created yet/);
+  assert.match(copied[0], /Code: BOOT_SCENARIO_UNAVAILABLE/);
+  assert.match(copied[0], /What: The opening scenario could not be loaded/);
+  assert.match(copied[0], /Next step: Your saved games are unaffected\./);
+  assert.match(copied[0], /Message: Unable to load scenario contract \.\/data\/scenarios\/47a\.scenario\.json: HTTP 404/);
+  presenter.destroy();
+});
+
+test('when the clipboard refuses, the report appears in a read-only box and takes focus', async () => {
+  for (const copyResult of [false, 'throw', () => Promise.reject(new Error('NotAllowedError'))]) {
+    const { fixture, presenter, copied } = mountWithCopy({ copyResult });
+    withDocument(fixture.doc, () => presenter.show({ message: 'fault' }));
+    const pane = paneOf(fixture);
+    const box = pane.sfReportBox;
+    fixture.focused.length = 0;
+    withDocument(fixture.doc, () => pane.sfCopyButton.click());
+    await settle();
+    assert.equal(pane.querySelector('.sf-state__copy-status').textContent,
+      'Could not copy — select the text below.');
+    assert.equal(box.hasAttribute('hidden'), false, 'the box is revealed');
+    assert.equal(box.getAttribute('readonly'), '');
+    assert.equal(box.value, copied[0], 'the box holds exactly the text that failed to copy');
+    assert.equal(fixture.focused.at(-1), box, 'focus moves to the box so Ctrl+A / Ctrl+C work at once');
+    assert.equal(pane.sfReportShown, true);
+    presenter.destroy();
+  }
+});
+
+test('the report box keeps selection keys; Tab cycles Retry, Copy details, then the box', async () => {
+  const { fixture, presenter } = mountWithCopy({ copyResult: false });
+  withDocument(fixture.doc, () => presenter.show({ message: 'fault' }));
+  const pane = paneOf(fixture);
+  const verb = pane.sfStateVerb;
+  const copy = pane.sfCopyButton;
+  const box = pane.sfReportBox;
+  withDocument(fixture.doc, () => copy.click());
+  await settle();
+
+  for (const [key, extra] of [['ArrowDown', {}], ['ArrowLeft', {}], ['End', {}], ['a', { ctrlKey: true }], ['c', { metaKey: true }]]) {
+    const event = fixture.host.keydown(key, box, extra);
+    assert.equal(event.defaultPrevented, false, `${key} reaches the text box natively`);
+    assert.equal(event.stopped, true, `${key} never reaches gameplay listeners`);
+  }
+  for (const [key, extra] of [['F5', {}], ['s', {}], ['Escape', {}], ['v', { ctrlKey: true }], ['x', { ctrlKey: true }]]) {
+    const event = fixture.host.keydown(key, box, extra);
+    assert.equal(event.defaultPrevented, true, `${key} stays blocked inside the box`);
+  }
+
+  fixture.focused.length = 0;
+  fixture.host.keydown('Tab', verb);
+  fixture.host.keydown('Tab', copy);
+  fixture.host.keydown('Tab', box);
+  assert.deepEqual(fixture.focused, [copy, box, verb], 'forward ring: Retry -> Copy -> box -> Retry');
+  fixture.focused.length = 0;
+  fixture.host.keydown('Tab', verb, { shiftKey: true });
+  assert.deepEqual(fixture.focused, [box], 'Shift+Tab from Retry wraps to the box');
+  presenter.destroy();
+});
+
+test('the box keys stay blocked while the box is hidden, and repeat clicks do not stack copies', async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const { fixture, presenter, copied } = mountWithCopy({ copyResult: gate });
+  withDocument(fixture.doc, () => presenter.show({ message: 'fault' }));
+  const pane = paneOf(fixture);
+  const arrow = fixture.host.keydown('ArrowDown', pane.sfReportBox);
+  assert.equal(arrow.defaultPrevented, true, 'a hidden box has no business taking keys');
+  withDocument(fixture.doc, () => { pane.sfCopyButton.click(); pane.sfCopyButton.click(); });
+  assert.equal(copied.length, 1, 'a second click while the first is pending is ignored');
+  release(true);
+  await settle();
+  assert.equal(pane.querySelector('.sf-state__copy-status').textContent, 'Copied — paste it into your report.');
+  withDocument(fixture.doc, () => pane.sfCopyButton.click());
+  assert.equal(copied.length, 2, 'it can be copied again afterwards');
+  presenter.destroy();
+});
+
+test('a copy that finishes after the pane is gone changes nothing', async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const { fixture, presenter } = mountWithCopy({ copyResult: gate });
+  withDocument(fixture.doc, () => presenter.show({ message: 'fault' }));
+  const pane = paneOf(fixture);
+  const status = pane.querySelector('.sf-state__copy-status');
+  withDocument(fixture.doc, () => pane.sfCopyButton.click());
+  presenter.destroy();
+  release(false);
+  await settle();
+  assert.equal(status.textContent, '', 'no late status write, no focus grab, after destroy');
+  assert.equal(pane.sfReportShown, false);
+});
+
+test('the report text is plain: no HTML is ever parsed from a failure message', async () => {
+  const { fixture, presenter, copied } = mountWithCopy();
+  withDocument(fixture.doc, () => presenter.show({ message: '<img src=x onerror=alert(1)>' }));
+  withDocument(fixture.doc, () => paneOf(fixture).sfCopyButton.click());
+  await settle();
+  assert.match(copied[0], /Message: <img src=x onerror=alert\(1\)>/, 'copied verbatim as text');
+  assert.equal(findAll(fixture.overlay, (n) => n.tagName === 'img').length, 0, 'and never mounted as markup');
+  presenter.destroy();
 });

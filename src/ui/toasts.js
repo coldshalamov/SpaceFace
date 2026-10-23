@@ -25,6 +25,7 @@ import { glyphSvg } from './glyphs.js';
 import { bindAutomationPayoffUi } from './automationPayoff.js';
 import { counterplayDoctrineById } from '../ai/counterplay/catalog.js';
 import { bindReturningPilotSummary } from './dockArrival.js';
+import { createToastActionButton, normalizeToastAction, pickEvictionVictim, runToastAction } from './toastAction.js';
 
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
@@ -200,7 +201,7 @@ export function createToasts(ctx) {
     });
   }
 
-  function push({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '' } = {}) {
+  function push({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '', action = null } = {}) {
     if (!root || !text) return;
     ensureConnected();
     // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for
@@ -280,6 +281,9 @@ export function createToasts(ctx) {
     decay.className = 'sf-toast__decay';
     decay.setAttribute('aria-hidden', 'true');
     el.append(icon, body, decay);
+    // An offer receipt's one button (toastAction.js); the card is then a plain group, not a dismiss control.
+    const act = normalizeToastAction(action);
+    if (act) el.appendChild(createToastActionButton(act, () => { dismiss(rec); runToastAction(act); }));
     // Guarded like lampKey: headless Mini-DOM harnesses stub style as a plain object.
     if (el.style && typeof el.style.setProperty === 'function') {
       el.style.setProperty('--sf-toast-ttl', `${(normalizeTtlMs(ttl) / 1000).toFixed(2)}s`);
@@ -288,22 +292,27 @@ export function createToasts(ctx) {
     // keyboard users (Enter/Space) and to AT as a dismissible control.
     // Do NOT put aria-live on the card — announcement is via #toast-live (status once).
     // Do NOT call focus() — status must not steal keyboard focus from flight/UI.
-    el.setAttribute('role', 'button');
-    el.setAttribute('tabindex', '0');
-    el.setAttribute('aria-label', text + ' (dismiss)');
+    if (act) {
+      el.setAttribute('role', 'group');
+      el.setAttribute('aria-label', text);
+    } else {
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('aria-label', text + ' (dismiss)');
+    }
     el.addEventListener('click', () => dismiss(rec));
     el.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); dismiss(rec); }
     });
     // newest on top; #toast-live is sr-only and rides to the end of the flex stack via prepend
     root.prepend(el);
-    const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1 };
+    const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1, action: act };
     live.unshift(rec);
     announceStatus(text, 1);
     recomputeNextWake();
     // animate in next frame
     requestAnimationFrame(() => el.classList.add('sf-toast--in'));
-    while (live.length > MAX) dismiss(live[live.length - 1]);
+    while (live.length > MAX) dismiss(pickEvictionVictim(live));
   }
 
   function dismiss(rec, opts = {}) {

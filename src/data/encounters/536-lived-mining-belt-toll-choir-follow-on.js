@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_mining_belt_toll_choir_follow_on",
   "title": "DENT ON THE MINING BELT",
   "factionId": "faction_choir",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Pay the count",
-      "playerLine": "CANTOR, I will pay for the dent and take the marked lane."
+      "label": "Pay the count — 36 cr",
+      "playerLine": "Take thirty-six, CANTOR — my hull passes the marker on the far side at Mining Belt."
     },
     {
       "id": "b",
-      "label": "Ask for proof",
-      "playerLine": "Show me the dent count before I enter mining belt."
+      "label": "Tow the dent clear of the lane",
+      "playerLine": "No coin — I tow your dent a hundred-twenty clear of the Mining Belt lane and let it settle."
     },
     {
       "id": "c",
-      "label": "Leave the toll",
-      "playerLine": "I decline the dent; clear my hull from mining belt."
+      "label": "Decline and depart",
+      "playerLine": "No coin and no tow, CANTOR — my hull departs Mining Belt."
     }
   ],
   "timeoutChoice": "c",
@@ -62,7 +62,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CANTOR: The dent is due at mining belt. Pay, dispute, or keep moving.",
+      "line": "CANTOR: The dent is due at mining belt. Pay, dispute, or keep moving. — DENT ON THE MINING BELT.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -76,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The toll board has one number and three kinds of handwriting.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -90,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "CANTOR counts the queue by hull, not by promise.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -104,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The dent has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -118,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "The mining belt hums at one level. Your throttle is not it.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -140,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: We hold. Quiet engines, patient hands.",
+      "line": "CANTOR: 36 cr clears the count — then pass the hull on the far side, inside the band. Or tow our dent a hundred-twenty clear. — DENT ON THE MINING BELT.",
       "channel": "info",
       "next": "offer"
     },
@@ -150,24 +142,74 @@ const spec = {
       "windowS": 56,
       "motion": "creep",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "charge_a",
+        "b": "await_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Count cleared. The dent crossed mining belt under your name.",
-      "channel": "info",
-      "next": "cost_a"
-    },
-    {
-      "id": "cost_a",
-      "verb": "cost",
+      "id": "charge_a",
+      "verb": "charge",
       "amount": 36,
       "reason": "lived_mining_belt_toll_choir_follow_on",
+      "next": "await_a"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "CANTOR: Count paid, no pass. The lane reopens when the hull crosses — or the count stands and we log the stop at Mining Belt.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "oppositeSides",
+          "of": "hull_0",
+          "min": 100,
+          "max": 160,
+          "travel": 120
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "CANTOR: Time ran out on the dent ask — DENT ON THE MINING BELT. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "displaced",
+          "dist": 120
+        },
+        {
+          "kind": "released"
+        },
+        {
+          "kind": "settled",
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "CANTOR: Time ran out on the dent ask — DENT ON THE MINING BELT. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
@@ -185,24 +227,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_choir",
+      "delta": 1,
+      "reason": "lived_mining_belt_toll_choir_follow_on:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Dispute logged. CANTOR kept the original count intact.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_choir",
-      "delta": 2,
-      "reason": "lived_mining_belt_toll_choir_follow_on",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -211,23 +254,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "Declined. The dent stays on their side of mining belt.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_choir",
-      "delta": -1,
-      "reason": "lived_mining_belt_toll_choir_follow_on",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -268,24 +312,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Pay the count",
-      "playerLine": "CANTOR, I will pay for the dent and take the marked lane."
+      "label": "Pay the count — 36 cr",
+      "playerLine": "Take thirty-six, CANTOR — my hull passes the marker on the far side at Mining Belt."
     },
     {
       "id": "b",
-      "label": "Ask for proof",
-      "playerLine": "Show me the dent count before I enter mining belt."
+      "label": "Tow the dent clear of the lane",
+      "playerLine": "No coin — I tow your dent a hundred-twenty clear of the Mining Belt lane and let it settle."
     },
     {
       "id": "c",
-      "label": "Leave the toll",
-      "playerLine": "I decline the dent; clear my hull from mining belt."
+      "label": "Decline and depart",
+      "playerLine": "No coin and no tow, CANTOR — my hull departs Mining Belt."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Count cleared. The dent crossed mining belt under your name.",
-    "b": "Dispute logged. CANTOR kept the original count intact.",
-    "c": "Declined. The dent stays on their side of mining belt."
+    "a": "Thirty-six paid, and your hull passed the marker on the far side at Mining Belt. — DENT ON THE MINING BELT.",
+    "b": "The dent moved a hundred-twenty clear of the Mining Belt lane — no coin moved. — DENT ON THE MINING BELT.",
+    "c": "You left the dent on their board and cleared Mining Belt. — DENT ON THE MINING BELT."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "toll",
+    "hasProp": true
   }
 });

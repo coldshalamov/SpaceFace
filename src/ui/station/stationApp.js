@@ -729,7 +729,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   const HELP = STATION_HELP;
-  stampDestinationRail(dock.el, DESTINATIONS, HELP);
+  function restoreDestinationGloss() {
+    stampDestinationRail(dock.el, DESTINATIONS, HELP);
+  }
+  restoreDestinationGloss();
   helpEl.addEventListener('click', () => {
     // Toggle, not re-open. With the trigger now exempt from close-on-outside-click, a second press
     // would otherwise re-render the same card forever with no way to dismiss it by the same button.
@@ -1353,6 +1356,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         attentionAutoOpenedThisDock = true;
         navigate('bar');
       }
+      restoreDestinationGloss();
       return courierAttention;
     }
     const attention = missionDockAttention(s, stationId());
@@ -1372,6 +1376,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         attention,
         focusSurface: attention.surface,
       });
+      restoreDestinationGloss();
       return attention;
     }
     // If already on Missions, re-focus the attention row without changing tab.
@@ -1386,6 +1391,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         });
       }
     }
+    restoreDestinationGloss();
     return attention;
   }
 
@@ -1504,6 +1510,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (bulletin) bulletin.open = false;
       closePop();
       dock.setAttention(null);
+      restoreDestinationGloss();
       lastMissionAttention = null;
       berth.setActive(false);
       pendingArrival = true; // the next show is a new arrival

@@ -28,6 +28,7 @@ import {
   resolveCollisionConsequence,
 } from '../combat/impulseKernel.js';
 import { effectiveTetherBreak } from '../combat/attachments.js';
+import { massline2Flag } from '../data/featureFlags.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((row) => [row.id, row]));
 const MODULE_BY_ID = new Map(MODULES.map((row) => [row.id, row]));
@@ -398,6 +399,13 @@ export function lineLoadSpeedFor(derived) {
 // module's `mods.countermeasure` block and will not deploy anything without one. No module, no
 // field — the keybind does nothing. This is the unlock the packet describes: not a bigger number,
 // a thing you could not do before.
+//
+// One press throws ONE countermeasure — the first one fitted. The deployment owner
+// (`countermeasures.js` `equippedCountermeasure`, read by `_tryDeploy` and
+// `countermeasureReadiness` alike) walks the fittings array in order and fires the first
+// `mods.countermeasure` block it finds, so a bigger buoy bolted on BEHIND a chaff dispenser
+// never reaches the key. The capability rows name what the key actually throws — never the
+// largest field aboard — or a scan door could promise a decoy the press refuses to deploy.
 // ---------------------------------------------------------------------------------------------
 
 const FIELD_KIND_WORD = Object.freeze({
@@ -406,28 +414,24 @@ const FIELD_KIND_WORD = Object.freeze({
   decoy: 'a decoy buoy',
 });
 
-/** The field this fit can deploy, or `{ available: false }`. */
+/** The field this fit's countermeasure key deploys — the FIRST fitted one — or `{ available: false }`. */
 export function fieldDeployFor(fittings) {
   const list = Array.isArray(fittings) ? fittings : [];
-  let best = null;
   for (const id of list) {
     const def = id ? MODULE_BY_ID.get(id) : null;
     const cm = def && def.mods && def.mods.countermeasure;
     if (!cm) continue;
-    const radius = finite(cm.radius, 0);
-    if (!best || radius > best.radiusWu) {
-      best = {
-        available: true,
-        kind: String(cm.kind || 'field'),
-        moduleId: def.id,
-        moduleName: def.name,
-        radiusWu: radius,
-        durationS: finite(cm.durationS, 0),
-        cooldownS: finite(cm.cooldownS, 0),
-      };
-    }
+    return {
+      available: true,
+      kind: String(cm.kind || 'field'),
+      moduleId: def.id,
+      moduleName: def.name,
+      radiusWu: finite(cm.radius, 0),
+      durationS: finite(cm.durationS, 0),
+      cooldownS: finite(cm.cooldownS, 0),
+    };
   }
-  return best || { available: false, kind: null, moduleId: null, moduleName: null, radiusWu: 0, durationS: 0, cooldownS: 0 };
+  return { available: false, kind: null, moduleId: null, moduleName: null, radiusWu: 0, durationS: 0, cooldownS: 0 };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -439,14 +443,16 @@ export function fieldDeployFor(fittings) {
 // `need` shapes:
 //   tow   { kind:'tow',   massT }        — the heaviest partner mass the line can put under way
 //   slam  { kind:'slam',  speedWuPerS }  — the closing speed this hull walks away from
-//   line  { kind:'line',  speedWuPerS }  — the swing speed the fitted line is rated to carry
+//   line  { kind:'line',  speedWuPerS, headId? } — the swing speed the fitted line is rated to
+//         carry, optionally qualified to a named Massline head that must be fitted AND admitted
+//         by the runtime's own feature flags
 //   field { kind:'field', fieldKind?, radiusWu? } — a field in the water, optionally of a kind/size
 // A bare `{ massT }` (no kind) is a legacy tow door — the form the first revisitNeed rows used.
 // ---------------------------------------------------------------------------------------------
 
 export const REVISIT_DOOR_KINDS = Object.freeze(['tow', 'slam', 'line', 'field']);
 
-export function revisitDoorState({ derived, fittings } = {}, need) {
+export function revisitDoorState({ derived, fittings, features } = {}, need) {
   if (!need || typeof need !== 'object') return null;
   const kind = typeof need.kind === 'string' && need.kind
     ? need.kind
@@ -480,12 +486,29 @@ export function revisitDoorState({ derived, fittings } = {}, need) {
       // A line whose rating is past anything the hull can reach is the verbs row's "holds any
       // swing you can build": no authored swing requirement can refuse it — but a door fails
       // closed without a real fit to quote (derived null → not yet, never a phantom ready).
-      return {
+      const door = {
         kind, required,
         have: load.speedWuPerS,
         reachable,
         ready: derived != null && (!reachable || load.speedWuPerS + 1e-9 >= required),
       };
+      // A head-qualified line door names a real head, not a rating: the numeric "holds any
+      // swing" verdict of the ordinary line is not the answer. The only admitted qualifier
+      // today is the Elastic Whip — the fitted head id AND the runtime's own feature flag
+      // must both say it. Any other nonempty qualifier fails closed.
+      const requiredHeadId = typeof need.headId === 'string' && need.headId ? need.headId : null;
+      if (requiredHeadId) {
+        const haveHeadId = (derived && typeof derived.masslineHeadId === 'string' && derived.masslineHeadId)
+          || null;
+        const headReady = requiredHeadId === 'elastic_whip'
+          && haveHeadId === 'elastic_whip'
+          && massline2Flag('masslineHeadElasticWhip', features) === true;
+        door.requiredHeadId = requiredHeadId;
+        door.haveHeadId = haveHeadId;
+        door.headReady = headReady;
+        door.ready = door.ready && headReady;
+      }
+      return door;
     }
     case 'field': {
       const fieldKind = typeof need.fieldKind === 'string' && need.fieldKind ? need.fieldKind : null;

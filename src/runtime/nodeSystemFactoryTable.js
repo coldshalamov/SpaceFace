@@ -211,6 +211,7 @@ import { moralTrapSystem } from '../systems/moralTrap.js';
 import { mail } from '../systems/mail.js';
 import { worldClock } from '../systems/worldClock.js';
 import { worldPressure } from '../systems/worldPressure.js';
+import { lineProgression } from '../systems/lineProgression.js';
 import { lossLedger } from '../systems/lossLedger.js';
 import { provenanceLedger } from '../systems/provenanceLedger.js';
 import { factionPresence } from '../systems/factionPresence.js';
@@ -475,6 +476,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['mail', mail],
     ['worldClock', worldClock],
     ['worldPressure', worldPressure],
+    ['lineProgression', lineProgression],
     ['save', save],
   ];
 

@@ -255,6 +255,7 @@ import {
   INTEGRATED_PRESET_SUGGESTION,
   DEFAULT_QUALITY_PRESET,
   dynResFloorForTier,
+  dynamicResolutionAllowedForTier,
   softwareRendererEmergencyProfile,
 } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
@@ -13250,13 +13251,14 @@ export const render = {
       floor: dynFloor,
       apply: (s) => { this.state.render.dynResScale = s; this._applySize(); },
     });
-    // Dynamic resolution is allowed for SOFTWARE (emergency) and INTEGRATED (opt-in setting).
+    // Dynamic resolution is allowed for SOFTWARE (emergency), INTEGRATED and UNKNOWN (a browser that
+    // hides the GPU name; opt-in setting).
     // Scale changes used to reallocate the whole render-target chain (0.5-1.3s stalls on this
     // class of hardware — .devshots/perf/hitch-budget-after-lightfix* vs *-nodynres). The bloom
     // target pool now pre-allocates at max size and renders into viewport sub-rects via
     // setContentScale — zero realloc on scale change — so integrated can opt in safely.
     // Discrete stays off: steady-state already holds the frame budget at full quality.
-    this._dynResAllowed = gpu.tier === 'software' || gpu.tier === 'integrated';
+    this._dynResAllowed = dynamicResolutionAllowedForTier(gpu.tier);
     // Published for renderGraphDynResBlocked (route selection + buffer sizing read it there).
     state.render.dynResAllowed = this._dynResAllowed;
     this._adaptive.setEnabled(this._dynResAllowed && !(state.settings && state.settings.video && state.settings.video.dynamicResolution === false));

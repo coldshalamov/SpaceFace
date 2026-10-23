@@ -76,6 +76,19 @@ export function objectiveWord(objectiveKind) {
   return typeof word === 'string' ? word : null;
 }
 
+const MARK_GLYPHS = Object.freeze(['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']);
+
+/** Overhead bearing toward a circuit ring. Empty once the ship is inside it. */
+export function circuitMarkGlyph(player, mark) {
+  if (!player || !player.pos || !mark) return '';
+  const dx = Number(mark.x) - Number(player.pos.x);
+  const dz = Number(mark.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return '';
+  if (Math.hypot(dx, dz) <= (Number(mark.radius) || 0)) return '';
+  const octant = Math.round((Math.atan2(-dx, dz) / (Math.PI * 2)) * 8);
+  return MARK_GLYPHS[(octant + 8) % 8];
+}
+
 /** Arena label from the id. Data-free so a new arena needs no edit here. */
 export function arenaLabel(arenaId) {
   if (!arenaId) return 'ARENA';
@@ -343,10 +356,20 @@ export const survivalHud = {
         const durationSeconds = Math.max(1, Math.ceil(durationTicks / 60));
         // A survive round's clock is the objective itself: the wait IS the win.
         const surviving = this._objectiveKind === 'survive';
-        this._setText(dom.threatWord, surviving ? 'SURVIVE' : 'NEXT WAVE');
+        const zoned = this._objectiveKind === 'hold' || this._objectiveKind === 'reach';
+        const planned = this._plan && this._plan.swarm && this._plan.swarm.circuit;
+        const mark = zoned
+          ? (this._objectiveKind === 'hold'
+            ? (planned && planned.zone) || (circuitRound && circuitRound.zone)
+            : (planned && planned.gate) || (circuitRound && circuitRound.gate))
+          : null;
+        const player = st.entities && st.entities.get && st.entities.get(st.playerId);
+        const glyph = circuitMarkGlyph(player, mark);
+        const word = zoned ? objectiveWord(this._objectiveKind) : (surviving ? 'SURVIVE' : 'NEXT WAVE');
+        this._setText(dom.threatWord, glyph ? `${word} ${glyph}` : word);
         this._setText(dom.threatFig, clock);
         this._setStyle(dom.threatFill, 'width', `${Math.round(waveElapsedFill(remainingTicks, durationTicks) * 100)}%`);
-        this._setAttr(dom.threat, 'aria-label', surviving ? `Survive ${clock}` : `Next wave in ${clock}`);
+        this._setAttr(dom.threat, 'aria-label', surviving ? `Survive ${clock}` : zoned ? `${word} ${clock}` : `Next wave in ${clock}`);
         this._setAttr(dom.threat, 'aria-valuemin', '0');
         this._setAttr(dom.threat, 'aria-valuenow', String(remainingSeconds));
         this._setAttr(dom.threat, 'aria-valuemax', String(durationSeconds));
@@ -383,12 +406,16 @@ export const survivalHud = {
       this._setHidden(dom.boss, !bossVitals);
       if (bossVitals) {
         const pct = bossVitals.pct == null ? null : Math.max(0, Math.min(1, bossVitals.pct));
-        this._setText(dom.bossWord, bossVitals.count > 1 ? `BOSS ×${bossVitals.count}` : 'BOSS');
+        const bossLabel = bossVitals.name
+          ? bossVitals.name
+          : (bossVitals.count > 1 ? `BOSS ×${bossVitals.count}` : 'BOSS');
+        this._setText(dom.bossWord, bossLabel);
         this._setText(dom.bossFig, pct == null ? '—' : `${Math.round(pct * 100)}%`);
         this._setStyle(dom.bossFill, 'width', `${pct == null ? 0 : Math.round(pct * 100)}%`);
+        const hullWord = bossVitals.name || 'Boss';
         this._setAttr(dom.boss, 'aria-label', pct == null
-          ? 'Boss hull'
-          : `Boss hull ${Math.round(pct * 100)} percent`);
+          ? `${hullWord} hull`
+          : `${hullWord} hull ${Math.round(pct * 100)} percent`);
         this._setAttr(dom.boss, 'aria-valuenow', String(pct == null ? 0 : Math.round(pct * 100)));
       }
     }
@@ -447,7 +474,10 @@ export const survivalHud = {
       this._setHidden(dom.earn, false);
       this._setText(dom.earn, this._earn);
     } else {
-      if (this._earn) this._clearEarn();
+      // The toast is the only thing that expires. The round's HOLD or GATE word, and the
+      // arrow aimed at the ring, stay for the whole round.
+      this._earn = null;
+      this._earnUntil = -1;
       this._setHidden(dom.earn, true);
     }
 
@@ -598,11 +628,17 @@ export const survivalHud = {
     let count = 0;
     let hull = 0;
     let max = 0;
+    let name = null;
     for (const entity of entities.values()) {
       if (!entity || entity.alive === false) continue;
       const data = entity.data;
-      if (!data || data.swarmChampion !== true) continue;
+      const commander = data && data.circuitCommander === true;
+      if (!data || (data.swarmChampion !== true && !commander)) continue;
       count += 1;
+      if (commander && !name) {
+        const label = data.scanLabel || data.callsign;
+        if (typeof label === 'string' && label) name = label;
+      }
       const hullMax = Number.isFinite(entity.hullMax) ? entity.hullMax
         : Number.isFinite(entity.data.hullMax) ? entity.data.hullMax : 0;
       const hullNow = Number.isFinite(entity.hull) ? Math.max(0, entity.hull)
@@ -613,7 +649,7 @@ export const survivalHud = {
       }
     }
     if (count === 0) return null;
-    return { count, pct: max > 0 ? hull / max : null };
+    return { count, pct: max > 0 ? hull / max : null, name };
   },
 
   // ---- DOM ------------------------------------------------------------------

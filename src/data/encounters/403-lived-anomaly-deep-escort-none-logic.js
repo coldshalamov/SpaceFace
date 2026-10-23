@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_anomaly_deep_escort_none_logic",
   "title": "VISOR ON THE ANOMALY DEEP",
   "factionId": "faction_free",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Take the lead",
-      "playerLine": "I will take the lead and keep the visor in my wake."
+      "label": "Match the lead through Anomaly Deep",
+      "playerLine": "I hold station off your bow while your lead makes its hundred through Anomaly Deep."
     },
     {
       "id": "b",
-      "label": "Cover the flank",
-      "playerLine": "I can cover the outside while your slow hull crosses."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, BUOY — send the relief to Anomaly Deep instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the escort",
-      "playerLine": "I cannot escort this run. Keep the visor on course."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, BUOY — my hull is leaving Anomaly Deep."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +52,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "BUOY: Keep the visor behind your drive through anomaly deep. No passing.",
+      "line": "BUOY: Keep the visor behind your drive through anomaly deep. No passing. — VISOR ON THE ANOMALY DEEP.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +66,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The escort beacon has been taped over at the wrong end.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +78,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "BUOY checks the trailing lamp before calling the lead clear.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +90,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The visor has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +102,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Boost all you like; anomaly deep keeps its own volume.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +122,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "BUOY: Holding. The lane keeps its own clock.",
+      "line": "BUOY: Hold station sixty to a hundred-eighty off our bow while we make a hundred on the lead. — VISOR ON THE ANOMALY DEEP.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +132,72 @@ const spec = {
       "windowS": 56,
       "motion": "orbit",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Lead taken. The escorted hull kept its lamps behind yours.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_anomaly_deep_escort_none_logic:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "BUOY: Time ran out on the work ask — VISOR ON THE ANOMALY DEEP. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "formation",
+          "of": "hull_0",
+          "min": 60,
+          "max": 180,
+          "holdS": 8,
+          "leaderProgress": 100
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "BUOY: Time ran out on the work ask — VISOR ON THE ANOMALY DEEP. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "BUOY: Time ran out on the work ask — VISOR ON THE ANOMALY DEEP. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 48,
       "reason": "lived_anomaly_deep_escort_none_logic",
       "next": "rep_a"
     },
@@ -168,24 +210,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_free",
+      "delta": 3,
+      "reason": "lived_anomaly_deep_escort_none_logic:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Flank clear. No second signal followed the crossing.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_free",
-      "delta": 2,
-      "reason": "lived_anomaly_deep_escort_none_logic",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +237,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left. BUOY kept the visor on the marked course.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_free",
-      "delta": -1,
-      "reason": "lived_anomaly_deep_escort_none_logic",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +295,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Take the lead",
-      "playerLine": "I will take the lead and keep the visor in my wake."
+      "label": "Match the lead through Anomaly Deep",
+      "playerLine": "I hold station off your bow while your lead makes its hundred through Anomaly Deep."
     },
     {
       "id": "b",
-      "label": "Cover the flank",
-      "playerLine": "I can cover the outside while your slow hull crosses."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, BUOY — send the relief to Anomaly Deep instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the escort",
-      "playerLine": "I cannot escort this run. Keep the visor on course."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, BUOY — my hull is leaving Anomaly Deep."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Lead taken. The escorted hull kept its lamps behind yours.",
-    "b": "Flank clear. No second signal followed the crossing.",
-    "c": "You left. BUOY kept the visor on the marked course."
+    "a": "You held station off the lead for the whole hundred it made at Anomaly Deep. — VISOR ON THE ANOMALY DEEP.",
+    "b": "24 cr funded the relief call — BUOY sends the shift at Anomaly Deep on your credit. — VISOR ON THE ANOMALY DEEP.",
+    "c": "You left Anomaly Deep. The work stayed with the crew that owned it. — VISOR ON THE ANOMALY DEEP."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "match_lead",
+    "hasProp": false
   }
 });

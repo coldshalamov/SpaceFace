@@ -27,6 +27,9 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'travelLanes',
   // Ambient contract scheduling is run-local even when no hunter currently exists.
   'bountyHunt',
+  // The Line's tonnage ledger and any held-target strain state are run-scoped: a fresh
+  // run starts at class I with no winch heat and no held body.
+  'lineProgression',
   'world',
   'reactiveMatter', 'spectrum', 'orbitalGallery', 'kineticLeague', 'mercyService', 'wreckCourt',
   'regionalEcology',

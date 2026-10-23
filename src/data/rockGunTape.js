@@ -20,12 +20,20 @@ export const ROCK_GUN_GUN_TAGS = Object.freeze(['projectile', 'gun', 'turret', '
 /** Bucket an entity:killed payload into 'impact' | 'gun' | 'other' for the waves-1–10 share. */
 export function rockGunKillBucket(payload) {
   const p = payload?.presentation;
+  // The receipt keeps the provenance tag inside impactLink, not at top level; a tag-shaped
+  // cause (massline_whip) is still an impact kill.
   const tag = typeof p?.tag === 'string' ? p.tag
+    : typeof p?.impactLink?.tag === 'string' ? p.impactLink.tag
     : typeof payload?.tag === 'string' ? payload.tag : '';
-  const cause = typeof p?.cause === 'string' ? p.cause
-    : typeof payload?.cause === 'string' ? payload.cause : '';
-  if (ROCK_GUN_IMPACT_TAGS.includes(tag) || ROCK_GUN_IMPACT_CAUSES.includes(cause)) return 'impact';
-  if (ROCK_GUN_GUN_TAGS.includes(tag) || cause === 'kinetic' || cause === 'generic') return 'gun';
+  // The canonical whip payload pairs a top-level physical cause ('massline_whip') with a
+  // presentation cause of 'generic' — check both fields for impact before the generic
+  // cause can fall through to 'gun'.
+  const causes = [p?.cause, payload?.cause].filter((c) => typeof c === 'string');
+  if (ROCK_GUN_IMPACT_TAGS.includes(tag)
+    || causes.some((c) => ROCK_GUN_IMPACT_CAUSES.includes(c) || ROCK_GUN_IMPACT_TAGS.includes(c))) {
+    return 'impact';
+  }
+  if (ROCK_GUN_GUN_TAGS.includes(tag) || causes.some((c) => c === 'kinetic' || c === 'generic')) return 'gun';
   return 'other';
 }
 

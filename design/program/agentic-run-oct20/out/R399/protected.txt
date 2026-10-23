@@ -1,0 +1,230 @@
+ M SAVE_SCHEMA.md
+ M build_map.md
+ M design/program/DEMO_READINESS_2026-09-20.md
+ M design/program/INFERENCE_IDEAS.md
+ M design/program/LANDED_REVIEW.md
+ M design/program/NOW.md
+ M design/program/agentic-run-oct20/lane.mjs
+ M design/program/player-truth/adventure/contact-sheet.jpg
+ M design/program/player-truth/adventure/verdict.json
+ M design/program/player-truth/adventure/verdict.md
+ M docs/EVENT_ROUTING.md
+ M docs/SYSTEM_REGISTRY.md
+ M package-lock.json
+ M scripts/bake-title-attract.mjs
+ M scripts/lib/ceresFiveMinuteAcceptance.mjs
+ M scripts/lib/uiBenchCatalog.mjs
+ M src/audio/audioSystem.js
+ M src/audio/bandBeds.js
+ M src/audio/barkVoice.js
+ M src/audio/themeCompose.js
+ M src/audio/themeMatrix.js
+ A src/chronicler/logbook.js
+ A src/chronicler/recordsWall.js
+ M src/combat/masslineTargetScoring.js
+ M src/combat/physicalEffects.js
+ M src/core/flight/propulsionKernel.js
+ M src/core/mainToSimEventSurface.js
+ M src/core/registry.js
+ M src/data/barks.js
+ M src/data/blackFlag.js
+ M src/data/combatDefs.js
+ A src/data/contactDeedMemory.js
+ M src/data/environmentalMachinery.js
+ M src/data/factionPresence.js
+ M src/data/fields.js
+ M src/data/lookMoods.js
+ M src/data/modules.js
+ M src/data/powerPreview.js
+ M src/data/saveVersion.js
+ M src/data/sectorVisualProfiles.js
+ M src/data/shipjackEquipment.js
+ M src/data/starterJobs.js
+ M src/data/survivalArenas.js
+ M src/data/survivalDraft.js
+ M src/data/swarmBrood.js
+ M src/data/swarmCatalog.js
+ M src/data/swarmDraft.js
+ A src/data/travelChoices.js
+ M src/localization/catalogs/en-US.generated.js
+ M src/presentation/momentMachine/captions.js
+ M src/presentation/momentMachine/index.js
+ M src/presentation/momentMachine/ingest.js
+ M src/render/camera.js
+ M src/render/forceLanguage/fieldForcePresentation.js
+ M src/render/illustratedSurface.js
+ M src/render/killcamStage.js
+ M src/render/powerPreview.js
+ M src/render/renderer.js
+ A src/render/replayWeaponStage.js
+ M src/render/titleAttractStage.js
+ M src/render/uiStage.js
+ M src/render/vfx.js
+ M src/render/vfxColorLightDirector.js
+ M src/runtime/authoritativeSystemManifest.js
+ M src/runtime/nodeSystemFactoryTable.js
+ M src/save/migrations.js
+ M src/save/saveSystem.js
+ M src/shipjack/market.js
+ M src/sim/killcamTape.js
+ M src/sim/titleAttract.js
+ M src/sim/titleAttractTape.js
+ M src/sim/titleAttractTapeData.js
+ M src/story/campaign47a/embodiedDialogue.js
+ M src/story/endings/finaleContent.js
+ M src/story/endings/finaleRuntime.js
+ M src/story/endings/lifeLedger.js
+ M src/systems/aftermathWrecks.js
+ M src/systems/bandRadio.js
+ M src/systems/cruise.js
+ M src/systems/custodyConsequences.js
+ M src/systems/economy.js
+ M src/systems/encounterDirector.js
+ M src/systems/environmentalMachinery.js
+ M src/systems/factionPresence.js
+ M src/systems/factions.js
+ M src/systems/fields.js
+ M src/systems/flightV3.js
+ M src/systems/gateControlDirector.js
+ M src/systems/input.js
+ M src/systems/killReplay.js
+ M src/systems/missions.js
+ M src/systems/npcJobsRuntime.js
+ M src/systems/onboarding.js
+ M src/systems/postEndingReplay.js
+ M src/systems/powerVerbs.js
+ M src/systems/routeFollower.js
+ M src/systems/routePlanner.js
+ M src/systems/scanner.js
+ M src/systems/sectorSim.js
+ M src/systems/shipjack.js
+ M src/systems/ships.js
+ M src/systems/stationContacts.js
+ M src/systems/surveyFix.js
+ M src/systems/survivalArena.js
+ M src/systems/survivalDraft.js
+ M src/systems/swarmArena.js
+ M src/systems/swarmBrood.js
+ M src/systems/tetherGameplay.js
+ M src/systems/traffic.js
+ M src/systems/travelLanes.js
+ A src/systems/weatherMeteors.js
+ M src/systems/wingmen.js
+ M src/systems/world.js
+ A src/testing/lab/titleVerbScenario.js
+ M src/ui/accessibility.js
+ M src/ui/bindings.js
+ M src/ui/blackFlag.js
+ M src/ui/blackFlagRegistry.js
+ M src/ui/confirm.js
+ M src/ui/galaxyMap.js
+ M src/ui/input.js
+ A src/ui/ionStormHud.js
+ M src/ui/loadingPresenter.js
+ A src/ui/logbookMedia.js
+ A src/ui/logbookRecap.js
+ M src/ui/map/mapNavContext.js
+ A src/ui/orrery/logbookLayouts.js
+ M src/ui/orrery/settingsPreview.js
+ M src/ui/racingHud.js
+ A src/ui/rangeLicence.js
+ M src/ui/screens/clips.js
+ M src/ui/screens/codex.js
+ M src/ui/screens/crucible.js
+ M src/ui/screens/flightFootage.js
+ M src/ui/screens/footageVideoCodec.js
+ M src/ui/screens/gameOver.js
+ M src/ui/screens/help.js
+ M src/ui/screens/mainMenu.js
+ M src/ui/screens/missionLog.js
+ M src/ui/screens/newGame.js
+ M src/ui/screens/pause.js
+ M src/ui/screens/range.js
+ M src/ui/screens/replay.js
+ M src/ui/screens/settings.js
+ M src/ui/screens/statistics.js
+ M src/ui/station/barContacts.js
+ M src/ui/station/dock.js
+ M src/ui/station/screens/bar.js
+ M src/ui/station/screens/contracts.js
+ M src/ui/station/stationApp.js
+ A src/ui/travelVectorHud.js
+ M src/ui/uiRoot.js
+ M src/ui/voiceArbiter.js
+ M styles/station-orbital.css
+ M test/al-show-2-theater-4242.test.mjs
+ A test/al-show-3-attract-4242.test.mjs
+ M test/black-flag-content-ui.test.mjs
+ M test/black-flag-market.test.mjs
+ A test/black-flag-rendezvous.test.mjs
+ A test/black-flag-save-loop.test.mjs
+ M test/black-flag-state.test.mjs
+ M test/fb-pad-covers-the-hand.test.mjs
+ M test/five-powers-merge-4242.test.mjs
+ A test/gold-logbook-451-4242.test.mjs
+ M test/next-wave-nxb-003.test.mjs
+ M test/powers-493.test.mjs
+ A test/rc-cast-memory-460-4242.test.mjs
+ A test/rc-travel-4242.test.mjs
+ M test/story-endings.test.mjs
+ M test/swarm-preaction-damage-admission.test.mjs
+ M test/title-attract.test.mjs
+ M test/wave-e1-pad-verbs.test.mjs
+ M tools/ui-bench.js
+?? %TEMP%towline_rel_before.txt
+?? .claude/settings.local.json
+?? "C\357\200\272Users93robAppDataLocalTempg453.log"
+?? "c\357\200\272tmp_beam.txt"
+?? "c\357\200\272tmp_mine.txt"
+?? "c\357\200\272tmp_prio.txt"
+?? "c\357\200\272tmp_tb.txt"
+?? "c\357\200\272tmp_tether.txt"
+?? "c\357\200\272tmp_ts.txt"
+?? design/program/agentic-run-oct18/out/audit-audio.log
+?? design/program/agentic-run-oct18/out/audit-hitch2.log
+?? design/program/agentic-run-oct18/out/audit-menus.log
+?? design/program/agentic-run-oct18/packets/AUDIT-AUDIO.md
+?? design/program/agentic-run-oct18/packets/AUDIT-MENUS.md
+?? design/program/agentic-run-oct18/packets/SWP-LOAD-FINDINGS.md
+?? src/audio/barkPcmCache.js
+?? src/audio/outputMix.js
+?? src/audio/replayAudioTape.js
+?? src/audio/replayAudioWorklet.js
+?? src/audio/sectorScoreBeds.js
+?? src/audio/stuntScore.js
+?? src/audio/threatEar.js
+?? src/data/bloomLadder.js
+?? src/data/craftCadence.js
+?? src/data/lineProgression.js
+?? src/data/lineRating.js
+?? src/data/rockGunTape.js
+?? src/data/trailerMoments.js
+?? src/data/worldPressure.js
+?? src/onboarding/powerSituations.js
+?? src/render/trailerStaging.js
+?? src/sim/forceTape.js
+?? src/sim/theaterTape.js
+?? src/story/endings/worldAfter.js
+?? src/systems/captainMemory.js
+?? src/systems/captainStandingOrders.js
+?? src/systems/coldburnRey.js
+?? src/systems/endingWorldPresence.js
+?? src/systems/rockCore.js
+?? src/systems/swarmLegendaries.js
+?? src/systems/trailerEncounterStaging.js
+?? src/systems/worldPressure.js
+?? src/ui/screens/theaterExport.js
+?? src/ui/screens/theaterSession.js
+?? src/ui/screens/theaterWebm.js
+?? src/ui/station/stationArrival.js
+?? test/power-fire-setting.test.mjs
+?? test/power-hold-preview.test.mjs
+?? test/w-520.test.mjs
+?? tools/forge-connectivity-scan.cjs
+?? tools/forge-lod-component-scan.cjs
+?? tools/forge-lod-silhouette-scan.cjs
+?? tools/forge-lodfile-scan.cjs
+?? tools/forge-perch-scan.cjs
+?? tools/forge-probe-part.cjs
+?? tools/forge-surface-scan.cjs
+?? tsconfig-bughunt.tmp.json

@@ -1869,6 +1869,26 @@ html.sf-reduce-motion .sf-drawer { transition: none; }
 .sf-state__verb:hover { border-color: var(--sf-goal); }
 .sf-state__verb:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
 .sf-state__verb:active { transform: none; }   /* ui.css `button:active{transform}` clobbers centering */
+/* The failure pane's second control, "Copy details" (runtimeFailurePresenter.js): it sits beside the way out
+   and stays quiet (calm, not goal) so Retry remains the one lit verb. The status line answers the click in
+   words; the report box appears only when the clipboard refused, so the text can still be selected. */
+.sf-state__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.sf-state__actions .sf-state__verb { margin-top: 0; }
+.sf-state__verb--quiet { color: var(--sf-calm); border-color: var(--sf-edge); }
+.sf-state__verb--quiet:hover { color: var(--sf-paper); border-color: var(--sf-calm); }
+.sf-state__copy-status { margin: 0; font-size: 13px; line-height: 1.45; color: var(--sf-calm); overflow-wrap: break-word; }
+.sf-state__copy-status:empty { display: none; }
+.sf-state__report {
+  box-sizing: border-box; width: 100%; max-height: 38vh; margin: 0; padding: 8px 10px; resize: vertical; overflow: auto;
+  font: 400 12px/1.45 var(--sf-data-face); color: var(--sf-paper); white-space: pre-wrap; overflow-wrap: anywhere; text-align: left;
+  background: color-mix(in srgb, var(--sf-calm) 10%, transparent);
+  border: 1px solid var(--sf-edge); border-radius: var(--r-sm, 5px);
+}
+.sf-state__report[hidden] { display: none; }
+.sf-state__report:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
+/* The failure pane is a centered flex item of #boot-overlay (overflow hidden): once the report box opens it
+   can be taller than a short screen, and a centered item clips at BOTH ends. Cap it and let it scroll. */
+#boot-overlay > .sf-state { max-height: 100%; min-height: 0; overflow-y: auto; box-sizing: border-box; }
 /* Keycap. 12px floor applies here too — this was 11px in a `font:` shorthand, which the check's
    `font-size:` scan could not see. nowrap is allowed on a keycap (grammar §12 item 11). */
 .sf-state__key {
@@ -1904,6 +1924,7 @@ html.sf-reduce-motion .sf-drawer { transition: none; }
   .sf-state { border-inline-start-color: CanvasText; }   /* colour only — keep the per-state style/width */
   .sf-state__bar { border: 1px solid CanvasText; background: none; }
   .sf-state__verb { border: 1px solid ButtonText; color: ButtonText; }
+  .sf-state__report { border: 1px solid CanvasText; color: CanvasText; background: Canvas; }
 }
 
 /* 14 ─ entity links + the entity DRAWER (J5; entityLinks.js) ------------------------------------
@@ -1970,6 +1991,28 @@ html.sf-reduce-motion .sf-entity-link--row, html.sf-reduce-motion .sf-entity-lin
 .sf-drawer--entity .sf-drawer__deck > :nth-child(3) { animation-delay: 190ms; }
 .sf-drawer--entity .sf-drawer__deck > :nth-child(4) { animation-delay: 230ms; }
 .sf-drawer--entity .sf-drawer__deck > :nth-child(n+5) { animation-delay: 270ms; }
+/* The deck scrolls; its sections keep their own height. Shrunk to fit, a long record let each label
+   print over the value under it (FLEET DOCTRINE over the controls line, PLACES over the next row). */
+.sf-drawer--entity .sf-drawer__deck > * { flex-shrink: 0; }
+/* With the sections at full height a long record scrolls, so the verbs ride the foot of the sheet
+   (sticky, on the sheet's own glass) instead of scrolling out of reach. Short screens close the gaps. */
+.sf-drawer--entity .sf-drawer__deck { padding-bottom: 0; }
+/* The first fact row's own hairline already closes the crest; two rules 24px apart read as a stray line. */
+.sf-drawer--entity .sf-drawer__crest:has(+ .sf-drawer__facts)::after { content: none; }
+.sf-drawer--entity .sf-drawer__apron { position: sticky; bottom: 0; z-index: 1; padding-bottom: 28px; background: rgb(9 11 15); box-shadow: 0 -20px 18px -8px rgb(9 11 15); }
+@media (max-height: 760px) {
+  .sf-drawer--entity .sf-drawer__deck { gap: 18px; padding-top: 30px; }
+  .sf-drawer--entity .sf-drawer__crest { padding-bottom: 16px; }
+  .sf-drawer--entity .sf-drawer__apron { padding-top: 18px; padding-bottom: 20px; }
+}
+/* Phone: 48vw left a ~60px text column (one letter a line). The sheet takes the whole width and is
+   opaque from its edge, with the deck's side padding cut to the phone gutters. */
+@media (max-width: 640px) {
+  .sf-drawerlayer > .sf-drawer--entity { width: 100%; background: rgb(10 12 17 / .96); -webkit-mask-image: none; mask-image: none; }
+  .sf-drawer--entity .sf-drawer__deck { gap: 20px; padding: 56px 20px 0; }
+  .sf-drawer--entity .sf-drawer__apron { padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+  .sf-drawer--entity .sf-drawer__x { top: 12px; right: 12px; width: 44px; height: 44px; }
+}
 /* The graph is the drawer's STAGE. A CREST and an APRON with nothing between them is what read as
    an unfinished sidebar; grouped, full-width link rows are the centerpiece (grammar §6). */
 .sf-drawer__stage { display: flex; flex-direction: column; gap: 20px; min-height: 0; }

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { objectInfoLine, passengerLinerLastLegLine } from '../src/ui/targetPanel.js';
+import { carryPassengerLinerLastOutcome, passengerLinerFlyingTo } from '../src/data/laneContacts.js';
 
 function liner(lastOutcome) {
   return {
@@ -37,4 +38,34 @@ test('seed 4242: an unset liner leg and a non-liner render nothing', () => {
   };
   assert.equal(passengerLinerLastLegLine(hauler), '');
   assert.equal(objectInfoLine(hauler, {}, null, 10), '');
+});
+
+test('seed 4242: the next leg keeps the finished station, and a loss names where it was flying', () => {
+  const finished = {
+    lastOutcome: {
+      outcome: 'DELIVERED', receiptId: 'leg-1', stationId: 'station_coalition', settledAt: 12,
+    },
+  };
+  const next = { lastOutcome: null, state: 'BOARDING' };
+  carryPassengerLinerLastOutcome(finished, next);
+  assert.equal(next.lastOutcome.outcome, 'DELIVERED');
+  assert.equal(next.lastOutcome.stationId, 'station_coalition');
+  const flying = passengerLinerFlyingTo({
+    state: 'EN_ROUTE', originStationId: 'station_helios', destinationStationId: 'station_coalition',
+  });
+  assert.equal(flying, 'station_coalition');
+  const diverting = passengerLinerFlyingTo({
+    state: 'DIVERTING',
+    originStationId: 'station_helios',
+    destinationStationId: 'station_coalition',
+    diversion: { returnStationId: 'station_helios' },
+  });
+  assert.equal(diverting, 'station_helios');
+  const berthed = passengerLinerFlyingTo({
+    state: 'BOARDING', originStationId: 'station_helios', destinationStationId: 'station_coalition',
+  });
+  assert.equal(berthed, 'station_helios');
+  const line = passengerLinerLastLegLine(liner(next.lastOutcome));
+  assert.match(line, /arrived/);
+  assert.ok(line.includes('Coalition HQ'), line);
 });

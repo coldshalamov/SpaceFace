@@ -6,13 +6,14 @@ import { statisticsModel } from '../../core/statistics.js';
 import { wantedTierInfo } from '../../systems/heat.js';
 import { el, words, cue } from '../kit/index.js';
 import { injectStatisticsLayouts } from '../orrery/statisticsLayouts.js';
+import { recordsWall } from '../../chronicler/recordsWall.js';
 
-export const STATISTICS_LABEL = 'Statistics';
+export const STATISTICS_LABEL = 'Records Wall';
 
 function statisticsTitle() {
   const title = el('header', 'k-title');
   title.appendChild(el('h1', 'k-display k-t-title fh-title', STATISTICS_LABEL));
-  title.appendChild(el('p', 'k-sentence', 'Distance, the line, fights, and what the holds earned.'));
+  title.appendChild(el('p', 'k-sentence', 'The things you did, where they happened, and who remembers.'));
   return title;
 }
 
@@ -108,7 +109,23 @@ export const statisticsScreen = {
       } : null,
     });
     rootEl.appendChild(statisticsTitle());
-    rootEl.appendChild(renderStatistics(model, { withTitle: false }));
+    const stage = el('div', 'sf-statistics k-stage k-hang');
+    stage.setAttribute('data-sf-scroll', 'records');
+    const records = recordsWall(ctx?.state);
+    if (!records.length) stage.appendChild(el('p', 'k-sentence', 'No witnessed deeds yet. Haul a load, rescue a pod, or finish a fight; the record keeps its place and time.'));
+    const wall = el('ul', 'k-rows');
+    for (const record of records) {
+      const row = el('li', 'k-row k-row--static');
+      const body = el('div');
+      body.appendChild(el('p', 'k-row__name', record.title));
+      body.appendChild(el('p', 'k-row__sub', record.text));
+      body.appendChild(el('p', 'k-caps', `${record.place} · ${record.time} flown`));
+      row.appendChild(body); wall.appendChild(row);
+    }
+    stage.appendChild(wall);
+    stage.appendChild(el('p', 'k-caps', 'Flight readings'));
+    stage.appendChild(renderStatistics(model, { withTitle: false }));
+    rootEl.appendChild(stage);
     const back = words([{ label: 'Back', action: 'back' }], {
       row: true,
       size: 'emph',

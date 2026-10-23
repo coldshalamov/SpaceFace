@@ -1106,6 +1106,31 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 }
 #screens .sx-berth .sx-tile__badge { margin: 0; font-size: var(--k-fs-fine); color: var(--k-signal); }
 #screens .sx-berth .sx-tile__label { flex: 0 1 auto; }
+/* The help line sits under its own name, in sentence case, and does not widen the station past the rail. */
+#screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+}
+#screens .sx-berth .sx-tile:has(.sx-tile__gloss) {
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+#screens .sx-berth .sx-tile__gloss {
+  flex: 1 0 100%;
+  min-width: 0;
+  width: 100%;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 0.86em;
+  line-height: 1.25;
+  font-variation-settings: "wght" 480, "wdth" 100;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
 
 #screens .sx-berth .sx-comms { flex: 1 1 12rem; flex-direction: row; justify-content: flex-start; gap: calc(8px * var(--k-s)); }
 #screens .sx-berth .sx-receipt { font-size: var(--k-fs-data); white-space: normal; }

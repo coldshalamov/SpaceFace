@@ -1861,7 +1861,7 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 
 **After (`pause.js` one line, `pauseLayouts.js` one `max-width:760px` block scoped to `:not([data-sf-mobile="1"])`):** windows ≤760 wide take the existing phone column, and the sheet gives it the phone sheet's flow (one scroll owner, rows that wrap, a single-column body, 20–48px margins). 0 findings at 390×844, 600×800, 700×800, 701×800; 700×500 and 760×700 only report verbs below the fold of the scrolling list. 960×540, 1280×720, 1920×1080 and the real phone (`--phone` 390×844) are unchanged. Selectors and IDs are unchanged.
 
-**Still open:** at 761–~790 wide the dial's REFERENCE bank runs STATISTICS past the right edge.
+**Still open:** ~~at 761–~790 wide the dial's REFERENCE bank runs STATISTICS past the right edge~~ (fixed in ui-polish-107, see § Pause dial in a narrow, tall window).
 
 ### ui-polish-88 review fixes (#499, after Code Work's 227ae0e47a hand-back)
 - pause.js watches `matchMedia('(max-width:760px)')` and remounts when the window crosses 760 (and on show if it crossed while covered); classes are reset first so the dial and the column never stack.
@@ -1988,3 +1988,30 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **Before:** the confirm body, the danger note and the Find hint used the browser's default wrap, so short last words hung alone: "your hold." at 960 and 1920, "undone." on Sell ship at 1920, and "ESC CLOSES" on the phone Find hint.
 
 **After (`styles/kit.css` only):** `.sf-confirm__body`, `.sf-confirm__note` and `.sf-find__hint` use `text-wrap: balance`, so each block breaks into even lines. No size, colour, selector or ID changes. Checked popup-confirm, popup-confirm-danger and popup-find at 390×844, 960×540, 1280×720 and 1920×1080. Shots: `ui-shots/polish103/{before,before-danger,after,after2}/`, `compare-confirm-{960x540,390x844}.png`.
+
+## Pause dial in a narrow, tall window — 761–960 wide (ui-polish-107)
+
+**Before (master e648f4eac4):** the dial carries at most nine stops, and the width split spent them in list order. At 761–820 wide SHIP took the last spare stop, so REFERENCE (four verbs) stayed whole and RECORDS WALL ran off the right edge (780×700: x 721–812; 761×800: x 767–858, unreachable). The dial grows with the window's height, so taller narrow windows were worse. The key strip also wrapped ←→ ITEM under ESC from 761 to ~830 wide.
+
+**After:**
+- `arcRail.js` `splitGroupedRowsForWidth`: spare stops go to the rows that overrun furthest first (ties keep list order). When the budget covers every overrun, the result is the same as before.
+- `pauseLayouts.js` exports `PAUSE_COLUMN_QUERY`: ≤760 wide as before, plus narrow windows too tall for the dial (bench-measured: the dial fits while W ≥ ~780 + 0.3·(H − 700), stepped in bands up to 960 wide). The column CSS and `pause.js` (mount and the resize watcher) use the same query.
+- The tighter key strip now runs to 840 wide, with the last verb's margin dropped, so the strip stays on one line.
+
+**Checked:** bench `pause` clean at 761×636, 780×700, 800×700, 820×700, 840×600, 849×832, 899×932, 900×600, 960×540, 1280×720, 1920×1080 and 390×844. 761×800 is now the column (clean). 779×700 and 799×766 are the column and only report the last verbs below the fold of the scrolling list, as 760×700 did. Focused tests pass: `orrery-arcrail-width`, `pause-save-line`, `pq-194-06-pause-shell`, `sf-275-pause-ownership`, `shell-focus-pause-release`, `wave-c3-pause-kit`. In `ui-polish-88-pause-narrow`, the three 1280-dial d-pad tests fail the same way on master. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish107/`, `compare-pause-{780x700,761x800}.png`.
+## Help in a narrow desktop window, and the Research foot (ui-polish-106)
+
+**Before (master 93706e9ff0):** at ≤760 wide (taller than 460) nothing composed Help on a desktop: the 172px section ladder kept its column, EVERY KEY ran off the right edge ("Steer left (yaw + ban…"), and the rig's "PRESS ANY KEY · THE RIG LIGHTS…" echo printed over CLOSE (bench: 11 findings at 390×844). On Research (phone and ≤760), the docked foot was 97% opaque, so the reading's REQUIRES / "No prerequisites." ghosted through Back.
+
+**After:** `helpLayouts.js`, desktop only, `(max-width:760px) and (min-height:461px)`: one column (title, the sections as one scrolling row of words on a rule, the stage, Close). Controls gives the stage to EVERY KEY (the rig sleeps, as at ≤460 tall). Ships / Commodities / Ores scroll as one column (list, instrument at 320px, reading); Factions shows the crest ring at 380px over its reading, and at ≤560 only the chosen, hovered or focused crest shows its name (the east/west names ran off the window; each crest keeps its aria-label). `constellationLayouts.js`: the ≤760 Research foot is fully opaque. No selector or ID changes; the phone (`data-sf-mobile`), ≤460 tall, and ≥761 are untouched.
+
+**Checked:** bench `help --walk` through all six sections at 390×844, 600×800 and 760×900: 0 findings (was 11 at 390×844). `tech-tree` at 390×844 phone: no ghost under Back (the bench's BURIED note is the page's fold under the docked foot, by design). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish106/`.
+
+**Leftover:** on the phone, Help's Factions shows no crest ring (the orbit collapses to 0 height), so only Concord can be read.
+## Entity dossier drawer: no stacked labels, phone width, verbs in reach (ui-polish-104)
+
+**Before (master 3d1bd1d756):** the dossier deck is a fixed-height flex column, so a long record shrank every section to fit and each label printed over the value under it (960×540: FLEET DOCTRINE on the controls line, PLACES on Choir Ascending Chorus, POWERS on Vesta Forge, The Vael under CLOSE). On a phone the sheet was 48vw with 88px of left padding, a ~60px column that set "Ascendant Choir" one letter a line.
+
+**After (`styles/ui.css`, `.sf-drawer--entity` only):** sections keep their height and the deck scrolls; the verbs (OPEN ON THE CHART / WATCH / CLOSE) are sticky at the foot on an opaque band, so they stay in reach. At ≤760 tall the gaps close up. At ≤640 wide the sheet is full width and opaque, with 20px gutters and a 44px close button. The crest's hairline is dropped when the facts' own top rule follows it. No selector, ID or JS changes.
+
+**Checked:** ui-bench `popup-dossier` at 390×844, 960×540, 1280×720, 1920×1080: no ON TOP OF inside the drawer (the remaining findings are the station under it). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish104/` (`compare-dossier-*.png`).

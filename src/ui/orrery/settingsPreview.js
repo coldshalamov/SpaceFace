@@ -40,21 +40,34 @@ export const MIXER_CHANNELS = Object.freeze([
   Object.freeze({ key: 'combat', label: 'Combat' }),
   Object.freeze({ key: 'ui', label: 'UI' }),
   Object.freeze({ key: 'comms', label: 'Comms' }),
+  // Voice is the bark/speech gate (barkDirector reads `audio.voice !== 0`), already a row on the
+  // settings sheet — the mixer was the one place it never appeared.
+  Object.freeze({ key: 'voice', label: 'Voice' }),
 ]);
+
+/**
+ * A channel's level when the save has none. Shared by the ring and the settings row so they cannot
+ * disagree: Voice is authored as 1.0 (`gameState.settings.audio.voice`), every other bus at 0.7.
+ * A mixer that assumed 0.7 everywhere drew a Voice ring at 70 % beside a slider reading 100 %.
+ */
+export function channelDefault(key) {
+  return key === 'voice' ? 1 : (key === 'master' ? 1 : 0.7);
+}
+
+function levelOf(audio, key) {
+  const v = audio && audio[key];
+  if (v == null) return channelDefault(key);
+  return Math.max(0, Math.min(1, Number(v) || 0));
+}
 
 /** What reaches the speakers for one channel: master x channel, zero when muted. Pure. */
 export function channelOutput(audio = {}, key = 'master') {
-  const lvl = (k) => {
-    const v = audio && audio[k];
-    if (v == null) return k === 'master' ? 1 : 0.7;
-    return Math.max(0, Math.min(1, Number(v) || 0));
-  };
   if (audio && audio.muted) return 0;
-  return key === 'master' ? lvl('master') : lvl('master') * lvl(key);
+  return key === 'master' ? levelOf(audio, 'master') : levelOf(audio, 'master') * levelOf(audio, key);
 }
 
 const CATEGORY_LINES = Object.freeze({
-  Audio: 'Seven channels under one master. Drag a level and watch the mix move.',
+  Audio: 'Eight channels under one master. Drag a level and watch the mix move.',
   Video: 'How the world is drawn and how the HUD glows. The preview is your live HUD.',
   Gameplay: 'Flight handling, difficulty and HUD hints.',
   Access: 'Contrast, motion, text size and captions. Changes show on the HUD instantly.',
@@ -76,6 +89,7 @@ export function settingEffect(label, value = '', settings = {}) {
     combat: 'Weapons fire and hits.',
     ui: 'Menu and HUD sounds.',
     comms: 'Voices on the radio.',
+    voice: 'Whether barks and hails are spoken at all; at zero they stay written.',
     'quality mode': 'Pins resolution, particles, shadows and the render graph to a tested picture.',
     'hardware preset': 'A named bundle for one machine class: iGPU 60 or Integrated GPU.',
     bloom: 'Bright light spills into a soft glow round it.',
@@ -324,7 +338,24 @@ function svgPointToClient(svgEl, x, y) {
 }
 
 // ---- the mixer -----------------------------------------------------------------------------------
-const MX = Object.freeze({ side: 560, c: 280, master: 244, first: 212, step: 22, span: 270 });
+// Ring geometry. The master keeps the outside; every other channel takes one ring inward, spaced by
+// whatever room is left between the first inner ring and the innermost floor. The step is DERIVED,
+// not fixed: a hard-coded 22px step put the ninth channel (Voice) at r=58, inside the drift ring
+// (r=62) and its hub (r=54). `innerMin` is the smallest ring the drawing can hold clear of both.
+const MIXER_GEOMETRY = Object.freeze({
+  side: 560, c: 280, master: 244, first: 212, innerMin: 96, span: 270,
+  /** The hub disc and the drift ticks inside the innermost channel: the floor `innerMin` clears. */
+  hub: 54, drift: 62,
+});
+export { MIXER_GEOMETRY };
+const MX = MIXER_GEOMETRY;
+
+/** Radius of channel `index` (0 = master). Pure, and the one place the ring ladder is defined. */
+export function mixerRingRadius(index) {
+  if (!(index > 0)) return MX.master;
+  const steps = Math.max(1, MIXER_CHANNELS.length - 2);
+  return MX.first - (Math.min(index, MIXER_CHANNELS.length - 1) - 1) * ((MX.first - MX.innerMin) / steps);
+}
 
 function buildMixer(doc) {
   const host = doc.createElement('div');
@@ -341,12 +372,12 @@ function buildMixer(doc) {
     s.appendChild(t);
   });
   const drift = svg('g', { class: 'orr-drift', style: `transform-origin:${c}px ${c}px; --orr-drift-s:600s` });
-  drift.appendChild(svg('path', { d: ticksD(c, c, 62, 48, { len: 3, major: 4, majorLen: 7 }), class: 'orr-core orr-faint', 'stroke-width': 1, 'stroke-linecap': 'butt' }));
+  drift.appendChild(svg('path', { d: ticksD(c, c, MX.drift, 48, { len: 3, major: 4, majorLen: 7 }), class: 'orr-core orr-faint', 'stroke-width': 1, 'stroke-linecap': 'butt' }));
   s.appendChild(drift);
-  s.appendChild(svg('circle', { cx: c, cy: c, r: 54, fill: 'rgb(8 11 16 / .7)', class: 'orr-core orr-rest', 'stroke-width': 1.5 }));
+  s.appendChild(svg('circle', { cx: c, cy: c, r: MX.hub, fill: 'rgb(8 11 16 / .7)', class: 'orr-core orr-rest', 'stroke-width': 1.5 }));
 
   const channels = MIXER_CHANNELS.map((ch, i) => {
-    const r = i === 0 ? MX.master : MX.first - (i - 1) * MX.step;
+    const r = mixerRingRadius(i);
     const w = i === 0 ? 5 : 3.6;
     const g = svg('g', { class: 'orr-set-ch' });
     const d = arcD(c, c, r, 0, MX.span);
@@ -428,7 +459,7 @@ function buildMixer(doc) {
       host.classList.toggle('is-muted', muted);
       const instant = first;
       for (const ch of channels) {
-        const raw = ch.key === 'master' ? (audioNow.master == null ? 1 : audioNow.master) : (audioNow[ch.key] == null ? 0.7 : audioNow[ch.key]);
+        const raw = audioNow[ch.key] == null ? channelDefault(ch.key) : audioNow[ch.key];
         ch.setMuted(muted);
         ch.fillSpring.set(channelOutput({ ...audioNow, muted: false }, ch.key), { instant });
         ch.tickSpring.set(clamp01(Number(raw)), { instant });

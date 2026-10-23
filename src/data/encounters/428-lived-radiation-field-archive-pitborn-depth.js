@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_radiation_field_archive_pitborn_depth",
   "title": "SATCHEL ON THE RADIATION FIELD",
   "factionId": "faction_pitborn",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Read the name",
-      "playerLine": "I will read the satchel plate exactly as it is cut."
+      "label": "Submit to the close scan",
+      "playerLine": "I bring my hull inside sixty and hold dead slow for your scan at Radiation Field."
     },
     {
       "id": "b",
-      "label": "Copy the record",
-      "playerLine": "Copy the shift mark too; names are not the whole record."
+      "label": "Sponsor relief — 18 cr",
+      "playerLine": "Take 18 cr, PIT — send the relief to Radiation Field instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the plate",
-      "playerLine": "I will not alter it. Leave the satchel in the archive."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, PIT — my hull is leaving Radiation Field."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +52,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "PIT: The satchel carries a name at radiation field. Read it without adding one.",
+      "line": "PIT: The satchel carries a name at radiation field. Read it without adding one. — SATCHEL ON THE RADIATION FIELD.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +66,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The archive keeps a space where a crew count should be.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +78,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "PIT reads the date before reading the name.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +90,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The satchel has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +102,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "The radiation field sounds the same at idle or at full burn.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +122,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "PIT: Still holding. Nobody here is paid by the minute.",
+      "line": "PIT: Bring your hull inside sixty of us and hold dead slow for a two-count — the scan needs a clean read. — SATCHEL ON THE RADIATION FIELD.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +132,71 @@ const spec = {
       "windowS": 56,
       "motion": "orbit",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Name read once. The plate gives no second line.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 18,
+      "reason": "lived_radiation_field_archive_pitborn_depth:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "PIT: Time ran out on the work ask — SATCHEL ON THE RADIATION FIELD. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "PIT: Time ran out on the work ask — SATCHEL ON THE RADIATION FIELD. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "PIT: Time ran out on the work ask — SATCHEL ON THE RADIATION FIELD. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 24,
       "reason": "lived_radiation_field_archive_pitborn_depth",
       "next": "rep_a"
     },
@@ -168,24 +209,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_pitborn",
+      "delta": 3,
+      "reason": "lived_radiation_field_archive_pitborn_depth:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Record copied. PIT left the blank field blank.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_pitborn",
-      "delta": 2,
-      "reason": "lived_radiation_field_archive_pitborn_depth",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +236,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left the plate. Its lettering stayed at radiation field.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_pitborn",
-      "delta": -1,
-      "reason": "lived_radiation_field_archive_pitborn_depth",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +294,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Read the name",
-      "playerLine": "I will read the satchel plate exactly as it is cut."
+      "label": "Submit to the close scan",
+      "playerLine": "I bring my hull inside sixty and hold dead slow for your scan at Radiation Field."
     },
     {
       "id": "b",
-      "label": "Copy the record",
-      "playerLine": "Copy the shift mark too; names are not the whole record."
+      "label": "Sponsor relief — 18 cr",
+      "playerLine": "Take 18 cr, PIT — send the relief to Radiation Field instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the plate",
-      "playerLine": "I will not alter it. Leave the satchel in the archive."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, PIT — my hull is leaving Radiation Field."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Name read once. The plate gives no second line.",
-    "b": "Record copied. PIT left the blank field blank.",
-    "c": "You left the plate. Its lettering stayed at radiation field."
+    "a": "The close scan is logged — your hull held dead slow inside sixty at Radiation Field. — SATCHEL ON THE RADIATION FIELD.",
+    "b": "18 cr funded the relief call — PIT sends the shift at Radiation Field on your credit. — SATCHEL ON THE RADIATION FIELD.",
+    "c": "You left Radiation Field. The work stayed with the crew that owned it. — SATCHEL ON THE RADIATION FIELD."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "inspect",
+    "hasProp": false
   }
 });

@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_ambush_lane_archive_scn_follow_on",
   "title": "FILTER ON THE AMBUSH LANE",
   "factionId": "faction_scn",
@@ -15,23 +15,31 @@ const spec = {
       "dx": 0,
       "dz": 0,
       "scanLabel": "CLERK 1"
+    },
+    {
+      "role": "hull_1",
+      "archetype": "patrol_lawman",
+      "factionId": "faction_scn",
+      "dx": -150,
+      "dz": 90,
+      "scanLabel": "CLERK 2"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Read the name",
-      "playerLine": "I will read the filter plate exactly as it is cut."
+      "label": "Read both hulls in order",
+      "playerLine": "I enter each ring in turn — your hull first, then the far one at Ambush Lane."
     },
     {
       "id": "b",
-      "label": "Copy the record",
-      "playerLine": "Copy the shift mark too; names are not the whole record."
+      "label": "Sponsor relief — 18 cr",
+      "playerLine": "Take 18 cr, CLERK — send the relief to Ambush Lane instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the plate",
-      "playerLine": "I will not alter it. Leave the filter in the archive."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, CLERK — my hull is leaving Ambush Lane."
     }
   ],
   "timeoutChoice": "c",
@@ -44,7 +52,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CLERK: The filter carries a name at ambush lane. Read it without adding one.",
+      "line": "CLERK: The filter carries a name at ambush lane. Read it without adding one. — FILTER ON THE AMBUSH LANE.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -58,9 +66,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The archive keeps a space where a crew count should be.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -72,9 +78,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "CLERK reads the date before reading the name.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -86,9 +90,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The filter has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -100,9 +102,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "The noise in ambush lane was running before your drive.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -122,7 +122,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CLERK: Holding. The work decides when it is done.",
+      "line": "CLERK: Read both hulls in order — ours first, then theirs. Enter each seventy ring. — FILTER ON THE AMBUSH LANE.",
       "channel": "info",
       "next": "offer"
     },
@@ -132,22 +132,72 @@ const spec = {
       "windowS": 56,
       "motion": "hold",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Name read once. The plate gives no second line.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 18,
+      "reason": "lived_ambush_lane_archive_scn_follow_on:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "CLERK: Time ran out on the work ask — FILTER ON THE AMBUSH LANE. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "visit",
+          "of": "hull_0"
+        },
+        {
+          "kind": "visit",
+          "of": "hull_1"
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "CLERK: Time ran out on the work ask — FILTER ON THE AMBUSH LANE. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "CLERK: Time ran out on the work ask — FILTER ON THE AMBUSH LANE. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 24,
       "reason": "lived_ambush_lane_archive_scn_follow_on",
       "next": "rep_a"
     },
@@ -160,24 +210,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_scn",
+      "delta": 3,
+      "reason": "lived_ambush_lane_archive_scn_follow_on:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Record copied. CLERK left the blank field blank.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_scn",
-      "delta": 2,
-      "reason": "lived_ambush_lane_archive_scn_follow_on",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -186,23 +237,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left the plate. Its lettering stayed at ambush lane.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_scn",
-      "delta": -1,
-      "reason": "lived_ambush_lane_archive_scn_follow_on",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -243,24 +295,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Read the name",
-      "playerLine": "I will read the filter plate exactly as it is cut."
+      "label": "Read both hulls in order",
+      "playerLine": "I enter each ring in turn — your hull first, then the far one at Ambush Lane."
     },
     {
       "id": "b",
-      "label": "Copy the record",
-      "playerLine": "Copy the shift mark too; names are not the whole record."
+      "label": "Sponsor relief — 18 cr",
+      "playerLine": "Take 18 cr, CLERK — send the relief to Ambush Lane instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the plate",
-      "playerLine": "I will not alter it. Leave the filter in the archive."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, CLERK — my hull is leaving Ambush Lane."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Name read once. The plate gives no second line.",
-    "b": "Record copied. CLERK left the blank field blank.",
-    "c": "You left the plate. Its lettering stayed at ambush lane."
+    "a": "Both hulls read in order — the Ambush Lane record has its comparison. — FILTER ON THE AMBUSH LANE.",
+    "b": "18 cr funded the relief call — CLERK sends the shift at Ambush Lane on your credit. — FILTER ON THE AMBUSH LANE.",
+    "c": "You left Ambush Lane. The work stayed with the crew that owned it. — FILTER ON THE AMBUSH LANE."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "visit_ab",
+    "hasProp": false
   }
 });

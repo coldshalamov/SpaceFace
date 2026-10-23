@@ -10,6 +10,7 @@ import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
 import { runHasPerk } from '../data/swarmPerks.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { bankActive, resetRound, settleCrash } from './stuntCombo.js';
+import { circuitRoundFor } from './survivalCircuit.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 
 export const KILL_XP_BASE = 2;
@@ -191,11 +192,16 @@ export const survivalRewards = {
   },
   // The stake's earn multiplier rides every credit the run pays — chips, sweeps and the stipend
   // cap all derive from these entitlements, so scaling the admission is scaling the contract.
-  // An unstaked or non-swarm run reads 1: the threat table stays the price of a body there.
+  // An elite or challenge Circuit stage multiplies that same purse. The plan's reward figure
+  // is not what the player picks up. An unstaked or non-swarm run reads 1.
   _creditScale(run) {
-    return run && isSwarmRuleset(run.ruleset)
+    const stake = run && isSwarmRuleset(run.ruleset)
       ? swarmStakeFor(run.telemetry && run.telemetry.swarmStake).earn
       : 1;
+    if (!run || !isSwarmRuleset(run.ruleset)) return stake;
+    const round = circuitRoundFor(run, run.wave);
+    const purse = round && Number(round.earnMul) > 0 ? round.earnMul : 1;
+    return stake * purse;
   },
   _onEntitySpawned(payload) {
     const entity = payload?.entity ?? this._entity(payload?.id);

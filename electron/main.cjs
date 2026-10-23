@@ -98,6 +98,7 @@ let gameServerPortPromise = null;
 let windowCreationPromise = null;
 let appQuitting = false;
 let resolvedUserContentDir;
+let fatalBoxShown = false;
 
 // User content ("mods") mount, PQ-172.00/.01. Resolved lazily so an isolated-evidence profile's
 // userData override (applied at module scope below) governs the mods home too; isolated evidence
@@ -245,16 +246,130 @@ ipcMain.handle(workshopMods.WORKSHOP_SYNC_CHANNEL, () => workshopBridge.syncSubs
 // PQ-033.01 crash reports: Crashpad dumps under userData/crashes carry version+build in extras;
 // human-readable JSON reports land alongside them on renderer/child-process/uncaught faults. Local
 // files only — no upload store.
+const CRASH_REPORT_SCHEMA = 'spaceface.crashReport.v1';
+let crashReportSequence = 0;
 startLeftoverCrashReporter(electron, releaseIdentity);
 installCrashReportWriters(electron, releaseIdentity);
 
+// Safe launch after a GPU fault. Three of the hints below push Chromium past its own safety
+// nets (the GPU blocklist, the copy-free upload path, the discrete-GPU pin). On a bad driver that
+// turns Chromium's safe fallback into a crash loop. A renderer or GPU-process crash in the last ten
+// minutes, or --safe-graphics on the command line, leaves exactly those three off for this launch.
+// Switches must be appended before 'ready', so the decision is made synchronously at module load.
+const SAFE_GRAPHICS_FLAG = '--safe-graphics';
+const SAFE_GRAPHICS_FRESH_MS = 10 * 60 * 1000;
+const SAFE_GRAPHICS_SCAN_LIMIT = 8;
+const SAFE_GRAPHICS_CLOCK_SKEW_MS = 60 * 1000;
+
+function crashReportsDir() {
+  let dumps = '';
+  try { dumps = String(app.getPath('crashDumps') || ''); } catch (_) {}
+  if (!dumps) {
+    try { dumps = leftoverCrashDumpDir(app.getPath('userData')); } catch (_) {}
+  }
+  return dumps ? path.join(dumps, 'reports') : '';
+}
+
+// Real faults only: a renderer that crashed, or the GPU process dying. A deliberate kill, a clean
+// exit, and every main-process report (startup failure, uncaught exception) say nothing about the
+// graphics stack.
+function isGpuFaultEvent(event) {
+  if (!event || typeof event !== 'object') return false;
+  const type = String(event.processType || '').toLowerCase();
+  const reason = String(event.reason || '').toLowerCase();
+  if (reason === 'clean-exit' || reason === 'killed') return false;
+  return type === 'renderer' || type === 'child:gpu';
+}
+
+function crashReportAgeMs(report, file, now, fsApi) {
+  const stamped = report && typeof report.writtenAt === 'string' ? Date.parse(report.writtenAt) : NaN;
+  let writtenAt = stamped;
+  if (!Number.isFinite(writtenAt)) {
+    try { writtenAt = fsApi.statSync(file).mtimeMs; } catch (_) { writtenAt = NaN; }
+  }
+  return Number.isFinite(writtenAt) ? now - writtenAt : NaN;
+}
+
+// latest.json is the newest report, but a startup-failure report written after a GPU crash replaces
+// it; the newest few dated report files keep that earlier GPU fault visible.
+function findRecentGpuFault({
+  reportsDir,
+  now = Date.now(),
+  freshMs = SAFE_GRAPHICS_FRESH_MS,
+  fsApi = fs,
+} = {}) {
+  if (!reportsDir) return null;
+  let names;
+  try { names = fsApi.readdirSync(reportsDir); } catch (_) { return null; }
+  const dated = names
+    .filter((name) => /^report-.*\.json$/.test(String(name)))
+    .sort()
+    .reverse()
+    .slice(0, SAFE_GRAPHICS_SCAN_LIMIT);
+  for (const name of ['latest.json', ...dated]) {
+    const file = path.join(reportsDir, name);
+    let report;
+    try { report = JSON.parse(fsApi.readFileSync(file, 'utf8')); } catch (_) { continue; }
+    if (!report || report.schema !== CRASH_REPORT_SCHEMA || !isGpuFaultEvent(report.event)) continue;
+    const ageMs = crashReportAgeMs(report, file, now, fsApi);
+    if (!Number.isFinite(ageMs) || ageMs > freshMs || ageMs < -SAFE_GRAPHICS_CLOCK_SKEW_MS) continue;
+    return {
+      file,
+      ageMs,
+      processType: String(report.event.processType),
+      reason: String(report.event.reason || ''),
+    };
+  }
+  return null;
+}
+
+function decideSafeGraphics({
+  argv,
+  commandLine,
+  reportsDir,
+  now,
+  freshMs,
+  fsApi,
+} = {}) {
+  const args = Array.isArray(argv) ? argv : [];
+  let flagged = args.some((arg) => arg === SAFE_GRAPHICS_FLAG);
+  if (!flagged && commandLine && typeof commandLine.hasSwitch === 'function') {
+    try { flagged = commandLine.hasSwitch(SAFE_GRAPHICS_FLAG.slice(2)) === true; } catch (_) {}
+  }
+  if (flagged) return { safe: true, why: 'flag' };
+  const fault = findRecentGpuFault({ reportsDir, now, freshMs, fsApi });
+  if (fault) return { safe: true, why: 'recent-crash', fault };
+  return { safe: false, why: null };
+}
+
+function applyGpuHintSwitches(commandLine, decision) {
+  const safe = !!(decision && decision.safe);
+  if (!safe) commandLine.appendSwitch('ignore-gpu-blocklist');
+  commandLine.appendSwitch('enable-gpu-rasterization');
+  if (!safe) commandLine.appendSwitch('enable-zero-copy');
+  // Hybrid-GPU systems may hand a browser-style app the power-saving adapter; the game
+  // always wants the high-performance GPU. No-op where only one adapter exists.
+  if (!safe) commandLine.appendSwitch('force_high_performance_gpu');
+}
+
+const safeGraphics = decideSafeGraphics({
+  argv: process.argv,
+  commandLine: app.commandLine,
+  reportsDir: crashReportsDir(),
+});
+if (safeGraphics.safe) {
+  const cause = safeGraphics.why === 'flag'
+    ? SAFE_GRAPHICS_FLAG
+    : `${safeGraphics.fault.processType} fault ${Math.round(safeGraphics.fault.ageMs / 1000)}s ago`;
+  console.log(`[electron] safe graphics launch (${cause}): skipping the GPU blocklist override, zero-copy upload and high-performance GPU pin`);
+  receipt('safe-graphics', {
+    why: safeGraphics.why,
+    fault: safeGraphics.fault ? { processType: safeGraphics.fault.processType, reason: safeGraphics.fault.reason } : null,
+  });
+}
+
 // GPU hints (shell-only — must not change gameplay/renderer features).
-app.commandLine.appendSwitch('ignore-gpu-blocklist');
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
-// Hybrid-GPU systems may hand a browser-style app the power-saving adapter; the game
-// always wants the high-performance GPU. No-op where only one adapter exists.
-app.commandLine.appendSwitch('force_high_performance_gpu');
+applyGpuHintSwitches(app.commandLine, safeGraphics);
 // ANGLE backend pin: Windows Chromium already selects d3d11 through its own heuristics, so
 // the pin only stops per-machine drift (field trials, driver changes) between hardware
 // runs. SPACEFACE_ANGLE_BACKEND overrides it on probe boxes ('default' leaves Chromium
@@ -368,11 +483,17 @@ function listenGameServer(root, requestedPort) {
     // Keep the fixed origin authoritative. An ephemeral fallback hides the actual port owner and
     // makes existing localStorage saves disappear for the run, so classify contention instead.
     server.once('error', async (err) => {
-      if (err && err.code === 'EADDRINUSE') {
-        const owner = await probeSpaceFacePort(requestedPort) ? 'spaceface' : 'other';
-        receipt('port-conflict', { owner, port: requestedPort, message: err.message });
+      try {
+        if (err && err.code === 'EADDRINUSE') {
+          // A probe that throws must not leave the bind promise unsettled: that is a launch that
+          // neither opens a window nor exits.
+          let owner = 'unknown';
+          try { owner = await probeSpaceFacePort(requestedPort) ? 'spaceface' : 'other'; } catch (_) {}
+          receipt('port-conflict', { owner, port: requestedPort, message: err.message });
+        }
+      } finally {
+        reject(err);
       }
-      reject(err);
     });
     server.listen(requestedPort, '127.0.0.1', () => {
       const address = server.address();
@@ -602,13 +723,13 @@ function startLeftoverCrashReporter(electronApi = electron, identity = null) {
 // A crashpad .dmp is binary; the done-when asks for a report that names the build. So every
 // process-level fault also writes a plain JSON report next to the dumps, and refreshes
 // crashes/reports/latest.json so the newest crash is always one file deep.
-const CRASH_REPORT_SCHEMA = 'spaceface.crashReport.v1';
-let crashReportSequence = 0;
 
 function writeCrashReport({ reportDir, identity, event }) {
   const dir = path.join(String(reportDir || ''), 'reports');
+  const writtenAt = new Date().toISOString();
   const report = {
     schema: CRASH_REPORT_SCHEMA,
+    writtenAt,
     version: identity && identity.version ? String(identity.version) : '',
     build: identity && identity.build ? String(identity.build) : '',
     packaged: !!(identity && identity.packaged),
@@ -621,7 +742,7 @@ function writeCrashReport({ reportDir, identity, event }) {
   const body = `${JSON.stringify(report, null, 2)}\n`;
   try {
     fs.mkdirSync(dir, { recursive: true });
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const stamp = writtenAt.replace(/[:.]/g, '-');
     const written = path.join(dir, `report-${stamp}-${report.pid || 0}-${++crashReportSequence}.json`);
     fs.writeFileSync(written, body, 'utf8');
     const latestPath = path.join(dir, 'latest.json');
@@ -639,6 +760,7 @@ function writeCrashReport({ reportDir, identity, event }) {
 
 function installCrashReportWriters(electronApi = electron, identity = releaseIdentity) {
   const appApi = (electronApi && electronApi.app) || app;
+  const dialogApi = (electronApi && electronApi.dialog) || dialog;
   let dumpDir = '';
   try {
     if (appApi && typeof appApi.getPath === 'function') {
@@ -679,7 +801,7 @@ function installCrashReportWriters(electronApi = electron, identity = releaseIde
   }
   if (typeof process.on === 'function') {
     process.on('uncaughtException', (error) => {
-      emit({
+      const { written } = emit({
         processType: 'main',
         reason: 'uncaughtException',
         message: error && error.message ? String(error.message).slice(0, 1000) : String(error || ''),
@@ -687,6 +809,14 @@ function installCrashReportWriters(electronApi = electron, identity = releaseIde
       });
       // The handler suppresses Node's own stderr dump; keep the crash loud on dev consoles.
       console.error(error);
+      // A player's game that just vanishes looks like it never ran: say what happened, once, and
+      // where the report is. The exit below runs whatever the box does.
+      try {
+        showFatalBox(describeUnexpectedFailure(error, {
+          reportPath: written,
+          reportDir: path.join(dumpDir, 'reports'),
+        }), dialogApi);
+      } catch (_) {}
       // exit() bypasses will-quit, so a downloaded update does not auto-install on a crash-quit.
       if (typeof process.exit === 'function') process.exit(1);
     });
@@ -711,6 +841,288 @@ function collectRuntimeIdentity() {
 function readAppPath(name) {
   try { return typeof app.getPath === 'function' ? app.getPath(name) : null; }
   catch { return null; }
+}
+
+// ── Failures the player can see ───────────────────────────────────────────────────────────────
+// A double-clicked game that exits, or sits on a blank window, reads as "it never ran". These
+// helpers turn the silent endings (startup failure, main-process fault, dead or hung renderer)
+// into a plain message that names the crash report. Isolated evidence and the store-migration run
+// never raise modal boxes: a blocking box would hang an unattended probe, and an automatic reload
+// would hide the very crash the probe exists to witness.
+const STARTUP_ERROR_TITLE = 'SpaceFace could not start';
+const FATAL_ERROR_TITLE = 'SpaceFace has stopped';
+const RENDERER_AUTO_RELOAD_WINDOW_MS = 2 * 60 * 1000;
+const UNRESPONSIVE_GRACE_MS = 15 * 1000;
+const UNRESPONSIVE_RECHECK_MS = 30 * 1000;
+const INTENTIONAL_KILL_GRACE_MS = 5 * 1000;
+
+function shellDialogsEnabled() {
+  return !launchConfig.isolatedEvidence && !migratePlayerStore;
+}
+
+function firstLine(value, max = 300) {
+  const text = String(value == null ? '' : value).split(/\r?\n/)[0].trim();
+  return text.length > max ? `${text.slice(0, max - 3)}...` : text;
+}
+
+function crashReportLine(reportPath, reportDir) {
+  if (reportPath) return `A crash report was saved to:\n${reportPath}`;
+  if (reportDir) return `Crash reports are kept in:\n${reportDir}`;
+  return '';
+}
+
+function describeStartupFailure(error, { port = launchPort, reportPath = '', reportDir = '' } = {}) {
+  const code = error && error.code;
+  let cause;
+  if (code === 'EADDRINUSE') {
+    cause = `Another copy of SpaceFace, or another program, is already using the connection (port ${port}) that SpaceFace needs. Close it and try again.`;
+  } else if (code === 'SPACEFACE_PACKAGED_BUNDLE_MISSING') {
+    cause = 'SpaceFace\'s game files are missing or incomplete. Please reinstall the game and try again.';
+  } else {
+    const detail = firstLine(error && error.message ? error.message : error);
+    cause = `The game window could not be opened.${detail ? `\n\nDetails: ${detail}` : ''}`;
+  }
+  return {
+    title: STARTUP_ERROR_TITLE,
+    message: [cause, crashReportLine(reportPath, reportDir)].filter(Boolean).join('\n\n'),
+  };
+}
+
+function describeUnexpectedFailure(error, { reportPath = '', reportDir = '' } = {}) {
+  const detail = firstLine(error && error.message ? error.message : error);
+  const where = crashReportLine(reportPath, reportDir);
+  const lines = ['SpaceFace ran into an unexpected problem and has to close.'];
+  if (detail) lines.push(`Details: ${detail}`);
+  if (where) lines.push(where, 'If it keeps happening, please send that report along when you tell us about it.');
+  return { title: FATAL_ERROR_TITLE, message: lines.join('\n\n') };
+}
+
+// At most one fatal box per process, none while the player is already quitting, and never a
+// reason to skip the exit that follows.
+function showFatalBox({ title, message }, dialogApi = dialog) {
+  if (fatalBoxShown || appQuitting || !shellDialogsEnabled()) return false;
+  if (!dialogApi || typeof dialogApi.showErrorBox !== 'function') return false;
+  fatalBoxShown = true;
+  try { dialogApi.showErrorBox(title, message); } catch (_) { /* exit regardless */ }
+  return true;
+}
+
+// Startup failures used to leave no file at all (the launch receipt exists only for probes), so the
+// box had nothing to point at. Write the same readable report the other faults write.
+function writeStartupFailureReport(error) {
+  let dumpDir = '';
+  try { dumpDir = String(app.getPath('crashDumps') || ''); } catch (_) {}
+  if (!dumpDir) return { written: null, reportDir: '' };
+  const reportDir = path.join(dumpDir, 'reports');
+  try {
+    const { written } = writeCrashReport({
+      reportDir: dumpDir,
+      identity: releaseIdentity,
+      event: {
+        processType: 'main',
+        reason: 'startup-failed',
+        code: error && error.code ? String(error.code) : '',
+        message: error && error.message ? String(error.message).slice(0, 1000) : String(error || ''),
+        stack: String((error && error.stack) || error || '').slice(0, 8000),
+      },
+    });
+    return { written, reportDir };
+  } catch (_) {
+    return { written: null, reportDir };
+  }
+}
+
+// A renderer that dies or hangs after the page has loaded must not leave a blank window. One
+// automatic reload per RENDERER_AUTO_RELOAD_WINDOW_MS (the boot path's single-retry rule); a second
+// death inside that window asks the player. A hang is offered Wait / Reload once it has lasted
+// UNRESPONSIVE_GRACE_MS. Everything is injectable so the shell tests drive it without Electron.
+function createRendererRecovery({
+  win,
+  gameUrl,
+  dialogApi = null,
+  quitApp = () => {},
+  onReceipt = () => {},
+  now = () => Date.now(),
+  setTimer = typeof setTimeout === 'function' ? setTimeout : null,
+  clearTimer = typeof clearTimeout === 'function' ? clearTimeout : null,
+  isQuitting = () => false,
+  isSuspended = () => false,
+} = {}) {
+  const canAsk = !!(dialogApi && typeof dialogApi.showMessageBox === 'function');
+  let armed = false;
+  let disposed = false;
+  let lastAutoReloadAt = null;
+  let dialogOpen = false;
+  let unresponsive = false;
+  let unresponsiveTimer = null;
+  let ignoreGoneUntil = 0;
+
+  function live() {
+    try {
+      return !disposed && !!win && !win.isDestroyed() && !!win.webContents && !win.webContents.isDestroyed();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function clearUnresponsiveTimer() {
+    if (unresponsiveTimer === null) return;
+    try { if (clearTimer) clearTimer(unresponsiveTimer); } catch (_) {}
+    unresponsiveTimer = null;
+  }
+
+  function armUnresponsiveTimer(delayMs) {
+    clearUnresponsiveTimer();
+    if (!setTimer) return;
+    unresponsiveTimer = setTimer(onUnresponsiveTimer, delayMs);
+    if (unresponsiveTimer && typeof unresponsiveTimer.unref === 'function') unresponsiveTimer.unref();
+  }
+
+  // The canonical game URL, not a history reload: it always lands on the one origin the saves live
+  // under. After a hang the stuck process is ended first so the load gets a fresh one.
+  function reloadGame({ fromHang = false } = {}) {
+    if (!live()) return false;
+    const contents = win.webContents;
+    if (fromHang && typeof contents.forcefullyCrashRenderer === 'function') {
+      ignoreGoneUntil = now() + INTENTIONAL_KILL_GRACE_MS;
+      try { contents.forcefullyCrashRenderer(); } catch (_) { ignoreGoneUntil = 0; }
+    }
+    let pending;
+    try { pending = contents.loadURL(gameUrl); } catch (error) { pending = Promise.reject(error); }
+    Promise.resolve(pending).catch(onReloadFailed);
+    return true;
+  }
+
+  function onReloadFailed(error) {
+    const code = error && error.code;
+    onReceipt('renderer-reload-failed', {
+      code: code === undefined ? null : code,
+      message: receiptText(error && error.message ? error.message : error),
+    });
+    // ERR_ABORTED means a newer navigation superseded this one; it is not a failed recovery.
+    if (code === 'ERR_ABORTED' || code === -3) return;
+    if (!live() || isQuitting()) return;
+    void offerGoneChoice('The game window could not be restarted.');
+  }
+
+  async function ask(options) {
+    if (!canAsk) return null;
+    dialogOpen = true;
+    try {
+      const result = await (live()
+        ? dialogApi.showMessageBox(win, options)
+        : dialogApi.showMessageBox(options));
+      return result && typeof result.response === 'number' ? result.response : null;
+    } catch (_) {
+      return null;
+    } finally {
+      dialogOpen = false;
+    }
+  }
+
+  async function offerGoneChoice(message) {
+    if (dialogOpen || !live() || isQuitting()) return;
+    onReceipt('renderer-recovery-dialog', { kind: 'gone' });
+    const response = await ask({
+      type: 'error',
+      title: 'SpaceFace',
+      message,
+      detail: 'SpaceFace already tried restarting it. Progress up to your last save is kept. Reload to try again, or quit and open the game again.',
+      buttons: ['Reload', 'Quit'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    });
+    if (response === 0) reloadGame();
+    else if (response === 1) quitApp();
+  }
+
+  async function offerUnresponsiveChoice() {
+    onReceipt('renderer-recovery-dialog', { kind: 'unresponsive' });
+    const response = await ask({
+      type: 'warning',
+      title: 'SpaceFace',
+      message: 'SpaceFace is not responding.',
+      detail: 'It may just be busy. Wait to give it more time, or Reload to restart the game window.',
+      buttons: ['Wait', 'Reload'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    if (response === 1) {
+      unresponsive = false;
+      reloadGame({ fromHang: true });
+    } else if (unresponsive && live() && !isQuitting()) {
+      armUnresponsiveTimer(UNRESPONSIVE_RECHECK_MS);
+    }
+  }
+
+  function onGone(_event, details) {
+    const reason = details && details.reason;
+    unresponsive = false;
+    clearUnresponsiveTimer();
+    if (!armed || !live() || isQuitting() || reason === 'clean-exit') return;
+    // The process we just ended on purpose (Reload after a hang) reports in as gone; that is the
+    // reload already under way, not a new crash to spend the budget on.
+    if (ignoreGoneUntil > 0 && now() < ignoreGoneUntil) {
+      ignoreGoneUntil = 0;
+      return;
+    }
+    if (dialogOpen) return;
+    const at = now();
+    if (lastAutoReloadAt === null || at - lastAutoReloadAt >= RENDERER_AUTO_RELOAD_WINDOW_MS) {
+      lastAutoReloadAt = at;
+      onReceipt('renderer-auto-reload', { reason: receiptText(reason) });
+      reloadGame();
+      return;
+    }
+    void offerGoneChoice('The game window stopped working again.');
+  }
+
+  function onUnresponsive() {
+    if (!armed || !live() || !canAsk) return;
+    unresponsive = true;
+    onReceipt('renderer-unresponsive', {});
+    if (unresponsiveTimer === null && !dialogOpen) armUnresponsiveTimer(UNRESPONSIVE_GRACE_MS);
+  }
+
+  function onResponsive() {
+    unresponsive = false;
+    clearUnresponsiveTimer();
+  }
+
+  function onUnresponsiveTimer() {
+    unresponsiveTimer = null;
+    if (!unresponsive || !armed || !live() || isQuitting()) return;
+    // A sleeping or locked machine looks hung on wake; ask later, not now.
+    if (isSuspended() || dialogOpen) {
+      armUnresponsiveTimer(UNRESPONSIVE_GRACE_MS);
+      return;
+    }
+    void offerUnresponsiveChoice();
+  }
+
+  function dispose() {
+    disposed = true;
+    clearUnresponsiveTimer();
+  }
+
+  const api = {
+    arm() { armed = true; },
+    dispose,
+    onGone,
+    onUnresponsive,
+    onResponsive,
+    bind() {
+      const contents = win.webContents;
+      contents.on('render-process-gone', onGone);
+      contents.on('unresponsive', onUnresponsive);
+      contents.on('responsive', onResponsive);
+      if (typeof win.once === 'function') win.once('closed', dispose);
+      return api;
+    },
+  };
+  return api;
 }
 
 // ── FB-106: the desktop shell remembers its window ────────────────────────────────────────────
@@ -836,6 +1248,18 @@ async function createWindow() {
     if (isCanonicalGameUrl(win.webContents.getURL(), gameUrl)) canonicalLoadCommitted = true;
   });
   bindWindowLifecycle(win);
+  // A renderer that dies or hangs after the page loaded must not strand a blank window. Armed below
+  // once the first load has settled; until then startup failure owns the outcome. Evidence probes
+  // keep a crash visible instead of reloading past it.
+  const recovery = launchConfig.isolatedEvidence ? null : createRendererRecovery({
+    win,
+    gameUrl,
+    dialogApi: dialog,
+    quitApp: () => app.quit(),
+    onReceipt: receipt,
+    isQuitting: () => appQuitting,
+    isSuspended: systemLifecycleSuspended,
+  }).bind();
   win.removeMenu();
   win.webContents.on('before-input-event', (event, input) => {
     if (input && input.type === 'keyDown') {
@@ -901,12 +1325,18 @@ async function createWindow() {
   } finally {
     initialCanonicalLoadPending = false;
   }
+  if (recovery) recovery.arm();
   // win.webContents.openDevTools();
 }
 
 function handleWindowCreationFailure(error) {
   receipt('startup-failed', { code: error && error.code, message: error && error.message ? error.message : String(error) });
   console.error('[electron] desktop startup failed:', error);
+  // Leave a report and tell the player why nothing opened, then exit. Neither step may stop the exit.
+  try {
+    const { written, reportDir } = writeStartupFailureReport(error);
+    showFatalBox(describeStartupFailure(error, { reportPath: written, reportDir }));
+  } catch (_) {}
   app.exit(1);
 }
 
@@ -1039,6 +1469,13 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 module.exports.CRASH_REPORT_SCHEMA = CRASH_REPORT_SCHEMA;
+module.exports.SAFE_GRAPHICS_FLAG = SAFE_GRAPHICS_FLAG;
+module.exports.applyGpuHintSwitches = applyGpuHintSwitches;
+module.exports.createRendererRecovery = createRendererRecovery;
+module.exports.decideSafeGraphics = decideSafeGraphics;
+module.exports.describeStartupFailure = describeStartupFailure;
+module.exports.describeUnexpectedFailure = describeUnexpectedFailure;
+module.exports.findRecentGpuFault = findRecentGpuFault;
 module.exports.installCrashReportWriters = installCrashReportWriters;
 module.exports.leftoverCrashDumpDir = leftoverCrashDumpDir;
 module.exports.leftoverCrashExtra = leftoverCrashExtra;

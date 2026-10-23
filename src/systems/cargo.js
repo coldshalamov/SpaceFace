@@ -102,6 +102,13 @@ function volumePerUnit(def) {
   return def.persistent ? 0 : (def.vol > 0 ? def.vol : 1);
 }
 
+/** Per-unit hold footprint for a commodity — the same resolution and volume law addCargo's
+    acceptance math uses. Exported for quote paths that must predict what the hold takes. */
+export function cargoUnitVolume(state, commodityId) {
+  const def = defOf(state, commodityId);
+  return def ? volumePerUnit(def) : 1;
+}
+
 // Resolve per-unit footprint, preferring a runtime content registry if one was loaded.
 function defOf(state, id) {
   const reg = state && state.content && state.content.commodities;
