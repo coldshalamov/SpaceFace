@@ -362,6 +362,20 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding-top:8px !important; }
   ${D} .sxb-signs .sx-adboard__text { margin:2px 0 0 !important; }
 }
+/* …and from 901 wide on a short window (1100×700, 1280×720) the two signs stacked in the left
+   column under the next step, ~120px down the head, while the right column under the dials stood
+   empty; the tab body kept ~150-250px and the Market's BUY fell below the destination rail. The signs
+   take that empty band beside the next step, side by side, so the head ends where the dials do. */
+@media (min-width:901px) and (min-height:461px) and (max-height:800px) {
+  ${D} .sxb-berth.dp-frame__head { grid-template-areas:"title trigger" "title crown" "tape crown" "signs handoff" !important;
+    grid-template-rows:auto auto 1fr auto !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; grid-column:auto !important; align-self:start !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-handoff { grid-area:handoff !important; grid-column:auto !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-signs { grid-area:signs !important; grid-column:auto !important; display:flex !important; gap:0 24px !important;
+    align-items:flex-start !important; min-width:0 !important; align-self:start !important; }
+  ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding-top:8px !important; }
+  ${D} .sxb-signs .sx-adboard__text { margin:2px 0 0 !important; }
+}
 /* …and its foot: the seven destination words (~715px at full tracking) were capped at 64vw, so at
    651–800 wide only MARKET and SHIPWORKS showed and INDUSTRY ran under COMMS. Now the words own the
    row's left side, closed up at the 12px floor, and the right side stacks UNDOCK over COMMS · HELP,
