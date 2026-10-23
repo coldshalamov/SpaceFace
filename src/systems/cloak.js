@@ -53,6 +53,8 @@ export const cloak = {
       this._unsubs.push(this.bus.on('combat:damage', (p) => this._onHullStrike(p)));
       // A drive spool is as loud as a gun. The shroud cannot ride a charge.
       this._unsubs.push(this.bus.on('jump:chargeStart', (p) => this._onSpoolLight(p)));
+      // Dumping the hold is a bright cloud. The shroud goes with it.
+      this._unsubs.push(this.bus.on('cargo:jettisoned', () => this._drop('dumped')));
       if (CLOAK_BREAK_ON_FIRE) {
         this._unsubs.push(this.bus.on('combat:fire', (p) => {
           if (!p || p.ownerId == null) return;
@@ -247,6 +249,8 @@ export const cloak = {
         this.bus.emit('toast', { text: 'Hull breach — the shroud tore', kind: 'warn', ttl: 1.6 });
       } else if (reason === 'spooled') {
         this.bus.emit('toast', { text: 'Drive spool — the shroud burned off', kind: 'warn', ttl: 1.6 });
+      } else if (reason === 'dumped') {
+        this.bus.emit('toast', { text: 'Cargo dumped — the shroud blew off', kind: 'warn', ttl: 1.6 });
       }
     }
   },
