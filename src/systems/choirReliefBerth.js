@@ -227,8 +227,34 @@ export function createChoirReliefBerth(owner) {
     if (k < 1) return;
     const runner = actor(`runner${k}`);
     if (!runner || runner.alive === false || (relief.runnersLostMask & RUNNER_BIT(k)) !== 0) return;
+    // Both admission and interruption need an observed current hull and station.
+    // Stale index entries or unknown coordinates cannot prove a physical berth visit.
+    if (state.entities.get(runner.id) !== runner || state.entities.get(home.id) !== home
+      || ![runner.pos?.x, runner.pos?.z, home.pos?.x, home.pos?.z].every(Number.isFinite)) return;
     if (relief.runnerBedOrdinal === k) {
-      if (now - (relief.runnerAdmittedAtS ?? now) < RUNNER_SERVICE_S) return;
+      // Only an observed living local hull can interrupt treatment. The station/actor
+      // guards above and sync's sector gate preserve absent-resident/offscreen behavior.
+      // Keep this person's bed reserved, but do not count time spent outside the same
+      // envelope that admitted her. Null persists as an interrupted, not completed, stay.
+      const reach = (home.radius || 50) + RUNNER_ADMIT_RANGE;
+      if (Math.hypot(runner.pos.x - home.pos.x, runner.pos.z - home.pos.z) > reach) {
+        if (relief.runnerAdmittedAtS != null) {
+          relief.runnerAdmittedAtS = null;
+          bus.emit('toast', { kind: 'info', ttl: 5,
+            text: `${RUNNER_LABELS[k]}: Treatment interrupted outside the Helios medical berth. This runner’s bed remains reserved.` });
+        }
+        // The earlier approach job may already have finished before the interruption.
+        // Ask the existing job owner to bring this same hull back; never steer it here.
+        assignRunnerJob(runner, home, 'service');
+        return;
+      }
+      if (relief.runnerAdmittedAtS == null) {
+        relief.runnerAdmittedAtS = now;
+        assignRunnerJob(runner, home, 'service');
+        bus.emit('toast', { kind: 'info', ttl: 5,
+          text: `${RUNNER_LABELS[k]}: Back at the Helios medical berth. Treatment starts again.` });
+      }
+      if (now - relief.runnerAdmittedAtS < RUNNER_SERVICE_S) return;
       // Service done: the bed frees, she flies home, and the rhythm may still send one more.
       relief.runnerBedOrdinal = 0;
       relief.runnerAdmittedAtS = null;
