@@ -10,7 +10,20 @@ import {
   normalizeRangeLicence,
   rangeMedalLabel,
   RANGE_LICENCE_MEDALS,
+  readRangeLicence,
+  storeRangeLicence,
 } from '../src/ui/rangeLicence.js';
+
+test('a browser which denies the localStorage getter still opens the Range', () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() { throw new Error('storage denied'); } });
+  try {
+    assert.deepEqual(readRangeLicence(), { version: 1, rungs: {} });
+    assert.deepEqual(storeRangeLicence(null), { version: 1, rungs: {} });
+  } finally {
+    if (previous) Object.defineProperty(globalThis, 'localStorage', previous); else delete globalThis.localStorage;
+  }
+});
 
 test('flightClock renders h:mm:ss and clamps junk to zero', () => {
   assert.equal(flightClock(0), '0:00:00');

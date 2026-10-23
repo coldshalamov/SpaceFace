@@ -10,8 +10,8 @@ export function normalizeRangeLicence(raw) {
   return out;
 }
 
-export function readRangeLicence(storage = globalThis.localStorage) {
-  try { return normalizeRangeLicence(JSON.parse(storage?.getItem(RANGE_LICENCE_KEY) || 'null')); }
+export function readRangeLicence(storage) {
+  try { return normalizeRangeLicence(JSON.parse((storage ?? globalThis.localStorage)?.getItem(RANGE_LICENCE_KEY) || 'null')); }
   catch { return normalizeRangeLicence(null); }
 }
 
@@ -25,9 +25,9 @@ export function awardRangeLicence(profile, id, elapsedS, targetS = 30) {
   return next;
 }
 
-export function storeRangeLicence(profile, storage = globalThis.localStorage) {
+export function storeRangeLicence(profile, storage) {
   const normalized = normalizeRangeLicence(profile);
-  try { storage?.setItem(RANGE_LICENCE_KEY, JSON.stringify(normalized)); } catch { /* optional local record */ }
+  try { (storage ?? globalThis.localStorage)?.setItem(RANGE_LICENCE_KEY, JSON.stringify(normalized)); } catch { /* optional local record */ }
   return normalized;
 }
 
