@@ -16,7 +16,7 @@
 // While the input has focus the global key router already ignores letter keys (textEntry); the
 // palette's own Esc stops propagation so one keypress never also opens Pause.
 
-import { searchEntities, entityExists } from './entityResolver.js';
+import { searchEntities, findRowOpens } from './entityResolver.js';
 
 const MAX_ROWS = 12;
 
@@ -130,7 +130,7 @@ export function createGlobalFind(ctx) {
     if (!row || !listEl) return;
     // Re-check at the door: a contract can complete between render and Enter, and a dead door is
     // the one thing this palette is not allowed to have.
-    if (!entityExists(row.ref)) { refresh(); return; }
+    if (!findRowOpens(state, row.ref)) { refresh(); return; }
     const btn = listEl.querySelector(`[data-entity="${row.ref}"]`);
     if (btn) btn.click(); // the delegate opens the dossier — one path, no second opener.
   }

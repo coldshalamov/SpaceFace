@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveEntity, searchEntities } from '../src/ui/entityResolver.js';
+import { resolveEntity, searchEntities, entityExists, findRowOpens } from '../src/ui/entityResolver.js';
 
 const SEED = 4242;
 
@@ -45,4 +45,15 @@ test('seed 4242: an ace id still resolves through aceById, not the roster', () =
   assert.equal(dossier.label, 'Yara No-Cut');
   assert.ok(dossier.lines.some((line) => line.label === 'Last heard'));
   assert.equal(resolveEntity(state, 'captain:nobody-4242'), null);
+});
+
+test('seed 4242: Enter opens a remembered captain when the dossier resolves, and a missing id stays shut', () => {
+  const state = remembered();
+  const found = searchEntities(state, 'dessa');
+  const row = found.find((item) => item.label === 'Dessa Venn');
+  assert.ok(row);
+  assert.equal(entityExists(row.ref), false);
+  assert.equal(findRowOpens(state, row.ref), true);
+  assert.equal(findRowOpens(state, 'captain:nobody-4242'), false);
+  assert.equal(findRowOpens(state, 'captain:ace_yara_no_cut'), true);
 });
