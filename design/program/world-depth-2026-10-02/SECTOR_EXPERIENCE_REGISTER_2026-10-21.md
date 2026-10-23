@@ -1,5 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
+## Latest sector-experience evidence addendum: 2026-10-23 13:13 UTC
+
+All eleven goals remain OPEN. This addendum supersedes older current-status prose only; it does not convert a bounded fixture into ordinary sector or game acceptance.
+
+- [Draft PR547](https://github.com/coldshalamov/SpaceFace/pull/547) at head `bca906c5d7f65a423e2523d407fd7007dd3a92db` includes the new registered-world Cut Save/Continue regression. Local 1/1 evidence: the real world owner recreates one Cut refinery; after 300 held ticks job progress remains 0.6 and the same worker record, cargo and finite courtesy token restore with 25 seconds remaining and one clearance. The bounded fixture moves from 9 to 29 entities and has 2 ships.
+- This closes the earlier bounded refinery-recreation question, not a traffic-populated full-sector journey. No post-Continue physical-flight, browser/live-camera or PBR acceptance is claimed. The package gate and report are published; source/runtime behavior is unchanged. Exact-head workflow #5941 is running.
+- PR547's prior-head #5938 ended in failure with browser shard 3 cancelled (cause unknown). Hosted Cut 51/51 and cargo helper 28/28 are prior-head static-shard results only; berth 5/5 and the world-restore test 1/1 are local, not hosted. Keep these scopes distinct.
+- PR545 merged at public master `f39e8be9667465886c60bcb54e8c7ce68c9f97f9`; the shared cargo helper/test retained in PR547 are identical to the landed versions. PR547 remains open/draft and based on its original public parent.
+- The user-directed SF-MOTIVES outcome remains OPEN. The registered-world result is one grounded playable behavior witness, not completion of the motivation-driven world goal. Continue separating canon, inference and proposal and do not invent biography, patients, or unverified consequences.
+
 ## Latest verified delivery and active-work addendum: 2026-10-23 12:42 UTC
 
 All eleven goals remain OPEN. This addendum supersedes earlier current-status statements only; preserve historical evidence, scope, and acceptance boundaries.

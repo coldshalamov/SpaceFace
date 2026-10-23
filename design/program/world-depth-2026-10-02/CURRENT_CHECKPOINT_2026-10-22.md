@@ -1,5 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 
+## Latest verified delivery and active-work addendum: 2026-10-23 13:13 UTC
+
+All eleven goals remain OPEN. This addendum supersedes earlier current-status statements only; preserve historical evidence, scope, and acceptance boundaries.
+
+- [Draft PR547](https://github.com/coldshalamov/SpaceFace/pull/547) now has head `bca906c5d7f65a423e2523d407fd7007dd3a92db`, sole parent `836b6bb5cc53aaf0f30c125af488a7a9ec06fdae`, tree `75c03b814e2d2a97964d7f3832849bdbc1c8c843`, and 9 changed paths. Its additive three-file follow-up adds `test/cut-intake-world-restore.test.mjs` (blob `07c1b9155dd4eaba9c330be2e199b7cfb5bb4d60`), registers its package gate, and appends the public report. Runtime and gameplay source are unchanged.
+- The portable production-world Save/Continue regression passes 1/1 locally and was independently reproduced. The registered real world owner creates the Cut refinery exactly once; after 300 ordinary held ticks the job remains at progress 0.6, with the same worker record, cargo, and finite courtesy token restored at 25 seconds remaining and one clearance. The bounded test records 9 to 29 entities and 2 ships. It does not demonstrate a traffic-populated full-sector trip, post-Continue physical flight, browser/live-camera, or visual/PBR acceptance.
+- Source qualification covered 1,078 exercised modules with zero mismatches; all 43 newly loaded paths were independently fetched and checked against the exact prior PR547 head. This is bounded source-graph qualification, not whole-game acceptance.
+- PR547 exact-head workflow [39959037315 / #5941](https://github.com/coldshalamov/SpaceFace/actions/runs/39959037315) is in progress. Prior-head run [39954421893 / #5938](https://github.com/coldshalamov/SpaceFace/actions/runs/39954421893) ended FAILURE; browser shard 3 was cancelled, cause unknown. On that prior head only, hosted static shards prove Cut 51/51 and cargo helper 28/28; five existing berth regressions are local only. Do not transfer those passes to the new head or claim overall CI green.
+- PR545 merged into public master on 2026-10-23 at `f39e8be9667465886c60bcb54e8c7ce68c9f97f9`. Compared with PR547's base `5df6709c2ad275440229e4944450f05c18571ece`, the landed change is the shared `src/systems/cargoCustody.js`; PR547 retains the identical published helper and cargo-test blobs. PR547 remains open/draft and has not been rebased.
+- PR544 remains open/draft at `f2e5969b3b15a5c72dc777b3932a7b6fc51568da`; 65 focused tests passed at that exact head, while main #5936 and mobile failed and browser shard 3 was cancelled. UI baseline was not recaptured; native Rope remains RED. PR471 remains the existing open/draft two-file fixture fix at `9cbb68b9eb642b699545d22643605f1963ff0ff0`, mergeable, not full mobile acceptance.
+- Existing Writ, graphics, and browser holds are unchanged. Next: monitor exact-head PR547 CI and preserve the boundary between bounded restore proof and full ordinary flight/sector/browser acceptance. No broader goal is closed.
+
 ## Latest verified delivery and active-work addendum: 2026-10-23 12:42 UTC
 
 All eleven goals remain OPEN. This addendum supersedes earlier current-status statements only; preserve historical evidence, scope, and acceptance boundaries.

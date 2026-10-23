@@ -1,5 +1,14 @@
 <!-- LIFETIME: DURABLE -->
 
+## Latest verified delivery and open-goal addendum: 2026-10-23 13:13 UTC
+
+All eleven goals remain OPEN. This addendum supersedes current-status prose only; it does not close any outcome or broaden acceptance.
+
+- SF-MOTIVES remains OPEN. Draft PR547 now includes the bounded registered-world Cut Save/Continue regression: local 1/1, same worker/cargo/token restored after the actual world owner creates the refinery once and 300 held ticks leave job progress at 0.6. This advances evidence for one motive-driven sector behavior; it does not establish full-sector play, a traffic-populated journey, post-Continue flight, browser/live-camera, or visual acceptance.
+- Exact PR547 head is `bca906c5d7f65a423e2523d407fd7007dd3a92db` (9 paths). The added test is registered and published; runtime/gameplay source is unchanged. Exact-head CI #5941 is running. Prior-head #5938 failure contains hosted Cut 51/51 and cargo-helper 28/28 only; five berth tests and the new restore test are local evidence, not hosted passes.
+- PR545 is merged at public master `f39e8be9667465886c60bcb54e8c7ce68c9f97f9`; PR547 retains the identical shared cargo helper/test and has not been rebased. Preserve the open/merged distinction and full acceptance limits in the checkpoint above.
+- Continue the source-grounded character/faction work under established ownership. No new source edit is allocated by this status update; ordinary flight, sector experience and visual/game acceptance remain open.
+
 ## Latest verified delivery and active-work addendum: 2026-10-23 12:42 UTC
 
 All eleven goals remain OPEN. This addendum supersedes earlier current-status statements only; preserve historical evidence, scope, and acceptance boundaries.
@@ -123,9 +132,9 @@ PR487 main run https://github.com/coldshalamov/SpaceFace/actions/runs/3970960863
 
 ## SF-MOTIVES
 - Outcome: character and faction wants, fears, obligations, beliefs and conflicts actively drive coherent playable development grounded in established lore and actual behavior.
-- State: OPEN. The canon/inference/proposal study, Hesper and Cut receiving voices, and bounded Cut intake courtesy are published in draft PR532/531/547; none is merged or game/sector accepted.
-- Owner and next action: dot. The PR547 runtime mutation is released after publication. Next inspect the existing world/static-restore harness; no world-record or Save edits are allocated. Existing `berthHold` remains the only pause authority; the one-slot courtesy token uses existing body-AI-record persistence. Scope stays eligible ore-carrying Cut haulers, not a fixed Ossa actor.
-- Evidence: 84 distinct focused cases across the Cut feature (51), five existing berth regressions, and shared cargo helper (28). Native owner checks and bounded same-static-station-fixture Save/Continue support the increment, but not full-world rehydration, sector return, live-camera/PBR, or gameplay acceptance. Keep broader motivation-driven development open.
+- State: OPEN. The canon/inference/proposal study and Hesper/Cut receiving voices remain in draft PR532/531; Cut intake courtesy is open/draft PR547. No gameplay or sector acceptance is claimed.
+- Owner and next action: dot. The bounded registered-world restore regression is delivered in PR547; runtime mutation remains released and no world-record/Save source edit is allocated. Follow exact-head CI, then keep full ordinary flight/sector and visual acceptance open. Existing `berthHold` is the sole pause authority; scope stays eligible ore-carrying Cut haulers, not a fixed Ossa actor.
+- Evidence: hosted on prior PR547 head, Cut 51/51 and cargo helper 28/28; five existing berth regressions are local. The newly registered-world restore test passes 1/1 locally: real refinery recreation exactly once, 300 held ticks, progress 0.6, same worker/cargo/token after Save/Continue, with 25 seconds remaining and one clearance. This bounded proof is not a full-sector journey, post-Continue physical flight, browser/live-camera, or PBR acceptance. Broader motivation-driven development remains open.
 - Awaiting user: none.
 ## SF-GAME
 - Outcome: finish, review, polish and obtain acceptance for the authorized game and original twenty concepts.
