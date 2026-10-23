@@ -20,7 +20,7 @@ import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
-import { createStopScale, createStopArc } from '../orrery/stopDial.js';
+import { createStopScale } from '../orrery/stopDial.js';
 import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
@@ -335,13 +335,17 @@ function shipDefFor(ctx, shipId) {
 // The chosen hull's numbers as three bone tick-scale arcs: a lit fill for this hull, faint marks
 // where the other two starters sit, the reading in the display face under the arc. (Fixed specs are
 // bone; ice is for data in motion.)
+// SEED-ST-02 — "Line" is the Massline winch, not a speed: the stat names what it measures in
+// player words instead of bare "Line … wu/s". Mass and Thrust are self-evident; this one is not.
+export const STARTER_LINE_GLOSS = 'massline winch speed';
+
 function paintStarterStats(host, card, scale, others = []) {
-  const rows = [['Mass', 'massT', 't'], ['Thrust', 'thrust', ''], ['Line', 'lineWuPerS', 'wu/s']];
+  const rows = [['Mass', 'massT', 't', ''], ['Thrust', 'thrust', '', ''], ['Line', 'lineWuPerS', 'wu/s', STARTER_LINE_GLOSS]];
   host.textContent = '';
   const a0 = -110; const a1 = 110;
   const p = (a, r = 22) => [30 + r * Math.sin(a * Math.PI / 180), 30 - r * Math.cos(a * Math.PI / 180)];
   const arc = (from, to, r = 22) => { const [x0, y0] = p(from, r); const [x1, y1] = p(to, r); return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
-  for (const [name, key, unit] of rows) {
+  for (const [name, key, unit, gloss] of rows) {
     const value = Number(card[key]) || 0;
     const f = Math.max(0, Math.min(1, value / scale[key]));
     const ticks = [];
@@ -355,7 +359,8 @@ function paintStarterStats(host, card, scale, others = []) {
     const cell = el('div', 'orr-ng-stat');
     cell.innerHTML = `<svg viewBox="0 0 60 44"><path d="${ticks.join(' ')}" class="orr-ng-stat__ticks"/>`
       + `<path d="${arc(a0, a1)}" class="orr-ng-stat__track"/><path d="${arc(a0, a0 + (a1 - a0) * f)}" class="orr-ng-stat__fill"/>${ghosts}</svg>`
-      + `<b>${reading}<i>${unit}</i></b><span>${name}</span>`;
+      + `<b>${reading}<i>${unit}</i></b><span>${name}</span>`
+      + (gloss ? `<span class="orr-ng-stat__gloss">${gloss}</span>` : '');
     host.appendChild(cell);
   }
 }
@@ -528,8 +533,10 @@ export const newGameScreen = {
     diffField.wrap.appendChild(diff);
     diffField.wrap.appendChild(diffDesc);
     body.appendChild(diffField.wrap);
-    // ORRERY: difficulty is a four-stop dial with the Hand (ORRERY §6).
-    if (ORRERY && !isPhoneLayout()) this._diffDial = createStopArc({ row: diffWords, width: 340, radius: 125, span: 130, overshoot: 4 });
+    // ORRERY: difficulty is a four-stop scale with the amber index, stood on end — the form
+    // column is narrower than four grown names on one line, so the ruler stacks a station per
+    // line and every word keeps the column's whole width (D136).
+    if (ORRERY && !isPhoneLayout()) this._diffDial = createStopScale({ row: diffWords, width: 340, axis: 'y' });
     body.appendChild(hairline());
 
     // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
@@ -555,16 +562,22 @@ export const newGameScreen = {
         target.focus();
       }
     });
-    // Arrow bridges for the Tab-invisible difficulty dial: Up climbs back to the starter words,
-    // Down falls forward to the universe seed. Roving Left/Right answers between stations.
+    // The scale stands on end, so the stations take Up/Down along their own line — the roving's
+    // Left/Right still answers too (REV-D136b.1). The edges walk out the way the dial reads: Up
+    // off the first station climbs back to the starter words, Down off the last falls to the seed.
     diffWords.addEventListener('keydown', (e) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      const all = [...diffWords.querySelectorAll('.k-word')];
+      const i = all.indexOf(e.target);
+      if (i < 0) return;
+      const next = all[i + (e.key === 'ArrowDown' ? 1 : -1)];
+      e.preventDefault();
+      if (next) { next.focus(); cue('move'); return; }
       if (e.key === 'ArrowUp') {
-        e.preventDefault();
         const target = liveWordIn(starterWords);
         if (target) target.focus();
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
+      } else {
         seed.focus();
       }
     });
@@ -632,15 +645,7 @@ export const newGameScreen = {
       for (const b of firstFlightWords.querySelectorAll('.k-word')) b.tabIndex = -1;
     });
     seed.addEventListener('keydown', (e) => {
-      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      if (e.key === 'ArrowUp') {
-        const target = liveWordIn(diffWords);
-        if (!target) return;
-        e.preventDefault();
-        target.focus();
-        return;
-      }
-      if (e.key !== 'ArrowDown') return;
+      if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
       const target = liveWordIn(firstFlightWords);
       if (!target) return;
       e.preventDefault();
@@ -783,7 +788,8 @@ export const newGameScreen = {
         return [['Mass', 'massT', 't'], ['Thrust', 'thrust', ''], ['Line', 'lineWuPerS', 'wu/s']].map(([name, key, unit]) => {
           const value = (1 - f) * (Number(ca[key]) || 0) + f * (Number(cb[key]) || 0);
           return { name, unit, reading: value >= 1000 ? (value / 1000).toFixed(1) + 'k' : String(Math.round(value)),
-            frac: value / scale[key], ghosts: allCards.map((o) => (Number(o[key]) || 0) / scale[key]) };
+            frac: value / scale[key], ghosts: allCards.map((o) => (Number(o[key]) || 0) / scale[key]),
+            ...(name === 'Line' ? { gloss: STARTER_LINE_GLOSS } : {}) };
         });
       };
       const ringStats = (starter) => ringStatsMix(starter, starter, 0);
@@ -1035,8 +1041,8 @@ export const newGameScreen = {
       b.tabIndex = -1;
     }
     refs.firstFlightDesc.textContent = refs.flownBefore
-      ? 'Skips the stick drills. The rope, the raid and the Range stay.'
-      : 'The full first flight: stick drills, the rope, the raid.';
+      ? 'Skips the stick drills and the power setups. The rope, the raid and the Range stay.'
+      : 'The full first flight: stick drills, the rope, the raid, one setup per power.';
     syncKeys(refs.firstFlightWords);
   },
 

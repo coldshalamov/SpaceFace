@@ -27,6 +27,9 @@ const CSS = `
 .orr-svg text.orr-hullring__label { font-family:var(--dp-face-label, var(--dp-face-display, "Archivo")), sans-serif; font-size: 12px;
   font-variation-settings:"wght" 600, "wdth" 112; letter-spacing:.24em; text-transform:uppercase; fill:rgb(${BONE} / .66);
   paint-order:stroke; stroke:rgb(4 6 9 / .7); stroke-width:3px; stroke-linejoin:round; }
+.orr-svg text.orr-hullring__gloss { font-family:var(--dp-face-label, var(--dp-face-display, "Archivo")), sans-serif; font-size: 8.5px;
+  font-variation-settings:"wght" 500, "wdth" 100; letter-spacing:.04em; fill:rgb(${BONE} / .45);
+  paint-order:stroke; stroke:rgb(4 6 9 / .7); stroke-width:3px; stroke-linejoin:round; }
 @media (forced-colors: active) { .orr-hullring { display:none; } }
 `;
 
@@ -108,8 +111,13 @@ export function createHullRing({ host, anchor } = {}) {
     seg.label = svg('text', { class: 'orr-hullring__label' });
     seg.labelText = doc.createTextNode('');
     seg.label.appendChild(seg.labelText);
-    for (const key of ['litBloom', 'lit', 'beadBloom', 'bead', 'ghost', 'unit']) seg.on[key] = false;
-    layer.append(seg.band, seg.edge, seg.ticks, seg.major, seg.litBloom, seg.lit, seg.beadBloom, seg.bead, seg.ghost, seg.num, seg.label);
+    // An optional one-line measure gloss under the label (SEED-ST-02): a stat whose name alone
+    // does not say what it reads, rendered only for the entries that carry one.
+    seg.gloss = svg('text', { class: 'orr-hullring__gloss', display: 'none' });
+    seg.glossText = doc.createTextNode('');
+    seg.gloss.appendChild(seg.glossText);
+    for (const key of ['litBloom', 'lit', 'beadBloom', 'bead', 'ghost', 'unit', 'gloss']) seg.on[key] = false;
+    layer.append(seg.band, seg.edge, seg.ticks, seg.major, seg.litBloom, seg.lit, seg.beadBloom, seg.bead, seg.ghost, seg.num, seg.label, seg.gloss);
     return seg;
   }
 
@@ -133,7 +141,7 @@ export function createHullRing({ host, anchor } = {}) {
     const key = `${cx} ${cy} ${rx} ${ry}`;
     segs.forEach((seg, i) => {
       if (i >= count) {
-        for (const k of ['band', 'edge', 'ticks', 'major', 'litBloom', 'lit', 'beadBloom', 'bead', 'ghost', 'num', 'label']) shown(seg, k, false);
+        for (const k of ['band', 'edge', 'ticks', 'major', 'litBloom', 'lit', 'beadBloom', 'bead', 'ghost', 'num', 'label', 'gloss']) shown(seg, k, false);
         return;
       }
       const s = stats[i];
@@ -152,11 +160,11 @@ export function createHullRing({ host, anchor } = {}) {
         const mid = (def.from + def.to) / 2;
         if (def.side === 'top') {
           const [x, y] = pt(mid % 360, 18);
-          for (const [node, ny] of [[seg.num, y], [seg.label, y - 30]]) { setAttr(node, 'x', f(x)); setAttr(node, 'y', f(ny)); setAttr(node, 'text-anchor', 'middle'); }
+          for (const [node, ny] of [[seg.num, y], [seg.label, y - 30], [seg.gloss, y - 18]]) { setAttr(node, 'x', f(x)); setAttr(node, 'y', f(ny)); setAttr(node, 'text-anchor', 'middle'); }
         } else {
           const [x, y] = pt(mid, 20);
           const side = def.side === 'left' ? 'end' : 'start';
-          for (const [node, ny] of [[seg.num, y + 6], [seg.label, y + 24]]) { setAttr(node, 'x', f(x)); setAttr(node, 'y', f(ny)); setAttr(node, 'text-anchor', side); }
+          for (const [node, ny] of [[seg.num, y + 6], [seg.label, y + 24], [seg.gloss, y + 36]]) { setAttr(node, 'x', f(x)); setAttr(node, 'y', f(ny)); setAttr(node, 'text-anchor', side); }
         }
         seg.fracKey = null;
         seg.ghostKey = null;
@@ -194,6 +202,8 @@ export function createHullRing({ host, anchor } = {}) {
       setText(seg.unitText, s.unit || '');
       shown(seg, 'unit', !!s.unit);
       setText(seg.labelText, String(s.name).toUpperCase());
+      setText(seg.glossText, s.gloss || '');
+      shown(seg, 'gloss', !!s.gloss);
     });
   }
 
