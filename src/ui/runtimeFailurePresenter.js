@@ -26,13 +26,25 @@ const FLIGHT_FAILURE_DEFAULTS = Object.freeze({
  * Name a boot-stage failure as a player-facing recovery spec. The boot route's own missing
  * asset / failed service is the scenario-contract load (main.js loadScenarioContract — a
  * bounded fetch of `47a.scenario.json`); its message and the platform fetch/timeout error
- * names are the fingerprint. Everything else is an honest generic startup failure. Neither
- * class can touch stored saves: no save write happens before the main menu.
+ * names are the fingerprint. A renderer's exact context-creation failure names unavailable
+ * graphics without guessing why. Everything else is an honest generic startup failure.
+ * These specs cannot touch stored saves: no save write happens before the main menu.
  * @returns {code,headline,fills,detail,verbLabel,message} — pass straight to show().
  */
 export function describeBootFailure(err) {
   const raw = err && err.message != null ? String(err.message) : String(err || 'unknown boot failure');
   const firstLine = raw.split('\n', 1)[0].trim() || 'unknown boot failure';
+  // Match the renderer's creation error, not unrelated shader/texture or context-loss faults.
+  if (/^(?:THREE\.WebGLRenderer: )?Error creating WebGL context\.$/.test(firstLine)) {
+    return {
+      code: 'BOOT_GRAPHICS_UNAVAILABLE',
+      headline: 'Graphics could not start',
+      fills: 'This browser could not create a WebGL graphics context for SpaceFace.',
+      detail: 'Your saved games are unaffected. Retry; if it keeps failing, restart your browser or try another WebGL-capable browser.',
+      verbLabel: 'Retry',
+      message: firstLine,
+    };
+  }
   const name = (err && err.name) || '';
   const contractMissing = /scenario contract/i.test(raw);
   const fetchShaped = name === 'TimeoutError' || name === 'AbortError'
