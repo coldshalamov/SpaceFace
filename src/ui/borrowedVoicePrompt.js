@@ -9,9 +9,9 @@ export const borrowedVoicePrompt={name:'borrowedVoicePrompt',init(ctx){this.bus=
     {id:'quarantine',label:'ISOLATE THIS SIGNAL',title:'Seal this artifact circuit. Its physical housings stay towable; no lost words are recovered by containment.'},
     {id:'leave',label:'LEAVE THE RECORD ATTACHED',title:'Keep the evidence and leave the circuit open. You can return to this physical site.'},
   ]:[];
-  choices.push({id:'close',label:'KEEP INVESTIGATING',cancel:true});
+  choices.push({id:'close',label:row.dismissLabel||'CLOSE RECORD',cancel:true});
   return getPromptDeck()?.offerDecision({id:this._id,kind:'info',sender:'BORROWED VOICE · RETAINED RECORD',
     statusFlag:row.disposition,headline:`${row.recovered}/3 SOURCES RECOVERED${row.quality==null?'':` · SIGNAL ${row.quality}%`}`,
-    detail:row.text,choices,onChoose:id=>{getPromptDeck()?.resolveDecision(this._id);
+    detail:[row.guidance,row.text].filter(Boolean).join('\n\n'),choices,onChoose:id=>{getPromptDeck()?.resolveDecision(this._id);
       if(id!=='close')this.bus.emit('borrowedVoice:disposition',{disposition:id,revision:row.revision});}})||false;
 },newGame(){getPromptDeck()?.resolveDecision(this._id);},destroy(){this.newGame();for(const off of this._subs||[])off();}};

@@ -1,5 +1,5 @@
 import { BORROWED_VOICE as C, BORROWED_VOICE_RECORDERS as RECORDERS, borrowedVoiceGate,
-  borrowedVoiceIdentity, freshBorrowedVoice, normalizeBorrowedVoice, borrowedSignalQuality, borrowedVoiceJournalPlate } from '../data/borrowedVoice.js';
+  borrowedVoiceIdentity, freshBorrowedVoice, normalizeBorrowedVoice, borrowedSignalQuality, borrowedVoiceJournalPlate, borrowedVoiceRecoveryGuidance } from '../data/borrowedVoice.js';
 import { borrowedVoiceRingBody, borrowedVoiceRecorderBody, borrowedVoiceRingRadius,
   borrowedVoiceRingVisualRadius, borrowedVoiceRecorderRadius, borrowedVoiceRecorderVisualRadius } from '../data/borrowedVoiceBody.js';
 import { witnessLineOfSight } from '../combat/lineOfSight.js';
@@ -102,12 +102,16 @@ inspect(entityId){if(!this._active())return {ok:false,reason:'unreadable'};
   }
   this._offer(id);return {ok:true,recovered:r?this._row.recoveredFragmentIds.includes(r.evidenceId):false};
 },
-_offer(id=null){const signal=this._signals.get(id),r=RECORDERS.find(r=>r.id===id);
+_offer(id=null){const physical=borrowedVoiceRecoveryProjection(this.state),r=RECORDERS.find(r=>r.id===id);
+  const guidance=borrowedVoiceRecoveryGuidance(this._row,physical);
   this.bus.emit('borrowedVoice:offer',{revision:this._row.evidenceRevision,
     recovered:this._row.recoveredFragmentIds.length,disposition:this._row.disposition,
-    quality:r?Math.round((signal?.quality||0)*100):null,
-    text:borrowedVoiceJournalPlate(this.state)?.body||'Three retained signal sources. Tow clear of shielding and point the antenna toward the broken ring. Unknown words remain unknown.',
-    canChoose:this._row.recoveredFragmentIds.length>0&&['open','leave'].includes(this._row.disposition)});
+    quality:r?physical[id]?.quality??null:null,
+    text:borrowedVoiceJournalPlate(this.state)?.body||'Three original recorder housings carried this damaged signal. Unknown words remain unknown.',
+    guidance:guidance.text,dismissLabel:guidance.dismissLabel,
+    canChoose:this._active()&&this.state.ui?.docked!==true
+      &&distance(this._player()?.pos,C.center)<=C.siteRange
+      &&this._row.recoveredFragmentIds.length>0&&['open','leave'].includes(this._row.disposition)});
 },
 _refreshStaleDecision(disposition){const player=this._player();
   if(!['archive','quarantine','leave'].includes(disposition)||!this._active()||this.state.ui?.docked===true||!player
@@ -181,13 +185,37 @@ export function borrowedVoicePresentation(state,entity){const owner=owners.get(s
     phase:owner._row.disposition==='quarantine'?'quarantine':fresh&&signal.above?'clear':'interference'};
 }
 
+// Unlike _find, this lookup never acquires a binding while formatting a readout.
+function projectedSource(owner,id){const expected=borrowedVoiceIdentity(id),bound=owner._bindings.get(id);
+  if(bound)return owner.state.entities.get(bound.e.id)===bound.e&&bound.e.alive
+    &&bound.e.occupantGeneration===bound.life&&bound.e.data?.worldRecordId===expected?bound.e:null;
+  return null;
+}
+
+export function borrowedVoiceRecoveryProjection(state){const owner=owners.get(state),out={};
+  if(!owner?._active())return out;
+  const ring=projectedSource(owner,'ring');
+  const admitted=e=>!!e&&presentationAllowsPlayerFacingAction(e,state)
+    &&(state.settings?.gameplay?.physicsBackend!=='rapier-dynamic'||!!owner._native(e));
+  const receiverReady=admitted(ring)&&!terminal.has(owner._row.ringOutcome);
+  for(const r of RECORDERS){const e=projectedSource(owner,r.id),s=owner._signals.get(r.id);
+    const fresh=receiverReady&&!terminal.has(owner._row.recorderOutcomeIds[r.id].status)&&admitted(e)&&s?.entity===e&&s.life===e.occupantGeneration
+      &&Number.isFinite(state.simTime)&&Number.isFinite(s.at)&&s.at>=0
+      &&Number.isFinite(s.quality)&&s.quality>=0&&s.quality<=1
+      &&(!s.above||(Number.isFinite(s.clearSince)&&s.clearSince>=0&&s.clearSince<=s.at))
+      &&s.at<=state.simTime&&state.simTime-s.at<=C.sampleSeconds*2.1;
+    const clear=fresh&&s.above&&s.clearSince!=null;
+    out[r.id]={phase:!fresh?'unavailable':clear
+      ?state.simTime-s.clearSince>=C.clearSeconds?'ready':'holding':'interference',
+      quality:fresh&&owner._row.disposition!=='quarantine'?Math.round(s.quality*100):null};
+  }
+  return out;
+}
+
 export function borrowedVoiceScannerReading(state,entity){const owner=owners.get(state),id=entity?.data?.borrowedVoiceRecorderId;
   const r=RECORDERS.find(r=>r.id===id);
-  if(!r||!owner?._active()||owner._find(id)!==entity)return null;
-  const signal=owner._signals.get(id),fresh=signal?.entity===entity&&signal.life===entity.occupantGeneration
-    &&signal.at<=state.simTime&&state.simTime-signal.at<=C.sampleSeconds*2.1;
-  const recovered=owner._row.recoveredFragmentIds.includes(r.evidenceId);
-  return {kind:'anomaly',label:r.name,detail:recovered?r.text
-    :owner._row.disposition==='quarantine'?'Signal isolated · unrecovered words remain unknown'
-    :`Retained recorder · signal ${Math.round((fresh?signal.quality:0)*100)}% · tow clear of shielding and align with the ring`};
+  if(!r||!owner?._active()||projectedSource(owner,id)!==entity)return null;
+  const physical=borrowedVoiceRecoveryProjection(state),guidance=borrowedVoiceRecoveryGuidance(owner._row,physical);
+  const source=guidance.sources.find(s=>s.id===id),recovered=owner._row.recoveredFragmentIds.includes(r.evidenceId);
+  return {kind:'anomaly',label:r.name,detail:recovered?r.text:source.detail};
 }
