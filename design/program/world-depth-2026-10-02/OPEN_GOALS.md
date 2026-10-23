@@ -1,5 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 
+## Proteus Den composition delivery: 2026-10-23 22:34 UTC
+
+Draft [PR566](https://github.com/coldshalamov/SpaceFace/pull/566) publishes six approved paths at `589e74433cdd00de9a74785cbc7831ebc64ea183`, with sole public parent `3095a835eb3dbda178d359bbb0541e3ee6124f4c` and tree `66da11dd5b9e56b08824ce356dd450b4812a9f92`. The head is verified open, draft and unmerged; the publisher's receipt verifies all six remote path bytes.
+
+Three existing admitted props form a tight western working margin at Proteus Den. The seed-only warm mapper now retains station identity, preserving the same placement recipe. This adds no cache cue, crew operation, actor, cargo, reward, berth, trust or navigation change. Independent local checks passed 10/10; the author compared 1,728 other-sector output/RNG cases, the reviewer checked 576, and 180 generic warm cases passed. These establish bounded static margins and warm-recipe parity, not full Continue, native avoidance or live-camera acceptance. The new compact image is an offline geometry preview; the earlier spread preview remains historical evidence, not the current layout.
+
+PR566 check run 40034040089 and mobile-readiness run 40034040388 remain under the publisher's monitoring. The check run was still in progress at 22:34 UTC; reported mobile failures match unchanged parent files. Separately, PR565's ordinary hosted focused command passed all 22 tests without a non-shipping loader (exit 0, 171 ms). This improves executable public-dependency evidence without promoting extracted reply and structural persistence tests to full UI/Continue acceptance. Its overall check was also still in progress.
+
+Helios PR563's overall run 40029577148 ended FAILURE: eight group jobs failed, browser shard 3 was cancelled and the aggregate check failed. Its focused Candle gate separately passed 12/12, including the actual serializer subset. No attributable Candle regression or broad paired-base conclusion is established. The missing stationLife prerequisite already has an applicable repair in existing PR558; do not duplicate it or merge without authorization.
+
+Next work remains the owned offline, in-memory Den-and-props geometry comparison, with no additional source changes allocated. All twelve goals remain OPEN. Archive PR562 preserves the model bank; its separate runtime union remains backed up but unpublished because two census objects are still missing. The verified parts-library object, existing recovery chain and browser approval hold are unchanged. No new authentication or user-action requirement is established.
+
 ## Proteus return delivery and Helios hosted evidence: 2026-10-23 22:12 UTC
 
 Draft [PR565](https://github.com/coldshalamov/SpaceFace/pull/565) publishes the five-path Proteus return increment at `5dcc9970e82e7a0ed609d111d1a9de6d75226040`, with sole public parent `3095a835eb3dbda178d359bbb0541e3ee6124f4c`. The verified remote head is open, draft and unmerged. Existing eligible Pyrrha now recognizes a genuinely investigated Below-Deck Cache and offers its current system-map position. Hidden coordinates remain hidden before investigation, and clicks revalidate stale state. Navigation, rewards, missions, scans, eligibility and filing are unchanged. Unsupported Den-first payment/secrecy prose is corrected; cartography still owns payout. Shipping source is Proteus-only, PR532 is unchanged, and composed Nyx compatibility was checked separately.
