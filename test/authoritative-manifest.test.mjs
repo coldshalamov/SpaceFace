@@ -113,8 +113,12 @@ test('production init + update order lengths match the live browser baseline', (
   // 224 -> 227 init / 166 -> 169 update: LINE-03 (lineProgression) joins both orders on the
   // table clock — the winch-heat strain clock ticks every fixed step. Interleaved foreign
   // lane systems moved the counted baseline; assert the live totals.
+  // 169 -> 177 update: faction-strange owners (understoryGardens, fulfillmentRoutes,
+  // pitbornCull, vaelLiens, archiveRedaction, choirResonance, vergeCourt,
+  // frontierHomesteads) join the update order on the table clock — they were init-only
+  // and their update() never ran in production (R-04fe464 review fix).
   assert.equal(PRODUCTION_INIT_ORDER.length, 227);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 169);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 177);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));
