@@ -1836,11 +1836,18 @@ export function buildWorldReceiptMarks(state, nodeById) {
   const heads = claims && claims.legendaryHeads && Array.isArray(claims.legendaryHeads.heads)
     ? claims.legendaryHeads.heads : null;
   if (heads && heads.length) {
+    // The wall hangs where the yard is: the first owned claim. Heads in the hold of a
+    // ship with no wall do not paint — the mark is a place, not a ledger count.
+    const wallBody = (claims.bodies || []).find((b) => b && b.owned === true);
+    const wallNode = wallBody ? chartedAt(wallBody.sectorId) : null;
     marks.trophyWall = {
       count: heads.length,
       heads: heads.map((h) => ({
         tier: h && h.tier, aceName: h && h.aceName || 'an ace', name: h && h.name || null,
       })),
+      x: wallNode ? wallNode.x : null,
+      y: wallNode ? wallNode.y : null,
+      sectorId: wallBody ? wallBody.sectorId : null,
     };
   }
   if (wp && Array.isArray(wp.colossusRemains)) {
@@ -9170,7 +9177,124 @@ _draw() {
   },
 
   // --- GALAXY DRAW ---
-_drawGalaxy(g, state, w, h) {
+  // §34 row 523: persisted world receipts painted on the chart. Every mark comes from
+  // model.worldMarks — the reader over the persisted facts; nothing is invented here.
+  _drawWorldReceipts(g, model, sx, sy, tokenR) {
+    const marks = model && model.worldMarks;
+    if (!marks) return;
+    const GARDEN_RGB = '126,196,140';
+
+    // The tide line: a second ring outside the token — film thin, bloom broken, choked heavy.
+    for (const t of marks.tide || []) {
+      if (!t || t.band === 'clear' || t.band == null) continue;
+      const x = sx(t.x), y = sy(t.y);
+      const spec = t.band === 'choked'
+        ? { band: 6, bandA: 0.3, edge: 2, edgeA: 0.8 }
+        : t.band === 'bloom'
+          ? { band: 5, bandA: 0.24, edge: 1.6, edgeA: 0.62, dash: [5, 4] }
+          : { band: 4, bandA: 0.18, edge: 1.3, edgeA: 0.45, dash: [3, 5] };
+      drawBandRing(g, x, y, tokenR + 7, { rgb: GARDEN_RGB, ...spec });
+    }
+
+    // Gate audits: the weld is on the road — a seal bar across the lane midpoint when closed,
+    // a weld-progress arc while the scaffold stands. Scheduled-but-unbuilt stays off.
+    for (const gate of marks.gates || []) {
+      if (!gate || (!gate.closed && !Number.isFinite(Number(gate.weld)))) continue;
+      const ax = sx(gate.ax), ay = sy(gate.ay), bx = sx(gate.bx), by = sy(gate.by);
+      const mx = (ax + bx) / 2, my = (ay + by) / 2;
+      const ang = Math.atan2(by - ay, bx - ax);
+      const nx = -Math.sin(ang), ny = Math.cos(ang);
+      if (gate.closed) {
+        drawBand(g, (c) => { c.moveTo(mx - nx * 9, my - ny * 9); c.lineTo(mx + nx * 9, my + ny * 9); },
+          { rgb: '255,80,56', band: 6, bandA: 0.3, edge: 2.2, edgeA: 0.9 });
+        drawBead(g, mx, my, 2.4, { rgb: '255,80,56', a: 0.95 });
+      } else {
+        const weld = Math.max(0.12, Math.min(1, Number(gate.weld) || 0));
+        drawBandRing(g, mx, my, 6.5, { rgb: '255,217,140', band: 4, bandA: 0.22, edge: 1.5, edgeA: 0.7,
+          from: -Math.PI / 2, to: -Math.PI / 2 + Math.PI * 2 * weld });
+      }
+    }
+
+    // Node-side badges, stacked at the token's lower-right: structures, gardens, lit paths,
+    // the trophy wall and colossus remains — one small mark per persisted fact.
+    const badges = new Map();
+    const take = (sectorId, fn) => {
+      if (!sectorId) return;
+      const list = badges.get(sectorId) || [];
+      list.push(fn);
+      badges.set(sectorId, list);
+    };
+    for (const s of marks.structures || []) {
+      take(s.sectorId, (g2, x, y) => {
+        if (s.kind === 'homestead') {
+          g2.save();
+          g2.fillStyle = CHART_INK.phos(s.stranded ? 0.45 : 0.9);
+          g2.fillRect(x - 3.5, y - 3.5, 7, 7);
+          g2.restore();
+        } else {
+          g2.save();
+          g2.fillStyle = CHART_INK.lit(0.95);
+          g2.beginPath();
+          g2.moveTo(x, y - 4.5); g2.lineTo(x + 4.5, y); g2.lineTo(x, y + 4.5); g2.lineTo(x - 4.5, y);
+          g2.closePath(); g2.fill();
+          g2.restore();
+        }
+      });
+    }
+    for (const gd of marks.gardens || []) {
+      take(gd.sectorId, (g2, x, y) => drawBead(g2, x, y, 3, { rgb: GARDEN_RGB, a: 0.95 }));
+    }
+    for (const lp of marks.litPaths || []) {
+      take(lp.sectorId, (g2, x, y) => {
+        drawBand(g2, (c) => { c.moveTo(x - 5, y + 2); c.lineTo(x, y - 3); c.lineTo(x + 5, y + 2); },
+          { rgb: '255,217,140', band: 3, bandA: lp.operational ? 0.3 : 0.14, edge: 1.2, edgeA: lp.operational ? 0.9 : 0.45 });
+      });
+    }
+    if (marks.trophyWall && marks.trophyWall.x != null) {
+      take(marks.trophyWall.sectorId, (g2, x, y) => {
+        g2.save();
+        g2.fillStyle = CHART_INK.hand(0.95);
+        g2.beginPath();
+        g2.moveTo(x, y - 5); g2.lineTo(x + 1.6, y - 1.6); g2.lineTo(x + 5, y - 1.6);
+        g2.lineTo(x + 2.4, y + 0.8); g2.lineTo(x + 3.6, y + 5); g2.lineTo(x, y + 2.2);
+        g2.lineTo(x - 3.6, y + 5); g2.lineTo(x - 2.4, y + 0.8); g2.lineTo(x - 5, y - 1.6);
+        g2.lineTo(x - 1.6, y - 1.6);
+        g2.closePath(); g2.fill();
+        g2.restore();
+        g2.save();
+        g2.font = chartFont(700, 10);
+        g2.fillStyle = CHART_INK.hand(0.9);
+        g2.textAlign = 'left'; g2.textBaseline = 'middle';
+        g2.fillText(String(marks.trophyWall.count), x + 7, y);
+        g2.restore();
+      });
+    }
+    for (const r of marks.colossus || []) {
+      take(r.sectorId, (g2, x, y) => {
+        g2.save();
+        g2.strokeStyle = CHART_INK.bone(0.9);
+        g2.lineWidth = 1.6;
+        g2.beginPath();
+        g2.moveTo(x - 3.5, y - 3.5); g2.lineTo(x + 3.5, y + 3.5);
+        g2.moveTo(x + 3.5, y - 3.5); g2.lineTo(x - 3.5, y + 3.5);
+        g2.stroke();
+        g2.restore();
+        drawBandRing(g2, x, y, 5.5, { band: 3, bandA: 0.16, edge: 1, edgeA: 0.5 });
+      });
+    }
+    for (const [sectorId, fns] of badges) {
+      const n = (model.nodes || []).find((node) => node.id === sectorId);
+      if (!n) continue;
+      const bx = sx(n.x) + tokenR + 6;
+      let by = sy(n.y) - tokenR * 0.4;
+      for (const fn of fns) {
+        fn(g, bx, by);
+        by += 14;
+      }
+    }
+  },
+
+  _drawGalaxy(g, state, w, h) {
     const model = buildGalaxyModel(state);
     const visiblePresence = visibleGalaxyPresence(model, this._layers.faction);
     setMapCanvasAriaLabel(this._canvas, 'galaxy', visiblePresence, {
@@ -9589,6 +9713,10 @@ _drawGalaxy(g, state, w, h) {
         }
       }
     }
+
+    // §34 row 523: the chart keeps the receipt — tide, gate welds, your structures,
+    // gardens, lit paths, the trophy wall and where a colossus fell.
+    this._drawWorldReceipts(g, model, sx, sy, tokenR);
 
     // The map fades out over the field's last 48 px rather than stopping at a straight cut.
     {

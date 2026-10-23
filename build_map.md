@@ -1159,10 +1159,10 @@ production units, and never build what they write.
 | 517 | W-UNDERSTORY | Understory — five-stage gardens, the Compost Run, tide pushback (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 518 | W-FULFILLMENT | Fulfillment — route trains, hitchhike, derail spill, boarding, Order #0000001 (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 519 | W-PITBORN | Pitborn — Cull dressing, Ma Sprocket, Yardmaster, Ballast (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
-| 520 | W-TIDE | The Bloom tide — per-sector infestation on the chart, persisted (§34.6) | BUILD | OPEN |
-| 521 | W-AUDITS | The Gate Audits — one gate per Book behind a wreckable scaffold; never strands a sector (§34.6) | BUILD | OPEN |
-| 522 | W-GRAY | The Slow Gray clock on the ticker; it never recovers (§34.6) | BUILD | OPEN |
-| 523 | W-CHART | The chart keeps the receipt (§34.6) | BUILD | OPEN — after 520 and 521 |
+| 520 | W-TIDE | The Bloom tide — per-sector infestation on the chart, persisted (§34.6) | BUILD | DONE devin-25-oct22 |
+| 521 | W-AUDITS | The Gate Audits — one gate per Book behind a wreckable scaffold; never strands a sector (§34.6) | BUILD | DONE devin-25-oct22 |
+| 522 | W-GRAY | The Slow Gray clock on the ticker; it never recovers (§34.6) | BUILD | DONE devin-25-oct22 |
+| 523 | W-CHART | The chart keeps the receipt (§34.6) | BUILD | DONE devin-25-oct22 |
 | 524 | W-VAEL | Vael — Override Tender, the transferable Lien Anchor, Page Nine (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 525 | W-QUIET | Quiet — juggling runners, The Swap, sold routes (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
 | 526 | W-HELIX | Helix — too-perfect false flags, Lien drones, Gate Audit platforms, Adjudicator 44-C (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
@@ -1188,7 +1188,7 @@ production units, and never build what they write.
 | 546 | W-TEACH | Teach by situation; First Light keeps its offer with Play as the primary action (§34.9) | BUILD | OPEN |
 | 547 | W-COLOSSI | The Colossus roster on row 448's framework; the bar is the parts (§34.9) | BUILD | OPEN — after 448 |
 | 548 | W-AUDIT | The fifty-point A-list audit, repeated after each phase (§34.9) | FIX | OPEN |
-| 549 | W-RECEIPTS | Receipts within a budget; save migrations; flat save growth (§34.9) | BUILD | OPEN |
+| 549 | W-RECEIPTS | Receipts within a budget; save migrations; flat save growth (§34.9) | BUILD | DONE devin-25-oct22 |
 | 550 | W-ARSENAL | The arsenal: keep, merge or move ~20 physics tools (`design/expansion/05_ASSET_ROSTER.md` §7.3) (§34.9) | BUILD | OPEN — story-mode table applied 2026-10-22 (7 tools + the concussion bomb carry `retiredInto`, off the shop and research, owned copies keep working; final homes in 05 §7.3); remaining: the Crucible draft (swarm seam) and the Line-head moves (wait on §7.1 heads) |
 
 ### Landed rows index (consolidated 2026-10-15)
