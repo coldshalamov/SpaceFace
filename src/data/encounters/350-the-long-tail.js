@@ -71,6 +71,53 @@ function releaseSquadToWorld(live) {
   }
 }
 
+// The authored hold is finite. Traffic's damage spill keeps the legacy flat hold
+// and standard manifest in sync; use the smaller available count if either changed.
+const FUEL = 'cmdty_fuel_cells';
+function fuelAvailable(courier) {
+  const data = courier && courier.data;
+  const held = data && data.cargo && data.cargo[FUEL];
+  if (!Number.isSafeInteger(Math.floor(held)) || held < 0) return 0;
+  const manifest = data.cargoManifest;
+  if (manifest == null) return Math.floor(held); // older in-flight encounter saves
+  if (!Array.isArray(manifest.lines)) return 0;
+  let manifested = 0, total = 0;
+  for (const line of manifest.lines) {
+    if (!line || typeof line.commodityId !== 'string'
+      || !/^[a-z][a-z0-9_.-]*$/.test(line.commodityId)
+      || !Number.isSafeInteger(line.qty) || line.qty <= 0) return 0;
+    total += line.qty;
+    if (!Number.isSafeInteger(total)) return 0;
+    if (line.commodityId === FUEL) manifested += line.qty;
+  }
+  if (total !== manifest.totalQty) return 0;
+  return Math.min(Math.floor(held), manifested);
+}
+
+function shedFromHold(d, live, courier, spec) {
+  const amount = Math.min(spec.amount, fuelAvailable(courier));
+  if (!(amount > 0)) return false;
+  const pod = d.spawnCargoPod(live, { ...spec, amount });
+  if (!pod || pod.id == null || pod.alive === false) return false;
+  const data = courier.data;
+  data.cargo[FUEL] -= amount;
+  // No second custody ledger: update the existing ordinary death/spill manifest.
+  // Preserve identity and unrelated lines, including any other commodity's metadata.
+  const manifest = data.cargoManifest;
+  if (manifest && Array.isArray(manifest.lines)) {
+    let left = amount;
+    const lines = manifest.lines.map((line) => {
+      if (!line || line.commodityId !== FUEL || !(left > 0)) return line;
+      const debit = Math.min(left, line.qty);
+      left -= debit;
+      return { ...line, qty: line.qty - debit };
+    }).filter((line) => line && line.qty > 0);
+    data.cargoManifest = { ...manifest, lines,
+      totalQty: lines.reduce((sum, line) => sum + line.qty, 0) };
+  }
+  return true;
+}
+
 function shedOnePod(d, live, state, courier, rng) {
   const pos = courier && courier.pos;
   if (!pos) return;
@@ -79,7 +126,7 @@ function shedOnePod(d, live, state, courier, rng) {
   const lat = (rng() - 0.5) * 22; // small lateral scatter so the tail reads as debris, not beads
   const ux = speed > 1e-3 ? vel.x / speed : 0;
   const uz = speed > 1e-3 ? vel.z / speed : 0;
-  d.spawnCargoPod(live, {
+  return shedFromHold(d, live, courier, {
     pos: {
       x: pos.x - ux * 9 - uz * lat,
       z: pos.z - uz * 9 + ux * lat,
@@ -135,6 +182,13 @@ export const runtime = Object.freeze({
     courier.hull = Math.max(1, Math.round((courier.hullMax || courier.hull || 60) * 0.55));
     cdata.jobKind = 'hauler';
     cdata.cargo = { cmdty_fuel_cells: holdQty };
+    cdata.cargoManifest = {
+      manifestId: `${live.id}:fuel_hold`,
+      freighterKey: `${live.id}:fuel_tender`,
+      role: 'hauler',
+      lines: [{ commodityId: FUEL, qty: holdQty }],
+      totalQty: holdQty,
+    };
     cdata.scanLabel = 'FUEL TENDER — HOLD BREACHED';
 
     for (const raider of d.entsOf(live, 'raider')) {
@@ -150,7 +204,7 @@ export const runtime = Object.freeze({
     for (let i = 0; i < TRAIL_SEEDED_PODS; i++) {
       const back = 26 + i * TRAIL_SPACING_WU;
       const lat = (podRng() - 0.5) * 30;
-      d.spawnCargoPod(live, {
+      shedFromHold(d, live, courier, {
         pos: {
           x: courier.pos.x - dir.x * back - dir.z * lat,
           z: courier.pos.z - dir.z * back + dir.x * lat,
@@ -181,7 +235,9 @@ export const runtime = Object.freeze({
 
   tick(d, live, state, now) {
     if (live.phase === 'done') return;
-    const courier = d.entsOf(live, 'hauler')[0] || null;
+    const found = d.entsOf(live, 'hauler')[0] || null;
+    const courier = found && !(found.hull <= 0) && !found.data?.manifestPayloadDropped
+      ? found : null;
     const raidersAlive = d.aliveCount(live, 'raider') > 0;
     const tail = live.data.tail;
 
@@ -190,10 +246,27 @@ export const runtime = Object.freeze({
     if (courier && tail && tail.remaining > 0 && now >= tail.nextShedAt) {
       const vel = courier.vel || { x: 0, z: 0 };
       if (Math.hypot(vel.x, vel.z) > 6) {
-        shedOnePod(d, live, state, courier, d.stream(live, `tail_shed_${tail.remaining}`));
-        tail.remaining--;
+        if (shedOnePod(d, live, state, courier, d.stream(live, `tail_shed_${tail.remaining}`))) {
+          tail.remaining--;
+        }
       }
       tail.nextShedAt = now + TRAIL_SHED_PERIOD_S;
+    }
+
+    if (courier && tail && fuelAvailable(courier) === 0) {
+      tail.remaining = 0;
+      if (!tail.dryNoted && courier.data.cargo?.[FUEL] === 0
+        && (courier.data.cargoManifest == null
+          || (courier.data.cargoManifest.totalQty === 0
+            && courier.data.cargoManifest.lines?.length === 0))) {
+        tail.dryNoted = true;
+        courier.data.scanLabel = 'FUEL TENDER — HOLD EMPTY';
+        d.emit('comms:log', {
+          from: 'MTS FUEL TENDER',
+          text: 'Last cell is out. The tail is still live — keep off the drifting pods!',
+          kind: 'encounter',
+        });
+      }
     }
 
     if (!courier) {
@@ -268,13 +341,13 @@ export default defineEncounter(trigger, {
   telegraph: 'Volatile freight shedding across the lane — the trail is live.',
   deadlineS: RAID_DEADLINE_S,
   aftermath: {
-    flee: 'The tender runs the tail dry and vanishes downlane.',
+    flee: 'The tender breaks away downlane. Its shed cells stay on the lane.',
     kill: 'The tail keeps drifting — volatile pods, ownerless, still hot.',
   },
   receipts: {
-    defended: 'TAIL DEFENDED — the tender lives. Its spilled cells drift ownerless on the lane.',
+    defended: 'TAIL DEFENDED — the tender lives. Its spilled cells still drift on the lane.',
     courier_down: 'TENDER DOWN — the raiders took it. The tail is still out there, still live.',
-    courier_escaped: 'TENDER AWAY — it shed the last of the hold and cleared the lane.',
+    courier_escaped: 'TENDER AWAY — it cleared the pursuit. The shed cells remain on the lane.',
     raid_over: 'The pursuit burned out. Pods from the tail are still drifting the lane.',
   },
 });
