@@ -1,5 +1,6 @@
 import { stationFrameHtml } from '../views/stationFrames.js';
 import { createStationArrivalPresenter } from './stationArrival.js';
+import { createStationLifePresenter } from './stationLife.js';
 // src/ui/station/stationApp.js — Field Hardware berth chrome (PQ-194 / P33 shell).
 // Docking is an arrival on the lit 3D berth: stencil station name, authority legend, one news
 // tape, leftover event/ledger/mechanic strips, destination keys along the bottom edge, Undock as
@@ -32,6 +33,7 @@ import { createIndustryScreen } from './screens/industry.js';
 import { createBarScreen } from './screens/bar.js';
 import { createLedgerScreen } from './screens/ledger.js';
 import { SECTORS } from '../../data/sectors.js';
+import { stationInfoFor } from '../../systems/missions.js';
 import { FACTION_META } from '../../data/factions.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { escapeHtml } from '../comms.js';
@@ -204,7 +206,22 @@ function resolveStation(ctx) {
   }
   const id = ctx && ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
   const rec = id && STATION_REC.get(id);
-  if (!rec) return { name: 'Station', typeLabel: 'Berth', factionName: '', services: [] };
+  // Runtime-registered berths (the claimed Long Berth, GOLD-HOME) never sit in SECTORS —
+  // their record lives in STATION_INFO and resolves through the same shape.
+  if (!rec) {
+    const info = id && stationInfoFor(ctx && ctx.state, id);
+    if (info) {
+      const fac = FACTION_REC.get(info.factionId);
+      return {
+        name: info.name || String(id),
+        typeLabel: titleCaseWords(info.type || 'berth') + (info.size ? ' · Class ' + info.size : ''),
+        factionId: info.factionId || null,
+        factionName: fac ? fac.name : '',
+        services: Array.isArray(info.services) ? info.services.slice() : [],
+      };
+    }
+    return { name: 'Station', typeLabel: 'Berth', factionName: '', services: [] };
+  }
   const s = rec.station;
   const fac = FACTION_REC.get(s.factionId);
   return {
@@ -810,6 +827,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const arrivalPresenter = createStationArrivalPresenter(ctx, {
     ...opts.arrivalTimers,
     showReceipt,
+    receiptVisible: () => receiptEl.hidden === false,
+  });
+  const lifePresenter = createStationLifePresenter(ctx, {
+    ...opts.lifeTimers, showReceipt,
     receiptVisible: () => receiptEl.hidden === false,
   });
 
@@ -1479,6 +1500,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         showReceipt(row.kind, row.title, row.delta);
       }
       arrivalPresenter.show();
+      lifePresenter.show();
       // First focus lands on the active dock tile. screenManager focuses the first focusable in DOM
       // order when a screen has not chosen one, and the topbar's HOLD gauge button precedes the
       // dock — so every keyboard-driven arrival painted a focus ring on the cargo readout. The tile
@@ -1500,6 +1522,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       }
     },
     onHide() {
+      lifePresenter.hide();
       arrivalPresenter.hide();
       finishReturnSummary(state());
       shown = false; commands.setEnabled(false); effects.hide();
@@ -1518,6 +1541,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (scr && typeof scr.onHide === 'function') { try { scr.onHide(); } catch (_) {} }
     },
     dispose() {
+      lifePresenter.dispose();
       arrivalPresenter.dispose();
       shown = false; commands.dispose(); effects.dispose();
       rootEl.classList.remove('sx-observatory');

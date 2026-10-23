@@ -120,8 +120,10 @@ test('production init + update order lengths match the live browser baseline', (
   // 227 -> 229 init: PULSE-HISTORY (row 440) registers deedRecord (world-remembers ledger —
   // lookup-only since creation, never initialized in production) and historyWear (event-only
   // trinket/decal/graffiti projector). Neither ticks.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 229);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 177);
+  // 229 -> 230 init / 177 -> 178 update: GOLD-HOME (row 445) registers longBerth — the claim /
+  // restore / yard scan ticks on the calendar clock.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 230);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 178);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

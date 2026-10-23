@@ -62,6 +62,7 @@ import { custodyConsequences } from '../systems/custodyConsequences.js';
 import { aceMemory } from '../systems/aceMemory.js';
 import { deedRecord } from '../systems/deedRecord.js';
 import { historyWear } from '../systems/historyWear.js';
+import { longBerth } from '../systems/longBerth.js';
 import { mail } from '../systems/mail.js';
 import { worldClock } from '../systems/worldClock.js';
 import { worldPressure } from '../systems/worldPressure.js';
@@ -701,6 +702,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['traffic', traffic],
     ['drill', drill],
     ['claims', claims],
+    ['longBerth', longBerth], // GOLD-HOME: tow/restore/yard persistence on the abandoned tug
     ['beacons', beacons],
     ['bandRadio', bandRadio],
     ['v2FlavorRuntime', v2FlavorRuntime],

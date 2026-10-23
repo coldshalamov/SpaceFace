@@ -60,7 +60,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
-  'drill', 'claims', 'beacons', 'bandRadio', 'v2FlavorRuntime', 'onboarding', 'masslineHud',
+  'drill', 'claims', 'beacons', 'bandRadio', 'v2FlavorRuntime', 'longBerth', 'onboarding', 'masslineHud',
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
   // miningHud: the mining beam's vent/rich-core/seam instrument — event-mirrored, DOM-guarded,
   // ticks only to place the world-anchored dial (same posture as the sibling HUDs).
@@ -158,7 +158,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // once per body and reads the same settled phase — after swarmJuice so the cohort stamps
   // precede the HUDs' readout this tick.
   'swarmElites',
-  'heat', 'traffic', 'drill', 'claims', 'chronicler',
+  'heat', 'traffic', 'drill', 'claims', 'chronicler', 'longBerth',
   'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'gyreHud', 'planetHud', 'miningHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
   // and census this tick advanced to; DOM-guarded so Node no-ops.
@@ -306,7 +306,7 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   'pirateRumor', 'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'gateControlDirector',
   'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
   'factions', 'sectorSim', 'missions', 'careerOrigins', 'careerLadders', 'liveCareerLadderBranches',
-  'story', 'scenarioRuntime', 'drill', 'claims', 'bandRadio', 'onboarding', 'save',
+  'story', 'scenarioRuntime', 'drill', 'claims', 'bandRadio', 'onboarding', 'save', 'longBerth',
   // Ecology/morale are event-driven; the 60 Hz tick only expires or reseeds. 2 Hz is enough.
   'aftermathWrecks', 'wingMorale',
   // Event-driven owners whose update() is an empty registry placeholder.
