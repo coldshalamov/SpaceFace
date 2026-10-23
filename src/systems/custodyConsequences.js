@@ -10,6 +10,7 @@
 import { hash32 } from '../core/rng.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
+import { SHIPS } from '../data/ships.js';
 
 const RECOVERY_SOURCE = 'custodyRecovery';
 const RECOVERY_STATIONS = new Map(SECTORS.flatMap((sector) => (sector.stations || [])
@@ -18,6 +19,12 @@ const RECOVERY_GOODS = new Map(COMMODITIES.map((good) => [good.id, good]));
 
 export const IMPOUND_RESTITUTION_CR = 700;
 export const IMPOUND_WORK_S = 4;
+// RC-461 — restitution follows the hull actually flown: a yard bill is a fraction of the catalog
+// price of the hull in the pound, floored at the flat rate above so a cheap frame still carries a
+// real obligation. Catalog price only — never a station discount, live mass, damage, or resale.
+export const IMPOUND_RESTITUTION_RATE = 0.02;
+
+const HULL_PRICE_BY_ID = new Map(SHIPS.map((def) => [def.id, Math.max(0, Math.round(Number(def.price) || 0))]));
 
 const CAPTURE_HISTORY_CAP = 24;
 const SETTLED_ID_CAP = 128;
@@ -419,8 +426,25 @@ function ensureLedger(state) {
 export function quoteImpoundBill(player) {
   const ins = player && player.insurance && typeof player.insurance === 'object' ? player.insurance : {};
   const deductible = Math.max(0, Math.round(Number(ins.deductibleCr) || 500));
-  const restitution = ins.insuredModules ? 0 : IMPOUND_RESTITUTION_CR;
+  const restitution = ins.insuredModules ? 0 : restitutionForPlayer(player);
   return deductible + restitution;
+}
+
+/**
+ * RC-461 — the restitution half of the bill for the hull in the pound. The active hull is named by
+ * `ownedShips[activeShipIndex].defId`; an invalid index, an unknown definition, or a hull the
+ * catalog prices at zero all fall back to the flat floor rather than guessing at another owned
+ * hull (a parked expensive ship is not the one the yard is holding, and an unreadable index is
+ * not permission to read a different slot). Pure catalog arithmetic.
+ */
+function restitutionForPlayer(player) {
+  const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const index = player ? player.activeShipIndex : null;
+  const slot = Number.isInteger(index) && index >= 0 && index < owned.length ? owned[index] : null;
+  const defId = slot && typeof slot.defId === 'string' ? slot.defId : null;
+  const price = defId ? HULL_PRICE_BY_ID.get(defId) : null;
+  const scaled = Number.isFinite(price) ? Math.floor(price * IMPOUND_RESTITUTION_RATE) : 0;
+  return Math.max(IMPOUND_RESTITUTION_CR, scaled);
 }
 
 export function impoundBillFor(state) {
@@ -439,6 +463,9 @@ export function openImpoundBill(state, payload) {
   const billId = typeof payload.billId === 'string' && payload.billId ? payload.billId : null;
   if (existing && existing.status === 'open') {
     if (billId && existing.billId && existing.billId !== billId) return existing;
+    // A pre-dedup saved bill can lack billId entirely; backfill it or closeImpoundBill's
+    // identity check could never pass and the impound softlocks.
+    if (!existing.billId && billId) existing.billId = billId;
     if (payload.yard) existing.yard = posOf(payload.yard);
     if (payload.lock) existing.lock = posOf(payload.lock);
     if (payload.work) existing.work = posOf(payload.work);
