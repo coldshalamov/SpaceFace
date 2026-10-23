@@ -26,3 +26,19 @@ Use bounded deterministic placement admission within the actual drydock against 
 ## Required validation and publication
 Reproduce original missing source; prove two originals, exact identity, no refill after partial drain/destruction/exit/return/Save, spawn denial recovery, recycled entity rejection, abandon/failure/expiry/reaccept and receipt eviction. Specify legacy accepted-save migration from evidence rather than blindly minting or suppressing originals. Exercise actual native admission, ordinary beam/pickup/cargo/dock settlement and unchanged external-cargo alternative. Preserve terminal cleanup and one normal payout, no new reward authority.
 Review physical/render package fit and bounded placement across actual composed scenes. Keep native flight, live camera, performance and user acceptance separate. Preserve failed attempts and restore package outside the VM, locally commit exact paths, reconcile latest public master/PR state and publish through a verified draft. Never publish private ancestry. All existing approval holds remain untouched.
+
+
+## Scope amendment, 2026-10-23 02:32 UTC
+
+Independent exact-public probes establish that ordinary payloads are excluded from the durable actor iterator and candidate gate; direct capture loses pool/body and produces a generic ship fallback. This is an API limitation for this proposed source, not a claim that every existing payload workflow is broken. A two-hook codec alone is insufficient. Root therefore allocates these additional identity-gated seams:
+- src/data/convertedYardsRecovery.js: pure identity, body and record codec; no owner imports or save writes.
+- src/world/worldRecords.js: exact Writ payload durable-candidate exception, capture-extra merge and spawn-spec dispatch before generic fallback. Retain existing normalization, upsert and tombstone authority. Do not generalize all payloads.
+- src/systems/world.js: a bounded two-original capture sweep inside _captureSectorDurableRecords after const state=this.state, including dead/empty original references before serialization. Do not broaden forEachLivingWorldActor or add another per-frame actor scan.
+
+The world owner remains the only pose/pool/terminal capture authority. sectorFlags holds issuance and terminal fallback, not a duplicate physical snapshot. Full accepted drain followed by immediate world/Save serialization must retire the source even though salvage:completed occurs before alive=false; rejected pickup must preserve remaining units. Confirm actual owner order rather than using event counts.
+
+Overlap review: public PR #510 adds captureBolusRib as the first capture-method line; the separate insertion after state declaration leaves it intact. PR #480's record change imports captureOrchardWorkDamage and assigns rec.extra immediately before return; put Writ merge at record construction, preserving that separate insertion. Other examined world changes in #483/#460/#457 concern enter/station transitions. Do not copy unlanded hooks into this branch or overwrite newer versions.
+
+Publication baseline is now master45a97fdbda62611cc13001bd16790f8afa844753, whose only change from5e5b is merged #516 Save/Load UI layout and its review document. Mission/world sources are unchanged. Deliver Writ as its own coherent draft PR on current master with only its additive check leaf; research PR #518 retains its separate Triton/Far changes. Recheck actual master and exact path owners before publication.
+
+Legacy accepted Writ migration may issue the missing original pair only after checking existing stable source records/tombstones and bounded ledger. Baseline never issued these on-site originals; offersEmitted alone is neither completion nor stock expenditure. Preserve first migration, no-refill after depletion, and unchanged external-cargo delivery through explicit tests.
