@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace current execution checkpoint
 
-Updated 2026-10-23 05:13 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
+Updated 2026-10-23 05:31 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
 
 ## Durable scope and evidence
 
@@ -63,7 +63,17 @@ Each was independently read back; local coherent preservation also verified. Nev
 
 New actual cold-drill geometry preview delivered03:58:640x480,37626B,SHA3bab537003c0f6d1cf625530b76b131cb13fdf2c17d5dd6b75625d7ad9172ecf. Exact release source22572B,Git836f3ed68d0bbf6642309f5a448eb12c76d672ec,SHA6ecf03f02e43f7db1367360263f382890b85e9010b1c563885dc28b1c21815c0. Base-color geometry only, not new model/final textures/live placement. Cargo-package preview and earlier asset evidence remain archived.
 
-## Upstream reconciliation, 05:13 UTC
+## Eunomia delivered, 05:31 UTC
+
+[Draft PR523](https://github.com/coldshalamov/SpaceFace/pull/523) is open/draft/unmerged at **2e971d9e31a3decdebab7abffb5467b1d0528b56**, sole parent50d285fd9d6e013c5bd7bda59df097c615bdd933. Exact13path diff and all13remote full blob contents verified. Normal station Market now asks for one specific physical pod and quoted cut; dock/open no longer charges for unrelated nearby hot cargo. Existing economy atomic authority, titles, Save/customs policy, BUY and physical Tethys entrance route remain unchanged. [Evidence and limitations](https://github.com/coldshalamov/SpaceFace/blob/2e971d9e31a3decdebab7abffb5467b1d0528b56/design/program/world-depth-2026-10-02/EUNOMIA_PAPERS_INTENT_2026-10-23.md).
+
+Current five named files pass52/52, independently rerun by root.1182ESM inputs verified; manifest6b433b248609486c373b2d7dfbed86c6810ea988616f40e69e38f51387167104. Old-base six-file53/53 remains historical evidence. Current production-worker case is BLOCKED before initialization by public onboarding7530734662abb091cdb7fe68864a3aef08ddc0eb importing absent onboarding/powerSituations.js. Exact public404 and standalone public-only import with no Eunomia overrides reproduce it. Introducing commitb6b5e686818d061bced96a064eafeb410332ff28 omitted that module; existing row546 adopted owner should supply intended implementation or withdraw incomplete hunk. No stub/import suppression or competing onboarding implementation.
+
+CI check39906015614/#5875 and mobile39906015797/#508 are queued, not passed. Publisher observes exact runs to terminal without rerun/cancel. Master advanced during submission tocec514c06b17b2cead29febb836c494da63e3e35; only saveLayouts and UI review changed, disjoint. PR merge-base remains50d285. Final13fullsource recovery102635B SHA68b30a1f47af45e247488b80c1d5bbd0fa7e4ce489705c126fcdf5de3d4f742f plus12current diagnostic/evidence files473214B were independently read back. Existing source is locally committed separately; no private recovery ancestry published.
+
+Next: follow exact CI and the existing upstream prerequisite, finish permitted ordinary/visual/performance acceptance when available; meanwhile inspect one next noncompeting ordinary sector experience against actual code/register. All ten outcomes and older holds remain open.
+
+## Upstream reconciliation history, 05:13 UTC
 
 Master advanced 69 commits from45a97fdbda62611cc13001bd16790f8afa844753 to **50d285fd9d6e013c5bd7bda59df097c615bdd933** (tree b1b134daf15f159055621e3ec5f3ea5bf44102be). Current source includes changed Save/economy/world/worker dependencies and barContacts; package remains ed7d24f41bca13fd1035b026c325e0aa9ab12f4b. Read current design/program/NOW.md and BETA_PLAN_2026-10-23.md for exact owners. Existing-game reliability work is coordinated, not duplicated. No new external execution tasks are authorized here.
 
@@ -76,7 +86,7 @@ PR518 and520 were freshly read05:12: both remain open/unmerged at the heads abov
 1. PR518 and520 publication/CI observation are complete for their current heads; both workflows are terminal failure with the focused gate distinctions above. Preserve delivered work and investigate only attributable failures without broad reruns or suppressing gates.
 2. Writ publisher retains exact pending operation and four successful blobs; inspect outcome before any permitted retry.
 3. Root keeps handoff/goals/sector register synchronized and preserves final code/evidence.
-4. Dione investigation is complete: real clearance→same-load delivery would overlap active shared traffic owners, so no competing controller is allocated. Eunomia papers quote/confirm implementation is ACTIVE under [its exact claim](CLAIM_EUNOMIA_PAPERS_INTENT_2026-10-23.md). Supported Save/return washing works, but docking with unrelated foreign hot cargo charges the player. The allocated explicit per-pod service fixes intent without title/Save/custody rewrites; actual Continue remaps player IDs while pod title IDs persist, so a bare-ID filter is unsafe. Owner/UI/worker tests and existing atomic economy callback passed final old-base review;53checks are not final acceptance. Reconciliation onto50d285 is the next executable action. Market BUY and PR480 bar-contact hunks remain protected. Preserve external packet namespaces and encounter IDs8101–8105; packet uploads are not proof those tasks launched.
+4. Dione investigation is complete: real clearance→same-load delivery would overlap active shared traffic owners, so no competing controller is allocated. Eunomia papers quote/confirm implementation is published in draft PR523 under [its exact claim](CLAIM_EUNOMIA_PAPERS_INTENT_2026-10-23.md). Supported Save/return washing works, but docking with unrelated foreign hot cargo charges the player. The allocated explicit per-pod service fixes intent without title/Save/custody rewrites; actual Continue remaps player IDs while pod title IDs persist, so a bare-ID filter is unsafe. Owner/UI/worker tests and existing atomic economy callback passed final old-base review;53checks are not final acceptance. Reconciliation onto50d285 completed with the split52current/worker-blocked evidence above. Current next action is exact CI observation and noncompeting sector work. Market BUY and PR480 bar-contact hunks remain protected. Preserve external packet namespaces and encounter IDs8101–8105; packet uploads are not proof those tasks launched.
 5. Continue ordinary gameplay/visual/performance acceptance only through permitted supported routes. Existing browser approval is not permission to use another browser route.
 
 Canonical restored checkout remains dirty/read-only at25acfe5c97f069a34a045bea0cdc4450430657e9; preserve Vesta/mining/traffic and all reviewer changes. No index/stash/reset/fetch/lazy-fetch. Never execute test/anvil-receiver-delivery.test.mjs or aggregate suites. Both continuation schedules remain enabled/unchanged.

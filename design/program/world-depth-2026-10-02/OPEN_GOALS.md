@@ -1,9 +1,9 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
-## Current authority, 23 October 2026, 05:13 UTC
+## Current authority, 23 October 2026, 05:31 UTC
 
-The [current checkpoint and ten-goal register](CURRENT_CHECKPOINT_2026-10-22.md) supersede dated current-state statements below; historical evidence and acceptance boundaries remain intact. All ten outcomes remain OPEN. Eunomia explicit papers service passed53 focused old-base checks and independent review; reconcile onto new master50d285fd9d6e013c5bd7bda59df097c615bdd933 before publication. PR518/520 remain open/unmerged, with terminal CI distinctions documented in the checkpoint. Writ and older asset/browser publishing operations remain held, not cancelled or retried. Root owns recovery/publication; the existing Eunomia owner owns exact-source reconciliation. No new optional user action is requested.
+The [current checkpoint and ten-goal register](CURRENT_CHECKPOINT_2026-10-22.md) supersede dated current-state statements below; historical evidence and acceptance boundaries remain intact. All ten outcomes remain OPEN. Eunomia explicit papers service is published in draftPR523 at2e971d9e31a3decdebab7abffb5467b1d0528b56:52current focused checks pass; actual worker initialization is blocked by a separately reproduced upstream missing onboarding module.53old-base checks remain historical. Follow its exact queued CI and next noncompeting sector increment. PR518/520 remain open/unmerged, with terminal CI distinctions documented in the checkpoint. Writ and older asset/browser publishing operations remain held, not cancelled or retried. Root owns recovery/publication; the existing Eunomia publisher owns CI observation; the next sector investigator owns read-only candidate selection. No new optional user action is requested.
 
 
 Updated 22 October 2026, 08:38 UTC. All ten outcomes remain open. This register supports the
