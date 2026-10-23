@@ -241,3 +241,13 @@ All twelve goals remain OPEN. This is the current routing pointer; preceding ent
 - Current next substantive work is a narrow Kite's Corner phase-1 station presenter correction: the `stationLife` import added in commit `de968a6e5561ab13db0796fc082cfecd08d93873` has no matching module. A rollback of that dead wiring plus a focused test is being prepared; preserve working Long Berth `stationInfoFor`/`resolveStation` and `stationArrival`. Not yet delivered or accepted. Station-app edits remain held. This remains within existing SF-WORLD-DIRECTION/SF-LIVING-WORLD scope.
 - SF-WORLD-DIRECTION remains primary creative direction; Rope and Blind Welder remain PARKED by user direction. No goal is closed, no PR is merged/deployed by this update, and no held operation or schedule is changed.
 
+## New terminal receipt and Kite recording update: 2026-10-23 17:18 UTC
+
+All twelve goals remain OPEN. Latest routing supersedes earlier pending CI statements:
+
+- [PR518](https://github.com/coldshalamov/SpaceFace/pull/518) remains open/draft/unmerged at integrated head `8c3b1d06ea2607c5dcc587bd55c355b1254f4b43`, mergeable=true. Exact-head workflow [39990390912](https://github.com/coldshalamov/SpaceFace/actions/runs/39990390912) ended in failure. Hosted focused passes: Triton field-lab 9/9, Triton arrival 17/17, and Veil 14/14. The Haumea 20-case gate did not run because static shard 1's group step was skipped; no shard-1 report artifact was listed. No overall-green, Haumea result, native/HUD, or full-world acceptance claim. The separately qualified local route/weather 64/64 and preload metadata 3/3 remain bounded evidence, not substitutes for the hosted gates.
+- Kite's Corner has repeatable scripted native trace evidence: identical entry/gate ticks 27/134; medium Hornet (radius 16) and wide approaches reached exits at ticks 316 and 275, respectively, with 53 and 46 post-solve poses at 10 Hz. Repeats were byte-identical. This is recording/script and native-trace evidence, not live game-camera, visual/PBR, or in-game acceptance.
+- Draft [PR558](https://github.com/coldshalamov/SpaceFace/pull/558) publishes the narrow station-presenter repair at head `700f106ddf23e9c9583ac865f143a25cb134eba8` (three paths, parent `736b4b7bca6ce41672f39ef1981ccb81c8df3bfe`). It removes dangling `stationLife` wiring and adds a focused regression test; 3/3 focused tests and syntax pass. An isolated VM check preserves Long Berth resolution/arrival behavior; full runtime, browser, and native acceptance remain unproven.
+
+No goal closure or merge/deploy is implied. SF-WORLD-DIRECTION remains primary creative priority; Rope and Blind Welder remain parked.
+

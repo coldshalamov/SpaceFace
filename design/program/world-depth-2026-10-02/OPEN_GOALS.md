@@ -263,3 +263,9 @@ All twelve goals remain OPEN. SF-WORLD-DIRECTION is the primary creative priorit
 - Current active next increment: narrow Kite's Corner phase-1 presenter wiring repair and focused test. The unmatched `stationLife` import is verified; candidate rollback/test is not yet delivered. Preserve existing Long Berth APIs and keep station-app edits held.
 - Maintain the existing stable goal markers and preserve the prior sector evidence and acceptance boundaries. No goal closure is implied by partial tests, publication, or mergeability.
 
+## Current status update: 2026-10-23 17:18 UTC
+
+All twelve goals remain OPEN. PR518 is open/draft/unmerged and its exact-head workflow is now terminal failure. Hosted focused passes were Triton field-lab 9/9, Triton arrival 17/17, and Veil 14/14; Haumea's 20-case gate did not execute because static shard 1's group step was skipped, with no shard-1 report artifact listed. There is no overall-green or native/HUD/full-world acceptance claim.
+
+Kite's Corner now has repeatable scripted native trace evidence (same entry/gate ticks 27/134; exits at tick 316 for medium Hornet radius 16 and tick 275 for wide approach; 53/46 post-solve 10 Hz poses; byte-identical repeats). This does not establish live game-camera/PBR acceptance. Draft PR558 publishes the station-presenter dead-wiring repair and focused test at head `700f106ddf23e9c9583ac865f143a25cb134eba8`; focused 3/3 and syntax check pass. Long Berth behavior was checked in an isolated VM only; full runtime/browser/native acceptance remains open. All goal markers and parking directives are unchanged.
+

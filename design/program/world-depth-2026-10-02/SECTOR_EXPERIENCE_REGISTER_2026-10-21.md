@@ -796,3 +796,11 @@ All twelve goals remain OPEN. Update only the current status; earlier sector evi
 - Next bounded work is Kite's Corner phase-1 presenter wiring: verified unmatched `stationLife` import, with a narrow dead-wiring rollback and focused test in progress. Preserve working Long Berth `stationInfoFor`, `resolveStation`, and `stationArrival`; station-app edits remain held. Not yet delivered or accepted.
 - Keep SF-WORLD-DIRECTION as the primary creative priority. Rope and Blind Welder remain PARKED. No goal closure, merge/deploy, or held-operation change is implied.
 
+### Current world delivery and evidence: 2026-10-23 17:18 UTC
+
+All twelve goals remain OPEN.
+
+PR518's exact-head hosted workflow is terminal failure. The Triton field-lab, Triton arrival, and Veil focused gates passed hosted 9/9, 17/17, and 14/14, respectively. Haumea's 20-case gate was not run because static shard 1's group step was skipped; no shard-1 report artifact was listed. This is not an overall green CI result and does not establish native/HUD or full-world acceptance.
+
+Kite's Corner phase-1 recording now provides repeatable scripted/native trace measurements: entry/gate ticks 27/134 for both approaches, exits at tick 316 (medium Hornet, radius 16) and 275 (wide), and 53/46 post-solve poses at 10 Hz; repeats were byte-identical. This is not live camera/PBR or full game acceptance. Draft PR558 publishes the narrow dangling station-presenter wiring repair and focused regression test; focused 3/3 and syntax pass, with Long Berth resolution/arrival checked in an isolated VM only. Full runtime/browser/native acceptance remains open. Continue SF-WORLD-DIRECTION as primary creative work; Rope and Blind Welder remain parked.
+
