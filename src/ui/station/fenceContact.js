@@ -3,9 +3,9 @@
 // Pure read of the fence ledger (data/fences.js). The bar's contact engine (barContacts.js) asks
 // `fenceBarContact(stationId, state)` for a contact and `fenceBarReply(...)` for its answers; the
 // bar screen renders them like any other contact. The face is `localPortraitForContact(contact)`
-// (role 'smuggler', the slot is picked by hash32 in the roster). The only action a contact can
-// take is the scrub: the bar emits `ui:talkContact` (choiceId `fence_scrub`) and the fence desk
-// answers it - this file never moves heat, credits or trust.
+// (role 'smuggler', the slot is picked by hash32 in the roster). The scrub is owned by
+// the fence desk through `ui:talkContact`; explicit chart choices open the map in barContacts.
+// This file never moves heat, credits, trust or discovery.
 import { SECTORS } from '../../data/sectors.js';
 import { deniableBoardEpoch } from '../../data/deniableAftermath.js';
 import {
@@ -40,6 +40,12 @@ export function fenceBarContact(stationId, state) {
     { id: 'fence_work', label: 'Any work?' },
     { id: 'fence_word', label: 'What do you hear about me?' },
   ];
+  if (fence.id === PROTEUS_FENCE) {
+    choices.push({ id: 'proteus_sounding', label: 'About the well sounding' });
+    if (proteusFindingMapOffer(state, stationId, { id: fenceContactId(fence), fenceId: fence.id })) {
+      choices.push({ id: 'proteus_sounding_map', label: 'Open the sounding on the system map' });
+    }
+  }
   if (fence.quirk.fixer && wanted) {
     choices.push({ id: 'fence_scrub', label: `Clean my record (${fenceScrubCostCr(level, row.trust)} cr)` });
   }
@@ -56,6 +62,42 @@ export function fenceBarContact(stationId, state) {
   };
 }
 
+
+const PROTEUS_STATION = 'station_proteus';
+const PROTEUS_SECTOR = 'sector_proteus_well';
+const PROTEUS_POI = 'poi_proteus_stash';
+const PROTEUS_FENCE = 'fence_pyrrha_rivet';
+
+/** Only the existing scanner-owned investigation is evidence, never a proximity return. */
+export function proteusFindingKnown(state) {
+  return state?.world?.discovery?.[PROTEUS_SECTOR]?.pois?.[PROTEUS_POI]?.investigated === true;
+}
+
+function proteusConversationAvailable(state, stationId, contact) {
+  const fence = FENCE_BY_ID.get(PROTEUS_FENCE);
+  return stationId === PROTEUS_STATION && contact?.fenceId === PROTEUS_FENCE
+    && contact.id === fenceContactId(fence)
+    && state?.ui?.docked === true && state.ui.dockedStationId === PROTEUS_STATION
+    && state?.world?.currentSectorId === PROTEUS_SECTOR
+    && (isPlayerWanted(state) || fenceRowOf(state, PROTEUS_FENCE).trust >= 1);
+}
+
+/** Re-read the resident marker on every click. No hidden-site coordinates before investigation. */
+export function proteusFindingMapOffer(state, stationId, contact) {
+  if (!proteusConversationAvailable(state, stationId, contact) || !proteusFindingKnown(state)) return null;
+  const active = state.world.activeSector;
+  if (active?.id !== PROTEUS_SECTOR) return null;
+  const poi = Array.isArray(active.pois)
+    ? active.pois.find((row) => row?.poiId === PROTEUS_POI) : null;
+  if (!poi) return null;
+  const entity = state.entities?.get?.(poi.id);
+  if (entity?.alive === false) return null;
+  const pos = entity?.pos || poi.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+  return { sectorId: PROTEUS_SECTOR, pos: { x: pos.x, z: pos.z },
+    label: 'Below-Deck Cache', source: 'station-bar:proteus-sounding' };
+}
+
 function boardJobFor(state, stationId) {
   const board = state && state.missions && state.missions.boards && state.missions.boards[stationId];
   const slots = board && Array.isArray(board.slots) ? board.slots : [];
@@ -70,6 +112,12 @@ export function fenceBarReply(contact, choiceId, state, stationId) {
   const epoch = deniableBoardEpoch(state);
   const situation = fenceSituation(row, epoch);
 
+  if (choiceId === 'proteus_sounding' && fence.id === PROTEUS_FENCE) {
+    if (!proteusConversationAvailable(state, stationId, contact)) return { text: 'That conversation is not available here.' };
+    return { text: proteusFindingKnown(state)
+      ? 'That return beneath the Funnel is in your survey record: Below-Deck Cache. A pulse is not a cargo delivery, love. I have not bought those cases from you. Your completed sector chart goes to cartography; any chart payment comes from them. Open your sounding on the map if you want another look.'
+      : 'The Funnel has more beneath its floor than the visible hull explains. Passive proximity is not a sounding. Take an active scanner reading and investigate the return before you call it a find. I trade parts and freight, not guesses.' };
+  }
   if (choiceId === 'fence_scrub') {
     const ask = row.lastAsk;
     if (ask && ask.kind === 'scrub' && ask.ok) {
