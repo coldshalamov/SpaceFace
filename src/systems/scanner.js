@@ -101,9 +101,21 @@ const HAIL_REFUSAL_TEXT = Object.freeze({
   out_of_reveal_range: 'Too far to hail — close in',
   parley_expired: 'The demand has already expired',
   nebula_wash: 'The nebula ate the hail',
+  sensors_blind: 'Sensors out — nobody hears the hail',
 });
 
 /** 'out' when the sensor bank is dead, 'jammed' when a status killed the capability, else null. */
+/** A dead or jammed sensor bank closes the hail channel. The contact check still runs;
+ *  this only stamps the refusal the pilot can hear. */
+export function hailAvailabilityThroughSensors(state, availability) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!playerSensorBlock(state, player)) return availability;
+  const base = availability && typeof availability === 'object' ? availability : {};
+  return { ...base, enabled: false, reason: 'sensors_blind', kind: null, label: 'HAIL' };
+}
+
 export function playerSensorBlock(state, player) {
   if (ionStormBlackout(state, player)) return 'jammed';
   const book = state && state.combat && state.combat.entities;
@@ -1660,7 +1672,7 @@ export const scanner = {
 
   _requestContactHail(payload) {
     const state = this.state;
-    const availability = contactHailAvailability(state);
+    const availability = hailAvailabilityThroughSensors(state, contactHailAvailability(state));
     if (!availability.enabled || payload.targetId != null && payload.targetId !== availability.targetId) {
       this._clearContactHail('request_invalid');
       const reason = !availability.enabled ? availability.reason : 'stale_target';
@@ -1716,7 +1728,7 @@ export const scanner = {
     if (!active || payload.requestId !== active.requestId) return false;
     const state = this.state;
     const now = Number(state && state.simTime) || 0;
-    const availability = contactHailAvailability(state);
+    const availability = hailAvailabilityThroughSensors(state, contactHailAvailability(state));
     const valid = now < Number(active.expiresAt)
       && payload.targetId === active.targetId
       && availability.enabled
@@ -1894,7 +1906,7 @@ export const scanner = {
     const tick = state && state.tick | 0;
     if (!targetDirty && tick < this._contactHailNextPollTick) return;
 
-    const availability = contactHailAvailability(state);
+    const availability = hailAvailabilityThroughSensors(state, contactHailAvailability(state));
     this._contactHailLastTargetId = targetId;
     this._contactHailNextPollTick = tick + CONTACT_HAIL_POLL_TICKS;
     this._publishContactHailAvailability(availability);
