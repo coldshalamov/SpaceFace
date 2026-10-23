@@ -15,6 +15,7 @@ The complete existing kilnback is a crewed furnace tug, 25,188 source triangles,
 New paths only:
 - tools/blender/forge/ships/runaway_kiln.py
 - assets/ships/parts/pods/pod_runaway_kiln.glb
+- assets/ships/forge/sources/runaway_kiln/measured-contract.json
 - test/runaway-kiln-visual-fit.test.mjs
 - design/program/world-depth-2026-10-02/RUNAWAY_KILN_VISUAL_2026-10-22.md
 - design/program/world-depth-2026-10-02/evidence/runaway-kiln-visual-20261022/export-top.jpg
@@ -29,6 +30,14 @@ Root retains shared integration and package/test registration. Proposed new uniq
 The only proposed existing renderer hunk is a storyPropKind === runaway_kiln payload selector within packagedPropSpec, after explicit supplied-file handling and before the generic tow fallback, with measured fit. This is not a whole-file graphics reservation. No runtime/director/Save or kilnbackBody.js edits are allocated. Any additional fallback or fit change requires its exact hunk to be reviewed before mutation. Root separately allocates required release, pilot, generated-manifest and census entries after contract inspection; authoring alone is not production registration.
 
 ## Verification and status
-State: implementation starting; no derivative exported, reviewed, published, integrated or accepted yet. Measure real reachable geometry/material/byte costs, verify no crew/casks/drives or floating attachments, compare exported top/oblique views with native polygon at the same WU scale, and inspect the final runtime package too. Pending/failed/settled override selection and initial/restored actor identity need tests. No ordinary towing or live camera acceptance is implied.
+State at 23 October 00:01 UTC: source exported and iterated through four revisions; eight focused native-fit checks pass locally. The current visible mesh has 11,752 triangles, six primitives/materials, a 27 WU fitted length and zero visible vertices outside the unchanged native polygon (minimum clearance 0.147885 WU). Exported top/oblique review exposed a partly buried aft panel; the fourth export replaces its cap with a closed skin-following grid. Four seated lifting eyes clarify handling purpose without introducing gameplay sockets. Final review, production packaging, publication, ordinary gameplay and acceptance remain open. Measure real reachable geometry/material/byte costs, verify no crew/casks/drives or floating attachments, compare exported top/oblique views with native polygon at the same WU scale, and inspect the final runtime package too. Pending/failed/settled override selection and initial/restored actor identity need tests. No ordinary towing or live camera acceptance is implied.
 
 Next executable action: author and inspect the single core-derived load in an isolated output tree, then complete the registered integration and independent review. Existing Orchard/Pallas/Guide/Shard/r4/gradiometer allocations remain unchanged. All larger goals remain open.
+
+## Scoped integration allocation after contract inspection
+
+Root owns only the new pod-runaway-kiln identity's additive entries in assets/ships/parts/parts_manifest.json, assets/ships/release/release_manifest.json, assets/ships/render-packages/pilots.json, src/render/renderPackageManifest.js, src/render/partsLibrary.js::liveSolidGlbCatalog, and the generated src/data/modelTruthCensus.json / modelTruthCensus.generated.js rows, plus the unique focused test registration in package.json. Re-read actual current paths and preserve all unrelated Pallas/Shard entries before mutation. Generated release/package/census outputs must use verified production tools; never hand-author generated metadata. Current package tool supports --only and census supports --only plus --update-selected. No full fleet rebuild or aggregate test is allocated.
+
+The source contains a strictly marked non-render collision prism matching kilnbackPhysicalBody([]) and planarProxyPrismHalfHeight. Its height exceeds visible geometry. Compiler/loader helper filtering must be verified for the actual mounted prop path so the hidden helper cannot silently change fit or center. Authored-origin census authority requires measured source hashes and exact native convex-part parity. No physics geometry, solver or gameplay mutation is authorized by this visual claim.
+
+Revision 2 and 3 recipes, models and matching measurements plus the defective revision-3 top view are preserved in a seven-file, 813,505-byte recovery package, independently read back with exact member bytes and SHA256 bddccff910694019ab1d45cce72a490231ae787ef632907a0027653715a97226. Recovery is not repository delivery. The interrupted authoring resumed after an environment restart; surviving files were checked before continuation.

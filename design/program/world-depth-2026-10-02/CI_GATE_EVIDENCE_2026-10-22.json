@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "observedAt": "2026-10-22T22:54:00Z",
+  "observedAt": "2026-10-23T00:03:00Z",
   "preload": {
     "run": 39862879739,
     "head": "6783d6c814a3b255c3b6e2764887a610e7b4eef3",
@@ -52,5 +52,26 @@
     "Passing the preload gate does not establish browser/mobile launch acceptance or an overall green workflow.",
     "The Kiln command is present in the actual public command graph, but its static shard was skipped after a preceding Ceres failure.",
     "No aggregate was executed locally to prove command placement."
-  ]
+  ],
+  "kilnContinuity": {
+    "run": 39870336885,
+    "head": "09ecc5633e6397003fbc1dd70a040b3d4ac17cc0",
+    "workflowConclusion": "failure",
+    "staticShard": 2,
+    "artifactId": 12466545288,
+    "artifactSha256": "b5157d19fe7bb42a9d75adc3394fc086baaac1f28beff1e339544f7f7b6b79c9",
+    "log": "2026-10-22T23-15-43-590Z/check-runaway-kiln-continuity.log",
+    "exitCode": 0,
+    "tests": 22,
+    "passed": 22,
+    "failed": 0,
+    "commandDurationMs": 3833,
+    "independentlyReadBack": true,
+    "damageRoute": {
+      "jobId": 120142881825,
+      "staticShard": 1,
+      "conclusion": "skipped",
+      "precedingFailure": "Validate Ceres physical workfleet and Continue"
+    }
+  }
 }
