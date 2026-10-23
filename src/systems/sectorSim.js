@@ -760,6 +760,12 @@ export const sectorSim = {
     }
     ss.meta.pendingTransit = null;
     this.bus.emit('sectorsim:transitOutcome', { sectorId: to, via, incident, damage, forecast });
+    if (incident && damage > 0) {
+      this.bus.emit('toast', {
+        text: `The ${via} crossing bit the hull — ${damage} damage.`,
+        kind: 'warn', ttl: 5,
+      });
+    }
   },
 
   // ------------------------------------------------------------------------------------------

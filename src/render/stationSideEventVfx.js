@@ -104,12 +104,31 @@ export function resolveStationSideEventVfxProfile(kind) {
   return STATION_SIDE_EVENT_VFX_PROFILES[kind] || null;
 }
 
+// Named bay tics reuse the poses the yard already has. A numbered beat stays the dish sweep.
+const STATION_TIC_PROFILE = Object.freeze({
+  dish_sweep: 'sensor_sweep',
+  low_ping: 'quiet_dock',
+  beacon_strobe: 'patrol_launch',
+  vent_flare: 'slag_pour',
+  charge_flash: 'slag_pour',
+  weld_bloom: 'repair_drone',
+  gantry_cycle: 'hauler_dock',
+});
+
+export function stationTicProfileId(tic) {
+  if (typeof tic === 'string') return STATION_TIC_PROFILE[tic] || null;
+  if (tic == null) return null;
+  return 'sensor_sweep';
+}
+
 /** One dish beat for a live broadcast tic. A quiet broadcaster produces none. */
 export function broadcastDishBeatRecord(payload) {
   if (!payload || payload.quiet === true || payload.tic == null) return null;
   const pos = payload.pos;
   if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
-  const profile = resolveStationSideEventVfxProfile('sensor_sweep');
+  const profileId = stationTicProfileId(payload.tic);
+  if (!profileId) return null;
+  const profile = resolveStationSideEventVfxProfile(profileId);
   if (!profile) return null;
   return {
     kind: 'dish-beat',

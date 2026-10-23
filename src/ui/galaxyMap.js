@@ -38,6 +38,7 @@ import { dressLampKey } from './orrery/lampKey.js';
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { gateTollFor } from '../data/travelChoices.js';
 import { wreckEcologyMarkers } from './wreckEcologyMarkers.js';
 import { chartMarkSizes } from '../data/modelTruth.js';
 import { asteroidScanGlyph } from '../data/mining.js';
@@ -1052,6 +1053,51 @@ function sectorRecords(state) {
 function sectorRecordById(state, id) {
   for (const s of sectorRecords(state)) if (s && s.id === id) return s;
   return SECTOR_BY_ID.get(id) || null;
+}
+
+/**
+ * The toll a one-hop jump into `sectorId` will charge. Live security wins; the
+ * catalog fills a chart node that has not copied the number yet. Same law as
+ * world `_gateToll` (`gateTollFor`): security must be above 0.6.
+ */
+export function jumpTollCr(state, sectorId) {
+  if (!sectorId) return 0;
+  const live = sectorRecordById(state, sectorId);
+  const catalog = SECTOR_BY_ID.get(sectorId);
+  const security = live && live.security != null ? live.security
+    : catalog && catalog.security != null ? catalog.security
+    : null;
+  return gateTollFor({ security });
+}
+
+function attachJumpToll(state, action) {
+  if (!action || action.kind !== 'jump') return action;
+  const tollCr = jumpTollCr(state, action.targetSectorId);
+  action.tollCr = tollCr;
+  action.tollLine = tollCr > 0 ? `${tollCr} cr toll` : '';
+  return action;
+}
+
+/** One line under the jump verb. The verb label itself stays the pinned words. */
+function paintJumpToll(btn, primary) {
+  if (!btn || typeof document === 'undefined' || typeof btn.insertAdjacentElement !== 'function') return;
+  const text = primary && primary.tollLine ? primary.tollLine : '';
+  const title = text || '';
+  if (btn.getAttribute('data-toll') !== title) btn.setAttribute('data-toll', title);
+  const parent = btn.parentElement;
+  if (!parent || typeof parent.querySelector !== 'function') return;
+  let note = parent.querySelector('#gm-jump-toll');
+  if (!text) {
+    if (note && note.remove) note.remove();
+    return;
+  }
+  if (!note) {
+    note = document.createElement('div');
+    note.id = 'gm-jump-toll';
+    note.className = 'gm-ins-note';
+    btn.insertAdjacentElement('afterend', note);
+  }
+  if (note.textContent !== text) note.textContent = text;
 }
 
 /**
@@ -2557,12 +2603,12 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
     const sectorId = target.sectorId || target.id;
     if (!sectorId) return null;
     if (isOneHopNeighbor(state, sectorId)) {
-      return {
+      return attachJumpToll(state, {
         kind: 'jump',
         label: 'Set Course & Jump',
         targetSectorId: sectorId,
         coursePayload: coursePayload || { type: 'sector', sectorId, path: null, label: target.name || sectorId },
-      };
+      });
     }
     return {
       kind: 'route',
@@ -2585,12 +2631,12 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
     const dest = target.targetSectorId || target.gateTo || null;
     // In-range jump from a selected physical gate (player already approached).
     if (dest && isOneHopNeighbor(state, dest) && isPlayerInGateRange(state, target)) {
-      return {
+      return attachJumpToll(state, {
         kind: 'jump',
         label: 'Jump',
         targetSectorId: dest,
         coursePayload: coursePayload || { type: 'sector', sectorId: dest, path: null, label: target.name || dest },
-      };
+      });
     }
     return {
       kind: 'waypoint',
@@ -2603,12 +2649,12 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
   if (!coursePayload) return null;
   if (coursePayload.type === 'sector' && coursePayload.sectorId) {
     if (isOneHopNeighbor(state, coursePayload.sectorId)) {
-      return {
+      return attachJumpToll(state, {
         kind: 'jump',
         label: 'Set Course & Jump',
         targetSectorId: coursePayload.sectorId,
         coursePayload,
-      };
+      });
     }
     return {
       kind: 'route',
@@ -6057,6 +6103,7 @@ _stepAnimation(now) {
       enhanceInspectorSections(detailsEl, { tab: this._activeTab });
     }
     if (btn.textContent !== buttonLabel) btn.textContent = buttonLabel;
+    paintJumpToll(btn, primary);
     if (primary && primary.coursePayload) {
       if (btn.hidden) btn.hidden = false;
       if (btn.disabled) btn.disabled = false;
