@@ -100,6 +100,7 @@ const HAIL_REFUSAL_TEXT = Object.freeze({
   unsupported_contact: 'That contact doesn\'t take a hail',
   out_of_reveal_range: 'Too far to hail — close in',
   parley_expired: 'The demand has already expired',
+  nebula_wash: 'The nebula ate the hail',
 });
 
 /** 'out' when the sensor bank is dead, 'jammed' when a status killed the capability, else null. */

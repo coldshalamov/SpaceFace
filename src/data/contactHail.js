@@ -602,6 +602,10 @@ export function contactHailAvailability(state) {
   const player = playerEntity(state);
   const unavailable = (reason) => ({ enabled: false, reason, targetId: targetId ?? null, kind: null, label: 'HAIL' });
   if (!state || state.mode !== 'flight' || state.ui && state.ui.docked) return unavailable('not_in_flight');
+  // The wash eats the channel before a contact can answer. Other hazard discs do not.
+  if (state.world && state.world.hazardPresence && state.world.hazardPresence.nebula === true) {
+    return unavailable('nebula_wash');
+  }
   if (!target) return unavailable('unresolved_target');
   if (target.alive === false) return unavailable('dead_target');
   if (target.data?.redKiteActorId === RED_KITE.actorId || target.data?.redKiteMark === 'poi_red_kite_start') {
