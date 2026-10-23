@@ -1,6 +1,7 @@
 // src/data/automation.js – passive income assets + economy balance anchor.
 // activeRefByTier is an ARRAY per ARCHITECTURE §3.9 (index 0 = tier 1).
-// Commodity refs use cmdty_ prefix. Pure data, no imports.
+// Commodity refs use cmdty_ prefix.
+import { MATERIAL_RECIPE_BY_GOOD } from './sites.js';
 
 export const AUTO_BALANCE = {
   // A(T): sustained active cr/min at tier T (index = tier-1, so [0]=T1 .. [4]=T5).
@@ -26,15 +27,16 @@ export const TRADERS = [
   { id: 'trader_bulk_h',      tier: 3, cargoVol: 480, cycleTime: 320, tradeEff: 0.94, hireCost: 75000, upkeepPerMin: 85, baseLossPerCycle: 0.03  },
 ];
 
-export const OUTPOSTS = [
+const OUTPOST_DEFINITIONS = [
   {
     id: 'outpost_refinery',
+    retiredInto: 'spec_refinery',
     recipe: { book: 'claim_refinery' },
     outRate: 0.5, storageCap: 300, buildCost: 60000,  defense: 20, upkeepPerMin: 50,
   },
   {
     id: 'outpost_fuelsynth',
-    recipe: { inputs: { cmdty_volatiles: 1 }, output: { cmdty_fuel_cells: 1 } },
+    recipe: MATERIAL_RECIPE_BY_GOOD.cmdty_fuel_cells,
     outRate: 0.7, storageCap: 400, buildCost: 45000,  defense: 15, upkeepPerMin: 40,
   },
   {
@@ -43,3 +45,7 @@ export const OUTPOSTS = [
     outRate: 12, storageCap: 1500, buildCost: 110000, defense: 30, upkeepPerMin: 90,
   },
 ];
+
+export const OUTPOSTS = OUTPOST_DEFINITIONS;
+export const BUILDABLE_OUTPOSTS = OUTPOST_DEFINITIONS.filter(def => !def.retiredInto);
+export const RETIRED_OUTPOSTS = OUTPOST_DEFINITIONS.filter(def => def.retiredInto);
