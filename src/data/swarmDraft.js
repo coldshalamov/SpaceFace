@@ -310,6 +310,61 @@ export function ownedSwarmLegendaryIds(run) {
 
 export const SWARM_CALLIN_RECORD_KIND = 'swarm_callin';
 
+// ── the stacking passives (SEED-SW-14) ────────────────────────────────────────────────────────
+//
+// A stacking passive is SPENT STOCK of a room effect: the armory sells repeat copies of one
+// passive (each copy applies its effect exactly once — the effect readers multiply by the held
+// count), the stack caps small, and the copies ride the run's own modifier ledger as
+// `swarm_passive` records — never the Hangar profile, which stays earned profile gear.
+
+export const SWARM_PASSIVE_RECORD_KIND = 'swarm_passive';
+
+/** The stack cap: a passive is a rack, not a vault. */
+export const SWARM_PASSIVE_STACK_MAX = 5;
+
+export const SWARM_PASSIVE_CATALOG = Object.freeze([
+  Object.freeze({
+    id: 'plated_hull',
+    offerId: 'passive_plated_hull',
+    name: 'Plated Hull',
+    verb: 'Plate',
+    price: 48,
+    fromWave: 1,
+    perCopyHull: 14,
+    blurb: '+14 hull per plate, stacked to five. Scrap welded straight onto the frame.',
+  }),
+]);
+
+const PASSIVE_BY_ID = new Map(SWARM_PASSIVE_CATALOG.map((entry) => [entry.id, entry]));
+
+/** The catalog row for one passive id, or null. */
+export function swarmPassiveById(id) {
+  return typeof id === 'string' ? (PASSIVE_BY_ID.get(id) || null) : null;
+}
+
+/** How many copies of one passive THIS run holds (sum across ledger rows). */
+export function swarmPassiveCount(run, passiveId) {
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return 0;
+  if (typeof passiveId !== 'string' || !PASSIVE_BY_ID.has(passiveId)) return 0;
+  if (run.ruleset !== SWARM_RULESET) return 0;
+  const modifiers = Array.isArray(run.modifiers) ? run.modifiers : [];
+  let total = 0;
+  for (const record of modifiers) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) continue;
+    if (record.kind !== SWARM_PASSIVE_RECORD_KIND || record.passiveId !== passiveId) continue;
+    const n = Number(record.count);
+    if (Number.isFinite(n) && n > 0) total += Math.floor(n);
+  }
+  return total;
+}
+
+/** The hull bonus the run's plated-hull stack grants, once per copy. */
+export function swarmPassiveHullBonus(run) {
+  const entry = PASSIVE_BY_ID.get('plated_hull');
+  return entry ? swarmPassiveCount(run, 'plated_hull') * entry.perCopyHull : 0;
+}
+
+
 /** Restock cap per charge type: stock is a rack, not a vault. */
 export const SWARM_CALLIN_MAX_PER_TYPE = 3;
 

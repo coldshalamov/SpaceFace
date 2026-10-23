@@ -62,6 +62,11 @@ import { buildSlotList, fits, getDerivedStats } from './ships.js';
 import { swarmHullPrice } from '../data/swarmCatalog.js';
 import {
   SWARM_CALLIN_CATALOG,
+  SWARM_PASSIVE_CATALOG,
+  SWARM_PASSIVE_RECORD_KIND,
+  SWARM_PASSIVE_STACK_MAX,
+  swarmPassiveById,
+  swarmPassiveCount,
   SWARM_CALLIN_MAX_PER_TYPE,
   SWARM_CALLIN_RECORD_KIND,
   SWARM_LEGENDARY_RECORD_KIND,
@@ -1152,6 +1157,21 @@ export const survivalDraft = {
         _callinHeld: held,
       });
     }
+    // SEED-SW-14 — the stacking passive: the same spent-stock rack, capped smaller, the row
+    // showing the held stack. Copies ride the run's ledger, never the Hangar profile.
+    for (const entry of SWARM_PASSIVE_CATALOG) {
+      if (clearedWave < entry.fromWave) continue;
+      const held = swarmPassiveCount(run, entry.id);
+      if (held >= SWARM_PASSIVE_STACK_MAX) continue;
+      extras.push({
+        id: entry.offerId, kind: SWARM_SERVICE_OFFER_KIND, service: 'passive',
+        passiveId: entry.id,
+        verb: entry.verb, name: entry.name,
+        blurb: entry.blurb,
+        price: ask(entry.price), category: 'Service', slotLabel: `Passive · stack ${held}/${SWARM_PASSIVE_STACK_MAX}`,
+        _passiveHeld: held,
+      });
+    }
     const cargoUsed = player && player.cargo && Number.isFinite(player.cargo.usedVolume)
       ? player.cargo.usedVolume : 0;
     const ownedList = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
@@ -1472,6 +1492,40 @@ export const survivalDraft = {
         return;
       }
       this._notice = `${entry.name} racked (${swarmCallinCount(committed, entry.id)} held).`;
+      this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+      return;
+    }
+    if (pending.service === 'passive') {
+      // SEED-SW-14 — one more copy on the run's ledger; the effect host reads the count.
+      const run = liveSurvivalRun(this.state);
+      const entry = swarmPassiveById(pending.passiveId);
+      if (!run || run.phase !== 'draft' || !entry || entry.offerId !== pending.id) {
+        refund(`That passive is no longer on the shelf. ${pending.price} cr refunded.`);
+        return;
+      }
+      if (swarmPassiveCount(run, entry.id) >= SWARM_PASSIVE_STACK_MAX) {
+        refund(`${entry.name} is fully stacked. ${pending.price} cr refunded.`);
+        return;
+      }
+      this._purchased.add(pending.id);
+      this._emit('run:modifierRecordRequested', {
+        record: {
+          kind: SWARM_PASSIVE_RECORD_KIND, offerId: pending.id,
+          passiveId: entry.id, name: entry.name, count: 1,
+          wave: Math.max(1, this._wave),
+        },
+        draft: {
+          wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id,
+        },
+        wave: this._wave,
+      });
+      const committed = liveSurvivalRun(this.state);
+      if (!committed || swarmPassiveCount(committed, entry.id) <= pending._passiveHeld) {
+        this._purchased.delete(pending.id);
+        refund(`The ${entry.name} would not stay on the manifest. ${pending.price} cr refunded.`);
+        return;
+      }
+      this._notice = `${entry.name} stacked (${swarmPassiveCount(committed, entry.id)}/${SWARM_PASSIVE_STACK_MAX}).`;
       this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
       return;
     }
