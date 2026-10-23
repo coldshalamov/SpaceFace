@@ -1,6 +1,6 @@
 # Expansion continuation: restart and failure recovery
 
-Current-state pointer (23 October 2026): after reading EXECUTION_STATUS.md for durable history, read [CURRENT_CHECKPOINT_2026-10-22.md](CURRENT_CHECKPOINT_2026-10-22.md) for the latest verified delivery, active exact-path claims and ten-goal register. Its newer dated observations supersede historical current-state statements, not acceptance criteria. Resume its active Kiln visual integration rather than reopening completed continuity or preload work.
+Current-state pointer (23 October 2026): after reading EXECUTION_STATUS.md for durable history, read [CURRENT_CHECKPOINT_2026-10-22.md](CURRENT_CHECKPOINT_2026-10-22.md) for the latest verified delivery, active exact-path claims and ten-goal register. Its newer dated observations supersede historical current-state statements, not acceptance criteria. Resume its active Eunomia current-master reconciliation and draft delivery. Preserve held Kiln/Writ/other operations without retrying them; do not reopen completed continuity or preload work.
 
 
 This procedure was requested on 8 October 2026 after repeated status reports replaced

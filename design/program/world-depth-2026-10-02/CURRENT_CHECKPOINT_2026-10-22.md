@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace current execution checkpoint
 
-Updated 2026-10-23 04:49 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
+Updated 2026-10-23 05:13 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
 
 ## Durable scope and evidence
 
@@ -63,12 +63,20 @@ Each was independently read back; local coherent preservation also verified. Nev
 
 New actual cold-drill geometry preview delivered03:58:640x480,37626B,SHA3bab537003c0f6d1cf625530b76b131cb13fdf2c17d5dd6b75625d7ad9172ecf. Exact release source22572B,Git836f3ed68d0bbf6642309f5a448eb12c76d672ec,SHA6ecf03f02e43f7db1367360263f382890b85e9010b1c563885dc28b1c21815c0. Base-color geometry only, not new model/final textures/live placement. Cargo-package preview and earlier asset evidence remain archived.
 
+## Upstream reconciliation, 05:13 UTC
+
+Master advanced 69 commits from45a97fdbda62611cc13001bd16790f8afa844753 to **50d285fd9d6e013c5bd7bda59df097c615bdd933** (tree b1b134daf15f159055621e3ec5f3ea5bf44102be). Current source includes changed Save/economy/world/worker dependencies and barContacts; package remains ed7d24f41bca13fd1035b026c325e0aa9ab12f4b. Read current design/program/NOW.md and BETA_PLAN_2026-10-23.md for exact owners. Existing-game reliability work is coordinated, not duplicated. No new external execution tasks are authorized here.
+
+Eunomia explicit per-pod service is implemented and independently reviewed on the old base. Root final six-file run passed **53/53**; source-qualified rerun verified1583 unique ESM inputs, manifest b2618e482db76d666d38a00270b2a33fa5f887cf839f05d1d93e4ec77b6c96d4, full-log hash b858e8eb14e94d71ed7a4e9c5cace0a096f1b33ea25305d3588d014f2bdf48b5. This is ESM verification, not complete filesystem/dependency or live-browser acceptance. Final old-base source, patches, review and logs are independently read-back preserved:21 members,333380B,SHA256 c87386dad62d18929fc9819a95ea17eda1867c3fc5e02214225bbdafc034b2a6. No implementation publication yet. Current owner reconciles exact allocated files and reruns against50d285 before root packages/publishes.
+
+PR518 and520 were freshly read05:12: both remain open/unmerged at the heads above. Their old-head test evidence is not current-master integration proof. Writ publisher was notified of changed missions/world; preserve existing pending operation and successful blobs, but reconcile before any later tree/ref. All older holds and all ten open outcomes remain unchanged.
+
 ## Current owners and next executable actions
 
 1. PR518 and520 publication/CI observation are complete for their current heads; both workflows are terminal failure with the focused gate distinctions above. Preserve delivered work and investigate only attributable failures without broad reruns or suppressing gates.
 2. Writ publisher retains exact pending operation and four successful blobs; inspect outcome before any permitted retry.
 3. Root keeps handoff/goals/sector register synchronized and preserves final code/evidence.
-4. Dione investigation is complete: real clearance→same-load delivery would overlap active shared traffic owners, so no competing controller is allocated. Eunomia papers quote/confirm implementation is ACTIVE under [its exact claim](CLAIM_EUNOMIA_PAPERS_INTENT_2026-10-23.md). Supported Save/return washing works, but docking with unrelated foreign hot cargo charges the player. The allocated explicit per-pod service fixes intent without title/Save/custody rewrites; actual Continue remaps player IDs while pod title IDs persist, so a bare-ID filter is unsafe. Owner/UI/worker tests and existing atomic economy callback are under review; preliminary32passes are not final acceptance. Market BUY and PR480 bar-contact hunks remain protected. Preserve external packet namespaces and encounter IDs8101–8105; packet uploads are not proof those tasks launched.
+4. Dione investigation is complete: real clearance→same-load delivery would overlap active shared traffic owners, so no competing controller is allocated. Eunomia papers quote/confirm implementation is ACTIVE under [its exact claim](CLAIM_EUNOMIA_PAPERS_INTENT_2026-10-23.md). Supported Save/return washing works, but docking with unrelated foreign hot cargo charges the player. The allocated explicit per-pod service fixes intent without title/Save/custody rewrites; actual Continue remaps player IDs while pod title IDs persist, so a bare-ID filter is unsafe. Owner/UI/worker tests and existing atomic economy callback passed final old-base review;53checks are not final acceptance. Reconciliation onto50d285 is the next executable action. Market BUY and PR480 bar-contact hunks remain protected. Preserve external packet namespaces and encounter IDs8101–8105; packet uploads are not proof those tasks launched.
 5. Continue ordinary gameplay/visual/performance acceptance only through permitted supported routes. Existing browser approval is not permission to use another browser route.
 
 Canonical restored checkout remains dirty/read-only at25acfe5c97f069a34a045bea0cdc4450430657e9; preserve Vesta/mining/traffic and all reviewer changes. No index/stash/reset/fetch/lazy-fetch. Never execute test/anvil-receiver-delivery.test.mjs or aggregate suites. Both continuation schedules remain enabled/unchanged.
