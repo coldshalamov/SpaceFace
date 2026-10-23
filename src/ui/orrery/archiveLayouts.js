@@ -1151,6 +1151,20 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   ${ML} > .k-hang.sf-mlog-body { max-height:36vh !important; }
   ${ML} > .k-stage.sf-mlog-stage { padding-top:8px !important; }
 }
+/* Terms ledger: every row was its own grid with a fixed 96-118px label column, so AUTHORIZATION
+   (one 12px word, ~140px tracked) ran under its value and MASS ON ACCEPT / CONTRACT CODE broke in two
+   at 390-1280 wide. The list now owns one label column for all rows (each row a subgrid): as wide
+   as the longest label up to 10.5em (13em above 1100 wide; at 1100 or narrower just the longest word), never narrower than its longest word. Labels and values stay aligned. */
+html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms {
+  display:grid !important; grid-template-columns:fit-content(10.5em) minmax(0, 1fr) !important; }
+html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row {
+  grid-column:1 / -1 !important; grid-template-columns:subgrid !important; }
+@media (max-width:1100px) {
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms { grid-template-columns:fit-content(7.5em) minmax(0, 1fr) !important; }
+}
+@media (min-width:1101px) {
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms { grid-template-columns:fit-content(13em) minmax(0, 1fr) !important; }
+}
 @media (forced-colors:active) {
   ${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"] { outline:2px solid Highlight !important; }
 }
