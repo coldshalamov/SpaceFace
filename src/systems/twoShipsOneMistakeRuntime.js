@@ -2,7 +2,7 @@
 // Tethys lane. The film, the hold impulse, and the wear are the real adhesive law.
 // This runtime only places the hulls, grants a bounded can allotment, and pays
 // once from physical facts: a quiet sever, or both hulls still bridged at the hub.
-import { ADHESIVE } from '../data/reactiveMatter/adhesive.js';
+import { ADHESIVE, ADHESIVE_LINES } from '../data/reactiveMatter/adhesive.js';
 import { modelById } from '../data/reactiveMatter/models.js';
 import { refreshAdhesiveCoat } from '../matter/reactive/adhesive.js';
 import { addCargo } from './cargo.js';
@@ -127,9 +127,16 @@ function pairBridge(state) {
   return null;
 }
 
+// The film speaks through toasts (reactiveMatter emits one per adhesive notice) and the bridge can be
+// swept the tick after it severs, so the encounter samples it the moment the film says something.
+// Only the film's own lines count: any other toast (a save receipt, a wall-clock notice) must not move
+// encounter state, or the same seed would play differently on a faster or slower machine.
+const FILM_LINES = new Set(Object.values(ADHESIVE_LINES));
+
 function watchFilm(d, live, state) {
   if (!d.bus || typeof d.bus.on !== 'function' || watches.has(live.id)) return;
-  const off = d.bus.on('toast', () => {
+  const off = d.bus.on('toast', (notice) => {
+    if (!notice || !FILM_LINES.has(notice.text)) return;
     if (live.vars.settled || live.phase !== 'work') return;
     const bridge = pairBridge(state);
     if (!bridge) return;

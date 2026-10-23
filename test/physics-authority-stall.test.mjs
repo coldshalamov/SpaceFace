@@ -1,8 +1,9 @@
 // A flight authority that never starts used to leave the ship dead with no word to the player:
 // _updateSg02DynamicAuthority only dedupWarn'd a rejected Rapier init and retried on a 15 s -> 120 s
 // backoff, while flightV3 emits no motion without the authority. After ~3 s of live flight with no
-// authority the physics system now says so once (`physics:authorityStalled` + a plain toast) and
-// announces `physics:authorityRecovered` when the authority is back and stepping.
+// authority the physics system now says so once (`physics:authorityStalled`; the receipt lane turns
+// that into the player's line, and NO bus `toast` is emitted - sim listeners hear every toast and
+// this notice is gated by wall time) and announces `physics:authorityRecovered` when the authority is back and stepping.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -59,7 +60,7 @@ function quiet(fn) {
   return fn().finally(() => { console.warn = warn; });
 }
 
-test('no authority for ~3 s of live flight: exactly one stall event and one toast, then recovery', async (t) => {
+test('no authority for ~3 s of live flight: exactly one stall event and no bus toast, then recovery', async (t) => {
   const { phys, seen, run } = rig(t);
   await quiet(async () => {
     await run(100); // 2.0 s
@@ -68,14 +69,12 @@ test('no authority for ~3 s of live flight: exactly one stall event and one toas
 
     await run(90);  // 3.2 s total
     assert.equal(seen.stalled.length, 1, 'past ~3 s the stall is reported');
-    assert.equal(seen.toasts.length, 1, 'with one plain toast');
-    assert.match(seen.toasts[0].text, /Flight systems are still starting\. If your ship stays still, reload the game\./);
-    assert.equal(seen.toasts[0].kind, 'warn');
+    assert.equal(seen.toasts.length, 0, 'the line is the receipt lane\'s job, never a sim-visible bus toast');
     assert.ok(seen.stalled[0].stalledMs >= 3000, `stalledMs=${seen.stalled[0].stalledMs}`);
 
     await run(600); // ten more seconds of the same stall
     assert.equal(seen.stalled.length, 1, 'once per stall, however long it lasts');
-    assert.equal(seen.toasts.length, 1);
+    assert.equal(seen.toasts.length, 0);
     assert.equal(seen.recovered.length, 0);
   });
 
@@ -89,7 +88,7 @@ test('no authority for ~3 s of live flight: exactly one stall event and one toas
   assert.equal(seen.recovered.length, 1, 'recovery is announced exactly once');
   assert.ok(seen.recovered[0].stalledMs >= 0);
   assert.equal(seen.stalled.length, 1);
-  assert.equal(seen.toasts.length, 1, 'recovery adds no second toast');
+  assert.equal(seen.toasts.length, 0, 'recovery adds no toast either');
   await run(120);
   assert.equal(seen.recovered.length, 1, 'and does not repeat while flight is healthy');
 });
@@ -110,7 +109,7 @@ test('a second stall after recovery is reported again', async (t) => {
     phys._sg02OwnerFactory = () => Promise.reject(new Error('rapier init failed again (test)'));
     await run(200);
     assert.equal(seen.stalled.length, 2, 'a new stall is a new report');
-    assert.equal(seen.toasts.length, 2);
+    assert.equal(seen.toasts.length, 0);
   });
 });
 

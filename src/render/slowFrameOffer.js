@@ -13,16 +13,21 @@
 //                         buckets; the median test is a count, not a sort).
 //   installSlowFrameOffer the wiring: reads the presentation runner's per-callback frame time
 //                         (state.render.lastPresentDtMs, the rAF delta, so a player-chosen frame
-//                         cap cannot read as slowness), decides when the sample counts, emits the
-//                         toast, applies the preset.
+//                         cap cannot read as slowness), decides when the sample counts, shows the
+//                         receipt, applies the preset.
 //
 // The software renderer is skipped: it already has its emergency profile and its own toast.
+// Time only counts while the player is flying a running sim: a paused sim, a docked ship or any
+// open screen restarts the window, and the receipt is never spent while the lane is hidden.
+// The receipt goes through the presentation-only route (core/receiptPresenter.js), not a bus
+// `toast`: this offer is raised by frame times, and sim listeners hear every bus toast.
 
 import {
   applyQualityPreset,
   videoMatchesQualityTier,
 } from './adaptiveQuality.js';
 import { laneWriteSetting } from '../core/simLaneCommands.js';
+import { presentReceipt } from '../core/receiptPresenter.js';
 
 /** The preset the offer applies — the Quality mode row's "High performance". */
 export const SLOW_OFFER_PRESET = 'low';
@@ -163,16 +168,29 @@ export function applyPresetThroughSettings(state, bus, presetId = SLOW_OFFER_PRE
 }
 
 // A fight or a critical hull has the receipt lane quiet (hudAttention.admitReceipt 'combat-quiet'):
-// an info receipt emitted then would be dropped and the once-per-session offer spent unseen.
+// an info receipt emitted then would be dropped and the once-per-session offer spent unseen. An
+// open screen hides the lane too (`body.ui-modal-open #toasts`), so it holds the offer the same way.
 function hudQuiet() {
   try {
-    const job = typeof document !== 'undefined' && document.body && document.body.dataset
-      ? document.body.dataset.sfHudJob
-      : '';
+    const body = typeof document !== 'undefined' ? document.body : null;
+    if (!body) return true;
+    if (body.classList && body.classList.contains('ui-modal-open')) return false;
+    const job = body.dataset ? body.dataset.sfHudJob : '';
     return job !== 'fight' && job !== 'hurt';
   } catch (_) {
     return true;
   }
+}
+
+// The sim is paused (Pause, a screen, a dock all hold timeScale at 0 while the mode stays
+// `flight`), the ship is docked, or a screen is open: frames drawn then say nothing about flight.
+function flightInterrupted(state) {
+  if (typeof state.timeScale === 'number' && state.timeScale <= 0) return true;
+  const ui = state.ui;
+  if (!ui || typeof ui !== 'object') return false;
+  return ui.docked === true
+    || ui.fulfillmentBlackoutActive === true
+    || (Array.isArray(ui.screenStack) && ui.screenStack.length > 0);
 }
 
 function documentHidden() {
@@ -183,15 +201,20 @@ function documentHidden() {
  * Wire the offer to a running game. `onPresented()` goes in the presentation runner's
  * per-present hook; `accept()` is what the Switch button calls (see registerToastAction).
  *
- * options: { watch, canShow, isHidden } — seams for tests; production passes none.
+ * options: { watch, canShow, isHidden, present } — seams for tests; production passes none.
+ * `present(spec)` shows a receipt and returns false when nothing could (default: the shared
+ * presentation-only presenter); the offer is only spent once it was shown.
  */
-export function installSlowFrameOffer({ state, bus, watch, canShow = hudQuiet, isHidden = documentHidden } = {}) {
+export function installSlowFrameOffer({
+  state, bus, watch, canShow = hudQuiet, isHidden = documentHidden, present = presentReceipt,
+} = {}) {
   const detector = watch || createSlowFrameWatch();
   let offered = false;
   let accepted = false;
 
   function eligible() {
     if (offered || !state || state.mode !== 'flight') return false;
+    if (flightInterrupted(state)) return false;
     const render = state.render;
     // Past the opening: the first playable frame has been minted (loading frames never count).
     if (!render || !Number.isFinite(render.firstPlayableFrameAt)) return false;
@@ -213,11 +236,11 @@ export function installSlowFrameOffer({ state, bus, watch, canShow = hudQuiet, i
     // equals the preset has nothing to offer; otherwise hold the offer until a receipt can be
     // seen, and let the next bucket closing re-ask while the window stays slow.
     if (alreadyOnPerformancePreset(state.settings && state.settings.video)) return;
-    if (!canShow()) return;
+    if (!canShow() || flightInterrupted(state)) return;
+    // Fresh copies, as renderer.js emits its toasts: a presenter that writes to a payload must not
+    // hit the frozen constant (modules are strict, so the write would throw).
+    if (present({ ...SLOW_OFFER_TOAST, action: { ...SLOW_OFFER_TOAST.action } }) === false) return;
     offered = true;
-    // Fresh copies, as renderer.js emits its toasts: a listener that writes to a payload must not
-    // hit the frozen constant (modules are strict, so the write would throw inside the bus).
-    if (bus && typeof bus.emit === 'function') bus.emit('toast', { ...SLOW_OFFER_TOAST, action: { ...SLOW_OFFER_TOAST.action } });
   }
 
   function accept() {
@@ -225,7 +248,7 @@ export function installSlowFrameOffer({ state, bus, watch, canShow = hudQuiet, i
     accepted = true;
     offered = true;
     const applied = applyPresetThroughSettings(state, bus, SLOW_OFFER_PRESET);
-    if (applied && bus && typeof bus.emit === 'function') bus.emit('toast', { ...SLOW_OFFER_CONFIRM_TOAST });
+    if (applied) present({ ...SLOW_OFFER_CONFIRM_TOAST });
     return applied;
   }
 

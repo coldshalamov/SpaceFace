@@ -1,8 +1,9 @@
 // W1-C: the one-time "this looks slow" offer. The detector must fire once after a sustained
 // sub-30 fps median in live flight, never on a healthy or frame-capped machine, never on the
 // software renderer (it has its own emergency profile), never while the receipt lane is quiet
-// (the once-per-session latch must not be spent on a toast nobody can see), and accepting must
-// go through the same settings path the Settings screen uses.
+// (the once-per-session latch must not be spent on a toast nobody can see), never count a paused,
+// docked or screen-covered sim, and accepting must go through the same settings path the
+// Settings screen uses. The receipt goes through the presentation-only route, never the bus.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -50,16 +51,18 @@ function liveState(overrides = {}) {
 function harness({ state = liveState(), canShow, isHidden } = {}) {
   const bus = createBus();
   const toasts = [];
+  const busToasts = [];
   const settings = [];
-  bus.on('toast', (p) => toasts.push(p));
+  // What simulation listeners hear: the offer must never use it.
+  bus.on('toast', (p) => busToasts.push(p));
   bus.on('settings:changed', (p) => settings.push(p));
-  const offer = installSlowFrameOffer({ state, bus, canShow, isHidden });
+  const offer = installSlowFrameOffer({ state, bus, canShow, isHidden, present: (spec) => { toasts.push(spec); } });
   const play = (seconds, dtMs) => {
     const frames = Math.round((seconds * 1000) / dtMs);
     state.render.lastPresentDtMs = dtMs;
     for (let i = 0; i < frames; i++) offer.onPresented();
   };
-  return { state, bus, toasts, settings, offer, play };
+  return { state, bus, toasts, busToasts, settings, offer, play };
 }
 
 // --- the detector ----------------------------------------------------------------------------
@@ -141,6 +144,7 @@ test('a slow flight emits exactly one offer toast, with the Switch action, and n
   assert.equal(h.toasts.length, 1, 'once per session');
   assert.equal(h.settings.length, 0, 'the offer never applies anything on its own');
   assert.equal(h.state.settings.video.qualityPreset, 'medium');
+  assert.equal(h.busToasts.length, 0, 'wall-clock notice: nothing on the bus, where sim listeners would hear it');
 });
 
 test('a healthy 60 fps flight never gets the offer', () => {
@@ -245,6 +249,86 @@ test('the default hold reads the HUD job the receipt lane itself consults', () =
   }
 });
 
+// A paused sim keeps state.mode 'flight' (Pause goes through timeEffects, so timeScale is 0), and a
+// dock or an open screen keeps drawing frames too. Those frames say nothing about flight: they must
+// restart the window, and the once-per-session offer must not fire hidden under an open screen.
+test('a paused sim, a docked ship or an open screen never feeds the window or spends the offer', () => {
+  const cases = [
+    ['paused (timeScale 0)', (state) => { state.timeScale = 0; }, (state) => { state.timeScale = 1; }],
+    ['docked', (state) => { state.ui.docked = true; }, (state) => { state.ui.docked = false; }],
+    ['a screen is open', (state) => { state.ui.screenStack = ['pause']; }, (state) => { state.ui.screenStack = []; }],
+    ['a fulfillment blackout', (state) => { state.ui.fulfillmentBlackoutActive = true; }, (state) => { state.ui.fulfillmentBlackoutActive = false; }],
+  ];
+  for (const [label, interrupt, resume] of cases) {
+    const h = harness();
+    interrupt(h.state);
+    h.play(120, 60);
+    assert.equal(h.toasts.length, 0, `${label}: nothing shown`);
+    assert.equal(h.offer.offered, false, `${label}: the once-per-session offer is not spent unseen`);
+    assert.equal(h.offer.watch.filledSeconds, 0, `${label}: the window stays empty`);
+    resume(h.state);
+    h.play(20, 60);
+    assert.equal(h.toasts.length, 0, `${label}: the paused minutes do not count; the window starts over`);
+    h.play(10, 60);
+    assert.equal(h.toasts.length, 1, `${label}: a full fresh window of real flight still earns the offer`);
+  }
+});
+
+test('opening Pause mid-window restarts it', () => {
+  const h = harness();
+  h.play(22, 40);
+  h.state.timeScale = 0;
+  h.play(1, 40);
+  h.state.timeScale = 1;
+  h.play(20, 40);
+  assert.equal(h.toasts.length, 0, 'the flight before the pause no longer counts');
+  h.play(10, 40);
+  assert.equal(h.toasts.length, 1);
+});
+
+test('slow-motion is still flight: a scaled but running sim keeps counting', () => {
+  const h = harness();
+  h.state.timeScale = 0.4;
+  h.play(30, 40);
+  assert.equal(h.toasts.length, 1);
+});
+
+test('the default hold also reads the open-screen class that hides the receipt lane', () => {
+  const previous = globalThis.document;
+  try {
+    const classes = new Set(['ui-modal-open']);
+    globalThis.document = { hidden: false, body: { dataset: {}, classList: { contains: (c) => classes.has(c) } } };
+    const h = harness();
+    h.play(60, 40);
+    assert.equal(h.toasts.length, 0, 'screen open: held');
+    assert.equal(h.offer.offered, false, 'and not spent');
+    classes.clear();
+    h.play(3, 40);
+    assert.equal(h.toasts.length, 1, 'screen closed: shown');
+  } finally {
+    if (previous === undefined) delete globalThis.document;
+    else globalThis.document = previous;
+  }
+});
+
+test('a presenter that cannot show the receipt (lane not up) does not spend the offer', () => {
+  const state = liveState();
+  const shown = [];
+  let ready = false;
+  const offer = installSlowFrameOffer({
+    state, bus: createBus(), canShow: () => true, isHidden: () => false,
+    present: (spec) => { if (!ready) return false; shown.push(spec); return true; },
+  });
+  state.render.lastPresentDtMs = 40;
+  for (let i = 0; i < 750; i++) offer.onPresented();
+  assert.equal(shown.length, 0);
+  assert.equal(offer.offered, false);
+  ready = true;
+  for (let i = 0; i < 100; i++) offer.onPresented();
+  assert.equal(shown.length, 1);
+  assert.equal(offer.offered, true);
+});
+
 // --- accepting --------------------------------------------------------------------------------
 
 test('Switch applies High performance through settings:changed, one event per key that moved', () => {
@@ -266,6 +350,7 @@ test('Switch applies High performance through settings:changed, one event per ke
   }
   assert.deepEqual(h.toasts.at(-1), SLOW_OFFER_CONFIRM_TOAST);
   assert.equal(Object.isFrozen(h.toasts.at(-1)), false);
+  assert.equal(h.busToasts.length, 0, 'the confirmation stays off the bus too');
   // A second press (or a second route to the same handler) is inert.
   const eventsAfter = h.settings.length;
   assert.equal(h.offer.accept(), null);
@@ -327,7 +412,7 @@ test('the hot path allocates nothing: the detector keeps fixed typed arrays only
   assert.match(onPresented, /detector\.sample\(/, 'the slice really is the per-present body');
   // The toast copy is allocated once, at the moment of the offer, not per frame: it sits after the
   // detector's verdict, so it is allowed; nothing before that line may allocate.
-  const beforeVerdict = onPresented.slice(0, onPresented.indexOf('if (!canShow())'));
+  const beforeVerdict = onPresented.slice(0, onPresented.indexOf('if (!canShow()'));
   assert.doesNotMatch(beforeVerdict, /new |\.push\(|\.map\(|\.slice\(|\{\s*\.\.\./, 'no allocation before the verdict');
   // And the allocation-free claim covers the eligibility check it calls every present.
   const eligibleStart = src.indexOf('function eligible() {');
