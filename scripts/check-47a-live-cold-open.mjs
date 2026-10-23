@@ -7,6 +7,7 @@ import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
+import { captureStationHandoffScreenshot as captureDiagnosticScreenshot } from './lib/stationHandoffDiagnostics.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -249,6 +250,14 @@ try {
     'live cold open should not contain a hostile target lock on the player');
   assert.deepEqual(hostileShips.filter((ship) => ship.firing || ship.fireGroup != null), [],
     'live cold open should not contain a hostile firing intent during the first window');
+  // Preserve the actual game camera/HUD after actor and safety checks, even if
+  // the final console gate fails. Diagnostic only: no DOM, animation or game edits.
+  try {
+    const screenshot = await captureDiagnosticScreenshot(page, { boundary: '47a-actors-bound' });
+    if (screenshot) console.log(`47-A game-camera diagnostic: ${screenshot}`);
+  } catch (error) {
+    console.warn(`47-A camera diagnostic unavailable: ${error?.message || error}`);
+  }
   assert.deepEqual(issues.errorIssues(), [], 'browser cold-open check should not record page errors');
 
   console.log(`47-A live cold open OK (${report.actors.length} actors bound, ${report.traceCount} trace records)`);
