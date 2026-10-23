@@ -26,6 +26,7 @@ import {
   createAsteroidController,
   MODES,
   routeAsteroidScreenKeyDown,
+  chargeQuoteText,
 } from './asteroidController.js';
 import {
   createCursorLens, tileLensModel, machineLensModel, ghostLensModel, seamSplits,
@@ -803,7 +804,9 @@ export const asteroidScreen = {
           if (!d || !d.active) return;
           if (d.chargeArmed) drillSys.plantCharge();
           else if (drillSys.armCharge && drillSys.armCharge()) {
-            announce('Bore charge armed — face the cut, then R again to set it. Esc backs off.');
+            const pv = drillSys.chargePreview && drillSys.chargePreview();
+            announce(chargeQuoteText(pv)
+              || 'Bore charge armed — face the cut, then R again to set it. Esc backs off.');
           }
           inspElapsed = 10;
           lensDirty = true;
@@ -2621,9 +2624,11 @@ export const asteroidScreen = {
 
     function exit(reason = 'retracted') {
       const d = state.drill;
-      const yields = d ? { ...d.yieldLog } : {};
+      // end() cooks a paid charge off against the live field before the session closes, so the
+      // report must read the result it returns — a pre-detonation snapshot would drop blast ore.
+      const result = d && drillSys ? drillSys.end({ reason }) : null;
+      const yields = result ? { ...result.yieldLog } : (d ? { ...d.yieldLog } : {});
       const total = Object.values(yields).reduce((a, b) => a + b, 0);
-      if (d && drillSys) drillSys.end({ reason });
       const fade = document.getElementById('sf-dock-overlay');
       if (fade) {
         fade.hidden = false;
