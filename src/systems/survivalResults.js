@@ -504,6 +504,8 @@ export const survivalResults = {
     // this count the results plate's KILLS reads zero beside a hundred-body chain.
     this._unsubs.push(this.bus.on('swarm:broodKills', (p) => this._onBroodKills(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
+    // O42: game speed is also sampled the moment it changes, not only at the next wave start.
+    this._unsubs.push(this.bus.on('settings:changed', (p) => this._onSettingsChanged(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._onDamage(p)));
     this._unsubs.push(this.bus.on('physics:impact', (p) => this._onCollisionTaken(p)));
@@ -630,11 +632,26 @@ export const survivalResults = {
     this._highestEntered=Math.max(this._highestEntered,wave);
     if(!this._stuntRules)this._stuntRules=currentStuntRunRules(this.state,run.ruleset===SWARM_RULESET?'swarm':run.ruleset??'arc');
     else if(this._stuntRules.simulationAssistProfile!==stuntAssistProfile(this.state))this._stuntRules.simulationAssistProfile='mixed';
-    const _gs=normalizeGameSpeed(this.state.settings?.gameplay?.gameSpeed);
-    if(this._stuntRules&&(this._stuntRules.simulationSpeedAssist??1)!==_gs)this._stuntRules.simulationSpeedAssist='mixed';
+    this._latchSpeedAssist(normalizeGameSpeed(this.state.settings?.gameplay?.gameSpeed));
     this._waveStartSimTime = this._simNow();
     this._waveStartWave = Number.isInteger(wave) ? wave : 0;
     if (this._runStartSimTime == null) this._runStartSimTime = this._simNow();
+  },
+
+  // The record stamp for game-speed assistance. Any speed that differs from the one the run was
+  // stamped with turns it 'mixed', and 'mixed' never turns back: a run that was ever below 100%
+  // must not file as comparable to a full-speed run, even if the setting went back to 100%.
+  _latchSpeedAssist(speed) {
+    const rules = this._stuntRules;
+    if (rules && (rules.simulationSpeedAssist ?? 1) !== speed) rules.simulationSpeedAssist = 'mixed';
+  },
+
+  // O42: the speed setting changing mid-round. Before the first wave starts the stamp does not
+  // exist yet and the first wave's own sample covers it; after that every change is latched.
+  _onSettingsChanged(payload) {
+    if (!payload || payload.key !== 'gameSpeed' || !this._stuntRules) return;
+    if (!liveSurvivalRun(this.state)) return;
+    this._latchSpeedAssist(normalizeGameSpeed(payload.value));
   },
 
   _onTelegraph(payload) {

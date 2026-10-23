@@ -76,7 +76,10 @@ export function admitReceipt({
   if (k === 'stunt') return { admit: true, reason: 'stunt' };
   if (k === 'danger') return { admit: false, reason: 'danger-floor' };
   if (k === 'bark' || k === 'chatter') return { admit: false, reason: 'chatter' };
-  if (combat && k !== 'error' && channel !== 'stunt' && channel !== 'capitalBoss' && !COMBAT_KEEP.test(line)) {
+  // The deliberate-release read (channel 'massline') is instant skill feedback for the throw the
+  // player just made, usually in a fight - like a stunt name it must not be quieted by combat.
+  if (combat && k !== 'error' && channel !== 'stunt' && channel !== 'capitalBoss' && channel !== 'massline'
+    && !COMBAT_KEEP.test(line)) {
     return { admit: false, reason: 'combat-quiet' };
   }
   // D240: the flight glass's never tier — legends, authority receipts, jurisdiction notes and
@@ -161,7 +164,10 @@ export function releaseReadReceipt({ tonnageU = 0, load = 0, strain = 0 } = {}) 
   const l = Math.max(0, Math.min(1, Number(load) || 0));
   const s = Math.max(0, Math.min(1, Number(strain) || 0));
   if (!t && !l && !s) return '';
-  return `RELEASED ${t}t · LOAD ${Math.round(l * 100)}% · STRAIN ${Math.round(s * 100)}%`;
+  // A plain sentence, not a stat string: the flight glass never tier (D240) drops compact debug
+  // fields, and the receipt lane reads in sentence case.
+  const read = [t ? `${t} t` : '', `load ${Math.round(l * 100)}%`, `strain ${Math.round(s * 100)}%`].filter(Boolean);
+  return `Line released: ${read.join(', ')}`;
 }
 
 /** VERB-05 — one receipt, the trick's name. Amendments are a different event and stay quiet. */

@@ -1136,7 +1136,8 @@ export const masslineHud = {
           strain: Number(p.strain) || 0,
         });
         if (receipt && ctx.bus && typeof ctx.bus.emit === 'function') {
-          ctx.bus.emit('ui:receipt', { text: receipt, kind: 'info', channel: 'massline' });
+          // `ui:receipt` had no listener; receipts reach the lane as a `toast` (admitReceipt in toasts.js).
+          ctx.bus.emit('toast', { text: receipt, kind: 'info', channel: 'massline', ttl: 3 });
         }
       });
       // SFQ-B023 — overload snap names itself. A deliberate cut emits tether:broken

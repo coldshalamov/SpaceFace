@@ -33,7 +33,7 @@ test('bingo fuel + sortie tally + release read + tether ring', () => {
   const read = tetherRingRead({ load: 0.7, strain: 0.4 });
   assert.equal(read.load, 0.7);
   assert.equal(read.hot, true);
-  assert.match(releaseReadReceipt({ tonnageU: 42, load: 0.7, strain: 0.5 }), /RELEASED 42t/);
+  assert.equal(releaseReadReceipt({ tonnageU: 42, load: 0.7, strain: 0.5 }), 'Line released: 42 t, load 70%, strain 50%');
 });
 
 test('three tiers: flight glass never shows legends/authority/jurisdiction/debug (D240)', () => {
