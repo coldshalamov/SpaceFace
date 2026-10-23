@@ -386,9 +386,9 @@ export function tickMachineLayer(world, dt) {
       const d = Math.sqrt(dist2(player.pos.x, player.pos.z, g.x, g.z));
       if (d < (site.radius + 400)) {
         rec.seen = true;
-        const advanced = advanceMachineProtocol(state, 'seen');
-        const revealed = machineRevealsVerge(state);
-        if (site.beat) world.bus.emit('toast', { text: site.beat, kind: 'info', ttl: 6 });
+        const advanced = site.tease ? ae.machineProtocol : advanceMachineProtocol(state, 'seen');
+        const revealed = !site.tease && machineRevealsVerge(state);
+        if (site.beat) world.bus.emit('toast', { text: site.beat, kind: site.tease ? 'discovery' : 'info', ttl: 6 });
         if (revealed) {
           world.bus.emit('toast', {
             text: `Scanner catalogue revised: ${scannerMachineLabel(advanced)}.`,
@@ -596,13 +596,16 @@ export function tickMachineLayer(world, dt) {
       }
       case 'auditor': {
         // Stationary protocol evaluation: face the player when near.
+        // The deploy flag is unconditional: a despawned player cannot leave the bar sweeping.
+        const auditorD = player && player.pos
+          ? Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z)) : Infinity;
+        // The audit bar only sweeps while a hull is actually inside the ring —
+        // row 384's deployed-tool read keys off this flag.
+        m.interrogating = auditorD < kind.interrogateR;
         if (player && player.pos) {
-          const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
+          const d = auditorD;
           const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
           e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
-          // The audit bar only sweeps while a hull is actually inside the ring —
-          // row 384's deployed-tool read keys off this flag.
-          m.interrogating = d < kind.interrogateR;
           if (d < kind.interrogateR && !m.interrogated) {
             m.interrogated = true;
             const marked = witnessSkipsInterrogation(state);
