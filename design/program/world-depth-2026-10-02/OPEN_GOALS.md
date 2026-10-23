@@ -253,3 +253,13 @@ Next: finish review of the Triton research-arrival increment. Its candidate touc
 All twelve goals remain OPEN. PR552 remains open/draft with a failed exact-head workflow; Tethys has a focused hosted 9/9, while the Veil gate was skipped at preflight. PR555 remains open/draft with a failed overall workflow; its focused character test is local-only. PR518 is open/draft and unmerged: its new Triton research-arrival increment has focused and adjacent local passes, but no exact-head hosted status is established, mergeability is false, and native/HUD acceptance remains open. These are partial behaviors and do not close SF-WORLD-DIRECTION or SF-MOTIVES.
 
 Next: finish integrated qualification for the unpublished Io Coldburn truthful campaign-return/Reach-board increment. Its focused test and independent review pass, but dependency qualification and actual DOM/Continue evidence remain incomplete. Keep all twelve outcomes open and Rope/Blind Welder parked.
+
+## Current goal status and handoff: 2026-10-23 17:05 UTC
+
+All twelve goals remain OPEN. SF-WORLD-DIRECTION is the primary creative priority; SF-MOTIVES and SF-LIVING-WORLD remain open. Rope and Blind Welder are PARKED by user direction, not accepted or resumed.
+
+- PR556 is open/draft/unmerged at `8d102bfb36f759f184562e7b4409364616f8458f`. Its bounded Io Coldburn campaign-return behavior has 11/11 local focused checks and independent review, but no hosted focused-gate result: exact-head run #6010 failed and static shard 1 was skipped after prechecks; mobile #535 failed at initial probe startup on both engines, with source-equivalent base/head inputs and no attribution to the PR. Full DOM, native, mobile and Continue acceptance remain open.
+- PR518 is open/draft/unmerged at integrated head `8c3b1d06ea2607c5dcc587bd55c355b1254f4b43`, mergeable=true. Bounded 64/64 route/weather and 3/3 preload-metadata checks pass; exact-head hosted run remains in progress at last observation (16:53 UTC), so no hosted pass is claimed. Current-master full graph and native/HUD acceptance remain open.
+- Current active next increment: narrow Kite's Corner phase-1 presenter wiring repair and focused test. The unmatched `stationLife` import is verified; candidate rollback/test is not yet delivered. Preserve existing Long Berth APIs and keep station-app edits held.
+- Maintain the existing stable goal markers and preserve the prior sector evidence and acceptance boundaries. No goal closure is implied by partial tests, publication, or mergeability.
+
