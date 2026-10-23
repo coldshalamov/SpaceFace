@@ -70,8 +70,10 @@ export function selectAmbientFixtures(state, center, reads, reach = 380) {
     const within = Number.isFinite(dx) && Number.isFinite(dz) && dx * dx + dz * dz <= maxD2;
     if (!profile || !within || (state?.entities?.get && state.entities.get(e.id) !== e)) {
       read.entity = null; read.profile = null; read.score = Infinity;
+      read.locked = false;
     } else {
       read.profile = profile; read.score = dx * dx + dz * dz;
+      read.locked = true;
     }
   }
   if (!validCenter) return reads;
@@ -83,16 +85,23 @@ export function selectAmbientFixtures(state, center, reads, reach = 380) {
     const dx = entity.pos.x - px, dz = entity.pos.z - pz;
     const score = dx * dx + dz * dz;
     if (!Number.isFinite(score) || score > maxD2) continue;
-    if (reads.some(read => read.entity === entity)) continue;
-    // Fill vacancies with the nearest eligible emitters. Filled slots are sticky.
-    let best = -1;
+    let resident = false;
     for (let i = 0; i < reads.length; i++) {
-      if (reads[i].entity == null && (best === -1 || reads[i].score > reads[best].score)) best = i;
+      if (reads[i].entity === entity) { resident = true; break; }
     }
-    if (best === -1) break;
-    reads[best].entity = entity;
-    reads[best].profile = preset;
-    reads[best].score = score;
+    if (resident) continue;
+    // Rank all nearby candidates into *unlocked* vacancies, irrespective of enumeration
+    // order. Existing residents stay sticky; newcomers can replace temporary choices only
+    // during this scan. No Array.sort, callback, or temporary allocation at the 4 Hz census.
+    let worst = -1;
+    for (let i = 0; i < reads.length; i++) {
+      if (reads[i].locked) continue;
+      if (worst === -1 || reads[i].score > reads[worst].score) worst = i;
+    }
+    if (worst < 0 || score >= reads[worst].score) continue;
+    reads[worst].entity = entity;
+    reads[worst].profile = preset;
+    reads[worst].score = score;
   }
   return reads;
 }

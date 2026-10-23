@@ -54,3 +54,12 @@ test('rebases and entity replacement cannot leave old lights pinned', () => {
   selectAmbientFixtures(w, { x: 200000, z: -300000 }, reads);
   assert.ok(reads.every(x => x.entity !== a));
 });
+
+test('vacancy selection ranks nearest actual sources irrespective of entity iteration order', () => {
+  const reads = makeAmbientFixtureReads();
+  const far = fixture('far', 'station', 365, 0);
+  const near = fixture('near', 'station', 15, 0);
+  const middle = fixture('middle', 'gate', 130, 0);
+  selectAmbientFixtures(world([far, middle, near]), { x: 0, z: 0 }, reads);
+  assert.deepEqual(new Set(reads.map(x => x.entity?.id)), new Set(['near', 'middle']));
+});
