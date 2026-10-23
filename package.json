@@ -1,6 +1,6 @@
 {
   "name": "spaceface",
-  "version": "0.1.0",
+  "version": "0.2.0-beta.1",
   "description": "SpaceFace — a semi-3D top-down space trading/combat/mining game (Three.js).",
   "type": "module",
   "main": "electron/main.cjs",
@@ -672,7 +672,7 @@
     "check:ceres-presentation": "node --max-old-space-size=256 --test --test-concurrency=1 test/ceres-presentation-census.test.mjs test/ceres-presentation-lifecycle.test.mjs test/ceres-shipbreak-presentation.test.mjs test/ceres-workfleet-geometry.test.mjs test/ceres-workfleet-motion.test.mjs test/ceres-workfleet-propulsion.test.mjs test/ceres-workfleet-source-assets.test.mjs test/ceres-workfleet-release-assets.test.mjs test/ceres-world-site-census.test.mjs test/ceres-shipbreak-binding-provenance.test.mjs test/ceres-shell-release-precision.test.mjs test/ceres-source-manifest-metadata.test.mjs",
     "probe:ceres-production-cycle": "node scripts/probe-ceres-production-cycle.mjs",
     "check:phone-startup-recovery": "node --test test/save-slot-discovery.test.mjs test/title-continue-failure.test.mjs test/shared-player-store-capability.test.mjs test/shared-player-store-write-queue.test.mjs test/vercel-deployment-branches.test.mjs test/mobile-worker-contract.test.mjs test/package-geometry-detach.test.mjs test/render-package-loader.test.mjs test/probe-continue-route.test.mjs test/mobile-worker-contract-host-timeout.test.mjs test/authored-build-yield-lifetime.test.mjs test/authored-prepared-registry-release.test.mjs test/worker-paused-save-completion.test.mjs test/mobile-worker-contract-body-drain.test.mjs test/opening-first-picture-lifetime.test.mjs",
-    "check:rescued-worker-continue": "node --test test/rescued-worker-continue.test.mjs"
+    "check:rescued-worker-continue": "node --test test/rescued-worker-continue.test.mjs test/rescued-worker-world-record.test.mjs"
   },
   "private": true,
   "devDependencies": {
