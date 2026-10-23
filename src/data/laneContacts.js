@@ -388,6 +388,37 @@ export const PASSENGER_LINER_SERVICE = Object.freeze({
   }),
 });
 
+/** The station a lost leg was already flying toward, or the berth it had not left. */
+export function passengerLinerFlyingTo(itinerary) {
+  if (!itinerary || typeof itinerary !== 'object') return null;
+  if (itinerary.state === 'DIVERTING') {
+    const id = itinerary.diversion && itinerary.diversion.returnStationId;
+    return typeof id === 'string' && id ? id : null;
+  }
+  if (itinerary.state === 'EN_ROUTE') {
+    return typeof itinerary.destinationStationId === 'string' && itinerary.destinationStationId
+      ? itinerary.destinationStationId
+      : null;
+  }
+  return typeof itinerary.originStationId === 'string' && itinerary.originStationId
+    ? itinerary.originStationId
+    : null;
+}
+
+/** The next leg keeps the finished outcome on the hull. A missing outcome stays missing. */
+export function carryPassengerLinerLastOutcome(previous, next) {
+  if (!next || typeof next !== 'object') return next;
+  const last = previous && previous.lastOutcome;
+  if (!last || typeof last !== 'object' || Array.isArray(last)) return next;
+  next.lastOutcome = {
+    outcome: last.outcome,
+    receiptId: typeof last.receiptId === 'string' ? last.receiptId : null,
+    stationId: typeof last.stationId === 'string' ? last.stationId : null,
+    settledAt: Number.isFinite(last.settledAt) ? last.settledAt : 0,
+  };
+  return next;
+}
+
 /** Strictly recognize the one durable passenger itinerary; malformed saves fail closed. */
 export function isPassengerLinerItinerary(itinerary) {
   if (!itinerary || typeof itinerary !== 'object' || Array.isArray(itinerary)) return false;

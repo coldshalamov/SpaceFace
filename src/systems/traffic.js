@@ -89,6 +89,8 @@ import {
   CINDER_RUN_COURIER_CONTACT_ID,
   isPriorityCourierItinerary,
   isPassengerLinerItinerary,
+  passengerLinerFlyingTo,
+  carryPassengerLinerLastOutcome,
   pickNamedLaneContact,
 } from '../data/laneContacts.js';
 import { ASTEROIDS } from '../data/mining.js';
@@ -4634,6 +4636,7 @@ export const traffic = {
       : itinerary.originStationId;
     const next = this._newPassengerLinerItinerary(entity, nextOrigin, nextDestination, itinerary.legSeq + 1);
     if (!next) return false;
+    carryPassengerLinerLastOutcome(itinerary, next);
     entity.data.itinerary = next;
     const origin = this._stationForPriorityCourier(stations, nextOrigin);
     rec.targetId = origin ? origin.id : rec.targetId;
@@ -13208,7 +13211,7 @@ export const traffic = {
     if (passengerItinerary && (rec && rec.passengerLinerService === PASSENGER_LINER_SERVICE.id
       || this._passengerLinerIdIsSuspended(passengerItinerary.worldRecordId))) {
       if (rec) {
-        this._settlePassengerLinerLeg(ent, rec, passengerItinerary, 'LOST', null);
+        this._settlePassengerLinerLeg(ent, rec, passengerItinerary, 'LOST', passengerLinerFlyingTo(passengerItinerary));
         this.state.traffic.passengerLinerSuspendedIds = compactStableIds([
           ...(this.state.traffic.passengerLinerSuspendedIds || []), passengerItinerary.worldRecordId,
         ], PASSENGER_LINER_SUSPENSION_CAP);
