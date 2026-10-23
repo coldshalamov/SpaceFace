@@ -98,3 +98,5 @@ The oldest OPEN row is the next second look.
 | R-5803e14 | 5803e145ec | Rows 427/438: drift sheet band + farPlaneLife streams/yield/mining beams/battle flares | Re-check the render-only invariant end to end: farPlaneLife must never write entity/sim state (only reads world.entities for miners), the yield offset must not feed back into sim positions, and the DRIFT band's above-plane grains must stay small enough at max zoom to never read as a collidable obstacle | OPEN |
 
 | R-321483d | 321483d434 | Row 447 Manifest card game | Re-check a docked worker-lane match from bar entry through paid settlement and return; duplicate intent must not debit or pay twice, and deed cards must follow the saved contact counter writer |
+
+| R-9ee5b8b | 9ee5b8bb0b | Row466 continuation: empty industrial readout names the next step; full row waits402 | Re-check that the default empty works points to the actual Drones purchase requirements without replacing the existing contextual next-action control |
