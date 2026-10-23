@@ -1091,7 +1091,7 @@ production units, and never build what they write.
 | 437 | PULSE-CODEX | Everything has a page — codex for every commodity, hull, module, weapon, faction, sector, species and character (§31.6) | BUILD | DONE devin-thirty-oct22 |
 | 438 | PULSE-HORIZON | The horizon is busy — sim-driven far-plane life above/below the flight plane, zero collision (§31.6) | BUILD | CLAIMED devin-ten-oct23 |
 | 439 | PULSE-TIME | The world keeps time — station shifts, market days, ≥6 festivals, storm seasons (§31.6) | BUILD | DONE devin-thirty-oct22 |
-| 440 | PULSE-HISTORY | Your ship and the world wear your history — trinkets, decals, memorial names of the sim's real dead, graffiti about you (§31.6) | BUILD | CLAIMED devin-ten-oct23 |
+| 440 | PULSE-HISTORY | Your ship and the world wear your history — trinkets, decals, memorial names of the sim's real dead, graffiti about you (§31.6) | BUILD | DONE 2026-10-23 — deed-driven keepsakes + earned decal through the ship/appearance writers, memorial array of filed loss-ledger dead, known-sector airlock graffiti; deedRecord registered (was lookup-only, never initialized) |
 | 441 | PULSE-STORIES | Small stories in passing — roaming moving stories 2 → ≥30, each across hail/band/trade/news (§31.6) | BUILD | DONE devin-thirty-oct22 |
 | 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
 | 444 | GOLD-LEDGER | The Ledger — a diegetic case board where physically found evidence pins and links; the Vale thread is solvable there (§32.4) | BUILD | OPEN — M3; after 423 in the seam |

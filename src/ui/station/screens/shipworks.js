@@ -66,6 +66,8 @@ import {
   stationShopOffer,
 } from '../../../systems/ships.js';
 import { classifyBuildIdentity } from '../../../systems/buildIdentity.js';
+import { historyWearDead } from '../../../systems/historyWear.js';
+import { livingHullTrinkets } from '../../../core/livingHull.js';
 import { sableVennServiceAvailable } from '../../../data/sableVenn.js';
 import { mountSableDemo, sablePreviewStamp, sablePreviewMatches } from '../../orrery/sableDemo.js';
 import { instanceIdentityText } from '../../../systems/shipLedger.js';
@@ -1299,6 +1301,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       livingHull: viewedLivingHullForModel(),
       simTime: finite(ctx.state && ctx.state.simTime, 0),
     });
+    // PULSE-HISTORY — the hull's keepsake shelf plus the memorial array the ledger filed. Fleet
+    // view only: the catalog preview has no history of its own to read.
+    const history = mode === 'fleet'
+      ? { trinkets: livingHullTrinkets(viewedLivingHullForModel()), dead: historyWearDead(ctx.state) }
+      : null;
     const availability = shipworksActionAvailability(ctx.state);
     const slots = buildSlotList(def);
     const fittedDefs = fittings.map((id) => id && FITTABLE_BY_ID.get(id)).filter(Boolean);
@@ -1329,6 +1336,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       capability,
       condition,
       scars,
+      history,
       slots,
       fittedDefs,
       poweredSlotIndices,
@@ -1661,6 +1669,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const rows = scars.length
         ? scars.map((scar) => staticRow(scar.label, escapeHtml(scar.sub || (scar.kind === 'approx' ? 'Approx' : 'Authored')), { why: scar.why }))
         : staticRow('Hull marks', 'None yet');
+      const trinkets = model.history && Array.isArray(model.history.trinkets) ? model.history.trinkets : [];
+      if (trinkets.length) {
+        rows.push(staticRow('Keepsakes', escapeHtml(trinkets.map((t) => t.label).join(' · '))));
+      }
+      const dead = model.history && Array.isArray(model.history.dead) ? model.history.dead : [];
+      if (dead.length) {
+        const latest = dead[dead.length - 1];
+        const named = latest && latest.name ? ` — last: ${latest.name}` : '';
+        const yours = dead.filter((d) => d && d.byPlayer === true).length;
+        rows.push(staticRow('Memorial', escapeHtml(`${dead.length} named${yours ? ` (${yours} by this hull)` : ''}${named}`)));
+      }
       return (
         `<div class="sx-sw-condition__rows"${whyAttr(model.condition && model.condition.why)}>` +
           `<ul class="k-rows">${Array.isArray(rows) ? rows.join('') : rows}</ul>` +

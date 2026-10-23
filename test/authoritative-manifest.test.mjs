@@ -117,7 +117,10 @@ test('production init + update order lengths match the live browser baseline', (
   // pitbornCull, vaelLiens, archiveRedaction, choirResonance, vergeCourt,
   // frontierHomesteads) join the update order on the table clock — they were init-only
   // and their update() never ran in production (R-04fe464 review fix).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 227);
+  // 227 -> 229 init: PULSE-HISTORY (row 440) registers deedRecord (world-remembers ledger —
+  // lookup-only since creation, never initialized in production) and historyWear (event-only
+  // trinket/decal/graffiti projector). Neither ticks.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 229);
   assert.equal(PRODUCTION_UPDATE_ORDER.length, 177);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
