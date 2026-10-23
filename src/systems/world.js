@@ -34,6 +34,7 @@ import { stepRadiationCargoCook } from './fragileCargo.js';
 import { writeHazardPresence } from '../data/hazardLanguage.js';
 import { stepDebrisCrossings } from './debrisCrossings.js';
 import { stepDockCollar } from './dockCollar.js';
+import { stepFuelWeep } from './fuelWeep.js';
 import { CHART_FILING, chartFilingBounty } from '../data/surveyCharts.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { FACTION_META } from '../data/factions.js';
@@ -4761,6 +4762,7 @@ export const world = {
     this._tickScan(dt, state);
     this._tickHazards(dt, state);
     this._applyDockCollar(dt, state);
+    this._applyFuelWeep(dt, state);
     if (observeTick) this._tickZoneLabel(state);
     if (observeTick) this._tickPOIScan(state);
     this._tickWorldOneOffSpin(dt, state);
@@ -6227,6 +6229,11 @@ export const world = {
     const presence = state.world.hazardPresence || (state.world.hazardPresence = { nebula: false, radiation: false });
     writeHazardPresence(zones, player.pos, presence);
     this._applyDebrisCrossings(dt, state);
+  },
+
+  // A cracked hull weeps fuel until the plating is back or the ship is berthed.
+  _applyFuelWeep(dt, state) {
+    stepFuelWeep(this, dt, state || this.state);
   },
 
   // The berth gate already refuses a fast dock. A hull that is in the pocket
