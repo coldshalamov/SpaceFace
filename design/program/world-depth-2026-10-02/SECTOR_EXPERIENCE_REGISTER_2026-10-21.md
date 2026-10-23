@@ -1,5 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 
+## CI closure and active build work: 2026-10-23 19:35 UTC
+
+All twelve goals remain OPEN; world/story composition remains primary and Rope/Blind Welder remain PARKED. This update supersedes the prior running status for PR552, not its implementation or acceptance evidence.
+
+[PR552](https://github.com/coldshalamov/SpaceFace/pull/552), exact reconciled head `e7939479120d2d66e73de5a104f43f52165570e1`, has terminal FAILURE on [40007412545](https://github.com/coldshalamov/SpaceFace/actions/runs/40007412545). A fresh 19:34 UTC read confirms completed/failure (run updated at 19:26:51 UTC). Browser shard 3 records cancellation at 19:26:42 UTC; no additional cause is inferred. Static shard 1's feature command group was skipped after its visual-continuity prerequisite failed, so no hosted Tethys, Veil or Triton feature pass is established on this head. The previously reviewed local Triton 8/8 and 288 bounded unchanged-sector comparisons remain local evidence. Other failures have not been attributed to this increment. The PR remains open/draft/unmerged; published reconciliation does not imply accepted gameplay.
+
+The Archive instrument cradle remains exported/reviewed but without a verified new publication in this handoff. Its publisher is still active; verify the remote outcome before any retry. Narrow source support work is authorized to reconcile the public PR480-derived append-admission route across three paths; no public mutation or runtime registration is yet established. Preserve active owners and do not substitute private-only census tooling for upstream support. Resource preservation is proceeding separately and does not authorize broad cleanup.
+
+Next: finish and verify the cradle's draft delivery, review the supported admission-source reconciliation, then qualify intentional Archive placement and its connection to the existing research experience. Native arrival/return, real Save/Continue, live-camera materials and performance remain open. No goal is closed; existing held operations are unchanged.
+
+
 ## Current verified handoff: 2026-10-23 19:19 UTC
 
 This summary supersedes prior pending-delivery and running-CI status below, while preserving historical evidence. All twelve goals remain OPEN; SF-WORLD-DIRECTION remains primary, and Rope/Blind Welder remain PARKED.
