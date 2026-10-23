@@ -199,6 +199,9 @@ const CAPTIONS = Object.freeze({
   'fields.cluster_detonate': 'Cluster detonation — the clump cooked off.',
   'fields.cluster_detonate.cascade': 'Mass cascade — the whole cluster went.',
   'freight.cargo_spilled': 'Cargo adrift — check ownership before recovery.',
+  'travel.jump.committed': 'Jump committed.',
+  'travel.arrival.oriented': 'Arrived.',
+  'travel.interdiction.triggered': 'Interdicted.',
 });
 
 export const presentationAdapters = {
@@ -640,11 +643,12 @@ export const presentationAdapters = {
   _applyUi(cue) {
     const def = UI_CUES[cue && cue.id];
     if (!def) return null;
+    const impact = masslineImpactTier(cue);
     const payload = {
       key: def.key,
-      sev: def.sev,
-      text: playerSubsystemLine(cue, this.state) || enemySubsystemLine(cue, this.state) || def.text,
-      ttl: def.ttl,
+      sev: impact ? impact.sev : def.sev,
+      text: playerSubsystemLine(cue, this.state) || enemySubsystemLine(cue, this.state) || (impact ? impact.text : def.text),
+      ttl: impact ? impact.ttl : def.ttl,
       cueId: cue.id,
       lane: cue.lanes && cue.lanes.ui || null,
       shape: shapeForCue(cue.id),
@@ -659,7 +663,8 @@ export const presentationAdapters = {
     // PQ-023 family (e): an owner-supplied accessibilityText outranks the static table. The table
     // can only say one fixed sentence per cue id, which cannot name WHICH component failed. Cues
     // that supply nothing keep their existing table entry unchanged.
-    const text = (cue && cue.accessibilityText) || playerSubsystemLine(cue, this.state) || enemySubsystemLine(cue, this.state) || CAPTIONS[cue && cue.id];
+    const impact = masslineImpactTier(cue);
+    const text = (cue && cue.accessibilityText) || playerSubsystemLine(cue, this.state) || enemySubsystemLine(cue, this.state) || (impact && impact.caption) || CAPTIONS[cue && cue.id];
     if (!text) return null;
     const payload = {
       id: cue.id,
@@ -721,6 +726,34 @@ export function enemySubsystemLine(cue, state) {
 
 function uiCue(key, sev, text, ttl, audioOwnedByPresentation = false) {
   return Object.freeze({ key, sev, text, ttl, audioOwnedByPresentation });
+}
+
+// Glance, solid, and crushing already ride the whip record. One branch on that rating;
+// the MASSLINE IMPACT key stays the lane. Solid keeps the payoff info tier.
+function masslineImpactRating(cue) {
+  const named = cue && (cue.rating || (cue.payload && cue.payload.rating));
+  if (named === 'crushing' || named === 'solid' || named === 'glance') return named;
+  const tags = cue && cue.tags;
+  if (!Array.isArray(tags)) return null;
+  if (tags.includes('crushing')) return 'crushing';
+  if (tags.includes('solid')) return 'solid';
+  if (tags.includes('glance')) return 'glance';
+  return null;
+}
+
+function masslineImpactTier(cue) {
+  if (!cue || cue.id !== 'tether.whip_impact') return null;
+  const rating = masslineImpactRating(cue);
+  if (rating === 'crushing') {
+    return { sev: 'warn', text: 'MASSLINE CRUSHING', ttl: 2.2, caption: 'Crushing massline impact.' };
+  }
+  if (rating === 'solid') {
+    return { sev: 'info', text: 'MASSLINE IMPACT', ttl: 1.4, caption: 'Massline impact landed.' };
+  }
+  if (rating === 'glance') {
+    return { sev: 'info', text: 'MASSLINE GLANCE', ttl: 0.8, caption: 'Glancing massline impact.' };
+  }
+  return null;
 }
 
 function onboardingOwnsSignalAnnouncement(state, cue) {
