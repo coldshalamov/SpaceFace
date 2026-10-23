@@ -1,0 +1,41 @@
+{
+  "observedUtc": "2026-10-23T05:54:00Z",
+  "pr": 523,
+  "head": "2e971d9e31a3decdebab7abffb5467b1d0528b56",
+  "run": 39906015614,
+  "number": 5875,
+  "event": "pull_request",
+  "syntheticMergeCheckout": "aca8388079dff1a4deebec6984d5d027c932fb0f",
+  "conclusion": "failure",
+  "matrixCommandCount": 310,
+  "gate": "check:eunomia-papers-intent",
+  "gateStatus": "included_in_intended_matrix_but_not_executed",
+  "classification": "static",
+  "staticPosition": 231,
+  "shard": 1,
+  "reason": "Earlier Validate Orchard worker Continue precheck failed; Run static check group skipped. No static1 report artifact.",
+  "correction": "Initial omission claim inferred from absence in static2/3 completed reports was wrong. Verify intended matrix assignment and step state, not only completed artifacts.",
+  "artifacts": [
+    {
+      "shard": 2,
+      "id": 12480612625,
+      "sha256": "d910ec513ed875ae1d39f9e3b047074500f30543dff304b7fc65a2ffd32748e0",
+      "commands": 77
+    },
+    {
+      "shard": 3,
+      "id": 12480812415,
+      "sha256": "da104410dfe6a45cac996d0fbf561032f5f624b900144321803f287ed509cf94",
+      "commands": 77
+    }
+  ],
+  "mobile": {
+    "run": 39906015797,
+    "number": 508,
+    "conclusion": "failure",
+    "browserAcceptance": "skipped_after_shared_regression_failure",
+    "attribution": "Missing public onboarding module confirmed. Two mobile-probe-startup errors not attributed without paired base evidence."
+  },
+  "localEvidence": "52 current focused cases passed; old-base53 includes production-worker test. Neither is a hosted gate pass.",
+  "actions": "No rerun, manual cancellation, merge, deployment or workflow change."
+}

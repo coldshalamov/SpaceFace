@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace current execution checkpoint
 
-Updated 2026-10-23 05:45 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
+Updated 2026-10-23 05:54 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
 
 ## Durable scope and evidence
 
@@ -79,7 +79,7 @@ Mastere9ddde differs from testedcec514 only in UI-bench utility/docs, outside lo
 
 Current five named files pass52/52, independently rerun by root.1182ESM inputs verified; manifest6b433b248609486c373b2d7dfbed86c6810ea988616f40e69e38f51387167104. Old-base six-file53/53 remains historical evidence. Current production-worker case is BLOCKED before initialization by public onboarding7530734662abb091cdb7fe68864a3aef08ddc0eb importing absent onboarding/powerSituations.js. Exact public404 and standalone public-only import with no Eunomia overrides reproduce it. Introducing commitb6b5e686818d061bced96a064eafeb410332ff28 omitted that module; existing row546 adopted owner should supply intended implementation or withdraw incomplete hunk. No stub/import suppression or competing onboarding implementation.
 
-CI check39906015614/#5875 remains in progress at05:40; mobile39906015797/#508 ended failure. Both mobile jobs failed their shared regression step, including the independently established missing onboarding module; two mobile-probe-startup errors remain unattributed without base comparison. Later browser steps were skipped, not accepted. Publisher observes exact runs to terminal without rerun/cancel. Master advanced during submission tocec514c06b17b2cead29febb836c494da63e3e35; only saveLayouts and UI review changed, disjoint. PR merge-base remains50d285. Final13fullsource recovery102635B SHA68b30a1f47af45e247488b80c1d5bbd0fa7e4ce489705c126fcdf5de3d4f742f plus12current diagnostic/evidence files473214B were independently read back. Existing source is locally committed separately; no private recovery ancestry published.
+CI check39906015614/#5875 and mobile39906015797/#508 are both terminal FAILURE. The Eunomia focused gate was included in the intended310-command matrix on synthetic mergeaca8388079dff1a4deebec6984d5d027c932fb0f, assigned static shard1, but not executed: earlier Validate Orchard worker Continue precheck failed and matrix step was skipped. Absence from completed static2/3 reports does NOT establish matrix omission; that initial attribution was corrected. See EUNOMIA_CI_ATTRIBUTION_2026-10-23.json. Both mobile jobs failed their shared regression step, including the independently established missing onboarding module; two mobile-probe-startup errors remain unattributed without base comparison. Later browser steps were skipped, not accepted. Publisher observes exact runs to terminal without rerun/cancel. Master advanced during submission tocec514c06b17b2cead29febb836c494da63e3e35; only saveLayouts and UI review changed, disjoint. PR merge-base remains50d285. Final13fullsource recovery102635B SHA68b30a1f47af45e247488b80c1d5bbd0fa7e4ce489705c126fcdf5de3d4f742f plus12current diagnostic/evidence files473214B were independently read back. Existing source is locally committed separately; no private recovery ancestry published.
 
 Next: follow exact CI and the existing upstream prerequisite, finish permitted ordinary/visual/performance acceptance when available; meanwhile inspect one next noncompeting ordinary sector experience against actual code/register. All ten outcomes and older holds remain open.
 
@@ -100,3 +100,7 @@ PR518 and520 were freshly read05:12: both remain open/unmerged at the heads abov
 5. Continue ordinary gameplay/visual/performance acceptance only through permitted supported routes. Existing browser approval is not permission to use another browser route.
 
 Canonical restored checkout remains dirty/read-only at25acfe5c97f069a34a045bea0cdc4450430657e9; preserve Vesta/mining/traffic and all reviewer changes. No index/stash/reset/fetch/lazy-fetch. Never execute test/anvil-receiver-delivery.test.mjs or aggregate suites. Both continuation schedules remain enabled/unchanged.
+
+
+### Active next exact unit, 05:54 UTC
+Choir relief service interruption is allocated under CLAIM_CHOIR_SERVICE_INTERRUPTION_2026-10-23.md. Same local living runner displaced from Helios incorrectly completes treatment by global clock. Preserve absent/offscreen semantics, existing nullable clock, one bed, bounded cast and all shared owners; implementer owns only Choir helper/new test, reviewer independent, root owns package/recovery/publication. Rhea publisher continues exact run39907432057/#5879; no green inferred.
