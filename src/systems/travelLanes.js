@@ -74,6 +74,7 @@ import { occupantGenerationOf } from '../core/entity.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { LANE_HELIOS_TETHYS, buildLaneGeometry, laneDisruptionHeadline } from '../data/travelLaneRoutes.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { FREIGHT_SPINE } from '../data/travelChoices.js';
 
 export const TRAVEL_LANE_SCHEMA = 'travel_lane_v1';
 
@@ -223,6 +224,20 @@ export function pointInsideSlingRing(point, ring = CERES_SLING_RING) {
   const ox = dx - axis.x * along;
   const oz = dz - axis.z * along;
   return (ox * ox + oz * oz) <= ring.radius * ring.radius;
+}
+
+/** Calendar owners can sample after the whole tube has been crossed. Test both faces. */
+export function sweptSlingRingPass(from, to, ring) {
+  if (!from || !to) return false;
+  const a = ringAlong(from, ring), b = ringAlong(to, ring), half = ring.length / 2;
+  if (!(a < half && b >= half && b > a)) return false;
+  for (const along of [Math.max(a, -half), half]) {
+    const t = (along - a) / (b - a);
+    const x = from.x + (to.x - from.x) * t - ring.globalPos.x - ring.axis.x * along;
+    const z = from.z + (to.z - from.z) * t - ring.globalPos.z - ring.axis.z * along;
+    if (x * x + z * z > ring.radius * ring.radius) return false;
+  }
+  return true;
 }
 
 /**
@@ -443,6 +458,10 @@ export const travelLanes = {
     this._slingHaulerId = null;
     this._slingHaulerBinding = null;
     this._slingPlayerActive = false;
+    this._spineEntities = new Map();
+    this._spineEntries = new Set();
+    this._spineNext = 0;
+    this._spinePrevious = null;
     this._claimSlingPlayerActive = false;
     this._slingThrownIds = new Set();
     this._throwDirScratch = { x: 0, z: 0 };
@@ -650,6 +669,7 @@ export const travelLanes = {
 
     this._applyDriveModifier(state, player, boosting ? boostLane : null);
     this._applySlingRing(dt, state, player);
+    this._updateFreightSpine(dt, state, player);
     this._applyClaimSlingRings(dt, state, player);
     this._applyDisruption(state, disrupted);
     this._armAmbushApproach(state, player, authoredFix);
@@ -773,6 +793,67 @@ export const travelLanes = {
     });
   },
 
+  _updateFreightSpine(dt, state, player) {
+    if (state.mode && state.mode !== 'flight') return;
+    if (state.world?.currentSectorId !== 'sector_ceres_belt') {
+      this._spineEntries.clear(); this._spineNext = 0; this._spinePrevious = null; return;
+    }
+    const previous = this._spinePrevious;
+    const generation = occupantGenerationOf(player);
+    const speed = bodyPlanarSpeed(player);
+    const canSweep = previous && previous.player === player && previous.generation === generation
+      && Math.hypot(player.pos.x - previous.x, player.pos.z - previous.z)
+        <= Math.max(previous.speed, speed) * Math.max(dt, 1 / 60) * 1.5 + SLING_RING_LENGTH_WU;
+    const start = FREIGHT_SPINE[0];
+    const px = player.pos.x - start.globalPos.x, pz = player.pos.z - start.globalPos.z;
+    if (Math.abs(px * start.axis.z - pz * start.axis.x) > start.radius) this._spineNext = 0;
+    for (const ring of FREIGHT_SPINE) {
+      const along = ringAlong(player.pos, ring);
+      const inside = pointInsideSlingRing(player.pos, ring);
+      const aligned = alignmentDot(player.vel, ring.axis) >= SLING_ALIGN_DOT_MIN;
+      if (inside) {
+        if (aligned) {
+          this._spineEntries.add(ring.id);
+          if (ring.index > 0) {
+            const cruise = resolveCombatCruise(player, state);
+            this._boostSlingBody(player, dt, cruise, ring);
+            this._applySlingDriveCeiling(state, cruise);
+          }
+        } else { this._spineEntries.delete(ring.id); this._spineNext = 0; }
+      } else if (this._spineEntries.delete(ring.id) || (canSweep && sweptSlingRingPass(previous, player.pos, ring))) {
+        if (along > ring.length / 2 && aligned) {
+          // The calendar can miss the entire 96 WU tube at earned speed. Geometry proved
+          // the transit; deliver its bounded impulse without moving the hull back into it.
+          const cruise = resolveCombatCruise(player, state);
+          this._boostSlingBody(player, dt, cruise, ring, true);
+          this._applySlingDriveCeiling(state, cruise);
+          this._spineNext = ring.index === this._spineNext ? this._spineNext + 1 : (ring.index === 0 ? 1 : 0);
+          this._seedSlingEarnedCap(state, player);
+          this._emit('lane:slingPass', { ringId: ring.id, ringIndex: ring.index,
+            sectorId: ring.sectorId, aligned: true, chain: this._spineNext, exitSpeedWuS: bodyPlanarSpeed(player) });
+          if (this._spineNext === 3) {
+            this._emit('toast', { text: 'Freight Spine · three clean rings — momentum carried', kind: 'success', ttl: 3 });
+            this._emit('lane:spineComplete', { sectorId: ring.sectorId, rings: 3, exitSpeedWuS: bodyPlanarSpeed(player) });
+            this._spineNext = 0;
+          }
+        } else this._spineNext = 0;
+      }
+      const existing = state.entities.get(this._spineEntities.get(ring.id));
+      if (existing?.alive !== false && existing) continue;
+      if (!this.helpers?.spawnEntity || Math.hypot(player.pos.x - ring.globalPos.x, player.pos.z - ring.globalPos.z) > 3200) continue;
+      const entity = this.helpers.spawnEntity({ type: 'fx', pos: { ...ring.globalPos },
+        rot: Math.atan2(ring.axis.z, ring.axis.x), radius: 48, mass: 1e6,
+        collides: false, hull: 1e6, hullMax: 1e6, ttl: Infinity, flags: { invuln: true },
+        data: { placeId: 'place_gate_jump_ring', placeScale: 1.05, visualRadius: 48, placeRadius: 48,
+          homeSectorId: ring.sectorId, sectorId: ring.sectorId, travelSpineRingId: ring.id,
+          name: `Freight Spine · ring ${ring.index + 1} of 3`, scanLabel: `Freight Spine · ring ${ring.index + 1} of 3`, tetherable: false } });
+      if (entity?.id != null) this._spineEntities.set(ring.id, entity.id);
+    }
+    const sample = this._spinePrevious || (this._spinePrevious = {});
+    sample.player = player; sample.generation = generation; sample.speed = speed;
+    sample.x = player.pos.x; sample.z = player.pos.z;
+  },
+
   _applySlingDriveCeiling(state, cruise) {
     const drive = state.input && state.input.travelDrive;
     if (!drive || typeof drive !== 'object') return;
@@ -790,9 +871,9 @@ export const travelLanes = {
     drive.cap = Math.max(finite(drive.cap, 0), speed);
   },
 
-  _boostSlingBody(entity, dt, cruise, ring = CERES_SLING_RING) {
+  _boostSlingBody(entity, dt, cruise, ring = CERES_SLING_RING, crossed = false) {
     if (!entity || !entity.pos || !(dt > 0)) return false;
-    if (!pointInsideSlingRing(entity.pos, ring)) return false;
+    if (!crossed && !pointInsideSlingRing(entity.pos, ring)) return false;
     if (alignmentDot(entity.vel, ring.axis) < SLING_ALIGN_DOT_MIN) return false;
     const target = Math.max(0, finite(cruise, 0)) * SLING_EXIT_MULT;
     if (!(target > 0)) return false;

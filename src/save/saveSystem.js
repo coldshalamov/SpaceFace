@@ -9073,6 +9073,7 @@ function sanitizeNavExecutorLeg(leg) {
     fromSectorId: from,
     toSectorId: to,
     final: leg.final === true,
+    ...(leg.via === 'drive' || leg.via === 'gate' ? { via: leg.via } : {}),
     resolved: !!target && leg.resolved === true,
     targetNodeId: navString(leg.targetNodeId),
     targetKind: navString(leg.targetKind),
@@ -9118,6 +9119,8 @@ function sanitizeNavRoute(route) {
   const out = { legs };
   if (Number.isFinite(route.totalFuel)) out.totalFuel = Math.max(0, route.totalFuel);
   if (Number.isFinite(route.totalHops)) out.totalHops = Math.max(0, Math.floor(route.totalHops));
+  if (Number.isFinite(route.totalToll)) out.totalToll = Math.max(0, route.totalToll);
+  if (route.mode === 'gate' || route.mode === 'dark' || route.mode === 'spine') out.mode = route.mode;
   return out;
 }
 
@@ -9130,6 +9133,14 @@ function sanitizeNavLeg(leg) {
   if (Number.isFinite(leg.fuel)) out.fuel = Math.max(0, leg.fuel);
   if (Number.isFinite(leg.charge)) out.charge = Math.max(0, leg.charge);
   if (Number.isFinite(leg.interdict)) out.interdict = Math.max(0, Math.min(1, leg.interdict));
+  if (leg.travelVia === 'drive' || leg.travelVia === 'gate') out.travelVia = leg.travelVia;
+  if (Number.isFinite(leg.toll)) out.toll = Math.max(0, leg.toll);
+  const target = sanitizeNavPos(leg.target);
+  if (target) {
+    out.target = target;
+    out.label = navString(leg.label);
+    out.arrivalRadius = Number.isFinite(leg.arrivalRadius) ? Math.max(12, Math.min(500, leg.arrivalRadius)) : 36;
+  }
   return out;
 }
 

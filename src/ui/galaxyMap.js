@@ -53,6 +53,11 @@ import {
   SECTOR_ORIGIN_LATTICE_WU,
 } from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat, zoneAt } from '../data/sectorZones.js';
+import {
+  auditEdgeKey,
+  gateAuditCatalogEntry,
+  tideBand,
+} from '../data/worldPressure.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
 import { dpIcon, injectDeckplate } from './deckplate/index.js';
@@ -1590,6 +1595,8 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
 export function buildGalaxyModel(state) {
   const records = sectorRecords(state);
   const curId = currentSectorId(state);
+  const wp = state && state.worldPressure && typeof state.worldPressure === 'object'
+    ? state.worldPressure : null;
   const story = state && state.story || {};
   const verge = story.verge && typeof story.verge === 'object' ? story.verge : {};
   const storyFlags = {
@@ -1642,6 +1649,10 @@ export function buildGalaxyModel(state) {
       bearingCount,
       neighbors: Array.isArray(s.neighbors) ? s.neighbors.slice() : [],
       presence,
+      // §34 row 520/523: the Bloom tide line, read straight off the persisted
+      // worldPressure bag — null where the sector is not yet charted.
+      tide: charted ? (Number((wp && wp.tide && wp.tide[s.id]) || 0)) : null,
+      tideBand: charted ? tideBand((wp && wp.tide && wp.tide[s.id]) || 0) : null,
       searchText: [
         s.name || s.id,
         factionNameOf(s.factionId),
@@ -1662,11 +1673,24 @@ export function buildGalaxyModel(state) {
       const other = nodeById.get(nb);
       if (!other) continue;
       const bothCharted = node.charted && other.charted;
+      // §34 rows 521/523: the road's audit state, read off the persisted bag —
+      // 'welding' shows the scaffold's progress, 'closed' shows the sealed lane.
+      // Catalog-only edges surface as 'scheduled' once their Book is on the wire.
+      const auditRec = wp && wp.gates && wp.gates[auditEdgeKey(node.id, nb)] || null;
+      const auditCat = auditRec ? null : gateAuditCatalogEntry(node.id, nb);
       edges.push({
         from: node.id, to: nb,
         ax: node.x, ay: node.y, bx: other.x, by: other.y,
         charted: bothCharted,
         trade: bothCharted, // a charted-to-charted link is a usable trade lane
+        audit: auditRec ? {
+          status: auditRec.status, book: auditRec.book, weld: auditRec.weld,
+          gateName: auditRec.gateName, docket: auditRec.docket,
+          closed: auditRec.status === 'closed',
+        } : (auditCat && bothCharted ? {
+          status: 'scheduled', book: auditCat.book, weld: 0,
+          gateName: auditCat.gateName, docket: auditCat.docket, closed: false,
+        } : null),
       });
     }
   }
@@ -1701,7 +1725,133 @@ export function buildGalaxyModel(state) {
     };
   }
 
-  return { level: 'galaxy', currentSectorId: curId, nodes, edges, player: playerMark };
+  return {
+    level: 'galaxy', currentSectorId: curId, nodes, edges, player: playerMark,
+    worldMarks: buildWorldReceiptMarks(state, nodeById),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// §34 row 523 — the chart keeps the receipt.
+//
+// Every mark below is READ-ONLY over a persisted fact, in the same graph-draw frame
+// the galaxy nodes use (global WU ÷ SECTOR_ORIGIN_LATTICE_WU):
+//
+//   tide        state.worldPressure.tide              — the Bloom tide line (per-node too)
+//   gates       state.worldPressure.gates (+catalog)  — audit docket/weld/sealed on the lane
+//   structures  state.claims.bodies (owned) + state.frontier.homesteads — your stations
+//   gardens     state.understory.gardens              — fed Understory gardens
+//   litPaths    claims body infrastructure            — commissioned throughlines
+//   trophyWall  state.claims.legendaryHeads           — the ace heads on your wall
+//   colossus    state.worldPressure.colossusRemains   — where a colossus fell
+//
+// UI only reads; it never writes the facts. A mark with no charted endpoint is kept
+// off the chart — the map shows what you know.
+export function buildWorldReceiptMarks(state, nodeById) {
+  const wp = state && state.worldPressure && typeof state.worldPressure === 'object'
+    ? state.worldPressure : null;
+  const claims = state && state.claims && typeof state.claims === 'object' ? state.claims : null;
+  const frontier = state && state.frontier && typeof state.frontier === 'object' ? state.frontier : null;
+  const understory = state && state.understory && typeof state.understory === 'object' ? state.understory : null;
+  const at = (sectorId) => (nodeById && nodeById.get(sectorId)) || null;
+  const chartedAt = (sectorId) => {
+    const n = at(sectorId);
+    return n && n.charted ? n : null;
+  };
+  const toDraw = (x, z) => ({ x: (Number(x) || 0) / SECTOR_ORIGIN_LATTICE_WU, z: (Number(z) || 0) / SECTOR_ORIGIN_LATTICE_WU });
+
+  const marks = {
+    tide: [], gates: [], structures: [], gardens: [], litPaths: [], trophyWall: null, colossus: [],
+  };
+
+  if (wp && wp.tide && typeof wp.tide === 'object') {
+    for (const [sectorId, level] of Object.entries(wp.tide)) {
+      const n = chartedAt(sectorId);
+      if (!n) continue;
+      marks.tide.push({ sectorId, level: Number(level) || 0, band: tideBand(level), x: n.x, y: n.y });
+    }
+  }
+  if (wp && wp.gates && typeof wp.gates === 'object') {
+    for (const rec of Object.values(wp.gates)) {
+      const na = at(rec && rec.a), nb = at(rec && rec.b);
+      if (!na || !nb || !(na.charted || nb.charted)) continue;
+      marks.gates.push({
+        key: rec.key, a: rec.a, b: rec.b, ax: na.x, ay: na.y, bx: nb.x, by: nb.y,
+        status: rec.status, book: rec.book, weld: rec.weld,
+        gateName: rec.gateName, docket: rec.docket, closed: rec.status === 'closed',
+        vergeLaw: rec.vergeLaw === true,
+      });
+    }
+  }
+  if (claims && Array.isArray(claims.bodies)) {
+    for (const body of claims.bodies) {
+      if (!body || body.owned !== true) continue;
+      const n = chartedAt(body.sectorId);
+      if (!n) continue;
+      marks.structures.push({
+        id: body.id, kind: 'claim', sectorId: body.sectorId,
+        name: body.name || 'Claimed body',
+        spec: body.spec && body.spec.id || null,
+        x: n.x, y: n.y,
+      });
+      const infra = body.infrastructure;
+      if (infra && infra.from && infra.to) {
+        const f = toDraw(infra.from.x, infra.from.z);
+        const t = toDraw(infra.to.x, infra.to.z);
+        const spt = infra.support ? toDraw(infra.support.x, infra.support.z) : { x: (f.x + t.x) / 2, z: (f.z + t.z) / 2 };
+        marks.litPaths.push({
+          id: infra.id || `infra:${body.id}`, sectorId: body.sectorId,
+          stage: infra.stage || 'offline', operational: infra.operational === true,
+          from: f, support: spt, to: t,
+        });
+      }
+    }
+  }
+  if (frontier && Array.isArray(frontier.homesteads)) {
+    for (const rec of frontier.homesteads) {
+      if (!rec || !rec.sectorId) continue;
+      const n = chartedAt(rec.sectorId);
+      if (!n) continue;
+      marks.structures.push({
+        id: rec.entityId || rec.homesteadId || `hs:${rec.sectorId}:${marks.structures.length}`,
+        kind: 'homestead', sectorId: rec.sectorId,
+        name: 'Homestead',
+        modules: Array.isArray(rec.modules) ? rec.modules.slice() : [],
+        stranded: rec.stranded === true,
+        x: n.x, y: n.y,
+      });
+    }
+  }
+  if (understory && understory.gardens && typeof understory.gardens === 'object') {
+    for (const [id, g] of Object.entries(understory.gardens)) {
+      if (!g || !g.sectorId) continue;
+      const n = chartedAt(g.sectorId);
+      if (!n) continue;
+      marks.gardens.push({
+        id, sectorId: g.sectorId, stage: Number(g.stage) || 0,
+        fedMass: Number(g.fedMass) || 0, x: n.x, y: n.y,
+      });
+    }
+  }
+  const heads = claims && claims.legendaryHeads && Array.isArray(claims.legendaryHeads.heads)
+    ? claims.legendaryHeads.heads : null;
+  if (heads && heads.length) {
+    marks.trophyWall = {
+      count: heads.length,
+      heads: heads.map((h) => ({
+        tier: h && h.tier, aceName: h && h.aceName || 'an ace', name: h && h.name || null,
+      })),
+    };
+  }
+  if (wp && Array.isArray(wp.colossusRemains)) {
+    for (const r of wp.colossusRemains) {
+      if (!r || !r.sectorId) continue;
+      const n = chartedAt(r.sectorId);
+      if (!n) continue;
+      marks.colossus.push({ id: r.id, name: r.name, sectorId: r.sectorId, x: n.x, y: n.y, at: r.at });
+    }
+  }
+  return marks;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -3067,10 +3217,11 @@ export function bestKnownSectorMarket(state, sector, commodityId) {
   };
 }
 
-function memoryTint(ageS) {
-  if (ageS < 600) return { key: 'fresh', color: '#dfeeff', italic: false }; // phosphor: a fresh reading
-  if (ageS < 3600) return { key: 'mid', color: INK.ink0, italic: false };
-  return { key: 'old', color: INK.ink2, italic: true };
+export function memoryTint(ageS) {
+  const alpha = Math.max(0.35, 1 - Math.max(0, Number(ageS) || 0) / 9000);
+  if (ageS < 600) return { key: 'fresh', color: '#dfeeff', italic: false, alpha }; // phosphor: a fresh reading
+  if (ageS < 3600) return { key: 'mid', color: INK.ink0, italic: false, alpha };
+  return { key: 'old', color: INK.ink2, italic: true, alpha };
 }
 
 function ageText(ageS) {
@@ -7377,12 +7528,16 @@ _stepAnimation(now) {
     }
     const rows = [];
     const shapes = [];
-    for (const [mode, label] of [['fuel', 'Cheapest'], ['hops', 'Fewest jumps']]) {
+    const choices = [['fuel', 'Cheapest'], ['hops', 'Fewest jumps'],
+      ['gate', 'Two Roads · tolled gates'], ['dark', 'Two Roads · dark lane']];
+    if (state.world?.currentSectorId === 'sector_ceres_belt') choices.push(['spine', 'Freight Spine · three rings']);
+    for (const [mode, label] of choices) {
       let alt = null;
       try { alt = world.computeRoute(dest, mode); } catch { alt = null; }
       if (!alt || !Array.isArray(alt.legs) || !alt.legs.length) continue;
       const same = !!plottedLegs && alt.legs.length === plottedLegs.length
-        && alt.legs.every((l, i) => l.to === plottedLegs[i].to);
+        && alt.legs.every((l, i) => l.to === plottedLegs[i].to
+          && (l.travelVia || 'gate') === (plottedLegs[i].travelVia || 'gate'));
       const worst = alt.legs.reduce((m, l) => Math.max(m, Number(l.interdict) || 0), 0);
       shapes.push(alt.legs.map((l) => l.to).join('>'));
       // `data-route-option` is the SEMANTIC hook: "this element is one weighable way of getting
@@ -7392,7 +7547,7 @@ _stepAnimation(now) {
         data-rail-alt="${mode}" data-route-option="${mode}"${same ? ' aria-selected="true"' : ''}
         data-route-hops="${alt.legs.length}" data-route-fuel="${Math.round(alt.totalFuel || 0)}">
         <span class="gm-rail-item-t k-row__name">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
-        <span class="gm-rail-item-s k-row__sub">${alt.legs.length} hop${alt.legs.length === 1 ? '' : 's'} · ${Math.round(alt.totalFuel || 0)}F · worst leg ${Math.round(worst * 100)}% interdict · ETA by fuel burn</span>
+        <span class="gm-rail-item-s k-row__sub">${alt.totalHops} hop${alt.totalHops === 1 ? '' : 's'} · ${Math.round(alt.totalFuel || 0)}F${Number.isFinite(alt.totalToll) ? ` · ${alt.totalToll} cr toll` : ''} · worst leg ${Math.round(worst * 100)}% interdict${mode === 'spine' ? ' · fly the marked Ceres approach' : ''}</span>
       </button>`);
     }
     if (!rows.length) return '<div class="gm-ins-note">No alternative path to that sector through charted space.</div>';
@@ -9393,6 +9548,7 @@ _drawGalaxy(g, state, w, h) {
         if (marketData) {
           const tint = memoryTint(marketData.ageS);
           g.save();
+          g.globalAlpha *= tint.alpha;
           g.font = chartFont(650, 12, { stretch: 'normal' });
           g.textAlign = 'left'; g.textBaseline = 'middle';
           g.lineJoin = 'round';
