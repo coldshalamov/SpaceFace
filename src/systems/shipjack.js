@@ -57,7 +57,7 @@ export const shipjack = {
       const v=this.admit(e);if(!v)return;const a=this.attempt(v,e);if(a){a.surrendered=true;a.phase='exposed';a.windowUntil=now(this.state)+90;}
     });
     on('entity:killed',p=>this._killed(p?.id ?? p?.entityId ?? p?.targetId));
-    on('scanner:pulse',()=>this.scanSelected());
+    on('scan:pulse',()=>this.scanSelected());
     // The UI commits docked state AFTER dock:docked reaches the sim systems, and docking then freezes
     // the full tick, so update() never sees a docked player. Paid extraction work that matured in
     // flight settles here, once docked state is real, at its originating berth (after berthAt).
@@ -90,7 +90,7 @@ export const shipjack = {
     if(Object.keys(own.custodyAttempts).length>=SHIPJACK_LIMITS.attempts)return null;
     return own.custodyAttempts[vessel.vesselId]={vesselId:vessel.vesselId,generation:entity.data.shipjackGeneration,phase:'observed',scanned:false,dwell:0,adaptation:0,tries:0,deadline:now(this.state)+180,windowUntil:0,lastActionAt:-10};
   },
-  scanSelected(){if(isBlackFlagAdventure(this.state)&&this.state.player?.targetId!=null)this.command({action:'scan',targetId:this.state.player.targetId});},
+  scanSelected(){if(isBlackFlagAdventure(this.state)&&this.state.player?.targetId!=null&&queryShipjack(this.state,this.state.player.targetId).eligible)this.command({action:'scan',targetId:this.state.player.targetId});},
   result(payload,result){
     const value={...result,action:payload.action,operationId:payload.operationId};
     this.bus.emit('shipjack:result',value);
@@ -174,6 +174,7 @@ export const shipjack = {
     if(time-a.lastActionAt<1.2)return deny('The interface is recovering; watch the signal before another command.');
     a.lastActionAt=time;
     if(payload.action==='hail'){
+      if(vessel.crew==='automated'||vessel.profile==='autonomous')return deny('No crew channel answers. Probe the maintenance signal or reach the service port with a pod; safe-passage terms cannot surrender an autonomous helm.');
       if(ready.distance>1200)return deny('Comms are out of range.');
       const safeCrew=entity.data.shipjackUncrewed || vessel.crew==='evacuated' || vessel.crew==='automated';
       const hullFraction=entity.hull/Math.max(1,entity.hullMax);

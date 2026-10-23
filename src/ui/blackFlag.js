@@ -77,7 +77,8 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
   };
   const show = (force = false) => {
     const targetId = state.player?.targetId;
-    if (targetId == null || state.mode !== 'flight' || state.ui?.docked) { resolve(); return; }
+    if (targetId == null) { selected = null; dismissed = null; resolve(); return; }
+    if (state.mode !== 'flight' || state.ui?.docked) { resolve(); return; }
     if (targetId !== selected) { selected = targetId; dismissed = null; page = 0; pending = false; signature = ''; }
     if (dismissed === targetId && !force) return;
     const view = read(state, targetId);
@@ -112,7 +113,7 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
     if (!prompt.updateDecision(PANEL_ID, spec)) prompt.offerDecision(spec);
   };
   on('shipjack:open', () => { dismissed = null; show(true); });
-  on('scanner:pulse',()=>offerDistress(true));
+  on('scan:pulse',()=>{ dismissed = null; show(true); offerDistress(true); });
 
   on('shipjack:opportunity', payload => {
     if (!payload || payload.entityId == null || !isBlackFlagAdventure(state)) return;

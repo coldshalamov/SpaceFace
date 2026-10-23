@@ -122,6 +122,10 @@ restoration. A recycled numeric body ID can no longer redirect the recovery cour
 Lost physical signals retain a plain-language last-trajectory record without inventing
 destruction, ownership changes or a paid recovery of an unconfirmed body. Tow requires
 a generation-valid Massline to that exact hull, independently of peaceful crew terms.
+The live scanner emits `scan:pulse`; custody and the flight panel now consume that actual
+owner event. Dismissing a link and reselecting the same vessel reopens it. Unarmed fits
+read as “no armed hardpoints” instead of reporting a healthy generic weapon subsystem
+as a live gun.
 
 The broad baseline run did not pass: golden hash mismatches, an unrelated automation
 assertion and a Massline timeout remain. Committed HEAD also mismatched the V3 golden,

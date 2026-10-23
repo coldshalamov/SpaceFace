@@ -117,7 +117,17 @@ test('evacuated parley never creates a crew escape timer and recycled ids cannot
   try{
     const parley=Object.create(parleyProto);parley.init(rt.ctx);rt.slots.set('pirateDisengage',parley);
     const recovery=Object.create(recoveryProto);recovery.init(rt.ctx);rt.slots.set('surrenderRecovery',recovery);
-    assert.equal(rt.command('scan').ok,true);assert.equal(rt.command('hail').ok,true);
+    const rock=rt.helpers.spawnEntity({type:'asteroid',pos:{x:20,z:0},radius:5});
+    rt.state.player.targetId=rock.id;
+    let scanReplies=0;rt.bus.on('shipjack:result',()=>scanReplies++);
+    rt.bus.emit('scan:pulse',{entityId:rt.player.id});
+    assert.equal(scanReplies,0,'ordinary rock scans must not emit custody refusals');
+    assert.equal(rt.state.player.shipjack,undefined,'ordinary scans retain the lazy save boundary');
+    rt.state.player.targetId=rt.target.id;
+    rt.bus.emit('scan:pulse',{entityId:rt.player.id});
+    assert.equal(rt.state.player.shipjack.custodyAttempts[vesselForEntity(rt.state,rt.target).vesselId].scanned,true,'actual scanner pulse reaches the custody owner');
+    assert.match(queryShipjack(rt.state,rt.target.id).detail,/no armed hardpoints/);
+    assert.equal(rt.command('hail').ok,true);
     for(let i=0;i<120;i++){rt.state.simTime++;recovery.update(1,rt.state);}
     assert.equal(rt.target.data.despawnAt,undefined);
     assert.notEqual(rt.target.data.ai?.fsm,'flee');assert.equal(rt.target.alive,true);
@@ -147,6 +157,18 @@ test('an ordinary captured traffic hull routes to a real local receiver without 
     assert.equal(rt.system.navigate(vessel.vesselId,true).ok,true);
     assert.deepEqual(course.pos,{x:station.pos.x,z:station.pos.z});assert.match(course.label,/Helios/);
     assert.equal(course.rendezvous,false);assert.equal(course.targetEntityId,null);
+  }finally{rt.dispose();}
+});
+
+test('an autonomous helm cannot be surrendered through nonexistent crew terms',async()=>{
+  const rt=await runtime();
+  try{
+    assert.equal(rt.command('scan').ok,true);
+    const vessel=vesselForEntity(rt.state,rt.target);vessel.crew='automated';vessel.profile='autonomous';
+    const answer=rt.command('hail');assert.equal(answer.ok,false);assert.match(answer.reason,/No crew channel/);
+    assert.notEqual(rt.state.player.shipjack.custodyAttempts[vessel.vesselId].surrendered,true);
+    const actions=queryShipjack(rt.state,rt.target.id).actions;
+    assert.equal(actions.some(row=>row.action==='hail'),false);assert.equal(actions.some(row=>row.action==='probe'),true);
   }finally{rt.dispose();}
 });
 

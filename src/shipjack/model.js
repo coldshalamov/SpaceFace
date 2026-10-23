@@ -151,6 +151,7 @@ export function captureReadiness(state, target, attempt = null) {
   const sub = runtime?.subsystems || {};
   const disabled = id => sub[id]?.effectiveDisabled === true || sub[id]?.destroyed === true
     || runtime?.capabilities?.[id==='subsystem_drive'?'drive':id==='subsystem_weapon'?'weapon':'power']===false;
+  const hasWeapons=!Array.isArray(target?.data?.weapons)||target.data.weapons.length>0;
   const possessed = target?.data?.shipjackParked === true;
   const surrendered = target?.data?.ai?.fsm === 'surrender' || attempt?.surrendered === true || possessed;
   const distance = player && target ? Math.hypot(player.pos.x-target.pos.x,player.pos.z-target.pos.z) : Infinity;
@@ -167,9 +168,9 @@ export function captureReadiness(state, target, attempt = null) {
   if (player && target && distance<=350 && !witnessLineOfSight(state,player,target.pos,[player.id,target.id])) reasons.push('Terrain blocks the service link. Approach around it.');
   if (finite(target?.shield) > 1 && !surrendered) reasons.push('Shields deny the service link.');
   if (!disabled('subsystem_drive') && !surrendered && !target?.data?.shipjackUncrewed) reasons.push('Defender retains propulsion. Disable drive or negotiate.');
-  if (!disabled('subsystem_weapon') && !surrendered && !target?.data?.shipjackUncrewed && attempt?.endpoint !== 'port') reasons.push('Live weapons guard the port. Isolate power or expose a service port.');
+  if (hasWeapons && !disabled('subsystem_weapon') && !surrendered && !target?.data?.shipjackUncrewed && attempt?.endpoint !== 'port') reasons.push('Live weapons guard the port. Isolate power or expose a service port.');
   if (!tethered && !surrendered) reasons.push('Attach the Massline to hold a physical approach.');
-  return {ready:reasons.length === 0,reasons,distance,relativeSpeed,spin:Math.abs(finite(target?.angVel)),tethered,dwell:finite(attempt?.dwell),driveDisabled:disabled('subsystem_drive'),weaponsDisabled:disabled('subsystem_weapon'),surrendered};
+  return {ready:reasons.length === 0,reasons,distance,relativeSpeed,spin:Math.abs(finite(target?.angVel)),tethered,dwell:finite(attempt?.dwell),driveDisabled:disabled('subsystem_drive'),weaponsDisabled:!hasWeapons||disabled('subsystem_weapon'),hasWeapons,surrendered};
 }
 export function queryShipjack(state, targetId = state.player?.targetId) {
   if (!isBlackFlagAdventure(state)) return {eligible:false,actions:[]};
@@ -183,6 +184,7 @@ export function queryShipjack(state, targetId = state.player?.targetId) {
   const attempt = own?.custodyAttempts?.[vessel?.vesselId];
   const readiness = captureReadiness(state,target,attempt);
   const stage = attempt?.phase || 'observed';
+  const autonomous=vessel?.crew==='automated'||vessel?.profile==='autonomous';
   const actions = [];
   const add = (action,label,enabled=true,reason='') => actions.push({action,label,enabled,reason});
   if(attempt?.transferStartedAt){
@@ -194,7 +196,7 @@ export function queryShipjack(state, targetId = state.player?.targetId) {
     add('release','Release custody');
   } else if (!attempt?.scanned) {
     add('scan','Identify vessel',readiness.distance <= 1200,'Scan within 1,200 WU.');
-    add('hail','Hail captain',readiness.distance <= 1200);
+    if(!autonomous)add('hail','Hail captain',readiness.distance <= 1200);
   } else if (stage === 'secured') {
     add('transfer','Assume control',readiness.ready && readiness.dwell >=1.5,readiness.reasons[0] || 'Hold stable for 1.5 seconds.');
     add('tow','Tow to receiver',readiness.tethered,'Attach Massline to this exact hull.'); add('abort','Leave the prize');
@@ -205,12 +207,12 @@ export function queryShipjack(state, targetId = state.player?.targetId) {
     add('port','Reach service port',readiness.ready,'Match motion, lower shields, secure Massline.');
     add('shutdown','Interrupt propulsion',readiness.distance<=115); add('abort','Break link');
   } else {
-    add('hail','Negotiate crew passage',readiness.distance<=1200);
+    if(!autonomous)add('hail','Negotiate crew passage',readiness.distance<=1200);
     add('probe','Probe maintenance signal',readiness.distance<=350,'Close within 350 WU.');
     add('isolator','Pulse exposed drive',readiness.distance<=180 && finite(target?.shield)<=1,'Lower shields and close within 180 WU.');
     add('drone','Launch service pod · 45 cr',readiness.distance<=300,'A live pod must reach the aft port.');
   }
   const forensic=attempt?.scanned&&vessel&&fittedBlackFlagTool(state,'mod_signature_reader_s')?inspectVessel(vessel,{grade:2}):null;
   return {eligible:true,targetId:target.id,generation:target.data.shipjackGeneration ?? target.occupantGeneration ?? null,vesselId:vessel?.vesselId || null,revision:vessel?.revision || 0,name:vessel?.name || target.data.name || def.name,defId:def.id,stage,stageLabel:attempt?.transferStartedAt?'AIRLOCK CROSSING':'',transferPending:!!attempt?.transferStartedAt,transferUntil:attempt?.transferUntil || null,titleStatus:vessel?.title || 'unconfirmed',custody:vessel?.custodian || 'unconfirmed',readiness,actions,
-    detail:attempt?.scanned ? `${readiness.driveDisabled?'Drive disabled':'Drive live'} · ${readiness.weaponsDisabled?'weapons isolated':'weapons live'} · ${vessel?.profile || 'unknown'} security. ${forensic?.findings.join('; ') || readiness.reasons[0] || 'Physical approach stable.'}` : 'Identify the registry and observe machinery; hull damage alone does not grant custody.'};
+    detail:attempt?.scanned ? `${readiness.driveDisabled?'Drive disabled':'Drive live'} · ${!readiness.hasWeapons?'no armed hardpoints':readiness.weaponsDisabled?'weapons isolated':'weapons live'} · ${vessel?.profile || 'unknown'} security. ${forensic?.findings.join('; ') || readiness.reasons[0] || 'Physical approach stable.'}` : 'Identify the registry and observe machinery; hull damage alone does not grant custody.'};
 }
