@@ -103,6 +103,9 @@ ordinary resale bypassing title and station switching healing parked damage; bot
 fixed with regressions. Actual save-envelope continuation also exposed an unusable receiving
 port and dock suspension preventing ready extraction settlement; both were corrected. Job
 quotes now bind economic facts rather than invalidating work on a narrative ledger notice.
+The latest owned batch passed 113/113 Black Flag, public-dialog and surrender-recovery
+checks (`node --test --test-concurrency=1 test/black-flag*.test.mjs
+test/player-truth-first-light.test.mjs test/surrender-recovery.test.mjs`).
 A 10,000-event normalization test produced 168,089 JSON bytes
 under the configured caps. That is a bounded fixture, not a whole-save measurement.
 
@@ -111,6 +114,14 @@ Public menu-to-flight runs discovered the Empty Seat and exercised approach, sca
 terms, Massline, port access and helm claim. They exposed opener steering and a mismatched
 handoff range, both corrected. Complete browser monetization/save/reload and illicit
 prototype playthrough acceptance are still pending. No full-game performance claim.
+
+The later public route isolated a real owner conflict: hailing an evacuated frame created
+a crew surrender record, whose escape/despawn timer removed the prize. Empty frames now
+skip that crew path; powerless crewed surrenderers retry escape only after actual drive
+restoration. A recycled numeric body ID can no longer redirect the recovery course.
+Lost physical signals retain a plain-language last-trajectory record without inventing
+destruction, ownership changes or a paid recovery of an unconfirmed body. Tow requires
+a generation-valid Massline to that exact hull, independently of peaceful crew terms.
 
 The broad baseline run did not pass: golden hash mismatches, an unrelated automation
 assertion and a Massline timeout remain. Committed HEAD also mismatched the V3 golden,
@@ -139,3 +150,10 @@ careers; broad fleet employment; bespoke Forge clamp/cradle/cutter assets; compr
 normal-camera, mobile GPU, audio and end-to-end save acceptance. Twelve bounded job
 patterns reuse real verbs; they are not eighteen independent new mechanics. The expansion
 must remain a draft until these gaps and the player-truth gate are resolved.
+
+Living-pilot NPC rescue remains incomplete. A native attempt using the existing SF-138
+tender reached the port but left its passenger orbiting outside the authored 20 WU /
+12 WU/s berth. The frame coupler deliberately applies radial force without transverse
+frame matching (`sg02DynamicBodyOwner._applyFrameCoupler`). Unvalidated controller changes
+were removed. Distress currently marks a truthful beacon; it does not advertise accepted
+dispatch. Retained-hull reversal and player-controlled Massline towing remain available.

@@ -1,7 +1,7 @@
 // A thin adapter to the ONE flight decision deck. Deck owns keyboard/gamepad/touch,
 // attention placement and cancellation. This module reads readiness, never computes it.
 import { getPromptDeck } from './promptDeck.js';
-import { queryShipjack, isBlackFlagAdventure } from '../shipjack/model.js';
+import { queryShipjack, isBlackFlagAdventure, captureReadiness } from '../shipjack/model.js';
 import { BLACK_FLAG_TERMS, BLACK_FLAG_ENCOUNTER_BY_ID } from '../data/blackFlag.js';
 import { laneInputWrite } from '../core/simLaneCommands.js';
 
@@ -47,9 +47,33 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
   const offs = [];
   let selected = null, dismissed = null, signature = '', page = 0, frames = 0, pending = false;
   let opportunity = null, priorHull = null;
+  let distressShown = null;
   const resolve = () => { deck()?.resolveDecision(PANEL_ID); signature = ''; };
-  const clear = () => { selected = null; dismissed = null; page = 0; pending = false; opportunity = null; priorHull = null; resolve(); deck()?.resolveDecision('black-flag:opportunity'); deck()?.resolveDecision('black-flag:prior-hull'); };
+  const clear = () => { selected = null; dismissed = null; page = 0; pending = false; opportunity = null; priorHull = null; distressShown=null; resolve(); deck()?.resolveDecision('black-flag:opportunity'); deck()?.resolveDecision('black-flag:prior-hull'); deck()?.resolveDecision('black-flag:distress'); };
   const on = (event, fn) => { const off = bus.on(event, fn); if (typeof off === 'function') offs.push(off); };
+  const offerDistress = (force=false) => {
+    const pilot=state.entities?.get(state.playerId);
+    if(!isBlackFlagAdventure(state)||state.mode!=='flight'||state.ui?.docked||!pilot?.alive)return;
+    const owned=state.player?.ownedShips?.[state.player.activeShipIndex];
+    if(!owned?.vesselId)return;
+    const disabled=owned.shipjackDriveRemoved===true||captureReadiness(state,pilot).driveDisabled;
+    if(!disabled){distressShown=null;deck()?.resolveDecision('black-flag:distress');return;}
+    const generation=pilot.data?.shipjackGeneration ?? pilot.occupantGeneration;
+    const key=`${pilot.id}:${generation}`;
+    if(!force&&distressShown===key)return;
+    const prompt=deck();if(!prompt)return;distressShown=key;
+    prompt.offerDecision({id:'black-flag:distress',kind:'warn',sender:'DISABLED HULL · RECOVERY CHANNEL',
+      headline:'Drive unavailable',
+      detail:'Your hull is still intact. Mark its distress beacon, transfer back to a nearby retained hull, or keep working on recovery. No service tug has accepted. Pulse the scanner to reopen this channel.',
+      choices:[{id:'distress',label:'Send distress / mark hull beacon'},{id:'leave',label:'Keep working on recovery',cancel:true}],
+      onChoose:action=>{
+        prompt.resolveDecision('black-flag:distress');
+        const live=state.entities?.get(pilot.id);
+        if(action!=='distress'||!isBlackFlagAdventure(state)||state.mode!=='flight'||state.ui?.docked||state.playerId!==pilot.id||!live?.alive
+          ||(live.data?.shipjackGeneration ?? live.occupantGeneration)!==generation)return;
+        bus.emit('ui:shipjack',{action});
+      }});
+  };
   const show = (force = false) => {
     const targetId = state.player?.targetId;
     if (targetId == null || state.mode !== 'flight' || state.ui?.docked) { resolve(); return; }
@@ -87,6 +111,8 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
     if (!prompt.updateDecision(PANEL_ID, spec)) prompt.offerDecision(spec);
   };
   on('shipjack:open', () => { dismissed = null; show(true); });
+  on('scanner:pulse',()=>offerDistress(true));
+
   on('shipjack:opportunity', payload => {
     if (!payload || payload.entityId == null || !isBlackFlagAdventure(state)) return;
     opportunity = payload;
@@ -107,6 +133,7 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
     open() { dismissed = null; show(true); },
     frame() {
       if (++frames % 8 !== 0) return;
+      offerDistress();
       show();
       if (priorHull && state.mode === 'flight' && !state.ui?.docked && isBlackFlagAdventure(state)) {
         const receipt = priorHull;

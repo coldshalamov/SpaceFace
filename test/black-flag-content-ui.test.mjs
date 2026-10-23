@@ -108,6 +108,23 @@ test('Back cancels an actual vulnerable airlock crossing but ordinary dismissal 
   prompt.dispose();
 });
 
+test('disabled acquired pilot has a public distress route with scanner reopening and stale-body protection',()=>{
+  const f=fixture(),pilot=f.state.entities.get(1);
+  pilot.data.shipjackGeneration='pilot:1';
+  f.state.player.ownedShips=[{defId:'ship_kestrel',vesselId:'vessel:pilot',shipjackDriveRemoved:true}];
+  const prompt=createBlackFlagPrompt(f,{deck:()=>f.deck});
+  for(let i=0;i<8;i++)prompt.frame();
+  const offer=f.offers.get('black-flag:distress');assert.ok(offer);
+  offer.onChoose('leave','touch');assert.equal(f.offers.has('black-flag:distress'),false);
+  for(let i=0;i<8;i++)prompt.frame();assert.equal(f.offers.has('black-flag:distress'),false,'dismissal stays quiet');
+  f.bus.emit('scanner:pulse');const retry=f.offers.get('black-flag:distress');assert.ok(retry);
+  retry.onChoose('distress','gamepad');assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack'&&row.payload.action==='distress').length,1);
+  f.state.playerId=2;retry.onChoose('distress','keyboard');
+  assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack'&&row.payload.action==='distress').length,1);
+  f.state.run.kind='crucible';f.bus.emit('game:new');f.bus.emit('scanner:pulse');assert.equal(f.offers.size,0);
+  prompt.dispose();
+});
+
 test('handoff offers the real previous body after the mirror arrives and rejects recycled occupants', () => {
   const f=fixture();const prompt=createBlackFlagPrompt(f,{deck:()=>f.deck});
   const prior=f.state.entities.get(1);prior.data.vesselId='vessel:starter:1';prior.data.shipjackGeneration='starter:gen';

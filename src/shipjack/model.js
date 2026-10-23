@@ -54,7 +54,7 @@ export function normalizeShipjack(input) {
       materializationOwner:raw.materializationOwner==='shipjack'?'shipjack':'world',
       custodian: text(raw.custodian), title: ['clean','disputed','salvage','returned','sold'].includes(raw.title) ? raw.title : 'disputed',
       generation: text(raw.generation), revision: Math.floor(bounded(raw.revision, 0, 1e9)),
-      location: { kind: ['active','field','tow','berth','remote','in_transit','destroyed','sold','returned','impounded'].includes(location.kind) ? location.kind : 'remote',
+      location: { kind: ['active','field','tow','berth','remote','in_transit','missing','destroyed','sold','returned','impounded'].includes(location.kind) ? location.kind : 'remote',
         sectorId: text(location.sectorId), entityId: Number.isSafeInteger(location.entityId) ? location.entityId : null,
         stationId: text(location.stationId), pos: vector(location.pos), vel: vector(location.vel),
         rot: bounded(location.rot, -10000, 10000, 0), angVel: bounded(location.angVel, -100, 100, 0), at: bounded(location.at, 0, 1e10) },
@@ -189,7 +189,7 @@ export function queryShipjack(state, targetId = state.player?.targetId) {
     add('abort','Abort airlock crossing');
   } else if (vessel?.custodian === 'player' && !TERMINAL.has(vessel.location.kind)) {
     add('transfer','Assume control',readiness.distance <=115 && readiness.relativeSpeed <=18,'Match velocity and close to your parked hull.');
-    if(vessel.location.kind==='tow'||attempt?.phase==='secured')add('tow','Tow to receiver');
+    if(vessel.location.kind==='tow'||attempt?.phase==='secured')add('tow','Tow to receiver',readiness.tethered,'Attach Massline to this exact hull.');
     add('beacon','Set recovery beacon');
     add('release','Release custody');
   } else if (!attempt?.scanned) {
@@ -197,7 +197,7 @@ export function queryShipjack(state, targetId = state.player?.targetId) {
     add('hail','Hail captain',readiness.distance <= 1200);
   } else if (stage === 'secured') {
     add('transfer','Assume control',readiness.ready && readiness.dwell >=1.5,readiness.reasons[0] || 'Hold stable for 1.5 seconds.');
-    add('tow','Tow to receiver'); add('abort','Leave the prize');
+    add('tow','Tow to receiver',readiness.tethered,'Attach Massline to this exact hull.'); add('abort','Leave the prize');
   } else if (stage === 'foothold') {
     add('helm','Claim helm',readiness.ready,'Secure a stable physical approach.');
     add('shutdown','Safe shutdown',readiness.distance<=115); add('cargo','Release freight',readiness.distance<=115);

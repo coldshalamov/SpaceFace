@@ -17,6 +17,11 @@ Your outgoing ship stays in space with its damage, fittings and cargo. Mark its 
 and use **Registry & recovery** in station Shipworks to plot its location or commission
 a finite tow. Remote hulls do not follow you through jumps.
 
+A disabled acquired hull offers a distress channel. Pulse the scanner to reopen it.
+This marks its beacon; no service tow has accepted. Transfer back to your nearby retained
+hull and tow the prize yourself, or commission paid retrieval from a station. A living-pilot
+NPC tow into the final docking cradle has not passed physical validation.
+
 At a receiving berth, keep the prize, return it to its claimant, extract individual
 fitted components, repair components, settle a lien or offer a non-active empty hull for
 sale. Extraction takes time and requires returning to the receiving berth to collect.

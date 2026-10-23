@@ -13,7 +13,7 @@ test('the public settings actor only accepts the known First light choices', () 
   assert.equal(isFirstLightPrompt('First light','Confirm purchase'),false);
 });
 
-test('late First light uses the real cancel control once, and leaves unrelated dialogs alone', async () => {
+test('late First light uses the public keep/play control once, and leaves unrelated dialogs alone', async () => {
   let handler, registrations=0, clicks=0, playClicks=0, title='First light',label='Keep my settings',confirmLabel='Use first light';
   const cancel={first(){return this;},async waitFor(){},async textContent(){return label;},async click(){clicks++;}};
   const titleLocator={first(){return this;},filter(){return this;},async textContent(){return title;}};
