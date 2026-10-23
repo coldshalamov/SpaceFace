@@ -110,6 +110,7 @@ export const crew = {
     // with a TypeError on m.status, and downstream readers assume the hired shape.
     c.members = (Array.isArray(data.members) ? data.members : [])
       .filter((m) => m && typeof m === 'object' && typeof m.id === 'string')
+      .slice(0, CREW_CAP)
       .map((m) => ({
         id: m.id,
         name: typeof m.name === 'string' ? m.name : m.id,
@@ -131,7 +132,9 @@ export const crew = {
     c.declinedIds = (Array.isArray(data.declinedIds) ? data.declinedIds : []).filter((id) => typeof id === 'string');
     c.lostIds = (Array.isArray(data.lostIds) ? data.lostIds : []).filter((id) => typeof id === 'string');
     c.banterAt = Number.isFinite(data.banterAt) ? data.banterAt : 0;
-    c.banterPick = Number.isFinite(data.banterPick) ? data.banterPick : 0;
+    // banterPick indexes the pool array — a fractional or negative pick selects
+    // pool[3.5]/pool[-2] as undefined and the emit below throws mid-update.
+    c.banterPick = Number.isFinite(data.banterPick) ? Math.max(0, Math.floor(data.banterPick)) : 0;
     for (const m of c.members) {
       // Same guard init runs: an injured member always carries a start time, or the
       // field-recovery check in update() can never fire.

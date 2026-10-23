@@ -291,10 +291,30 @@ test('corrupt trophy/id entries are dropped, not adopted — the yard scan stays
     crew: ['crew_bram', 9], towedIds: [null, 'wr:tug:1'], tugWorldRecordId: 42,
   });
   assert.deepEqual(cold.longBerth.trophies.map((t) => t.worldRecordId), ['wr:hulk:9']);
+  // The live collection caps bind on adopt too — an oversized payload can't plant
+  // a list every yard scan walks.
+  sys.deserialize({ claimed: true, stage: 2,
+    trophies: Array.from({ length: 30 }, (_, i) => ({ worldRecordId: `wr:n:${i}` })),
+    towedIds: Array.from({ length: 200 }, (_, i) => `wr:t:${i}`) });
+  assert.equal(cold.longBerth.trophies.length, 24);
+  assert.equal(cold.longBerth.trophies[23].worldRecordId, 'wr:n:29', 'oldest entries drop first');
+  assert.equal(cold.longBerth.towedIds.length, 128);
+  sys.deserialize({ claimed: true, stage: 2,
+    trophies: [{ worldRecordId: 'wr:hulk:9', label: 'Hulk', type: 'wreck', at: 5 }],
+    crew: ['crew_bram', 9], towedIds: ['wr:tug:1'], tugWorldRecordId: 42 });
   assert.deepEqual(cold.longBerth.crew, ['crew_bram']);
   assert.deepEqual(cold.longBerth.towedIds, ['wr:tug:1']);
   assert.equal(cold.longBerth.tugWorldRecordId, null);
-  scan(sys, cold); // the yard scan iterates the adopted trophies without throwing
+  // A towed hulk parked inside the lit yard forces _yardTrophies to iterate the
+  // adopted trophy list — a surviving junk entry would throw on t.worldRecordId.
+  const hulk = {
+    id: 51, type: 'wreck', alive: true,
+    pos: { x: 1000 + BERTH_YARD_RADIUS_WU - 20, z: 800 }, vel: { x: 0, z: 0 }, radius: 12,
+    data: { name: 'Towed Hulk', worldRecordId: 'wr:tug:1' },
+  };
+  cold.entities.set(hulk.id, hulk); cold.entityList.push(hulk);
+  scan(sys, cold);
+  assert.deepEqual(cold.longBerth.trophies.map((t) => t.worldRecordId), ['wr:hulk:9', 'wr:tug:1']);
 });
 
 test('docking at the berth paints the home card: hull, crew, and the trophy yard', () => {

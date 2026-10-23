@@ -303,8 +303,9 @@ export function createSortieTape({ host, onScrub = null } = {}) {
       b.type = 'button';
       b.className = 'orr-tape__stop';
       b.tabIndex = -1;
-      // Close stops split the gap between them. A squeezed stop stays at least 12px wide
-      // and takes half the channel, alternating above and below, so neighbours never share a pixel.
+      // close stops split the gap between them, so each target is its own (22px where there is room);
+      // a squeezed stop keeps at least 12px and takes half the channel's height instead, upper and
+      // lower halves alternating, so squeezed neighbours never share a pixel
       const lo = i > 0 ? Math.max(xs[i] - 11, (xs[i - 1] + xs[i]) / 2) : xs[i] - 11;
       const hi = i < xs.length - 1 ? Math.min(xs[i] + 11, (xs[i] + xs[i + 1]) / 2) : xs[i] + 11;
       b.style.left = `${f(xs[i])}px`;
@@ -375,13 +376,11 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     place(notify);
   }
 
-  // stops: the launch, every event, the loss.
-  // The killing blow (its warning, or anything in the loss's last second) at the far end is the
-  // loss's stop. Every other event keeps its own stop, however close to the end. Identical times collapse.
+  // stops: the launch, every event, the loss
+  // the killing blow (its warning, or anything in the loss's last second) at the far end is the loss's
+  // stop, not a second one; every other event keeps its own stop, however close to the end
   const foldsIntoLoss = (e) => !!geo && geo.x1 - x(e.t) < 40 && (e.kind === 'telegraph' || model.lengthS - e.t <= 1);
-  const stops = () => [0, ...model.events.filter((e) => !foldsIntoLoss(e)).map((e) => e.t), model.lengthS]
-    .sort((a, b) => a - b)
-    .filter((t, i, a) => i === 0 || t !== a[i - 1]);
+  const stops = () => [0, ...model.events.filter((e) => !foldsIntoLoss(e)).map((e) => e.t), model.lengthS].sort((a, b) => a - b).filter((t, i, a) => i === 0 || t !== a[i - 1]);
   let press = null;
   const hostX = (event) => event.clientX - host.getBoundingClientRect().left;
   const onDown = (event) => {

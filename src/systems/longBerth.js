@@ -92,9 +92,12 @@ export const longBerth = {
         label: typeof t.label === 'string' ? t.label : t.worldRecordId,
         type: typeof t.type === 'string' ? t.type : 'wreck',
         at: Number.isFinite(t.at) ? t.at : 0,
-      }));
+      }))
+      // Same caps the live paths enforce — a hostile save can't adopt an
+      // unbounded list that every yard scan and roster includes() then walks.
+      .slice(-24);
     lb.crew = (Array.isArray(data.crew) ? data.crew : []).filter((id) => typeof id === 'string');
-    lb.towedIds = (Array.isArray(data.towedIds) ? data.towedIds : []).filter((id) => typeof id === 'string');
+    lb.towedIds = (Array.isArray(data.towedIds) ? data.towedIds : []).filter((id) => typeof id === 'string').slice(-128);
     lb.tugWorldRecordId = typeof data.tugWorldRecordId === 'string' ? data.tugWorldRecordId : null;
     lb.markerEntityId = null;
   },

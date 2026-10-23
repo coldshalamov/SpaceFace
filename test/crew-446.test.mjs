@@ -228,15 +228,22 @@ test('corrupt member entries are dropped, not adopted — restore never throws',
   const sys2 = Object.create(crew);
   sys2.init({ state: cold, bus: makeBus(), registry: { get: () => null } });
   sys2.deserialize({
-    members: [null, 'junk', 42, { id: 'crew_bram' }, { id: 'crew_marko', status: 'injured', loyaltyJob: null }],
+    members: [
+      null, 'junk', 42,
+      { id: 'crew_bram' }, { id: 'crew_marko', status: 'injured', loyaltyJob: null },
+      { id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' },
+    ],
     declinedIds: ['crew_yella', 7, null],
     lostIds: [false, 'crew_paolo'],
+    banterPick: 2.7,
   });
-  assert.deepEqual(cold.crew.members.map((m) => m.id), ['crew_bram', 'crew_marko']);
+  assert.deepEqual(cold.crew.members.map((m) => m.id), ['crew_bram', 'crew_marko', 'a', 'b'],
+    'junk drops and the roster honors the live crew cap');
   assert.equal(cold.crew.members[0].status, 'active', 'missing status normalizes to active');
   assert.equal(cold.crew.members[1].status, 'injured');
   assert.ok(Number.isFinite(cold.crew.members[1].injuredAt), 'injured member carries a start time');
   assert.equal(cold.crew.members[1].loyaltyJob, null, 'guarded by the !job check downstream');
+  assert.equal(cold.crew.banterPick, 2, 'a fractional pick cannot index the banter pool');
   assert.deepEqual(cold.crew.declinedIds, ['crew_yella']);
   assert.deepEqual(cold.crew.lostIds, ['crew_paolo']);
 });
