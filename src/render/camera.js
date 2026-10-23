@@ -1224,6 +1224,16 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     minZoom = Math.min(CAMERA_ZOOM_MAX, compositionZoomCap, minZoom);
   }
 
+  // Row 485 (ROCK-ARENAS): the published Line rating opens the frame. rockCore writes a
+  // 0..1 open bias (state.rockCore.cameraZoomFloor); it widens the composition floor toward
+  // the group-fit cap as the katamari rating grows, never narrows the frame, and is inert
+  // while the owner is absent or the rating is T0.
+  const lineOpen = finiteOr(state?.rockCore?.cameraZoomFloor, 0);
+  if (lineOpen > 0 && player.pos) {
+    minZoom = Math.max(minZoom, Math.min(compositionZoomCap,
+      CAMERA_ZOOM_MIN + lineOpen * (compositionZoomCap - CAMERA_ZOOM_MIN)));
+  }
+
   // B3b group fit: two or more hostiles attacking at once share the frame. The composed focus
   // moves halfway toward the group centroid (player weighted double — mirrors the pair-midpoint
   // rule for a single attacker) and minZoom grows to fit every member. A per-member sticky hold

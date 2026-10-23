@@ -180,6 +180,7 @@ import { spawnBudget } from '../systems/spawnBudget.js';            // single sh
 import { regionalEcology } from '../systems/regionalEcology.js';     // M4 persistent regional simulation inputs
 import { tensionDirector } from '../systems/tensionDirector.js'; // session-scale pacing owner
 import { encounterDirector } from '../systems/encounterDirector.js'; // zone-anchored living-universe encounters
+import { rockCore } from '../systems/rockCore.js'; // rows 482-485: Line rating, flail, rock-gun ledger
 import { nemesis } from '../systems/nemesis.js'; // adaptive named-rival arc engine (state.nemesis)
 import { nemesisEncounter } from '../systems/nemesisEncounter.js'; // spawn-host adapter (state.nemesisDeployment)
 import { nemesisSignals } from '../systems/nemesisSignals.js'; // event-only voice/toast router
@@ -640,6 +641,9 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['regionalEcology', regionalEcology],
     ['tensionDirector', tensionDirector],
     ['encounterDirector', encounterDirector],
+    // rockCore runs after the encounter directors: its flail constraint resolves post-physics
+    // and its kill ledger reads entity:killed the same tick.
+    ['rockCore', rockCore],
     // Nemesis packet (Counterexample): engine -> encounter host -> tacticalAI fixed-step order
     // is owned by the authoritative manifest; nemesisSignals is event-only (init, no update).
     ['nemesis', nemesis],

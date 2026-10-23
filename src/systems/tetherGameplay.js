@@ -15,6 +15,7 @@ import {
   stabilizeMasslineSelection,
 } from '../combat/masslineTargetScoring.js';
 import { automaticMasslineBreakAllowed, resolveWinchBrace, WINCH_BRACE } from '../combat/attachments.js';
+import { lineThrowTierForBody } from '../data/lineRating.js'; // row 483 Line-rating throw gate
 import { stepLatchRepair } from '../combat/latchRepair.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { occupantGenerationOf } from '../core/entity.js';
@@ -689,6 +690,18 @@ export const tetherGameplay = {
       ...attachWorlds,
     });
     if (!result || !result.ok || !result.attachment) {
+      // Row 484 ROCK-FLAIL: a second catch past the line's per-owner limit is offered to the
+      // flail chain before it denies — chained wrecks on the Line ARE the endgame weapon.
+      // rockCore owns the chain and stamps offer.accepted when the link takes.
+      if (result && result.reason === 'owner_attachment_limit'
+          && def && def.massline && target && target.id != null) {
+        const offer = { targetId: target.id, ownerId: player.id, accepted: false };
+        this.bus.emit('massline:flailOffer', offer);
+        if (offer.accepted === true) {
+          this.bus.emit('tether:latched', { attachmentId: null, targetId: target.id, flail: true });
+          return;
+        }
+      }
       // Passthrough of the attachment authority's existing result.reason (e.g. owner_attachment_limit).
       this.bus.emit('tether:latchDenied', {
         reason: (result && result.reason) || 'create_failed',
@@ -3170,6 +3183,11 @@ function buildAcquisitionSnapshot(host, player, def, state, intent, admissionSou
     isObstructed: (entity) => denialById.get(entity.id) === 'blocked',
     ownershipOf: (entity) => masslineScoringOwnership(entity, player, state),
     reachAllowanceOf: (entity) => Math.max(0, Number(entity && entity.radius) || 0),
+    // Row 483: the Line rating gates which body classes the massline can move. When rockCore
+    // has published a tier, over-class bodies score 'immovable'; absent the owner the gate
+    // is inert (legacy behavior preserved).
+    lineTier: Number.isFinite(state?.rockCore?.tier) ? state.rockCore.tier : null,
+    throwTierOf: lineThrowTierForBody,
   });
   return { ranked, byId, context, intent, aim, maxLength, denial: null, hostileContextTargetId };
 }

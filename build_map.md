@@ -1127,10 +1127,10 @@ production units, and never build what they write.
 | 479 | RC-SCREENS-TRUE | No screen admits it is unfinished — mission log, tab-rail clipping, game over, map strip, voice ring, empty states (§32.7) | FIX | OPEN — M1 |
 | 480 | RC-MARKET-PLAY | Markets you can play — Convoy Shares, Forward Slip, Auditor Penn, Dump Chute, Cold Chain, Labor Stoppage (§32.7) | BUILD | OPEN — after 465 |
 | 481 | RC-CRUCIBLE-DOOR | The Crucible door opens both ways — Run What Killed You, Call the Champion, Wreck Ballast, Case Files, Grudge Ledger (§32.7; phase-order check first) | BUILD | OPEN — after 456 and 270 |
-| 482 | ROCK-GUN | The rock is the gun — impact kills ≥60 % in swarm waves 1–10; a guns-only tape is 2× slower (§33.1) | BUILD | OPEN — after 488 |
-| 483 | ROCK-KATAMARI | The Katamari line — in-run line rating in tonnes, newly movable class lit in the Line colour, a visible winch (§33.1) | BUILD | OPEN — after 482 |
-| 484 | ROCK-FLAIL | The flail — chained wrecks on the Line as the endgame weapon; 5 links stable at 60 fps on the iGPU (§33.1) | BUILD | OPEN — after 483 and 488 |
-| 485 | ROCK-ARENAS | Arenas that scale with the rating; the camera opens with it (§33.1) | BUILD | OPEN — after 483 |
+| 482 | ROCK-GUN | The rock is the gun — impact kills ≥60 % in swarm waves 1–10; a guns-only tape is 2× slower (§33.1) | BUILD | DONE devin-25-oct22 |
+| 483 | ROCK-KATAMARI | The Katamari line — in-run line rating in tonnes, newly movable class lit in the Line colour, a visible winch (§33.1) | BUILD | DONE devin-25-oct22 |
+| 484 | ROCK-FLAIL | The flail — chained wrecks on the Line as the endgame weapon; 5 links stable at 60 fps on the iGPU (§33.1) | BUILD | DONE devin-25-oct22 |
+| 485 | ROCK-ARENAS | Arenas that scale with the rating; the camera opens with it (§33.1) | BUILD | DONE devin-25-oct22 |
 | 488 | ROCK-BUDGET | The physics budget, measured — wave 15 at p95 ≤ 20 ms on the iGPU, quiet host (§33.1) | BUILD | OPEN — first in rock-core |
 | 489 | ROCK-HEADS | Line heads worth chasing — meta unlocks between runs; rarity allowed (§33.1) | BUILD | OPEN — after 501 |
 | 490 | CRAFT-READ | Enemies you read without rings — silhouette and engine colour per role (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
@@ -1180,7 +1180,7 @@ production units, and never build what they write.
 | 538 | W-ARCS | Fourteen faction arcs, three missions each (§34.7) | BUILD | OPEN — each arc after its faction row |
 | 539 | W-CULL | The Cull ladder — ten leagues, Ma Sprocket, Clatter (§34.7) | BUILD | OPEN — after 519 and 541 |
 | 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | DONE devin-ten-oct22 (0749dfe36e) |
-| 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | OPEN — with 485 |
+| 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | DONE devin-25-oct22 |
 | 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | OPEN |
 | 543 | W-FACES | Canon, new and culture portrait pools (§34.8) | ART | OPEN |
 | 544 | W-ECONOMY | Economy re-pace — travel ≤50 %, a play-changing purchase every 15–25 minutes, pay by the tonne (§34.9) | BUILD | OPEN |

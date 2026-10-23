@@ -41,7 +41,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'masslineImpactDamage', 'lootShards', 'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens', 'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads', 'terrainAnchors', 'jettisonImpulse', 'volatileExposure', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
-  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'scissorwake',
+  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake',
   // Nemesis packet: the arc engine (nemesis) decides and schedules, the encounter host
   // (nemesisEncounter) drains one spawn request per fixed step, and nemesisSignals routes
   // voice/toast receipts — event-only, registered but never ticked.
@@ -112,7 +112,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'volatileExposure', 'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'crafting', 'economy', 'intervention', 'world',
   'heistFacilities',
-  'regionalEcology', 'tensionDirector', 'encounterDirector', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
+  'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'stationServices',
   'difficultyDirector', 'gateControlDirector',
   'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
@@ -380,6 +380,8 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud',
   // Combat island: damage/attachment/custody owners at combat cadence.
   'combat', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
+  // rockCore: flail chain constraint must resolve on the 60 Hz step (5-link stability proof).
+  'rockCore',
   // Massline physics owners (throws, snares, impact resolution move or damage bodies).
   'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   // Debris/damage owners with live bodies or timed expiry.
