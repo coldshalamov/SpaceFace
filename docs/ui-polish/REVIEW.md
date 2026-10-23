@@ -1993,6 +1993,15 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 - The tighter key strip now runs to 840 wide, with the last verb's margin dropped, so the strip stays on one line.
 
 **Checked:** bench `pause` clean at 761×636, 780×700, 800×700, 820×700, 840×600, 849×832, 899×932, 900×600, 960×540, 1280×720, 1920×1080 and 390×844. 761×800 is now the column (clean). 779×700 and 799×766 are the column and only report the last verbs below the fold of the scrolling list, as 760×700 did. Focused tests pass: `orrery-arcrail-width`, `pause-save-line`, `pq-194-06-pause-shell`, `sf-275-pause-ownership`, `shell-focus-pause-release`, `wave-c3-pause-kit`. In `ui-polish-88-pause-narrow`, the three 1280-dial d-pad tests fail the same way on master. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish107/`, `compare-pause-{780x700,761x800}.png`.
+## Help in a narrow desktop window, and the Research foot (ui-polish-106)
+
+**Before (master 93706e9ff0):** at ≤760 wide (taller than 460) nothing composed Help on a desktop: the 172px section ladder kept its column, EVERY KEY ran off the right edge ("Steer left (yaw + ban…"), and the rig's "PRESS ANY KEY · THE RIG LIGHTS…" echo printed over CLOSE (bench: 11 findings at 390×844). On Research (phone and ≤760), the docked foot was 97% opaque, so the reading's REQUIRES / "No prerequisites." ghosted through Back.
+
+**After:** `helpLayouts.js`, desktop only, `(max-width:760px) and (min-height:461px)`: one column (title, the sections as one scrolling row of words on a rule, the stage, Close). Controls gives the stage to EVERY KEY (the rig sleeps, as at ≤460 tall). Ships / Commodities / Ores scroll as one column (list, instrument at 320px, reading); Factions shows the crest ring at 380px over its reading, and at ≤560 only the chosen, hovered or focused crest shows its name (the east/west names ran off the window; each crest keeps its aria-label). `constellationLayouts.js`: the ≤760 Research foot is fully opaque. No selector or ID changes; the phone (`data-sf-mobile`), ≤460 tall, and ≥761 are untouched.
+
+**Checked:** bench `help --walk` through all six sections at 390×844, 600×800 and 760×900: 0 findings (was 11 at 390×844). `tech-tree` at 390×844 phone: no ghost under Back (the bench's BURIED note is the page's fold under the docked foot, by design). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish106/`.
+
+**Leftover:** on the phone, Help's Factions shows no crest ring (the orbit collapses to 0 height), so only Concord can be read.
 ## Entity dossier drawer: no stacked labels, phone width, verbs in reach (ui-polish-104)
 
 **Before (master 3d1bd1d756):** the dossier deck is a fixed-height flex column, so a long record shrank every section to fit and each label printed over the value under it (960×540: FLEET DOCTRINE on the controls line, PLACES on Choir Ascending Chorus, POWERS on Vesta Forge, The Vael under CLOSE). On a phone the sheet was 48vw with 88px of left padding, a ~60px column that set "Ascendant Choir" one letter a line.

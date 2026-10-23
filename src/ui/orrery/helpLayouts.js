@@ -394,6 +394,59 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-factions { grid-template-columns:minmax(0, 1.1fr) minmax(200px, .9fr); column-gap:14px; height:100%; }
 }
 
+/* ui-polish-106: a narrow desktop window (≤760 wide, taller than 460). Nothing composed Help here, so
+   the 172px section ladder kept its column and EVERY KEY ran off the right edge, and the rig's
+   "PRESS ANY KEY" echo printed over CLOSE. One column: title, the sections as one scrolling row of
+   words on a rule (the ≤460 / 761–1200 grammar), the stage, then Close. The rig sleeps (EVERY KEY
+   carries every binding); list readings stand under their hero. The phone keeps its own flow. */
+@media (max-width:760px) and (min-height:461px) {
+  ${HD} { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) auto !important;
+    grid-template-areas:"title" "hang" "stage" "foot" !important;
+    padding:max(18px, env(safe-area-inset-top)) 18px 12px !important; row-gap:12px !important; column-gap:0 !important; }
+  ${HD} > .k-title > .sf-help-now::after { content:none; }
+  ${HD} > .k-hang { grid-area:hang; align-self:start; justify-self:stretch; min-width:0; max-height:none !important;
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+  ${HD} > .k-foot { grid-area:foot; }
+  ${HD} > .orr-help__stage { grid-area:stage; min-height:0 !important; min-width:0; }
+  ${HD} .orr-help__tabs { flex-direction:row !important; gap:18px !important; padding:0 28px 14px 0 !important; overflow-x:auto !important; scrollbar-width:none;
+    background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat !important; }
+  ${HD} .orr-help__tabs::-webkit-scrollbar { display:none; }
+  ${HD} .orr-help__tabs > li { width:auto !important; flex:none; }
+  ${HD} .orr-help__tabs > li::before { display:none; }
+  ${HD} .orr-help__tabs .sf-tab { width:auto !important; min-height:36px !important; padding:6px 0 4px !important; font-size:12px !important; letter-spacing:.14em !important; }
+  ${HD} .orr-help__tabs .sf-tab::before { left:50% !important; top:auto !important; bottom:-12px !important; width:2px !important; height:9px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab:focus-visible:not([aria-selected="true"])::before,
+  html.sf-gamepad-focus:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-help.orr-help .orr-help__tabs .sf-tab:focus:not([aria-selected="true"])::before { left:50% !important; width:2px !important; height:12px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::before { left:50% !important; bottom:-14px !important; width:9px !important; height:9px !important; margin:0 0 0 -4.5px !important;
+    clip-path:none !important; border-radius:50% !important; filter:none !important; background:rgb(${HOT}) !important; box-shadow:0 0 8px rgb(255 244 222 / .55) !important; }
+  ${HD}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 8px rgb(255 217 140 / .7) !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:none !important; display:none !important; }
+  ${HD} .orr-help-controls { grid-template-columns:minmax(0, 1fr) !important; column-gap:0 !important; height:100%; min-height:0; }
+  ${HD} .orr-help-controls__rig { display:none !important; }
+  ${HD} .orr-hreg__secs { gap:16px; }
+  ${HD} .orr-hreg__secword { font-size:12px !important; letter-spacing:.12em; }
+  ${HD} .orr-help-loops { height:100% !important; min-height:0 !important; }
+  /* list sections are one scrolling column: the list, then its instrument at a fixed height, then the reading */
+  ${HD} .orr-help-list, ${HD} .orr-help-list--ores { display:flex !important; flex-direction:column; gap:16px; height:100%; min-height:0;
+    overflow:hidden auto; overscroll-behavior:contain; scrollbar-width:none; }
+  ${HD} .orr-help-list::-webkit-scrollbar { display:none; }
+  ${HD} .orr-help-list > * { flex:none; min-height:0; height:auto !important; max-height:none !important; }
+  ${HD} .orr-help-list__hero { overflow:visible !important; }
+  ${HD} .orr-help-list__stage, ${HD} .orr-help-list--ores .orr-help-list__stage { display:flex !important; flex-direction:column; gap:12px; }
+  ${HD} .orr-help-list__stage > :not(.orr-help-reading) { flex:none; height:320px !important; min-height:0 !important; }
+  ${HD} .orr-help-list__stage > .orr-help-reading { max-height:none; overflow:visible; padding-bottom:18px; }
+  ${HD} .orr-help-list__stage > .orr-help-reading::before { content:none; }
+  ${HD} .orr-help-factions { display:flex !important; flex-direction:column; gap:16px; height:100%; min-height:0; overflow:hidden auto; scrollbar-width:none; }
+  ${HD} .orr-help-factions > * { flex:none; }
+  ${HD} .orr-help-factions__orbit { height:380px !important; }
+}
+/* ≤560: the crest names on the ring's east and west ran off the window ("RGE-LAYERS"); only the
+   chosen, hovered or focused crest names itself (each crest keeps its aria-label, and the reading
+   under the ring names the open power) */
+@media (max-width:560px) and (min-height:461px) {
+  ${HD} .orr-help-factions__orbit .orr-crest:not(.is-chosen, :hover, :focus-visible) .orr-crest__name { visibility:hidden; }
+}
+
 /* UI polish: no 1080p zoom on Help — EVERY KEY + rebound footnote tangle under 1.12; contrast/foot rail carry the pass */
 ${SCROLL_EXTENT_CSS}
 @media (forced-colors: active) {
