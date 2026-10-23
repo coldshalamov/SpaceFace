@@ -9,7 +9,7 @@ import { makeShipEntitySpec, ships as shipsProto } from '../src/systems/ships.js
 import { cargo as cargoProto } from '../src/systems/cargo.js';
 import { tetherGameplay as tetherProto } from '../src/systems/tetherGameplay.js';
 import { shipjack as shipjackProto } from '../src/systems/shipjack.js';
-import { captureReadiness, normalizeShipjack, vesselForEntity } from '../src/shipjack/model.js';
+import { captureReadiness, normalizeShipjack, vesselForEntity, queryShipjack } from '../src/shipjack/model.js';
 import { traffic as trafficProto } from '../src/systems/traffic.js';
 import { npcJobsRuntime as npcJobsProto } from '../src/systems/npcJobsRuntime.js';
 import { hash32 } from '../src/core/rng.js';
@@ -88,7 +88,23 @@ test('real scan, crew passage, stable port, custody and vulnerable crossing oper
     assert.equal(rt.state.playerId, rt.player.id);
     assert.equal(rt.state.player.ownedShips.length, 2);
     assert.equal(rt.player.hull, 61); assert.equal(rt.target.hull, 45);
+    assert.ok(queryShipjack(rt.state,rt.target.id).actions.some(row=>row.action==='tow'),'reverse handoff must leave a public tow route for the retained prize');
   } finally { rt.dispose(); }
+});
+
+test('live distress marks the actual hull without falsely invoking defeated-player recovery', async()=>{
+  const rt=await runtime();
+  try{
+    let wreckRecoveryRequests=0;
+    rt.bus.on('player:recoveryRequested',()=>wreckRecoveryRequests++);
+    const result=rt.system.command({action:'distress'});
+    assert.equal(result.ok,true);
+    assert.match(result.reason,/No rescue tow has accepted/);
+    assert.equal(wreckRecoveryRequests,0);
+    assert.equal(vesselForEntity(rt.state,rt.player).beacon,true);
+    assert.equal(rt.state.playerId,rt.player.id);
+    assert.equal(rt.player.hull,61);
+  }finally{rt.dispose();}
 });
 
 test('remote parked hull survives normalized save, sector reentry twice and source drive damage without cloning', async () => {

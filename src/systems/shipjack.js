@@ -44,7 +44,12 @@ export const shipjack = {
       const e=this.state.entities.get(p.fromId),v=vesselForEntity(this.state,e);
       if(v){this.snapshot(v,e);v.location.kind='berth';v.location.stationId=this.state.ui?.dockedStationId;v.location.entityId=null;}
     });
-    on('dock:docked',p=>this.berthAt(p?.stationId));
+    on('dock:docked',p=>{
+      this.berthAt(p?.stationId);
+      // Station presentation suspends full-tick systems. Work that matured in flight
+      // must settle at this physical arrival, before that suspension takes effect.
+      if(isBlackFlagAdventure(this.state))advanceYardOperations({state:this.state,bus:this.bus,registry:this.registry});
+    });
     on('combat:surrendered',p=>{
       if(!isBlackFlagAdventure(this.state)||p?.entityId===this.state.playerId)return;
       const e=this.state.entities.get(p?.entityId);if(!e)return;
@@ -111,7 +116,13 @@ export const shipjack = {
     if(state.mode!=='flight'||state.ui?.docked)return deny('Undock before approaching a vessel.');
     const pilot=state.entities.get(state.playerId);
     if(!pilot?.alive)return deny('No living pilot can authorize this action.');
-    if(payload.action==='distress'){this.bus.emit('player:recoveryRequested',{reason:'shipjack_distress'});return this.result(payload,{ok:true,reason:'Distress sent through the existing rescue service.'});}
+    if(payload.action==='distress'){
+      const active=vesselForEntity(state,pilot)||this.admit(pilot,{playerOwned:true,ownerId:'player'});
+      if(!active)return deny('The distress registry is full; your live hull has not been moved.');
+      active.beacon=true;this.snapshot(active,pilot);this.dirty();
+      this.bus.emit('shipjack:distress',{vesselId:active.vesselId,sectorId:currentSector(state),pos:vec(pilot.pos)});
+      return this.result(payload,{ok:true,reason:'Distress beacon marked. No rescue tow has accepted. Return to your retained hull, or use emergency thrust to reach a repair berth.'});
+    }
     const entity=state.entities.get(payload.targetId ?? state.player.targetId);
     const view=queryShipjack(state,entity?.id);
     if(!view.eligible)return deny(view.reason || 'This vessel cannot accept a helm transfer.');
@@ -323,7 +334,7 @@ export const shipjack = {
     const receiver=encounter&&STATIONS.get(encounter.stationId);
     const pos=toReceiver&&receiver?this.stationEntity(receiver.id)?.pos:sectorLocalToGlobalForSector(v.location.pos,v.location.sectorId);
     const sectorId=toReceiver&&receiver?receiver.sectorId:v.location.sectorId;
-    this.bus.emit('ui:setCourse',sectorId!==currentSector(this.state)?{sectorId}:{sectorId,pos:vec(pos),label:toReceiver&&receiver?receiver.name:v.name,targetEntityId:toReceiver?null:v.location.entityId});
+    this.bus.emit('ui:setCourse',sectorId!==currentSector(this.state)?{sectorId}:{sectorId,pos:vec(pos),label:toReceiver&&receiver?receiver.name:v.name,targetEntityId:toReceiver?null:v.location.entityId,rendezvous:!toReceiver&&v.location.entityId!=null});
     this.bus.emit('shipjack:route',{vesselId,sectorId:v.location.sectorId,pos:vec(pos),label:v.name});
     return this.result({action:'navigate'},{ok:true,reason:`${v.name}: ${v.location.kind}, ${v.location.sectorId}. Beacon route requested.`});
   },

@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createSimulation } from '../src/core/sim.js';
+import { lawSecurity } from '../src/systems/lawSecurity.js';
+import { heat, THRESHOLD } from '../src/systems/heat.js';
+import { shipjack } from '../src/systems/shipjack.js';
+import { admitVessel } from '../src/shipjack/model.js';
+import { wantedReasonText } from '../src/ui/wantedReason.js';
+
+test('ship theft becomes WANTED only after real law jurisdiction and witnesses, exactly once',t=>{
+  const sim=createSimulation({seed:4242,systems:[lawSecurity,heat,shipjack]});
+  t.after(()=>sim.dispose());
+  const {state}=sim;
+  state.mode='flight';state.world.currentSectorId='sector_tethys_junction';
+  state.world.sectors ||= {};
+  state.world.sectors.sector_tethys_junction={id:'sector_tethys_junction',factionId:'faction_scn',security:.9,tier:0};
+  const pilot=sim.spawn({type:'ship',team:0,pos:{x:250,z:10},radius:8,hull:200,hullMax:200});
+  state.playerId=pilot.id;state.player.heat=0;
+  const target=sim.spawn({type:'ship',team:2,factionId:'faction_mts',pos:{x:260,z:0},radius:8,hull:80,hullMax:100,data:{defId:'ship_hornet'}});
+  const vessel=admitVessel(state,target,{origin:'law:blackbird',ownerId:'corporate_blackbird_registry'});
+  vessel.custodian='player';vessel.signature.broadcastFlagged=true;
+  const jack=sim.registry.get('shipjack');
+  assert.equal(jack.reportTheft(vessel,target).accepted,false,'an isolated theft cannot invent a lawful witness');
+  assert.equal(state.player.heat,0);
+  sim.spawn({type:'station',team:2,factionId:'faction_scn',pos:{x:0,z:0},radius:42,data:{stationId:'station_customs',dockRadius:72,factionId:'faction_scn'}});
+  sim.spawn({type:'ship',team:2,factionId:'faction_scn',pos:{x:300,z:120},radius:9,hull:100,hullMax:100,data:{worldRecordId:'wr_black_flag_patrol',ai:{lawful:true,archetype:'patrol_lawman'}}});
+  const receipt=jack.reportTheft(vessel,target);
+  assert.equal(receipt.accepted,true);
+  assert.ok(receipt.witnessCount>0);
+  assert.ok(state.player.heat>=THRESHOLD,'witnessed acquisition must create an actionable hunt');
+  assert.match(wantedReasonText(null,state.player),/SHIP THEFT/);
+  assert.equal(vessel.title,'disputed');
+  const paid=state.player.heat;
+  assert.equal(jack.reportTheft(vessel,target).incidentReceiptId,receipt.incidentReceiptId);
+  assert.equal(state.player.heat,paid,'reinspection must not price the same theft again');
+  vessel.signature.forged=true;
+  assert.equal(state.player.heat,paid,'broadcast forgery cannot erase a witnessed incident');
+});
