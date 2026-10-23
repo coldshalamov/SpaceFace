@@ -1,6 +1,9 @@
 <!-- LIFETIME: DURABLE -->
 # Rhea's rescued seam miner survives Continue
 
+> Historical initial qualification. The world-owner omission and subsequent person/body identity repair are documented in [RHEA_WORLD_RETURN_IDENTITY_2026-10-23.md](RHEA_WORLD_RETURN_IDENTITY_2026-10-23.md). The old missing-onboarding diagnosis below was repaired upstream and is not current.
+
+
 This is a narrow correction to an existing living-world consequence, not a new worker controller or rescue economy. Published/tested/integrated/accepted remain separate states.
 
 ## Existing place and consequence
