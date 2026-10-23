@@ -140,7 +140,17 @@ export function padFocusTarget(items, active, dir) {
       return away && typeof away.focus === 'function' ? away : null;
     }
   }
-  const next = spatialFocusTarget(items, active, dir);
+  let next = spatialFocusTarget(items, active, dir);
+  // entering a grouped dial from outside (Down from the contract link) lands on the row's first
+  // verb, not whichever verb sits under the link's centre
+  const into = (dir === 'up' || dir === 'down') && next ? padGroupedHost(next) : null;
+  if (into && !(active && typeof into.contains === 'function' && into.contains(active))) {
+    const g = padGroupOf(next, into);
+    const run = items.filter((el) => into.contains(el));
+    let at = run.indexOf(next);
+    while (g != null && at > 0 && padGroupOf(run[at - 1], into) === g) at -= 1;
+    if (at >= 0) next = run[at];
+  }
   // the geometric fallback only ever hands focus to something that takes it
   return next && typeof next.focus === 'function' ? next : null;
 }
