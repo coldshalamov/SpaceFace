@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 
-## Latest verified delivery and active-work addendum: 2026-10-23 11:35 UTC
+## Latest verified delivery and active-work addendum: 2026-10-23 11:44 UTC
 
 All eleven goals remain OPEN. This addendum supersedes earlier current-status prose, not historical evidence, scope, or acceptance boundaries.
 
@@ -9,7 +9,7 @@ All eleven goals remain OPEN. This addendum supersedes earlier current-status pr
 - The Kessler option “Show the weight slip” surfaces retained actual mass/declaration/evidence facts from current dock context, rejecting stale context and distinguishing filed from unfiled. Existing Bay 7 and merchant choices remain. No confession, guilt, immunity, reward, or new ledger is inferred. Narrow Bar UI hint tests cover 0/1/3/4/10 options; not browser or rendered visual acceptance. The source-grounded Kessler study labels canon, inference, and new dialogue.
 - Actual integrated native Rope Scale remains RED because separately owned mission-target adoption replaces the asteroid target while attachment still resolves target2. The isolated gated diagnostic passes actual Rapier-loaded samples and existing docking/Helios/cargo/filer seams, but is not shipped or native acceptance. No `missions.js` production edit. Root compared exercised Rope source modules to public master; exercised Kessler dependencies were also qualified, while telemetry/law dependencies were not exercised by that Kessler suite.
 - Exact-head main check [39946811936 / #5932](https://github.com/coldshalamov/SpaceFace/actions/runs/39946811936) is running. Earlier-head run `39945980680 / #5929` was cancelled after the head advanced; no manual cancellation. The publisher verified all 13 PR paths against both carriers. Synthetic merge `9fc2c29320f2c0a4967c46919abe8dab8c40d80a` combines current master `1c3db823bd8ddc6782a676b8c459404daad2d1c1` with PR544 head, but no local requalification on that newer master is claimed. Mobile run [39946812076 / #523](https://github.com/coldshalamov/SpaceFace/actions/runs/39946812076) failed both shards; artifacts show the same six mobile-probe-startup tests, with no Rope/Kessler tests included. This does not establish a Rope/Kessler cause.
-- New worker-motive encounter work is source investigation only; no runtime path is allocated yet. Next: obtain exact-head CI attribution, then owner-coordinate the mission adoption repair and repeat actual native qualification; ordinary unmodified flight and visual acceptance remain separate. Continue grounded world work without closing any larger goal.
+- Next for Rope Scale: obtain exact-head CI attribution, then owner-coordinate the separately owned mission-adoption repair and repeat actual native qualification; ordinary unmodified flight and visual acceptance remain separate. The Cut intake courtesy allocation is underway but has no pass or acceptance claim. Continue grounded world work without closing any larger goal.
 
 
 ## Latest verified delivery and active-work addendum: 2026-10-23 11:12 UTC
@@ -111,7 +111,7 @@ PR487 main run https://github.com/coldshalamov/SpaceFace/actions/runs/3970960863
 ## SF-MOTIVES
 - Outcome: character and faction wants, fears, obligations, beliefs and conflicts actively drive coherent playable development grounded in established lore and actual behavior.
 - State: OPEN. The canon/inference/proposal study, Hesper receipt readout and Cut receiving voice are published in open draft PR532/PR531, not merged or accepted.
-- Owner and next action: dot. Plan a receiving institution's response/consequence with a safe dependency plan preserving Rhea radio and active owners; this has no new source allocation yet. Existing voices express care/discretion without invented patients or delays. Do not edit active `npcJobsRuntime` owners. Physical Medicine First is future only; berth-priority remains a proposal.
+- Owner and next action: dot. Active source allocation: implement source-grounded Cut intake courtesy in new `src/world/cutIntakeCourtesy.js`, with `src/systems/npcJobsRuntime.js` limited to import and `_updateBerthHold` hunks, plus `test/cut-intake-courtesy.test.mjs`, fixture, and report. Existing `berthHold` is the sole pause authority; the bounded one-slot token on the existing body AI record uses existing persistence. Scope is ore-carrying Cut haulers, not a guaranteed fixed Ossa actor. Exact PR480 comparison established non-overlap; preserve Orchard `_stepTowAssist` interception and all other owners. No serialize/deserialize, traffic, or `worldRecords` edits. Baseline and implementation are underway; no pass/native/visual acceptance claim yet. Receiving-institution consequence planning remains future; do not invent patients or delays. Physical Medicine First is future only; berth-priority remains a proposal.
 - Awaiting user: none.
 
 ## SF-GAME
