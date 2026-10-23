@@ -47,6 +47,7 @@ Current save version: `19`
 - `crafting`
 - `sectorSim`
 - `worldPressure`
+- `lineProgression`
 - `npcJobs`
 - `traffic`
 - `claims`
@@ -264,6 +265,7 @@ Current save version: `19`
 | `$.lastShift` | null | null |
 | `$.latchNine` | null | null |
 | `$.lawSecurity` | object | {} |
+| `$.lineProgression` | object | {} |
 | `$.livingPoiBehaviors` | object | {} |
 | `$.lossLedger` | object | {} |
 | `$.mercyService` | null | null |

@@ -924,6 +924,9 @@ export const save = {
       // §34 rows 520–523/549: the world-pressure bag (tide, gate audits, Slow Gray,
       // colossus remains) — owner-serialized, bounded on normalize (v19).
       ['worldPressure', () => this._callSerialize('worldPressure') || {}],
+      // LINE-03 rows 498–501: tonnage/class/stamp bag — owner-serialized, old saves
+      // normalize to a fresh bag (additive, no envelope bump).
+      ['lineProgression', () => this._callSerialize('lineProgression') || {}],
       ['npcJobs', () => this._callSerialize('npcJobsRuntime') || {}], // PQ-014 live NPC job bag (v12)
       ['traffic', () => this._callSerialize('traffic') || {}],
       ['claims', () => this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] })],
@@ -1089,6 +1092,8 @@ export const save = {
     // the envelope checksum is insertion-order sensitive.
     data.worldPressure = this._callSerialize('worldPressure') || {};
     yield 'serialize:worldPressure';
+    data.lineProgression = this._callSerialize('lineProgression') || {};
+    yield 'serialize:lineProgression';
     data.npcJobs = this._callSerialize('npcJobsRuntime') || {}; // PQ-014 live NPC job bag (v12)
     yield 'serialize:npcJobs';
     data.traffic = this._callSerialize('traffic') || {};
@@ -6909,6 +6914,7 @@ export const save = {
       // §34 world-pressure bag (v19): absent key (older saves) restores the fresh
       // bag — tide flat at the sea floor, no audits filed, Slow Gray at the start index.
       yield* this._callDeserializeChunked('worldPressure', data.worldPressure);
+      yield* this._callDeserializeChunked('lineProgression', data.lineProgression);
       yield 'world-pressure-restored';
       // PQ-014 live NPC jobs. All hulls were cleared above, so every restored job comes back VIRTUAL
       // and re-links to its rematerialized hull by worldRecordId on the next sector enter. Absent in
