@@ -1,5 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 
+## Final scoped publication recovery: 2026-10-23 21:41 UTC
+
+All twelve goals remain OPEN. The model bank is still published in draft PR562; the runtime union remains preserved but unpublished.
+
+The parts-library publication step is now solved. A smaller one-entry tree produced the verified 844,265-byte blob `f71aedd745f4fc9cb28854ac56b7772b0bdc7c20` in tree `7058ce2dcde081704fd14ba30b0de07032bc4b65`. This supersedes the earlier missing-parts-library status.
+
+Only the two census objects remain missing: JSON `b9e056a4db97817bcc61fd6fc6774678cb47d00c` and generated JavaScript `20ecdbead6d109a7412c3bf5b43284bc78fdfc1a`. The single-entry JSON attempt stalled and was interrupted; its expected tree and blob still returned 404 at 21:40:18 UTC. The generated-JavaScript single-entry attempt was not made. No further large writes are being attempted through this stalled route. No runtime commit or branch update exists. The source delta, full 47-path manifest and successful-object ledger remain durably preserved; do not recreate successful objects or confuse them with a completed delivery. This is scoped connector transport behavior, not an established authentication problem, user denial or need for user action.
+
+Independent Helios work continues under its existing author and reviewer. It addresses the existing candle procession's premature completion using the five original hulls, work marks, native navigation and the existing saved receipt. Actual flight testing is in progress; this work is not published or accepted. The browser approval hold is unchanged. Native fixtures, serialization probes and source work do not close full player-facing Continue, ordinary flight, visual-quality, performance or whole-game goals.
+
+
 ## Runtime publication checkpoint: 2026-10-23 21:23 UTC
 
 All twelve goals remain OPEN. The Archive model bank remains published in draft [PR562](https://github.com/coldshalamov/SpaceFace/pull/562); its exact-head [CI run 40020337693](https://github.com/coldshalamov/SpaceFace/actions/runs/40020337693) ended FAILURE at 21:05:27 UTC. The focused bank gate did not run because static shard 1's command group was skipped after the visual-continuity prerequisite. This is not a hosted asset-test pass or a finding that the asset caused unrelated failures.
