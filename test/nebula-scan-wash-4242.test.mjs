@@ -42,6 +42,7 @@ test('seed 4242 the live hazard tick records nebula only while the hull is insid
     _emitHazardPresence() {},
     _hazardEffectiveIntensity() { return 0.5; },
     _applyRadiationTick() {},
+    _applyDebrisCrossings: world._applyDebrisCrossings,
   };
   world._tickHazards.call(host, 1 / 60, state);
   assert.equal(state.world.hazardPresence.nebula, true);
