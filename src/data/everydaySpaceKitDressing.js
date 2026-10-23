@@ -8,6 +8,7 @@
 
 import { OCCUPATIONAL_PLACE_RADIUS } from './occupationalYardDressing.js';
 import { tethysWatchOverlookForSector } from './tethysWatchOverlook.js';
+import { veilResearchEdgeForSector } from './veilResearchEdge.js';
 
 export const EVERYDAY_SPACE_KIT_SALT = 'everydaySpaceKit';
 export const EVERYDAY_SPACE_KIT_MAX_PER_SECTOR = 6;
@@ -249,6 +250,10 @@ export function everydaySpaceKitDressingForSector(sectorId, paletteClass, rng, a
     ? EVERYDAY_SPACE_KIT_MAX_CORE_PER_SECTOR
     : EVERYDAY_SPACE_KIT_MAX_PER_SECTOR;
   const models = allowedModels(sectorId, klass);
+  // Veil composes existing occupational/kit stock through this same placement
+  // owner. Its authored-only locker is not a forty-seventh random-kit model.
+  const researchEdge = veilResearchEdgeForSector(sectorId, anchors);
+  if (researchEdge) return researchEdge;
   // A place, not four more props: Tethys spends its existing core-kit allocation
   // on two readable pull-offs beside the log yard. The world owner still handles
   // placement, measured skins and residency. Other sectors retain their picker.
