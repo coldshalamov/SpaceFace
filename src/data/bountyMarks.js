@@ -70,6 +70,25 @@ export const MARK_HAIL_LINES = Object.freeze([
   'You read the writ. Now read the room.',
   'They priced me cheap. You will feel the difference.',
   'Dead was cheaper than quiet. Their arithmetic, not mine.',
+  'A bounty hunter with a clean registry. Rare bird.',
+  'I counted the tolls on the way in. Somebody wants me bad.',
+  'Turn around and the writ dies of old age. Your call.',
+  'The station that posted me cheats its scales. Ask anyone.',
+  'I bribed two clerks to keep this posting low. Money wasted.',
+  'You are early. The last one knocked first.',
+  'Writ says armed and dangerous. Writ is right about half.',
+  'I know this lane better than the people who patrol it.',
+  'How much am I worth this week? Tell me before you miss.',
+  'The poster got my good side. The guns got the rest.',
+  'Company. I had started to think the price was insulting.',
+  'Whatever they told you I did, the report undersold it.',
+  'You flew a long way to read me my own paperwork.',
+  'I keep count of hunters who found me. It is a short list.',
+  'The wall wants a body. You flew out here to be one.',
+  'Careful, courier. This field eats the confident.',
+  'They swore out the writ in a room with no windows. Fitting.',
+  'Last hunter is still drifting out past the gate, if you want a look.',
+  'Bring the writ home framed. It will be worth more than me.',
 ]);
 
 /**
@@ -158,6 +177,23 @@ function clearOfLawfulVolumes(localX, localZ, scatter, volumes) {
 }
 
 const _sectorNameById = new Map(SECTORS.map((sec) => [sec.id, sec && sec.name]));
+
+/**
+ * RC-MISSION-VOICE: the mark rides for a faction that FITS the sector — the writ names who the
+ * person runs with, and a posted mark in Drift belt does not answer to the same flag as one in
+ * Concord space. The pool is the factions actually present: the sector's owner plus every
+ * faction its stations fly, deduplicated in authored order. A sector with no factioned sites
+ * still yields its owner; a bare sector yields the Reach — someone always wants somebody.
+ */
+export function markFactionPoolFor(sectorId, sectorDef) {
+  const pool = [];
+  const push = (id) => { if (id && !pool.includes(id)) pool.push(id); };
+  push(sectorDef && sectorDef.factionId);
+  for (const station of (sectorDef && sectorDef.stations) || []) push(station && station.factionId);
+  for (const poi of (sectorDef && sectorDef.pois) || []) push(poi && poi.factionId);
+  if (!pool.length) pool.push('faction_reach');
+  return pool;
+}
 
 /**
  * The same risk-tier archetype pool missions._spawnTargetsFor draws anonymous bounties from —
@@ -257,7 +293,8 @@ export function rollBountyMark({ seed, offerId, sectorId, riskTier = 0, sectorDe
     label: `${name.toUpperCase()} — WARRANT`,
     role: 'board_writ',
     archetype,
-    factionId: 'faction_reach',
+    factionId: markFactionPoolFor(sectorId, sectorDef)[hash32(h0, 'faction')
+      % markFactionPoolFor(sectorId, sectorDef).length],
     ...(place || {}),
   };
 }

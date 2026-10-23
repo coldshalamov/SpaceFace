@@ -454,7 +454,7 @@ export const missionBoardOps = {
     // whichever authored story row the board is supposed to lead with — caught by
     // check:mission-standing-ladder, which asserts a branch station boards its tagged intro FIRST.
     // The heist is a standing offer, not story progress; it sits with the rest of the board.
-    board.slots.push(buildHeistOffer({ epoch }));
+    board.slots.push(buildHeistOffer({ epoch, observed: this._heistObserved() }));
     return true;
   },
 
@@ -472,7 +472,7 @@ export const missionBoardOps = {
       return false;
     }
     if (board.slots.some((offer) => offer && offer.type === BREAKAWAY_RECOVERY_TYPE)) return false;
-    board.slots.push(buildBreakawayOffer({ epoch }));
+    board.slots.push(buildBreakawayOffer({ epoch, observed: this._heistObserved() }));
     return true;
   },
 
@@ -489,7 +489,7 @@ export const missionBoardOps = {
       return false;
     }
     if (board.slots.some((offer) => offer && offer.type === COUNTERWEIGHT_WATCH_TYPE)) return false;
-    board.slots.push(buildCounterweightOffer({ epoch }));
+    board.slots.push(buildCounterweightOffer({ epoch, observed: this._heistObserved() }));
     return true;
   },
 
@@ -541,12 +541,20 @@ export const missionBoardOps = {
     // row at the head of the board. The player is pointed at it by the recovery cue below.
     board.slots.push(buildHeistOffer({
       epoch: this._epoch(), attempt: attempt + 1, sourceMissionId: mission.id,
+      observed: this._heistObserved(),
     }));
     this.bus.emit('mission:updated', { missionId: null, stationId: PQ019C_HEIST_STATION_ID });
     // The recovery cue rides the same single voice id as the rest of the run, so the last thing the
     // player hears about a lost capsule is where the second pass is posted.
     sayHeistCue(this._heistCtx(), mission.heist, 'recovery');
     return true;
+  },
+
+  // RC-MISSION-VOICE: the durable casing ledger the Tethys rows read — plain fact-id keys so a
+  // missing/foreign slice still mints a truthful offer.
+  _heistObserved() {
+    const observed = this.state && this.state.heistFacilities && this.state.heistFacilities.observed;
+    return observed && typeof observed === 'object' ? observed : null;
   },
 
   _heistCtx() {

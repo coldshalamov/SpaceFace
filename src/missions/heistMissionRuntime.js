@@ -75,6 +75,7 @@ import {
   COUNTERWEIGHT_WATCH_TUNING,
   PQ019C_HEIST_TUNING,
   PQ019C_RECOVERABLE_OUTCOMES,
+  RETRY_WATCH_PRESSURE,
   heistMissionPolicy,
 } from '../data/heistMission.js';
 import { makeEnemySpawnSpec } from '../systems/combat.js';
@@ -158,7 +159,7 @@ export function createHeistRecord({
     // PQ-195.05: the bounded pressure element. `pressureSpawned` is durable (a reloaded run does
     // not get a second element — its raiders were transient anyway); the entity ids are stripped
     // on serialize like every other live handle.
-    ...(scoped ? { pressureSpawned: false, pressureEntityIds: [] } : {}),
+    ...(scoped || attempt > 0 ? { pressureSpawned: false, pressureEntityIds: [] } : {}),
     // PQ-195.06: the ONE bounded wreck recovery a destroyed assembly may leave. Durable — the
     // marker id recorded here is the idempotency key, so a duplicate destroy callback or a
     // reloaded record can never offer the recovery twice.
@@ -253,6 +254,8 @@ export const HEIST_CUE_TEXT = Object.freeze({
   abandoned: 'Capsule run abandoned',
   denied: 'Launcher refused the schedule — no capsule run is available',
   recovery: 'The Quiet will fund one more pass at a reduced rate — check the Tethys board',
+  // RC-MISSION-VOICE: the retry room is not the first room — the lane is staked out.
+  launched_retry: 'Capsule away — and the yard remembers: pickets already hold the corridor',
   receiver_refused: 'Receiver could not take the capsule — no delivery, so nothing is paid',
 });
 
@@ -393,7 +396,8 @@ export const heistMissionRuntime = {
     record.capsuleSeen = true;
     applyTransition(record.arbiter, 'launched');
     this._spawnPressure(ctx, record, liveEntity(ctx, record.capsuleEntityId));
-    sayHeistCue(ctx, record, 'launched');
+    sayHeistCue(ctx, record, 'launched',
+      (record.attempt | 0) > 0 ? HEIST_CUE_TEXT.launched_retry : null);
     return true;
   },
 
@@ -539,9 +543,14 @@ export const heistMissionRuntime = {
   /** Spawn the run's pressure element. Bounded once per run by `record.pressureSpawned`. */
   _spawnPressure(ctx, record, capsule) {
     if (!record || record.settled || !capsule) return 0;
-    if (heistLaunchVariant(record.variantId).id !== BREAKAWAY_THIRD_SHIFT_VARIANT_ID) return 0;
+    const isBreakaway = heistLaunchVariant(record.variantId).id === BREAKAWAY_THIRD_SHIFT_VARIANT_ID;
+    // RC-MISSION-VOICE: the retry room remembers — a second lift on the capsule run launches into
+    // a staked-out lane. First attempts and unknown variants stay exactly as they always were.
+    const retryWatch = !isBreakaway && (record.attempt | 0) > 0;
+    if (!isBreakaway && !retryWatch) return 0;
     if (record.pressureSpawned) return 0;
     record.pressureSpawned = true;
+    const pool = retryWatch ? RETRY_WATCH_PRESSURE : BREAKAWAY_PRESSURE;
     const helpers = ctx?.helpers || {};
     const spawn = helpers.spawnEntity;
     const budget = helpers.spawnBudget;
@@ -549,7 +558,8 @@ export const heistMissionRuntime = {
     // not an unbudgeted one.
     if (typeof spawn !== 'function' || !budget || typeof budget.request !== 'function') return 0;
     const requester = `heist:${record.missionId}`;
-    const want = BREAKAWAY_PRESSURE.lightCount + 1; // two lights + the one optional specialist
+    const want = retryWatch ? RETRY_WATCH_PRESSURE.lightCount
+      : BREAKAWAY_PRESSURE.lightCount + 1; // two lights + the one optional specialist
     const grant = budget.request(want, requester);
     if (grant <= 0) return 0;
     const rng = ctx?.state?.rng;
@@ -558,21 +568,21 @@ export const heistMissionRuntime = {
     const spawned = [];
     try {
       for (let i = 0; i < grant; i++) {
-        const specialist = i >= BREAKAWAY_PRESSURE.lightCount;
+        const specialist = !retryWatch && i >= BREAKAWAY_PRESSURE.lightCount;
         const typeId = specialist
           ? BREAKAWAY_PRESSURE.specialistTypeId
-          : BREAKAWAY_PRESSURE.lightPool[i % BREAKAWAY_PRESSURE.lightPool.length];
-        const level = specialist ? BREAKAWAY_PRESSURE.specialistLevel : BREAKAWAY_PRESSURE.lightLevel;
+          : pool.lightPool[i % pool.lightPool.length];
+        const level = specialist ? BREAKAWAY_PRESSURE.specialistLevel : pool.lightLevel;
         // Each hull enters on its own bearing around the assembly so the pressure reads as a run
         // on the load, not a stacked formation.
         const angle = bearing + (i * Math.PI * 2) / grant;
         const pos = {
-          x: anchor.x + Math.cos(angle) * BREAKAWAY_PRESSURE.spawnDistanceWu,
-          z: anchor.z + Math.sin(angle) * BREAKAWAY_PRESSURE.spawnDistanceWu,
+          x: anchor.x + Math.cos(angle) * pool.spawnDistanceWu,
+          z: anchor.z + Math.sin(angle) * pool.spawnDistanceWu,
         };
         const spec = makeEnemySpawnSpec(typeId, level, pos, {
           startedTick: intTick(ctx?.state?.tick),
-          motive: BREAKAWAY_PRESSURE.motive,
+          motive: pool.motive,
         });
         spec.data = spec.data || {};
         spec.data.missionTag = record.missionId;
