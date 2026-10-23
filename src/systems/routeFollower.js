@@ -55,6 +55,7 @@
 // systems array, so it cannot move the 47a golden (verified empirically with check:sim:compare).
 
 import { buildAtlasIndex, gateNodeId } from '../core/atlasIndex.js';
+import { gateAuditFor, gateTransitClosed } from '../data/worldPressure.js';
 import { estimateBrakingSolution } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 
@@ -157,6 +158,16 @@ function playerDriveOut(state) {
   const runtime = book[String(player.id)];
   const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
   return !!(drive && drive.effectiveDisabled === true);
+}
+
+function weldedGateLeg(legs, state) {
+  if (!Array.isArray(legs)) return null;
+  for (let i = 0; i < legs.length; i++) {
+    const leg = legs[i];
+    if (!leg || leg.via === 'drive') continue;
+    if (gateTransitClosed(state, leg.fromSectorId, leg.toSectorId)) return leg;
+  }
+  return null;
 }
 
 function decomposeRoute(route, atlas) {
@@ -445,6 +456,14 @@ export const routeFollower = {
     }
 
     const existing = nav.executor;
+    const welded = weldedGateLeg(decomposeRoute(route, this._atlas), state);
+    if (welded) {
+      const audit = gateAuditFor(state, welded.fromSectorId, welded.toSectorId);
+      const name = audit && audit.gateName ? audit.gateName : 'That gate';
+      this._emit('nav:routeExecutorDenied', { reason: 'gate-closed', toSectorId: welded.toSectorId });
+      this._emit('toast', { text: `${name} is welded shut — the route can't take it`, kind: 'warn', ttl: 2.2 });
+      return null;
+    }
     if (playerDriveOut(state)) {
       if (existing && existing.engaged === true) this.interrupt('drive-out');
       this._emit('nav:routeExecutorDenied', { reason: 'drive-out' });
