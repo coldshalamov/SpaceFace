@@ -63,3 +63,36 @@ The following isolated diagnostic change demonstrates the ownership defect; it i
      if (follow) {
        const exact = list.filter((e) => e && e.alive && !e.isPlayer && e.data
 ```
+
+
+## Hosted CI artifact diagnosis, 2026-10-23
+
+At PR544 head `16479eb5804a4e12aed7cf770f0f054d066dd9a1`, hosted run 39946811936 static-2 artifact 12498418671 reports two separate artifact failures. This diagnosis does not claim the whole static shard passes.
+
+### Preload delta and narrow repair
+
+Compared all production paths in public master `30bf3d57f416a9482f4ca565d20e0c7444da0846` to this head. The exact generator `scripts/sync-modulepreload.mjs` (blob ed4078b9a1c45a589eca874307600cd8499f5d69), index.html (30e86f03ce7ee723c96fa823da7ca5fe3acd6c8b), and all other unchanged source paths are identical. Applied that generator's static-import regex to every changed production module. No import edges are removed. Added edges are:
+- masslineTelemetry → cargoCustody;
+- barContacts → massSlipConversation;
+- massSlipConversation → cargoCustody.
+
+cargoCustody already belongs to the base closure: public registry ab927adefa7e3aa848bf802cad1a7d5ebf6d568e imports economyContracts 10ee18253edc6725a82d1284a4ed8fe17ead7985, which imports cargoCustody. The new helper's only import is cargoCustody. Consequently the paired graph difference has exactly one newly reachable module, massSlipConversation.js; its importer barContacts is already reachable. This is a bounded source-graph proof, not a fresh full generator execution against a complete checkout.
+
+The repair inserts only its sorted registry-wave preload line before missionDockAttention. Removing that exact line reproduces the original public index blob byte-for-byte. No old preload, manual wave, threshold, workflow, or held historical hunk is changed.
+
+Hosted output contains 145 missing registry imports and 16 stale preloads. This repair addresses our one introduced missing node; the other 144 missing imports and 16 stale entries remain inherited drift. The full preload check is therefore still expected RED. Do not bulk-regenerate that drift as part of this unit.
+
+### UI budget baseline remains open
+
+The budget checker, budgets.json (6130689ad60b32f976aabfd0e8b4dc2f2281d276), source-manifest.json (0c14eefc0016b9b2af879fd6eab0046d707071d9), and index are unchanged from public master. Inherited source staleness is independently demonstrated by index: current/base SHA256 9c0ad2b37bbea7acfa6a2cd5bf9f6d5cc58c3a83add010fc8d09465481432f87 differs from captured bf066ce07e1521476f134c560011fe39031771213c60e53f916a8f486ff24574. Likewise unchanged accessibility.js c465f65323ae21ea0803767f160c457c67a2c4b9 hashes to 43e22e22f3d37dedf859ed62c16b3a038e6144d3718a3d87716b6df52b448657, not captured f1decf95b3e617cb64be26c417110de02f28983e39e60ab6a5ad776bc726677f.
+
+Our Bar changes also alter rendered source, and the new preload line changes the document seed again. Inherited staleness is not permission to ignore those changes or stamp a new digest. Hosted head computes eb992b575c0009dfd974f0b4db28fec4ca264262dc1a8884ed161bc1c391b187 against baseline 3f560347c50f39b6e2ff044a8da7b3cf41d4a707455a2b6fbdb89aeec7d7183e. A real headed matrix capture and review remain necessary; none was run in this lane. Reported non-strict chart/range timing and flight DOM grammar debts are not newly measured regressions from this patch. No budget numbers, digest, thresholds, tests, or checker behavior are changed.
+
+The earlier run 39945980680 uploaded artifact 12498208423, but that artifact did not contain either command, so it is not paired executable baseline evidence. No aggregate suite or excluded anvil receiver test was run.
+
+
+### Adjacent acquisition fixture attribution
+
+Hosted `check-massline-acquisition-contract` passed59/60. Its T04 section5 fixture expected hostile50 but acquired station52. A focused paired control reproduces the same failure with the exact public-master cargo helper82f937 and the PR helper2cba, and with the telemetry/law proposal disabled or enabled. Telemetry/law are not loaded by this test. Public master and PR use identical test/tether/scoring blobs fee0ad2d/0862fec0/fa4a41e9. This is not attributed to the Rope evidence producer or helper addition.
+
+The fixture supplies aimWorld but no active aim-intent/pointer flag, so current acquisitionCursorActive disables cursor scoring and uses general precision selection. The intended hostile and asteroid are also placed inside the station envelope. Do not merely change the expected target or weaken the assertion. A separate owner-aligned fixture correction should represent real active cursor input and physically valid target geometry. No acquisition production or test file was changed in this increment.
