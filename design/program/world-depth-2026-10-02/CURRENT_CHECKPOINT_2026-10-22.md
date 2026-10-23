@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace current checkpoint
 
-## 23 October 2026, 00:32 UTC
+## 23 October 2026, 01:05 UTC
 
 All TEN goals remain OPEN. Publication, local checks and offline renders are not whole-game acceptance. Preserve [IMPLEMENTATION](IMPLEMENTATION.md), the [original twenty-concept map](TWENTY_CONCEPT_MAP.json), its [amendment](TWENTY_CONCEPT_AMENDMENT.md), the [build map](../../../build_map.md) and the [25-sector experience register](SECTOR_EXPERIENCE_REGISTER_2026-10-21.md#22-october-2026-verified-increment-update). The [previous checkpoint at 9180a640](https://github.com/coldshalamov/SpaceFace/blob/9180a640e63694708468ccab01e2a8f89c807098/design/program/world-depth-2026-10-02/CURRENT_CHECKPOINT_2026-10-22.md) archives detailed earlier results and recovery history. This concise current register replaces duplicated historical narration, not evidence or scope.
 
@@ -186,3 +186,15 @@ The final compiled metadata has contentHash 017fcb2943be0d3248e4c02ed57981c16365
 A requested Kiln GitHub blob-publication operation is now pending user action, surfaced once at 00:25. Do not cancel, reissue or reroute that held operation. No new asset commit or PR delivery is claimed yet. Continue independent final integration, scoped checks and preservation. All other held operations remain unchanged.
 
 The queued Market BUY checker change must not be implemented from the earlier accounting observation alone: fresh ownership inspection found open PR #463 at a6491a36653b86017614fe2500d6285cf9fca2aa with bounded liveness evidence and preserved original wait gate. A successful accounting receipt does not prove UI liveness; retain that owner's scope and do not replace its browser gate with an atomic state read merely to turn it green. Inspect this existing work before any subsequent allocation.
+
+## Reviewed Triton route and current delivery boundary, 23 October 01:05 UTC
+
+The fitted Kiln is a reviewed 21-path local increment with 14 unique source/native and compiled-admission tests, preserved registry rows and verified outside-VM recovery. It has no new repository commit yet. Publication status was reconciled after an interruption: the recipe blob 986d8a23d6ae278c8d8b8a877a0604043a1d4456 exists remotely; the 856,124-byte source GLB's expected blob 7593f99b98c7a3fd9b65d1338ad31efe45fb0d68 returned NOT_FOUND. That exact upload stopped at the already requested approval. No owner approval is known; do not cancel, reissue or reroute it. An unattached blob is not complete repository delivery. All other held operations remain unchanged.
+
+The next connected unit implements the existing Triton Field Lab route under CLAIM_TRITON_FIELD_LAB_2026-10-23.md. The placed sensor mast at local (1600,-700) formerly advertised triangulation but had no live plan; actual scanner pulses there produced zero progress. One bounded 300-WU authored interaction now coexists with unchanged generic Wake/Glow plans. Three separated bearings offer the normal station_triton causal mission; actual scanner, mission and economy owners then complete its neighboring Veil investigation once (seed4242:960 credits and13 research points). No new asset, global zone, physics, mission type or payout authority was added.
+
+Independent review found a stale-departure flaw in the first green candidate. The corrected transient lab-only presence guard rejects departed/wrong-sector pulses until valid epoch reentry; generic lifecycle and serialized state remain unchanged. Nine new cases and22 existing living-POI cases pass; root and reviewer reruns overlap these counts. Actual Save/load retains the accepted mission and resolved lab; incomplete bearings still reset under existing semantics. Generic/lab aftermath coexist and the existing six-day expiry remains. Evidence is accelerated owner/API, not native flight or live visual acceptance.
+
+Five reviewed files are locally committed and preserved in an independently read-back 74,898-byte/11-member recovery, SHA256 00290a89f48540277276187314219889359f9f09a61b2ae2804ac5cf24273a97. The rejected first candidate is also preserved, 59,266 bytes/10 members, SHA256 c9722bf26084dc05c9bca0a20611a376aaf7370aec2ca538989a69a204389beb. The CI graph expands309 to310 with prior entries unchanged; no aggregate ran locally. New draft publication is active, not yet verified. Latest read master remains5e5b and PR #515 remains09ecc, open/draft/unmerged.
+
+The existing causal-contract suite passes8/9 with an identical baseline extra destroyed tombstone after investigated. Its actual player-state meaning is being traced before any new correction is allocated. Do not suppress the failure or assume simple deduplication is the correct fix. Next actions: finish and verify Triton draft delivery/CI, keep Kiln's exact held upload intact, and continue only the evidence-backed causal-retirement unit. All ten goals and both continuation schedules remain open/unchanged.
