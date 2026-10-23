@@ -269,3 +269,6 @@ All twelve goals remain OPEN. PR518 is open/draft/unmerged and its exact-head wo
 
 Kite's Corner now has repeatable scripted native trace evidence (same entry/gate ticks 27/134; exits at tick 316 for medium Hornet radius 16 and tick 275 for wide approach; 53/46 post-solve 10 Hz poses; byte-identical repeats). This does not establish live game-camera/PBR acceptance. Draft PR558 publishes the station-presenter dead-wiring repair and focused test at head `700f106ddf23e9c9583ac865f143a25cb134eba8`; focused 3/3 and syntax check pass. Long Berth behavior was checked in an isolated VM only; full runtime/browser/native acceptance remains open. All goal markers and parking directives are unchanged.
 
+## Scope clarification: 2026-10-23 17:20 UTC
+
+All twelve goals remain OPEN. PR558 is only the three-path station-presenter prerequisite repair (removal of dangling `stationLife` wiring plus regression coverage); its bounded checks do not deliver the Kite's Corner program. Kite's viewer/tape/mount package remains unpublished; the mount is locally written and under review against the repaired source. The repeatable native recording is trace evidence only, not a published program, live camera, or acceptance. Do not conflate PR558 with Kite's experience delivery.

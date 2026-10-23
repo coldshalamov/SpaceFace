@@ -804,3 +804,6 @@ PR518's exact-head hosted workflow is terminal failure. The Triton field-lab, Tr
 
 Kite's Corner phase-1 recording now provides repeatable scripted/native trace measurements: entry/gate ticks 27/134 for both approaches, exits at tick 316 (medium Hornet, radius 16) and 275 (wide), and 53/46 post-solve poses at 10 Hz; repeats were byte-identical. This is not live camera/PBR or full game acceptance. Draft PR558 publishes the narrow dangling station-presenter wiring repair and focused regression test; focused 3/3 and syntax pass, with Long Berth resolution/arrival checked in an isolated VM only. Full runtime/browser/native acceptance remains open. Continue SF-WORLD-DIRECTION as primary creative work; Rope and Blind Welder remain parked.
 
+## Scope clarification: 2026-10-23 17:20 UTC
+
+All twelve goals remain OPEN. PR558 is only the three-path station-presenter prerequisite repair (removal of dangling `stationLife` wiring plus regression coverage); its bounded checks do not deliver the Kite's Corner program. Kite's viewer/tape/mount package remains unpublished; the mount is locally written and under review against the repaired source. The repeatable native recording is trace evidence only, not a published program, live camera, or acceptance. Do not conflate PR558 with Kite's experience delivery.

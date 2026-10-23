@@ -251,3 +251,6 @@ All twelve goals remain OPEN. Latest routing supersedes earlier pending CI state
 
 No goal closure or merge/deploy is implied. SF-WORLD-DIRECTION remains primary creative priority; Rope and Blind Welder remain parked.
 
+## Scope clarification: 2026-10-23 17:20 UTC
+
+All twelve goals remain OPEN. PR558 is only the three-path station-presenter prerequisite repair (removal of dangling `stationLife` wiring plus regression coverage); its bounded checks do not deliver the Kite's Corner program. Kite's viewer/tape/mount package remains unpublished; the mount is locally written and under review against the repaired source. The repeatable native recording is trace evidence only, not a published program, live camera, or acceptance. Do not conflate PR558 with Kite's experience delivery.
