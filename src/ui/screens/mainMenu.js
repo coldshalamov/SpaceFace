@@ -511,7 +511,7 @@ export const mainMenuScreen = {
       action,
       label: labels[action],
       ...(action === 'continue' ? { sub: 'Checking saves...', current: true } : {}),
-      ...(MODE_GLOSSES[action] ? { sub: MODE_GLOSSES[action] } : {}),
+      ...(MENU_MODE_GLOSSES[action] ? { sub: MENU_MODE_GLOSSES[action] } : {}),
       ...(action === 'quit' ? { danger: true } : {}),
     }));
     // The quiet line: reference and dev, at etch size, out of the way of the decision.
@@ -519,12 +519,12 @@ export const mainMenuScreen = {
     // Wave B11: Physics lab / Sandbox toy on front door.
     const asideItems = [
       { action: 'help', label: 'Help' },
-      { action: 'archive', label: 'Archive', sub: MODE_GLOSSES.archive },
-      { action: 'circuits', label: 'Circuits', sub: MODE_GLOSSES.circuits },
+      { action: 'archive', label: 'Archive', sub: MENU_MODE_GLOSSES.archive },
+      { action: 'circuits', label: 'Circuits', sub: MENU_MODE_GLOSSES.circuits },
       // Sandbox before Physics challenges: on the dial the line sets as three short lines (title
       // aside overlay), and the longest label closes the block on a line of its own.
-      { action: 'sandbox', label: 'Sandbox', sub: MODE_GLOSSES.sandbox },
-      { action: 'physics', label: 'Physics challenges', sub: MODE_GLOSSES.physics },
+      { action: 'sandbox', label: 'Sandbox', sub: MENU_MODE_GLOSSES.sandbox },
+      { action: 'physics', label: 'Physics challenges', sub: MENU_MODE_GLOSSES.physics },
     ];
 
     // The decorative legend rail is gone (2026-09-22). It was a 64x787 nine-slice plate whose only
