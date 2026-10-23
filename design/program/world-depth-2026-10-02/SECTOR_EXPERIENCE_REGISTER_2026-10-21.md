@@ -692,9 +692,13 @@ The study explicitly labels canon, inference and proposal. It grounds Nyx/Hesper
 
 Next: plan a receiving-institution response/consequence with a safe dependency plan preserving Rhea radio and active owners. Keep active `npcJobsRuntime` untouched; berth-priority remains proposal. Owner: dot. All eleven goals stay open.
 
-### Rope Scale evidence: telemetry to lawful filing, 23 October 2026 10:56 UTC
+### Rope Scale evidence: telemetry to lawful filing, 23 October 2026 11:12 UTC
 
-The next substantial unit is implementation underway on public integrated commit `0888974a1130c2869bd1743390cdca19c89278e8`, tree `93ea8c5444cf978253545ac504469fc3e6051660`. Intended grounded chain: a loaded massline held for 0.5 seconds measures actual target mass; existing economy records the resulting slip; lawful customs authority can file it. This is evidence of a recorded load, not proof of guilt. General native mission spawning and berth settlement already exist; the missing pieces are the massline telemetry producer and customs filing, not mission settlement. Scope is `masslineTelemetry.js`, `lawSecurity.js`, and authored/native tests only. Fresh PR/repository review found no current claims on these modules. `missions.js` remains actively owned and is explicitly untouched. Implementation has no completed test, publication, or acceptance claim yet; all eleven goals remain open.
+The active unit is scoped to `masslineTelemetry.js`, `lawSecurity.js`, and authored/native tests. On public integrated composition `0888974a1130c2869bd1743390cdca19c89278e8` (tree `93ea8c5444cf978253545ac504469fc3e6051660`), a loaded massline held 0.5 seconds should measure actual target mass, record through the existing economy slip, then permit filing with a lawful issuer. This shows recorded load, not guilt. General native mission spawning and berth settlement already work; the missing work is telemetry production and customs filing, not mission settlement.
+
+A gated in-memory diagnostic now passes 30 actual Rapier-loaded samples, the actual docking API, full Helios collider/berth/payout, and one lawful filing. The exact integrated native sequence is nevertheless RED: mission adoption replaces the asteroid target every 15 ticks while attachment still resolves target2. The native measured mass is 1,598 tonnes, not authored 40. The earlier station-collider attribution was wrong; the apparent trap came from early headless UI global lifetime, and the full collider now works.
+
+Only a minimal, gated `forEachFieldRock` adoption repair is proposed, coordinated with the existing mission owner, then followed by actual native recheck. `missions.js` is actively owned and must not be edited. Fresh ownership review found no claims on the two scoped production modules; no fix is completed or published. Independent review is in progress. This diagnostic is not current-game acceptance; no full unit pass or feature acceptance is claimed.
 
 ### Motive-driven deliveries and next narrative work, 23 October 2026 10:56 UTC
 
