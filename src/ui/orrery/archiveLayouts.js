@@ -464,8 +464,8 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:16px !important; }
   ${CX} .cx-reader__turn { column-gap:12px !important; }
 }
-/* ...and a short one (960×540): the scale's rungs and the foot close up so LEDGER clears CLOSE */
-@media (max-width:1100px) and (min-width:640px) and (max-height:640px) {
+/* ...and a short one (960×540, 1280×540): the scale's rungs and the foot close up so LEDGER clears CLOSE */
+@media (max-width:1400px) and (min-width:640px) and (max-height:640px) {
   ${CX} { row-gap:14px !important; }
   ${CX} > .k-hang { row-gap:10px; }
   ${CX} .cx-search .sf-codex-search { height:28px !important; }
@@ -475,6 +475,17 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-ladder .k-row { padding-top:4px !important; padding-bottom:2px !important; }
   ${CX} .cx-ladder .k-row::before { top:12px !important; }
   ${CX} > .k-foot .sf-back.k-word { padding:6px 0 8px !important; min-height:36px !important; }
+}
+/* a wide, short window (1280×540): the full-size dials made the title row so tall that the section
+   scale ran under CLOSE, and the plate rode up into the dials. Use the 960 dial and plate sizes. */
+@media (min-width:1101px) and (max-width:1400px) and (max-height:640px) {
+  ${CX} { --cx-plate:min(300px, 48vh, 29vw); }
+  ${CX} .cx-index { row-gap:4px; }
+  ${CX} .cx-index__item { grid-template-rows:46px auto; width:72px; }
+  ${CX} .cx-index__dial { width:46px; height:46px; }
+  ${CX} .cx-index__w { margin-top:3px !important; font-size:12px !important; letter-spacing:.06em !important; }
+  ${CX} .sf-tabbar .sf-tab { height:20px !important; }
+  ${CX} > .cx-plate-host { top:calc(50% + 34px - var(--cx-plate) / 2); }
 }
 /* 1080p band: match settings/save-load/credits composition zoom */
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
