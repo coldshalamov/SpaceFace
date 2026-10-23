@@ -91,3 +91,5 @@ The oldest OPEN row is the next second look.
 
 | R-8cc088f | 8cc088fff0 + 3d142ed04b | Row 468 earned discovery, clauses, taxonomy, sounds and Helios tease | Re-check full machine/ecology comms text after its arrival transition settles; the successful Codex/audio probe did not establish that final layout |
 | R-b55ca88 | b55ca88949 | Row 413 AL-MACH-2: missions.js and traffic.js split below 8k LOC | Re-check method-name shadowing: 11 ops modules spread onto the system objects before `name:` — confirm no method defined in a moved block is redefined later in the parent object (original duplicate-method definitions would silently flip winner), and that bare module-scope calls in moved blocks now import from the parent without a circular-import hazard | OPEN |
+
+| R-18d02b3 | e373959aa5 + 18d02b327e | Row 471 Records Wall, daily ranks and Range Licence | Re-check daily rank refresh through a newly settled real daily run, and that a slower later Range run retains the earlier saved best |
