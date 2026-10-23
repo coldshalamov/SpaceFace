@@ -34,7 +34,8 @@ function contactAndEnter(sim) {
   const offer = frontierRumorOffer(state, DISCOVERY.stationId);
   state.ui.dockedStationId = DISCOVERY.stationId;
   bus.emit('ui:purchaseFrontierRumor', { stationId: DISCOVERY.stationId, rumorId: offer.id });
-  state.ui.dockedStationId = null;
+  state.ui.docked = false;
+    state.ui.dockedStationId = null;
   const buoy = state.entityList.find((e) => e.alive && e.data?.poiId === DISCOVERY.poiId);
   place(player, buoy.pos.x, buoy.pos.z);
   state.input.actions = { scanPulse: true };
@@ -93,11 +94,14 @@ test(`seed ${SEED}: physical smuggling reaches the outlaw market, pays a visible
     assert.equal(market.quote('station_helios', GOOD, 'sell', UNITS).reason, 'untraded');
     assert.equal(state.player.cargo.items[GOOD] || 0, 0);
     place(player, pod.pos.x - 40, pod.pos.z + 60);
+    state.ui.docked = true;
     state.ui.dockedStationId = OUTLAW;
     const beforeDeniedWash = state.player.credits;
-    assert.equal(sim.registry.get('pirateDisguise').launderAtDock({ stationId: OUTLAW }).reason, 'black_market_locked');
+    state.ui.docked = true; state.ui.dockedStationId = OUTLAW;
+    assert.equal(sim.registry.get('pirateDisguise').launderAtDock({ stationId: OUTLAW, action:'quote', contextId:'pq177', requestId:'quote' }).reason, 'black_market_locked');
     assert.equal(state.player.credits, beforeDeniedWash);
     assert.equal(pod.data.legality, 'contraband');
+    state.ui.docked = false;
     state.ui.dockedStationId = null;
     sim.step();
     assert.equal(dropKickCargoPod(sim.helpers, state, pod, 0, DROP_KICK_CRUISE_SPEED), true);
@@ -115,8 +119,14 @@ test(`seed ${SEED}: physical smuggling reaches the outlaw market, pays a visible
     // Dock alongside the delivered pod. The existing wash changes its papers and charges once.
     place(player, pod.pos.x + 40, pod.pos.z);
     const creditsBeforeWash = state.player.credits;
+    state.ui.docked = true;
     state.ui.dockedStationId = OUTLAW;
     bus.emit('dock:docked', { stationId: OUTLAW });
+    assert.equal(pod.data.laundered, undefined);
+    const washRequest = {stationId:OUTLAW,contextId:'pq177',requestId:'quote'};
+    const washQuote = sim.registry.get('pirateDisguise').launderAtDock({...washRequest,action:'quote'}).quotes.find(q => q.podId === pod.id);
+    assert.ok(washQuote);
+    bus.emit('dock:launder', {...washRequest,action:'confirm',requestId:'confirm',quoteId:washQuote.quoteId});
     assert.equal(pod.data.laundered, true);
     assert.equal(pod.data.legality, 'legal');
     const wash = state.player.launderLedger[0];
@@ -215,7 +225,8 @@ test('the live run rejects fabricated, unrelated, altered, and customs-scanned d
     assert.equal(pod.data.caughtByNet, true);
     assert.equal(hasTethysBlackMarketAccess(state), false, 'the matching but scanned parcel never grants access');
     assert.equal(sim.registry.get('economy').quote(OUTLAW, GOOD, 'sell', 8).reason, 'black_market_locked');
-    assert.equal(sim.registry.get('pirateDisguise').launderAtDock({ stationId: OUTLAW }).reason, 'black_market_locked');
+    state.ui.docked = true; state.ui.dockedStationId = OUTLAW;
+    assert.equal(sim.registry.get('pirateDisguise').launderAtDock({ stationId: OUTLAW, action:'quote', contextId:'pq177', requestId:'quote' }).reason, 'black_market_locked');
     const save = worldSys.serialize();
     assert.equal(save.frontierRumors.byId[DISCOVERY.rumorId].entranceRun.parcel.data.customsScanned, true);
   } finally { disposeRun(sim); }

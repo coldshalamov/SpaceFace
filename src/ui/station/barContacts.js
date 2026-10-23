@@ -1175,7 +1175,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     const capsuleRun = tethysCapsuleRunOffer(state, stationId);
     const run = quietContact.entranceRun;
     const entranceLead = run?.phase === 'delivered'
-      ? 'Your entrance parcel arrived clean. Smuggler Den in Pallas Drift now trades with you and washes hot cargo for a cut.'
+      ? 'Your entrance parcel arrived clean. Smuggler Den in Pallas Drift now trades with you. In Market, choose a nearby hot cargo pod and review its cut before washing its papers.'
       : run?.phase === 'in_progress' && !run.parcel
         ? 'The one supplied entrance parcel is gone. Smuggler Den access is still closed.'
         : 'One entrance run waits just west of Smuggler Den in Pallas Drift: Massline the supplied parcel east past the customs cutter into the Quiet receiving barge. Its scanner faces east; move the contraband through before the scan finishes. A scanned or lost parcel will not open the market.';
