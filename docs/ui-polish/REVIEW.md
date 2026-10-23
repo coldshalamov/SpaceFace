@@ -1982,3 +1982,13 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`saveLayouts.js`, desktop only, `max-width:1100px`):** the hull (and on an empty slot, the vacant word's layer) shows again, as above 1100. No selector or ID changes; phone and the stacked band are untouched.
 
 **Checked:** bench `save-load` and `save-load-empty` at 800×600, 960×540, 1100×720, 1280×720; phone 390×844. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish102/`.
+
+## Station rail help lines in windows up to 900 tall (ui-polish-108)
+
+**Before (master e648f4eac4):** 674c3ac9a7 put each destination's help line under its name, so the rail grew four to eight lines tall. At 960×540 the Market body vanished behind it, and at 1024×768 and 1100×700 BUY and SELL sat under the rail (bench `station-market`: 2 and 5 unreachable). The seven names shared equal columns, so SHIPWORKS and INDUSTRY ran together.
+
+**After (`styles/station.css` only, desktop 641+ wide and ≤900 tall):** the help line leaves the flow and shows as a small caption above its own name on hover or keyboard focus, not on the open tab. The names sit on one line at their own width, the dock lets the caption out of its scroller, and the foot steps above the body only while a caption shows. The aria-label still speaks the line. Windows over 900 tall (1920×1080) and phones are unchanged.
+
+**Checked:** bench `station-market` 1024×768 2→0 unreachable; names fit the dock at 651×700, 720×600, 760×800, 900×600, 960×540, 1280×720 and 1366×768. Type floor OK; `inf50-seed-wl-desk` 4/4. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish108/`.
+
+**Leftovers:** the Market body is still short at 960×540 (one register row) and at 1100×700 and 1280×720 BUY sits below the console's fold; at 1280×720 the hull-repair decision pushes the console down. Phone (390×844) Market runs off the right edge (pre-existing).
