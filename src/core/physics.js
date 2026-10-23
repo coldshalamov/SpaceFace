@@ -92,6 +92,15 @@ const _contactPosScratch = { x: 0, z: 0 };
 // and is adopted by the next prepareBackend call, so a timed-out load retries into a ready
 // authority instead of forcing a fresh init.
 const SG02_INIT_PREPARE_TIMEOUT_MS = 60000;
+// A flight authority that is still missing this long into live flight means the ship will not move
+// (flightV3 emits no motion without it). The player is told once per stall. Both bounds must hold:
+// wall time (the same perfNow clock the init retry window uses) and a minimum count of live-flight
+// ticks, so a slow host that simply ran few ticks does not read as a stall.
+const SG02_STALL_NOTICE_MS = 3000;
+const SG02_STALL_NOTICE_TICKS = 120;
+// A longer silence between stalled ticks is a pause or a throttled tab, not time spent stalled.
+const SG02_STALL_GAP_MS = 1500;
+const SG02_STALL_TOAST = 'Flight systems are still starting. If your ship stays still, reload the game.';
 
 // The optic grammar's one friendly-fire opening (build_map §24 "Your own grenade"):
 // a prism splinter (opticGeneration >= 1) may strike the hull that lit the ring.
@@ -179,6 +188,9 @@ export const physics = {
     this._sg02Init = null;
     this._sg02InitArmedAt = 0;
     this._sg02Token = 0;
+    // Test seam: replaces the authority factory (a rejecting stub reproduces a failed Rapier init).
+    this._sg02OwnerFactory = null;
+    this._clearSg02Stall(true);
     this._pendingSg02Snapshot = null;
     this._nativeRestorePending = false;
     this._nativeRestoreDeferred = false;
@@ -833,7 +845,7 @@ export const physics = {
     // minting a doomed attempt (and its warn) every tick.
     if (!this._sg02Init && !this._sg02 && !rapierRuntimeBlocked()) {
       const token = ++this._sg02Token;
-      const init = createSg02DynamicBodyOwner({
+      const init = (this._sg02OwnerFactory || createSg02DynamicBodyOwner)({
         orchardRestoreCapability:ORCHARD_RESTORE_CAPABILITIES.get(this),
         mode: 'rapier-dynamic',
         captureContactImpacts: combatFlag('weaponImpulseConsequences'),
@@ -860,6 +872,8 @@ export const physics = {
           if (token === this._sg02Token) {
             dedupWarn('physics:sg02-authority-failed', '[physics] SG-02 dynamic authority failed; craft motion is fail-closed', err);
             this._sg02 = null;
+            // A settled rejection is what makes a missing authority a real stall (see _noteSg02Unavailable).
+            this._sg02StallRejected = true;
           }
           // Whatever the token state, this promise can no longer deliver an owner;
           // release the slot so a later update retries instead of freezing flight (D26).
@@ -880,6 +894,7 @@ export const physics = {
       this._diag.sg02SyncFullEntities = 0;
       this._diag.sg02SyncStaticEntities = 0;
       this._diag.sg02SyncDynamicEntities = 0;
+      this._noteSg02Unavailable(state);
       return;
     }
 
@@ -894,6 +909,7 @@ export const physics = {
         this._diag.rapierReady=false;this._diag.sg02Ready=false;return;
       }
     }
+    this._noteSg02Available();
     this._sg02.publishTelemetry = shouldPublishSg02Telemetry(state);
     this._syncSg02FrameOrigin(state);
     this._queueSectorFenceImpulses(dt, state);
@@ -1016,8 +1032,69 @@ export const physics = {
     this._sg02.syncFromEntities(state.entityList);
   },
 
+  /**
+   * The dynamic authority is missing on a tick. Failed starts only dedupWarn and retry on a backoff
+   * (15 s up to 120 s), and flightV3 emits no motion without the authority — so the ship sat dead
+   * with no word to the player. Once a failed start has left it missing for SG02_STALL_NOTICE_MS (and
+   * a minimum count of live-flight ticks) say so once per stall: `physics:authorityStalled` plus a plain toast.
+   * Only live flight counts; menus and pauses are not a stall. Notification only: no sim state moves.
+   */
+  _noteSg02Unavailable(state) {
+    if (!state || state.mode !== 'flight') {
+      // Out of live flight the window restarts, but the once-per-stall latch survives until recovery.
+      this._sg02StallSince = -1;
+      this._sg02StallTicks = 0;
+      return;
+    }
+    const now = perfNow();
+    if (this._sg02StallSince < 0 || now - this._sg02StallSeenAt > SG02_STALL_GAP_MS) {
+      this._sg02StallSince = now;
+      this._sg02StallTicks = 0;
+    }
+    this._sg02StallSeenAt = now;
+    this._sg02StallTicks++;
+    if (this._sg02StallNotified) return;
+    // Only a FAILED start is a stall: a rejected init (or the retry backoff it arms). An init that is
+    // merely pending never counts, so a synchronous run that steps ticks without ever yielding to the
+    // event loop (goldens, acceptance harnesses) cannot trip a host-speed-dependent notice.
+    if (!this._sg02StallRejected && !rapierRuntimeBlocked()) return;
+    if (now - this._sg02StallSince < SG02_STALL_NOTICE_MS || this._sg02StallTicks < SG02_STALL_NOTICE_TICKS) return;
+    this._sg02StallNotified = true;
+    this._sg02StallNotifiedAt = now;
+    this.bus?.emit?.('physics:authorityStalled', {
+      tick: state.tick,
+      stalledMs: Math.round(now - this._sg02StallSince),
+      retryInMs: Math.round(rapierRuntimeBlockedRemainingMs()),
+    });
+    this.bus?.emit?.('toast', { text: SG02_STALL_TOAST, kind: 'warn', ttl: 10 });
+  },
+
+  /** The authority is present and about to step: end any stall, announcing recovery if one was reported. */
+  _noteSg02Available() {
+    if (this._sg02StallNotified) {
+      this.bus?.emit?.('physics:authorityRecovered', {
+        tick: this.state && this.state.tick,
+        stalledMs: Math.round(perfNow() - this._sg02StallNotifiedAt),
+      });
+    }
+    this._clearSg02Stall(true);
+  },
+
+  _clearSg02Stall(includingLatch) {
+    this._sg02StallSince = -1;
+    this._sg02StallSeenAt = 0;
+    this._sg02StallTicks = 0;
+    if (includingLatch) {
+      this._sg02StallNotified = false;
+      this._sg02StallNotifiedAt = 0;
+      this._sg02StallRejected = false;
+    }
+  },
+
   _disableSg02DynamicAuthority() {
     if (this._sg02 || this._sg02Init) this._sg02Token++;
+    // A teardown (load boundary, backend change) ends the episode being timed; a fresh one starts.
+    this._clearSg02Stall(true);
     if (this._sg02 && typeof this._sg02.dispose === 'function') this._sg02.dispose();
     this._sg02 = null;
     this._sg02Init = null;

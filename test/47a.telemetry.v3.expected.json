@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f",
+    "authoritativeHash": "b7020035c027d347f9e2e58c2dc8464a330f6e728b38665982830f193e626df2",
     "authoritativeHashByReloadAt": {
-      "60": "310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f",
-      "600": "310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f"
+      "60": "b7020035c027d347f9e2e58c2dc8464a330f6e728b38665982830f193e626df2",
+      "600": "b7020035c027d347f9e2e58c2dc8464a330f6e728b38665982830f193e626df2"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -264,6 +264,9 @@
     "The convex owner produces 310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f. No other module differs in the paired comparison.",
     "At tick720 player position changes from (2915.300537,352.188141) to (2919.108643,352.274017). These are reviewed contact-response changes, not a version-only re-record.",
     "Both runs retain17 fires,10 hits,10 damage events,17 entities,5000 credits,and tether attach/cut ticks4/128. Event-family counts match; impact timing may differ with changed trajectories.",
-    "Reload60 and reload600 retain deterministic continuation. Acceptance bounds, repeat minimum, input tape and event families are unchanged."
+    "Reload60 and reload600 retain deterministic continuation. Acceptance bounds, repeat minimum, input tape and event families are unchanged.",
+    "2026-10-23 state-shape-only drift: RC-MARKET-PLAY core (1a89fcd20e) added five empty economy containers (auditorPenn, coldChain, convoyShares, forwardSlips, podIntakeReceipts). Bisect pins it there; parent c25ee0770d reproduces the prior hash.",
+    "Paired snapshots (inspect --tick 720) differ only in those five empty leaves; metrics, trace counts and event families are identical for both controllers. HEAD 087a1dc2f2 reproduces the new hash at repeat 5 with reload parity.",
+    "The prior authoritativeHash (reload60 and reload600) was 310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f; reload60 and reload600 both reproduce the new hash."
   ]
 }

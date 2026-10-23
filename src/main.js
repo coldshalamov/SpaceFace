@@ -42,7 +42,10 @@ import {
 import { applyAccessibility } from './ui/accessibility.js';
 import { ensureStylesheet as ensureStationStylesheet } from './ui/station/stationStyles.js';
 import { createLoadingPresenter } from './ui/loadingPresenter.js';
+import { registerToastAction } from './ui/toastAction.js';
+import { installSlowFrameOffer, SLOW_OFFER_ACTION_ID } from './render/slowFrameOffer.js';
 import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
+import { installGlobalErrorBoundary, attachErrorBoundary, recordRuntimeError } from './core/errorBoundary.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import { ruckusWarmReady } from './render/characters/ruckusModel.js';
 import {
@@ -71,42 +74,14 @@ function debugRuntimeEnabled() {
   return true;
 }
 
-// Global error boundary. Without this, an uncaught runtime exception or an unhandled promise
-// rejection dies silently to the console — invisible to the player (who sees a frozen game) and
-// easy to miss in dev. This surfaces BOTH as a console error (preserved for devtools) AND as a
-// player-visible toast via the bus once the game is running, so a failure is never silent.
-// Idempotent + defensive: the boundary itself must never throw (it guards everything else).
-function installGlobalErrorBoundary() {
-  if (typeof window === 'undefined' || window.__sfErrorBoundary) return;
-  window.__sfErrorBoundary = true;
-  let lastToastAt = 0;
-  let toastCount = 0;
-  const surface = (label, err) => {
-    // Console always gets the full error (devtools is the source of truth).
-    try { console.error('[SpaceFace]', label, err); } catch (_) {}
-    // Debounce the toast: at most one per second, and collapse a burst into a count.
-    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    if (now - lastToastAt < 1000) { toastCount++; return; }
-    const burst = toastCount > 0 ? ` ${toastCount + 1} errors were logged.` : ' The error was logged.';
-    toastCount = 0; lastToastAt = now;
-    try {
-      const sf = window.SF;
-      if (sf && sf.bus && typeof sf.bus.emit === 'function') {
-        sf.bus.emit('toast', { text: 'Something went wrong.' + burst, kind: 'warn', ttl: 5 });
-      }
-    } catch (_) { /* game may not be up yet; the console log is enough */ }
-  };
-  try {
-    window.addEventListener('error', (ev) => {
-      // ev.error is the thrown value for uncaught exceptions; ev.message is the fallback.
-      surface('uncaught error', ev && (ev.error || ev.message));
-    });
-    window.addEventListener('unhandledrejection', (ev) => {
-      // ev.reason is the rejection value (an Error, a string, or anything thrown).
-      surface('unhandled rejection', ev && (ev.reason && ev.reason.message ? ev.reason : (ev.reason || ev)));
-    });
-  } catch (_) { /* if addEventListener is unavailable, the console path above still runs */ }
-}
+// Global error boundary (src/core/errorBoundary.js). Uncaught exceptions and unhandled promise
+// rejections are logged to the console, kept in a bounded ring for the diagnostics report, and
+// surface as one rate-limited player toast over the bus captured right after createBus() below —
+// never through `window.SF`, which the retail bundle strips (SF_DEBUG_ONLY).
+
+// The live game state, once boot() has made it. The recovery pane's "Copy details" and the
+// diagnostics report read it; null until then (a failure before the state exists still reports).
+let diagnosticsState = null;
 
 async function boot() {
   installGlobalErrorBoundary();
@@ -121,6 +96,7 @@ async function boot() {
     contractPromise.catch(() => {});
     const seed = (Date.now() & 0x7fffffff) >>> 0;
     const state = createGameState(seed);
+    diagnosticsState = state;
     // Renderer/VFX are initialized before the save system in registry order. Consume the persisted
     // profile first so their boot resources match the player's settings on the very first frame.
     // This is read-only and therefore leaves the raw profile byte-identical.
@@ -133,6 +109,8 @@ async function boot() {
     const runTransitionGuard = createRunTransitionGuard();
     timeEffects.set('runtime:boot-menu', { scale: 0 });
     const bus = createBus();
+    // Capture the bus for the error boundary here, not via window.SF (stripped from retail bundles).
+    attachErrorBoundary({ bus, getState: () => state });
     installGameStartRecovery(bus);
     // PQ-160.01: rated moments mark clip windows on the live bus so Pause → Clips lists them.
     // Production entity:killed has no tick; stamp sim tick + world seed onto the receipt.
@@ -412,6 +390,10 @@ async function boot() {
       }
       failurePresenter.show(failure);
     };
+    // One-time "this looks slow" offer: a sustained sub-30 fps median in live flight offers the
+    // High performance preset as a receipt button, once per session. Never applied on its own.
+    const slowFrameOffer = installSlowFrameOffer({ state, bus });
+    registerToastAction(SLOW_OFFER_ACTION_ID, () => slowFrameOffer.accept());
     loopController = startLoop(state, registry, {
       // Under the flip the presentation lane reads the transport journal and
       // steps the worker-backed runner; identical shapes on the main lane.
@@ -419,8 +401,9 @@ async function boot() {
       simulationRunner: simLaneRuntime ? simLaneRuntime.runner : undefined,
       // Gates that pay a paint boundary only need one when nothing has drawn
       // recently — the runner's accepted presents are exactly that evidence,
-      // while its suspended/restoring window correctly stops stamping.
-      onPresented() { lastPaintAt = nowMs(); },
+      // while its suspended/restoring window correctly stops stamping. The same present also
+      // feeds the slow-frame offer its per-callback frame time.
+      onPresented() { lastPaintAt = nowMs(); slowFrameOffer.onPresented(); },
       onSimulationFailure: recoverRuntimeFailure,
       onPresentationFailure: recoverRuntimeFailure,
     });
@@ -1315,12 +1298,17 @@ function nowMs() {
 let bootFailurePresenterInstance = null;
 function bootRecoveryPresenter() {
   if (!bootFailurePresenterInstance) {
-    bootFailurePresenterInstance = createRuntimeFailurePresenter({ document });
+    bootFailurePresenterInstance = createRuntimeFailurePresenter({
+      document,
+      // "Copy details" attaches the diagnostics report; the state may not exist yet at boot.
+      getDiagnosticsState: () => diagnosticsState,
+    });
   }
   return bootFailurePresenterInstance;
 }
 function showBootError(err) {
   console.error('[boot]', err);
+  try { recordRuntimeError('boot failure', err, { silent: true }); } catch (_) { /* the ring is best-effort */ }
   try {
     if (bootRecoveryPresenter().show(describeBootFailure(err))) return;
   } catch (paneError) {
