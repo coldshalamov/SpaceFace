@@ -37,6 +37,8 @@ const POD_SPEED = 3.2;              // the conveyor crawl — a real drift, not 
 const DELIVER_REACH_WU = 26;        // a pod this close to the buyer counts as received
 const PARLEY_WU = 210;              // walking up slow inside this ring opens the quiet offer
 const PARLEY_S = 6;
+const PARLEY_RELATIVE_SPEED = POD_SPEED * 2; // match the seller, not the world's origin
+const PARLEY_SAMPLE_GAP_S = 2; // the existing director observes this scene at about 1 Hz
 const DEAL_DEADLINE_S = 110;
 const SELLER_COMMODITY = 'cmdty_stolen_goods';
 const BUYER_COMMODITY = 'cmdty_narcotics';
@@ -55,6 +57,28 @@ function scatter(entity) {
   const ai = d.ai || (d.ai = {});
   ai.forceFlee = true;
   ai.moraleImmune = false;
+}
+
+function resetParley(d, live) {
+  live.data.parleySince = null;
+  live.data.parleyLastAt = null;
+  if (live.data.termsSpoken && !live.data.withdrawNoted) {
+    live.data.withdrawNoted = true;
+    d.emit('comms:log', {
+      from: 'QUIET RUNNER',
+      text: 'Not holding? Fine — nothing signed. Match our drift, keep your guns quiet and hold six seconds if you want back in.',
+      kind: 'encounter',
+    });
+  }
+}
+
+function holdingAlongside(state, player, seller) {
+  if (!player || player.alive === false || player.hull <= 0 || player.disabled
+    || player.flags?.docked || (state.mode && state.mode !== 'flight')
+    || state.input?.fire) return false;
+  const pv = player.vel, sv = seller.vel;
+  if (!pv || !sv || ![pv.x, pv.z, sv.x, sv.z].every(Number.isFinite)) return false;
+  return Math.hypot(pv.x - sv.x, pv.z - sv.z) <= PARLEY_RELATIVE_SPEED;
 }
 
 export const runtime = Object.freeze({
@@ -126,6 +150,7 @@ export const runtime = Object.freeze({
     live.data.buyerId = buyer.id;
     live.data.axis = axis;
     live.data.parleySince = null;
+    live.data.parleyLastAt = null;
     live.data.parleyOffered = false;
     live.data.termsSpoken = false;
     live.data.withdrawNoted = false;
@@ -141,8 +166,8 @@ export const runtime = Object.freeze({
     if (live.phase === 'done') return;
     const seller = state.entities.get(live.data.sellerId) || null;
     const buyer = state.entities.get(live.data.buyerId) || null;
-    const sellerAlive = seller && seller.alive !== false;
-    const buyerAlive = buyer && buyer.alive !== false;
+    const sellerAlive = seller && seller.alive !== false && !(seller.hull <= 0);
+    const buyerAlive = buyer && buyer.alive !== false && !(buyer.hull <= 0);
 
     // A dead party ends the deal: the survivor scatters with the manifest.
     if (!sellerAlive || !buyerAlive) {
@@ -203,6 +228,14 @@ export const runtime = Object.freeze({
       return d.resolve(live, 'deal_done', { speak: true });
     }
 
+    // Complete actual buyer delivery first, but never accept a new bond after closing time.
+    if (now >= live.deadlineAt) {
+      resetParley(d, live);
+      scatter(seller); scatter(buyer);
+      releaseCast(live);
+      return d.resolve(live, 'deal_lapsed', { speak: true });
+    }
+
     // The join read is a real commitment boundary (NXB-040): inside the ring the seller
     // speaks the exact terms once (inspection) — that alone moves no freight and pays
     // nothing. Stepping out before the window closes is the one honest withdraw: the
@@ -214,14 +247,28 @@ export const runtime = Object.freeze({
     if (player && player.pos && !live.data.parleyOffered) {
       const pdx = player.pos.x - seller.pos.x, pdz = player.pos.z - seller.pos.z;
       const inRing = pdx * pdx + pdz * pdz <= PARLEY_WU * PARLEY_WU;
-      if (inRing) {
+      const holding = inRing && holdingAlongside(state, player, seller);
+      if (inRing && !holding && !live.data.approachNoted) {
+        live.data.approachNoted = true;
+        d.emit('comms:log', {
+          from: 'QUIET RUNNER',
+          text: 'Passing through buys nothing. Match our drift and hold alongside with quiet guns if you want terms.',
+          kind: 'encounter',
+        });
+      }
+      if (holding) {
+        const last = live.data.parleyLastAt;
+        if (!Number.isFinite(last) || now < last || now - last > PARLEY_SAMPLE_GAP_S) {
+          live.data.parleySince = null;
+        }
+        live.data.parleyLastAt = now;
         if (live.data.parleySince == null) {
           live.data.parleySince = now;
           if (!live.data.termsSpoken) {
             live.data.termsSpoken = true;
             d.emit('comms:log', {
               from: 'QUIET RUNNER',
-              text: 'Terms, since you parked quiet: one pod off the line takes your name on the manifest, plus a cut for carrying it. Hold station to take it — drift off and we never met.',
+              text: 'Terms, since you parked quiet: one pod off the line takes your name on the manifest, plus a cut for carrying it. Match our drift and hold six seconds with quiet guns to take it — drift off and we never met.',
               kind: 'encounter',
             });
           }
@@ -271,23 +318,18 @@ export const runtime = Object.freeze({
           releaseCast(live);
           return d.resolve(live, 'contact_made', { speak: true });
         }
-      } else if (live.data.parleySince != null) {
-        live.data.parleySince = null; // stepped out of the ring — the window resets
-        if (live.data.termsSpoken && !live.data.withdrawNoted) {
-          live.data.withdrawNoted = true;
-          d.emit('comms:log', {
-            from: 'QUIET RUNNER',
-            text: 'Drifting already? Fine \u2014 we never met. The line keeps its own ledger.',
-            kind: 'encounter',
-          });
-        }
+      } else {
+        resetParley(d, live);
       }
+    } else {
+      resetParley(d, live);
     }
+  },
 
-    if (now >= live.deadlineAt) {
-      scatter(seller); scatter(buyer);
-      releaseCast(live);
-      return d.resolve(live, 'deal_done', { speak: false });
+  event(d, live, state, name, payload) {
+    if (!live || live.phase === 'done' || name !== 'playerHitSquad') return;
+    if (payload && (payload.targetId === live.data.sellerId || payload.targetId === live.data.buyerId)) {
+      resetParley(d, live);
     }
   },
 });
@@ -336,6 +378,7 @@ export default defineEncounter(trigger, {
     kill: 'The deal ends the loud way. The Quiet keep better ledgers than grudges.',
   },
   receipts: {
+    deal_lapsed: 'DEAL LAPSED — the crews broke off. Unreceived pods are still on the line; no new bond was signed.',
     deal_done: 'DEAL DONE — manifest moved, no record. The pocket is empty again.',
     deal_burned: 'DEAL BURNED — a body dropped; the survivor ran with the record.',
     take_taken: 'TAKEN — the pods are yours; the Quiet ledger remembers it.',
