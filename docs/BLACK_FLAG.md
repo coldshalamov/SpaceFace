@@ -88,6 +88,15 @@ considered but are not claimed as shipped systems.
 
 ## Verification and open acceptance
 
+Component resale is owned by `ships.sellModule`; pure quotes and inspection findings
+come from `shipjack/componentProvenance.js`. Registry sends an exact-instance quote through
+`ui:shipjack`. `player.moduleSales` stores at most 1,024 terminal receipts and fails closed
+on malformed/saturated input. Save restoration clears absent journals, preventing a later
+slot's sales from leaking into an earlier campaign. Honest yards reject disputed parts;
+named fences pay a condition-based cut. Ordinary unfit, refit, yard extraction and shell
+return preserve the first source, including after save/load. Installed parts remain
+detectable by capable inspectors even in an otherwise clean hull.
+
 Focused checks passed across state, combat, handoff, actual runtime owners, yards,
 fleet retrieval, mission settlement and UI/content. Independent economic review found
 ordinary resale bypassing title and station switching healing parked damage; both were

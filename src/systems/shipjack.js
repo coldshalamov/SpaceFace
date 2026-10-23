@@ -6,6 +6,7 @@ import { SECTORS } from '../data/sectors.js';
 import { makeShipEntitySpec, fittingsFromDefaultModules } from './ships.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { inspectVessel } from '../shipjack/market.js';
+import { inspectFittedComponents } from '../shipjack/componentProvenance.js';
 import { fittedBlackFlagTool } from '../data/shipjackEquipment.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -104,6 +105,10 @@ export const shipjack = {
     const state=this.state;
     const deny=reason=>this.result(payload,{ok:false,reason});
     if(!isBlackFlagAdventure(state))return deny('Ship custody is available only in Adventure.');
+    if(payload.action==='module_sell'){
+      const owner=this.registry?.get('ships');
+      return this.result(payload,owner?.sellModule(payload) || {ok:false,reason:'Shipworks is unavailable.'});
+    }
     if(['recover','secure_berth','cancel_recovery'].includes(payload.action)){
       const result=executeFleetOperation(this.fleetContext(),payload);if(result.ok)this.dirty();return this.result(payload,result);
     }
@@ -415,15 +420,27 @@ export const shipjack = {
     if(b.subsystems)this.helpers.restoreShipjackSubsystems?.({entityId:e.id,subsystems:b.subsystems});
   },
   berthAt(stationId){
-    const station=this.stationEntity(stationId),own=peekShipjack(this.state);if(!station||!own)return;
+    const station=this.stationEntity(stationId),own=peekShipjack(this.state);if(!station||!isBlackFlagAdventure(this.state))return;
+    // Equipment carries its own evidence even when the mounting starter hull has no registry row.
+    const active=this.state.entities.get(this.state.playerId),activeVessel=vesselForEntity(this.state,active);
+    const owned=this.state.player.ownedShips?.[this.state.player.activeShipIndex];
+    const grade=stationId==='station_smuggler'?1:stationId==='station_customs'?3:2;
+    const findings=activeVessel&&activeVessel.custodian==='player'
+      ? inspectVessel(activeVessel,{grade,jurisdiction:stationId}) : {grade,accepted:true,findings:[]};
+    const components=inspectFittedComponents(this.state,owned?.fittedInstances,{grade});
+    findings.findings.push(...components.findings);findings.accepted&&=components.accepted;
+    if(active?.alive&&(activeVessel||components.findings.length)){
+      this.bus.emit('shipjack:inspection',{vesselId:activeVessel?.vesselId || null,entityId:active.id,stationId,grade,accepted:findings.accepted,findings:findings.findings});
+      if(!findings.accepted){
+        this.say(`${station.data?.name || 'REGISTRY'}: ${findings.findings.join('; ')}. Resolve the frame or component title before honest resale.`, 'warn');
+        if(activeVessel?.signature?.broadcastFlagged&&!activeVessel.claimResolved)this.reportTheft(activeVessel,active);
+      }
+    }
+    if(!own)return;
     for(const v of Object.values(own.vesselsById)){
       const e=this.state.entities.get(v.location.entityId);if(!e?.alive||v.custodian!=='player')continue;
       if(e.id===this.state.playerId){
         v.location.kind='active';v.location.stationId=stationId;
-        const illicit=stationId==='station_smuggler';
-        const findings=inspectVessel(v,{grade:illicit?1:stationId==='station_customs'?3:2,jurisdiction:stationId});
-        this.bus.emit('shipjack:inspection',{vesselId:v.vesselId,stationId,grade:findings.grade,accepted:findings.accepted,findings:findings.findings});
-        if(!findings.accepted){this.say(`${station.data?.name || 'REGISTRY'}: ${findings.findings.join('; ')}. Return the frame or resolve the claim.`, 'warn');if(v.signature.broadcastFlagged&&!v.claimResolved)this.reportTheft(v,e);}
         continue;
       }
       if(Math.hypot(e.pos.x-station.pos.x,e.pos.z-station.pos.z)>station.radius+180||Math.hypot(e.vel.x,e.vel.z)>25)continue;

@@ -147,6 +147,8 @@ test('Adventure-only query and truthful, stable station presentation keep custod
 });
 
 test('yard confirmation names consumed material, remaining forensic exposure and disabled output', () => {
+  const spare=yardQuotePreview({action:'module_sell',defId:'mod_engine_ion_m',condition:.6,amount:420,fenceId:'fence_test'});
+  assert.match(spare,/60% condition/);assert.match(spare,/420 credits after the fence cut/);assert.match(spare,/exact part leaves/);
   assert.match(yardQuotePreview({action:'forge_broadcast',amount:-900}),/Consumes one Cargo Scanner S/);
   assert.match(yardQuotePreview({action:'forge_broadcast',amount:-900}),/title checks still expose/);
   const preview=yardQuotePreview({action:'extract',slotIndex:3,amount:-280,value:{parts:[{slotIndex:3,defId:'mod_engine_ion_m',family:'engine',condition:.5}]}});

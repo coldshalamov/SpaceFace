@@ -24,6 +24,11 @@ Pulling the drive disables propulsion. Hot property requires an illicit buyer; h
 yards check title. Forging a broadcast consumes real scanner hardware and fools only
 shallow inspections. Paint, broadcast, underlying frame and legal title remain separate.
 
+Open **Spare components / resale** in Registry & recovery to appraise a removed part.
+The confirmation names its condition, exact payout and fence cut. A disputed part keeps
+its source evidence when fitted to another hull or when the original shell is returned.
+Establish lawful salvage title or take it to a named fence; clearing WANTED is separate.
+
 Use C/the normal scanner action to reopen a selected vessel's link. **Return to flight**
 closes only the link. Failure messages describe the surviving route rather than promising
 an automatic capture. The Blackbird and later recovery opportunities use the same verbs;

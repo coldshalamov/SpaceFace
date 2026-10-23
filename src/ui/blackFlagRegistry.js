@@ -7,6 +7,7 @@ import { quoteYardOperation } from '../shipjack/yardOperations.js';
 import { quoteFleetOperation } from '../shipjack/fleetOperations.js';
 import { valuationBreakdown, inspectVessel, componentDefinition } from '../shipjack/market.js';
 import { isBlackFlagAdventure } from '../shipjack/model.js';
+import { inspectComponentProvenance, inspectFittedComponents, quoteModuleSale } from '../shipjack/componentProvenance.js';
 import { arcGauge } from './orrery/instruments.js';
 import { svg } from './orrery/svg.js';
 import { dressLampKey } from './orrery/lampKey.js';
@@ -35,6 +36,7 @@ export function vesselLocationText(vessel) {
 }
 
 export function yardQuotePreview(quote) {
+  if (quote.action === 'module_sell') return `${componentDefinition(quote.defId)?.name || 'Spare component'} · ${Math.round(quote.condition*100)}% condition. Receive ${integer(quote.amount)} credits${quote.fenceId ? ' after the fence cut' : ''}. This exact part leaves your module inventory; fitted parts and the hull remain.`;
   if (quote.action === 'recover' || quote.action === 'secure_berth') {
     return `Recovery tug to ${quote.stationName || STATIONS.get(quote.stationId) || 'the receiving station'}. Cost ${integer(quote.feeCr)} credits. Pickup in ${integer(quote.pickupAt-quote.departureAt)}s; delivery in ${integer(quote.arrivalAt-quote.departureAt)}s after departure. ${quote.riskLine || 'The tug must reach the recorded hull before it can bring anything home.'}`;
   }
@@ -62,6 +64,8 @@ export function registryVesselModel(state, vesselId) {
   const owned = state.player?.ownedShips?.find(row => row.vesselId === vesselId);
   const value = owned ? valuationBreakdown(vessel, owned) : null;
   const inspection = inspectVessel(vessel, { grade: 3, jurisdiction: 'registry' });
+  const components = inspectFittedComponents(state, owned?.fittedInstances, { grade: 3 });
+  inspection.findings.push(...components.findings); inspection.accepted &&= components.accepted;
   return { vessel, owned, name: vessel.name || HULLS.get(vessel.defId)?.name || 'Unidentified vessel',
     hullName: HULLS.get(vessel.defId)?.name || 'Unidentified hull', location: vesselLocationText(vessel),
     title: BLACK_FLAG_TERMS[vessel.title] || 'Title unresolved',
@@ -103,7 +107,7 @@ export function createBlackFlagRegistry(ctx, { dockHost = () => true } = {}) {
     const model = registryVesselModel(ctx.state, selectedId);
     if (!model) return;
     const next = JSON.stringify([selectedId, vessels.map(row => [row.vesselId,row.revision,row.location]), model.owned?.fittings,
-      model.owned?.fittedInstances, model.job, model.fleetJob, ctx.state.ui?.dockedStationId, dockHost(), selectedQuote, pending]);
+      model.owned?.fittedInstances, ctx.state.player?.moduleInventory, model.job, model.fleetJob, ctx.state.ui?.dockedStationId, dockHost(), selectedQuote, pending]);
     if (next === stamp) return;
     stamp = next; gauge?.dispose(); gauge = null; body.replaceChildren();
     const list = node('div', 'k-rows', ''); list.setAttribute('aria-label', 'Known vessel registry');
@@ -137,7 +141,6 @@ export function createBlackFlagRegistry(ctx, { dockHost = () => true } = {}) {
     }
     if (['field','remote','tow'].includes(model.vessel.location?.kind)) button(body, 'Plot recovery course', () =>
       ctx.bus.emit('ui:shipjack', { action:'navigate', vesselId:selectedId }));
-    if (!model.owned || model.vessel.custodian !== 'player') { line('Observe this frame in flight to negotiate, recover it, or contest custody.'); return; }
     if (!dockHost()) { line('Dock at a receiving yard for registry, extraction and sale services.'); return; }
     if (selectedQuote) {
       body.appendChild(node('h4', 'k-caps', SERVICE_LABELS[selectedQuote.action] || 'Yard quote'));
@@ -146,12 +149,25 @@ export function createBlackFlagRegistry(ctx, { dockHost = () => true } = {}) {
         if (pending) return;
         pending = true; stamp = ''; render(lastViewed);
         const quote = selectedQuote;
-        ctx.bus.emit('ui:shipjack', { action:quote.action, vesselId:quote.vesselId, slotIndex:quote.slotIndex,
-          operationId:`${quote.action === 'recover' || quote.action === 'secure_berth' ? 'fleet' : 'yard'}:${quote.fingerprint}:${quote.vesselId}`, quote });
+        ctx.bus.emit('ui:shipjack', { action:quote.action, vesselId:quote.vesselId, slotIndex:quote.slotIndex, instanceId:quote.instanceId,
+          operationId:`${quote.action === 'module_sell' ? 'part' : quote.action === 'recover' || quote.action === 'secure_berth' ? 'fleet' : 'yard'}:${quote.fingerprint}:${quote.instanceId || quote.vesselId}`, quote });
       }, { disabled:pending, primary:true });
       button(body, 'Back to vessel', () => { if (pending) return; selectedQuote = null; stamp = ''; render(lastViewed); }, {disabled:pending});
       return;
     }
+    const spares = doc.createElement('details'); spares.appendChild(node('summary','k-word k-word--body','Spare components / resale'));
+    for (const item of (ctx.state.player.moduleInventory || []).slice(0,32)) {
+      const definition=componentDefinition(item.defId), evidence=inspectComponentProvenance(ctx.state,item);
+      const offer=quoteModuleSale(ctx.state,{instanceId:item.instanceId});
+      spares.appendChild(node('p','k-sentence',`${definition?.name || 'Spare component'} · ${Math.round((Number.isFinite(item.condition)?item.condition:1)*100)}% condition${evidence.unresolved?' · disputed source frame':''}`));
+      button(spares,offer.ok?`Offer spare · ${integer(offer.quote.amount)} cr`:'Sale unavailable',()=>{
+        selectedQuote={...offer.quote,action:'module_sell'};stamp='';render(lastViewed);
+      },{disabled:!offer.ok,reason:offer.reason});
+      if(!offer.ok)spares.appendChild(node('p','k-t-fine',offer.reason));
+    }
+    if(!ctx.state.player.moduleInventory?.length)spares.appendChild(node('p','k-sentence','No spare components. Unfit or extract an exact fitted part to offer it here.'));
+    body.appendChild(spares);
+    if (!model.owned || model.vessel.custodian !== 'player') { line('Observe this frame in flight to negotiate, recover it, or contest custody.'); return; }
     const service = (parent, action, slotIndex = null) => {
       const offer = quoteYardOperation(ctx.state, { vesselId:selectedId, action, slotIndex });
       const text = SERVICE_LABELS[action];
@@ -175,6 +191,7 @@ export function createBlackFlagRegistry(ctx, { dockHost = () => true } = {}) {
     }
     if (!model.value?.parts?.length) parts.appendChild(node('p','k-sentence','No fitted parts remain. The hull shell has a separate value.'));
     body.appendChild(parts);
+
   };
   const settled = result => {
     if (result?.vesselId && result.vesselId !== selectedId) return;
