@@ -79,3 +79,17 @@ The clean projection uses public master5df6709c2ad275440229e4944450f05c18571ece.
 `check:cut-intake-courtesy` and `check:cargo-mass-read-contract` are explicitly included in the existing default check chain without removing or reordering prior commands. Only the new Cut helper's modulepreload line is added. Its five imported modules already have preload entries; unrelated existing preload drift is not bulk-regenerated. No workflow, threshold or baseline digest change is made.
 
 Independent final source review and focused51/51 plus existing berth-queue5/5 pass; the unchanged shared helper contract test also passes28/28. These are84 distinct focused checks, not84 new tests or whole-game acceptance. The saved static-station fixture, bounded native approach and offline preview limits above remain.
+
+## Addendum: production-world Save/Continue
+
+The static-station re-provision limitation is now covered by one additional named regression, `test/cut-intake-world-restore.test.mjs`. It registers the real `world`, mission, economy, faction, NPC-job, and save owners. The initial medicine acceptance, worker approach poses, job phase, and medical stock are controlled fixture inputs. Cut itself is produced by the world owner, not a hand-written station specification.
+
+The worker holds through 300 ordinary 1/60-second simulation ticks. Its work progress remains exactly 0.6 while the existing `lastAdvanceSimT` follows simulation time. Actual `save('quick')` / `load('latest')` then regenerates exactly one Cut refinery at its authored global position (-29312, 480), with `place_station_refinery` and the measured `skin:place_station_refinery` proxy. No station is injected after load.
+
+The original worker record, ore manifest, player cargo, credits, accepted mission, and finite 100→130 courtesy token survive. The restored job resumes the remaining approximately 25 seconds without a new clearance toast or renewed deadline; expiry removes the medicine hold. Live entity-map membership changes from 9 to 29 as ordinary world restoration also regenerates nearby content. The compact ship view remains two ships. These are not physics-body counts.
+
+Qualification against PR547 head `836b6bb5cc53aaf0f30c125af488a7a9ec06fdae`: the additional named test passes 1/1; the checked loader observed 1,078 source modules with zero source mismatches. All 43 newly exercised modules were also fetched individually at that exact public head and matched their executed Git blobs. This is an exercised-graph claim, not full-tree or aggregate qualification. Root independently reproduced the final named case, 1/1.
+
+An initial diagnostic incorrectly jumped simulation time by five seconds without running the held owner ticks. The authoritative restore correctly caught up that omitted interval, so its unchanged-progress assertion failed. Running the real ticks corrected the fixture without changing production code or weakening the assertion. That failed source/log is preserved in recovery evidence, as is a separate path-label bug in an evidence-only graph observer; neither is reported as a production defect.
+
+This closes production static-station rehydration for the bounded fixture. The earlier native steering evidence remains separate. There is still no complete manual sector trip, traffic-populated gameplay, new post-Continue physical-flight witness, browser/live-camera acceptance, or general performance guarantee. No aggregate or excluded anvil test was run.
