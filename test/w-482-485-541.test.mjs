@@ -97,6 +97,12 @@ test('w-482: kills outside the waves or outside a survival run do not count', ()
   assert.equal(rockGunKillBucket({ presentation: { impactLink: { tag: 'massline_throw' } } }), 'impact');
   assert.equal(rockGunKillBucket({ presentation: { impactLink: { tag: 'tow_flail' } } }), 'impact');
   assert.equal(rockGunKillBucket({ cause: 'massline_whip' }), 'impact');
+  // The canonical whip payload pairs a top-level 'massline_whip' cause with a generic
+  // presentation cause — the physical cause must win over the generic fallback.
+  assert.equal(rockGunKillBucket({
+    cause: 'massline_whip',
+    presentation: { cause: 'generic', impactLink: null },
+  }), 'impact');
 });
 
 test('w-483: the Line rating is the tonnes riding the line, and a threshold lights the class', () => {
