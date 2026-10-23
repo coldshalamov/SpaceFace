@@ -545,7 +545,7 @@ export function createBarScreen(ctx) {
         : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
       // the board verb carries the board's count; the intel facts live on the Missions tab (the count is
       // the one that matters here, so it rides the verb instead of a block of its own)
-      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li></ul>` +
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li><li><button type="button" class="k-word k-word--fine" data-play-manifest>Play Manifest</button></li></ul>` +
       `<div class="sx-bar__intel" hidden><p class="k-caps sx-intel__head">Intel</p>${intelHtml}</div>`;
     dressLeads();
     leadsKeysHint();
@@ -786,6 +786,13 @@ export function createBarScreen(ctx) {
   });
 
   leadsEl.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-play-manifest]')) {
+      const opponent = selected(ctx.state || {});
+      if (!opponent || !ctx.bus) return;
+      ctx.state.ui.manifestOpponent = { id: opponent.id, name: opponent.name };
+      ctx.bus.emit('ui:pushScreen', { id: 'manifest', source: 'station-bar' });
+      return;
+    }
     const sv = ev.target.closest('[data-survey]');
     if (sv && !sv.disabled) {
       if (ctx.bus) {
