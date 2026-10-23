@@ -163,7 +163,11 @@ export function scoreMasslineTarget(player, target, opts = {}) {
   // class exceeds the Line's rating gates to 'immovable' — physics honesty: the Line
   // cannot budge it. Strictly opt-in: absent either option the legacy path is unchanged.
   if (Number.isFinite(opts.lineTier) && typeof opts.throwTierOf === 'function') {
-    const need = Number(opts.throwTierOf(target));
+    // Authored teaching bodies (the onboarding derelict) are scripted catches —
+    // the rating lesson must never gate the lesson itself.
+    const need = target && target.data && target.data.onboarding === true
+      ? NaN
+      : Number(opts.throwTierOf(target));
     if (Number.isFinite(need) && need > opts.lineTier) {
       return gated(id, 'immovable', `line tier ${need} required`);
     }

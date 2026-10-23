@@ -493,6 +493,20 @@ export const tetherGameplay = {
     }
 
     if (this._active) {
+      // Row 484 ROCK-FLAIL: a second catch while the Line is already thrown never reaches the
+      // acquisition path below, so the per-owner limit cannot deny it there. Offer the aimed
+      // body to rockCore's flail chain directly; an accepted link latched flail-side returns.
+      if (actions && actions.tetherFire && this.bus && typeof this.bus.emit === 'function') {
+        const second = state.entities.get(state.masslineAcquisition?.selected?.targetId);
+        if (second && second.id !== this._active.targetId) {
+          const offer = { targetId: second.id, ownerId: player.id, accepted: false };
+          this.bus.emit('massline:flailOffer', offer);
+          if (offer.accepted === true) {
+            this.bus.emit('tether:latched', { attachmentId: null, targetId: second.id, flail: true });
+            return;
+          }
+        }
+      }
       this._clearAcquisitionPreview(state);
       // Liveness belt-and-braces on the gameplay side: if the target vanished this tick and the
       // service sweep hasn't caught it yet, force the cut ourselves rather than orbit a ghost.

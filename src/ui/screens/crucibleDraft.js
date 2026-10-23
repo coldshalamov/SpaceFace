@@ -658,11 +658,22 @@ export function circuitPanelLines(run) {
   if (circuit.status === 'overtime') {
     next = `Overtime — round ${wave + 1} and on. The Circuit is already yours.`;
   } else if (round && circuit.status !== 'route' && circuit.status !== 'finale') {
-    next = round.kind === 'survive'
-      ? `Next — stage ${round.stage}, round ${round.localRound}: survive sixty seconds.`
+    const objectiveLine = round.kind === 'survive'
+      ? 'survive sixty seconds'
       : round.kind === 'boss'
-        ? `Next — stage ${round.stage}, round ${round.localRound}: ${boss ? boss.label : 'a champion'}.`
-        : `Next — stage ${round.stage}, round ${round.localRound}: break the pack.`;
+        ? (boss ? boss.label : 'a champion')
+        : round.kind === 'nodes'
+          ? 'destroy the hive nodes'
+          : round.kind === 'hold'
+            ? 'hold the zone'
+            : round.kind === 'collect'
+              ? 'collect the cores'
+              : round.kind === 'commander'
+                ? `assassinate ${round.commanderName || 'the commander'}`
+                : round.kind === 'reach'
+                  ? 'reach the gate'
+                  : 'break the pack';
+    next = `Next — stage ${round.stage}, round ${round.localRound}: ${objectiveLine}.`;
   }
   const status = circuit.status === 'route'
     ? `Stage ${circuit.clearedStages} cleared. Choose where stage ${circuit.clearedStages + 1} fights.`
@@ -677,7 +688,9 @@ export function circuitPanelLines(run) {
     heading: 'The Circuit',
     status,
     next,
-    choices: choices.map((choice) => ({ id: choice.id, kind: choice.kind, label: choice.label, line: choice.line })),
+    choices: choices.map((choice) => ({
+      id: choice.id, kind: choice.kind, label: choice.label, line: choice.line, fight: choice.fight || null,
+    })),
     stages: route.stages.map((stage) => ({
       stage: stage.stage,
       label: stage.label,

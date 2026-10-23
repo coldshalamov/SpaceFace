@@ -64,6 +64,11 @@ export const OBJECTIVE_WORDS = Object.freeze({
   boss: 'BOSS',
   // SWARM-08 B5 — a Circuit survive round is a timed hold, and the word is the whole rule.
   survive: 'SURVIVE',
+  nodes: 'NODES',
+  hold: 'HOLD',
+  collect: 'CORES',
+  commander: 'COMMANDER',
+  reach: 'GATE',
 });
 
 export function objectiveWord(objectiveKind) {
@@ -323,9 +328,14 @@ export const survivalHud = {
       // that payload and never counts down on its own. Kills are the score, not the finish line,
       // so they sit as a figure with no slash and no fill.
       const progress = this._waveProgress;
+      const cores = progress && progress.completionKind === 'collect' && Number.isInteger(progress.total);
       const ready = !!(progress && Number.isInteger(progress.durationTicks) && progress.durationTicks > 0);
-      this._setHidden(dom.threat, !ready);
-      if (ready) {
+      this._setHidden(dom.threat, !(ready || cores));
+      if (cores) {
+        this._setText(dom.threatWord, 'CORES');
+        this._setText(dom.threatFig, `${progress.found || 0}/${progress.total}`);
+        this._setAttr(dom.threat, 'aria-label', `Cores ${progress.found || 0} of ${progress.total}`);
+      } else if (ready) {
         const remainingTicks = Number.isInteger(progress.remainingTicks) ? Math.max(0, progress.remainingTicks) : 0;
         const durationTicks = progress.durationTicks;
         const clock = waveCountdownClock(remainingTicks);
@@ -344,7 +354,7 @@ export const survivalHud = {
       if (dom.killWord && dom.killFig) {
         this._setHidden(dom.killWord, false);
         this._setHidden(dom.killFig, false);
-        this._setText(dom.killWord, 'KILLS');
+        this._setText(dom.killWord, progress && progress.killWord ? progress.killWord : 'KILLS');
         this._setText(dom.killFig, num(census.resolved));
       }
     } else if (showThreat) {
@@ -526,12 +536,18 @@ export const survivalHud = {
     const durationTicks = Number.isInteger(payload.durationTicks) && payload.durationTicks > 0
       ? payload.durationTicks
       : 0;
-    if (durationTicks <= 0) return;
+    const counted = payload.completionKind === 'collect' || payload.completionKind === 'nodes'
+      || payload.completionKind === 'commander';
+    if (durationTicks <= 0 && !counted) return;
     const remainingTicks = Number.isInteger(payload.remainingTicks) ? Math.max(0, payload.remainingTicks) : 0;
     this._waveProgress = {
       wave: Number.isInteger(payload.wave) ? payload.wave : 0,
       remainingTicks,
       durationTicks,
+      completionKind: payload.completionKind || null,
+      found: Number.isInteger(payload.found) ? payload.found : 0,
+      total: Number.isInteger(payload.total) ? payload.total : 0,
+      killWord: typeof payload.killWord === 'string' ? payload.killWord : null,
     };
   },
 

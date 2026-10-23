@@ -418,7 +418,10 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   // what the wave owner paces off. The purse trim lives at launch (the wallet the armory opens
   // with), the body stamps live in the swarm-elites runtime; this file owns the ROOM.
   const threats = normalizeThreatIds(swarmThreats);
-  const pressure = stake.pressure * swarmThreatPressureMult(threats);
+  let pressure = stake.pressure * swarmThreatPressureMult(threats);
+  if (circuitRound && Number(circuitRound.pressureMul) > 0 && circuitRound.pressureMul !== 1) {
+    pressure *= circuitRound.pressureMul;
+  }
   const dominant = isPlainObject(buildSummary) && typeof buildSummary.dominant === 'string'
     ? buildSummary.dominant
     : null;
@@ -634,10 +637,27 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
     if (circuitRound.kind === 'survive') {
       swarm.killTarget = 0;
       swarm.durationTicks = CIRCUIT_SURVIVE_TICKS;
+    } else if (circuitRound.kind === 'nodes' || circuitRound.kind === 'hold'
+      || circuitRound.kind === 'collect' || circuitRound.kind === 'commander'
+      || circuitRound.kind === 'reach') {
+      swarm.killTarget = 0;
+      swarm.circuit.nodeCount = circuitRound.nodeCount;
+      swarm.circuit.coreCount = circuitRound.coreCount;
+      swarm.circuit.commanderName = circuitRound.commanderName;
+      swarm.circuit.zone = circuitRound.zone;
+      swarm.circuit.gate = circuitRound.gate;
+      swarm.circuit.need = circuitRound.kind === 'hold' ? circuitRound.holdTicks
+        : circuitRound.kind === 'reach' ? circuitRound.reachTicks
+          : circuitRound.kind === 'nodes' ? circuitRound.nodeCount
+            : circuitRound.kind === 'collect' ? circuitRound.coreCount
+              : 1;
+      swarm.circuit.fill = 0;
     }
   }
   const rewards = swarmRewards(w);
-  if (stake.earn !== 1) rewards.credits = Math.max(0, Math.round(rewards.credits * stake.earn));
+  const earnMul = circuitRound && Number(circuitRound.earnMul) > 0 ? circuitRound.earnMul : 1;
+  const earn = stake.earn * earnMul;
+  if (earn !== 1) rewards.credits = Math.max(0, Math.round(rewards.credits * earn));
   if (opening > SPAWN_BUDGET_DEFAULT_MAX) {
     return invalid([issue('packages', `swarm opening burst ${opening} exceeds 24`)]);
   }
@@ -645,10 +665,12 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
     return invalid([issue('swarm.concurrent', `swarm concurrency ${swarm.concurrent} exceeds 40`)]);
   }
   const surviveRound = !!circuitRound && circuitRound.kind === 'survive';
+  const specialKind = circuitRound && ['nodes', 'hold', 'collect', 'commander', 'reach'].includes(circuitRound.kind)
+    ? circuitRound.kind : null;
   const plan = {
     id: `swarm:w${w}:${seed.toString(16)}`,
     mode: SWARM_RULESET,
-    objective: { kind: swarm.boss ? 'boss' : (surviveRound ? 'survive' : 'resolve_hostiles') },
+    objective: { kind: swarm.boss ? 'boss' : (surviveRound ? 'survive' : (specialKind || 'resolve_hostiles')) },
     packages,
     schedule,
     // An authored act round owns its room: the act table's phase wins over the cycle.
@@ -658,7 +680,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
       ? { kind: 'refit', choices: null }
       : (isSwarmDraftWave(w) ? { kind: 'draft', choices: 3 } : { kind: 'none', choices: null }),
     completionRules: {
-      kind: surviveRound ? 'duration' : 'cohort',
+      kind: surviveRound ? 'duration' : (specialKind || 'cohort'),
       requiredPackagesMaterialized: true,
       blockingRoles: [],
       cleanupTicks: SWARM_CLEANUP_TICKS,

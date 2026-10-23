@@ -392,7 +392,7 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   const hullFile = hullFileForRequest(request);
   if (stage && stage.id !== sceneId) releaseUiStage('scene-swap');
   else if (stage && stage.hullFile !== hullFile) releaseUiStage('hull-swap');
-  else if (stage?.live?.tape && stage.live.tape !== (request.tape || takeKillcamTape())) releaseUiStage('tape-swap');
+  else if (stage?.live?.tape && request.tape && stage.live.tape !== request.tape) releaseUiStage('tape-swap');
   else if (stage?.request?.control !== request.control) releaseUiStage('transport-swap');
   if (!stage && prewarm) {
     // The approach already built this stage. Adopt it whole — its content chain keeps running if

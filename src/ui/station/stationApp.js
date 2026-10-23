@@ -144,6 +144,40 @@ const DESTINATIONS = [
   { id: 'ledger', label: stationControlLabel('ledger'), icon: 'ledger', create: createLedgerScreen },
 ];
 
+/** The one-line gloss each destination already had in the help pop. The rail speaks the same line. */
+export const STATION_HELP = {
+  market: ['Market', 'Pick a commodity to see its price, demand and stock. Buy or sell against your credits and hold space.'],
+  shipworks: ['Shipworks', 'Pick a ship or a slot, preview compatible gear, then install it.'],
+  industry: ['Industry', 'Trace raw stock into refined goods and modules. A broken line names the exact input it is missing.'],
+  contracts: ['Missions', 'Accept jobs, track routes and settle objectives that finish at this berth. Highlighted rows need attention first.'],
+  factions: ['Factions', 'Pick a faction to see its standing, relationships, recent changes and what it unlocks.'],
+  bar: ['Contacts', 'Contacts turn rumors and local knowledge into leads, survey data and missions.'],
+  ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Recovered evidence opens to full detail.'],
+};
+
+/** Put each destination's existing help line on the rail tile, as a sub and as its spoken name. */
+export function stampDestinationRail(dockEl, destinations = DESTINATIONS, help = STATION_HELP) {
+  if (!dockEl || typeof dockEl.querySelector !== 'function') return [];
+  const stamped = [];
+  for (const dest of destinations) {
+    const line = help?.[dest.id]?.[1];
+    if (!line) continue;
+    const tile = dockEl.querySelector(`[data-nav="${dest.id}"]`);
+    if (!tile) continue;
+    const spoken = `${dest.label}. ${line}`;
+    if (tile.getAttribute('aria-label') !== spoken) tile.setAttribute('aria-label', spoken);
+    let gloss = typeof tile.querySelector === 'function' ? tile.querySelector('.sx-tile__gloss') : null;
+    if (!gloss && tile.ownerDocument && typeof tile.ownerDocument.createElement === 'function') {
+      gloss = tile.ownerDocument.createElement('span');
+      gloss.className = 'sx-tile__gloss k-t-fine';
+      tile.appendChild(gloss);
+    }
+    if (gloss && gloss.textContent !== line) gloss.textContent = line;
+    stamped.push({ id: dest.id, line });
+  }
+  return stamped;
+}
+
 // The service verbs used to be dock tiles declared here. They now live on the vital they change
 // (Repair on Hull, Refuel on Fuel, Sell on Hold), so each verb is named at its own meter and the
 // dock is destinations only. `runAction` still owns the id → service-type mapping.
@@ -694,15 +728,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     effects.arrive();
   }
 
-  const HELP = {
-    market: ['Market', 'Pick a commodity to see its price, demand and stock. Buy or sell against your credits and hold space.'],
-    shipworks: ['Shipworks', 'Pick a ship or a slot, preview compatible gear, then install it.'],
-    industry: ['Industry', 'Trace raw stock into refined goods and modules. A broken line names the exact input it is missing.'],
-    contracts: ['Missions', 'Accept jobs, track routes and settle objectives that finish at this berth. Highlighted rows need attention first.'],
-    factions: ['Factions', 'Pick a faction to see its standing, relationships, recent changes and what it unlocks.'],
-    bar: ['Contacts', 'Contacts turn rumors and local knowledge into leads, survey data and missions.'],
-    ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Recovered evidence opens to full detail.'],
-  };
+  const HELP = STATION_HELP;
+  stampDestinationRail(dock.el, DESTINATIONS, HELP);
   helpEl.addEventListener('click', () => {
     // Toggle, not re-open. With the trigger now exempt from close-on-outside-click, a second press
     // would otherwise re-render the same card forever with no way to dismiss it by the same button.

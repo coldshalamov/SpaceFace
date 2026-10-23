@@ -17,6 +17,7 @@ import { FACTION_META } from '../../../data/factions.js';
 import { MISSION_TYPES } from '../../../data/missions.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { replayStandingLines } from '../../../story/endings/worldAfter.js';
+import { standingOrderProgressLines } from '../../../systems/captainStandingOrders.js';
 import { contractTermById } from '../../../data/contractClauses.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
@@ -490,6 +491,17 @@ function cleanText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/** The word under Accept. Collateral always says hold. A first trade says hold even with nothing at risk. */
+export function contractAcceptHoldNote(state, collateral) {
+  if (Number(collateral) > 0) return 'hold';
+  const missions = state && state.missions;
+  const accepted = !!(missions && (
+    (Array.isArray(missions.active) && missions.active.some(Boolean))
+    || (Array.isArray(missions.receipts) && missions.receipts.some(Boolean))
+  ));
+  return accepted ? '' : 'hold';
+}
+
 export function createContractsScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'k-panel sx-ct';
@@ -617,7 +629,7 @@ export function createContractsScreen(ctx) {
       selectedId = String(mid(list[0]));
     }
     const dispatch = missionBoardDispatchLabel(state, stationId, list.length);
-    const standing = replayStandingLines(state).join(' ');
+    const standing = [replayStandingLines(state).join(' '), standingOrderProgressLines(state, stationId).join(' ')].filter(Boolean).join(' ');
     if (dispatchEl.textContent !== dispatch) dispatchEl.textContent = dispatch;
     standingEl.textContent = standing;
     standingEl.hidden = !standing;
@@ -1072,6 +1084,7 @@ export function createContractsScreen(ctx) {
     const accept = dossier.querySelector('.sx-ct-commit[data-accept]');
     const consequences = missionConsequenceSummary(m);
     acceptHoldMs = consequences.collateral > 0 ? 720 : 450;
+    const holdNote = contractAcceptHoldNote(state, consequences.collateral);
     if (accept && !accept.disabled) {
       const hint = consequences.collateral > 0
         ? ` Hold to accept: ${cr(consequences.collateral)} collateral is at risk.`
@@ -1083,7 +1096,7 @@ export function createContractsScreen(ctx) {
         ring.setAttribute('aria-hidden', 'true');
         accept.appendChild(ring);
       }
-      dressLampKey(accept, { hold: true, note: consequences.collateral > 0 ? 'hold' : '' });
+      dressLampKey(accept, { hold: true, note: holdNote });
     } else if (accept) {
       dressLampKey(accept);
     }
