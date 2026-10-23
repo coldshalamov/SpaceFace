@@ -235,7 +235,14 @@ export function waveOpeningLine(wave, plan) {
     const stageLine = circuit
       ? `Stage ${circuit.stage}, round ${circuit.localRound}. `
       : '';
-    const closing = circuit && circuit.kind === 'survive' ? 'Survive sixty seconds.' : 'Break the pack.';
+    const closing = !circuit ? 'Break the pack.'
+      : circuit.kind === 'survive' ? 'Survive sixty seconds.'
+        : circuit.kind === 'nodes' ? 'Destroy the hive nodes.'
+          : circuit.kind === 'hold' ? 'Hold the zone.'
+            : circuit.kind === 'collect' ? 'Collect the cores.'
+              : circuit.kind === 'commander' ? `Assassinate ${circuit.commanderName || 'the commander'}.`
+                : circuit.kind === 'reach' ? 'Reach the gate.'
+                  : 'Break the pack.';
     // The first-run lesson names what is on the field, not the held pack: one hull, one rock
     // worth throwing, and the pack still on its way.
     if (plan.openingLesson) {

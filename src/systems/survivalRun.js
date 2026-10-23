@@ -470,9 +470,11 @@ export const survivalRun = {
         });
         return;
       }
+      const routeEntry = { stage: choice.stage, arenaId: choice.arenaId, nodeId: choice.nodeId || choice.arenaId };
+      if (choice.fight === 'elite' || choice.fight === 'challenge') routeEntry.fight = choice.fight;
       circuit.route = circuit.route
         .filter((entry) => entry.stage !== choice.stage)
-        .concat([{ stage: choice.stage, arenaId: choice.arenaId, nodeId: choice.nodeId || choice.arenaId }])
+        .concat([routeEntry])
         .sort((a, b) => a.stage - b.stage);
       circuit.status = 'running';
       circuit.revision += 1;
