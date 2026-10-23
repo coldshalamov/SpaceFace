@@ -44,7 +44,10 @@ export function poiBehaviorFingerprint(row) {
     row.dayIndex,
     row.dangerMode,
     row.contract && row.contract.verb,
-    row.contract && row.contract.required,
+    // This is the same pre-existing fissure research route. Its three-bearing identity
+    // remains stable when the local measurement is specialized to calm/surge, preserving
+    // offered/accepted missions, deterministic destination/reward and old save receipts.
+    isFissureSurvey(row) ? 3 : row.contract && row.contract.required,
   ).toString(36);
 }
 
@@ -129,6 +132,7 @@ export const livingPoiBehaviors = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
+    this.registry = ctx.registry || null;
     this.helpers = ctx.helpers || (ctx.helpers = {});
     this._unsubs = [];
     this._deferredAutomaticGuidance = new Map();
@@ -212,6 +216,8 @@ export const livingPoiBehaviors = {
         const row = own.activeByZone[def.zoneId];
         if (authoredInteraction(row)) delete row._presenceSuspended;
       }
+      const fissure = own.activeByZone.zone_haumea_fissure;
+      if (isFissureSurvey(fissure)) delete fissure._presenceSuspended;
       return [];
     }
     return this.planSector(sectorId, { dayIndex, sector: payload.sector || sectorOf(this.state, sectorId) });
@@ -223,6 +229,18 @@ export const livingPoiBehaviors = {
     // Departure clears presence only. Aftermath, receipts, entered identities, and the plan remain
     // available until the destination identity activates; no consequence is rolled back here.
     own.currentZoneId = null;
+    const fissure = own.activeByZone.zone_haumea_fissure;
+    if (isFissureSurvey(fissure)) {
+      fissure._presenceSuspended = true;
+      if (!own.aftermath[fissure.behaviorId]) {
+        fissure.progress = 0; fissure.status = 'available';
+        delete fissure._fissureBaseline; delete fissure._fissureSteady;
+        delete fissure._fissureGeneration;
+        delete fissure._fissureGuidanceAt;
+        delete own.entered[fissure.behaviorId];
+        this._syncWorldReadouts(own);
+      }
+    }
     for (const def of AUTHORED_INTERACTIONS) {
       const row = own.activeByZone[def.zoneId];
       if (authoredInteraction(row)) row._presenceSuspended = true;
@@ -277,6 +295,16 @@ export const livingPoiBehaviors = {
       // sectorZones are authored in sector-local coordinates while scanner courses, entities,
       // autopilot, and the seamless world all consume global_v1. Keep the authored coordinate for
       // diagnostics, but expose exactly one composed global position on the live/public row.
+      if (isFissureSurvey(row)) {
+        // Specialize the existing row, not the global anomaly grammar or its reward owner.
+        row.contract = { ...row.contract, required: 2,
+          cause: 'a quiet fracture baseline compared with the working drill separates the return',
+          objective: 'Scan in calm, then surge from outside the drill envelope; a stopped drill yields a steady reading.' };
+        row.entryLine = 'Ice Fissure: take a fresh calm baseline, then compare the surge from a safe distance.';
+        row.mapLabel = 'ICE FISSURE SURVEY';
+        row.fingerprint = poiBehaviorFingerprint(row);
+        if (!own.aftermath[row.behaviorId]) delete own.entered[row.behaviorId];
+      }
       row.zoneLocalCenter = { x: row.zoneCenter.x, z: row.zoneCenter.z };
       row.zoneCenter = sectorLocalToGlobalForSector(row.zoneLocalCenter, row.sectorId);
       const aftermath = own.aftermath[row.behaviorId];
@@ -411,7 +439,9 @@ export const livingPoiBehaviors = {
           || dist2(pos, row.zoneCenter) > row.zoneRadius * row.zoneRadius) return false;
     }
     this._deferredAutomaticGuidance.delete(row.behaviorId);
-    if (row.familyId === 'anomaly_research') {
+    if (isFissureSurvey(row)) {
+      if (!this._observeFissure(row, payload)) return false;
+    } else if (row.familyId === 'anomaly_research') {
       if (!payload || !payload.pos) return false;
       const local = this._localPosition(payload.pos);
       row._bearings = row._bearings || [];
@@ -454,6 +484,40 @@ export const livingPoiBehaviors = {
     if (row.progress < row.contract.required) this._publishGuidance(row, 'progress');
     else this._resolve(row, row.contract.successOutcome, payload);
     return true;
+  },
+
+  _observeFissure(row, payload) {
+    const state = this.state, player = state.entities?.get(state.playerId), pos = payload?.pos;
+    if (row._presenceSuspended || state.mode !== 'flight'
+      || state.world?.currentSectorId !== row.sectorId
+      || ensureState(state).activeSectorId !== row.sectorId
+      || (payload?.sectorId != null && payload.sectorId !== row.sectorId)
+      || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)
+      || !player || pos.x !== player.pos?.x || pos.z !== player.pos?.z
+      || dist2(pos, row.zoneCenter) > row.zoneRadius*row.zoneRadius) return false;
+    const observation = this.registry?.get?.('environmentalMachinery')?.readFissureSurvey?.(player);
+    if (!observation) return false;
+    if (row._fissureGeneration && row._fissureGeneration !== observation.generation) {
+      row.progress = 0; row.status = 'available'; delete row._fissureBaseline;
+      delete row._fissureGuidanceAt;
+      this._syncWorldReadouts();
+    }
+    row._fissureGeneration = observation.generation;
+    if (observation.phase === 'shutdown') {
+      // Authored alternative: stopped machinery leaves a steady fracture return. The durable
+      // stop is not a failed survey and never causes this reader to restart the machine.
+      row._fissureSteady = true; row.progress = row.contract.required - 1;
+      return true;
+    }
+    if (observation.phase === 'calm' && !row._fissureBaseline) {
+      row._fissureBaseline = true;
+      return true;
+    }
+    if (observation.phase === 'surge' && row._fissureBaseline) return true;
+    const now = Number(state.simTime) || 0;
+    if (!Number.isFinite(row._fissureGuidanceAt) || now < row._fissureGuidanceAt
+      || now-row._fissureGuidanceAt >= 3.5) this._publishGuidance(row, 'progress');
+    return false;
   },
 
   _resolve(row, outcome, payload = {}) {
@@ -549,6 +613,17 @@ export const livingPoiBehaviors = {
       const bands = ['close <105 WU', 'middle 105–<210 WU', 'far 210–300 WU'];
       const missing = bands.filter((_, i) => !(row._soundedBands || []).includes(i));
       text = `FAR SOUNDING · SCAN ${row.progress || 0}/3 · Next: ${missing.join('; ')}`;
+    }
+    if (isFissureSurvey(row)) {
+      if (phase === 'outcome') {
+        text = `ICE FISSURE · ${row._fissureSteady ? 'Drill stopped; steady fracture return recorded' : 'Calm and surge compared'}`
+          + (durable?.leadEmitted ? ' · Research lead at Rift Observatory' : ' · Reading recorded');
+      } else if (phase !== 'aftermath') {
+        row._fissureGuidanceAt = Number(this.state.simTime) || 0;
+        text = row._fissureBaseline
+          ? 'ICE FISSURE · Quiet baseline recorded. Scan the next surge from outside the drill envelope.'
+          : 'ICE FISSURE · Take a fresh scan in calm, then compare the surge from outside the drill envelope. A stopped drill gives a steady reading.';
+      }
     }
     // Resolution receipts must survive a same-tick campaign/tutorial line. A four-second story
     // floor is common on first-hour authority events; keep the durable result live long enough to
@@ -953,6 +1028,11 @@ function pruneExpiredAftermath(own, dayIndex) {
       delete own.aftermath[behaviorId];
     }
   }
+}
+
+function isFissureSurvey(row) {
+  return row?.sectorId === 'sector_haumea_rift' && row.zoneId === 'zone_haumea_fissure'
+    && row.familyId === 'anomaly_research';
 }
 
 function authoredInteraction(row) {

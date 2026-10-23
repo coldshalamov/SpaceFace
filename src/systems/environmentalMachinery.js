@@ -19,6 +19,7 @@ import {
   CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
   KILL_MACHINES,
+  RIFT_FISSURE_CRACKER,
   STARTER_FIELD_MACHINE,
   ALL_KILL_MACHINES,
   ALL_KILL_MACHINE_BY_ID,
@@ -59,6 +60,7 @@ import {
   weatherPhase,
   weatherVolumesForSector,
 } from '../data/environmentalMachinery.js';
+import { getDressingRow } from '../world/dressingTable.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { writePickupRemainder } from '../core/pickupAcceptance.js';
 import { NEAR_EXIT_PAD_WU } from '../world/activityClassification.js';
@@ -206,6 +208,7 @@ export const environmentalMachinery = {
     this._killPlayerInside = new Set();
     this._anvilsEnsured = new Set();
     this._mouthIds = new Map();
+    this._fissureVisit = null;
     this._reefPhaseOut = {};
     this._reefFieldPatch = { strength: 0 };
     this._reefFieldRegistered = false;
@@ -387,6 +390,7 @@ export const environmentalMachinery = {
     const inWeather = !!(inFlight && WEATHER_SECTOR_IDS.has(sectorId));
     const sectorMachines = inFlight ? killMachinesForSector(sectorId) : EMPTY_LIST;
     const inKill = sectorMachines.length > 0;
+    if (sectorId !== RIFT_FISSURE_CRACKER.sectorId) this._fissureVisit = null;
     const inMetronome = !!(inFlight && sectorId === METRONOME_SECTOR_ID);
     if (!fieldsFlag('enabled') || !(inCeres || inPallas || inWeather || inKill || inMetronome || inOrchard)) {
       if (this._clearSettled !== true) {
@@ -678,6 +682,67 @@ export const environmentalMachinery = {
     this._publishPhaseTransition(phase);
   },
 
+  // Observation only: never advance the clock, spawn furniture, or register a force here.
+  // A projected phase is not admission. Require a current owner pass and its actual live
+  // furniture/kernel, or the existing durable shutdown receipt (whose furniture may be gone).
+  readFissureSurvey(player) {
+    const state = this.state, machine = RIFT_FISSURE_CRACKER, visit = this._fissureVisit;
+    const active = state?.world?.activeSector;
+    if (!fieldsFlag('enabled') || state?.mode !== 'flight' || !visit
+      || state.world?.currentSectorId !== machine.sectorId || visit.active !== active
+      || visit.epoch !== state.world.enterSerial || !Number.isFinite(state.tick)
+      || state.tick < visit.tick || state.tick - visit.tick > 1
+      || simTimeOf(state) < visit.atS || simTimeOf(state)-visit.atS > 1/30
+      || !player || player.id !== state.playerId || player.alive === false
+      || state.entities?.get(player.id) !== player || player.flags?.docked || state.ui?.docked
+      || !Number.isFinite(player.pos?.x) || !Number.isFinite(player.pos?.z)
+      || !Number.isFinite(player.radius) || player.radius <= 0) return null;
+    const phase = this._killMachinePhase(machine, state);
+    const fieldOwner = this._fieldsSystem();
+    if (!fieldOwner || fieldOwner !== visit.fieldOwner || !fieldOwner._kernel
+      || fieldOwner._kernel !== visit.kernel || typeof fieldOwner.kernelList !== 'function') return null;
+    const liveFields = fieldOwner.kernelList();
+    if (!Array.isArray(liveFields)) return null;
+    let bound = Math.max(machine.hazardRadius, machine.mouth.radius,
+      Math.hypot(machine.anvil.pos.x-machine.globalPos.x, machine.anvil.pos.z-machine.globalPos.z)+machine.anvil.radius);
+    for (const field of machine.fields) {
+      const center = killMachineFieldCenter(machine, field);
+      bound = Math.max(bound, Math.hypot(center.x-machine.globalPos.x, center.z-machine.globalPos.z)+field.radius);
+      const live = liveFields.find(item => item.id === field.id);
+      if (phase.fieldActive) {
+        const dir = killMachineFieldDir(machine, field);
+        if (!live || live.sourceId !== machine.id || live.kind !== field.kind
+          || live.radius !== field.radius || live.strength !== field.strength*phase.fieldStrengthScale
+          || live.center?.x !== center.x || live.center?.z !== center.z
+          || live.dir?.x !== dir.x || live.dir?.z !== dir.z) return null;
+      } else if (live) return null;
+    }
+    if (phase.phase !== 'shutdown') {
+      const mouthId = this._mouthIds.get(machine.id);
+      const mouth = getDressingRow(state, mouthId);
+      const dressing = active?.dressing?.find(row => row.id === mouthId && row.environmentalMachineryId === machine.id);
+      const anvil = (state.entityList || []).find(entity => entity.alive !== false
+        && entity.data?.killMachineAnvilId === machine.anvil.id && entity.data?.killMachineId === machine.id);
+      if (!dressing || !mouth || mouth !== visit.mouth || mouth.alive === false
+        || mouth.data?.placeId !== machine.placeId || mouth.data?.sectorId !== machine.sectorId
+        || !anvil || anvil !== visit.anvil
+        || state.entities.get(anvil.id) !== anvil || anvil.type !== 'asteroid'
+        || !Number.isFinite(anvil.hull) || anvil.hull <= 0) return null;
+      for (const body of [mouth, anvil]) {
+        if (!Number.isFinite(body.pos?.x) || !Number.isFinite(body.pos?.z)
+          || !Number.isFinite(body.radius) || body.radius <= 0) return null;
+        bound = Math.max(bound, Math.hypot(body.pos.x-machine.globalPos.x, body.pos.z-machine.globalPos.z)+body.radius);
+      }
+    }
+    // A circle containing the whole cone is intentionally conservative: 14+96=110 WU.
+    // Expand by the pilot's actual hull radius and a 2 WU exterior gap; no point-only safety.
+    const hullRadius = Math.max(player.radius, Number.isFinite(player.physicsBody?.radius) ? player.physicsBody.radius : 0);
+    const safeRadius = bound + hullRadius + 2;
+    if (Math.hypot(player.pos.x-machine.globalPos.x, player.pos.z-machine.globalPos.z) <= safeRadius) return null;
+    return Object.freeze({ machineId: machine.id, phase: phase.phase, remainingS: phase.remainingS,
+      safeRadius, generation: visit.generation, shutdownCause: this._killMachineShutdown(machine, state)?.cause || null });
+  },
+
   _killMachineShutdown(machine, state = this.state) {
     const record = state?.world?.discovery?.[machine.sectorId]?.machineShutdowns?.[machine.id];
     return record && Object.hasOwn(KILL_MACHINE_SHUTDOWN_WORDS, record.cause) ? record : null;
@@ -747,6 +812,20 @@ export const environmentalMachinery = {
       }
       this._updateKillMachinePlayerBoundary(state, machine, player, phase.fieldActive);
       this._noteKillCollateral(state, machine, player, phase);
+      if (machine === RIFT_FISSURE_CRACKER) {
+        const previous = this._fissureVisit;
+        const fieldOwner = this._fieldsSystem();
+        const sameVisit = previous?.active === state.world?.activeSector && previous?.epoch === state.world?.enterSerial
+          && previous?.fieldOwner === fieldOwner && previous?.kernel === fieldOwner?._kernel;
+        this._fissureVisit = {
+          active: state.world?.activeSector, epoch: state.world?.enterSerial, tick: state.tick, atS: simTimeOf(state),
+          fieldOwner, kernel: fieldOwner?._kernel, generation: sameVisit ? previous.generation : {},
+          // Retain admitted object identity across ticks; reused numeric IDs are not admission.
+          mouth: (sameVisit && previous.mouth) || getDressingRow(state, this._mouthIds.get(machine.id)) || null,
+          anvil: (sameVisit && previous.anvil) || (state.entityList || []).find(entity => entity.alive !== false
+            && entity.data?.killMachineAnvilId === machine.anvil.id && entity.data?.killMachineId === machine.id) || null,
+        };
+      }
     }
   },
 
@@ -1450,6 +1529,7 @@ export const environmentalMachinery = {
   },
 
   _clearKillMachines(why) {
+    this._fissureVisit = null;
     for (const machine of ALL_KILL_MACHINES) {
       this._removeKillMachineFields(machine);
       if (this._killPlayerInside.has(machine.id)) {
