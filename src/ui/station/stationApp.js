@@ -1,5 +1,6 @@
 import { stationFrameHtml } from '../views/stationFrames.js';
 import { createStationArrivalPresenter } from './stationArrival.js';
+import { createKiteCornerScreen } from '../orrery/kiteCornerProgram.js';
 // src/ui/station/stationApp.js — Field Hardware berth chrome (PQ-194 / P33 shell).
 // Docking is an arrival on the lit 3D berth: stencil station name, authority legend, one news
 // tape, leftover event/ledger/mechanic strips, destination keys along the bottom edge, Undock as
@@ -676,16 +677,53 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     return screen;
   }
 
+  // Kite's Corner borrows the current workspace, never the destination rail or its memory.
+  const kiteButton = document.createElement('button');
+  kiteButton.type = 'button'; kiteButton.className = 'k-word sx-kite-corner-open';
+  kiteButton.textContent = 'Kite’s Corner';
+  kiteButton.setAttribute('aria-label', 'Watch Kite’s Corner, Ceres service-room programme');
+  kiteButton.setAttribute('aria-expanded', 'false');
+  helpEl.parentNode.insertBefore(kiteButton, helpEl);
+  let kiteScreen = null, kiteOpen = false;
+  function kiteHere() { return state().ui?.docked === true && stationId() === 'station_ceres'; }
+  function syncKiteEntry() { kiteButton.hidden = !kiteHere(); }
+  function closeKite(resume = true) {
+    if (!kiteOpen) return;
+    kiteScreen.onHide(); kiteOpen = false;
+    kiteButton.setAttribute('aria-expanded', 'false');
+    const previous = screenCache.get(activeId);
+    bodyEl.setAttribute('aria-labelledby', 'sx-tab-' + activeId);
+    if (previous) bodyEl.replaceChildren(previous.el);
+    if (resume && shown && previous) {
+      previous.onShow?.(ctx);
+      if (!kiteButton.hidden) kiteButton.focus({ preventScroll: true });
+    }
+  }
+  function openKite() {
+    if (!shown || !kiteHere() || kiteOpen) return;
+    closePop(); setCommsOpen(false);
+    screenCache.get(activeId)?.onHide?.();
+    if (!kiteScreen) kiteScreen = createKiteCornerScreen(ctx, { onReturn: () => closeKite() });
+    kiteOpen = true; kiteButton.setAttribute('aria-expanded', 'true');
+    bodyEl.removeAttribute('aria-labelledby');
+    bodyEl.replaceChildren(kiteScreen.el); kiteScreen.onShow();
+    kiteScreen.el.querySelector('button:not(:disabled)')?.focus({ preventScroll: true });
+  }
+  kiteButton.addEventListener('click', openKite);
+  syncKiteEntry();
+
   function navigate(id, options = {}) {
     const dest = DESTINATIONS.find((d) => d.id === id);
     if (!dest) return;
+    const leavingKite = kiteOpen;
+    if (leavingKite) closeKite(false);
     if (id === activeId) {
       const active = screenCache.get(activeId);
       if (active && typeof active.onShow === 'function') active.onShow({ ...ctx, ...options });
       return;
     }
     const prev = activeId && screenCache.get(activeId);
-    if (prev && typeof prev.onHide === 'function') { try { prev.onHide(); } catch (_) {} }
+    if (!leavingKite && prev && typeof prev.onHide === 'function') { try { prev.onHide(); } catch (_) {} }
     activeId = id;
     app.dataset.operation = id;
     const view = stationOperationToSurface(id) || id;
@@ -890,7 +928,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // mission handoff already used it, the Missions badge updates without yanking the player back.
     // INF-095: hidden in flight, this is pure waste (plus hidden auto-opens) — onShow recomputes.
     if (!shown) return;
-    applyDockAttention({ allowAutoOpen: payload.onboardingChoice === true });
+    applyDockAttention({ allowAutoOpen: !kiteOpen && payload.onboardingChoice === true, refreshActive: !kiteOpen });
   });
   subscribe('credits:changed', (p = {}) => {
     const reason = String(p.reason || '');
@@ -1176,6 +1214,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   function renderStatus() {
+    syncKiteEntry();
     const s = state();
     effects.credits(credits(s));
     const ship = playerEntity(s);
@@ -1417,7 +1456,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (!shown) return;
     renderStatus();
     effects.syncPolicy();
-    applyDockAttention({ allowAutoOpen: false, refreshActive: !options.periodic });
+    if (kiteOpen && !kiteHere()) closeKite(state().ui?.docked === true);
+    applyDockAttention({ allowAutoOpen: false, refreshActive: !options.periodic && !kiteOpen });
+    if (kiteOpen) { kiteScreen.refresh(); return; }
     // The global UI loop calls this every 18 frames so live hull/fuel/credit readouts stay current.
     // Station operation screens are event-driven and contain real pointer targets. Rebuilding them
     // on that cadence replaces hovered nodes and briefly leaves new Shipworks labels at their
@@ -1469,6 +1510,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   });
 
   function activeScreen() {
+    if (kiteOpen) return kiteScreen;
     const dest = DESTINATIONS.find((d) => d.id === activeId);
     return dest ? screenCache.get(dest.id) : null;
   }
@@ -1501,7 +1543,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       // is the roving-tabindex owner the dock already maintains; focusing it changes no tabindex.
       const activeTile = dock.el && dock.el.querySelector('.sx-tile.is-active');
       if (activeTile) { try { activeTile.focus({ preventScroll: true }); } catch (_) {} }
-      const attention = applyDockAttention({ allowAutoOpen: true });
+      const attention = applyDockAttention({ allowAutoOpen: !kiteOpen, refreshActive: !kiteOpen });
       if (!(attention && attention.autoOpen)) {
         const scr = activeScreen();
         if (scr && typeof scr.onShow === 'function') {
@@ -1531,9 +1573,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       berth.setActive(false);
       pendingArrival = true; // the next show is a new arrival
       const scr = activeScreen();
-      if (scr && typeof scr.onHide === 'function') { try { scr.onHide(); } catch (_) {} }
+      if (kiteOpen) closeKite(false);
+      else if (scr && typeof scr.onHide === 'function') { try { scr.onHide(); } catch (_) {} }
     },
     dispose() {
+      kiteButton.removeEventListener('click', openKite);
+      kiteScreen?.dispose();
       arrivalPresenter.dispose();
       shown = false; commands.dispose(); effects.dispose();
       rootEl.classList.remove('sx-observatory');
