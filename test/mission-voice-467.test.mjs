@@ -21,6 +21,7 @@ import {
 } from '../src/data/heistMission.js';
 import { missionPaydayLine } from '../src/systems/missions.js';
 import { createHeistRecord, heistMissionRuntime, HEIST_CUE_TEXT } from '../src/missions/heistMissionRuntime.js';
+import { BREAKAWAY_THIRD_SHIFT_VARIANT_ID } from '../src/data/heistFacilities.js';
 import { SECTORS } from '../src/data/sectors.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -161,6 +162,29 @@ test('_spawnPressure leaves a first-attempt capsule run untouched and arms a ret
   assert.equal(retry.pressureSpawned, true);
   // One bounded picket — a second call does not repost it.
   assert.equal(heistMissionRuntime._spawnPressure(ctx, retry, capsule), 0);
+});
+
+test('a cased Third Shift slips the pickets; an uncased one still faces them', () => {
+  const spawnBudget = { request: (n) => n, bindEntity: () => {}, releaseSome: () => {} };
+  const spawnEntity = (spec) => ({ id: `e_${spec.typeId}`, data: spec.data || {} });
+  const mkCtx = (observed) => ({
+    state: { tick: 100, rng: () => 0.5, playerId: 'player', heistFacilities: { observed } },
+    bus: { emit() {}, on() {} },
+    helpers: { spawnEntity, spawnBudget },
+  });
+  const capsule = { id: 'cap1', pos: { x: 0, z: 0 } };
+  const variantId = BREAKAWAY_THIRD_SHIFT_VARIANT_ID;
+  // Uncased: the pickets form as always.
+  const blind = createHeistRecord({ missionId: 'm_blind', attempt: 0, variantId });
+  assert.equal(heistMissionRuntime._spawnPressure(mkCtx({}), blind, capsule), 3);
+  // Cased (≥ casedAt facts learned): the method the row sells is real — arrive on the
+  // crew's own cadence and the pickets never form.
+  const cased = createHeistRecord({ missionId: 'm_cased', attempt: 0, variantId });
+  const observed = {
+    launcher_schedule: { atTick: 1 }, catcher_receiver: { atTick: 2 },
+  };
+  assert.equal(heistMissionRuntime._spawnPressure(mkCtx(observed), cased, capsule), 0);
+  assert.notEqual(cased.pressureSpawned, true, 'the pickets were never needed');
 });
 
 // ── payday receipt ───────────────────────────────────────────────────────────

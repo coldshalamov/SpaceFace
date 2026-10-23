@@ -247,6 +247,41 @@ test('save reload re-registers the station and keeps claim, stages, and trophies
   assert.equal(state.longBerth.trophies.length, 1);
 });
 
+test('the yard survives the real save envelope — claim, stage, trophies, tow ledger', () => {
+  const state = makeState({ cargo: { cmdty_alloys: 6 } });
+  const { bus, sys } = wire(state);
+  bus.emit('tether:latched', { targetId: 7 });
+  scan(sys, state);
+  bus.emit('longBerth:claim', {});
+  bus.emit('longBerth:restore', {});
+  bus.emit('longBerth:restore', {});
+  state.longBerth.trophies.push({ worldRecordId: 'wr:hulk:9', label: 'Hulk of the Held Dock', type: 'wreck', at: 100 });
+  state.longBerth.towedIds.push('wr:tug:7');
+  const snapshot = JSON.parse(JSON.stringify(sys.serialize()));
+  // Cold boot: no slice, no registered station row.
+  const cold = makeState();
+  STATION_INFO.delete(LONG_BERTH_STATION_ID);
+  const { bus: bus2, sys: sys2 } = wire(cold);
+  sys2.deserialize(snapshot);
+  assert.equal(cold.longBerth.claimed, true);
+  assert.equal(cold.longBerth.stage, 2);
+  assert.equal(cold.longBerth.trophies.length, 1);
+  assert.deepEqual(cold.longBerth.towedIds, state.longBerth.towedIds);
+  assert.equal(cold.longBerth.markerEntityId, null, 'the marker handle is reminted, not saved');
+  bus2.emit('save:loaded', {});
+  assert.ok(STATION_INFO.get(LONG_BERTH_STATION_ID), 'the station row is re-registered on load');
+});
+
+test('a missing longBerth key in an old save restores the fresh bag', () => {
+  const cold = makeState();
+  const { sys } = wire(cold);
+  sys.deserialize(undefined);
+  sys.deserialize(null);
+  assert.equal(cold.longBerth.claimed, false);
+  assert.equal(cold.longBerth.stage, 0);
+  assert.deepEqual(cold.longBerth.trophies, []);
+});
+
 test('docking at the berth paints the home card: hull, crew, and the trophy yard', () => {
   const state = makeState();
   const { bus, sys } = wire(state);

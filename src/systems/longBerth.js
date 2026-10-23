@@ -63,6 +63,33 @@ export const longBerth = {
     });
   },
 
+  // Everything durable is plain data; markerEntityId is a runtime handle the save:loaded
+  // registration and _syncMarker remint, so it stays out of the envelope.
+  serialize() {
+    const lb = ensureSlice(this.state);
+    return {
+      version: lb.version,
+      claimed: lb.claimed === true,
+      stage: lb.stage,
+      trophies: lb.trophies,
+      crew: lb.crew,
+      towedIds: lb.towedIds,
+      tugWorldRecordId: lb.tugWorldRecordId || null,
+    };
+  },
+
+  deserialize(data) {
+    if (!data || typeof data !== 'object') return;
+    const lb = ensureSlice(this.state);
+    lb.claimed = data.claimed === true;
+    lb.stage = Number.isFinite(data.stage) ? data.stage : 0;
+    lb.trophies = Array.isArray(data.trophies) ? data.trophies : [];
+    lb.crew = Array.isArray(data.crew) ? data.crew : [];
+    lb.towedIds = Array.isArray(data.towedIds) ? data.towedIds : [];
+    lb.tugWorldRecordId = data.tugWorldRecordId || null;
+    lb.markerEntityId = null;
+  },
+
   update(dt, state) {
     this._scanT -= dt;
     if (this._scanT > 0) return;

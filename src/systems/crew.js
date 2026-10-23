@@ -67,7 +67,6 @@ export const crew = {
       this._banter('missions');
     });
     this.bus.on('longBerth:stage', () => {
-      this._loyaltyProgress('berth_stages');
       this._banter('stages');
     });
     this.bus.on('longBerth:trophy', () => {
@@ -81,7 +80,36 @@ export const crew = {
     this.bus.on('dock:docked', (p) => {
       // Recovering on your own berth is the fiction the fitted crew berth sells.
       if (p && p.stationId === LONG_BERTH_STATION_ID) this._healAll();
+      // A berth homecoming is the engineers' loyalty seam — the berth exists to be used.
+      if (p && p.stationId === LONG_BERTH_STATION_ID) this._loyaltyProgress('berth_homecomings');
     });
+  },
+
+  // The roster is people, not runtime handles — every field is plain durable data. A save without
+  // the key restores nothing over the fresh bag init already minted.
+  serialize() {
+    const c = ensureSlice(this.state);
+    return {
+      version: c.version,
+      members: c.members,
+      declinedIds: c.declinedIds,
+      lostIds: c.lostIds,
+      banterAt: c.banterAt,
+      banterPick: c.banterPick || 0,
+    };
+  },
+
+  deserialize(data) {
+    if (!data || typeof data !== 'object') return;
+    const c = ensureSlice(this.state);
+    c.members = Array.isArray(data.members) ? data.members : [];
+    c.declinedIds = Array.isArray(data.declinedIds) ? data.declinedIds : [];
+    c.lostIds = Array.isArray(data.lostIds) ? data.lostIds : [];
+    c.banterAt = Number.isFinite(data.banterAt) ? data.banterAt : 0;
+    c.banterPick = Number.isFinite(data.banterPick) ? data.banterPick : 0;
+    for (const m of c.members) {
+      m.status = m.status === 'injured' || m.status === 'lost' ? m.status : 'active';
+    }
   },
 
   update(dt, state) {

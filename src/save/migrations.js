@@ -386,6 +386,22 @@ export const MIGRATIONS = [
       }
     },
   },
+  {
+    from: 19,
+    to: 20,
+    // GOLD-CREW/GOLD-LONG-BERTH: the crew roster and the Long Berth yard join the
+    // envelope. Pre-v20 saves simply never had either — seed fresh bags so restore
+    // never leans on an absent-owner default, matching the worldPressure pattern.
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      if (!data.crew || typeof data.crew !== 'object' || Array.isArray(data.crew)) {
+        data.crew = { version: 1, members: [], declinedIds: [], lostIds: [], banterAt: 0, banterPick: 0 };
+      }
+      if (!data.longBerth || typeof data.longBerth !== 'object' || Array.isArray(data.longBerth)) {
+        data.longBerth = { version: 1, claimed: false, stage: 0, trophies: [], crew: [], towedIds: [], tugWorldRecordId: null };
+      }
+    },
+  },
 ];
 
 /**

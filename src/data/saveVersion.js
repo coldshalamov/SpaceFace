@@ -18,4 +18,6 @@
 // v18: imported cross-run dead hulls persist under player.uniqueWrecks.
 // v19: §34 world-pressure bag persists under data.worldPressure (Bloom tide,
 //      Gate Audit records, Slow Gray index, colossus remains — bounded receipts).
-export const CURRENT_VERSION = 19;
+// v20: GOLD-CREW/GOLD-LONG-BERTH — crew roster (data.crew) and the Long Berth yard
+//      (data.longBerth) persist across Continue.
+export const CURRENT_VERSION = 20;

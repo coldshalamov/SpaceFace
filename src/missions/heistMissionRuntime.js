@@ -76,6 +76,7 @@ import {
   PQ019C_HEIST_TUNING,
   PQ019C_RECOVERABLE_OUTCOMES,
   RETRY_WATCH_PRESSURE,
+  heistCaseFile,
   heistMissionPolicy,
 } from '../data/heistMission.js';
 import { makeEnemySpawnSpec } from '../systems/combat.js';
@@ -544,6 +545,10 @@ export const heistMissionRuntime = {
   _spawnPressure(ctx, record, capsule) {
     if (!record || record.settled || !capsule) return 0;
     const isBreakaway = heistLaunchVariant(record.variantId).id === BREAKAWAY_THIRD_SHIFT_VARIANT_ID;
+    // The Third Shift's cased method is honest: a pilot who learned the crew's cadence
+    // (case file at or past casedAt) arrives between the pickets, so they never form.
+    if (isBreakaway
+      && heistCaseFile('third_shift', ctx?.state?.heistFacilities?.observed).cased) return 0;
     // RC-MISSION-VOICE: the retry room remembers — a second lift on the capsule run launches into
     // a staked-out lane. First attempts and unknown variants stay exactly as they always were.
     const retryWatch = !isBreakaway && (record.attempt | 0) > 0;
