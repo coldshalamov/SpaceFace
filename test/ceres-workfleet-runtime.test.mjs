@@ -285,6 +285,7 @@ test('only exact active custody freezes the joint work assembly during offsector
 });
 
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
+import { observeProductionTender } from './fixtures/ceres-tender-clearance.mjs';
 import {snapshotFeatureMaps,applyFeatureConfigToMaps,restoreFeatureMaps} from '../src/data/featureFlags.js';
 function withProductionFeatures(runtime,fn){const prior=snapshotFeatureMaps();applyFeatureConfigToMaps(runtime.config.features);try{return fn();}finally{restoreFeatureMaps(prior);}}
 async function prepareProductionNative(runtime){const prior=snapshotFeatureMaps();applyFeatureConfigToMaps(runtime.config.features);try{const ok=await runtime.getSystem('physics').prepareBackend(runtime.state);assert.equal(runtime.getSystem('physics')._sg02.captureContactImpacts,true);assert.ok(runtime.getSystem('physics')._sg02._eventQueue);return ok;}finally{restoreFeatureMaps(prior);}}
@@ -308,6 +309,7 @@ test('complete production factory commissions the public site worker and yields 
     assert.equal(await prepareProductionNative(runtime),true);
     const brace=withProductionFeatures(runtime,()=>sites.applyWorldSiteBeamOperation({siteId:C.siteId,componentId:'long_plate_clamp',verb:'repair',amount:24,
       requestStreamId:'player-industrial-beam',requestSequence:state.tick}));assert.equal(brace.ok,true);
+    const tenderRoute=observeProductionTender(runtime);
     let sawThrust=false,maxTravel=0,originalBodies=null;
     // This remains the normal-path cutoff. An already-active authored recovery
     // may finish under its original finite deadline below; no retries reset it.
@@ -320,6 +322,7 @@ test('complete production factory commissions the public site worker and yields 
     // carries ~70% headroom and no fixture change is warranted.
     for(let i=0;i<12000;i++) {
       runtime.step(DT);
+      tenderRoute.step();
       originalBodies ||= captureProductionWorkfleet(state,C);
       const worker=state.entityList.find(e=>e.alive&&e.data?.worldRecordId===C.identities.worker);
       if(worker){maxTravel=Math.max(maxTravel,Math.hypot(worker.pos.x-(C.sitePlacement.pos.x-80),worker.pos.z-(C.sitePlacement.pos.z-220)));
@@ -344,6 +347,7 @@ test('complete production factory commissions the public site worker and yields 
       fingerprint:runtime.fingerprint,selectedSlots:runtime.manifest.selectedSlots,sourceHashes,tick:state.tick,phase:job?.phase,maxTravel,sawThrust,section:{pos:section?.pos,vel:section?.vel,rot:section?.rot,mass:section?.mass,nativeRecord:runtime.getSystem('physics')._sg02?.records.has(section?.id),salvagePool:section?.data?.salvagePool},
       native:runtime.getSystem('physics')._diag.backend,registry:runtime.manifest.authoritativeUpdateOrder.map(s=>s.name)}));
     assert.equal(job.phase,'extract');assert.ok(maxTravel>2);assert.ok(sawThrust);
+    tenderRoute.finish();
     assert.deepEqual(section.data.salvagePool,{});assert.equal(section.data.salvageAction,undefined);
     assert.equal(runtime.getSystem('physics')._sg02.records.has(section.id),true,'released site body enters layered native dynamic membership');
     assert.equal(state.entityList.find(e=>e.alive&&e.data?.worldRecordId===C.identities.worker).data.ai.passive,true);
