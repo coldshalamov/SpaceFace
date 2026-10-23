@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace current execution checkpoint
 
-Updated 2026-10-23 04:20 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
+Updated 2026-10-23 04:33 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
 
 ## Durable scope and evidence
 
@@ -31,7 +31,7 @@ Triton and Far Sounding retained. Haumea's existing survey now observes admitted
 
 70 distinct explicit checks passed (20new +45research +5environmental, including2native Rapier). Root20 and reviewer20 reruns overlap. Actual placement/dressingTable/scanner/Save/mission/economy methods are exercised, but no full world/native residency/GPU/game-camera/performance acceptance. Rejected combat-mouth fixture, changed fingerprint and stale readout versions are retained, not counted as accepted proof. See [Haumea report](https://github.com/coldshalamov/SpaceFace/blob/424bdae718639df6af12117f6a5c5e9e15eee489/design/program/world-depth-2026-10-02/HAUMEA_FISSURE_SURVEY_2026-10-23.md).
 
-Current CI **39899281598 / #5867** remains active; static1job120236836274, static2/FEEL failures observed but not fully attributed. Never infer new gate success from local checks. Prior research runs5855/5857/5860 ended failure; Ceres precheck skipped route gates. No manual reruns/cancellations.
+Current CI **39899281598 / #5867** remains active with overall failures, but all three research route commands passed at command level in their completed static shards. Exact matrix312 has Triton at static232→shard1, Far233→shard2, Haumea234→shard3. Completed selection counts and failure-only reports establish exit0, not individual TAP-line readback. Historical correction: #5860/39888575049 Far passed in static2job120202525821 (78 complete,71 pass,7 other failures); Triton remained skipped in static1job120202525663, freshly verified Ceres failure/static-group skipped. Prior claim that BOTH were skipped was wrong. #5855/#5857 Triton remained skipped. Overall old runs failed. See RESEARCH_ROUTE_CI_CORRECTION_2026-10-23.json for artifact identities. No manual reruns/cancellations.
 
 ### Sedna: draft PR520
 [PR520](https://github.com/coldshalamov/SpaceFace/pull/520) verified at **35437b0bac6e20d7b982454e7516da5080ee8a82**, public parent45a97fdbda62611cc13001bd16790f8afa844753. All five source blobs match frozen delivery. C11 names the correct Survey Post and derived journal guidance distinguishes discovered/accepted/closed/filed states without another saved flag or fuel pump. Root23/23 focused/adjacent checks passed. Actual Save projection includes disclosed discovery/artifact fixtures; full close-scan route still needs held Guide.
@@ -68,7 +68,7 @@ New actual cold-drill geometry preview delivered03:58:640x480,37626B,SHA3bab5370
 1. PR518 publisher follows current CI to terminal; fix only attributable failures without broad reruns or suppressing gates.
 2. Writ publisher retains exact pending operation and four successful blobs; inspect outcome before any permitted retry.
 3. Root keeps handoff/goals/sector register synchronized and preserves final code/evidence.
-4. Dione ordinary-visit investigator is READ-ONLY, selecting one noncompeting recurring activity, not allocated source writes. Preserve external packet namespaces and encounter IDs8101–8105; packet uploads are not proof those tasks launched.
+4. Dione investigation is complete: real clearance→same-load delivery would overlap active shared traffic owners, so no competing controller is allocated. Eunomia papers-route investigation is READ-ONLY pending exact custody/hunk allocation. Supported Save/return washing works, but docking with an unrelated foreign-owned hot pod charges the player; do not fix with title-only ownership because legitimately stolen/towed goods retain foreign title. Preserve external packet namespaces and encounter IDs8101–8105; packet uploads are not proof those tasks launched.
 5. Continue ordinary gameplay/visual/performance acceptance only through permitted supported routes. Existing browser approval is not permission to use another browser route.
 
 Canonical restored checkout remains dirty/read-only at25acfe5c97f069a34a045bea0cdc4450430657e9; preserve Vesta/mining/traffic and all reviewer changes. No index/stash/reset/fetch/lazy-fetch. Never execute test/anvil-receiver-delivery.test.mjs or aggregate suites. Both continuation schedules remain enabled/unchanged.

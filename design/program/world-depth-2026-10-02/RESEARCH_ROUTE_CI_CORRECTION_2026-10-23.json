@@ -1,0 +1,71 @@
+{
+  "updatedAt": "2026-10-23T04:33:00Z",
+  "correction": "Prior #5860 both-gates-skipped attribution was incorrect. Exact matrix/shard ownership is required.",
+  "old": {
+    "run": 39888575049,
+    "number": 5860,
+    "head": "cef2d5644d570a7e48de2608761b302080c7792d",
+    "matrixCommands": 311,
+    "staticCommands": 233,
+    "triton": {
+      "position": 232,
+      "shard": 1,
+      "job": 120202525663,
+      "result": "skipped",
+      "evidence": "Root re-read terminal steps04:30: Ceres physical failure, static group skipped."
+    },
+    "far": {
+      "position": 233,
+      "shard": 2,
+      "job": 120202525821,
+      "result": "command-level pass",
+      "completed": 78,
+      "passed": 71,
+      "failed": 7,
+      "artifactId": 12474165379,
+      "artifactSha256": "ce0f5e815ed517c4514d7bb15af87da065f16fb3c85c9c7d21e7068cd8014fab"
+    }
+  },
+  "current": {
+    "run": 39899281598,
+    "number": 5867,
+    "head": "424bdae718639df6af12117f6a5c5e9e15eee489",
+    "workflow": "in progress",
+    "matrixCommands": 312,
+    "staticCommands": 234,
+    "routes": [
+      {
+        "name": "Triton",
+        "position": 232,
+        "shard": 1
+      },
+      {
+        "name": "Far Sounding",
+        "position": 233,
+        "shard": 2
+      },
+      {
+        "name": "Haumea",
+        "position": 234,
+        "shard": 3
+      }
+    ],
+    "result": "All three command-level passes; not a green overall workflow.",
+    "artifacts": [
+      {
+        "id": 12477633971,
+        "sha256": "ed300a90cb1bd1169400fc4cb1e32de88fa60648d0f649d92afecc3dce4fe4c8"
+      },
+      {
+        "id": 12478625430,
+        "sha256": "14fc345ade6b691a5f9631e27b46576c44f766d87c13bf96b7ba69ccf59ed171"
+      },
+      {
+        "id": 12477947766,
+        "sha256": "d04c9dfa17d3f6052482cb3805fb476752dd2e54ad82b658e77cc5888cee1e03"
+      }
+    ]
+  },
+  "method": "Exact head package ordered matrix, recognized Node-test classification, round-robin static sharding, completed selection/pass/failure counts and absence from exhaustive failure entries. Passing command TAP output not retained, so do not relabel individual case counts as observed CI TAP.",
+  "unchanged": "Local test counts, no merge/deploy, overall failures and all acceptance gaps remain."
+}
