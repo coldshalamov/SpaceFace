@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
+import { lossLedger } from '../src/systems/lossLedger.js';
 import { scanReveal } from '../src/systems/scanReveal.js';
 
 function loss(id, overrides = {}) {
@@ -55,6 +56,8 @@ function boot() {
   state.entities.set(1, player);
   state.entityList = [player];
   const bus = createBus();
+  state.lossLedger.entries = state.lossLedger.bySector.sector_a.slice();
+  Object.create(lossLedger).init({ state, bus });
   const system = Object.create(scanReveal);
   system.init({ state, bus });
   return { state, bus, system, player };

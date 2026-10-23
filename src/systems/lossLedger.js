@@ -430,6 +430,18 @@ export const lossLedger = {
     this._onAssetLost = (p) => this._handleAssetLost(p);
     this._onOutpostRaided = (p) => this._handleOutpostRaided(p);
     this._onEntitySpawned = (p) => this._tagWreck(p);
+    this._onSurveyClaim = (p) => {
+      if (!p || typeof p !== 'object') return;
+      const loss = ensureState(this._state)?.entries.find(row => row?.lossId === p.lossId);
+      p.result = { accepted: false, reason: 'loss_not_retained' };
+      // bySector can retain a row after the global ledger cap prunes it. Only a durable
+      // entry can own payment; unknown pre-receipt history must fail closed as well.
+      if (!loss) return;
+      if (loss.surveyRewardUnknown === true) { p.result.reason = 'legacy_unknown'; return; }
+      if (Number.isFinite(loss.surveyedAt)) { p.result.reason = 'already_claimed'; return; }
+      loss.surveyedAt = Math.max(0, Number(p.at) || 0);
+      p.result = { accepted: true, reason: null };
+    };
     this._onEntityKilled = (p) => this._handleEntityKilled(p);
     this._onPlayerDeath = (p) => this._handlePlayerDeath(p);
     this._onMissionCompleted = (p) => this._handleMissionCompleted(p);
@@ -444,6 +456,7 @@ export const lossLedger = {
       this._bus.on('automation:assetLost', this._onAssetLost);
       this._bus.on('automation:outpostRaided', this._onOutpostRaided);
       this._bus.on('entity:spawned', this._onEntitySpawned);
+      this._bus.on('lossLedger:claimSurvey', this._onSurveyClaim);
       this._bus.on('entity:killed', this._onEntityKilled);
       this._bus.on('player:death', this._onPlayerDeath);
       this._bus.on('mission:completed', this._onMissionCompleted);
@@ -680,6 +693,8 @@ export const lossLedger = {
     if (!state || !p || p.type !== 'wreck') return;
     const e = p.entity;
     if (!e || !e.data) return;
+    // Authored site structure may use wreck physics, but it is not a lost ship.
+    if (e.data.worldSiteStructural === true) return;
     // Find the sector this wreck is in. Wrecks carry data.sectorId when set by salvage points;
     // fall back to the player's current sector (wrecks spawn in the active sector).
     const sectorId = e.data.sectorId || (state.world && state.world.currentSectorId);
@@ -715,6 +730,9 @@ export const lossLedger = {
       }
       return;
     }
+    // Restore/re-entry republishes entity:spawned. An established loss is the hull's
+    // identity, not permission to replace it with whichever ship died most recently.
+    if (typeof existing?.lossId === 'string' && existing.lossId) return;
     const classId = pickWreckClass({ seed: ensureState(state).seed, lossId: loss.lossId, sectorId });
     const cls = wreckClassById(classId) || wreckClassById('debris');
     // Additive metadata (these fields are new; producers don't read them, so no behavior change).
@@ -751,6 +769,7 @@ export const lossLedger = {
       if (this._onAssetLost) this._bus.off('automation:assetLost', this._onAssetLost);
       if (this._onOutpostRaided) this._bus.off('automation:outpostRaided', this._onOutpostRaided);
       if (this._onEntitySpawned) this._bus.off('entity:spawned', this._onEntitySpawned);
+      if (this._onSurveyClaim) this._bus.off('lossLedger:claimSurvey', this._onSurveyClaim);
       if (this._onEntityKilled) this._bus.off('entity:killed', this._onEntityKilled);
       if (this._onPlayerDeath) this._bus.off('player:death', this._onPlayerDeath);
       if (this._onMissionCompleted) this._bus.off('mission:completed', this._onMissionCompleted);
@@ -760,6 +779,7 @@ export const lossLedger = {
     this._onAssetLost = null;
     this._onOutpostRaided = null;
     this._onEntitySpawned = null;
+    this._onSurveyClaim = null;
     this._onEntityKilled = null;
     this._onPlayerDeath = null;
     this._onMissionCompleted = null;

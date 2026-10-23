@@ -56,6 +56,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   // Scanner pulse cooldown keys on absolute simTime and signal investigation state persists
   // on state.signalInvestigation — both must clear before the fresh run's clock restarts.
   'scanner',
+  'scanReveal', // Recognition and chart receipts belong to this run, not the retained instance.
   'latchNine', 'scissorwake',
   'tallyThree', 'lastShift', 'lastShiftPrompt',
   'redKite', 'redKitePrompt', 'sableVenn',

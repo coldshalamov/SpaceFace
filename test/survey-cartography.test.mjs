@@ -3,6 +3,7 @@
 // milestones post chart bonuses. Generic debris still pays nothing.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { lossLedger } from '../src/systems/lossLedger.js';
 import { scanReveal } from '../src/systems/scanReveal.js';
 
 function makeBus() {
@@ -27,10 +28,11 @@ function rig() {
     simTime: 1000, tick: 60000, playerId: 1,
     entities: new Map(), entityList: [],
     world: { currentSectorId: 'sector_test', sectors: { sector_test: { id: 'sector_test', name: 'Test Field' } } },
-    lossLedger: { bySector: { sector_test: [] } },
+    lossLedger: { bySector: { sector_test: [] }, entries: [] },
     player: {},
   };
   const bus = makeBus();
+  Object.create(lossLedger).init({ state, bus });
   const sys = Object.create(scanReveal);
   sys.init({ state, bus });
   const grants = [];
@@ -49,6 +51,7 @@ function loss(ctx, lossId, extra = {}) {
     ...extra,
   };
   ctx.state.lossLedger.bySector.sector_test.push(entry);
+  ctx.state.lossLedger.entries.push(entry);
   return entry;
 }
 

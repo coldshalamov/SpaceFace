@@ -16,4 +16,5 @@
 // v16: exact compact native attestation tables; legacy schema3 remains accepted.
 // v17: permanent per-hull loss identities under world.records.hullLosses.
 // v18: imported cross-run dead hulls persist under player.uniqueWrecks.
-export const CURRENT_VERSION = 18;
+// v19: cartography recognition/milestones and per-loss survey receipts survive Continue.
+export const CURRENT_VERSION = 19;

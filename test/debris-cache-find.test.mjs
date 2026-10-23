@@ -8,6 +8,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { debrisCacheFor } from '../src/data/scanReveal.js';
 import { scanReveal } from '../src/systems/scanReveal.js';
 import { mining } from '../src/systems/mining.js';
+import { lossLedger } from '../src/systems/lossLedger.js';
 
 function scanRig(seed = 47) {
   const state = {
@@ -15,10 +16,12 @@ function scanRig(seed = 47) {
     meta: { seed },
     entities: new Map(), entityList: [],
     world: { currentSectorId: 'sector_test', sectors: { sector_test: { id: 'sector_test', name: 'Test Field' } } },
-    lossLedger: { bySector: { sector_test: [] } },
+    lossLedger: { entries: [], bySector: { sector_test: [] } },
     player: {},
   };
   const bus = createBus();
+  state.lossLedger.entries = state.lossLedger.bySector.sector_test;
+  Object.create(lossLedger).init({ state, bus });
   const sys = Object.create(scanReveal);
   sys.init({ state, bus });
   const spawns = [];
