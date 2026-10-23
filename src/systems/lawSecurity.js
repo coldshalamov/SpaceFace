@@ -3295,6 +3295,7 @@ export const lawSecurity = {
     const state = this.state;
     if (!state || !payload || state.playerId == null) return;
     this._noteOwnedHullPapers();
+    this._fileMassScaleSlips(payload.stationId);
     if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
     const player = state.player;
     const heatValue = player && Number(player.heat) || 0;
@@ -3448,6 +3449,7 @@ export const lawSecurity = {
     if (state.mode && state.mode !== 'flight') return;
     if ((state.tick | 0) === this._lastCustomsSubmitTick) return; // one ack per tick
     this._lastCustomsSubmitTick = state.tick | 0;
+    this._fileMassScaleSlips(payload && payload.stationId);
     const factionId = (payload && payload.factionId) || 'faction_scn';
     this._say('bark', 'PATROL: submission acknowledged — manifest read proceeds.',
       `law:customsSubmit:${factionId}:${state.tick | 0}`, factionId);
@@ -3463,6 +3465,48 @@ export const lawSecurity = {
       stationId: (payload && payload.stationId) || null,
       text: 'Compliance recorded — the scan proceeds on your submission.',
     });
+  },
+
+
+  // A weight slip is evidence about a declaration, never a crime finding or clearance.
+  // economyContracts owns durable filing; law only acknowledges its accepted filing.
+  _fileMassScaleSlips(stationId) {
+    const state = this.state;
+    const station = SECTORS.flatMap((s) => s.stations || []).find((s) => s.id === stationId);
+    if (!state || !station || state.playerId == null) return;
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
+    const slips = state.economyContracts?.massScale?.slips;
+    if (!slips || typeof slips !== 'object' || Array.isArray(slips)) return;
+    if (this._filingMassSlip) return; // synchronous receipt listeners cannot re-enter the filing
+    this._filingMassSlip = true;
+    try {
+      for (const slipId of Object.keys(slips).sort()) {
+        const slip = slips[slipId];
+        const expected = slip?.kind === 'weight_audit'
+          ? { stationId: 'station_helios', outcome: 'mass_discrepancy_filed', statusText: 'WEIGHT SLIP FILED' }
+          : slip?.kind === 'carrier_frame'
+            ? { stationId: 'station_ceres', outcome: 'mass_frame_disputed', statusText: 'ISSUER DISPUTED' } : null;
+        if (!expected || expected.stationId !== stationId || slip.issuingStationId !== stationId
+            || slip.slipId !== slipId || typeof slip.sourceOfferId !== 'string'
+            || !Number.isSafeInteger(slip.targetSlot) || slip.targetSlot < 0
+            || slipId !== `mass-slip:${slip.sourceOfferId}:${slip.targetSlot}`
+            || typeof slip.issuer !== 'string' || !slip.issuer
+            || !Number.isFinite(slip.declaredMassT) || slip.declaredMassT <= 0
+            || !Number.isFinite(slip.measuredMassT) || slip.measuredMassT <= 0
+            || Math.abs(slip.measuredMassT - slip.declaredMassT) <= 1e-6
+            || slip.filedAtStations?.[stationId]) continue;
+        const conclusion = slip.kind === 'weight_audit'
+          ? 'Manifest discrepancy filed.' : 'The issuer’s declaration is disputed.';
+        const text = `WEIGHT SLIP — ${expected.statusText} — ${slip.issuer}: declared ${slip.declaredMassT} t, measured ${slip.measuredMassT} t. ${conclusion}`;
+        this._emit('customs:massSlipFiled', { slipId, stationId, outcome: expected.outcome,
+          statusText: expected.statusText, text });
+        if (state.economyContracts?.massScale?.slips?.[slipId]?.filedAtStations?.[stationId]?.outcome
+            !== expected.outcome) continue; // no durable owner accepted it: do not claim success
+        this._recordReceipt({ cause: 'mass_manifest', outcome: expected.outcome,
+          statusText: expected.statusText, attackerId: null, targetId: state.playerId,
+          stationId, slipId, text });
+      }
+    } finally { this._filingMassSlip = false; }
   },
 
   // LAW-12: remember an actual clean read, never just a submit click or a missed contraband roll.
