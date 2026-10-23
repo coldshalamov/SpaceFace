@@ -665,6 +665,7 @@ export const world = {
     bus.on('ui:setCourse', (p) => this._onSetCourse(p || {}));
     bus.on('fuel:crackCell', () => this._onCrackFuelCell());
     bus.on('combat:lockChanged', (p) => this._onLockChanged(p || {}));
+    bus.on('combat:damage', (p) => this._onSpoolStrike(p || {}));
     bus.on('module:equipped', () => this._resolveShipModules());
     bus.on('module:unequipped', () => this._resolveShipModules());
     bus.on('ship:statsChanged', () => this._resolveShipModules());
@@ -6706,6 +6707,20 @@ export const world = {
     if (this._combatLock && this.state.jump.state === 'CHARGING' && this.state.jump.via === 'drive') {
       if (!this._activeDrive().hotJump) this._abortCharge('combat_lock');
     }
+  },
+
+  // A travel spool is a held charge. A hull strike dumps it. A shield graze,
+  // a gate transit, and a drive built to jump hot do not.
+  _onSpoolStrike(payload) {
+    const state = this.state;
+    const jump = state && state.jump;
+    if (!jump || jump.state !== 'CHARGING' || jump.via !== 'drive') return;
+    if (jump._unfiled === true) return;
+    if (!payload || payload.targetId !== state.playerId) return;
+    if (!(Number(payload.hullDamage) > 0)) return;
+    const drive = this._activeDrive();
+    if (drive && drive.hotJump) return;
+    this._abortCharge('spool_struck');
   },
 
   _onFieldDepleted({ fieldId, depleted }) {
