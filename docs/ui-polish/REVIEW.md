@@ -1993,3 +1993,10 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 - The tighter key strip now runs to 840 wide, with the last verb's margin dropped, so the strip stays on one line.
 
 **Checked:** bench `pause` clean at 761×636, 780×700, 800×700, 820×700, 840×600, 849×832, 899×932, 900×600, 960×540, 1280×720, 1920×1080 and 390×844. 761×800 is now the column (clean). 779×700 and 799×766 are the column and only report the last verbs below the fold of the scrolling list, as 760×700 did. Focused tests pass: `orrery-arcrail-width`, `pause-save-line`, `pq-194-06-pause-shell`, `sf-275-pause-ownership`, `shell-focus-pause-release`, `wave-c3-pause-kit`. In `ui-polish-88-pause-narrow`, the three 1280-dial d-pad tests fail the same way on master. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish107/`, `compare-pause-{780x700,761x800}.png`.
+## Entity dossier drawer: no stacked labels, phone width, verbs in reach (ui-polish-104)
+
+**Before (master 3d1bd1d756):** the dossier deck is a fixed-height flex column, so a long record shrank every section to fit and each label printed over the value under it (960×540: FLEET DOCTRINE on the controls line, PLACES on Choir Ascending Chorus, POWERS on Vesta Forge, The Vael under CLOSE). On a phone the sheet was 48vw with 88px of left padding, a ~60px column that set "Ascendant Choir" one letter a line.
+
+**After (`styles/ui.css`, `.sf-drawer--entity` only):** sections keep their height and the deck scrolls; the verbs (OPEN ON THE CHART / WATCH / CLOSE) are sticky at the foot on an opaque band, so they stay in reach. At ≤760 tall the gaps close up. At ≤640 wide the sheet is full width and opaque, with 20px gutters and a 44px close button. The crest's hairline is dropped when the facts' own top rule follows it. No selector, ID or JS changes.
+
+**Checked:** ui-bench `popup-dossier` at 390×844, 960×540, 1280×720, 1920×1080: no ON TOP OF inside the drawer (the remaining findings are the station under it). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish104/` (`compare-dossier-*.png`).
