@@ -1,5 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
+## Helios procession delivery: 2026-10-23 21:51 UTC
+
+Draft [PR563](https://github.com/coldshalamov/SpaceFace/pull/563) now publishes the three-path Helios procession increment at `013bc80e3d80e591409e4b08a69ccf6a3ec088d5`, with sole public parent `3095a835eb3dbda178d359bbb0541e3ee6124f4c`. The remote head is open, draft and unmerged; all three published paths were byte-verified by the publisher. This supersedes the earlier unpublished Helios status.
+
+The five original tenders now approach individual safe work marks and must actually service them for eight seconds before success. Partial, lost and delayed outcomes remain honest in the existing saved receipt, and original-identity checks prevent recycled actor IDs from counting as the procession. No new asset, actor, reward or ledger was added. Local tests passed 13/13, including a followed native route lasting 147.083 seconds with 546 consecutive ticks inside the work envelope; the cheap suite passed 12/12. Eleven behavior cases passed against the current public director. Its serializer bootstrap was blocked by the resident dependency graph, although the relevant method was byte-identical to the locally tested method. These bounded results do not establish the full current-public native graph, live visual quality or player-facing Continue acceptance.
+
+[CI run 40029577148](https://github.com/coldshalamov/SpaceFace/actions/runs/40029577148) was still in progress at the 21:51 UTC read. The publication owner is monitoring its actual outcome; no hosted focused-gate pass is claimed yet. Next action: inspect exact-head hosted results and fix attributable failures without repeating already proven local fixtures.
+
+All twelve goals remain OPEN. PR562 durably preserves the Archive model bank, but its separate 47-path runtime union remains backed up and unpublished. The parts-library object is verified; the two census objects remain the scoped publishing blocker described below. No authentication or user-action requirement has been established. Existing owners and the browser approval hold are unchanged. Native contact, residency and serialization probes are not full player-facing Continue acceptance.
+
 ## Final scoped publication recovery: 2026-10-23 21:41 UTC
 
 All twelve goals remain OPEN. The model bank is still published in draft PR562; the runtime union remains preserved but unpublished.
