@@ -66,7 +66,7 @@
     "check:sim:v3:compare": "node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.expected.json --reload-at 600 --flight-system v3",
     "check:47a:tactics": "node scripts/check-47a-tactics.mjs",
     "check:47a:live-branch": "node scripts/check-47a-live-branch-predicate.mjs",
-    "check:47a:live-cold-open": "node scripts/check-47a-live-cold-open.mjs",
+    "check:47a:live-cold-open": "node --test test/47a-cold-open-diagnostics.test.mjs && node scripts/check-47a-live-cold-open.mjs",
     "check:47a:counterplay": "node scripts/check-47a-counter-tether-live.mjs",
     "check:47a:death-retry": "node scripts/check-47a-death-retry.mjs",
     "check:gameover-recovery-copy": "node scripts/check-gameover-recovery-copy.mjs",
