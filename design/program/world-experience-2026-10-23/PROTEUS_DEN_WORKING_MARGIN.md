@@ -8,41 +8,42 @@ At the authored Den position (-640, 520), the world X/Z positions and yaw radian
 
 | Model / placement identity | X | Z | Yaw |
 | --- | ---: | ---: | ---: |
-| `place_illicit_transfer_frame` | -925 | 600 | 0 |
-| `place_parts_rack` | -945 | 616 | π/2 |
-| `place_power_skid_patched` | -945 | 584 | 0 |
+| `place_illicit_transfer_frame` | -750 | 460 | 0 |
+| `place_parts_rack` | -770 | 476 | π/2 |
+| `place_power_skid_patched` | -770 | 444 | 0 |
 
-The pause reference is (-850, 600), radius 36. The reference pass runs (-1025, 470) → (-850, 470) → (-850, 600) → (-850, 730) → (-1025, 730). These are authoring references, not navigation targets or gameplay triggers. There is no hidden-cache cue, new actor, cargo, reward, berth, docking/trust change or sanctuary. Existing traffic routes are unchanged; no crew operation or distant seam visibility is claimed.
+The pause reference is (-850, 600), radius 36. The reference pass runs (-1025, 470) → (-850, 470) → (-850, 600) → (-850, 730) → (-1025, 730). These outer references do not promise that the Den and props are jointly visible at the default camera distance. They are authoring references, not navigation targets or gameplay triggers. There is no hidden-cache cue, new actor, cargo, reward, berth, docking/trust change or sanctuary. Existing traffic routes are unchanged; no crew operation or distant seam visibility is claimed.
 
 The seed-only warm mapper preserves station identity alongside position so the authored recipe can match runtime. Non-Proteus placement and random-number consumption remain unchanged. Triton POI warm enumeration is unchanged and outside this fix.
 
 ## Checks and qualification
 
-- Focused gate: `npm run check:proteus-den-working-margin` runs exactly `node --test test/proteus-den-working-margin.test.mjs`, once in `scripts.check`. Writer and independent final runs each passed 10/10.
-- Writer compared 1,728 non-Proteus placement/RNG cases. Independent review compared 576 non-Proteus cases and 180 generic kit/wreck warm cases.
+- Focused gate: `npm run check:proteus-den-working-margin` runs exactly `node --test test/proteus-den-working-margin.test.mjs`, once in `scripts.check`. Writer and independent final runs each passed 11/11.
+- Writer compared 1,728 non-Proteus placement/RNG cases across three 576-case owner variants (public master, the separately published sibling helper, and the separate Archive candidate). Independent review compared 576 non-Proteus cases and 180 generic kit/wreck warm cases.
 - Focused coverage includes unique/missing/ambiguous/translated anchors, RNG independence, census-envelope spacing, unchanged authored route references, scope invariants, and seeded warm recipe/stub parity.
-- Conservative pairwise prop gaps: 12.76, 13.08 and 22.32 WU. Minimum pause/pass residual using a 48-WU representative hull: 19.15 WU. These calculations do not establish passage between props or generated-world collision closure.
+- Conservative pairwise prop gaps: 12.76, 13.08 and 22.32 WU. The outer pause/pass retains clearance for a 48-WU representative hull. The nearer layout also checks the Den's centered visual and fixed-offset recipe envelopes, and every authored join for the existing runner/picket using their measured public smuggler/pirate hull envelopes. These calculations do not establish passage between props, native avoidance, route overshoot, attachments, unmeasured clamp volumes or generated-world collision closure.
 - Fresh public base: `3095a835eb3dbda178d359bbb0541e3ee6124f4c`. Exact inverse edits restore both source bases and package bytes, including original EOF/CRLF formatting. Additive compatibility was checked separately; no sibling PR or unpublished Archive changes are included.
 - Actual native avoidance, full Save/Continue execution, hostile-traffic interaction, whole-world collision closure and live visual readability remain unverified. Draft source acceptance is not merge, deployment or flight acceptance.
 
 ## Preview and provenance
 
-![Offline compact released-prop geometry preview](proteus-den-working-margin.jpg)
+![Offline nearer-layout camera-preset reconstruction](proteus-den-working-margin.jpg)
 
-This is a flat CPU-shaded geometry preview of the actual three released GLBs at the authored transforms, with unit scale and X/Z recentering. The Den and traffic are absent. Diagrammatic pause/pass references are not rendered gameplay. This is not live gameplay, PBR or whole-scene visual acceptance.
+This flat CPU-shaded, fixed-pose camera-preset reconstruction uses the actual released medium Den and three prop GLBs. It applies the authored transforms, unit prop scale, the medium Den mount scale and visual X/Z recentering. The default 144-distance panel intentionally shows the partial Den crop; the wider 300-distance context panel is a separate view, not proof of default full framing. Traffic, crew, atmosphere, native flight, camera follow and dynamic camera corrections are absent. The observer at (-710, 445) is a source-envelope sample with an 18-WU Drifter hull reference, not a navigation target. This is not captured gameplay, PBR, full-framing or whole-scene acceptance.
 
 Sources are under `assets/ships/release/parts/places/` at the public base above:
 
 | Source GLB | Bytes | Git blob |
 | --- | ---: | --- |
+| `place_station_blackmarket.glb` | 1984572 | `d16714490c88bb98ca2fcd4bbc6f7988ceee3cbc` |
 | `place_illicit_transfer_frame.glb` | 26248 | `5bdcc07dfe26ef99f9e8ccba942babcc13f1e806` |
 | `place_parts_rack.glb` | 25328 | `456610b1ac2430617ef9b2c1611caeaedfcdd3d1` |
 | `place_power_skid_patched.glb` | 25568 | `7d487e7886d5d0e045ab84e55dff314d07cf3249` |
 
 Final SHA-256 receipts:
 
-- Placement: `d04da7c574175271049de2b057e9ec41749f8dc350faedccbfd740c8a9e7ae4f`
+- Placement: `6f83cc2f2b9fcbcddb11526b9864fa783d504ceff057bc1c0340d3d8bee0e355`
 - Warm mapper: `4435337e72941f4755fee4a1b6a78487423c1b0e511b683b784e848b030625a5`
-- Focused test: `879e662e0ed4bd30b9765c453b619ac9b7564c7119e96f8caf0259178f1a4417`
+- Focused test: `df01f51a7aa1ec92442019e12b535d046de18ab9f10787edb33d783f7e55cb8d`
 - Package: `ac6d10a25472827e105119eb07f77723e8e1193ed7464697869b93ec607138b4`
-- Compact preview (80680 bytes): `1ce3a992633086e1826a75b5dab3faef34528297e516e9902c2ca70b1a475efd`
+- Nearer camera reconstruction (92731 bytes): `8cdc1d1096422f682d047209e150c6fa880a4b3a9a1e5dd7e0600e84d9f0d1ff`

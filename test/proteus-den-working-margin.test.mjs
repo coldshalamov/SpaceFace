@@ -153,7 +153,7 @@ test('authored Den and seam route envelopes remain east of the waiting margin', 
     const minX = Math.min(...points.map(p => p.x));
     assert.ok(minX - margin.stop.x > margin.stop.clearRadius + 48);
     assert.ok(minX - margin.stop.x > 48 + 48);
-    for (const prop of rows()) assert.ok(minX - prop.pos.x > prop.radius + 48);
+
   }
 });
 
@@ -177,7 +177,7 @@ test('clustered released bodies do not overlap adopted primitive or mesh envelop
   for (let i=0;i<props.length;i++) for(let j=i+1;j<props.length;j++) {
     assert.ok(distance(props[i].pos,props[j].pos)>radii[i]+radii[j]);
   }
-  assert.deepEqual(props.map(p=>p.pos), [{x:-925,z:600},{x:-945,z:616},{x:-945,z:584}]);
+  assert.deepEqual(props.map(p=>p.pos), [{x:-750,z:460},{x:-770,z:476},{x:-770,z:444}]);
 });
 
 // Exercise the exact warm-owner function and its actual seeded kit-stub loop.
@@ -228,5 +228,55 @@ test('named warm-anchor mapper preserves generic non-Proteus output and RNG cons
       fields:[{center:{x:680,z:-420}}],neighbors:['other'],pois:[{id:'wreck',type:'wreck',pos:{x:1400,z:900}}]};
     assert.deepEqual(after(sector,palette,seed),before(sector,palette,seed));
     assert.equal(a.n,b.n);
+  }
+});
+
+
+test('nearer props clear the actual Den mount, berth disk and complete authored actor joins', () => {
+  const census = JSON.parse(readFileSync(new URL('../src/data/modelTruthCensus.json', import.meta.url))).rows;
+  const byId = id => census.find(r => r.id === id);
+  const propRadius = p => Math.max(adoptedSkinRadius(byId(p.placeId), p.radius),
+    Math.hypot(byId(p.placeId).bounds.size[0], byId(p.placeId).bounds.size[2])/2);
+  const den=byId('place_station_blackmarket'), scale=den.drawScale*72/den.gameplay.dockRadius;
+  // Centered visual bounds and fixed drawOffset recipe are checked separately;
+  // dock radius is not the body box. The visual mount preserves source Y.
+  const halfX=den.bounds.size[0]*scale/2, halfZ=den.bounds.size[2]*scale/2;
+  const recipeCenter={x:-640+den.bounds.center[0]*scale+den.drawOffset[0],
+    z:520+den.bounds.center[2]*scale+den.drawOffset[2]};
+  const approach={x:-710,z:445}, approachHull=18; // Offline camera sample only, no nav target.
+  assert.ok(distance(approach,station.pos)-adoptedSkinRadius(den,72)-approachHull>20);
+  const source = readFileSync(new URL('../src/data/sectorActivityPockets.js', import.meta.url), 'utf8');
+  const actors = [
+    ['proteus_den_runner','traffic:smuggler',18], // Drifter physics, Drifter traffic body.
+    ['proteus_den_picket','traffic:pirate',16], // Hornet physics, Wasp traffic body.
+  ];
+  for (const prop of rows()) {
+    const pr=propRadius(prop), dx=Math.abs(prop.pos.x+640), dz=Math.abs(prop.pos.z-520);
+    const rdx=Math.abs(prop.pos.x-recipeCenter.x), rdz=Math.abs(prop.pos.z-recipeCenter.z);
+    assert.ok(Math.hypot(Math.max(0,rdx-halfX),Math.max(0,rdz-halfZ))-pr>55);
+    assert.ok(distance(approach,prop.pos)-approachHull-pr>10);
+    assert.ok(Math.hypot(dx,dz)>=100 && Math.hypot(dx,dz)<=160);
+    assert.ok(Math.hypot(Math.max(0,dx-halfX),Math.max(0,dz-halfZ))-pr>55);
+    assert.ok(Math.hypot(dx,dz)-72-pr>45); // Existing berth disk also remains clear.
+    assert.ok(Math.hypot(dx,dz)-adoptedSkinRadius(den,72)-pr>55);
+    for (const [slot,id,bodyRadius] of actors) {
+      const row=byId(id), mountedScale=row.drawScale*bodyRadius/row.gameplay.entityRadius;
+      const meshRadius=Math.max(...[row.bounds.min[0],row.bounds.max[0]].flatMap(x =>
+        [row.bounds.min[2],row.bounds.max[2]].map(z=>Math.hypot(x,z)*mountedScale)));
+      const hullRadius=Math.max(bodyRadius,meshRadius,adoptedSkinRadius(row,bodyRadius));
+      const start=source.indexOf("id: '"+slot+"'"), end=source.indexOf('] },',start);
+      assert.ok(start>=0 && end>start);
+      const actor=source.slice(start,end), points=[station.pos];
+      for(const m of actor.matchAll(/spawn: \[(-?[\d.]+), (-?[\d.]+)\]|\['proteus_[^']+', (-?[\d.]+), (-?[\d.]+),/g))
+        points.push({x:-640+Number(m[1]??m[3]),z:520+Number(m[2]??m[4])});
+      assert.equal(points.length,4);
+      // Every authored join, including spawn and a conservative anchor return.
+      // Does not bound avoidance, overshoot, attachments or unmeasured clamp volumes.
+      for(let a=0;a<points.length;a++) for(let b=a+1;b<points.length;b++)
+      {
+        assert.ok(segmentDistance(prop.pos,points[a],points[b])-hullRadius-pr>62);
+        assert.ok(segmentDistance(approach,points[a],points[b])-hullRadius-approachHull>20);
+      }
+    }
   }
 });

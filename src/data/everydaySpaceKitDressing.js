@@ -254,12 +254,13 @@ function finitePos(value) {
 
 // Proteus's existing Den work gets a small western service margin instead of
 // random kit scatter. This is dressing, not a berth, cache clue or safe zone.
-// The runner/picket keep their real routes east of this margin; the seam crew
+// The runner/picket keep their real routes clear of this margin; the seam crew
 // and hauler remain at the distant field, not invented visitors to the Den.
 export const PROTEUS_DEN_WORKING_MARGIN = Object.freeze({
   stationId: 'station_proteus',
   stationPos: Object.freeze({ x: -640, z: 520 }),
-  // Authoring references only. No navigation target, trigger or sanctuary.
+  // Outer authoring references only, not a promise of shared camera visibility.
+  // No navigation target, trigger or sanctuary.
   stop: Object.freeze({ x: -850, z: 600, clearRadius: 36 }),
   pass: Object.freeze([
     Object.freeze({ x: -1025, z: 470 }), Object.freeze({ x: -850, z: 470 }),
@@ -267,9 +268,9 @@ export const PROTEUS_DEN_WORKING_MARGIN = Object.freeze({
     Object.freeze({ x: -1025, z: 730 }),
   ]),
   props: Object.freeze([
-    Object.freeze({ placeId: 'place_illicit_transfer_frame', x: -925, z: 600, rot: 0 }),
-    Object.freeze({ placeId: 'place_parts_rack', x: -945, z: 616, rot: Math.PI / 2 }),
-    Object.freeze({ placeId: 'place_power_skid_patched', x: -945, z: 584, rot: 0 }),
+    Object.freeze({ placeId: 'place_illicit_transfer_frame', x: -750, z: 460, rot: 0 }),
+    Object.freeze({ placeId: 'place_parts_rack', x: -770, z: 476, rot: Math.PI / 2 }),
+    Object.freeze({ placeId: 'place_power_skid_patched', x: -770, z: 444, rot: 0 }),
   ]),
 });
 
