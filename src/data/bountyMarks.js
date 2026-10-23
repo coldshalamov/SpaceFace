@@ -287,14 +287,14 @@ export function rollBountyMark({ seed, offerId, sectorId, riskTier = 0, sectorDe
   const archetype = pool[hash32(h0, 'hull') % pool.length];
   const places = markPlaceCandidates(sectorId, sectorDef);
   const place = places.length ? places[hash32(h0, 'place') % places.length] : null;
+  const factionPool = markFactionPoolFor(sectorId, sectorDef);
   return {
     id: `mark:${offerId}`,
     name,
     label: `${name.toUpperCase()} — WARRANT`,
     role: 'board_writ',
     archetype,
-    factionId: markFactionPoolFor(sectorId, sectorDef)[hash32(h0, 'faction')
-      % markFactionPoolFor(sectorId, sectorDef).length],
+    factionId: factionPool[hash32(h0, 'faction') % factionPool.length],
     ...(place || {}),
   };
 }
