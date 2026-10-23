@@ -9,6 +9,17 @@ import { shipjack } from '../src/systems/shipjack.js';
 import { admitVessel, normalizeShipjack, vesselHistory, isBlackFlagAdventure } from '../src/shipjack/model.js';
 import { save } from '../src/save/saveSystem.js';
 import { inspectVessel, valuationBreakdown } from '../src/shipjack/market.js';
+import { BLACK_FLAG_MODULES } from '../src/data/shipjackEquipment.js';
+import { isArmoryStock, isSwarmRelevantDef, swarmCatalogOffers } from '../src/data/swarmCatalog.js';
+
+test('capture equipment never enters the temporary-mode armory or generated fight shelf',()=>{
+  const offered=new Set(swarmCatalogOffers().map(row=>row.defId));
+  for(const definition of BLACK_FLAG_MODULES){
+    assert.equal(isArmoryStock(definition),false,definition.id);
+    assert.equal(isSwarmRelevantDef(definition),false,definition.id);
+    assert.equal(offered.has(definition.id),false,definition.id);
+  }
+});
 
 test('unused coordinator stays lazy and excluded modes create no campaign facts',()=>{
   const state=createGameState(4242),bus=createBus(),system=Object.create(shipjack);

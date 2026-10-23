@@ -45,7 +45,7 @@ export function yardQuotePreview(quote) {
   if (quote.action === 'extract' && part) {
     notes.push(`${componentDefinition(part.defId)?.name || 'Fitted component'} moves to your module inventory, retaining its identity and ${Math.round(part.condition * 100)}% condition`);
     if (part.family === 'engine') notes.push('Removing the drive strands this hull until a compatible drive is fitted');
-    notes.push('Work takes simulation time; the hull cannot also be sold with this part');
+    notes.push('The yard works while you are away; return to this berth to collect. The hull cannot also be sold with this part');
   }
   if (quote.action === 'sell') notes.push('Hull and all remaining fitted parts leave your fleet. This sale cannot be repeated');
   if (quote.action === 'return') notes.push('Custody passes back to the claimant. You keep the recovery receipt, not the hull');
@@ -126,7 +126,7 @@ export function createBlackFlagRegistry(ctx, { dockHost = () => true } = {}) {
     if (model.job) {
       const remaining = Math.max(0,Math.ceil((Number(model.job.completesAt) || 0) - (ctx.state.simTime || 0)));
       const receiving = STATIONS.get(model.job.stationId) || 'the receiving yard';
-      line(remaining > 0 ? `Yard work: ${remaining}s of simulation time remain. Undock, then return to ${receiving} for the part.`
+      line(remaining > 0 ? `Yard work: ${remaining}s while you are away. Undock, then return to ${receiving} for the part.`
         : `Part ready — return to ${receiving} for the exact fitted component.`);
     }
     if (model.fleetJob) {

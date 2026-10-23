@@ -19,7 +19,9 @@ test('authored opportunities have real local world anchors and installable canon
     const sector = SECTORS.find(sector => sector.id === row.sectorId);
     assert.ok(sector, row.sectorId);
     assert.ok(sector.pois.some(poi => poi.id === row.anchorPoiId), row.anchorPoiId);
-    assert.ok(sector.stations.some(station => station.id === row.stationId),row.stationId);
+    const receiver=sector.stations.find(station => station.id === row.stationId);
+    assert.ok(receiver,row.stationId);
+    assert.ok(receiver.services.some(service=>['shipyard','repair','black_market'].includes(service)),`${row.name}: receiving port must actually service the hull`);
     const hull = SHIPS.find(hull => hull.id === row.defId); assert.ok(hull,row.defId);
     const slots = buildSlotList(hull); const used = new Set();
     for (const id of row.fitted) {
@@ -29,7 +31,11 @@ test('authored opportunities have real local world anchors and installable canon
     }
     assert.ok(row.condition > 0 && row.condition <= 1);
   }
-  for (const yard of BLACK_FLAG_YARDS) assert.ok(SECTORS.find(sector => sector.id === yard.sectorId)?.stations.some(station => station.id === yard.stationId));
+  for (const yard of BLACK_FLAG_YARDS) {
+    const station=SECTORS.find(sector => sector.id === yard.sectorId)?.stations.find(station => station.id === yard.stationId);
+    assert.ok(station);
+    assert.ok(station.services.some(service=>['shipyard','repair','black_market'].includes(service)),`${yard.name}: no actual receiving service`);
+  }
 });
 
 function fixture() {
@@ -100,6 +106,24 @@ test('Back cancels an actual vulnerable airlock crossing but ordinary dismissal 
   crossing=false;prompt.open();f.offers.get('black-flag:acquisition').onChoose('$close','gamepad');
   assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack').length,1);
   prompt.dispose();
+});
+
+test('handoff offers the real previous body after the mirror arrives and rejects recycled occupants', () => {
+  const f=fixture();const prompt=createBlackFlagPrompt(f,{deck:()=>f.deck});
+  const prior=f.state.entities.get(1);prior.data.vesselId='vessel:starter:1';prior.data.shipjackGeneration='starter:gen';
+  const receipt={ok:true,fromId:1,toId:2,fromVesselId:'vessel:starter:1'};
+  f.bus.emit('ship:controlTransferred',receipt);
+  for(let i=0;i<8;i++)prompt.frame();
+  assert.equal(f.offers.has('black-flag:prior-hull'),false,'event can arrive before player mirror');
+  f.state.playerId=2;f.state.player.targetId=null;
+  for(let i=0;i<8;i++)prompt.frame();
+  const offer=f.offers.get('black-flag:prior-hull');assert.ok(offer);
+  assert.ok(offer.choices.some(row=>row.cancel && row.label==='Keep flying'));
+  offer.onChoose('target','touch');assert.equal(f.state.player.targetId,1);
+  assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack').length,0,'selects only; never starts a transfer');
+  f.state.player.targetId=null;prior.data.shipjackGeneration='recycled';offer.onChoose('target','gamepad');
+  assert.equal(f.state.player.targetId,null);
+  f.bus.emit('game:load');assert.equal(f.offers.has('black-flag:prior-hull'),false);prompt.dispose();
 });
 
 test('release/abort remains a real action and every page provides safe cancel', () => {

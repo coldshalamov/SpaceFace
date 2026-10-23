@@ -189,7 +189,7 @@ export function queryShipjack(state, targetId = state.player?.targetId) {
     add('abort','Abort airlock crossing');
   } else if (vessel?.custodian === 'player' && !TERMINAL.has(vessel.location.kind)) {
     add('transfer','Assume control',readiness.distance <=115 && readiness.relativeSpeed <=18,'Match velocity and close to your parked hull.');
-    if(vessel.location.kind==='tow')add('tow','Tow to receiver');
+    if(vessel.location.kind==='tow'||attempt?.phase==='secured')add('tow','Tow to receiver');
     add('beacon','Set recovery beacon');
     add('release','Release custody');
   } else if (!attempt?.scanned) {

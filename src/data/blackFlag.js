@@ -18,7 +18,7 @@ export const BLACK_FLAG_CONTACTS = Object.freeze({
 export const BLACK_FLAG_YARDS = Object.freeze([
   Object.freeze({ stationId: 'station_helios', sectorId: 'sector_helios_prime', name: 'Helios Recovery Berth', kind: 'lawful', contactId: BLACK_FLAG_CONTACTS.mara.id }),
   Object.freeze({ stationId: 'station_forge', sectorId: 'sector_vesta_forge', name: 'Forge Reclamation Slip', kind: 'lawful', contactId: BLACK_FLAG_CONTACTS.mara.id }),
-  Object.freeze({ stationId: 'station_customs', sectorId: 'sector_tethys_junction', name: 'Customs Registry Hold', kind: 'authority', contactId: BLACK_FLAG_CONTACTS.holt.id }),
+  Object.freeze({ stationId: 'station_tethys', sectorId: 'sector_tethys_junction', name: 'Junction Recovery Berth', kind: 'authority', contactId: BLACK_FLAG_CONTACTS.holt.id }),
   Object.freeze({ stationId: 'station_smuggler', sectorId: 'sector_pallas_drift', name: 'Pask’s Hot Berth', kind: 'illicit', contactId: BLACK_FLAG_CONTACTS.oriel.id, fenceId: 'fence_oriel_pask' }),
 ]);
 
@@ -35,7 +35,7 @@ export const BLACK_FLAG_ENCOUNTERS = Object.freeze([
     intro: 'Mara Venn: Empty Seat lost drive on the lane. Crew got clear. Tow her slowly; the frame is still sound.',
     failure: 'The ship is gone. Its registry and last trajectory remain in the ledger.' }),
   Object.freeze({ id: 'black_flag_blackbird', act: 2, name: 'Blackbird',
-    sectorId: 'sector_tethys_junction', stationId: 'station_customs', anchorPoiId: 'poi_tethys_weigh', offset: { x: 110, z: -80 },
+    sectorId: 'sector_tethys_junction', stationId: 'station_tethys', anchorPoiId: 'poi_tethys_weigh', offset: { x: 110, z: -80 },
     defId: 'ship_hornet', factionId: 'faction_mts', ownerId: 'corporate_blackbird_registry', profile: 'corporate_locked',
     disabled: false, crew: 'stubborn', condition: 0.94, legalCategory: 'registered', returnReward: 2400,
     fitted: ['wpn_pulse_laser_m', 'unique_blackbird_governor', 'mod_shield_capacitor_m', 'mod_cargo_scanner_s'],
