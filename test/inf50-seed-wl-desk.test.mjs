@@ -108,6 +108,26 @@ test('seed 4242: the accept key says hold before the first trade, and the rail s
   assert.equal(contractAcceptHoldNote(cold, 0), 'hold');
   const coldDone = { missions: { active: [], receipts: [{ storyTag: 'campaign47a:b0:recovery' }] } };
   assert.equal(contractAcceptHoldNote(coldDone, 0), 'hold');
+  const coldSettled = {
+    missions: {
+      active: [],
+      receipts: [{
+        id: 'm_1:completed',
+        missionId: 'm_1',
+        sourceOfferId: 'contract_47a_b0_recovery',
+        type: 'salvage_retrieval',
+        outcome: 'completed',
+      }],
+    },
+  };
+  assert.equal(contractAcceptHoldNote(coldSettled, 0), 'hold');
+  const traded = {
+    missions: {
+      active: [],
+      receipts: [{ id: 'm_2:completed', sourceOfferId: 'offer-9', type: 'cargo_delivery', outcome: 'completed' }],
+    },
+  };
+  assert.equal(contractAcceptHoldNote(traded, 0), '');
   const flown = { missions: { active: [{ id: 'm' }], receipts: [] } };
   assert.equal(contractAcceptHoldNote(flown, 0), '');
   assert.equal(contractAcceptHoldNote(flown, 40), 'hold');

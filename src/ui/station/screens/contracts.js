@@ -491,11 +491,19 @@ function cleanText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/** The opening recovery is installed, not accepted. Its receipt keeps the offer id and drops the tag. */
+const COLD_START_OFFER_ID = 'contract_47a_b0_recovery';
+
 /** A campaign beat installed at the start is not the player pressing Accept. */
 function isPlayerDeskJob(mission) {
   if (!mission) return false;
   const tag = typeof mission.storyTag === 'string' ? mission.storyTag : '';
-  return !tag.startsWith('campaign47a:');
+  if (tag.startsWith('campaign47a:')) return false;
+  const offerId = typeof mission.sourceOfferId === 'string' ? mission.sourceOfferId : '';
+  if (offerId === COLD_START_OFFER_ID) return false;
+  const id = typeof mission.id === 'string' ? mission.id : '';
+  if (id === COLD_START_OFFER_ID || id.startsWith(`${COLD_START_OFFER_ID}:`)) return false;
+  return true;
 }
 
 /** The word under Accept. Collateral always says hold. A first trade says hold even with nothing at risk. */
