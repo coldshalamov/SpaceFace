@@ -18,7 +18,7 @@
 // control / active-screen fallback — never silently to body when a restorable target exists.
 
 import { isVoiceOwnedAlertToast } from './alerts.js';
-import { admitReceipt, RECEIPT_MAX, stuntDetectionReceipt } from './hudAttention.js';
+import { admitReceipt, markFirstUseHint, RECEIPT_MAX, shouldShowFirstUseHint, stuntDetectionReceipt } from './hudAttention.js';
 import { jumpAbortReceipt } from './jumpNotice.js';
 import { resolveObjectiveHudLayout } from './hud.js';
 import { glyphSvg } from './glyphs.js';
@@ -30,6 +30,32 @@ const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
 // font-specific glyph coverage and read as a different visual language from the HUD line set).
 const KIND_ICON = { success: 'ok', good: 'ok', error: 'err', danger: 'err', warn: 'warn', info: 'info', stunt: 'info', credits: 'credits', rep: 'rep', discovery: 'unknown' };
+
+/** The first successful autosave after a new game, once per profile. Never a per-write receipt. */
+export function progressSavedReceipt(state, timing) {
+  if (!state || !state.player || !timing || typeof timing !== 'object') return null;
+  if (timing.ok === false) return null;
+  const slot = String(timing.slot || '');
+  const autosave = timing.autosave === true || slot === 'auto' || slot === 'autosave';
+  if (!autosave) return null;
+  const gameplay = state.settings && state.settings.gameplay;
+  if (gameplay && gameplay.tutorialHints === false) return null;
+  if (!shouldShowFirstUseHint(state.player.hints, 'progressSaved')) return null;
+  const line = 'Progress saved';
+  if (!admitReceipt({ text: line, kind: 'info' }).admit) return null;
+  state.player.hints = markFirstUseHint(state.player.hints, 'progressSaved');
+  return line;
+}
+
+function bindProgressSavedReceipt(bus, getState) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('save:completed', (timing) => {
+    const state = typeof getState === 'function' ? getState() : null;
+    const line = progressSavedReceipt(state, timing);
+    if (!line || typeof bus.emit !== 'function') return;
+    bus.emit('toast', { text: line, kind: 'info', ttl: 6 });
+  });
+}
 
 export function createToasts(ctx) {
   const { bus } = ctx;
@@ -347,6 +373,7 @@ export function createToasts(ctx) {
   }
 
   bus.on('toast', push);
+  bindProgressSavedReceipt(bus, () => ctx.state);
   // Session boundary (SF-283): receipts live when a save loads or a new run starts were minted by
   // the pre-save session — dismiss them rather than letting their TTL finish over the restored
   // scene. Bound BEFORE the bind*Ui calls below: automationPayoff emits its "while you were away"
