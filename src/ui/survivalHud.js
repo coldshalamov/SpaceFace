@@ -470,7 +470,10 @@ export const survivalHud = {
       this._setHidden(dom.earn, false);
       this._setText(dom.earn, this._earn);
     } else {
-      if (this._earn) this._clearEarn();
+      // The toast is the only thing that expires. The round's HOLD or GATE word, and the
+      // arrow aimed at the ring, stay for the whole round.
+      this._earn = null;
+      this._earnUntil = -1;
       this._setHidden(dom.earn, true);
     }
 

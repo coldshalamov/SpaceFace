@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { waveOpeningLine } from '../src/systems/survivalAnnounce.js';
 import { circuitPanelLines } from '../src/ui/screens/crucibleDraft.js';
-import { OBJECTIVE_WORDS } from '../src/ui/survivalHud.js';
+import { OBJECTIVE_WORDS, survivalHud } from '../src/ui/survivalHud.js';
 import { SWARM_STAKES } from '../src/data/swarmStakes.js';
 import { COMBAT_LAB_ARENAS } from '../src/data/combatLabSetups.js';
 import {
@@ -92,4 +92,57 @@ test('seed 4242: elite and challenge raise pressure and purse, and the ordinary 
   assert.equal(challengePay, ordinaryPay * 1.6, 'a challenge stage pays the bigger purse on the chips');
   assert.equal(survivalRewards._creditScale(runAt(1)), ordinaryPay, 'an ordinary round does not raise the purse');
   assert.deepEqual(SWARM_STAKES.map((row) => ({ ...row })), before);
+});
+
+test('seed 4242: a score toast fading does not take the arrow off the ring', () => {
+  const previous = globalThis.document;
+  const node = () => ({
+    children: [], parentNode: null, isConnected: true, style: {}, dataset: {},
+    className: '', id: '', hidden: false, textContent: '',
+    classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } },
+    appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
+    removeChild() {}, setAttribute() {}, getAttribute() { return null; },
+  });
+  const body = node();
+  const head = node();
+  globalThis.document = {
+    body, head,
+    querySelector() { return null; },
+    getElementById() { return null; },
+    createElement() { return node(); },
+  };
+  const player = { id: 1, alive: true, pos: { x: 400, z: 0 }, type: 'ship' };
+  const entities = new Map([[player.id, player]]);
+  const plan = {
+    objective: { kind: 'hold' },
+    swarm: { killTarget: 0, circuit: { kind: 'hold', zone: { x: 400, z: 72, radius: 44 } } },
+  };
+  const state = {
+    mode: 'flight', simTime: 0, ui: {}, playerId: player.id, entities,
+    run: {
+      kind: 'survival', phase: 'active', ruleset: 'swarm', wave: 7, arenaId: ARENA,
+      score: 10, credits: 0, level: 1, xp: 0,
+    },
+  };
+  const bus = { on() { return () => {}; } };
+  try {
+    survivalHud.init({ state, bus, helpers: {} });
+    survivalHud._onWavePlanned({ plan });
+    survivalHud._onWaveProgress({ completionKind: 'hold', durationTicks: 600, remainingTicks: 500, found: 0, total: 600 });
+    survivalHud._chain = 4;
+    survivalHud._pushEarn('+10 SCORE');
+    survivalHud.update(1 / 60, state);
+    assert.match(survivalHud._dom.threatWord.textContent, /HOLD/);
+    state.simTime = 10;
+    survivalHud.update(1 / 60, state);
+    assert.equal(survivalHud._earn, null);
+    assert.equal(survivalHud._objectiveKind, 'hold');
+    assert.equal(survivalHud._plan, plan);
+    assert.equal(survivalHud._chain, 4);
+    assert.match(survivalHud._dom.threatWord.textContent, /HOLD/);
+    assert.match(survivalHud._dom.threatWord.textContent, /↑/);
+  } finally {
+    survivalHud.destroy();
+    globalThis.document = previous;
+  }
 });
