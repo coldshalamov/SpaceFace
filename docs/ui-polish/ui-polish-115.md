@@ -9,3 +9,9 @@
 Overlap probe: 6/3/2/1 → 0 at 390×844 / 960×540 / 1280×720 / 1920×1080. Nothing drawn moves (tape crops match apart from the Hand's glow animation). Selectors and IDs unchanged. Type floor OK. Shots (not committed): `ui-shots/polish115/{before,after}/`, probe `_tools/go-stops.mjs`.
 
 **Note:** on a phone a squeezed stop's focus ring is a narrow pill rather than a circle.
+
+## Review round 2 (Oct 23)
+- Code Work: at 390x844 the 40px far-end filter also dropped the 7m 44s Kill · Pirate stop. Now only the killing blow (the telegraph "It warned you", or anything in the loss's last second, within 40px of the end) folds into the loss stop; every other event keeps its own stop and its mark.
+- Squeezed stops keep at least 12px wide and take half the channel's height, upper/lower alternating, so they never overlap.
+- go-stops after: 8 stops at 390x844, 960x540, 1280x720, 1920x1080; 0 overlaps; min target width 12 / 17 / 20 / 22px.
+- Merged origin/master. Compares: /workspace/spaceface-scratch/ui-shots/polish115r/compare-tape-*.png

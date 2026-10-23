@@ -304,18 +304,18 @@ export function createSortieTape({ host, onScrub = null } = {}) {
       b.className = 'orr-tape__stop';
       b.tabIndex = -1;
       // close stops split the gap between them, so each target is its own (22px where there is room);
-      // a stop squeezed under 12px keeps 12px and takes half the channel's height instead, the upper
-      // and lower halves alternating, so neighbours never share a pixel
+      // a squeezed stop keeps at least 12px and takes half the channel's height instead, upper and
+      // lower halves alternating, so squeezed neighbours never share a pixel
       const lo = i > 0 ? Math.max(xs[i] - 11, (xs[i - 1] + xs[i]) / 2) : xs[i] - 11;
       const hi = i < xs.length - 1 ? Math.min(xs[i] + 11, (xs[i] + xs[i + 1]) / 2) : xs[i] + 11;
       b.style.left = `${f(xs[i])}px`;
       b.style.top = `${f(geo.mid)}px`;
       if (hi - lo < 21.5) {
-        const tight = hi - lo < 12;
-        const w = tight ? 12 : hi - lo;
-        b.style.width = `${f(w)}px`;
-        b.style.marginLeft = `${f(tight ? -w / 2 : lo - xs[i])}px`;
-        if (tight) { b.style.height = '11px'; b.style.marginTop = i % 2 ? '0px' : '-11px'; }
+        const w = Math.max(12, 2 * Math.min(xs[i] - lo, hi - xs[i]), hi - lo);
+        b.style.width = `${f(Math.min(22, w))}px`;
+        b.style.marginLeft = `${f(-Math.min(22, w) / 2)}px`;
+        b.style.height = '11px';
+        b.style.marginTop = i % 2 ? '0px' : '-11px';
       }
       const ev = model.events.find((e) => e.t === t);
       const word = t >= model.lengthS - 0.5 ? (model.killLabel || 'the loss') : t === 0 ? 'launch' : ev ? ev.label : '';
