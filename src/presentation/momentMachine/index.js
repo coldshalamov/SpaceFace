@@ -67,7 +67,7 @@ export function analyzeMomentStream(input) {
   for (let i = 0; i < selection.ranked.length; i += 1) {
     const plan = planShot(selection.stream, selection.ranked[i]);
     plans.push(plan);
-    captions.push(captionSidecar(selection.ranked[i], plan));
+    captions.push(captionSidecar(selection.ranked[i], plan, { locale: input?.locale || 'en-US' }));
   }
   const top = selection.ranked[0] || null;
   return {

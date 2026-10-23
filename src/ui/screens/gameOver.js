@@ -36,6 +36,7 @@ import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { confirm } from '../confirm.js';
 import { loadConfirmBody } from './saveLoad.js';
 import { rangeRungIndex } from './range.js';
+import { killcamStageRequestFor } from '../../sim/killcamTape.js';
 
 /** The career ring's stations: [label, bearing in dial degrees (0 = up, clockwise)]. Time flown reads
  *  at the hub; the lost hull's life sits by the red arc it names (top left). */
@@ -363,6 +364,9 @@ function popAncestorsUntilGameOverResolves(ctx, manager) {
 export const gameOverScreen = {
   id: 'gameOver',
   data: { locked: true },
+  // ScreenManager owns this request and retains the wreck plate when the bounded
+  // tape is missing or motion is reduced. The replay never advances the simulation.
+  stage(ctx) { return killcamStageRequestFor(ctx?.state); },
   _summaryEls: null,
   _summarySig: null,
   _defaultButton: null,

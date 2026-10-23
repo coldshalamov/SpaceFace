@@ -22,6 +22,8 @@
 //   - capacity: 48 ship tracks + 128 round tracks x 150 samples ≈ 240 KB resident,
 //     tape encode ~2x transiently for the few seconds the results screen is up.
 
+import { createForceTapeRecorder } from './forceTape.js';
+
 export const KILLCAM_TAPE_SCHEMA = 'spaceface.killcamTape.v1';
 
 /** How much fight the tape holds. The demo doc names five seconds. */
@@ -73,6 +75,7 @@ function createRoundTrack(sampleCount = KILLCAM_SAMPLE_COUNT) {
     used: false,
     id: null,
     kind: 'round',
+    weaponId: null,
     team: 0,
     firstSample: 0,
     lastSample: -1,
@@ -106,6 +109,7 @@ export function createKillcamRecorder(options = {}) {
   // Ship deaths in the window, oldest first: ring of [sample, x, z, size].
   const flashes = new Float32Array(maxFlashes * 4);
   const flashState = { head: 0, count: 0 };
+  const forces = createForceTapeRecorder(sampleCount);
 
   function recycleOldest(pool) {
     // The pool is small; a once-per-wave scan beats a free-list for the same result.
@@ -115,6 +119,7 @@ export function createKillcamRecorder(options = {}) {
     let best = null;
     let bestScore = Infinity;
     for (const track of pool) {
+      if (track.player) continue;
       const score = (track.dead ? 0 : 1e9) + Math.max(0, track.lastSample);
       if (score < bestScore) { bestScore = score; best = track; }
     }
@@ -141,8 +146,20 @@ export function createKillcamRecorder(options = {}) {
     _sampleCount: sampleCount,
     _sampleRate: 60 / stride,
 
+    /** Death happens inside combat's tick; close the last live pose before the UI seals. */
+    closeShip(id) {
+      const track = byId.get(id);
+      if (!isShipTrack(track) || track.dead || track.lastSample < 0) return;
+      track.dead = true;
+      track.deathSample = track.lastSample;
+      const [x, z, , vx, vz, wz] = shipDeathMotion(track, sampleCount, recorder._sampleRate);
+      track.vx = vx; track.vz = vz; track.wz = wz;
+      pushFlash(track.lastSample, x, z, Math.max(2.5, (track.radius || 0) * 2.6));
+    },
+
     /** Wipe everything — the round boundary (run:started). */
     clear() {
+      forces.clear();
       byId.clear();
       for (const track of ships) { track.used = false; track.id = null; track.dead = false; track.lastSample = -1; }
       for (const track of rounds) { track.used = false; track.id = null; track.dead = false; track.lastSample = -1; }
@@ -161,6 +178,7 @@ export function createKillcamRecorder(options = {}) {
       if (tick % stride !== 0) return;
       const seq = tick / stride;
       recorder._sampleSeq = seq;
+      forces.note(state, seq);
 
       const list = state.entityList;
       if (Array.isArray(list)) {
@@ -194,9 +212,10 @@ export function createKillcamRecorder(options = {}) {
               // Faction kits swap the whole-ship file — replay must resolve the livery the
               // player actually fought, not the un-kitted base hull.
               track.factionId = e.factionId || (e.data && e.data.factionId) || null;
-              track.radius = Number.isFinite(e.radius) ? e.radius : 0;
+              track.radius = Number.isFinite(e.radius) ? e.radius : Number(e.collisionRadius) || 0;
             } else {
               track.team = e.team | 0;
+              track.weaponId = e.data?.weaponId || null;
             }
             byId.set(e.id, track);
           }
@@ -257,6 +276,7 @@ export function createKillcamRecorder(options = {}) {
 
     _ships: ships,
     _rounds: rounds,
+    _forces: forces,
   };
   return recorder;
 }
@@ -347,7 +367,7 @@ export function encodeKillcamTape(recorder, meta = {}) {
       x[i] = track.ring[slot];
       z[i] = track.ring[slot + 1];
     }
-    rounds.push({ team: track.team, b: start - fromSample, n, x, z });
+    rounds.push({ team: track.team, weaponId: track.weaponId, b: start - fromSample, n, x, z });
   }
   return {
     schema: KILLCAM_TAPE_SCHEMA,
@@ -359,6 +379,7 @@ export function encodeKillcamTape(recorder, meta = {}) {
     samples: endSample - fromSample + 1,
     ships,
     rounds,
+    forces: recorder._forces?.encode(fromSample, endSample) || [],
     flashes: recorder.flashesBetween(fromSample, endSample)
       .map((f) => ({ s: f.sample - fromSample, x: f.x, z: f.z, size: f.size })),
   };
@@ -412,6 +433,7 @@ export function decodeKillcamTape(tape) {
     total,
     seconds: total / sampleRate,
     ships, rounds,
+    forces: Array.isArray(tape.forces) ? tape.forces : [],
     flashes: tape.flashes.slice().sort((a, b) => a.s - b.s),
   };
 }
@@ -426,6 +448,7 @@ const session = {
   recorder: createKillcamRecorder(),
   tape: null,
   skipped: false,
+  elapsed: 0,
 };
 
 /** The one registered system: read-only, run-bounded, clears on the round boundary. */
@@ -433,23 +456,42 @@ export const killcamRecorder = {
   name: 'killcamRecorder',
 
   init(ctx) {
+    this.destroy();
     this.state = ctx && ctx.state;
     this.bus = ctx && ctx.bus;
     session.recorder.clear();
     session.tape = null;
     session.skipped = false;
+    session.elapsed = 0;
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       // Round boundary: a fresh run wipes the ring, the seal, and any stale skip.
       this._unsubs.push(this.bus.on('run:started', () => clearKillcamTape()));
       this._unsubs.push(this.bus.on('game:started', () => clearKillcamTape()));
+      this._unsubs.push(this.bus.on('game:new', () => clearKillcamTape()));
+      this._unsubs.push(this.bus.on('save:loaded', () => clearKillcamTape()));
+      this._unsubs.push(this.bus.on('player:respawn', () => clearKillcamTape()));
+      // Death is an event inside combat's tick, before the next recorder update. Seal
+      // synchronously so opening the after-action sheet cannot pick up an older defeat.
+      this._unsubs.push(this.bus.on('player:death', () => {
+        session.recorder.closeShip(this.state?.playerId);
+        session.tape = null;
+        session.skipped = false;
+        session.elapsed = 0;
+        takeKillcamTape({ seed: this.state?.meta?.seed });
+      }));
     }
   },
 
   update(_dt, state) {
     const live = state || this.state;
     const run = live && live.run;
-    if (!run || run.kind !== 'survival' || !run.phase || run.phase === 'inactive') return;
+    const survival = run?.kind === 'survival' && run.phase && run.phase !== 'inactive';
+    const adventure = live?.mode === 'flight' && (!run || run.phase === 'inactive');
+    if (!survival && !adventure) return;
+    // Frozen/dead frames never extend the death tail while the report is on top.
+    const player = live.entities?.get(live.playerId);
+    if (adventure && (!player || player.alive === false || player.flags?.defeated)) return;
     session.recorder.note(live);
   },
 
@@ -468,6 +510,7 @@ export function clearKillcamTape() {
   session.recorder.clear();
   session.tape = null;
   session.skipped = false;
+  session.elapsed = 0;
 }
 
 /**
@@ -496,7 +539,8 @@ export function killcamStageRequestFor(state) {
   }
   const tape = takeKillcamTape();
   if (!isKillcamTape(tape)) return null;
-  return { scene: 'crucible-killcam' };
+  const survival = state?.run?.kind === 'survival' && state.run.phase && state.run.phase !== 'inactive';
+  return { scene: survival || state?.mode == null ? 'crucible-killcam' : 'adventure-killcam' };
 }
 
 /** The results screen's visible SKIP: the still comes back and stays back. */
@@ -507,4 +551,10 @@ export function skipKillcamPlayback() {
 /** The stage reads this every frame: a skipped film holds its tableau and stops moving. */
 export function killcamPlaybackSkipped() {
   return session.skipped;
+}
+
+/** Survives scene rebuilds/temporary overlays: a death camera plays once per sealed tape. */
+export function killcamPlaybackTime(seconds) {
+  if (Number.isFinite(seconds)) session.elapsed = Math.max(session.elapsed, seconds);
+  return session.elapsed;
 }

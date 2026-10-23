@@ -26,15 +26,15 @@ import { mainMenuScreen } from '../src/ui/screens/mainMenu.js';
 // The world itself: gate, fight, determinism, teardown.
 // ---------------------------------------------------------------------------
 
-test('attract world does not step before start()', () => {
-  const world = createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
+test('attract world does not step before start()', async () => {
+  const world = await createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
   assert.equal(world.advance(0.5), 0);
   assert.equal(world.tick, 0);
   world.dispose();
 });
 
-test('attract world runs a real fight: movement, shots, kills', () => {
-  const world = createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
+test('attract world runs a real throw: movement, release, contact and gunfire', async () => {
+  const world = await createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
   world.start();
   const before = world.sample(1).filter((e) => e.type === 'ship');
   world.runTicks(150); // 2.5 s — hulls that live this long must have moved
@@ -48,22 +48,25 @@ test('attract world runs a real fight: movement, shots, kills', () => {
   world.runTicks(750); // 15 s of fight total
   const counts = world.counts();
   assert.ok(counts.ships >= 3, `expected a living fight, got ${counts.ships} ships`);
-  assert.ok(counts.fired > 20, `expected real gunfire, got ${counts.fired} shots`);
-  assert.ok(counts.kills > 0, 'expected at least one kill in 15 s of Crucible');
+  assert.ok(counts.fired > 0, `expected real gunfire, got ${counts.fired} shots`);
+  assert.equal(counts.catches, 1);
+  assert.equal(counts.releases, 1);
+  assert.ok(counts.impacts > 0, 'expected the released hull to hit the obstacle');
+  assert.equal(counts.fields, 1);
   world.dispose();
 });
 
-test('attract world is deterministic at fixed seed', () => {
-  const a = createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
-  const b = createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
+test('attract world is deterministic at fixed seed', async () => {
+  const a = await createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
+  const b = await createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
   a.start(); b.start();
   a.runTicks(600); b.runTicks(600);
   assert.deepEqual(b.sample(1), a.sample(1));
   a.dispose(); b.dispose();
 });
 
-test('dispose stops the world cold', () => {
-  const world = createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
+test('dispose stops the world cold', async () => {
+  const world = await createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
   world.start();
   world.runTicks(60);
   world.dispose();
@@ -76,11 +79,11 @@ test('dispose stops the world cold', () => {
 // The tape: record → encode → decode, and the committed module's staleness gate.
 // ---------------------------------------------------------------------------
 
-test('tape recorder captures ship lives and shots', () => {
-  const world = createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
+test('tape recorder captures ship lives and shots', async () => {
+  const world = await createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
   world.start();
-  const recorder = createTapeRecorder({ ticks: 600, seed: TITLE_ATTRACT_SEED });
-  while (world.tick < 600) { world.runTicks(1); if (!recorder.tick(world.state)) break; }
+  const recorder = createTapeRecorder({ ticks: 900, seed: TITLE_ATTRACT_SEED, events: world.scenario.events });
+  while (world.tick < 900) { world.runTicks(1); if (!recorder.tick(world.state)) break; }
   const tape = recorder.finish(world.state);
   world.dispose();
   assert.equal(tape.schema, TITLE_ATTRACT_TAPE_SCHEMA);
@@ -93,13 +96,13 @@ test('tape recorder captures ship lives and shots', () => {
   assert.ok(ship.n > 0 && ship.x.length === ship.n && ship.z.length === ship.n);
 });
 
-test('the committed replay tape matches a fresh bake of the seeded fight', () => {
+test('the committed replay tape matches a fresh bake of the seeded scenario', async () => {
   // THE determinism gate: if roster, seed, or any of the five systems moved the
   // fight, this bake diverges from src/sim/titleAttractTapeData.js — re-bake with
   // `node scripts/bake-title-attract.mjs` after reviewing the semantic change.
-  const world = createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
+  const world = await createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
   world.start();
-  const recorder = createTapeRecorder({ ticks: TAPE_DURATION_TICKS, seed: TITLE_ATTRACT_SEED });
+  const recorder = createTapeRecorder({ ticks: TAPE_DURATION_TICKS, seed: TITLE_ATTRACT_SEED, events: world.scenario.events });
   let keepGoing = true;
   while (keepGoing) {
     world.runTicks(1);
@@ -117,7 +120,7 @@ test('committed tape decodes to a playable fight window', () => {
   assert.equal(decoded.seed, TITLE_ATTRACT_SEED);
   assert.equal(decoded.ticks, TAPE_DURATION_TICKS);
   assert.ok(decoded.ships.length >= 10, `expected many ship lives over a minute, got ${decoded.ships.length}`);
-  assert.ok(decoded.shots.count > 100, `expected a busy fight, got ${decoded.shots.count} shots`);
+  assert.ok(decoded.shots.count > 40, `expected the four authored volleys, got ${decoded.shots.count} shots`);
   // Every ship life names a visual the stage can resolve, and its channels line up.
   for (const ship of decoded.ships) {
     assert.ok(ship.visual, 'ship life without a visual id');

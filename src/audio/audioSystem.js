@@ -70,6 +70,13 @@ import { applyOutputMix, heatScoreLift, stationIdentNotes } from './outputMix.js
 import { createThreatEar } from './threatEar.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
+
+// A recorder may tap this already gesture-started graph. It never unlocks or connects audio.
+export function getReplayAudioSource() {
+  const rt = audio.rt;
+  if (!rt?.ctx || rt.ctx.state !== 'running' || !rt.masterGain) return null;
+  return { context: rt.ctx, node: rt.masterGain, tick: audio.state?.tick || 0, simTime: audio.state?.simTime || 0 };
+}
 import { leftoverMechanicLines } from '../story/mechanicVoice.js';
 import { resolveAccessibilityCue, fieldDeployCaption } from '../ui/captions.js';
 import { fuelReserveWarning, FUEL_LOW_FRACTION } from '../ui/fuelReserveWarning.js';

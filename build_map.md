@@ -655,8 +655,8 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | hull-commit | devin-fleet-oct20 | `data/ships.js`, `systems/ships.js` refit/resale, `data/modules.js`, `techVerbLadder.js`, `shipLedger.js` (§31 THE LONG GAME) | 401, 469 |
 | works | devin-fleet-oct20 | `data/automation.js`, `automation.js`, `alphabet.js`, `claims.js`, `data/sites.js`, `siteProduction.js`, `crafting.js`, automation-panel composer (§31 THE LONG GAME) | 402, 466, 403 |
 | chain-ear | done (devin-25-oct22) | `audio/audioSystem.js` stunt/stinger handlers, `scoreDirector.js`, `themeMatrix.js`, `themeCompose.js`, `bandBeds.js` (§31 THE EAR) | - |
-| theater | codex-bm30 | `killReplay.js`, `sim/killcamTape.js`, `killcamStage.js`, `presentation/momentMachine/`, `flightFootage.js`, `footageVideoCodec.js`, `clipExport.js`, `replay.js`, `clips.js`, `gameOver.js`; the master-bus tap hunk of `audioSystem.js` serial with `chain-ear` (§31 THE SHOW) | 406, 407 |
-| front-door | free | `src/sim/titleAttract*.js`, `render/titleAttractStage.js`, `scripts/bake-title-attract.mjs` (§31 THE SHOW) | 408 |
+| theater | done (devin-25-oct22) | `killReplay.js`, `sim/killcamTape.js`, `killcamStage.js`, `presentation/momentMachine/`, `flightFootage.js`, `footageVideoCodec.js`, `clipExport.js`, `replay.js`, `clips.js`, `gameOver.js`; the master-bus tap hunk of `audioSystem.js` serial with `chain-ear` (§31 THE SHOW) | - |
+| front-door | done (devin-25-oct22) | `src/sim/titleAttract*.js`, `render/titleAttractStage.js`, `scripts/bake-title-attract.mjs` (§31 THE SHOW) | - |
 | sentences | devin-fleet-oct20 | `ui/captions.js`, `masslineInstrument.js` captions, `src/localization/` overlays and glossary, `settings.js` game speed, `core/timeEffects.js` (§31 THE SHOW) | 409, 410 |
 | rumor-chart | done (devin-agentic-oct18) | `data/frontierRumors.js`, `ui/sim/discoveryKnowledge.js`, `pirateRumor.js`, chart rumor layer (§31 THE SHOW) | 411 |
 | monoliths | free | `render/renderer.js`, `systems/missions.js`, `systems/traffic.js` — behaviour-preserving splits, one file at a time, only while no claimed seam lists the file (§31 THE MACHINE) | 412, 413 |
@@ -665,7 +665,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | hull-ghost | devin-fleet-oct20 | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 425 |
 | first-look | free | the clean-flight-plane guard, camera distance review, passable near-field dust, hero-hull art — coordinate with L-PICTURE (§31.5, §31.6) | 427, 428 |
 | stranger-hud | devin-fleet-oct20 | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 457 |
-| set-pieces | free | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks (§31.5) | 430 |
+| set-pieces | done (devin-25-oct22) | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks (§31.5) | - |
 | pulse-voice | devin-fleet-oct20 | `data/flavor/040-band.js` format, `systems/bandRadio.js`, `systems/stationBroadcast.js`, traffic hail/chatter data, ship identity data, station PA cues (serial with `hull-ghost` on `barks.js`/`barkVoice.js`) (§31.6) | 432, 434, 436 |
 | pulse-print | free | `data/newsTemplates.js` wiring, billboard/bay-screen presenters, inbox data and surface, codex data (ORRERY-consistent screen edits) (§31.6) | 433, 435, 437 |
 | pulse-world | free | far-plane depth layers and far-actor feed, station shift/calendar data, `050-roaming-events.js` + event runtimes, memorial/graffiti-about-you, hull trinkets via `livingHull` presentation — coordinate with L-PICTURE on render layers (§31.6) | 438, 439, 440, 441 |
@@ -1055,9 +1055,9 @@ production units, and never build what they write.
 | 403 | AL-LONG-5 | Write the drone — ≤6-step composed loops with refusal reasons; AL-LG-15 inside (§31.3) | BUILD | OPEN — after 402 |
 | 404 | AL-EAR-1 | The chain sings — CV-EAR next slice; AL-PR-01…06 inside (§31.3) | BUILD | DONE devin-25-oct22 |
 | 405 | AL-EAR-2 | Twenty-five sectors, twenty-five beds — composed beds from the existing score identities (§31.3) | BUILD | DONE devin-25-oct22 |
-| 406 | AL-SHOW-1 | The rope on tape — adventure tape records tether/field; adventure death kill-cam; AL-PR-09/10 inside (§31.3) | BUILD | OPEN |
-| 407 | AL-SHOW-2 | Theater — re-render from tape with the planned camera, scrub, photo cam, export ≥30 fps with sound; AL-PR-11/12 inside (§31.3) | BUILD | OPEN — after 406 |
-| 408 | AL-SHOW-3 | The front door shows the verb — attract tape v2 with catch→swing→release→impact; AL-PR-07/08 inside; no title music (owner question) (§31.3) | BUILD | OPEN |
+| 406 | AL-SHOW-1 | The rope on tape — adventure tape records tether/field; adventure death kill-cam; AL-PR-09/10 inside (§31.3) | BUILD | DONE devin-25-oct22 |
+| 407 | AL-SHOW-2 | Theater — re-render from tape with the planned camera, scrub, photo cam, export ≥30 fps with sound; AL-PR-11/12 inside (§31.3) | BUILD | DONE devin-25-oct22 |
+| 408 | AL-SHOW-3 | The front door shows the verb — attract tape v2 with catch→swing→release→impact; AL-PR-07/08 inside; no title music (owner question) (§31.3) | BUILD | DONE devin-25-oct22 |
 | 409 | AL-SHOW-4 | Every sound is a sentence — written first-hour captions, bearings, translatable accessibility captions, game speed; AL-PR-13…16 inside (§31.3) | BUILD | OPEN |
 | 410 | AL-SHOW-5 | Languages a native speaker signs off — reviewed first-hour overlays in four locales + glossary (§31.3) | BUILD | OPEN — uses 409's capture inventory when present |
 | 411 | AL-SHOW-6 | The chart draws the arrows — rumor corroboration fields and converging chart arrows, no position leak (§31.3) | BUILD | DONE b7f1bd7ba |
@@ -1079,7 +1079,7 @@ production units, and never build what they write.
 | 427 | AL-LOOK-1 | Fill the frame without filling the path — readable hull scale, passable near-field dust, depth layers above/below the flight plane, yielding traffic; no new obstacles (clean-flight-plane law §31.6; guarded by 443) (§31.5) | ART | OPEN — coordinate with L-PICTURE; take only while that lane is quiet |
 | 428 | AL-LOOK-2 | Hero hulls first — the five hulls a player meets in the first two hours raised to hero craft before any other hull (§31.5; includes D72) | ART | OPEN — coordinate with L-PICTURE (D72 is claimed there) |
 | 429 | AL-HUD-1 | A HUD a stranger can read — fix the visible leaks (internal ids such as `ZONE_CERES_DERELICT`, the Overhead/Circuits buttons overlapping the target card, overlapping shipworks list text); hand the rest to ORRERY as one list (§31.5) | FIX | OPEN |
-| 430 | AL-SET-1 | Ten trailer moments — ten existing set pieces, each reachable in the first three hours, staged with a camera beat and a music beat (§31.5) | BUILD | OPEN — clips judged through Theater after 407 |
+| 430 | AL-SET-1 | Ten trailer moments — ten existing set pieces, each reachable in the first three hours, staged with a camera beat and a music beat (§31.5) | BUILD | DONE devin-25-oct22 |
 | 431 | AL-STATION-1 | Arriving somewhere — docking feels like arrival: a live bay behind the station screen, a voiced barkeep greeting, regulars with faces (§31.5) | BUILD | DONE devin-25-oct22 |
 | 432 | PULSE-RADIO | Radio that's about this galaxy — ≥2 h per channel before a repeat, live-fact segments, The Margin as a show; FILL lines after (§31.6) | BUILD | OPEN |
 | 433 | PULSE-SIGNS | Screens and signs that talk back — billboards, bay screens, news crawls, wanted posters with the player's hull (§31.6) | BUILD | DONE devin-thirty-oct22 |
