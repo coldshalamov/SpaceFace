@@ -815,3 +815,7 @@ All twelve goals remain OPEN. PR558 remains open/draft/unmerged at `700f106ddf23
 ## Latest Kite publication and qualification boundary: 2026-10-23 17:45 UTC
 
 All twelve goals remain OPEN. The Kite's Corner viewer/tape/mount increment is now published as an open/draft PR558 follow-up, not accepted gameplay. Current PR558 head is `a55b3869be40e1c4b528f2ea05999d678d7f97b0`, sole parent `700f106ddf23e9c9583ac865f143a25cb134eba8`, tree `0e89d2c76c2afcdd38289939abce74a76c9f479b`; the exact follow-up adds eight paths, nine total PR paths, and is mergeable. Its exact-head general check `39997074031` is active. Mobile run `39997074128` failed; attribution is pending. The focused station-presenter gate pass belongs to the prior prerequisite head and is not hosted evidence for this new Kite increment. Do not carry it forward as a new-head pass. No full in-game/native-camera/browser acceptance or goal closure is claimed.
+
+## Exact-head Kite gate result: 2026-10-23 17:51 UTC
+
+All twelve goals remain OPEN. On PR558 head `a55b3869be40e1c4b528f2ea05999d678d7f97b0`, the focused Kite gate passed in hosted static shard 3 (157 ms). General check `39997074031` remains in progress; mobile `39997074128` failed the startup preflight on both engines. The unchanged base/head startup inputs support only source-equivalent-to-base evidence, not a base-run result. This focused hosted pass does not imply overall CI success or full game, browser, camera, or gameplay acceptance.
