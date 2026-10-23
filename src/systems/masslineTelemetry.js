@@ -1,4 +1,5 @@
 import { writePayloadReleaseGhost } from '../presentation/releaseGhost.js';
+import { massDeclarationForTarget, massDiscrepancy, physicalMassT } from './cargoCustody.js';
 
 // Massline kinematics telemetry — read-only observer.
 // Prompt 01: this system only reads state (player, target, tether) and writes its own runtime
@@ -95,6 +96,36 @@ export const masslineTelemetry = {
     this._snap = null;
     // Per-latch reel-pump state (rung 06). Same privacy discipline.
     this._pump = null;
+    this._massWeigh = null;
+    this._onMassScaleReset = () => this._resetMassWeigh();
+    this._onMassLineEnd = (payload) => {
+      const weigh = this._massWeigh;
+      if (weigh && (payload?.ownerId === this.state?.playerId
+          || payload?.controllerId === this.state?.playerId
+          || (weigh.attachmentId != null && payload?.attachmentId === weigh.attachmentId)
+          || (payload?.ownerId == null && payload?.controllerId == null
+            && payload?.attachmentId == null && payload?.targetId === weigh.targetId))) this._resetMassWeigh();
+    };
+    for (const event of ['tether:released', 'tether:broke', 'tether:broken']) this.bus?.on?.(event, this._onMassLineEnd);
+    for (const event of ['save:restoring', 'save:loaded', 'game:new', 'game:newGame', 'sector:exit', 'player:death']) {
+      this.bus?.on?.(event, this._onMassScaleReset);
+    }
+  },
+
+  newGame() { this._resetMassWeigh(); },
+
+  dispose() {
+    for (const event of ['tether:released', 'tether:broke', 'tether:broken']) this.bus?.off?.(event, this._onMassLineEnd);
+    for (const event of ['save:restoring', 'save:loaded', 'game:new', 'game:newGame', 'sector:exit', 'player:death']) {
+      this.bus?.off?.(event, this._onMassScaleReset);
+    }
+    this._resetMassWeigh();
+  },
+
+  _resetMassWeigh() {
+    this._massWeigh = null;
+    const telemetry = this.state?.player?.masslineTelemetry;
+    if (telemetry) delete telemetry.massWeighing;
   },
 
   update(dt, state) {
@@ -107,6 +138,7 @@ export const masslineTelemetry = {
     if (!active) {
       // No active tether: report inactive and preserve no stale target kinematics. Do not throw.
       writeInactive(telemetry);
+      this._resetMassWeigh();
       this._latchedTargetId = null;
       this._snap = null;
       this._pump = null;
@@ -116,6 +148,7 @@ export const masslineTelemetry = {
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     if (!player || !player.pos || !player.vel) {
       writeInactive(telemetry);
+      this._resetMassWeigh();
       this._latchedTargetId = null;
       this._snap = null;
       this._pump = null;
@@ -126,6 +159,7 @@ export const masslineTelemetry = {
     if (!target || !target.pos || !target.vel) {
       // Missing target must not throw; treat as inactive without keeping stale kinematics.
       writeInactive(telemetry);
+      this._resetMassWeigh();
       // We do not clear _latchedTargetId here: the tether still nominally points at this id, so
       // if the target returns next tick we keep treating it as the same latch.
       return;
@@ -204,6 +238,41 @@ export const masslineTelemetry = {
     // Rung 06: reel-pump detection. Same discipline — observer-only except exactly one event
     // (tether:reelPump), emitted at most once per pump stroke and mirrored at telemetry.reelPump.
     this._stepReelPump(telemetry, dt, state, strain, phase);
+    this._stepMassWeigh(telemetry, dt, state, target, player, strain, phase);
+  },
+
+  // A loaded moving line earns disclosure of its body's real mass, not a new mass law.
+  // The existing economy owner validates this projection synchronously and keeps the slip.
+  _stepMassWeigh(telemetry, dt, state, target, player, strain, phase) {
+    const decl = massDeclarationForTarget(state, target);
+    const measuredMassT = physicalMassT(target);
+    const now = state.simTime;
+    const moving = [target.vel.x, target.vel.z, player.vel.x, player.vel.z].every(Number.isFinite)
+      && (Math.hypot(target.vel.x, target.vel.z) > 1e-6
+        || Math.hypot(player.vel.x - target.vel.x, player.vel.z - target.vel.z) > 1e-6);
+    if (!decl || measuredMassT == null || !Number.isFinite(now) || now < 0
+        || !Number.isFinite(dt) || dt <= 0 || (phase !== 'loaded' && phase !== 'overload')
+        || !(strain > 0) || !moving) { this._resetMassWeigh(); return; }
+    const slipId = `mass-slip:${decl.sourceOfferId}:${decl.targetSlot}`;
+    const identity = JSON.stringify([state.player.tether.attachmentId ?? null, target.id, decl.missionId, decl.sourceOfferId,
+      decl.targetSlot, decl.kind, decl.declaredMassT, measuredMassT]);
+    let weigh = this._massWeigh;
+    if (!weigh || weigh.identity !== identity || now < weigh.at || now - weigh.at > dt + 1e-6) {
+      delete telemetry.massWeighing;
+      weigh = this._massWeigh = { identity, attachmentId: state.player.tether.attachmentId ?? null, targetId: target.id, at: Math.max(0, now - dt), elapsed: 0, fired: false };
+    }
+    if (now <= weigh.at) return; // repeated observer call is not another simulation step
+    weigh.elapsed += Math.min(dt, now - weigh.at);
+    weigh.at = now;
+    if (weigh.fired || state.economyContracts?.massScale?.slips?.[slipId]) return;
+    if (weigh.elapsed + 1e-9 < 0.5) return;
+    const disc = massDiscrepancy(decl.declaredMassT, measuredMassT);
+    if (!disc) { this._resetMassWeigh(); return; }
+    const record = { ...decl, ...disc, slipId, targetId: target.id,
+      tick: Number.isSafeInteger(state.tick) ? state.tick : null, simTime: now };
+    weigh.fired = true;
+    telemetry.massWeighing = record; // publish BEFORE listeners validate the notification
+    this.bus?.emit?.('tether:massWeighed', { ...record });
   },
 
   // Reel-pump state machine. A stroke is idle -> pumping -> spent. We arm a stroke when reelStrength

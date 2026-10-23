@@ -490,7 +490,8 @@ export function createBarScreen(ctx) {
       const hint = document.createElement('p');
       hint.className = 'k-caps sx-talk__keys';
       hint.setAttribute('aria-hidden', 'true');
-      hint.textContent = '1\u20133 \u00b7 Enter answers';
+      const shortcutCount = Math.min(9, stageEl.querySelectorAll('.sx-choice').length);
+      hint.textContent = `${shortcutCount === 1 ? '1' : `1\u2013${shortcutCount}`} \u00b7 Enter answers`;
       choices.insertAdjacentElement('afterend', hint);
     }
     const reply = stageEl.querySelector('.sx-talk__reply');

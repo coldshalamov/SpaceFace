@@ -1,3 +1,4 @@
+import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
 // Shared station-contact data, choices, replies, and map actions.
 // DOM rendering belongs to src/ui/station/screens/bar.js.
 
@@ -594,6 +595,10 @@ export function generateContacts(stationId, state = {}, opts = {}) {
 
   const canonical = canonicalContactForStation(stationId);
   if (canonical) {
+    if (canonical.canonicalKey === 'kessler') {
+      const slipChoice = kesslerWeightSlipChoice(state, stationId);
+      if (slipChoice) canonical.choices = [...getChoices(canonical.role, canonical), slipChoice];
+    }
     if (canonical.role === 'barkeep') {
       contacts[0] = canonical;
     } else {
@@ -1535,7 +1540,9 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
   const state = ctx.state || {};
 
   switch (contact.canonicalKey) {
-    case 'kessler':
+    case 'kessler': {
+      const slipReply = kesslerWeightSlipReply(state, stationId, choiceId);
+      if (slipReply) return slipReply;
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
         if (route) {
@@ -1548,6 +1555,7 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
       }
       if (choiceId === 'dismiss') return { text: 'Then do not sign the seal. Pilots always sign the seal.' };
       return null;
+    }
 
     case 'rook':
       if (choiceId === 'bounties') {
