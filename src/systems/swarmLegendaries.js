@@ -26,6 +26,7 @@
 // can never restore a well the run no longer owns, and the run's absence of records means no well.
 
 import { deliverPhysicalImpulse, queryPhysicalBodies } from '../combat/physicalEffects.js';
+import { schedulePhysicalBlast } from '../combat/physicalEffects.js';
 import { createRewardDeathLedger, runOwnsReward } from '../combat/rewardEligibility.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { validateRunState } from '../core/runState.js';
@@ -47,6 +48,17 @@ export const HEART_FIELD_ID = 'swarm_legendary_graviton_heart';
 export const HEART_RADIUS_WU = 180;
 export const HEART_STRENGTH = 35;
 export const HEART_FALLOFF = 1.5;
+
+/** SEED-SW-08 — the volatile hulls blast: radius, packet, and how hard it throws. */
+export const VOLATILE_RADIUS_WU = 90;
+export const VOLATILE_DAMAGE = 34;
+export const VOLATILE_MAX_DV_WU_S = 55;
+/** SEED-SW-11 — the bumper reflect: strength and the per-body contact cooldown. */
+export const BUMPER_MAX_DV_WU_S = 70;
+export const BUMPER_COOLDOWN_S = 1.5;
+/** SEED-SW-12 — the second sun: how close a body stands to the kill, and how hard it burns. */
+export const SECOND_SUN_RADIUS_WU = 110;
+export const SECOND_SUN_BURN = 12;
 
 /**
  * The Domino radial calculation, shared by both populations.
@@ -98,6 +110,13 @@ export function createSwarmLegendaryDirector(ctx) {
       this._lastCueAt = -Infinity;
       if (this._bus && typeof this._bus.on === 'function') {
         this._unsubs.push(this._bus.on('entity:killed', (p) => this._onEntityKilled(p)));
+        // SEED-SW-08/11 — the contact receipts feed the throw economy (volatile hulls) and the
+        // cover (bumper walls). Queue-only: the physical effect resolves on the fixed tick.
+        this._unsubs.push(this._bus.on('combat:collisionConsequence', (p) => this._onCollisionConsequence(p)));
+        this._volatileSeen = new Set();
+        this._bumperCooldown = new Map();
+        this._volatileBlasts = [];
+        this._bumperReflects = [];
         this._unsubs.push(this._bus.on('swarm:broodDeathPositions', (p) => this._onBroodDeathPositions(p)));
         this._unsubs.push(this._bus.on('run:waveCleared', () => this.teardown('wave_cleared')));
         this._unsubs.push(this._bus.on('run:started', () => this.teardown('run_started')));
@@ -150,7 +169,10 @@ export function createSwarmLegendaryDirector(ctx) {
       }
       const owned = ownedSwarmLegendaryIds(run);
       this._maintainHeart(st, owned.includes('graviton_heart'));
+      // Second sun reads the death ledger before Domino's pass empties it.
+      this._applySecondSun(st, owned.includes('second_sun'));
       this._applyDomino(st, run, owned.includes('domino'));
+      this._volatileAndBumper(st, owned);
     },
 
     /** Wave teardown: the room forgets its effects but the run keeps what it bought. */
@@ -330,6 +352,125 @@ export function createSwarmLegendaryDirector(ctx) {
       if (now - this._lastCueAt < DOMINO_CUE_INTERVAL_S) return;
       this._lastCueAt = now;
       this._emit('audio:cue', { id: DOMINO_CUE_ID, gain: 0.4 });
+    },
+
+    // ---- SEED-SW-08/11/12 branches ---------------------------------------------------------
+
+    /**
+     * SW-08 VOLATILE HULLS — a body the PLAYER threw (massline provenance on the contact
+     * receipt) detonates on its FIRST solid impact: once per thrown body, the blast snaps its
+     * recipients at the contact, and the packet goes through the combat seam with the player's
+     * name on it. Unthrown wrecks and gun kills never detonate; nothing physical runs inside
+     * the receipt callback — the queue resolves here on the fixed tick.
+     * SW-11 BUMPER WALLS — a hostile body that met arena cover is thrown back into the room,
+     * once per body per cooldown. The player's own contacts never enter this branch.
+     */
+    _onCollisionConsequence(receipt) {
+      if (!receipt || typeof receipt !== 'object') return;
+      const tag = String((receipt.provenance && receipt.provenance.tag) || '');
+      const actorId = receipt.provenance && receipt.provenance.actorId;
+      const state = this._state;
+      const run = this._liveRun(state);
+      const owned = run ? ownedSwarmLegendaryIds(run) : [];
+      if (owned.includes('volatile_hulls') && actorId === state.playerId
+        && /^(massline|rope|tether|sling|whip|bridle|twin_bridle|monofilament|snarl|tow_flail|flail)/.test(tag)
+        && receipt.otherId != null && !this._volatileSeen.has(receipt.otherId)) {
+        this._volatileSeen.add(receipt.otherId);
+        this._volatileBlasts.push({ targetId: receipt.targetId, otherId: receipt.otherId });
+      }
+      if (owned.includes('bumper_walls') && receipt.targetHostile === true
+        && receipt.otherType === 'asteroid' && receipt.targetId != null) {
+        const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+        if (now >= (this._bumperCooldown.get(receipt.targetId) || 0)) {
+          this._bumperCooldown.set(receipt.targetId, now + BUMPER_COOLDOWN_S);
+          this._bumperReflects.push({ targetId: receipt.targetId, otherId: receipt.otherId });
+        }
+      }
+      if (this._volatileSeen.size > 256) this._volatileSeen.clear();
+      if (this._bumperCooldown.size > 256) this._bumperCooldown.clear();
+    },
+
+    _volatileAndBumper(state) {
+      const helpers = this._helpers;
+      const port = helpers && helpers.combatPhysics;
+      const get = (id) => (state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null);
+      while (this._volatileBlasts.length) {
+        const blast = this._volatileBlasts.shift();
+        const target = get(blast.targetId);
+        const other = get(blast.otherId);
+        const center = (target && target.pos) || (other && other.pos);
+        if (!center) continue;
+        schedulePhysicalBlast(state, {
+          center,
+          radius: VOLATILE_RADIUS_WU,
+          helpers,
+          onBody: (body) => {
+            if (!body || body.id === state.playerId) return;
+            const route = helpers && helpers.routeCombatDamage;
+            if (typeof route === 'function') {
+              route({
+                attackerId: state.playerId,
+                targetId: body.id,
+                packet: { channels: { kinetic: VOLATILE_DAMAGE }, statuses: [], hit: { pos: { x: body.pos.x, z: body.pos.z } } },
+                origin: { kind: 'weapon', id: 'swarm_volatile_hulls' },
+              });
+            }
+            let dx = body.pos.x - center.x;
+            let dz = body.pos.z - center.z;
+            let d = Math.hypot(dx, dz);
+            if (d < 1e-3) { dx = 0; dz = 1; d = 1; }
+            const spec = resolvePhysicsBodySpec(body);
+            const mass = spec && Number.isFinite(spec.mass) ? spec.mass : 1;
+            deliverPhysicalImpulse(state, body, { x: (dx / d) * VOLATILE_MAX_DV_WU_S * mass, z: (dz / d) * VOLATILE_MAX_DV_WU_S * mass }, {
+              actorId: state.playerId, kind: 'swarm_legendary_volatile', tag: 'swarm_legendary_volatile',
+            }, { port });
+          },
+        });
+      }
+      while (this._bumperReflects.length) {
+        const reflect = this._bumperReflects.shift();
+        const target = get(reflect.targetId);
+        const cover = get(reflect.otherId);
+        if (!target || !target.pos || target.alive === false) continue;
+        let dx = target.pos.x - (cover && cover.pos ? cover.pos.x : target.pos.x);
+        let dz = target.pos.z - (cover && cover.pos ? cover.pos.z : target.pos.z);
+        let d = Math.hypot(dx, dz);
+        if (d < 1e-3) { dx = 0; dz = 1; d = 1; }
+        const spec = resolvePhysicsBodySpec(target);
+        const mass = spec && Number.isFinite(spec.mass) ? spec.mass : 1;
+        deliverPhysicalImpulse(state, target, { x: (dx / d) * BUMPER_MAX_DV_WU_S * mass, z: (dz / d) * BUMPER_MAX_DV_WU_S * mass }, {
+          kind: 'swarm_legendary_bumper', tag: 'swarm_legendary_bumper',
+        }, { port });
+      }
+    },
+
+    /**
+     * SW-12 SECOND SUN — every credited death ignites what stood close to it: a short burn
+     * packet routed through the combat seam, resolved here on the fixed tick (never inside a
+     * death callback). `chain_reactor`'s chain-25 gate is its own perk and stays untouched.
+     */
+    _applySecondSun(state, owned) {
+      if (!owned || !this._pending.length) return;
+      const route = this._helpers && this._helpers.routeCombatDamage;
+      if (typeof route !== 'function') return;
+      const lifetime = runLifetime(state.run);
+      const wave = Number.isInteger(state.run.wave) ? state.run.wave : 0;
+      const deaths = this._pending.filter((death) => death.lifetime === lifetime && death.wave === wave);
+      if (!deaths.length) return;
+      for (const death of deaths) {
+        const near = queryPhysicalBodies(state, death.pos, SECOND_SUN_RADIUS_WU, this._helpers, this._scratch, {
+          includeAnchored: false,
+        });
+        for (const body of near) {
+          if (!body || body.id === state.playerId || body.alive === false) continue;
+          route({
+            attackerId: state.playerId,
+            targetId: body.id,
+            packet: { channels: { thermal: SECOND_SUN_BURN }, statuses: [{ id: 'burn', stacks: 1 }], hit: { pos: { x: body.pos.x, z: body.pos.z } } },
+            origin: { kind: 'weapon', id: 'swarm_second_sun' },
+          });
+        }
+      }
     },
 
     // ---- plumbing ---------------------------------------------------------------------------

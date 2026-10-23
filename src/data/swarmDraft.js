@@ -203,7 +203,7 @@ export const SWARM_DRAFT_DEF_IDS = Object.freeze(SWARM_DRAFT_OFFERS.map((o) => o
 
 export const SWARM_LEGENDARY_RECORD_KIND = 'swarm_legendary';
 
-export const SWARM_ROOM_LEGENDARIES = Object.freeze([
+const SWARM_ROOM_LEGENDARIES_BASE = Object.freeze([
   Object.freeze({
     id: 'domino',
     offerId: 'legendary_domino',
@@ -227,6 +227,45 @@ export const SWARM_ROOM_LEGENDARIES = Object.freeze([
     blurb: 'A weak gravity well follows your ship and pulls nearby bodies inward.',
   }),
 ]);
+
+// SEED-SW-08/11/12 — the throw-and-room legendaries join the same service counter: the throw
+// economy (volatile hulls), the cover (bumper walls) and the kill (second sun) are room-long
+// changes bought like every other legendary and read from the run's own ledger.
+export const SWARM_ROOM_LEGENDARIES = Object.freeze(SWARM_ROOM_LEGENDARIES_BASE.concat([
+  Object.freeze({
+    id: 'volatile_hulls',
+    offerId: 'legendary_volatile_hulls',
+    name: 'Volatile Hulls',
+    verb: 'Volatile Hulls',
+    price: 120,
+    fromWave: 4,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Anything you throw detonates on its first solid impact, credited to you.',
+  }),
+  Object.freeze({
+    id: 'bumper_walls',
+    offerId: 'legendary_bumper_walls',
+    name: 'Bumper Walls',
+    verb: 'Bumper Walls',
+    price: 100,
+    fromWave: 3,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Arena cover throws the pack back like a pinball table. Your own contacts unchanged.',
+  }),
+  Object.freeze({
+    id: 'second_sun',
+    offerId: 'legendary_second_sun',
+    name: 'Second Sun',
+    verb: 'Second Sun',
+    price: 140,
+    fromWave: 5,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Every kill ignites whatever stood close to it — ships and brood alike.',
+  }),
+]));
 
 const LEGENDARY_BY_ID = new Map(SWARM_ROOM_LEGENDARIES.map((entry) => [entry.id, entry]));
 
