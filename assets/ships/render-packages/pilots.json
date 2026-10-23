@@ -6413,6 +6413,36 @@
       ],
       "outputDir": "assets/ships/release/render-packages/anvil-condensate-pod",
       "metadataUrl": "assets/ships/release/render-packages/anvil-condensate-pod/render-package.json"
+    },
+    {
+      "key": "hush-gap",
+      "assetId": "sf.render.hush-gap",
+      "runtimeAssetId": "place_hush_gap",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_hush_gap",
+      "sourceUrl": "assets/ships/release/parts/places/place_hush_gap.glb",
+      "releaseSha256": "aa8c2f12dd147594b1948621158b03eb4c3a656c92712a4cd556a83e2227218f",
+      "releaseBytes": 20996,
+      "rootNode": "place_hush_gap",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/hush-gap",
+      "metadataUrl": "assets/ships/release/render-packages/hush-gap/render-package.json"
+    },
+    {
+      "key": "sedna-ringworld-arc",
+      "assetId": "sf.render.sedna-ringworld-arc",
+      "runtimeAssetId": "place_sedna_ringworld_arc",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_sedna_ringworld_arc",
+      "sourceUrl": "assets/ships/release/parts/places/place_sedna_ringworld_arc.glb",
+      "releaseSha256": "52ee63acb8ae9b9db65c106f5c2d17743315bed069ab160da09f383ff42a83b6",
+      "releaseBytes": 66132,
+      "rootNode": "place_sedna_ringworld_arc",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/sedna-ringworld-arc",
+      "metadataUrl": "assets/ships/release/render-packages/sedna-ringworld-arc/render-package.json"
     }
   ]
 }

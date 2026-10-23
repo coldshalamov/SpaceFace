@@ -16,6 +16,7 @@ import { SOUTH_SECTORS } from '../src/data/frontierRegions/south.js';
 import { RINGWORLD_GRID_READING } from '../src/data/landmarkMissions.js';
 import { applySectorAnchors } from '../src/data/sectorAnchors.js';
 import { resolvePlaceFileForEntity } from '../src/render/partsLibrary.js';
+import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManifest.js';
 
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 
@@ -201,4 +202,12 @@ test('postcard landmarks stay out of ordinary yard dressing', () => {
   });
   assert.ok(rows.length >= 1);
   assert.ok(rows.every((row) => row.placeId !== 'place_hush_gap' && row.placeId !== 'place_sedna_ringworld_arc'));
+});
+
+test('SEED-SC-18 and SEED-SC-20 release landmarks resolve a render-package pilot', () => {
+  for (const releaseUrl of Object.values(POSTCARD_LANDMARK_RELEASE_URL_BY_ID)) {
+    const pilot = renderPackagePilotForSourceUrl(releaseUrl);
+    assert.ok(pilot, `${releaseUrl} has a render-package pilot`);
+    assert.equal(pilot.sourceUrl, releaseUrl);
+  }
 });

@@ -1,0 +1,285 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.hush-gap",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "62d76ecadcb6c7e582b1d94be8f4fc3d276fd5c57a77c3d2b1fb93847172028e",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1,
+          0.05000000074505806,
+          1
+        ],
+        "min": [
+          -1,
+          -0.05000000074505806,
+          -1
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f3bba95e566fa18b34eb2da40da25449e771d0b482577c82251509ab6190be99",
+      "id": "sf.render.hush-gap.mesh.place-hush-gap.primitive.0",
+      "indexCount": 768,
+      "indexed": true,
+      "materialHash": "f16631848cf82ccc20dce27a3a59adeea1fd0a6bb7dc05525c7b0617869e88b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "place_hush_gap",
+      "nodeId": "sf.render.hush-gap.mesh.place-hush-gap",
+      "primitiveIndex": 0,
+      "vertexCount": 430
+    },
+    {
+      "bounds": {
+        "max": [
+          1,
+          0.05000000074505806,
+          1
+        ],
+        "min": [
+          -1,
+          -0.05000000074505806,
+          -1
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f3bba95e566fa18b34eb2da40da25449e771d0b482577c82251509ab6190be99",
+      "id": "sf.render.hush-gap.root.primitive.0",
+      "indexCount": 768,
+      "indexed": true,
+      "materialHash": "f16631848cf82ccc20dce27a3a59adeea1fd0a6bb7dc05525c7b0617869e88b7",
+      "materialPipelineKey": "root",
+      "meshName": "place_hush_gap",
+      "nodeId": "sf.render.hush-gap.root",
+      "primitiveIndex": 0,
+      "vertexCount": 430
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "f16631848cf82ccc20dce27a3a59adeea1fd0a6bb7dc05525c7b0617869e88b7",
+      "id": "material:f16631848cf82ccc20dce27a",
+      "name": "HushVoidDisc",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.hush-gap.mesh.place-hush-gap",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "place_hush_gap",
+      "nodeName": "place_hush_gap",
+      "nodePath": [
+        0
+      ],
+      "parentId": "sf.render.hush-gap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hush-gap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hush-gap.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_hush_gap",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hush-gap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "57ba84b0d7a972c87e1d7a48bbfc1f447d2908936fe330938c6683351ed93c50"
+    },
+    "sourceGlb": {
+      "bytes": 20996,
+      "sha256": "aa8c2f12dd147594b1948621158b03eb4c3a656c92712a4cd556a83e2227218f",
+      "uri": "place_hush_gap.glb"
+    },
+    "sourceManifest": {
+      "bytes": 273915,
+      "sha256": "0917794bb3b2037e5df170b8f104aefdd6e03071a08c75badc519d7bba87737a",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 13068,
+    "sha256": "e110c6002042aed0c010e976b0a4e7790d6d9b762e1731da4fe9df2508626f66",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        1,
+        0.05000000074505806,
+        1
+      ],
+      "min": [
+        -1,
+        -0.05000000074505806,
+        -1
+      ],
+      "size": [
+        2,
+        0.10000000149011612,
+        2
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 1,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 2,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "place_hush_gap",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_hush_gap.glb"
+  },
+  "runtimeHash": "8e2dc62419451c3be7b8ffb54c8aa9f967bb444e5309f2133c4c91404bece8fb",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1,
+          0.05000000074505806,
+          1
+        ],
+        "min": [
+          -1,
+          -0.05000000074505806,
+          -1
+        ]
+      },
+      "id": "sf.render.hush-gap.body",
+      "nodeIds": [
+        "sf.render.hush-gap.mesh.place-hush-gap",
+        "sf.render.hush-gap.root"
+      ]
+    }
+  ]
+}
