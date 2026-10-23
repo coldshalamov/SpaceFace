@@ -438,9 +438,11 @@ Current save version: `18`
 | `$.settings.audio.defaultMuteVersion` | number | 2 |
 | `$.settings.audio.engine` | number | 0.7 |
 | `$.settings.audio.master` | number | 0.55 |
+| `$.settings.audio.mono` | boolean | false |
 | `$.settings.audio.music` | number | 0.32 |
 | `$.settings.audio.muted` | boolean | false |
 | `$.settings.audio.muteOnFocusLoss` | boolean | false |
+| `$.settings.audio.nightMode` | boolean | false |
 | `$.settings.audio.sfx` | number | 0.7 |
 | `$.settings.audio.ui` | number | 0.7 |
 | `$.settings.audio.voice` | number | 1 |
@@ -479,6 +481,7 @@ Current save version: `18`
 | `$.settings.gameplay.stuntMoments` | string | cinematic |
 | `$.settings.gameplay.targetAssistStrength` | string | full |
 | `$.settings.gameplay.tutorialHints` | boolean | true |
+| `$.settings.glassPreset` | string | clean |
 | `$.settings.showDamageNumbers` | boolean | true |
 | `$.settings.uiScale` | number | 1 |
 | `$.settings.video` | object | {} |
