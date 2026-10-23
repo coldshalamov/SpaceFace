@@ -158,6 +158,98 @@ export const DOCK_RANGE = 60;         // how close before "docking" (trading)
 export const TRADE_INTERVAL_S = 8;    // min seconds between trades per freighter (staggered)
 const POCKET_CLUSTER_R = 420;  // first freighters cluster near a pocket station for sensor density
 
+// SEED-PC-01 — a hull the player is watching does not materialize or vanish inside this
+// radius. Arrival wears an existing burn profile; departure wears the spine wake. Both
+// ids are keys of NPC_JOB_SIGNATURE_PROFILES, so the job-signature renderer already
+// draws them when the hull has a job (ceresCausalCue wins over phase).
+export const TRAFFIC_WATCH_POCKET_WU = POCKET_CLUSTER_R;
+export const TRAFFIC_ARRIVAL_CUE_EMPTY = 'clean_burn';
+export const TRAFFIC_ARRIVAL_CUE_LOADED = 'heavy_burn';
+export const TRAFFIC_DEPARTURE_CUE = 'spine_wake';
+
+export function trafficHullLoaded(entity) {
+  const data = entity && entity.data;
+  if (!data) return false;
+  if (data.loaded === true) return true;
+  const cargo = data.cargo;
+  if (typeof cargo === 'number') return cargo > 0;
+  if (cargo && typeof cargo === 'object') {
+    if (Number(cargo.amount) > 0 || Number(cargo.units) > 0) return true;
+    if (Array.isArray(cargo.items) && cargo.items.length > 0) return true;
+  }
+  if (Number(data.cargoUnits) > 0 || Number(data.cargoAmount) > 0) return true;
+  const manifest = data.manifest;
+  if (manifest && (Number(manifest.amount) > 0 || Number(manifest.units) > 0)) return true;
+  return false;
+}
+
+/**
+ * Stamp the wake a watched traffic hull enters or leaves under, and slide a hull
+ * that would pop inside the pocket out to the pocket edge. Seed 4242 breaks a
+ * zero-length bearing so the proof is deterministic. An authored causal-chain
+ * cue (ceresCausalEventId) is left alone. Authored cast slots keep their place.
+ *
+ * @returns {{ cue: string|null, placedAtEdge: boolean }}
+ */
+export const TRAFFIC_ARRIVAL_CUE_HOLD_S = 4;
+
+export function stampTrafficWatchSignature(entity, player, {
+  exiting = false,
+  watching = true,
+  seed = 1,
+  simTime = 0,
+  pocketWu = TRAFFIC_WATCH_POCKET_WU,
+} = {}) {
+  if (!entity) return { cue: null, placedAtEdge: false };
+  const loaded = trafficHullLoaded(entity);
+  const cue = exiting
+    ? TRAFFIC_DEPARTURE_CUE
+    : (loaded ? TRAFFIC_ARRIVAL_CUE_LOADED : TRAFFIC_ARRIVAL_CUE_EMPTY);
+  const data = entity.data || (entity.data = {});
+  const authoredPlace = !!(data.ceresActivityCast || data.authoredActivityCast || data.activityActorSlotId);
+  let placedAtEdge = false;
+  if (watching && !authoredPlace && player && player.pos && entity.pos) {
+    const px = Number(player.pos.x) || 0;
+    const pz = Number(player.pos.z) || 0;
+    let dx = (Number(entity.pos.x) || 0) - px;
+    let dz = (Number(entity.pos.z) || 0) - pz;
+    let dist = Math.hypot(dx, dz);
+    if (dist < pocketWu) {
+      if (dist < 1e-4) {
+        const ang = ((Number(seed) || 0) % 6283) / 1000;
+        dx = Math.cos(ang);
+        dz = Math.sin(ang);
+        dist = 1;
+      }
+      entity.pos.x = px + (dx / dist) * pocketWu;
+      entity.pos.z = pz + (dz / dist) * pocketWu;
+      placedAtEdge = true;
+    }
+  }
+  // A watched pop (inside the pocket) or an exit always wears the wake. A hull
+  // that was already outside keeps whatever job signature it already has.
+  const wear = watching && !data.ceresCausalEventId && (exiting || placedAtEdge || !data.ceresCausalCue);
+  if (wear) {
+    data.ceresCausalCue = cue;
+    data.trafficWatchCue = cue;
+    data.trafficWatchUntil = exiting ? null : (Number(simTime) || 0) + TRAFFIC_ARRIVAL_CUE_HOLD_S;
+  }
+  return { cue: wear ? cue : null, placedAtEdge };
+}
+
+/** Drop an arrival wake once its hold elapses so the hull's job phase can show. */
+export function releaseExpiredTrafficWatch(entity, simTime) {
+  const data = entity && entity.data;
+  if (!data || data.trafficWatchUntil == null) return false;
+  if ((Number(simTime) || 0) < data.trafficWatchUntil) return false;
+  if (data.ceresCausalCue === data.trafficWatchCue && !data.ceresCausalEventId) {
+    delete data.ceresCausalCue;
+  }
+  delete data.trafficWatchCue;
+  delete data.trafficWatchUntil;
+  return true;
+}
+
 function priorityCourierServiceForSector(sectorId) {
   return sectorId === PRIORITY_COURIER_SERVICE.sectorId ? PRIORITY_COURIER_SERVICE : null;
 }
@@ -2438,6 +2530,7 @@ export const traffic = {
         ? this._pickExpressDestination(stations, station)
         : this._pickStation(stations);
       const manifest = this._assignManifest(ent, role, target, sectorId);
+      this._watchSpawnedTraffic(ent);
       this._active.push(ent.id);
       const rec = {
         id: ent.id,
@@ -2514,6 +2607,7 @@ export const traffic = {
       if (home !== CERES_ACTIVITY_SECTOR_ID
         || !retiredRecordIds.has(entity.data.worldRecordId)) return;
       retiredEntityIds.add(entity.id);
+      this._watchExitingTraffic(entity);
       const remove = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
       if (typeof remove === 'function') remove(entity.id);
       else entity.alive = false;
@@ -3343,6 +3437,7 @@ export const traffic = {
         ? this._pickExpressDestination(stations, station)
         : this._pickStation(stations);
       const manifest = this._assignManifest(ent, role, target, sectorId);
+      this._watchSpawnedTraffic(ent);
       this._active.push(ent.id);
       rec = {
         id: ent.id,
@@ -3401,6 +3496,7 @@ export const traffic = {
     ent.data.scanLabel = 'HELIOS ARCLIGHT';
     const target = this._nearestStationTo(stations, station) || station;
     const manifest = this._assignManifest(ent, 'arclight', target, sectorId);
+    this._watchSpawnedTraffic(ent);
     this._active.push(ent.id);
     const rec = {
       id: ent.id,
@@ -3454,6 +3550,7 @@ export const traffic = {
     ent.data.scanLabel = 'VOLATILES TANKER';
     const target = this._nearestStationTo(stations, station) || station;
     const manifest = this._assignManifest(ent, 'tanker', target, sectorId);
+    this._watchSpawnedTraffic(ent);
     this._active.push(ent.id);
     const rec = {
       id: ent.id,
@@ -3506,6 +3603,7 @@ export const traffic = {
     ent.data.trafficLabel = def.label;
     ent.data.scanLabel = 'INSPECTION CUTTER';
     const target = this._nearestStationTo(stations, station) || station;
+    this._watchSpawnedTraffic(ent);
     this._active.push(ent.id);
     const rec = {
       id: ent.id,
@@ -3879,6 +3977,47 @@ export const traffic = {
     if (this._wellDragSeen) this._wellDragSeen.clear();
   },
 
+  _releaseTrafficWatches(state) {
+    const list = state && state.traffic && state.traffic.freighters;
+    if (!list || !state.entities) return;
+    const now = state.simTime || 0;
+    for (let i = 0; i < list.length; i++) {
+      const rec = list[i];
+      if (!rec || rec.id == null) continue;
+      const ent = state.entities.get(rec.id);
+      if (ent) releaseExpiredTrafficWatch(ent, now);
+    }
+  },
+
+  _playerWatchingTraffic() {
+    const state = this.state;
+    if (!state || state.mode !== 'flight' || state.playerId == null || !state.entities) return null;
+    const player = state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return null;
+    return player;
+  },
+
+  _watchSpawnedTraffic(ent) {
+    if (!ent) return null;
+    return stampTrafficWatchSignature(ent, this._playerWatchingTraffic(), {
+      watching: !!this._playerWatchingTraffic(),
+      exiting: false,
+      seed: (this.state && this.state.meta && this.state.meta.seed) || 1,
+      simTime: this.state && this.state.simTime,
+    });
+  },
+
+  _watchExitingTraffic(ent) {
+    if (!ent) return null;
+    const player = this._playerWatchingTraffic();
+    return stampTrafficWatchSignature(ent, player, {
+      watching: !!player,
+      exiting: true,
+      seed: (this.state && this.state.meta && this.state.meta.seed) || 1,
+      simTime: this.state && this.state.simTime,
+    });
+  },
+
   /** Drop tracking for freighters already despawned by residency demotion (continuous handoff). */
   _onFarActorShelved(p) {
     if (!p || p.id == null) return;
@@ -3893,6 +4032,10 @@ export const traffic = {
 
   _onFarActorRestored(p) {
     if (!p || p.id == null) return;
+    const restored = (p && p.entity) || (this.state.entities && this.state.entities.get(p.id));
+    if (restored && restored.alive !== false && restored.data && restored.data.trafficRole) {
+      this._watchSpawnedTraffic(restored);
+    }
     const list = this.state.traffic && this.state.traffic.freighters || [];
     for (const rec of list) {
       if (rec.id !== p.id && rec.farActorId !== p.id) continue;
@@ -4027,6 +4170,7 @@ export const traffic = {
     this._coldburnRey?.update(dt);
     ensureActivityClassified(state);
     this._ensureState();
+    this._releaseTrafficWatches(state);
     if (state.world && state.world.currentSectorId === 'sector_pallas_drift') {
       stepPallasWorkLoop(state, dt);
     }
