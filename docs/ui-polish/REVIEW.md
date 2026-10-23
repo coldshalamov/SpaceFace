@@ -1982,3 +1982,9 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`saveLayouts.js`, desktop only, `max-width:1100px`):** the hull (and on an empty slot, the vacant word's layer) shows again, as above 1100. No selector or ID changes; phone and the stacked band are untouched.
 
 **Checked:** bench `save-load` and `save-load-empty` at 800×600, 960×540, 1100×720, 1280×720; phone 390×844. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish102/`.
+
+## Dialog copy wraps without orphans (2026-10-23, ui-polish-103)
+
+**Before:** the confirm body, the danger note and the Find hint used the browser's default wrap, so short last words hung alone: "your hold." at 960 and 1920, "undone." on Sell ship at 1920, and "ESC CLOSES" on the phone Find hint.
+
+**After (`styles/kit.css` only):** `.sf-confirm__body`, `.sf-confirm__note` and `.sf-find__hint` use `text-wrap: balance`, so each block breaks into even lines. No size, colour, selector or ID changes. Checked popup-confirm, popup-confirm-danger and popup-find at 390×844, 960×540, 1280×720 and 1920×1080. Shots: `ui-shots/polish103/{before,before-danger,after,after2}/`, `compare-confirm-{960x540,390x844}.png`.
