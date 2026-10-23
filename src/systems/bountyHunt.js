@@ -17,6 +17,7 @@ import {
   hunterTrickForContract,
 } from '../data/hunterTricks.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
+import { LAWFUL_STATION_FACTIONS } from '../data/factions.js';
 import { mineLayerWakePoint } from '../ai/mineLayerVerb.js';
 import { chaffDecoyPoint } from './countermeasures.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
@@ -830,12 +831,20 @@ function lawfulTowRefuge(state, target) {
 }
 
 function nearestRefugeStation(state, pos, range) {
-  if (!pos) return null;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
   const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
   let best = null;
   let bestD2 = range * range;
   for (const e of list) {
-    if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+    if (!e || e.alive === false || e.type !== 'station' || !e.pos || e.data?.isGate
+      || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) continue;
+    // A station-shaped transit gate or outlaw port is not the lawful refuge promised here.
+    // Match the existing jurisdiction eligibility; a nearby lawful port may govern overlaps.
+    const stationId = e.data?.stationId || e.stationId || null;
+    const factionId = e.factionId || e.data?.factionId || null;
+    if (typeof stationId !== 'string' || !stationId
+      || (stationId !== 'station_helios' && !LAWFUL_STATION_FACTIONS.has(factionId))
+      || !protectedStationAt(state, e)) continue;
     const d2 = distance2(pos, e.pos);
     if (d2 < bestD2) { bestD2 = d2; best = e; }
   }
@@ -1128,8 +1137,9 @@ function settleQuarryDown(state, bus, killed, contractId, quarryId, byPlayer) {
   const qhunt = (killed && killed.data && killed.data.bountyHunt) || {};
   if (byPlayer) {
     recordOutcome(state, bus, contractId, 'player_helped_hunter', { id: quarryId, killerId: state.playerId });
-    releaseHunterFor(state, quarryId);
+    // Resolve the paying guild before release clears the quarry links used by that lookup.
     const hunterFaction = hunterFactionForQuarry(state, quarryId);
+    releaseHunterFor(state, quarryId);
     emit(bus, 'economy:grantCredits', { amount: QT.hunterCutCr, reason: 'bounty_collectors_cut', contractId });
     if (hunterFaction) {
       emit(bus, 'faction:repDelta', {

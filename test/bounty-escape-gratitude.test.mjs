@@ -56,7 +56,7 @@ function boot() {
 
 function chaseAtRefuge(ctx, contractId = 'c-escape') {
   const station = place(ctx.state, {
-    type: 'station', team: 2, radius: 60,
+    type: 'station', team: 2, radius: 60, factionId: 'faction_free',
     pos: { x: 1200, z: 0 },
     data: { stationId: 'station_refuge', stationName: 'Refuge Dock' },
   }, 30);
