@@ -57,13 +57,17 @@ const TICK_MS = 5000;
 const LINE_TTL_S = 6;
 
 /** stationTypeId → { tic, lines[] }. Type-appropriate flavor; faction character rides on the
- *  say() factionId attribution. Pure data, headless-testable. */
+ *  say() factionId attribution. Pure data, headless-testable.
+ *  Lines with {callsign} or {role} name a live in-sector traffic hull. They are skipped when
+ *  no such hull is present — the desk never invents a name and never addresses the player. */
 export const STATION_BROADCASTS = {
   trade_hub: {
     tic: 'gantry_cycle',
     lines: [
       'Dock control: keep the approach lanes clear — outbound convoy in the pattern.',
       'Berth advisory: transfer gantries cycling on ring two.',
+      'Dock control: {callsign} is in the pattern. Gantries hold for that hull.',
+      'Berth advisory: {role} on the outbound ring. Transfer waits on that hull.',
     ],
   },
   refinery: {
@@ -71,6 +75,8 @@ export const STATION_BROADCASTS = {
     lines: [
       'Refinery control: venting slag pressure — stand clear of the flare stacks.',
       'Ore intake: hopper doors cycling. Watch the tailings drift.',
+      'Refinery control: {callsign} is clear of the flare stack.',
+      'Ore intake: {role} crossing the tailings. Hopper doors stay on their cycle.',
     ],
   },
   mining: {
@@ -78,6 +84,8 @@ export const STATION_BROADCASTS = {
     lines: [
       'Claim office: survey charges scheduled on the north seam.',
       'Belt crew rotation in progress — tugs crossing the approach.',
+      'Claim office: {callsign} is on the north seam. Charges wait.',
+      'Belt crew: {role} crossing the approach. Tugs keep their own lane.',
     ],
   },
   fab: {
@@ -85,6 +93,8 @@ export const STATION_BROADCASTS = {
     lines: [
       'Foundry deck: casting run in progress. Expect thermal bloom.',
       'Assembly control: module cradle rotating on the outer frame.',
+      'Foundry deck: {callsign} is off the cradle. Casting run continues.',
+      'Assembly control: {role} holding outside the frame.',
     ],
   },
   military: {
@@ -92,6 +102,8 @@ export const STATION_BROADCASTS = {
     lines: [
       'Perimeter watch: transponders on, weapons cold inside the ring.',
       'Patrol wing cycling through the launch cage — hold your vector.',
+      'Perimeter watch: {callsign} reads cold inside the ring.',
+      'Patrol wing: {role} cycling the launch cage. Vectors hold.',
     ],
   },
   blackmarket: {
@@ -99,6 +111,8 @@ export const STATION_BROADCASTS = {
     lines: [
       'No manifests. No questions. Keep your lights low.',
       'Berth is open. Coin first. You were never here.',
+      '{callsign} is on the pad. Lights stay low.',
+      '{role} paid. No manifest.',
     ],
   },
   research: {
@@ -106,9 +120,74 @@ export const STATION_BROADCASTS = {
     lines: [
       'Array sweep in progress — mind the dish arc.',
       'Telemetry burst scheduled. Expect sensor wash on the low band.',
+      'Array sweep: {callsign} is outside the dish arc.',
+      'Telemetry: {role} on the low band. Sensor wash is scheduled.',
     ],
   },
 };
+
+function textField(value) {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  return trimmed || '';
+}
+
+function hullCallsign(entity) {
+  return textField(entity && entity.data && entity.data.callsign);
+}
+
+function hullRole(entity) {
+  const data = entity && entity.data;
+  if (!data) return '';
+  return textField(data.trafficLabel) || textField(data.trafficRole) || textField(data.role);
+}
+
+function hullInSector(state, entity) {
+  const here = state && state.world && state.world.currentSectorId;
+  const home = entity && (entity.homeSectorId || (entity.data && entity.data.homeSectorId));
+  if (here && home && here !== home) return false;
+  return true;
+}
+
+/** Live traffic hulls in the current sector, excluding the player. Sorted by id. */
+export function liveTrafficHulls(state) {
+  const out = [];
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return out;
+  for (const entity of entities.values()) {
+    if (!entity || entity.alive === false) continue;
+    if (state.playerId != null && entity.id === state.playerId) continue;
+    if (entity.type && entity.type !== 'ship') continue;
+    if (!hullInSector(state, entity)) continue;
+    if (!hullCallsign(entity) && !hullRole(entity)) continue;
+    out.push(entity);
+  }
+  out.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  return out;
+}
+
+function fillBroadcastLine(line, hull) {
+  if (typeof line !== 'string' || !line) return null;
+  const needsCallsign = line.includes('{callsign}');
+  const needsRole = line.includes('{role}');
+  if (!needsCallsign && !needsRole) return line;
+  if (!hull) return null;
+  const callsign = hullCallsign(hull);
+  const role = hullRole(hull);
+  if (needsCallsign && !callsign) return null;
+  if (needsRole && !role) return null;
+  return line.replaceAll('{callsign}', callsign).replaceAll('{role}', role);
+}
+
+function pickBroadcastLine(lines, roll, hull) {
+  if (!lines || !lines.length) return null;
+  const start = Math.min(lines.length - 1, Math.floor(roll * lines.length));
+  for (let step = 0; step < lines.length; step++) {
+    const filled = fillBroadcastLine(lines[(start + step) % lines.length], hull);
+    if (filled) return filled;
+  }
+  return null;
+}
 
 /** Nearest live station entity within `range` of the player, or null. Read-only over state. */
 export function nearestVisibleStation(state, range = NEAR_RANGE) {
@@ -219,7 +298,12 @@ export const stationBroadcast = {
     const seedBase = (state.meta && state.meta.seed) || 0;
     const bucket = Math.floor(now / Math.max(1, CADENCE_S));
     const roll = (hash32(seedBase, String(data.stationId || station.id || 'station'), bucket) >>> 0) / 4294967296;
-    const text = def.lines[Math.min(def.lines.length - 1, Math.floor(roll * def.lines.length))];
+    const hulls = liveTrafficHulls(state);
+    const hull = hulls.length
+      ? hulls[hash32(seedBase, 'broadcast-hull', bucket) % hulls.length]
+      : null;
+    const text = pickBroadcastLine(def.lines, roll, hull);
+    if (!text) return;
 
     const helpers = (this._ctx && this._ctx.helpers) || {};
     if (!helpers.voice || typeof helpers.voice.say !== 'function') return;

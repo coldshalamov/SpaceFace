@@ -7,6 +7,12 @@
 //
 // A runtime may write live.* and intent on hulls it spawned. Credits and reputation go
 // through d.grant / d.charge / d.rep. No Math.random, no wall clock.
+//
+// A choice may carry `requires: { module }` or `requires: { commodity, qty }`. Without that
+// hardware the choice is omitted from the offer and choose() ignores it. The timeout choice
+// stays open so the scene can still leave. This reads fittings and cargo; it never writes them.
+
+import { hasFittedModule } from '../core/fittedModules.js';
 
 const HOP_CAP = 12;
 const MOTIONS = new Set(['hold', 'orbit', 'creep', 'ring', 'weave', 'depart', 'face', 'chase', 'tow', 'column', 'vulture']);
@@ -47,6 +53,30 @@ function steerToward(e, tx, tz, slow, motion = 'hold', velocity = null) {
 
 function phaseOf(byId, id) {
   return byId.get(id) || null;
+}
+
+function hardwareSatisfied(state, requires) {
+  if (!requires || typeof requires !== 'object') return true;
+  const moduleId = typeof requires.module === 'string' ? requires.module : '';
+  const commodityId = typeof requires.commodity === 'string' ? requires.commodity : '';
+  if (!moduleId && !commodityId) return true;
+  if (moduleId && !hasFittedModule(state, moduleId)) return false;
+  if (commodityId) {
+    const need = Math.max(1, Math.floor(Number(requires.qty) || 1));
+    const items = state && state.player && state.player.cargo && state.player.cargo.items;
+    const held = Math.floor(Number(items && items[commodityId]) || 0);
+    if (held < need) return false;
+  }
+  return true;
+}
+
+function choiceOpen(state, spec, choiceId) {
+  if (spec && choiceId === spec.timeoutChoice) return true;
+  const choice = spec && Array.isArray(spec.choices)
+    ? spec.choices.find((row) => row && row.id === choiceId)
+    : null;
+  if (!choice) return true;
+  return hardwareSatisfied(state, choice.requires);
 }
 
 function rememberSeen(state, id, outcome) {
@@ -251,7 +281,8 @@ function hop(d, live, state, spec, byId) {
       live.vars.motionOrigin = live.anchor ? { x: live.anchor.x, z: live.anchor.z } : null;
       live.vars.motion = phase.motion || (phase.verb === 'motion' ? 'hold' : null);
       if (phase.verb === 'offer') {
-        const ids = phase.choiceIds || (spec.choices || []).map((choice) => choice.id);
+        const ids = (phase.choiceIds || (spec.choices || []).map((choice) => choice.id))
+          .filter((id) => choiceOpen(state, spec, id));
         live.deadlineAt = d.now() + (phase.windowS || 50);
         d.offerChoices(live, ids, spec.timeoutChoice, live.deadlineAt);
       } else {
@@ -323,6 +354,7 @@ export function compileVignette(spec) {
       if (!phase || phase.verb !== 'offer') return;
       const dest = phase.onChoice && phase.onChoice[choiceId];
       if (!dest) return;
+      if (!choiceOpen(state, spec, choiceId)) return;
       live.vars.vPhase = dest;
       hop(d, live, state, spec, byId);
     },

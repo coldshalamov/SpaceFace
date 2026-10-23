@@ -775,6 +775,20 @@ const COLOR_PAUSE_S = 1;
 // RC-14 — a toll is a debit: "Pay the count" charges the count instead of granting it.
 const TOLL_CR = 36;
 
+// SEED-PC-08 — one generated choice opens only when the hull has the named hardware.
+// The interpreter hides it; this stamp is what a regen writes onto that scene.
+const HARDWARE_CHOICE = Object.freeze({
+  twelve_degrees: Object.freeze({ id: 'a', requires: Object.freeze({ module: 'mod_heat_lure_s' }) }),
+});
+
+function stampHardwareChoice(row) {
+  const gate = HARDWARE_CHOICE[row.id];
+  if (!gate || !Array.isArray(row.choices)) return;
+  const choice = row.choices.find((entry) => entry && entry.id === gate.id);
+  if (!choice || choice.requires) return;
+  choice.requires = { module: gate.requires.module };
+}
+
 function phasesFor(row) {
   const motion = MOTION[row.verb];
   const phases = [
@@ -828,6 +842,7 @@ function phasesFor(row) {
 }
 
 function emit(row) {
+  stampHardwareChoice(row);
   const cast = [];
   const arch = ARCH[row.actor];
   const offsets = [[0, 0], [-150, 90], [160, 70]];
