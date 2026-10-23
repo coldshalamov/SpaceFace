@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs, { readFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,9 @@ import { createRequire } from 'node:module';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const MAIN_PATH = path.join(ROOT, 'electron', 'main.cjs');
 const PRELOAD_PATH = path.join(ROOT, 'electron', 'preload.cjs');
+// Startup-failure tests write a crash report under the stubbed userData/crashDumps; keep those out of the repo.
+const SHELL_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-lifecycle-'));
+process.on('exit', () => { try { fs.rmSync(SHELL_TMP, { recursive: true, force: true }); } catch {} });
 const CHANNEL = 'spaceface:shell-lifecycle';
 const windowStateModule = createRequire(import.meta.url)('../electron/windowState.cjs');
 
@@ -87,7 +91,7 @@ async function loadMain({
   const app = emitter({
     isPackaged: false,
     commandLine: { appendSwitch() {} },
-    getPath(name) { return path.join(ROOT, `.electron-${name}`); },
+    getPath(name) { return path.join(SHELL_TMP, `.electron-${name}`); },
     setPath(name, value) { this.pathSets.push([name, value]); },
     getVersion() { return '0.0.0-test'; },
     pathSets: [],
@@ -480,7 +484,7 @@ test('shell starts the local crash reporter with build identity and an owned dum
   assert.equal(options.extra.version, '0.0.0-test', 'report extra carries the app version');
   assert.deepEqual(options.extra, options.globalExtra, 'globalExtra mirrors the report identity');
   const crashDumps = h.app.pathSets.find(([name]) => name === 'crashDumps');
-  assert.deepEqual(crashDumps, ['crashDumps', path.join(ROOT, '.electron-userData', 'crashes')],
+  assert.deepEqual(crashDumps, ['crashDumps', path.join(SHELL_TMP, '.electron-userData', 'crashes')],
     'dumps land under the owned userData crashes dir');
 });
 
@@ -499,9 +503,9 @@ test('Electron 43 console details and runtime identity remain diagnostic-only re
       node: '24.18.0',
       v8: '15.0.0',
       packaged: false,
-      executablePath: path.join(ROOT, '.electron-exe'),
+      executablePath: path.join(SHELL_TMP, '.electron-exe'),
       resourcesPath: path.join(ROOT, 'resources'),
-      userDataPath: path.join(ROOT, '.electron-userData'),
+      userDataPath: path.join(SHELL_TMP, '.electron-userData'),
     },
   );
 });

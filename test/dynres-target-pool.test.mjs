@@ -88,8 +88,8 @@ function rendererHarness() {
 test('static: integrated tier may enable dynRes; bloom exposes setContentScale', () => {
   assert.match(
     RENDERER_SRC,
-    /_dynResAllowed\s*=\s*gpu\.tier\s*===\s*['"]software['"]\s*\|\|\s*gpu\.tier\s*===\s*['"]integrated['"]/,
-    'software + integrated must be allowed after the target-pool fix',
+    /_dynResAllowed\s*=\s*dynamicResolutionAllowedForTier\(\s*gpu\.tier\s*\)/,
+    'software + integrated + unknown must be allowed (adaptiveQuality.dynamicResolutionAllowedForTier)',
   );
   assert.match(BLOOM_SRC, /function setContentScale\s*\(/, 'bloom must expose setContentScale');
   assert.match(BLOOM_SRC, /uUvScale/, 'downsample/composite must remap UV for content sub-rects');

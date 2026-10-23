@@ -1,6 +1,12 @@
 import { dataState } from './uiPrimitives.js';
+import { buildDiagnosticsReport, copyTextToClipboard, primeDiagnosticsReport } from './diagnosticsReport.js';
 
 const BACKGROUND_IDS = ['hud', 'modal-backdrop', 'screens', 'toasts', 'alerts', 'gl-canvas'];
+// Keys a read-only report box needs natively (caret/selection moves and select-all / copy). The
+// pane blocks every other key so a dead game's shortcuts cannot fire behind it.
+const REPORT_BOX_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown']);
+const COPIED_TEXT = 'Copied — paste it into your report.';
+const COPY_FAILED_TEXT = 'Could not copy — select the text below.';
 
 // The one recovery pane owner, shared by both dead-end classes:
 //  - a quarantined simulation step mid-flight (loop.js onSimulationFailure), and
@@ -51,7 +57,12 @@ export function describeBootFailure(err) {
   };
 }
 
-export function createRuntimeFailurePresenter({ document, host, onRestart } = {}) {
+/**
+ * `getDiagnosticsState` (optional) returns the live GameState for the "Copy details" report; it may
+ * return null (a boot failure happens before the state exists). `copyText` (optional) replaces the
+ * clipboard helper, so tests never touch a real clipboard.
+ */
+export function createRuntimeFailurePresenter({ document, host, onRestart, getDiagnosticsState, copyText } = {}) {
   const view = host || (document && document.defaultView) || globalThis;
   const restart = typeof onRestart === 'function'
     ? onRestart
@@ -66,25 +77,135 @@ export function createRuntimeFailurePresenter({ document, host, onRestart } = {}
   let childSnapshots = null;
   let backgroundSnapshots = null;
 
+  function stopEvent(event) {
+    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+    else if (typeof event.stopPropagation === 'function') event.stopPropagation();
+  }
+
+  // The pane's tab ring: Retry, Copy details, and the report box once it is showing.
+  function paneButtons() {
+    const list = [];
+    if (pane && pane.sfStateVerb) list.push(pane.sfStateVerb);
+    if (pane && pane.sfCopyButton) list.push(pane.sfCopyButton);
+    return list;
+  }
+
   function onKeydown(event) {
     if (!event) return;
-    const verb = pane && pane.sfStateVerb;
     const key = event.key;
-    if (verb && event.target === verb && (key === 'Enter' || key === ' ' || key === 'Spacebar')) {
-      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-      else if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    const target = event.target;
+    const buttons = paneButtons();
+    const box = pane && pane.sfReportShown ? pane.sfReportBox : null;
+    // Native activation on a pane button is allowed through (the default action runs); the event
+    // itself still never reaches gameplay or save listeners.
+    if (buttons.includes(target) && (key === 'Enter' || key === ' ' || key === 'Spacebar')) {
+      stopEvent(event);
       return;
     }
     if (key === 'Tab') {
       event.preventDefault?.();
-      verb?.focus?.();
-      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-      else if (typeof event.stopPropagation === 'function') event.stopPropagation();
+      const ring = box ? [...buttons, box] : buttons;
+      if (ring.length) {
+        const at = ring.indexOf(target);
+        const step = event.shiftKey ? -1 : 1;
+        const next = at < 0 ? (step > 0 ? 0 : ring.length - 1) : (at + step + ring.length) % ring.length;
+        ring[next].focus?.();
+      }
+      stopEvent(event);
+      return;
+    }
+    // The read-only report box keeps caret moves, select-all and copy so the text can be taken by hand.
+    if (box && target === box
+      && (REPORT_BOX_KEYS.has(key) || ((event.ctrlKey || event.metaKey) && /^[acAC]$/.test(key || '')))) {
+      stopEvent(event);
       return;
     }
     event.preventDefault?.();
-    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-    else if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    stopEvent(event);
+  }
+
+  // "Copy details": a second control beside Retry that puts the diagnostics report + the failure's
+  // code and wording on the clipboard, and answers in words. If the clipboard refuses, the report
+  // appears in a read-only box so it can still be selected by hand.
+  function mountCopyControls(node, failureRecord) {
+    const verb = node.sfStateVerb;
+    const body = verb && verb.parentNode;
+    if (!body || typeof document.createElement !== 'function') return;
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'sf-state__verb sf-state__verb--quiet';
+    copyBtn.setAttribute('type', 'button');
+    copyBtn.setAttribute('data-sf-verb', 'copy-details');
+    const label = document.createElement('span');
+    label.textContent = 'Copy details';
+    copyBtn.appendChild(label);
+    const status = document.createElement('p');
+    status.className = 'sf-state__copy-status';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    const box = document.createElement('textarea');
+    box.className = 'sf-state__report';
+    box.setAttribute('readonly', '');
+    box.readOnly = true;
+    box.setAttribute('rows', '8');
+    box.setAttribute('spellcheck', 'false');
+    box.setAttribute('aria-label', 'Diagnostic details to copy');
+    box.setAttribute('hidden', '');
+    // Retry and Copy sit in one row; hosts that cannot re-parent (stub DOMs) just stack them.
+    if (typeof body.removeChild === 'function') {
+      const row = document.createElement('div');
+      row.className = 'sf-state__actions';
+      body.removeChild(verb);
+      row.appendChild(verb);
+      row.appendChild(copyBtn);
+      body.appendChild(row);
+    } else {
+      body.appendChild(copyBtn);
+    }
+    body.appendChild(status);
+    body.appendChild(box);
+    node.sfCopyButton = copyBtn;
+    node.sfReportBox = box;
+    node.sfReportShown = false;
+
+    let copying = false;
+    copyBtn.addEventListener('click', () => {
+      if (copying || destroyed || pane !== node) return;
+      copying = true;
+      let text;
+      try {
+        text = buildDiagnosticsReport(typeof getDiagnosticsState === 'function' ? getDiagnosticsState() : null,
+          { failure: failureRecord, document });
+      } catch (_) {
+        text = 'SpaceFace diagnostics\nFailure code: ' + failureRecord.code;
+      }
+      status.textContent = '';
+      const finish = (ok) => {
+        copying = false;
+        if (destroyed || pane !== node) return;
+        if (ok) {
+          status.textContent = COPIED_TEXT;
+          return;
+        }
+        status.textContent = COPY_FAILED_TEXT;
+        box.value = text;
+        box.removeAttribute?.('hidden');
+        node.sfReportShown = true;
+        // Focus without the browser's jump (it would scroll the headline off a short screen), then
+        // bring the box into view by the least amount. select() leaves it scrolled to its end.
+        box.focus?.({ preventScroll: true });
+        box.select?.();
+        box.scrollTop = 0;
+        box.scrollIntoView?.({ block: 'nearest' });
+      };
+      let attempt;
+      try {
+        attempt = Promise.resolve((typeof copyText === 'function' ? copyText : copyTextToClipboard)(text,
+          { navigator: view && view.navigator, document }));
+      } catch (_) {
+        attempt = Promise.resolve(false);
+      }
+      attempt.then((ok) => finish(ok === true), () => finish(false));
+    });
   }
 
   function show(failure) {
@@ -130,6 +251,16 @@ export function createRuntimeFailurePresenter({ document, host, onRestart } = {}
       },
     });
     pane.classList.add('boot-error');
+    mountCopyControls(pane, {
+      code: spec.code || FLIGHT_FAILURE_DEFAULTS.code,
+      headline: spec.headline || FLIGHT_FAILURE_DEFAULTS.headline,
+      fills: spec.fills || FLIGHT_FAILURE_DEFAULTS.fills,
+      detail: spec.detail || FLIGHT_FAILURE_DEFAULTS.detail,
+      message: spec.message,
+      site: spec.site,
+      tick: spec.tick,
+      simTime: spec.simTime,
+    });
     pane.setAttribute('role', 'alertdialog');
     pane.setAttribute('aria-modal', 'true');
     const head = pane.querySelector('.sf-state__head');
@@ -146,6 +277,8 @@ export function createRuntimeFailurePresenter({ document, host, onRestart } = {}
       pane.setAttribute('data-failure-message', String(failure.message));
     }
     overlay.appendChild(pane);
+    // Resolve the build hash now so the Copy click never waits on it.
+    try { primeDiagnosticsReport(); } catch (_) { /* the report falls back to the bundled version */ }
 
     if (view && typeof view.addEventListener === 'function') {
       view.addEventListener('keydown', onKeydown, true);

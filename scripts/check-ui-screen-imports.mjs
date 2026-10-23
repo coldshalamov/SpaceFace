@@ -485,8 +485,15 @@ if (missingRuntimeTiers.length || staleTierLabels.length) {
   console.log('ok   factionsPanel - tiers match runtime labels and relations are shown');
   ok++;
 }
-if (automationSrc.includes('ore-u placeholder') || !automationSrc.includes('DRONE_DISPLAY_ORE_VALUE')
-  || !automationSrc.includes('yield ~') || !automationSrc.includes('../../data/commodities.js')) {
+// RC-INDUSTRY-TRUE replaced the old "yield ~N/min gross" line with describeDroneEarnings(): the gross
+// still comes from the commodity baseline price, then shows as the capped ceiling or the depot receipt.
+const droneEarningsSrc = (/export function describeDroneEarnings[\s\S]*?\r?\n}\r?\n/.exec(automationSrc) || [''])[0];
+if (automationSrc.includes('ore-u placeholder')
+  || !/DRONE_DISPLAY_ORE_VALUE\s*=[^;\n]*COMMODITIES\.find[^;\n]*\.basePrice/.test(automationSrc)
+  || !/grossPerMin\s*=[^;\n]*DRONE_DISPLAY_ORE_VALUE/.test(droneEarningsSrc)
+  || !automationSrc.includes('describeDroneEarnings(this._ctx.state, d)')
+  || !automationSrc.includes('describeDroneEarnings(this._ctx.state, def)')
+  || !automationSrc.includes('../../data/commodities.js')) {
   console.log('FAIL automationScreen - drone yield display must use commodity baseline, not placeholder economics');
   fail++;
 } else {
