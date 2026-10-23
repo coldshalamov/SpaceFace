@@ -35,6 +35,7 @@ import { writeHazardPresence } from '../data/hazardLanguage.js';
 import { stepDebrisCrossings } from './debrisCrossings.js';
 import { stepDockCollar } from './dockCollar.js';
 import { stepFuelWeep } from './fuelWeep.js';
+import { driveJumpMassLocked } from './jumpMassLock.js';
 import { CHART_FILING, chartFilingBounty } from '../data/surveyCharts.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { FACTION_META } from '../data/factions.js';
@@ -5527,6 +5528,10 @@ export const world = {
       this._abortCharge('low_fuel');
       return;
     }
+    if (jump.via === 'drive' && driveJumpMassLocked(state)) {
+      this._abortCharge('mass_lock');
+      return;
+    }
     const drive = this._activeDrive();
     if (jump.via === 'drive' && this._combatLock && !drive.hotJump) {
       this._abortCharge('combat_lock');
@@ -5788,6 +5793,7 @@ export const world = {
     if (via === 'drive' && state.fuel.current < fuelCost) {
       return reject('low_fuel', { fuelNeeded: fuelCost, fuelHeld: Math.floor(state.fuel.current) });
     }
+    if (via === 'drive' && driveJumpMassLocked(state)) return reject('mass_lock');
 
     // Gate toll (high-sec customs) is validated before the departure preflight, but charged only
     // after it. Contextual story choices may defer a valid departure without consuming credits or

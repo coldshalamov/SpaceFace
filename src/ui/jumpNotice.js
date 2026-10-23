@@ -27,6 +27,7 @@ const ABORT_LINE = Object.freeze({
   wormhole_locked: 'The wormhole is sealed',
   not_a_neighbor: 'No direct lane there — plot a course instead',
   spool_struck: 'Hull hit — the spool dumped',
+  mass_lock: 'Mass lock — the spool cannot form',
 });
 
 /** Reason + the world's numbers → one player sentence. Empty when there is nothing to say. */
