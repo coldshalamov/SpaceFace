@@ -24,7 +24,7 @@ const CHIP_WINDOW_FLOOR = 36;       // applied dmg in-window — above sustained
 const ROUTE_ALIGN_MAX_OFF_COURSE_RAD = 30 * Math.PI / 180;
 const DROP_REASONS = Object.freeze({
   DAMAGE: 'damage', MASSLOCK: 'masslock', MANUAL: 'manual', SNARED: 'snared', DRIVE: 'drive',
-  BOOST: 'boost', FIRED: 'fired',
+  BOOST: 'boost', FIRED: 'fired', POWER: 'power',
 });
 
 // Weapons whose hit IS the verb, not the damage number: EMP/subsystem spikes, latch/status
@@ -97,12 +97,17 @@ export const cruise = {
     // A dead main drive cannot hold the travel tier. Starting it would lock the guns
     // for a charge the hull cannot finish. Dropping it must not yaw-stumble.
     const driveOut = playerDriveOut(state, player);
+    const capDry = playerCapDry(player);
     if (driveOut && cruise.phase !== 'off') {
       this._drop(DROP_REASONS.DRIVE);
+    } else if (capDry && cruise.phase !== 'off') {
+      this._drop(DROP_REASONS.POWER);
     } else if (edge) {
       if (cruise.phase === 'off') {
         if (driveOut) {
           this.bus.emit('toast', { text: 'Drive out — cruise can\'t hold', kind: 'warn', ttl: 1.6 });
+        } else if (capDry) {
+          this.bus.emit('toast', { text: 'Capacitor empty — cruise can\'t spool', kind: 'warn', ttl: 1.6 });
         } else {
           this._startCharge(cruise);
         }
@@ -227,7 +232,8 @@ export const cruise = {
     // Re-arm cooldown: a drop inside the window does not stack a second yaw stumble — under
     // sustained real fire the stick otherwise stays spongy for as long as the hits keep landing.
     // The authored snare always stumbles; the interdiction beat is supposed to be felt.
-    if (reason !== DROP_REASONS.DRIVE && (reason === DROP_REASONS.SNARED || cruise.stumbleCdT <= 0)) {
+    if (reason !== DROP_REASONS.DRIVE && reason !== DROP_REASONS.POWER
+        && (reason === DROP_REASONS.SNARED || cruise.stumbleCdT <= 0)) {
       cruise.stumbleT = STUMBLE_S;
       cruise.stumbleCdT = STUMBLE_REARM_S;
     }
@@ -240,6 +246,9 @@ export const cruise = {
     }
     if (reason === DROP_REASONS.DRIVE && this.bus) {
       this.bus.emit('toast', { text: 'Drive out — cruise can\'t hold', kind: 'warn', ttl: 1.6 });
+    }
+    if (reason === DROP_REASONS.POWER && this.bus) {
+      this.bus.emit('toast', { text: 'Capacitor empty — cruise dropped', kind: 'warn', ttl: 1.6 });
     }
     // kind error: a fight or a hurt hull drops warn receipts, and these two drops
     // happen in exactly that window. Boost and firing cancel a charge without a sentence.
@@ -274,6 +283,12 @@ export const cruise = {
     return false;
   },
 };
+
+function playerCapDry(player) {
+  const max = Number(player && player.capMax);
+  const cap = Number(player && player.cap);
+  return max > 0 && !(cap > 0);
+}
 
 function playerDriveOut(state, player) {
   const book = state && state.combat && state.combat.entities;
