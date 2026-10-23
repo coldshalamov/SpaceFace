@@ -1,5 +1,5 @@
 // Local circuit progression. No campaign credits, faction standing or gameplay authority.
-import { RACE_LEVELS, practiceContractForLevel, raceContractById } from '../data/raceLevels.js';
+import { RACE_LEVELS, medalForCourseTime, practiceContractForLevel, raceContractById } from '../data/raceLevels.js';
 import { RACING_PERSONALITIES } from '../ai/racingDriver.js';
 import { NEW_GAME_STARTERS } from '../data/newGameDefaults.js';
 import { RACING_COSMETICS, racingCosmeticFor, racingCosmeticUnlocked } from '../data/racingCosmetics.js';
@@ -126,6 +126,17 @@ function readCareer(storage) {
       }
     }
     if (Object.keys(rivals).length) career.rivals = rivals;
+    const medals = {};
+    if (data.medals && typeof data.medals === 'object' && !Array.isArray(data.medals)) {
+      for (const level of RACE_LEVELS) {
+        const row = data.medals[level.id];
+        if (!row || !['Gold', 'Silver', 'Bronze'].includes(row.medal)) continue;
+        if (!Number.isFinite(row.elapsedS) || row.elapsedS <= 0 || row.elapsedS > 36000) continue;
+        if (medalForCourseTime(level.id, row.elapsedS) !== row.medal) continue;
+        medals[level.id] = { medal: row.medal, elapsedS: row.elapsedS };
+      }
+    }
+    if (Object.keys(medals).length) career.medals = medals;
     return { career, available: !!storage.setItem };
   } catch { return { career: { cups: {} }, available: false }; }
 }
@@ -211,6 +222,30 @@ export function recordRaceMeeting(payload, storage) {
   return { ok: saved, saved, reason: saved ? 'recorded' : 'storage_failed' };
 }
 export function cupMedal(points) { return points >= 15 ? 'Gold' : points >= 9 ? 'Silver' : points >= 3 ? 'Bronze' : 'Finish'; }
+
+const MEDAL_RANK = Object.freeze({ Bronze: 1, Silver: 2, Gold: 3 });
+
+/** Time-trial medal only. No credits, and the bar is the course standard, not a personal best. */
+export function awardCourseMedal(payload, storage = defaultStorage()) {
+  if (payload?.raceMode !== 'time-trial') return { ok: false, saved: false, reason: 'not_time_trial' };
+  const levelId = payload.levelId;
+  const elapsed = Number(payload.elapsedS);
+  const medal = medalForCourseTime(levelId, elapsed);
+  if (!medal) return { ok: false, saved: false, reason: 'no_medal' };
+  const { career, available } = readCareer(storage);
+  if (!available) return { ok: false, saved: false, reason: 'storage_unavailable', medal };
+  const medals = career.medals ||= {};
+  const rounded = Math.round(elapsed * 100) / 100;
+  const storedElapsed = medalForCourseTime(levelId, rounded) === medal ? rounded : elapsed;
+  const prev = medals[levelId];
+  if (prev && (MEDAL_RANK[prev.medal] > MEDAL_RANK[medal]
+      || (prev.medal === medal && prev.elapsedS <= storedElapsed))) {
+    return { ok: true, saved: true, medal: prev.medal, elapsedS: prev.elapsedS, kept: true };
+  }
+  medals[levelId] = { medal, elapsedS: storedElapsed };
+  const saved = writeCareer(storage, career);
+  return { ok: saved, saved, medal, elapsedS: storedElapsed, reason: saved ? 'awarded' : 'storage_failed' };
+}
 
 /** Duplicate receipts, stale attempts and an unfinished heat cannot award cup points. */
 export function finishRacingCupHeat(payload, storage = defaultStorage()) {

@@ -1,6 +1,7 @@
 // The player's authored hull is the replay silhouette. No dummy sim entity, collision body,
 // target identity, draft source, fallback cone, or new asset admission is created here.
-import { getRacingGhostPlayback, sampleRacingGhost, resetRacingGhostSession } from '../systems/racingGhosts.js';
+import * as THREE from 'three';
+import { getRacingGhostPlayback, sampleRacingGhost, sampleRacingGhostLine, resetRacingGhostSession } from '../systems/racingGhosts.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 
@@ -38,11 +39,28 @@ function cloneHull(source,materials) {
 }
 
 export function createRacingGhostView(scene,state,{storage}={}) {
-  let root=null,source=null,children=null,owner=null,disposed=false;
-  const materials=[],origin={},pose={};
+  let root=null,source=null,children=null,owner=null,line=null,disposed=false;
+  const materials=[],geometries=[],origin={},pose={},lineOut={};
+  const linePositions=new Float32Array(6);
   function release(){
-    root?.removeFromParent();for(const material of materials)material.dispose();materials.length=0;
-    root=source=children=null;
+    root?.removeFromParent();
+    for(const material of materials)material.dispose();
+    for(const geometry of geometries)geometry.dispose();
+    materials.length=0;geometries.length=0;
+    root=source=children=line=null;
+  }
+  function ensureLine(){
+    if(line||!root)return line;
+    const geometry=new THREE.BufferGeometry();
+    geometry.setAttribute('position',new THREE.BufferAttribute(linePositions,3));
+    const material=new THREE.LineBasicMaterial({color:0x39d0ff,transparent:true,opacity:0.9});
+    line=new THREE.Line(geometry,material);
+    line.name='Quarry Hook line';
+    line.frustumCulled=false;
+    line.raycast=noRaycast;
+    line.userData={racingGhostLine:true,hook:'quarry_hook',presentationOnly:true};
+    materials.push(material);geometries.push(geometry);root.add(line);
+    return line;
   }
   return {
     get root(){return root;},
@@ -59,7 +77,7 @@ export function createRacingGhostView(scene,state,{storage}={}) {
       const alpha=state.render?.interpolationAlpha;
       const elapsed=state.simTime-params.raceStartSimS-(Number.isFinite(alpha)?(1-Math.max(0,Math.min(1,alpha)))/60:0);
       if(!tape||!Number.isFinite(params.raceStartSimS)||!sampleRacingGhost(tape,elapsed,pose)){
-        if(root)root.visible=false;return;
+        if(line)line.visible=false;if(root)root.visible=false;return;
       }
       const player=state.entities?.get?.(state.playerId),mesh=player?.mesh||player?.view?.root;
       // Admission can replace a mesh in place; wait for its authored generation to arrive.
@@ -74,6 +92,14 @@ export function createRacingGhostView(scene,state,{storage}={}) {
       }
       readFrameOrigin(state,origin);root.position.set(pose.x-origin.x,pose.y,pose.z-origin.z);
       root.rotation.set(0,-pose.heading,0);root.visible=true;
+      const hook=sampleRacingGhostLine(tape,elapsed,lineOut);
+      if(hook){
+        const drawn=ensureLine();
+        const attr=drawn.geometry.attributes.position;
+        attr.array[0]=0;attr.array[1]=0;attr.array[2]=0;
+        attr.array[3]=hook.x-pose.x;attr.array[4]=0;attr.array[5]=hook.z-pose.z;
+        attr.needsUpdate=true;drawn.visible=true;
+      }else if(line)line.visible=false;
     },
     dispose(){if(disposed)return;disposed=true;release();owner=null;resetRacingGhostSession(state);},
   };

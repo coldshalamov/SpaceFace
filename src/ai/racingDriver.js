@@ -9,13 +9,24 @@ export const RACING_PERSONALITIES = Object.freeze([
   Object.freeze({ id: 'sable', name: 'Sable Reed', hullId: 'ship_drifter', style: 'Patient overtakes', pace: 0.9, corner: 0.74, lane: -1 }),
 ]);
 export const RACING_DIFFICULTIES = Object.freeze({ rookie: 0.68, club: 0.86, expert: 1 });
+const QUARRY_HOOK_LATCH_WU = 160;
+const QUARRY_HOOK_SEEK_WU = 340;
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+function quarryHookBody(nearby) {
+  for (const body of nearby) {
+    if (!body || body.alive === false || !body.pos) continue;
+    const piece = body.data?.raceSetPiece?.id;
+    const name = body.data?.name || body.name;
+    if (piece === 'quarry_hook' || name === 'Quarry Hook') return body;
+  }
+  return null;
+}
 const angle = x => Math.atan2(Math.sin(x), Math.cos(x));
 const idle = () => ({ moveX: 0, moveZ: 0, turnIntent: 0, brake: true, boost: false, fire: false, assistMode: 'newtonian' });
 
 export function createRacingDriver(personality, difficulty = 'club') {
   return { personality, difficulty: RACING_DIFFICULTIES[difficulty] ? difficulty : 'club',
-    recovering: false, recoveries: 0, laneWU: 0, lastGate: -1, lastLap: -1 };
+    recovering: false, recoveries: 0, laneWU: 0, lastGate: -1, lastLap: -1, anchorLaps: [] };
 }
 
 /** Curvature sets the crossing speed; finite reverse thrust sets the braking distance. */
@@ -82,6 +93,25 @@ export function racingDriverIntent(driver, { entity, params, gates, nearby = [],
   const approachOffset = driver.recovering ? -Math.max(125, radius * 5) : 30;
   const target = { x: gate.x + from.nx * approachOffset - from.nz * driver.laneWU,
     z: gate.z + from.nz * approachOffset + from.nx * driver.laneWU };
+  // Mira alone takes the Quarry Hook. Other rivals keep the ordinary racing line.
+  let anchor = null;
+  if (personality.id === 'mira' && !driver.recovering) {
+    const hook = quarryHookBody(nearby);
+    if (hook) {
+      const hx = hook.pos.x - entity.pos.x, hz = hook.pos.z - entity.pos.z;
+      const hd = Math.hypot(hx, hz);
+      if (hd <= QUARRY_HOOK_SEEK_WU && hd > 0.01) {
+        const blend = hd <= QUARRY_HOOK_LATCH_WU ? 0.82 : 0.4;
+        target.x = target.x * (1 - blend) + hook.pos.x * blend;
+        target.z = target.z * (1 - blend) + hook.pos.z * blend;
+      }
+      if (hd <= QUARRY_HOOK_LATCH_WU) {
+        if (!Array.isArray(driver.anchorLaps)) driver.anchorLaps = [];
+        if (!driver.anchorLaps.includes(lap)) driver.anchorLaps.push(lap);
+        anchor = { id: 'quarry_hook', targetId: hook.id, lap, name: 'Quarry Hook' };
+      }
+    }
+  }
   const dx = target.x - entity.pos.x, dz = target.z - entity.pos.z;
   const distance = Math.hypot(dx, dz) || 1;
   const top = (Number(profile.combatSpeed || profile.maxSpeed) || 180)
@@ -103,8 +133,10 @@ export function racingDriverIntent(driver, { entity, params, gates, nearby = [],
   const reverse = Number(profile.reverseAccel || profile.maxBrakeAccel) || 78;
   const strafe = Number(profile.strafeAccel || profile.maxAccel) || 68;
   const heading = Math.atan2(dz, dx);
-  return { moveZ: clamp(forward / (forward >= 0 ? main : reverse), -1, 1),
+  const intent = { moveZ: clamp(forward / (forward >= 0 ? main : reverse), -1, 1),
     moveX: clamp(lateral / strafe, -1, 1),
     turnIntent: clamp(angle(heading - rot) * 1.8 - (Number(entity.angVel) || 0) * 0.35, -1, 1),
     brake: false, boost: false, fire: false, assistMode: 'newtonian' };
+  if (anchor) intent.anchor = anchor;
+  return intent;
 }
