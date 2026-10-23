@@ -103,7 +103,7 @@ ordinary resale bypassing title and station switching healing parked damage; bot
 fixed with regressions. Actual save-envelope continuation also exposed an unusable receiving
 port and dock suspension preventing ready extraction settlement; both were corrected. Job
 quotes now bind economic facts rather than invalidating work on a narrative ledger notice.
-The latest owned batch passed 113/113 Black Flag, public-dialog and surrender-recovery
+The latest owned batch passed 122/122 Black Flag, public-dialog and surrender-recovery
 checks (`node --test --test-concurrency=1 test/black-flag*.test.mjs
 test/player-truth-first-light.test.mjs test/surrender-recovery.test.mjs`).
 A 10,000-event normalization test produced 168,089 JSON bytes
@@ -126,6 +126,14 @@ The live scanner emits `scan:pulse`; custody and the flight panel now consume th
 owner event. Dismissing a link and reselecting the same vessel reopens it. Unarmed fits
 read as “no armed hardpoints” instead of reporting a healthy generic weapon subsystem
 as a live gun.
+
+Starter recovery keeps the real Mule and its real mass. A living, actually drive-disabled
+hull with generation-valid peaceful recovery consent can accept a basic Massline as a
+tow load. Rocks, powered defenders, armed autonomous frames, occlusion and stale actors
+retain their gates. Scored selection and Ctrl-nearest revalidate the same rule; existing
+scripted onboarding catches retain their exemption. Six native integration checks passed.
+Two adjacent tether tests still fail identically with pre-change owner source: a missing
+`root.remove` in a UI mock and a T04 fixture selecting station 52 instead of hostile 50.
 
 The broad baseline run did not pass: golden hash mismatches, an unrelated automation
 assertion and a Massline timeout remain. Committed HEAD also mismatched the V3 golden,
