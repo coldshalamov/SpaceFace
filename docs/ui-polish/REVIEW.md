@@ -1982,3 +1982,11 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`saveLayouts.js`, desktop only, `max-width:1100px`):** the hull (and on an empty slot, the vacant word's layer) shows again, as above 1100. No selector or ID changes; phone and the stacked band are untouched.
 
 **Checked:** bench `save-load` and `save-load-empty` at 800×600, 960×540, 1100×720, 1280×720; phone 390×844. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish102/`.
+
+## Entity dossier drawer: no stacked labels, phone width, verbs in reach (ui-polish-104)
+
+**Before (master 3d1bd1d756):** the dossier deck is a fixed-height flex column, so a long record shrank every section to fit and each label printed over the value under it (960×540: FLEET DOCTRINE on the controls line, PLACES on Choir Ascending Chorus, POWERS on Vesta Forge, The Vael under CLOSE). On a phone the sheet was 48vw with 88px of left padding, a ~60px column that set "Ascendant Choir" one letter a line.
+
+**After (`styles/ui.css`, `.sf-drawer--entity` only):** sections keep their height and the deck scrolls; the verbs (OPEN ON THE CHART / WATCH / CLOSE) are sticky at the foot on an opaque band, so they stay in reach. At ≤760 tall the gaps close up. At ≤640 wide the sheet is full width and opaque, with 20px gutters and a 44px close button. The crest's hairline is dropped when the facts' own top rule follows it. No selector, ID or JS changes.
+
+**Checked:** ui-bench `popup-dossier` at 390×844, 960×540, 1280×720, 1920×1080: no ON TOP OF inside the drawer (the remaining findings are the station under it). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish104/` (`compare-dossier-*.png`).

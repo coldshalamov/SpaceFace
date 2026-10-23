@@ -1970,6 +1970,28 @@ html.sf-reduce-motion .sf-entity-link--row, html.sf-reduce-motion .sf-entity-lin
 .sf-drawer--entity .sf-drawer__deck > :nth-child(3) { animation-delay: 190ms; }
 .sf-drawer--entity .sf-drawer__deck > :nth-child(4) { animation-delay: 230ms; }
 .sf-drawer--entity .sf-drawer__deck > :nth-child(n+5) { animation-delay: 270ms; }
+/* The deck scrolls; its sections keep their own height. Shrunk to fit, a long record let each label
+   print over the value under it (FLEET DOCTRINE over the controls line, PLACES over the next row). */
+.sf-drawer--entity .sf-drawer__deck > * { flex-shrink: 0; }
+/* With the sections at full height a long record scrolls, so the verbs ride the foot of the sheet
+   (sticky, on the sheet's own glass) instead of scrolling out of reach. Short screens close the gaps. */
+.sf-drawer--entity .sf-drawer__deck { padding-bottom: 0; }
+/* The first fact row's own hairline already closes the crest; two rules 24px apart read as a stray line. */
+.sf-drawer--entity .sf-drawer__crest:has(+ .sf-drawer__facts)::after { content: none; }
+.sf-drawer--entity .sf-drawer__apron { position: sticky; bottom: 0; z-index: 1; padding-bottom: 28px; background: rgb(9 11 15); box-shadow: 0 -20px 18px -8px rgb(9 11 15); }
+@media (max-height: 760px) {
+  .sf-drawer--entity .sf-drawer__deck { gap: 18px; padding-top: 30px; }
+  .sf-drawer--entity .sf-drawer__crest { padding-bottom: 16px; }
+  .sf-drawer--entity .sf-drawer__apron { padding-top: 18px; padding-bottom: 20px; }
+}
+/* Phone: 48vw left a ~60px text column (one letter a line). The sheet takes the whole width and is
+   opaque from its edge, with the deck's side padding cut to the phone gutters. */
+@media (max-width: 640px) {
+  .sf-drawerlayer > .sf-drawer--entity { width: 100%; background: rgb(10 12 17 / .96); -webkit-mask-image: none; mask-image: none; }
+  .sf-drawer--entity .sf-drawer__deck { gap: 20px; padding: 56px 20px 0; }
+  .sf-drawer--entity .sf-drawer__apron { padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+  .sf-drawer--entity .sf-drawer__x { top: 12px; right: 12px; width: 44px; height: 44px; }
+}
 /* The graph is the drawer's STAGE. A CREST and an APRON with nothing between them is what read as
    an unfinished sidebar; grouped, full-width link rows are the centerpiece (grammar §6). */
 .sf-drawer__stage { display: flex; flex-direction: column; gap: 20px; min-height: 0; }
