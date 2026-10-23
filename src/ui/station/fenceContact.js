@@ -28,13 +28,13 @@ const SCRUB_REFUSALS = Object.freeze({
   not_a_fixer: 'I move cargo, not records.',
 });
 
-/** The contact for this station's fence, or null (no fence, or the pilot is neither WANTED nor trusted). */
+/** The contact for this station's fence, or null (no fence, or a non-clinic pilot is neither WANTED nor trusted). */
 export function fenceBarContact(stationId, state) {
   const fence = fenceForStation(stationId);
   if (!fence) return null;
   const row = fenceRowOf(state, fence.id);
   const wanted = isPlayerWanted(state);
-  if (!wanted && row.trust < 1) return null;
+  if (!wanted && row.trust < 1 && fence.id !== 'fence_hesper_quill') return null;
   const level = heatLevelFor(state && state.player && state.player.heat);
   const choices = [
     { id: 'fence_work', label: 'Any work?' },
@@ -99,6 +99,7 @@ export function fenceBarReply(contact, choiceId, state, stationId) {
         missionOffer: job,
       };
     }
+    if (fence.id === 'fence_hesper_quill') return { text: 'Clean or wanted, the clinic needs food and medicine. Leave room in your hold and check the board; normal berth, cargo and law checks still apply.' };
     if (!isPlayerWanted(state)) return { text: 'Nothing for a clean hull. Come back hot.' };
     return { text: `${fence.quirk.summary} Dock hot with room in the hold and I will post something.` };
   }

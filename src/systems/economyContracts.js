@@ -38,7 +38,7 @@ import { starvedIndustryNeedFor, marketStockStatus } from './economy.js';
 import { isPlayerWanted, heatLevelFor, wantedTierFor } from './heat.js'; // READ-ONLY heat reads (C11)
 import {
   DENIABLE_PAY_SCALE, DENIABLE_CAUSE_TAG, DENIABLE_AMBUSH_CLAUSE, OUTLAW_FRIENDLY_PERSONALITIES,
-  selectEconContract, fillCause, SCARCITY_PAY_SCALE, BLOCKADE_PAY_SCALE, BLOCKADE_RELIEF_CMDTYS,
+  ECON_CONTRACT_TEMPLATES, selectEconContract, fillCause, SCARCITY_PAY_SCALE, BLOCKADE_PAY_SCALE, BLOCKADE_RELIEF_CMDTYS,
   FIRST_TRADE_CONTRACT_STATION_ID,
   buildFirstTradeOffer,
   starvedOfferProse,
@@ -818,10 +818,12 @@ export const economyContracts = {
     };
   },
 
-  /** Emit the deniable job when WANTED at an outlaw-friendly berth. True only when it boarded. */
+  /** Post the existing freight for wanted pilots, or clean clinic carriers. True only if boarded. */
   _offerDeniable(info, epoch) {
     const ctx = this._pressureContext(info);
-    if (!ctx.wanted || !ctx.outlawFriendly || isOnboardingActive(this.state)) return false;
+    // Hesper's clinic welcomes clean carriers; the other fences still require a warrant.
+    const clinic = fenceForStation(info.id)?.id === 'fence_hesper_quill';
+    if ((!ctx.wanted && !clinic) || !ctx.outlawFriendly || isOnboardingActive(this.state)) return false;
     // A fence the pilot survived (encounterDirector's burned seed) posts no deniable job for the
     // window; returning false lets the ordinary field evaluation post its normal offer instead.
     if (isFenceBurned(this.state, info.id, epoch)) return false;
@@ -833,7 +835,7 @@ export const economyContracts = {
     if (this._offerOnBoard(info.id, offer.id)) { this._deniableLatch.add(latchKey); return false; }
     if (!this._emitOfferForBoard(info.id, offer)) return false; // refused: retry on a later dock
     this._deniableLatch.add(latchKey);
-    const line = `Off-the-books job posted at ${info.name}: ${offer.title}`;
+    const line = `${clinic ? 'Clinic work' : 'Off-the-books job'} posted at ${info.name}: ${offer.title}`;
     const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
       ? this.helpers.voice.say({ channel: 'news', text: line, kind: 'contract' })
       : false;
@@ -852,8 +854,12 @@ export const economyContracts = {
     const state = this.state;
     const pressure = ctx || this._pressureContext(info);
     const local = sectorSignalFor(state, info.sectorId) || null;
-    const selected = selectEconContract(local, pressure);
-    if (!selected || selected.template.key !== 'deniable_job') return null;
+    const clinic = fenceForStation(info.id)?.id === 'fence_hesper_quill';
+    // Reuse the existing sealed-freight builder without pretending a clean pilot is wanted.
+    const selected = clinic
+      ? { template: ECON_CONTRACT_TEMPLATES.find((t) => t.key === 'deniable_job') }
+      : selectEconContract(local, pressure);
+    if (selected?.template?.key !== 'deniable_job') return null;
 
     // U-B: the fence at this berth. A route in motion posts nothing else; trust >= 2 posts the
     // route's first leg; otherwise the quirk and trust (data/fences.js) shape the same job. A
@@ -956,7 +962,9 @@ export const economyContracts = {
     const clause = shape.noSetup ? FENCE_CLEAN_CLAUSE : DENIABLE_AMBUSH_CLAUSE;
 
     const commodity = cmdtyName(cmdtyId);
-    const causeLine = fillCause(selected.template.cause, {
+    const causeLine = clinic
+      ? 'Hesper Quill needs clinic supplies moved. Clean or wanted carriers welcome; normal berth, cargo and law checks still apply.'
+      : fillCause(selected.template.cause, {
       commodity, sector: SECTOR_BY_ID.get(info.sectorId)?.name || info.sectorId, station: info.name,
     });
     const destName = destInfo?.name || dest.stationId;
@@ -974,7 +982,7 @@ export const economyContracts = {
       economyTerms,
       destStationId: dest.stationId, destSectorId: dest.sectorId, distance,
       params,
-      title: `Off the books: ${qty}u ${commodity} to ${destName} (${payLabel})`,
+      title: `${clinic ? 'Clinic run' : 'Off the books'}: ${qty}u ${commodity} to ${destName} (${payLabel})`,
       brief: clause,
       summary: causeLine,
       cause: {

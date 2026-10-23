@@ -157,8 +157,8 @@ export class FenceDesk {
       }
     }
 
-    // First meeting: a WANTED pilot (or a trusted one) at their berth is a face they now know.
-    if (wanted || trust >= 1) {
+    // First meeting: other fences know wanted/trusted pilots; Hesper welcomes clean carriers too.
+    if (wanted || trust >= 1 || fence.id === 'fence_hesper_quill') {
       row = row || this.row(fence.id, true);
       if (!row.met) {
         row.met = true;
