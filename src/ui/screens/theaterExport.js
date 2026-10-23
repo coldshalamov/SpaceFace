@@ -99,12 +99,23 @@ export async function exportTheaterClip(clip, options = {}) {
   try {
     const audioTape = options.audioTape || getReplayAudioTape();
     const endTick = session.tape.baseTick + (session.tape.samples - 1) / session.tape.sampleRate * 60;
-    const pcm = audioTape?.window(session.tape.baseTick, endTick);
+    let pcm = audioTape?.window(session.tape.baseTick, endTick);
+    if (!pcm && !audioTape?.context) {
+      // The mix tape only exists after a gesture started the audio graph. An export ordered
+      // before that still owns a renderable tape: hand the encoder a silent bed of the right
+      // length instead of refusing the clip. A real tape with coverage gaps still fails below.
+      const sampleRate = 48000;
+      const length = Math.max(1, Math.ceil((endTick - session.tape.baseTick) / 60 * sampleRate));
+      pcm = { sampleRate, left: new Float32Array(length), right: new Float32Array(length),
+        seconds: length / sampleRate, coverage: 1, startTick: session.tape.baseTick, endTick,
+        source: 'silent-pre-gesture' };
+    }
     if (!pcm) return { ok: false, reason: 'recorded-sound-unavailable', source: 'rendered-tape' };
     const ready = await Promise.race([session.waitReady(), new Promise((resolve) => { timeout = setTimeout(() => resolve(false), 10000); })]);
     clearTimeout(timeout); abortIfNeeded(options.signal);
     if (!ready) return { ok: false, reason: 'tape-renderer-unavailable', source: 'rendered-tape' };
-    const encoded = await encodeTheaterVideo(session, pcm, audioTape.context, options);
+    const encoded = await encodeTheaterVideo(session, pcm, audioTape?.context, options);
+    if (encoded && pcm.source === 'silent-pre-gesture') encoded.soundtrack = 'silent-pre-gesture';
     if (!encoded?.bytes.length) return { ok: false, reason: 'video-encoder-unavailable', source: 'rendered-tape' };
     const filename = options.filename || `spaceface-clip-${String(clip.id || 'moment').replace(/[^a-zA-Z0-9_-]/g, '_')}.${encoded.format}`;
     const host = options.host || detectClipExportHost();

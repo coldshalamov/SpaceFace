@@ -5,7 +5,7 @@ import { createTheaterSession } from '../src/ui/screens/theaterSession.js';
 import { createReplayAudioRing, createReplayAudioPlayback } from '../src/audio/replayAudioTape.js';
 import { captionSidecar, captionVtt } from '../src/presentation/momentMachine/captions.js';
 import { decodeKillcamTape } from '../src/sim/killcamTape.js';
-import { encodeTheaterVideo } from '../src/ui/screens/theaterExport.js';
+import { encodeTheaterVideo, exportTheaterClip } from '../src/ui/screens/theaterExport.js';
 import * as THREE from 'three';
 import { buildKillcamStage } from '../src/render/killcamStage.js';
 import { canonicalStringify, snapshotSimState } from '../src/core/simSnapshot.js';
@@ -175,4 +175,48 @@ test('720p export schedules thirty fresh tape renders per second against the sam
   assert.equal(result.format, 'webm', 'unsupported MP4 is labelled with the real container');
   assert.equal(audioStarts, 1); assert.ok(stopped >= 2);
   assert.equal(session.elapsed, 0.5); assert.equal(session.photo.enabled, true);
+});
+
+test('an export ordered before the first gesture still ships a silent-but-valid webm', async () => {
+  const pixels = new Uint8ClampedArray(1280 * 720 * 4); pixels.fill(40);
+  const chunk = (type) => ({ byteLength: 12, timestamp: 0, type, copyTo(bytes) { bytes[0] = 1; } });
+  class FakeVideoEncoder {
+    static async isConfigSupported() { return { supported: true }; }
+    constructor(output) { this.state = 'configured'; this._output = output.output; }
+    configure() {} encode() {}
+    get encodeQueueSize() { return 0; }
+    async flush() { this._output(chunk('key')); }
+    close() { this.state = 'closed'; }
+  }
+  class FakeAudioEncoder extends FakeVideoEncoder {
+    async flush() { this._output(chunk('data'), { decoderConfig: { description: new Uint8Array(19) } }); }
+  }
+  const scope = {
+    VideoEncoder: FakeVideoEncoder, AudioEncoder: FakeAudioEncoder,
+    VideoFrame: class { constructor() {} close() {} },
+    AudioData: class { constructor() {} close() {} },
+    ImageData: class { constructor() {} },
+    document: { createElement() { return { width: 0, height: 0, getContext: () => ({ putImageData() {} }) }; } },
+  };
+  const state = { replay: { recording: recording() }, settings: {} };
+  const saved = [];
+  const host = { saveFile: (job) => { saved.push(job); return { ok: true }; } };
+  // Pre-gesture: the tape session exists but never attached to a running context.
+  const audioTape = { context: null, window: () => null };
+  const promise = exportTheaterClip({ id: 'first-light' }, { state, audioTape, host, scope });
+  const session = state.ui.theater;
+  assert.ok(session, 'the session is created before the export awaits it');
+  session.renderAt = () => ({ data: pixels });
+  session.onStatus('live');
+  const result = await promise;
+  assert.equal(result.ok, true, 'the clip exports instead of refusing');
+  assert.equal(result.format, 'webm');
+  assert.equal(result.soundtrack, 'silent-pre-gesture');
+  assert.equal(result.bytes[0], 0x1a, 'webm EBML magic');
+  assert.ok(saved.length >= 1, 'the file reached the host');
+  // A real attached tape that cannot cover the window still refuses honestly.
+  const covered = { context: { state: 'running' }, window: () => null };
+  const result2 = await exportTheaterClip({ id: 'gap' }, { state, audioTape: covered, host, scope });
+  assert.equal(result2.ok, false);
+  assert.equal(result2.reason, 'recorded-sound-unavailable');
 });
