@@ -6,6 +6,18 @@ import { readFrameOrigin } from './frameCoordinates.js';
 import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 
 export const RACING_GHOST_OPACITY = 0.3;
+
+// The line is a child of the hull, and the hull is turned by -heading. A world
+// offset stored raw swings off the hook on any real turn. This is the offset in
+// the hull's own frame, so the parent rotation puts the end back on the hook.
+export function racingGhostHookLocal(pose, hook) {
+  const dx = hook.x - pose.x;
+  const dz = hook.z - pose.z;
+  const h = pose.heading || 0;
+  const cos = Math.cos(h);
+  const sin = Math.sin(h);
+  return { x: dx * cos + dz * sin, z: -dx * sin + dz * cos };
+}
 const noRaycast = () => {};
 function sameChildren(a,b){
   if(!a||a.length!==b.length)return false;
@@ -96,8 +108,9 @@ export function createRacingGhostView(scene,state,{storage}={}) {
       if(hook){
         const drawn=ensureLine();
         const attr=drawn.geometry.attributes.position;
+        const local=racingGhostHookLocal(pose,hook);
         attr.array[0]=0;attr.array[1]=0;attr.array[2]=0;
-        attr.array[3]=hook.x-pose.x;attr.array[4]=0;attr.array[5]=hook.z-pose.z;
+        attr.array[3]=local.x;attr.array[4]=0;attr.array[5]=local.z;
         attr.needsUpdate=true;drawn.visible=true;
       }else if(line)line.visible=false;
     },
