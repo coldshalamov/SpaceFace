@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_planetary_mass_wake_reach_logic",
   "title": "PIN ON THE PLANETARY MASS",
   "factionId": "faction_reach",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Log the crossing",
-      "playerLine": "I crossed the pin marker. Put my hull on the record."
+      "label": "Park the pin beside the receiver",
+      "playerLine": "I set the pin inside twenty of your receiver hull and hold it dead slow for the count."
     },
     {
       "id": "b",
-      "label": "Reset the marker",
-      "playerLine": "I can reset the buoy before another wake hits it."
+      "label": "Sponsor relief — 12 cr",
+      "playerLine": "Take 12 cr, SLIP — send the relief to Planetary Mass instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the mark",
-      "playerLine": "I will not file it. Leave the pin marker where it drifted."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, SLIP — my hull is leaving Planetary Mass."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "PIN",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "SLIP: Your wake crossed the pin marker at planetary mass. Log it or clear it.",
+      "line": "SLIP: Your wake crossed the pin marker at planetary mass. Log it or clear it. — PIN ON THE PLANETARY MASS.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The buoy records the wake long after the water has gone quiet.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "SLIP checks the bearing before clearing the channel.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The pin has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Boost all you like; planetary mass keeps its own volume.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "SLIP: Holding. The lane keeps its own clock.",
+      "line": "SLIP: Park the pin inside twenty of the receiver, dead slow for a four-count. — PIN ON THE PLANETARY MASS.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +142,81 @@ const spec = {
       "windowS": 56,
       "motion": "face",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Crossing logged. The wake line is now attached to your hull.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 12,
+      "reason": "lived_planetary_mass_wake_reach_logic:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "SLIP: Time ran out on the work ask — PIN ON THE PLANETARY MASS. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "displaced",
+          "dist": 120
+        },
+        {
+          "kind": "released"
+        },
+        {
+          "kind": "parked",
+          "at": "hull_0",
+          "dist": 20,
+          "maxSpeed": 2,
+          "holdS": 4
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "SLIP: Time ran out on the work ask — PIN ON THE PLANETARY MASS. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "SLIP: Time ran out on the work ask — PIN ON THE PLANETARY MASS. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 18,
       "reason": "lived_planetary_mass_wake_reach_logic",
       "next": "rep_a"
     },
@@ -168,24 +229,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_reach",
+      "delta": 3,
+      "reason": "lived_planetary_mass_wake_reach_logic:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Marker reset. SLIP watched its light settle back on bearing.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_reach",
-      "delta": 2,
-      "reason": "lived_planetary_mass_wake_reach_logic",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +256,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left the mark. The pin buoy drifted through planetary mass.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_reach",
-      "delta": -1,
-      "reason": "lived_planetary_mass_wake_reach_logic",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +314,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Log the crossing",
-      "playerLine": "I crossed the pin marker. Put my hull on the record."
+      "label": "Park the pin beside the receiver",
+      "playerLine": "I set the pin inside twenty of your receiver hull and hold it dead slow for the count."
     },
     {
       "id": "b",
-      "label": "Reset the marker",
-      "playerLine": "I can reset the buoy before another wake hits it."
+      "label": "Sponsor relief — 12 cr",
+      "playerLine": "Take 12 cr, SLIP — send the relief to Planetary Mass instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the mark",
-      "playerLine": "I will not file it. Leave the pin marker where it drifted."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, SLIP — my hull is leaving Planetary Mass."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Crossing logged. The wake line is now attached to your hull.",
-    "b": "Marker reset. SLIP watched its light settle back on bearing.",
-    "c": "You left the mark. The pin buoy drifted through planetary mass."
+    "a": "The pin sits parked inside twenty of the receiver at Planetary Mass, delivered dead slow. — PIN ON THE PLANETARY MASS.",
+    "b": "12 cr funded the relief call — SLIP sends the shift at Planetary Mass on your credit. — PIN ON THE PLANETARY MASS.",
+    "c": "You left Planetary Mass. The work stayed with the crew that owned it. — PIN ON THE PLANETARY MASS."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "park_tight",
+    "hasProp": true
   }
 });

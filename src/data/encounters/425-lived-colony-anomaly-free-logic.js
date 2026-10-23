@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_colony_anomaly_free_logic",
   "title": "SLED ON THE COLONY",
   "factionId": "faction_free",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Record the return",
-      "playerLine": "I will record one return and keep the transmitter closed."
+      "label": "Circle to the far side of the hull",
+      "playerLine": "I cross a hundred-twenty of your flank to the far side, inside the band at Colony."
     },
     {
       "id": "b",
-      "label": "Compare the traces",
-      "playerLine": "Put the first sled trace beside the newest return."
+      "label": "Sponsor relief — 30 cr",
+      "playerLine": "Take 30 cr, NELL — send the relief to Colony instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave it unread",
-      "playerLine": "I will not answer. Leave the sled signal alone."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, NELL — my hull is leaving Colony."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +52,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "NELL: The sled signal repeats from colony. Do not answer its second voice.",
+      "line": "NELL: The sled signal repeats from colony. Do not answer its second voice. — SLED ON THE COLONY.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +66,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The instrument needle returns to zero one beat too late.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +78,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "NELL keeps the receiver muted between each pass.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +90,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The sled has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +102,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "The colony hums at one level. Your throttle is not it.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +122,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "NELL: We hold. Quiet engines, patient hands.",
+      "line": "NELL: Circle us — start one side, cross a hundred-twenty through to the other, inside the hundred-sixty band. — SLED ON THE COLONY.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +132,71 @@ const spec = {
       "windowS": 56,
       "motion": "creep",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Return recorded. The second voice arrived on the old timestamp.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 30,
+      "reason": "lived_colony_anomaly_free_logic:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "NELL: Time ran out on the work ask — SLED ON THE COLONY. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "oppositeSides",
+          "of": "hull_0",
+          "min": 100,
+          "max": 160,
+          "travel": 120
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "NELL: Time ran out on the work ask — SLED ON THE COLONY. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "NELL: Time ran out on the work ask — SLED ON THE COLONY. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 48,
       "reason": "lived_colony_anomaly_free_logic",
       "next": "rep_a"
     },
@@ -168,24 +209,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_free",
+      "delta": 3,
+      "reason": "lived_colony_anomaly_free_logic:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Traces aligned. NELL found the same missing interval.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_free",
-      "delta": 2,
-      "reason": "lived_colony_anomaly_free_logic",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +236,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left it unread. The signal stayed at colony.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_free",
-      "delta": -1,
-      "reason": "lived_colony_anomaly_free_logic",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +294,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Record the return",
-      "playerLine": "I will record one return and keep the transmitter closed."
+      "label": "Circle to the far side of the hull",
+      "playerLine": "I cross a hundred-twenty of your flank to the far side, inside the band at Colony."
     },
     {
       "id": "b",
-      "label": "Compare the traces",
-      "playerLine": "Put the first sled trace beside the newest return."
+      "label": "Sponsor relief — 30 cr",
+      "playerLine": "Take 30 cr, NELL — send the relief to Colony instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave it unread",
-      "playerLine": "I will not answer. Leave the sled signal alone."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, NELL — my hull is leaving Colony."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Return recorded. The second voice arrived on the old timestamp.",
-    "b": "Traces aligned. NELL found the same missing interval.",
-    "c": "You left it unread. The signal stayed at colony."
+    "a": "You crossed to the hull's far side inside the band at Colony. — SLED ON THE COLONY.",
+    "b": "30 cr funded the relief call — NELL sends the shift at Colony on your credit. — SLED ON THE COLONY.",
+    "c": "You left Colony. The work stayed with the crew that owned it. — SLED ON THE COLONY."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "sides",
+    "hasProp": false
   }
 });

@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_planetary_mass_puzzle_understory_named",
   "title": "ADDENDUM ON THE PLANETARY MASS",
   "factionId": "faction_understory",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Check the first mark",
-      "playerLine": "I will check the addendum mark against the older count."
+      "label": "Make the round trip between hulls",
+      "playerLine": "Ours, theirs, ours again — three separate ring entries logged at Planetary Mass."
     },
     {
       "id": "b",
-      "label": "Compare both books",
-      "playerLine": "Put both ledgers side by side and read the gap aloud."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, SABLE — send the relief to Planetary Mass instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave it unsolved",
-      "playerLine": "I will not guess. Leave the addendum count open."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, SABLE — my hull is leaving Planetary Mass."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +52,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "SABLE: The addendum count fails at planetary mass. Find which mark does not belong.",
+      "line": "SABLE: The addendum count fails at planetary mass. Find which mark does not belong. — ADDENDUM ON THE PLANETARY MASS.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +66,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The answer is written in the part the clerk crossed out.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +78,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "SABLE keeps the pencil beside the blank, not the sum.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +90,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The addendum has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +102,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "The planetary mass sounds the same at idle or at full burn.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +122,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "SABLE: Still holding. Nobody here is paid by the minute.",
+      "line": "SABLE: Ours, theirs, ours again. Three separate ring entries — the record needs the round trip. — ADDENDUM ON THE PLANETARY MASS.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,17 +132,71 @@ const spec = {
       "windowS": 56,
       "motion": "face",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "First mark checked. The mismatch begins one line below it.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_planetary_mass_puzzle_understory_named:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "SABLE: Time ran out on the work ask — ADDENDUM ON THE PLANETARY MASS. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "visit",
+          "of": "hull_0"
+        },
+        {
+          "kind": "visit",
+          "of": "hull_1"
+        },
+        {
+          "kind": "visit",
+          "of": "hull_0"
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "SABLE: Time ran out on the work ask — ADDENDUM ON THE PLANETARY MASS. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "SABLE: Time ran out on the work ask — ADDENDUM ON THE PLANETARY MASS. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
@@ -168,24 +214,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_understory",
+      "delta": 3,
+      "reason": "lived_planetary_mass_puzzle_understory_named:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Books compared. SABLE found the same missing entry twice.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_understory",
-      "delta": 2,
-      "reason": "lived_planetary_mass_puzzle_understory_named",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +241,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left it open. The count still waits at planetary mass.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_understory",
-      "delta": -1,
-      "reason": "lived_planetary_mass_puzzle_understory_named",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +299,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Check the first mark",
-      "playerLine": "I will check the addendum mark against the older count."
+      "label": "Make the round trip between hulls",
+      "playerLine": "Ours, theirs, ours again — three separate ring entries logged at Planetary Mass."
     },
     {
       "id": "b",
-      "label": "Compare both books",
-      "playerLine": "Put both ledgers side by side and read the gap aloud."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, SABLE — send the relief to Planetary Mass instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave it unsolved",
-      "playerLine": "I will not guess. Leave the addendum count open."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, SABLE — my hull is leaving Planetary Mass."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "First mark checked. The mismatch begins one line below it.",
-    "b": "Books compared. SABLE found the same missing entry twice.",
-    "c": "You left it open. The count still waits at planetary mass."
+    "a": "The round trip is logged — three separate ring entries at Planetary Mass. — ADDENDUM ON THE PLANETARY MASS.",
+    "b": "24 cr funded the relief call — SABLE sends the shift at Planetary Mass on your credit. — ADDENDUM ON THE PLANETARY MASS.",
+    "c": "You left Planetary Mass. The work stayed with the crew that owned it. — ADDENDUM ON THE PLANETARY MASS."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "visit_aba",
+    "hasProp": false
   }
 });

@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_outlaw_zone_wreck_mts_depth",
   "title": "SHADE ON THE OUTLAW ZONE",
   "factionId": "faction_mts",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Read the plate",
-      "playerLine": "I will read the shade plate before anyone starts the tow."
+      "label": "Haul the shade clear of both hulls",
+      "playerLine": "I drag the shade a hundred-eighty off both scavenger hulls and leave it settled."
     },
     {
       "id": "b",
-      "label": "Hold the wreck",
-      "playerLine": "I can hold the wreck clear while you check the registry."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, DESK — send the relief to Outlaw Zone instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave it drifting",
-      "playerLine": "I am leaving it here. Keep the shade out of my route."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, DESK — my hull is leaving Outlaw Zone."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "SHADE",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "DESK: The shade is stamped on a wreck at outlaw zone. Do not cut yet.",
+      "line": "DESK: The shade is stamped on a wreck at outlaw zone. Do not cut yet. — SHADE ON THE OUTLAW ZONE.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The hull number stops halfway through the last digit.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "DESK keeps the cutting torch pointed at the deck.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The shade has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Boost all you like; outlaw zone keeps its own volume.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "DESK: Holding. The lane keeps its own clock.",
+      "line": "DESK: Drag the shade a hundred-eighty clear of both scavenger hulls, release, settle. — SHADE ON THE OUTLAW ZONE.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +142,87 @@ const spec = {
       "windowS": 56,
       "motion": "weave",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Plate read. The registry lists a shift, not a final owner.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_outlaw_zone_wreck_mts_depth:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "DESK: Time ran out on the work ask — SHADE ON THE OUTLAW ZONE. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "displaced",
+          "dist": 120
+        },
+        {
+          "kind": "clearOfActors",
+          "of": [
+            "hull_0",
+            "hull_1"
+          ],
+          "dist": 180
+        },
+        {
+          "kind": "released"
+        },
+        {
+          "kind": "settled",
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "DESK: Time ran out on the work ask — SHADE ON THE OUTLAW ZONE. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "DESK: Time ran out on the work ask — SHADE ON THE OUTLAW ZONE. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 54,
       "reason": "lived_outlaw_zone_wreck_mts_depth",
       "next": "rep_a"
     },
@@ -168,24 +235,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_mts",
+      "delta": 3,
+      "reason": "lived_outlaw_zone_wreck_mts_depth:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Wreck held. The next registry pass can happen without drift.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_mts",
-      "delta": 2,
-      "reason": "lived_outlaw_zone_wreck_mts_depth",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +262,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left it. The shade keeps its slow turn at outlaw zone.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_mts",
-      "delta": -1,
-      "reason": "lived_outlaw_zone_wreck_mts_depth",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +320,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Read the plate",
-      "playerLine": "I will read the shade plate before anyone starts the tow."
+      "label": "Haul the shade clear of both hulls",
+      "playerLine": "I drag the shade a hundred-eighty off both scavenger hulls and leave it settled."
     },
     {
       "id": "b",
-      "label": "Hold the wreck",
-      "playerLine": "I can hold the wreck clear while you check the registry."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, DESK — send the relief to Outlaw Zone instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave it drifting",
-      "playerLine": "I am leaving it here. Keep the shade out of my route."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, DESK — my hull is leaving Outlaw Zone."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Plate read. The registry lists a shift, not a final owner.",
-    "b": "Wreck held. The next registry pass can happen without drift.",
-    "c": "You left it. The shade keeps its slow turn at outlaw zone."
+    "a": "The shade rests a hundred-eighty clear of both scavenger hulls at Outlaw Zone. — SHADE ON THE OUTLAW ZONE.",
+    "b": "24 cr funded the relief call — DESK sends the shift at Outlaw Zone on your credit. — SHADE ON THE OUTLAW ZONE.",
+    "c": "You left Outlaw Zone. The work stayed with the crew that owned it. — SHADE ON THE OUTLAW ZONE."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "clear_scav",
+    "hasProp": true
   }
 });
