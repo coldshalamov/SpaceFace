@@ -44,6 +44,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { rheaShiftBroadcast } from '../data/rheaShiftBroadcast.js';
+import { clinicReceivingBroadcast } from '../data/clinicReceivingBroadcast.js';
 
 /** Explicit numeric priority for ambient lines — strictly below every CHANNEL_PRIORITY default. */
 export const AMBIENT_PRIORITY = 1;
@@ -220,6 +221,7 @@ export const stationBroadcast = {
 
   init(ctx) {
     this._ctx = ctx;
+    this._clinicGeneration = (this._clinicGeneration || 0) + 1;
     this._bus = ctx && ctx.bus;
     this._state = ctx && ctx.state;
     this._lastSayAt = -Infinity;     // state.simTime of the last ambient line (rate cap)
@@ -232,6 +234,9 @@ export const stationBroadcast = {
       }
     };
     if (this._bus && this._bus.on) this._bus.on('combat:damage', this._onDamage);
+    this._onClinicRestore = () => { this._clinicGeneration++; };
+    this._bus?.on?.('save:restoring', this._onClinicRestore);
+    this._bus?.on?.('game:newGame', this._onClinicRestore);
     // Cosmetic-only timer: never installed headless — the whole system is silent without window.
     this._timer = null;
     if (typeof window !== 'undefined') {
@@ -240,6 +245,7 @@ export const stationBroadcast = {
   },
 
   newGame() {
+    this._clinicGeneration++;
     this._lastSayAt = -Infinity;
     this._lastCombatAt = -Infinity;
   },
@@ -306,7 +312,11 @@ export const stationBroadcast = {
     // One in four ordinary ambient buckets carries a work-backed local recap. Other beats
     // keep the station's existing chatter; this adds no clock, event queue or saved latch.
     const shift = bucket % 4 === 0 ? rheaShiftBroadcast(state, data.stationId) : null;
-    const text = shift?.text || pickBroadcastLine(def.lines, roll, hull);
+    const clinicGeneration = this._clinicGeneration;
+    const clinic = bucket % 4 === 2 && !this._restoring
+      && !this._ctx.registry?.get?.('save')?._restoring
+      ? clinicReceivingBroadcast(state, station) : null;
+    const text = shift?.text || clinic?.text || pickBroadcastLine(def.lines, roll, hull);
     if (!text) return;
 
     const helpers = (this._ctx && this._ctx.helpers) || {};
@@ -318,6 +328,13 @@ export const stationBroadcast = {
         && (state.simTime - this._lastCombatAt) >= COMBAT_SILENCE_S
         && nearestVisibleStation(state, NEAR_RANGE) === station
         && rheaShiftBroadcast(state, data.stationId)?.id === shift.id } : {}),
+      ...(clinic ? { id: clinic.id, valid: () => this._state === state
+        && this._clinicGeneration === clinicGeneration
+        && state.mode === 'flight' && !this._restoring && !isOnboardingActive(state)
+        && !this._ctx.registry?.get?.('save')?._restoring
+        && (state.simTime - this._lastCombatAt) >= COMBAT_SILENCE_S
+        && nearestVisibleStation(state, NEAR_RANGE) === station
+        && clinicReceivingBroadcast(state, station)?.id === clinic.id } : {}),
       factionId: data.factionId || null, priority: AMBIENT_PRIORITY, ttl: LINE_TTL_S,
     });
     this._lastSayAt = now;
@@ -332,6 +349,10 @@ export const stationBroadcast = {
   },
 
   destroy() {
+    this._clinicGeneration++;
+    this._bus?.off?.('save:restoring', this._onClinicRestore);
+    this._bus?.off?.('game:newGame', this._onClinicRestore);
+    this._onClinicRestore = null;
     if (this._timer != null && typeof window !== 'undefined') window.clearInterval(this._timer);
     this._timer = null;
     if (this._bus && this._bus.off && this._onDamage) this._bus.off('combat:damage', this._onDamage);
