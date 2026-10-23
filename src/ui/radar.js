@@ -19,7 +19,7 @@
 import { semanticColor, semanticShape } from './accessibility.js';
 import { canvasFont } from './canvasFonts.js';
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer, playerSensorBlock } from '../systems/scanner.js';
 import { heatZoneInCurrentSector } from '../systems/heat.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
 import { SHIPS } from '../data/ships.js';
@@ -103,6 +103,18 @@ export const VEIL_CLEAR = 0;
 export const VEIL_GHOST = 1;
 export const VEIL_HIDDEN = 2;
 
+/**
+ * Dead or jammed sensor bank. Sensed marks leave the scope: ships, wrecks,
+ * pickups, pings, and the firing lead. Charted stations, gates, the belt,
+ * and the plotted waypoint stay — those are not the sensor board.
+ */
+export function radarBoardBlind(state, player) {
+  const who = player || (state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null);
+  return playerSensorBlock(state, who) != null;
+}
+
 /** True while the player's current hazard read is a nebula (sector hazard or nebula_fog zone). */
 export function nebulaVeilActive(state) {
   const read = state && state.ui && state.ui.hazardRead;
@@ -151,6 +163,7 @@ export function createRadarContactsStillCache() {
     neutralCount: 0,
     ghostCount: 0,
     veil: false,
+    blind: false,
     nearestOffRangeHostile: null,
     salients: 0,
     rescanDraws: 0,
@@ -190,6 +203,7 @@ export function censusRadarContactsStillLayer({
 }) {
   const playerX = player.pos.x;
   const playerZ = player.pos.z;
+  const blind = radarBoardBlind(state, player);
   const radarScale = metrics.radius / range;
   const trafficRangeSq = rangeSq * RADAR_TRAFFIC_RANGE_FRACTION * RADAR_TRAFFIC_RANGE_FRACTION;
   const stillQx = Math.round(playerX * radarScale);
@@ -204,6 +218,7 @@ export function censusRadarContactsStillLayer({
     && range === cache.range
     && targetId === cache.targetId
     && (veil === true) === cache.veil
+    && (blind === true) === (cache.blind === true)
     && cache.rescanDraws > 0;
 
   // FB-035 — live POI plans ride the mark: the readout's radarKind is the blip class and its
@@ -262,7 +277,10 @@ export function censusRadarContactsStillLayer({
     const gate = station && !!(entity.data && entity.data.isGate);
     const poiStamped = entity.data && entity.data.poiBehavior;
     const poi = poiStamped && poiReadouts ? poiReadouts[poiStamped.zoneId] || null : null;
-    if (hostile || station || entity.id === targetId) salientContactCount += 1;
+    // A dead bank drops everything the scope sensed. A berth is on the chart.
+    if (blind && !station) continue;
+    const sensedHostile = hostile && !blind;
+    if (sensedHostile || station || entity.id === targetId) salientContactCount += 1;
 
     if (veil && !station) {
       const band = nebulaVeilBand(distanceSq, rangeSq);
@@ -282,7 +300,7 @@ export function censusRadarContactsStillLayer({
     }
 
     if (distanceSq > rangeSq) {
-      if (hostile && distanceSq < nearestOffRangeHostileDistanceSq) {
+      if (sensedHostile && distanceSq < nearestOffRangeHostileDistanceSq) {
         nearestOffRangeHostileDistanceSq = distanceSq;
         nearestOffRangeHostile = entity;
       }
@@ -295,7 +313,7 @@ export function censusRadarContactsStillLayer({
 
     // Priority dial: ordinary small traffic (unselected, unmissioned, unnamed, non-capital ships
     // and drones) resolves only inside the close band; everything salient draws sector-wide.
-    if (!hostile && !station) {
+    if (!sensedHostile && !station) {
       const contactType = entity.type;
       if ((contactType === 'ship' || contactType === 'drone')
         && !isSalientShip(entity, targetId)
@@ -307,7 +325,7 @@ export function censusRadarContactsStillLayer({
     const type = entity.type;
     const wantsTrail = (type === 'ship' || type === 'drone') && trailUpdates < maxTrailUpdates;
 
-    if (hostile) {
+    if (sensedHostile) {
       if (wantsTrail && updateTrailFn) {
         updateTrailFn(entity);
         trailUpdates += 1;
@@ -360,6 +378,7 @@ export function censusRadarContactsStillLayer({
   cache.neutralCount = neutralMarks.length;
   cache.ghostCount = ghostMarks ? ghostMarks.length : 0;
   cache.veil = veil === true;
+  cache.blind = blind === true;
   cache.salients = salientContactCount;
   cache.nearestOffRangeHostile = nearestOffRangeHostile;
   cache.rescanDraws = RADAR_CONTACTS_STILL_RESCAN_DRAWS;
@@ -2082,6 +2101,7 @@ export function createRadar(ctx) {
     // Contact still-layer census: when quantized player + contact-pose signature hold,
     // reuse retained marks (skip projection/hostility). Glyph paint always runs so pickup
     // pulses and threat rings keep live `now` (picture contract).
+    const boardBlind = radarBoardBlind(state, player);
     const contactCensus = censusRadarContactsStillLayer({
       contacts,
       player,
@@ -2296,7 +2316,7 @@ export function createRadar(ctx) {
 
     const sectorId = state.world && state.world.currentSectorId;
     const pings = sectorId && state.world.scanPings && state.world.scanPings[sectorId];
-    if (Array.isArray(pings) || contactsHaveLivePing(contacts, state.simTime)) {
+    if (!boardBlind && (Array.isArray(pings) || contactsHaveLivePing(contacts, state.simTime))) {
       g.save();
       g.font = canvasFont(700, 12, 'data');
       g.textAlign = 'center';
@@ -2323,7 +2343,7 @@ export function createRadar(ctx) {
       g.restore();
     }
 
-    if (targetId) {
+    if (targetId && !boardBlind) {
       const target = state.entities.get(targetId);
       if (target && target.alive && target.pos) {
         const lead = solveIntercept(
