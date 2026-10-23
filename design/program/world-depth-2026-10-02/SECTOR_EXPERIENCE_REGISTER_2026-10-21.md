@@ -1,5 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 
+## Nearer Proteus layout and camera evidence: 2026-10-23 23:11 UTC
+
+Draft [PR566](https://github.com/coldshalamov/SpaceFace/pull/566) is now verified open and unmerged at `c6ec2fb61f3d3a6c5550ff7edf00782df6b2c1c7` on `world/proteus-den-working-margin-20261023`. Public master remains `3095a835eb3dbda178d359bbb0541e3ee6124f4c`. The nearer western layout places the existing transfer frame at (-750, 460), parts rack at (-770, 476), and patched power skid at (-770, 444), relative to the Den at (-640, 520). No new prop, crew operation, cache cue, actor, reward or navigation target is introduced.
+
+Independent local checks now pass 11/11. Conservative pairwise prop gaps are 12.76, 13.08 and 22.32 WU; the nearer layout checks the Den's centered visual/fixed-offset envelopes and existing runner/picket joins using measured public hull envelopes. These are static source-envelope checks, not native avoidance, overshoot, attachment clearance or whole-world collision proof. The earlier non-Proteus/RNG and warm-recipe comparisons remain bounded evidence.
+
+The final image is an offline, flat CPU-shaded camera-preset reconstruction from the actual released medium Den and three prop GLBs. It applies authored transforms, unit prop scale and the Den's mount scale/recentering. The default 144-distance panel intentionally retains the partial Den crop; the separate 300-distance context panel does not prove default full framing. Traffic, crew, atmosphere, native flight, camera follow and dynamic camera corrections are absent. Neither this image nor its source-envelope observer is live gameplay, PBR, a navigation target or visual acceptance.
+
+Exact-head check run 40036980243 is still running at this read. Mobile run 40036980104 failed the same six unchanged probe tests. PR565's overall check and mobile workflows ended FAILURE while its hosted focused gate separately passed 22/22. Completed failures match the inspected exact-parent sets; browser shard 3 reached its configured 30-minute cap with only partial logs, leaving flight/ship visual checks incomplete. The missing stationLife module is already addressed by existing PR558, not a new implementation assignment.
+
+The proposed Proteus picket physical watch-stop awaits coordination with existing runtime owners covering PR474, PR488, PR464, PR462, PR461, PR466 and PR480. It is not implemented or allocated to a competing controller. All twelve goals remain OPEN. Full Continue, native flight and live visual acceptance remain unproven. Archive's two large census objects remain the scoped publication blocker; its recovery chain and the browser approval hold are unchanged. No new user action or authentication requirement is established.
+
 ## Proteus Den composition delivery: 2026-10-23 22:34 UTC
 
 Draft [PR566](https://github.com/coldshalamov/SpaceFace/pull/566) publishes six approved paths at `589e74433cdd00de9a74785cbc7831ebc64ea183`, with sole public parent `3095a835eb3dbda178d359bbb0541e3ee6124f4c` and tree `66da11dd5b9e56b08824ce356dd450b4812a9f92`. The head is verified open, draft and unmerged; the publisher's receipt verifies all six remote path bytes.
