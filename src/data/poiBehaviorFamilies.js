@@ -151,6 +151,16 @@ export const POI_BEHAVIOR_FAMILIES = Object.freeze({
 
 export const POI_FAMILY_IDS = Object.freeze(Object.keys(POI_BEHAVIOR_FAMILIES));
 
+// This existing authored place has its own bounded research footprint, not a world zone.
+// Keep identity stable so its ordinary research aftermath survives sector re-planning.
+export const TRITON_FIELD_LAB_INTERACTION = Object.freeze({
+  sectorId: 'sector_triton_wake',
+  placeId: 'poi_triton_field_lab',
+  zoneId: 'authored:poi_triton_field_lab',
+  familyId: 'anomaly_research',
+  radius: 300,
+});
+
 const AUTHORED_PLACE_FAMILIES = Object.freeze({
   poi_triton_field_lab: 'anomaly_research',
   station_vesta_outlying_yard: 'lawful_station_yard',
