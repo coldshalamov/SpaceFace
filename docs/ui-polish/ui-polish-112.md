@@ -1,7 +1,6 @@
-# ui-polish-112 — short desktop head and Market BUY (WIP)
+# ui-polish-112 — short desktop station head gives the Market its BUY key back
 
-- Problem: at 1100×700 and 1280×720 the station head ran ~290px of a 576px-scaled frame (bay screen and station wire stacked in the left column under the next step, right column under the dials empty), so the Market BUY key sat below/under the destination rail.
-- WIP (stationLayouts.js, 901+ wide × 461–800 tall): the two signs share one band side by side under the mechanic's note; the next step moves to the right column under the dials.
-- 1100×700: BUY 1 / SELL now on screen, register shows 8 rows instead of 4.
-- Still open: 1280×720 BUY is half under the rail (console needs ~40px more or a smaller dial at ≤800 tall); the next-step block at right wraps DISMISS onto its own line; 960×540 not yet re-checked (also in the 901+ × ≤800 band); phone Market overflow untouched.
-- Shots: /workspace/spaceface-scratch/ui-shots/polish112/{before,after1,after2,after3}.
+- Problem: from 901 wide on a short window (1100×700, 1280×720, 960×540) the station head ran ~230–290px: the two station signs stacked in narrow columns, the next step wrapped DISMISS onto its own line, and the right column under the dials stood empty. The Market's BUY 1 / SELL sat under the destination rail (1280×720) or below the fold (1100×700).
+- Fix (stationLayouts.js, 901+ wide × 461–800 tall only): the next step tucks under the mechanic's note beside the dials, with title, count and DISMISS on one line and the sentence under. The two signs share one full-width band under the head, label and notice running on as one paragraph (two lines at most, one line at ≤600 tall).
+- Result: BUY 1 / SELL fully on screen and clickable at 1100×700 and 1280×720 (bench reachability findings 2 → 0 at 1280×720). 1920×1080 and the phone are untouched (outside the band).
+- Still open: at 960×540 the Market's BUY is still under the rail (the head is ~30px shorter, but the Market's own short layout needs work in marketLayouts.js); phone Market overflows to the right; the station-wire sign is hard to read over bright hangar backgrounds.
