@@ -168,6 +168,7 @@ import { spawnBudget } from '../systems/spawnBudget.js';
 import { regionalEcology } from '../systems/regionalEcology.js';
 import { tensionDirector } from '../systems/tensionDirector.js';
 import { encounterDirector } from '../systems/encounterDirector.js';
+import { rockCore } from '../systems/rockCore.js';
 import { nemesis } from '../systems/nemesis.js';
 import { nemesisEncounter } from '../systems/nemesisEncounter.js';
 import { nemesisSignals } from '../systems/nemesisSignals.js';
@@ -209,6 +210,8 @@ import { contractClausesSystem } from '../systems/contractClauses.js';
 import { moralTrapSystem } from '../systems/moralTrap.js';
 import { mail } from '../systems/mail.js';
 import { worldClock } from '../systems/worldClock.js';
+import { worldPressure } from '../systems/worldPressure.js';
+import { lineProgression } from '../systems/lineProgression.js';
 import { lossLedger } from '../systems/lossLedger.js';
 import { provenanceLedger } from '../systems/provenanceLedger.js';
 import { factionPresence } from '../systems/factionPresence.js';
@@ -390,6 +393,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['regionalEcology', regionalEcology],
     ['tensionDirector', tensionDirector],
     ['encounterDirector', encounterDirector],
+    ['rockCore', rockCore],
     ['nemesis', nemesis],
     ['nemesisEncounter', nemesisEncounter],
     ['nemesisSignals', nemesisSignals],
@@ -471,6 +475,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['moralTrapSystem', moralTrapSystem],
     ['mail', mail],
     ['worldClock', worldClock],
+    ['worldPressure', worldPressure],
+    ['lineProgression', lineProgression],
     ['save', save],
   ];
 

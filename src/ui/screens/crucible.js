@@ -11,6 +11,7 @@
 // results unit test mounts the plate against a minimal fake document.
 
 import { COMBAT_LAB_ARENAS, COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
+import { todayRankedRuns } from '../../chronicler/recordsWall.js';
 import { SHIPS } from '../../data/ships.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { IS_DEMO } from '../../core/demoMode.js';
@@ -602,6 +603,14 @@ function renderRecordCorner(profile, dateKey) {
   if (today) {
     corner.appendChild(heroBlock(String(today.score), 'today · score', 'sf-crd-fig'));
     corner.appendChild(heroBlock(String(today.wave), 'today · wave', 'sf-crd-fig'));
+  }
+  const ranked = todayRankedRuns(profile, dateKey);
+  if (ranked.length) {
+    const board = el('ol', 'k-rows');
+    board.setAttribute('aria-label', "Today's local daily board");
+    for (const run of ranked) board.appendChild(el('li', 'k-row k-row--static',
+      `${run.rank}. ${run.score} points · wave ${run.wave} · seed ${run.seed}`));
+    corner.appendChild(board);
   }
   for (const f of lifetimeFigures(profile)) {
     corner.appendChild(heroBlock(String(f.value), f.label.toLowerCase(), 'sf-crd-fig'));
@@ -1539,9 +1548,10 @@ export const crucibleScreen = {
     if (earnedDoor.trials.includes('trial_one_hull')) modifierChoices.push({ id: 'one_hull', label: 'One hull' });
     if (earnedDoor.trials.includes('trial_one_weapon')) modifierChoices.push({ id: 'one_weapon', label: 'One weapon' });
     if (modifierChoices.length) {
-      const modBody = settingRow('Modifiers', 'sf-crd-row--modifiers');
+      const modBody = settingRow('Pact', 'sf-crd-row--modifiers');
       const modList = el('ul', 'k-words k-words--row sf-crd-modifiers');
-      modList.setAttribute('aria-label', 'Earned modifiers');
+      modList.setAttribute('aria-label', 'Pact: stack earned rule changes');
+      modBody.appendChild(el('p', 'k-sentence', 'Stack the rules you want to face. Copy code carries the whole pact.'));
       for (const choice of modifierChoices) {
         const button = word(choice.label, 'k-word--fine sf-crd-modifier');
         button.dataset.modifierId = choice.id;

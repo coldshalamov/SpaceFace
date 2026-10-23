@@ -1631,6 +1631,61 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
   ], true),
 });
 
+// ── Captain Maera Vols: in-flight commentary (build-map row 424) ─────────────────────────────
+//
+// The Hull Ghost rides the player's hull after the Helios yard (campaign47a G15). These are her
+// finite flight lines: one authored sentence per event kind, selected by src/ui/voiceArbiter.js.
+// Data only — matching, rate limits and session memory live in the arbiter, so commentary never
+// enters the save. Stable `maera_*` ids: adding a line is additive; changing the text of a used id
+// would change what a reviewed fixture session said. `maxAgeS` is how long a captured event stays
+// speakable; a warning about a round already gone stale is worse than silence.
+const maeraLine = (id, event, category, text, extra = {}) => Object.freeze({
+  id,
+  event,
+  category,
+  text,
+  warning: false,
+  maxAgeS: 300,
+  ...extra,
+});
+
+export const MAERA_FLIGHT_LINES = Object.freeze([
+  maeraLine('maera_helios', 'sector:enter', 'sector',
+    'Helios. They kept the lamps. Changed the names on the berths.',
+    { sectorId: 'sector_helios_prime' }),
+  maeraLine('maera_ceres', 'sector:enter', 'sector',
+    'Ceres. We used to count the lights coming home.',
+    { sectorId: 'sector_ceres_belt' }),
+  maeraLine('maera_undock', 'dock:undocked', 'departure',
+    'You took her out again. I keep expecting the old crew.'),
+  maeraLine('maera_latch', 'tether:attached', 'line',
+    'She still takes a line. I wondered what else they had stripped.'),
+  maeraLine('maera_release', 'tether:released', 'line',
+    'There it goes. The hull remembers the weight a moment longer.'),
+  maeraLine('maera_cargo', 'pickup:collected', 'cargo',
+    'Something aboard. For a moment I thought I heard the others.'),
+  maeraLine('maera_sale', 'economy:tradeCompleted', 'cargo',
+    'Cargo gone. The empty hold always sounded louder.'),
+  maeraLine('maera_story_1', 'story:beatAdvanced', 'story',
+    'A signature moves a problem. It does not make it disappear.',
+    { storyToIndex: 1 }),
+  maeraLine('maera_story_2', 'story:beatAdvanced', 'story',
+    'Keep the original. Copies learn to agree with whoever owns them.',
+    { storyToIndex: 2 }),
+  maeraLine('maera_needle', 'stunt:trickDetected', 'stunt',
+    'That gap was narrower in my day. Or I was wider.',
+    { trickId: 'needle_thread', maxAgeS: 30 }),
+  maeraLine('maera_bank', 'stunt:trickDetected', 'stunt',
+    'You made the wall do the turning. I should have thought of that.',
+    { trickId: 'bank_job', maxAgeS: 30 }),
+  maeraLine('maera_stunt', 'stunt:trickDetected', 'stunt',
+    'They will call that luck. I felt when you chose it.',
+    { maxAgeS: 30 }),
+  maeraLine('maera_near_miss', 'projectile:nearMiss', 'near_miss',
+    'Rounds across the bow. Keep the hull moving.',
+    { warning: true, maxAgeS: 3 }),
+]);
+
 // ── Station-bar generated contacts: greeting + approach voice ────────────────────────────────
 //
 // Generated bar contacts (ui/station/barContacts.js) carry a factionId but used to share one
@@ -2819,6 +2874,7 @@ export default {
   BARK_FACTIONS,
   BARK_SITUATIONS,
   CONTACT_VOICE_REGISTERS,
+  MAERA_FLIGHT_LINES,
   HULL_RECOGNITION,
   HISTORY_RECOGNITION,
   WITNESS_CRIME_BARKS,

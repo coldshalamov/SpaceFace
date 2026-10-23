@@ -36,6 +36,27 @@ let active = null;
 export function getFlightFootage() { return active; }
 
 /**
+ * Cancelling a MediaStreamTrackProcessor reader discards whatever frames the processor already
+ * queued — those VideoFrames die unclosed and the host logs "garbage collected without being
+ * closed". Read the queue out first and close each one. A queued frame satisfies read() inside
+ * the call, so it wins the race against the already-resolved sentinel; an empty queue loses to
+ * the sentinel and the loop ends, then cancel detaches the sink.
+ */
+function releaseTrackReader(reader) {
+  if (!reader) return;
+  (async () => {
+    try {
+      for (let guard = 0; guard < 64; guard += 1) {
+        const drained = await Promise.race([reader.read(), Promise.resolve(null)]);
+        if (!drained || drained.done) break;
+        try { drained.value?.close?.(); } catch { /* already released */ }
+      }
+    } catch { /* reader already torn down */ }
+    try { await reader.cancel?.(); } catch { /* already cancelled */ }
+  })();
+}
+
+/**
  * Worker body, shipped to a Blob-URL worker through Function.toString (the boot ring's pattern), so it
  * references nothing outside itself. It scales a presented frame onto an OffscreenCanvas and encodes the
  * JPEG there. The sync GPU-to-CPU readback that canvas.toBlob does on the main thread waits for the whole
@@ -274,12 +295,7 @@ export function installFlightFootage(bus, {
     trackLoopId += 1;
     const reader = trackReader;
     trackReader = null;
-    if (reader) {
-      try {
-        const cancelled = reader.cancel?.();
-        cancelled?.catch?.(() => {});
-      } catch { /* best-effort cancellation */ }
-    }
+    releaseTrackReader(reader);
     if (video && callback != null) video.cancelVideoFrameCallback?.(callback);
     callback = null;
     for (const track of stream?.getTracks() || []) track.stop();
@@ -536,13 +552,19 @@ export function installFlightFootage(bus, {
             // Record only a frame that passed the capture gate. The submitted-frame helper retains
             // its existing metadata call for asynchronous completion.
             recordMetadata(state);
+            let frame = null;
             try {
-              const frame = new globalThis.VideoFrame(video, {
+              frame = new globalThis.VideoFrame(video, {
                 timestamp: Math.round(tick * 1_000_000 / 60),
                 alpha: 'discard',
               });
               submitCodecFrame(frame, claim);
-            } catch (error) { finishCodecCapture(claim, null, error); }
+            } catch (error) {
+              // A throw before the submit helpers' own try (state read, metadata, sizing)
+              // leaves the freshly minted frame owned by us — close it, not just the claim.
+              try { frame?.close?.(); } catch { /* already released */ }
+              finishCodecCapture(claim, null, error);
+            }
           }
         }
       } else if (encoderSlots.some((slot) => slot.encoder?.usable)) {
@@ -556,8 +578,14 @@ export function installFlightFootage(bus, {
           if (claim) {
             recordMetadata(state);
             createImageBitmap(video, { resizeWidth: width, resizeHeight: height, resizeQuality: 'medium' })
-              .then((bitmap) => submitWorkerFrame(bitmap, 'bitmap', claim),
-                (error) => finishWorkerCapture(claim, null, error));
+              .then((bitmap) => {
+                try { submitWorkerFrame(bitmap, 'bitmap', claim); }
+                catch (error) {
+                  try { bitmap?.close?.(); } catch { /* already released */ }
+                  finishWorkerCapture(claim, null, error);
+                }
+              },
+              (error) => finishWorkerCapture(claim, null, error));
           }
         }
       } else if (!encoding && (!previous || tick - previous.tick >= 6)) {
@@ -607,14 +635,18 @@ export function installFlightFootage(bus, {
         // Reserve first so rejected render callbacks do not clone pose/event metadata. Keep this
         // before VideoFrame snapshots the submitted canvas, preserving the captured tick.
         recordMetadata(current);
+        let frame = null;
         try {
           // VideoFrame snapshots the successfully submitted canvas at this boundary. The frame is
           // transferred to WebCodecs; no ImageBitmap or JPEG readback is performed on this path.
-          const frame = new globalThis.VideoFrame(hookCanvas, {
+          frame = new globalThis.VideoFrame(hookCanvas, {
             timestamp: Math.round(tick * 1_000_000 / 60), alpha: 'discard',
           });
           submitCodecFrame(frame, claim);
         } catch (error) {
+          // Same boundary as the video arm: a throw ahead of the helper's own try leaves the
+          // frame owned by us, so the close belongs beside the claim cleanup.
+          try { frame?.close?.(); } catch { /* already released */ }
           finishCodecCapture(claim, null, error);
         }
       } else {
@@ -630,8 +662,14 @@ export function installFlightFootage(bus, {
             resizeWidth: width,
             resizeHeight: height,
             resizeQuality: 'medium',
-          }).then((bitmap) => submitWorkerFrame(bitmap, 'bitmap', claim),
-            (error) => finishWorkerCapture(claim, null, error));
+          }).then((bitmap) => {
+            try { submitWorkerFrame(bitmap, 'bitmap', claim); }
+            catch (error) {
+              try { bitmap?.close?.(); } catch { /* already released */ }
+              finishWorkerCapture(claim, null, error);
+            }
+          },
+          (error) => finishWorkerCapture(claim, null, error));
         } catch (error) {
           finishWorkerCapture(claim, null, error);
         }
@@ -665,7 +703,15 @@ export function installFlightFootage(bus, {
           const frame = result?.value;
           if (!frame) continue;
           if (trackReader !== reader || loopId !== trackLoopId) frame.close?.();
-          else captureFrame(frame, 'video-frame');
+          else {
+            try { captureFrame(frame, 'video-frame'); }
+            catch (error) {
+              // The loop's outer catch treats a throw as a dead processor and falls back to the
+              // detached video; close the delivered frame on the way out so it is not dropped.
+              try { frame.close?.(); } catch { /* already released */ }
+              throw error;
+            }
+          }
         }
       } catch {
         // A processor can disappear during tab visibility/context changes. The live stream remains
@@ -708,7 +754,7 @@ export function installFlightFootage(bus, {
       trackLoopId += 1;
       const reader = trackReader;
       trackReader = null;
-      try { reader?.cancel?.()?.catch?.(() => {}); } catch { /* best effort */ }
+      releaseTrackReader(reader);
       if (video && callback != null) video.cancelVideoFrameCallback?.(callback);
       callback = null;
       if (video) { video.pause?.(); video.srcObject = null; video.removeAttribute?.('src'); video.load?.(); }

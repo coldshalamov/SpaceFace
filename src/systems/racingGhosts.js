@@ -55,9 +55,59 @@ function expectedGate(meta,index) {
 }
 function gateTotal(meta) { return meta.gateCount+(meta.laps-1)*(meta.gateCount-(meta.closed?1:0)); }
 
-/** Strict complete-envelope validation, also used before writing anything to local storage. */
+function quarryHookTarget(player,state){
+  const tether=state?.player?.tether?.active?state.player.tether:(player?.tether?.active?player.tether:null);
+  if(!tether)return null;
+  const id=tether.targetId;
+  let target=id!=null&&state?.entities?.get?state.entities.get(id):null;
+  if(!target&&tether.target)target=tether.target;
+  if(!target?.pos||!finite(target.pos.x)||!finite(target.pos.z))return null;
+  const piece=target.data?.raceSetPiece?.id,name=target.data?.name||target.name;
+  return piece==='quarry_hook'||name==='Quarry Hook'?target:null;
+}
+function noteQuarryHook(record,time,player,state){
+  const hook=quarryHookTarget(player,state);
+  if(!hook){record.hookOpen=false;return;}
+  const relX=round(hook.pos.x-record.origin[0]),relZ=round(hook.pos.z-record.origin[1]);
+  if(!within(relX,-1e7,1e7)||!within(relZ,-1e7,1e7)){record.hookOpen=false;return;}
+  const rows=record.tethers||(record.tethers=[]);
+  if(record.hookOpen&&rows.length){
+    const seg=rows[rows.length-1];
+    if(time>seg[0])seg[1]=round(time);
+    return;
+  }
+  rows.push([round(time),round(time),relX,relZ,1]);
+  record.hookOpen=true;
+}
+function finishedTethers(record,duration){
+  if(!Array.isArray(record?.tethers)||!record.tethers.length)return null;
+  const out=[];
+  for(const seg of record.tethers){
+    const t1=Math.min(seg[1],duration);
+    if(!(t1>seg[0]))continue;
+    out.push([seg[0],round(t1),seg[2],seg[3],1]);
+  }
+  return out.length?out:null;
+}
+function validTethers(tape){
+  if(tape.tethers===undefined)return true;
+  if(!Array.isArray(tape.tethers)||tape.tethers.length>RACING_GHOST_LIMITS.samples)return false;
+  let prev=-1;
+  for(const row of tape.tethers){
+    if(!Array.isArray(row)||row.length!==5||!row.every(finite))return false;
+    const [t0,t1,x,z,hook]=row;
+    if(hook!==1||!(t1>t0)||t0<prev-EPS)return false;
+    if(!within(t0,0,tape.duration+EPS)||!within(t1,0,tape.duration+EPS))return false;
+    if(!within(x,-1e7,1e7)||!within(z,-1e7,1e7))return false;
+    prev=t1;
+  }
+  return true;
+}
+
+/** Strict complete-envelope validation, also used before writing anything to local storage.
+ *  `tethers` is optional so ghosts saved before the Quarry Hook line still load. */
 export function validateRacingGhost(tape) {
-  if(!plain(tape)||!onlyKeys(tape,['version','meta','duration','origin','samples','gates'])||tape.version!==VERSION||!validMetadata(tape.meta)
+  if(!plain(tape)||!onlyKeys(tape,['version','meta','duration','origin','samples','gates','tethers'])||tape.version!==VERSION||!validMetadata(tape.meta)
       ||!within(tape.duration,EPS,RACING_GHOST_LIMITS.seconds)||!Array.isArray(tape.origin)
       ||tape.origin.length!==2||!tape.origin.every(x=>within(x,-1e12,1e12))
       ||!Array.isArray(tape.samples)||tape.samples.length<2||tape.samples.length>RACING_GHOST_LIMITS.samples
@@ -80,7 +130,7 @@ export function validateRacingGhost(tape) {
         ||!within(gate[2],0,tape.duration+EPS)||gate[2]<=previous)return false;
     previous=gate[2];
   }
-  return Math.abs(previous-tape.duration)<=EPS;
+  return Math.abs(previous-tape.duration)<=EPS && validTethers(tape);
 }
 function readStore(storage) {
   try {
@@ -211,6 +261,7 @@ export function observeRacingGhost(params,player,state,{events=[],finish=false,s
     record.gates.push([event.lap,event.gateIndex,round(event.elapsedS)]);
   }
   record.last=next;
+  noteQuarryHook(record,time,player,state);
   if(record.samples.length>RACING_GHOST_LIMITS.samples)return reject(current,'too_large');
   if(!finish)return {ok:true,reason:'recording'};
   if(params.raceClean!==true||racingLoadoutCategory(state,player)!==record.meta.category
@@ -220,6 +271,8 @@ export function observeRacingGhost(params,player,state,{events=[],finish=false,s
   while(record.samples.length&&record.samples.at(-1)[0]>=duration)record.samples.pop();
   record.samples.push(lerpSample(last,next,duration));
   const tape={version:VERSION,meta:record.meta,duration,origin:record.origin,samples:record.samples,gates:record.gates};
+  const tethers=finishedTethers(record,duration);
+  if(tethers)tape.tethers=tethers;
   current.ended=true;current.record=null;
   return rememberRacingGhost(storage,tape);
 }
@@ -232,6 +285,16 @@ export function sampleRacingGhost(tape,elapsed,out={}) {
   const a=rows[lo],b=rows[hi],f=b[0]>a[0]?Math.max(0,Math.min(1,(elapsed-a[0])/(b[0]-a[0]))):0;
   out.x=tape.origin[0]+a[1]+(b[1]-a[1])*f;out.z=tape.origin[1]+a[2]+(b[2]-a[2])*f;
   out.heading=angle(a[3]+angle(b[3]-a[3])*f);out.y=a[4]+(b[4]-a[4])*f;return out;
+}
+/** Quarry Hook line for this elapsed second, or null. Older tapes have no `tethers`. */
+export function sampleRacingGhostLine(tape,elapsed,out={}){
+  if(!tape?.tethers||!finite(elapsed))return null;
+  for(const row of tape.tethers){
+    if(row[4]!==1||elapsed<row[0]||elapsed>row[1])continue;
+    out.x=tape.origin[0]+row[2];out.z=tape.origin[1]+row[3];out.hook='quarry_hook';
+    return out;
+  }
+  return null;
 }
 export function raceGhostSplitDelta(tape,event) {
   if(!tape||!finite(event?.elapsedS))return null;

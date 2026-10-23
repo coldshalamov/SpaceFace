@@ -218,6 +218,17 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { margin:0 !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge:not(.sf-slot-badge--calm)::before { content:none; }
 }
+/* ui-polish-102: the deckplate's old ≤1100 stack hid the hull (and the vacant word), but the orrery keeps the hull beside
+   the reading down to 791 (the stacked band hides the whole stage), so 791–1100 showed an empty berth ring. They come back. */
+@media (max-width:1100px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .sf-save-stage > :is(.k-stage__poster, .k-world--stage) { display:block; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .sf-save-stage.is-vacant > .sf-save-vacant { display:grid; }
+}
+/* ui-polish-100: at 1200–1599 the reading column is ~360px, so the context line at .2em tracking broke
+   "QUICK SAVE · CURRENT · / FLOWN 9/22/2026" onto two lines at 1280×720. It closes up to .06em (headroom for "FLOWN 29 DAYS AGO") and reads on one line. */
+@media (min-width:1200px) and (max-width:1599px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.06em; }
+}
 /* ≤860px-wide desktop: the strip under the hull is ~300–390px for five stations, so a slot's name,
    badge and line set smaller and tighter and neighbouring words keep a gap (at 761 they touched) */
 @media (max-width:860px) {

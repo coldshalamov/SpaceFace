@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_refinery_approach_convoy_helix_k1",
   "title": "BOOT ON THE REFINERY APPROACH",
   "factionId": "faction_helix",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Take rear watch",
-      "playerLine": "I will take the rear and count every convoy lamp."
+      "label": "Match the lead through Refinery Approach",
+      "playerLine": "I hold station off your bow while your lead makes its hundred through Refinery Approach."
     },
     {
       "id": "b",
-      "label": "Open a lane",
-      "playerLine": "I can clear the refinery approach crossing for the last hull."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, HX-12 — send the relief to Refinery Approach instead of my hands."
     },
     {
       "id": "c",
-      "label": "Let them pass",
-      "playerLine": "I am not joining. Keep the boot inside your formation."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, HX-12 — my hull is leaving Refinery Approach."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +52,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "HX-12 — VARIANCE FILE OPEN. BOOT IS IN THE LANE. NO ACTION REQUIRED.",
+      "line": "HX-12 — VARIANCE FILE OPEN. BOOT IS IN THE LANE. NO ACTION REQUIRED. — BOOT ON THE REFINERY APPROACH.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +66,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The convoy keeps one empty slot for a hull that never came.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +78,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "HX-12 calls each lamp by position, not by name.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +90,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The boot has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +102,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Nobody in refinery approach looks up for engine noise.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +122,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "HX-12: No hurry in this berth. Hold.",
+      "line": "HX-12: Hold station sixty to a hundred-eighty off our bow while we make a hundred on the lead. — BOOT ON THE REFINERY APPROACH.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +132,72 @@ const spec = {
       "windowS": 56,
       "motion": "ring",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Rear watch held. Every lamp came through in the same order.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_refinery_approach_convoy_helix_k1:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "HX-12: Time ran out on the work ask — BOOT ON THE REFINERY APPROACH. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "formation",
+          "of": "hull_0",
+          "min": 60,
+          "max": 180,
+          "holdS": 8,
+          "leaderProgress": 100
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "HX-12: Time ran out on the work ask — BOOT ON THE REFINERY APPROACH. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "HX-12: Time ran out on the work ask — BOOT ON THE REFINERY APPROACH. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 48,
       "reason": "lived_refinery_approach_convoy_helix_k1",
       "next": "rep_a"
     },
@@ -168,24 +210,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_helix",
+      "delta": 3,
+      "reason": "lived_refinery_approach_convoy_helix_k1:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Lane opened. The last hull passed without spending its reserve.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_helix",
-      "delta": 2,
-      "reason": "lived_refinery_approach_convoy_helix_k1",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +237,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You let them pass. The boot stayed in convoy.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_helix",
-      "delta": -1,
-      "reason": "lived_refinery_approach_convoy_helix_k1",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +295,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Take rear watch",
-      "playerLine": "I will take the rear and count every convoy lamp."
+      "label": "Match the lead through Refinery Approach",
+      "playerLine": "I hold station off your bow while your lead makes its hundred through Refinery Approach."
     },
     {
       "id": "b",
-      "label": "Open a lane",
-      "playerLine": "I can clear the refinery approach crossing for the last hull."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, HX-12 — send the relief to Refinery Approach instead of my hands."
     },
     {
       "id": "c",
-      "label": "Let them pass",
-      "playerLine": "I am not joining. Keep the boot inside your formation."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, HX-12 — my hull is leaving Refinery Approach."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Rear watch held. Every lamp came through in the same order.",
-    "b": "Lane opened. The last hull passed without spending its reserve.",
-    "c": "You let them pass. The boot stayed in convoy."
+    "a": "You held station off the lead for the whole hundred it made at Refinery Approach. — BOOT ON THE REFINERY APPROACH.",
+    "b": "24 cr funded the relief call — HX-12 sends the shift at Refinery Approach on your credit. — BOOT ON THE REFINERY APPROACH.",
+    "c": "You left Refinery Approach. The work stayed with the crew that owned it. — BOOT ON THE REFINERY APPROACH."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "match_lead",
+    "hasProp": false
   }
 });

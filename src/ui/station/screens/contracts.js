@@ -16,6 +16,8 @@ import { COMMODITIES } from '../../../data/commodities.js';
 import { FACTION_META } from '../../../data/factions.js';
 import { MISSION_TYPES } from '../../../data/missions.js';
 import { SECTORS } from '../../../data/sectors.js';
+import { replayStandingLines } from '../../../story/endings/worldAfter.js';
+import { standingOrderProgressLines } from '../../../systems/captainStandingOrders.js';
 import { contractTermById } from '../../../data/contractClauses.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
@@ -489,11 +491,40 @@ function cleanText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/** The opening recovery is installed, not accepted. Its receipt keeps the offer id and drops the tag. */
+const COLD_START_OFFER_ID = 'contract_47a_b0_recovery';
+
+/** A campaign beat installed at the start is not the player pressing Accept. */
+function isPlayerDeskJob(mission) {
+  if (!mission) return false;
+  const tag = typeof mission.storyTag === 'string' ? mission.storyTag : '';
+  if (tag.startsWith('campaign47a:')) return false;
+  const offerId = typeof mission.sourceOfferId === 'string' ? mission.sourceOfferId : '';
+  if (offerId === COLD_START_OFFER_ID) return false;
+  const id = typeof mission.id === 'string' ? mission.id : '';
+  if (id === COLD_START_OFFER_ID || id.startsWith(`${COLD_START_OFFER_ID}:`)) return false;
+  return true;
+}
+
+/** The word under Accept. Collateral always says hold. A first trade says hold even with nothing at risk. */
+export function contractAcceptHoldNote(state, collateral) {
+  if (Number(collateral) > 0) return 'hold';
+  const missions = state && state.missions;
+  const active = missions && Array.isArray(missions.active) ? missions.active : [];
+  const receipts = missions && Array.isArray(missions.receipts) ? missions.receipts : [];
+  const accepted = active.some(isPlayerDeskJob) || receipts.some(isPlayerDeskJob);
+  return accepted ? '' : 'hold';
+}
+
 export function createContractsScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'k-panel sx-ct';
   el.innerHTML = contractsFrameHtml();
   const dispatchEl = el.querySelector('.sx-ct-dispatch__label');
+  const standingEl = document.createElement('p');
+  standingEl.className = 'k-sentence';
+  standingEl.setAttribute('data-replay-standing-orders', '');
+  dispatchEl.parentNode.appendChild(standingEl);
   const boardEl = el.querySelector('.sx-ct__board');
   const dossierEl = el.querySelector('.sx-ct__dossier');
   const activeEl = el.querySelector('.sx-ct__active');
@@ -612,7 +643,10 @@ export function createContractsScreen(ctx) {
       selectedId = String(mid(list[0]));
     }
     const dispatch = missionBoardDispatchLabel(state, stationId, list.length);
+    const standing = [replayStandingLines(state).join(' '), standingOrderProgressLines(state, stationId).join(' ')].filter(Boolean).join(' ');
     if (dispatchEl.textContent !== dispatch) dispatchEl.textContent = dispatch;
+    standingEl.textContent = standing;
+    standingEl.hidden = !standing;
     if (!list.length) {
       mountDataState(boardEl, 'empty', {
         code: 'BOARD_EMPTY',
@@ -1064,6 +1098,7 @@ export function createContractsScreen(ctx) {
     const accept = dossier.querySelector('.sx-ct-commit[data-accept]');
     const consequences = missionConsequenceSummary(m);
     acceptHoldMs = consequences.collateral > 0 ? 720 : 450;
+    const holdNote = contractAcceptHoldNote(state, consequences.collateral);
     if (accept && !accept.disabled) {
       const hint = consequences.collateral > 0
         ? ` Hold to accept: ${cr(consequences.collateral)} collateral is at risk.`
@@ -1075,7 +1110,7 @@ export function createContractsScreen(ctx) {
         ring.setAttribute('aria-hidden', 'true');
         accept.appendChild(ring);
       }
-      dressLampKey(accept, { hold: true, note: consequences.collateral > 0 ? 'hold' : '' });
+      dressLampKey(accept, { hold: true, note: holdNote });
     } else if (accept) {
       dressLampKey(accept);
     }

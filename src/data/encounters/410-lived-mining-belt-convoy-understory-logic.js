@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_mining_belt_convoy_understory_logic",
   "title": "WINCH ON THE MINING BELT",
   "factionId": "faction_understory",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Take rear watch",
-      "playerLine": "I will take the rear and count every convoy lamp."
+      "label": "Thread the escort gap, then hold formation",
+      "playerLine": "I cross between the escort pair and hold formation off your lead through Mining Belt."
     },
     {
       "id": "b",
-      "label": "Open a lane",
-      "playerLine": "I can clear the mining belt crossing for the last hull."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, SABLE — send the relief to Mining Belt instead of my hands."
     },
     {
       "id": "c",
-      "label": "Let them pass",
-      "playerLine": "I am not joining. Keep the winch inside your formation."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, SABLE — my hull is leaving Mining Belt."
     }
   ],
   "timeoutChoice": "c",
@@ -47,22 +47,16 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
-      "next": "prop"
+      "next": "hail"
     },
     {
       "id": "prop",
-      "verb": "prop",
-      "scanLabel": "WINCH",
-      "dx": 54,
-      "dz": -28,
-      "radius": 9,
-      "mass": 48,
-      "next": "hail"
+      "verb": "noop"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "SABLE: The winch rides with this convoy through mining belt. Hold formation.",
+      "line": "SABLE: The winch rides with this convoy through mining belt. Hold formation. — WINCH ON THE MINING BELT.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -76,9 +70,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The convoy keeps one empty slot for a hull that never came.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -90,9 +82,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "SABLE calls each lamp by position, not by name.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -104,9 +94,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The winch has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -118,9 +106,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Nobody in mining belt looks up for engine noise.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -140,7 +126,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "SABLE: No hurry in this berth. Hold.",
+      "line": "SABLE: Thread the gap between the two escort hulls, then hold formation off the lead. — WINCH ON THE MINING BELT.",
       "channel": "info",
       "next": "offer"
     },
@@ -150,22 +136,80 @@ const spec = {
       "windowS": 56,
       "motion": "creep",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Rear watch held. Every lamp came through in the same order.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_mining_belt_convoy_understory_logic:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "SABLE: Time ran out on the winch ask — WINCH ON THE MINING BELT. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "gapCross",
+          "of": [
+            "hull_0",
+            "hull_1"
+          ],
+          "within": 60
+        },
+        {
+          "kind": "formation",
+          "of": "hull_0",
+          "min": 60,
+          "max": 180,
+          "holdS": 8,
+          "leaderProgress": 100
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "SABLE: Time ran out on the winch ask — WINCH ON THE MINING BELT. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "SABLE: Time ran out on the winch ask — WINCH ON THE MINING BELT. Nothing owed either way — the lane forgets it.",
+      "keepMotion": true,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 48,
       "reason": "lived_mining_belt_convoy_understory_logic",
       "next": "rep_a"
     },
@@ -178,24 +222,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_understory",
+      "delta": 3,
+      "reason": "lived_mining_belt_convoy_understory_logic:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Lane opened. The last hull passed without spending its reserve.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_understory",
-      "delta": 2,
-      "reason": "lived_mining_belt_convoy_understory_logic",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -204,23 +249,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You let them pass. The winch stayed in convoy.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_understory",
-      "delta": -1,
-      "reason": "lived_mining_belt_convoy_understory_logic",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -261,24 +307,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Take rear watch",
-      "playerLine": "I will take the rear and count every convoy lamp."
+      "label": "Thread the escort gap, then hold formation",
+      "playerLine": "I cross between the escort pair and hold formation off your lead through Mining Belt."
     },
     {
       "id": "b",
-      "label": "Open a lane",
-      "playerLine": "I can clear the mining belt crossing for the last hull."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, SABLE — send the relief to Mining Belt instead of my hands."
     },
     {
       "id": "c",
-      "label": "Let them pass",
-      "playerLine": "I am not joining. Keep the winch inside your formation."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, SABLE — my hull is leaving Mining Belt."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Rear watch held. Every lamp came through in the same order.",
-    "b": "Lane opened. The last hull passed without spending its reserve.",
-    "c": "You let them pass. The winch stayed in convoy."
+    "a": "You threaded the gap between the escorts and held formation off the lead at Mining Belt. — WINCH ON THE MINING BELT.",
+    "b": "24 cr funded the relief call — SABLE sends the shift at Mining Belt on your credit. — WINCH ON THE MINING BELT.",
+    "c": "You left Mining Belt. The work stayed with the crew that owned it. — WINCH ON THE MINING BELT."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "gap_formation",
+    "hasProp": false
   }
 });

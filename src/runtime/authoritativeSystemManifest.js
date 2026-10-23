@@ -41,7 +41,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'masslineImpactDamage', 'lootShards', 'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens', 'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads', 'terrainAnchors', 'jettisonImpulse', 'volatileExposure', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
-  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'scissorwake',
+  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake',
   // Nemesis packet: the arc engine (nemesis) decides and schedules, the encounter host
   // (nemesisEncounter) drains one spawn request per fixed step, and nemesisSignals routes
   // voice/toast receipts — event-only, registered but never ticked.
@@ -74,7 +74,11 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'moralTrapSystem',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
   // transition announcer — both slow observers on the calendar clock.
-  'mail', 'worldClock',
+  // worldPressure (§34 rows 520–523): the tide/gate-audit/slow-gray owner — reads
+  // settled aftermath + understory facts, writes only state.worldPressure.
+  // lineProgression (rows 498–501): the Line's tonnage/class/strain memory — listens on
+  // the tether bus, writes only state.lineProgression.
+  'mail', 'worldClock', 'worldPressure', 'lineProgression',
   'render', 'vfx', 'feel', 'audio', 'ui', 'save',
 ]);
 
@@ -112,7 +116,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'volatileExposure', 'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'crafting', 'economy', 'intervention', 'world',
   'heistFacilities',
-  'regionalEcology', 'tensionDirector', 'encounterDirector', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
+  'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'stationServices',
   'difficultyDirector', 'gateControlDirector',
   'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
@@ -162,7 +166,11 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'voiceArbiter',
   // PULSE-MAIL / PULSE-TIME: mail delivery and calendar announcements run after the story
   // and deed systems so same-tick triggers resolve before letters and headlines go out.
-  'mail', 'worldClock',
+  // worldPressure: the day-scale tide/audit/gray pass runs on the same calendar cadence,
+  // after story and salvage so the day's clears and beats are settled facts when it reads.
+  // lineProgression: ticks the held-mass strain clock off the same settled tick the tether
+  // owner produced; its bus listeners do the tonnage crediting.
+  'mail', 'worldClock', 'worldPressure', 'lineProgression',
   'save',
 ]);
 
@@ -303,6 +311,9 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // PULSE rows 435/439: letter delivery evaluates at most once a second; the calendar's
   // transition announcements are day-scale work — 2 Hz is generous for both.
   'mail', 'worldClock',
+  // §34 rows 520–523: tide/audit/gray all step on the 600 s world day; the only
+  // sub-day work is a cheap same-sector scaffold check — 2 Hz is plenty.
+  'worldPressure',
 ]);
 
 /**
@@ -380,6 +391,9 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud',
   // Combat island: damage/attachment/custody owners at combat cadence.
   'combat', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
+  'lineProgression',
+  // rockCore: flail chain constraint must resolve on the 60 Hz step (5-link stability proof).
+  'rockCore',
   // Massline physics owners (throws, snares, impact resolution move or damage bodies).
   'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   // Debris/damage owners with live bodies or timed expiry.

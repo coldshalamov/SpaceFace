@@ -14,8 +14,9 @@ function tileHtml(item, kind) {
     ? `data-nav="${item.id}" role="tab" id="sx-tab-${item.id}" aria-controls="sx-panel" aria-selected="false" tabindex="-1"`
     : `data-act="${item.id}"`;
   const extra = isNav ? '' : ' sx-tile--act';
+  // Inside a role=tablist an <li> keeps no role of its own — the tab is the listitem's button.
   return (
-    `<li><button type="button" ${stationControlAttrs(item.id)} class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
+    `<li${isNav ? ' role="presentation"' : ''}><button type="button" ${stationControlAttrs(item.id)} class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
       `<span class="sx-tile__seat" aria-hidden="true">${stationIcon(item.id)}</span>` +
       `<span class="sx-tile__badge k-t-fine k-signal" data-badge="${item.id}" hidden></span>` +
       `<span class="sx-tile__label">${escapeMarkup(item.label)}</span>` +
@@ -216,9 +217,11 @@ export function createCommandDock(cfg) {
         if (!badge.hidden) badge.hidden = true;
         if (badge.textContent) badge.textContent = '';
       }
+      // The spoken name stays the help line on the tile. Attention is the badge and the tooltip.
       if (on && opts && opts.title) {
         setAttributeIfChanged(tile, 'title', opts.title);
-        setAttributeIfChanged(tile, 'aria-label', opts.title);
+      } else if (tile.hasAttribute('title')) {
+        tile.removeAttribute('title');
       }
     });
   }

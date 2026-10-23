@@ -21,7 +21,10 @@
 // passed in by the caller so this file never has to import the draft pools (which import us).
 
 import { WEAPONS } from './weapons.js';
-import { MODULES } from './modules.js';
+import { MODULES as AUTHORED_MODULES } from './modules.js';
+
+// Shelf annotations belong to the catalog. Other consumers may freeze authored definitions.
+const MODULES = AUTHORED_MODULES.map((def) => ({ ...def }));
 
 export const SWARM_CATALOG_SCHEMA_VERSION = 1;
 
@@ -115,6 +118,7 @@ export function catalogBlurbFor(def) {
 /** Shop content test: a def that cannot be bought anywhere is not armory content either. */
 export function isArmoryStock(def) {
   if (!def || typeof def !== 'object') return false;
+  if (def.adventureOnly === true) return false;
   if (def.purchasable === false) return false;
   if (def.unique === true || def.salvageOnly === true) return false;
   if (typeof def.id !== 'string' || !def.id) return false;
@@ -162,6 +166,7 @@ export const SWARM_ADVENTURE_ONLY_IDS = Object.freeze(new Set([
 /** True when a def does something in a Swarm fight. */
 export function isSwarmRelevantDef(def) {
   if (!def || typeof def !== 'object') return false;
+  if (def.adventureOnly === true) return false;
   if (SWARM_IRRELEVANT_SLOTS.has(def.slotType)) return false;
   return !SWARM_ADVENTURE_ONLY_IDS.has(def.id);
 }
@@ -255,11 +260,8 @@ function rowSlotOf(defId) {
  * Weapons are left alone: their derived sentence is the reason, and the module
  * table is what the shelf contract asked to carry.
  *
- * This mutates the shared MODULES objects at import. That is intentional and
- * narrow: the field is additive, adventure-only ids are skipped, and no
- * adventure reader consults it. arsenalSentence (the yard) ignores swarmReason.
- * Offer-time derivation would drop the line off the module the shelf contract
- * asked to carry.
+ * This annotates the catalog's own copies. Shared authored MODULES may already be
+ * frozen by another consumer; importing the shelf must never mutate those owners.
  */
 function authorSwarmFightReasons(list) {
   if (!Array.isArray(list)) return;

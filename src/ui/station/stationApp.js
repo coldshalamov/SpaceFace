@@ -1,4 +1,5 @@
 import { stationFrameHtml } from '../views/stationFrames.js';
+import { createStationArrivalPresenter } from './stationArrival.js';
 // src/ui/station/stationApp.js — Field Hardware berth chrome (PQ-194 / P33 shell).
 // Docking is an arrival on the lit 3D berth: stencil station name, authority legend, one news
 // tape, leftover event/ledger/mechanic strips, destination keys along the bottom edge, Undock as
@@ -142,6 +143,40 @@ const DESTINATIONS = [
   { id: 'bar', label: stationControlLabel('bar'), icon: 'bar', create: createBarScreen },
   { id: 'ledger', label: stationControlLabel('ledger'), icon: 'ledger', create: createLedgerScreen },
 ];
+
+/** The one-line gloss each destination already had in the help pop. The rail speaks the same line. */
+export const STATION_HELP = {
+  market: ['Market', 'Pick a commodity to see its price, demand and stock. Buy or sell against your credits and hold space.'],
+  shipworks: ['Shipworks', 'Pick a ship or a slot, preview compatible gear, then install it.'],
+  industry: ['Industry', 'Trace raw stock into refined goods and modules. A broken line names the exact input it is missing.'],
+  contracts: ['Missions', 'Accept jobs, track routes and settle objectives that finish at this berth. Highlighted rows need attention first.'],
+  factions: ['Factions', 'Pick a faction to see its standing, relationships, recent changes and what it unlocks.'],
+  bar: ['Contacts', 'Contacts turn rumors and local knowledge into leads, survey data and missions.'],
+  ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Recovered evidence opens to full detail.'],
+};
+
+/** Put each destination's existing help line on the rail tile, as a sub and as its spoken name. */
+export function stampDestinationRail(dockEl, destinations = DESTINATIONS, help = STATION_HELP) {
+  if (!dockEl || typeof dockEl.querySelector !== 'function') return [];
+  const stamped = [];
+  for (const dest of destinations) {
+    const line = help?.[dest.id]?.[1];
+    if (!line) continue;
+    const tile = dockEl.querySelector(`[data-nav="${dest.id}"]`);
+    if (!tile) continue;
+    const spoken = `${dest.label}. ${line}`;
+    if (tile.getAttribute('aria-label') !== spoken) tile.setAttribute('aria-label', spoken);
+    let gloss = typeof tile.querySelector === 'function' ? tile.querySelector('.sx-tile__gloss') : null;
+    if (!gloss && tile.ownerDocument && typeof tile.ownerDocument.createElement === 'function') {
+      gloss = tile.ownerDocument.createElement('span');
+      gloss.className = 'sx-tile__gloss k-t-fine';
+      tile.appendChild(gloss);
+    }
+    if (gloss && gloss.textContent !== line) gloss.textContent = line;
+    stamped.push({ id: dest.id, line });
+  }
+  return stamped;
+}
 
 // The service verbs used to be dock tiles declared here. They now live on the vital they change
 // (Repair on Hull, Refuel on Fuel, Sell on Hold), so each verb is named at its own meter and the
@@ -693,15 +728,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     effects.arrive();
   }
 
-  const HELP = {
-    market: ['Market', 'Pick a commodity to see its price, demand and stock. Buy or sell against your credits and hold space.'],
-    shipworks: ['Shipworks', 'Pick a ship or a slot, preview compatible gear, then install it.'],
-    industry: ['Industry', 'Trace raw stock into refined goods and modules. A broken line names the exact input it is missing.'],
-    contracts: ['Missions', 'Accept jobs, track routes and settle objectives that finish at this berth. Highlighted rows need attention first.'],
-    factions: ['Factions', 'Pick a faction to see its standing, relationships, recent changes and what it unlocks.'],
-    bar: ['Contacts', 'Contacts turn rumors and local knowledge into leads, survey data and missions.'],
-    ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Recovered evidence opens to full detail.'],
-  };
+  const HELP = STATION_HELP;
+  function restoreDestinationGloss() {
+    stampDestinationRail(dock.el, DESTINATIONS, HELP);
+  }
+  restoreDestinationGloss();
   helpEl.addEventListener('click', () => {
     // Toggle, not re-open. With the trigger now exempt from close-on-outside-click, a second press
     // would otherwise re-render the same card forever with no way to dismiss it by the same button.
@@ -775,6 +806,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       }, 280);
     }, 3600);
   }
+
+  const arrivalPresenter = createStationArrivalPresenter(ctx, {
+    ...opts.arrivalTimers,
+    showReceipt,
+    receiptVisible: () => receiptEl.hidden === false,
+  });
 
   function subscribe(event, handler) {
     const bus = ctx && ctx.bus;
@@ -1319,6 +1356,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         attentionAutoOpenedThisDock = true;
         navigate('bar');
       }
+      restoreDestinationGloss();
       return courierAttention;
     }
     const attention = missionDockAttention(s, stationId());
@@ -1338,6 +1376,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         attention,
         focusSurface: attention.surface,
       });
+      restoreDestinationGloss();
       return attention;
     }
     // If already on Missions, re-focus the attention row without changing tab.
@@ -1352,6 +1391,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         });
       }
     }
+    restoreDestinationGloss();
     return attention;
   }
 
@@ -1438,6 +1478,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         const row = pendingReceipts.shift();
         showReceipt(row.kind, row.title, row.delta);
       }
+      arrivalPresenter.show();
       // First focus lands on the active dock tile. screenManager focuses the first focusable in DOM
       // order when a screen has not chosen one, and the topbar's HOLD gauge button precedes the
       // dock — so every keyboard-driven arrival painted a focus ring on the cargo readout. The tile
@@ -1459,6 +1500,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       }
     },
     onHide() {
+      arrivalPresenter.hide();
       finishReturnSummary(state());
       shown = false; commands.setEnabled(false); effects.hide();
       if (receiptTimer) { clearTimeout(receiptTimer); receiptTimer = 0; }
@@ -1468,6 +1510,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (bulletin) bulletin.open = false;
       closePop();
       dock.setAttention(null);
+      restoreDestinationGloss();
       lastMissionAttention = null;
       berth.setActive(false);
       pendingArrival = true; // the next show is a new arrival
@@ -1475,6 +1518,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (scr && typeof scr.onHide === 'function') { try { scr.onHide(); } catch (_) {} }
     },
     dispose() {
+      arrivalPresenter.dispose();
       shown = false; commands.dispose(); effects.dispose();
       rootEl.classList.remove('sx-observatory');
       rootEl.removeAttribute('data-fh-temp');

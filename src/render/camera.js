@@ -3,6 +3,7 @@
 // Phase 1: adds a subtle camera roll that counter-leans into the ship's bank so high-G turns feel
 // dynamic without violating the no-yaw-follow rule (we never rotate the camera's heading).
 import * as THREE from 'three';
+import { createTrailerStaging } from './trailerStaging.js';
 import { damp } from '../core/math.js';
 import { globalToFrame } from '../core/coordinates.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
@@ -1224,6 +1225,16 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     minZoom = Math.min(CAMERA_ZOOM_MAX, compositionZoomCap, minZoom);
   }
 
+  // Row 485 (ROCK-ARENAS): the published Line rating opens the frame. rockCore writes a
+  // 0..1 open bias (state.rockCore.cameraZoomFloor); it widens the composition floor toward
+  // the group-fit cap as the katamari rating grows, never narrows the frame, and is inert
+  // while the owner is absent or the rating is T0.
+  const lineOpen = finiteOr(state?.rockCore?.cameraZoomFloor, 0);
+  if (lineOpen > 0 && player.pos) {
+    minZoom = Math.max(minZoom, Math.min(compositionZoomCap,
+      CAMERA_ZOOM_MIN + lineOpen * (compositionZoomCap - CAMERA_ZOOM_MIN)));
+  }
+
   // B3b group fit: two or more hostiles attacking at once share the frame. The composed focus
   // moves halfway toward the group centroid (player weighted double — mirrors the pair-midpoint
   // rule for a single attacker) and minZoom grows to fit every member. A per-member sticky hold
@@ -1434,7 +1445,8 @@ function resolveTetherCompositionAnchor(state, player, out = null) {
   return result;
 }
 
-export function createChaseCamera(state, viewport = globalThis.window, projectionCamera = null) {
+export function createChaseCamera(state, viewport = globalThis.window, projectionCamera = null, eventBus = null) {
+  const trailerStaging = createTrailerStaging(state, eventBus);
   // Far plane is deep (14k) so distant planets + far star layers render; fog still fades mid-distance.
   const cam = projectionCamera || new THREE.PerspectiveCamera(state.settings.video.fov || 50, viewport.innerWidth / viewport.innerHeight, 1, 14000);
   if (projectionCamera) {
@@ -1791,6 +1803,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     // CAMERA_CLEARANCE_RELEASE_WU_S, so the camera never eases through geometry or jitters at a
     // roof boundary.
     follow(dt, alphaParam, presentedLocal, clearanceAt) {
+      trailerStaging.step(this);
       const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 1 / 15) : 0;
       const alpha = Number.isFinite(alphaParam)
         ? Math.max(0, Math.min(1, alphaParam))

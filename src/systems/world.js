@@ -239,6 +239,8 @@ import {
   wormholeGateCheck,
   computeDiscoveredRoute,
 } from './routePlanner.js';
+import { gateTollFor } from '../data/travelChoices.js';
+import { auditEdgeKey, gateTransitClosed } from '../data/worldPressure.js';
 import { removeCargo } from './cargo.js';
 import { Masks } from '../core/entity.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
@@ -5742,6 +5744,15 @@ export const world = {
     const drive = this._activeDrive();
     if (via === 'drive' && !this._hasDrive()) return reject('no_drive');
 
+    // §34 row 521: a welded audit gate refuses gate transit — the Helix weld is
+    // on the road itself. The jump drive still flies the same edge, so no
+    // sector is stranded; the closure only lengthens the tolled route.
+    if (via === 'gate' && isNeighbor && gateTransitClosed(state, cur, targetSectorId)) {
+      const gates = state.worldPressure && state.worldPressure.gates;
+      const audit = gates && gates[auditEdgeKey(cur, targetSectorId)];
+      return reject('gate_closed', { gateName: audit && audit.gateName || null });
+    }
+
     // combat lock blocks the start unless a hot-jump drive
     if (this._combatLock && !(via === 'drive' && drive.hotJump)) return reject('combat_lock');
 
@@ -5880,6 +5891,7 @@ export const world = {
   _onRequestRoute({ targetSectorId, mode }) {
     const route = this.computeRoute(targetSectorId, mode || 'fuel');
     this.state.nav.route = route;
+    this.state.nav.autoTravel = !!route;
     return route;
   },
 
@@ -7282,8 +7294,7 @@ export const world = {
   },
 
   _gateToll(sector) {
-    if (!sector) return 0;
-    return sector.security > 0.6 ? Math.round(50 + 200 * sector.security) : 0;
+    return gateTollFor(sector);
   },
 
   // =========================================================================================

@@ -10,8 +10,10 @@ export const BACKDROPS = Object.freeze({
 });
 
 /** `ruleset` picks the Crucible run a draft/refit shot seeds (tools/ui-bench.js seedCrucibleShot).
- *  `drill` / `base` pick the populated seeds (seedDrillShot / seedBaseShot).
- *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string, mobile?: string}[]} */
+ *  `drill` / `base` pick the populated seeds (seedDrillShot / seedBaseShot). `defeat` picks the
+ *  Game Over fixture (seedGameOverShot): 'populated' mounts a real buildDefeatReceipt plate,
+ *  'empty' the clean state. `seed` overrides the run seed a shot writes into state.meta.seed.
+ *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string, mobile?: string, defeat?: string, seed?: number}[]} */
 export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'title', screen: 'mainMenu', backdrop: 'title' },
   { id: 'mainMenu', screen: 'mainMenu', backdrop: 'title' },
@@ -37,8 +39,11 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'credits', screen: 'credits', backdrop: 'title' },
   { id: 'achievements', screen: 'achievements', backdrop: 'title' },
   { id: 'statistics', screen: 'statistics', backdrop: 'title' },
-  { id: 'game-over', screen: 'gameOver', backdrop: 'title' },
-  { id: 'gameOver', screen: 'gameOver', backdrop: 'title' },
+  { id: 'game-over', screen: 'gameOver', backdrop: 'title', defeat: 'populated', seed: 4242 },
+  { id: 'gameOver', screen: 'gameOver', backdrop: 'title', defeat: 'populated', seed: 4242 },
+  // The same screen with nothing recorded — the honest empty plate on a varied seed, not the
+  // populated receipt with its fields blanked (tools/ui-bench.js seedGameOverShot).
+  { id: 'gameOver-empty', screen: 'gameOver', backdrop: 'title', defeat: 'empty', seed: 7331 },
   { id: 'tech-tree', screen: 'techTree', backdrop: 'title' },
   { id: 'techTree', screen: 'techTree', backdrop: 'title' },
   // A career some hours in: six nodes researched and research points banked (tools/ui-bench.js).

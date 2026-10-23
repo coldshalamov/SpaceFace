@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_border_checkpoint_trade_patrol_lawman_literalized",
   "title": "STAMP ON THE BORDER CHECKPOINT",
   "factionId": "faction_free",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Take the lot",
-      "playerLine": "I will take the stamp if the seal still reads clean."
+      "label": "Work the stamp under line load",
+      "playerLine": "Line on the stamp — I hold real load for the two-count before I cut it loose."
     },
     {
       "id": "b",
-      "label": "Change the terms",
-      "playerLine": "Cut the price or split the stamp across both holds."
+      "label": "Sponsor relief — 18 cr",
+      "playerLine": "Take 18 cr, WARD — send the relief to Border Checkpoint instead of my hands."
     },
     {
       "id": "c",
-      "label": "Pass the trade",
-      "playerLine": "No deal from me. Keep the stamp off my manifest."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, WARD — my hull is leaving Border Checkpoint."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "STAMP",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "WARD: The stamp is the whole lot. border checkpoint has room to bargain.",
+      "line": "WARD: The stamp is the whole lot. border checkpoint has room to bargain. — STAMP ON THE BORDER CHECKPOINT.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The price is chalked on a panel that still has heat.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "WARD weighs the seal before looking at the buyer.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The stamp has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "The border checkpoint sounds the same at idle or at full burn.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "WARD: Still holding. Nobody here is paid by the minute.",
+      "line": "WARD: Line on the stamp, pull it onto the hook — hold real line load a two-count — then cut the line. — STAMP ON THE BORDER CHECKPOINT.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,17 +142,70 @@ const spec = {
       "windowS": 56,
       "motion": "orbit",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Lot transferred. The seal stayed legible through the handoff.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 18,
+      "reason": "lived_border_checkpoint_trade_patrol_lawman_literalized:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "WARD: Time ran out on the work ask — STAMP ON THE BORDER CHECKPOINT. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "strained",
+          "loadMin": 0.35,
+          "holdS": 2
+        },
+        {
+          "kind": "released"
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "WARD: Time ran out on the work ask — STAMP ON THE BORDER CHECKPOINT. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "WARD: Time ran out on the work ask — STAMP ON THE BORDER CHECKPOINT. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
@@ -168,24 +223,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_free",
+      "delta": 3,
+      "reason": "lived_border_checkpoint_trade_patrol_lawman_literalized:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Terms changed. WARD wrote the smaller number by hand.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_free",
-      "delta": 2,
-      "reason": "lived_border_checkpoint_trade_patrol_lawman_literalized",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +250,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You passed. Their stamp goes back under the tarp.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_free",
-      "delta": -1,
-      "reason": "lived_border_checkpoint_trade_patrol_lawman_literalized",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +308,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Take the lot",
-      "playerLine": "I will take the stamp if the seal still reads clean."
+      "label": "Work the stamp under line load",
+      "playerLine": "Line on the stamp — I hold real load for the two-count before I cut it loose."
     },
     {
       "id": "b",
-      "label": "Change the terms",
-      "playerLine": "Cut the price or split the stamp across both holds."
+      "label": "Sponsor relief — 18 cr",
+      "playerLine": "Take 18 cr, WARD — send the relief to Border Checkpoint instead of my hands."
     },
     {
       "id": "c",
-      "label": "Pass the trade",
-      "playerLine": "No deal from me. Keep the stamp off my manifest."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, WARD — my hull is leaving Border Checkpoint."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Lot transferred. The seal stayed legible through the handoff.",
-    "b": "Terms changed. WARD wrote the smaller number by hand.",
-    "c": "You passed. Their stamp goes back under the tarp."
+    "a": "The stamp rode real line load at Border Checkpoint before you cut it free. — STAMP ON THE BORDER CHECKPOINT.",
+    "b": "18 cr funded the relief call — WARD sends the shift at Border Checkpoint on your credit. — STAMP ON THE BORDER CHECKPOINT.",
+    "c": "You left Border Checkpoint. The work stayed with the crew that owned it. — STAMP ON THE BORDER CHECKPOINT."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "strain",
+    "hasProp": true
   }
 });

@@ -18,6 +18,7 @@ import { createCounter, decrypt } from '../orrery/text.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { laneSetMode } from '../../core/simLaneCommands.js';
 import { getFlightFootage, createFootageViewer } from './flightFootage.js';
+import { createTheaterSession } from './theaterSession.js';
 
 export const REPLAY_LABEL = 'Replay';
 export const REPLAY_SCREEN_ID = 'replay';
@@ -55,9 +56,10 @@ export function resolveReplayRecording(ctx) {
   // A recovered black box is the tape most recently loaded onto the deck.
   const blackBox = state && state.replay && state.replay.blackBoxTape;
   if (blackBox) return blackBox;
+  const fromState = state && state.replay && state.replay.recording;
+  if (fromState?.poseFrames?.length >= 2) return fromState;
   const captured = getFlightFootage()?.recording();
   if (captured) return captured;
-  const fromState = state && state.replay && state.replay.recording;
   return fromState || null;
 }
 
@@ -220,6 +222,7 @@ function disposeTapeView(view) {
   if (!view || view.disposed) return;
   view.disposed = true;
   view.footageViewer?.dispose();
+  view.theater?.dispose();
   if (view.raf != null && typeof cancelAnimationFrame === 'function') {
     cancelAnimationFrame(view.raf);
   }
@@ -468,7 +471,7 @@ function buildTapeSvg(view, width) {
 
 function legendFor(view) {
   const { summary, events, boosts } = view;
-  if (!summary.available) return 'NO TAPE YET — FLY AND THE LAST 30 SECONDS LAND HERE';
+  if (!summary.available) return 'Choose FLY TO RECORD, fly for a few seconds, then open Pause → Media → Replay to scrub the last 30 seconds. Death also opens the kill-cam.';
   const marks = [];
   if (events.length) marks.push(events.length + (events.length === 1 ? ' MARK' : ' MARKS'));
   if (boosts.length) marks.push(boosts.length + (boosts.length === 1 ? ' BURN' : ' BURNS'));
@@ -482,6 +485,7 @@ function paintTapeFrame(view) {
   const ticks = summary.available ? summary.ticks : REPLAY_TAPE_SECONDS * 60;
   const tickRate = summary.available ? summary.tickRate : 60;
   const tick = Math.max(0, Math.min(ticks - 1, Math.floor(view.elapsed * tickRate)));
+  view.theater?.seek(view.elapsed - (view.theater.tape.baseTick - (view.recording.absoluteBaseTick ?? 0)) / tickRate);
   view.footageViewer?.show((view.recording.absoluteBaseTick ?? view.recording.base ?? 0) + tick).catch(() => {});
   const p = summary.seconds > 0 ? Math.max(0, Math.min(1, view.elapsed / summary.seconds)) : 0;
   if (view.fill && view.fillBloom) {
@@ -596,6 +600,7 @@ function buildContent(container, recording, ctx) {
   container.innerHTML = '';
   container.classList.add('k-screen', 'k-screen--stage', 'orr-replay');
   container.dataset.role = REPLAY_SCREEN_ID;
+  container.dataset.screen = REPLAY_SCREEN_ID;
   container.setAttribute('aria-label', REPLAY_LABEL);
 
   const view = {
@@ -608,12 +613,26 @@ function buildContent(container, recording, ctx) {
     counter: null, codes: null, readout: null, lamp: null, lampWord: null,
     speedButton: null, keyHandler: null,
   };
+  view.theater = summary.available ? createTheaterSession(recording, ctx?.state) : null;
 
   const veilTop = el('div', 'orr-replay__veil-top');
-  if (getFlightFootage()?.ring.frames.length) {
+  const addFootageFallback = () => {
+    if (view.disposed || view.footageViewer || !getFlightFootage()?.ring.frames.length) return;
     const footage = document.createElement('canvas'); footage.setAttribute('aria-label', 'Recorded flight');
     Object.assign(footage.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' });
-    container.append(footage); view.footageViewer = createFootageViewer(footage);
+    container.prepend(footage); view.footageViewer = createFootageViewer(footage);
+  };
+  if (!view.theater) addFootageFallback();
+  else {
+    const theater = view.theater;
+    container.dataset.kStage = 'loading';
+    theater.request.onStatus = (status) => {
+      container.dataset.kStage = status;
+      theater.onStatus(status);
+      if (status === 'unavailable' && !view.disposed) {
+        theater.dispose(); view.theater = null; addFootageFallback(); paintTapeFrame(view);
+      }
+    };
   }
   veilTop.setAttribute('aria-hidden', 'true');
   const veilFoot = el('div', 'orr-replay__veil-foot');
@@ -696,6 +715,7 @@ function buildContent(container, recording, ctx) {
     const right = words([
       { label: 'STEP +1', action: 'step-fwd', bank: true },
       { label: 'EVENT »', action: 'next-event', bank: true },
+      ...(view.theater ? [{ label: 'PHOTO CAMERA', action: 'photo-camera', bank: true }] : []),
     ], {
       row: true, ariaLabel: 'Step and events', system: 'light',
       onPick: (action) => {
@@ -705,6 +725,13 @@ function buildContent(container, recording, ctx) {
           cue('move');
         } else if (action === 'next-event') {
           stepTapeEvent(view, 1);
+        } else if (action === 'photo-camera' && view.theater) {
+          if (view.playing) setTapePlaying(view, false);
+          view.theater.setPhoto(!view.theater.photo.enabled);
+          const button = right.querySelector('[data-action="photo-camera"]');
+          if (button) button.textContent = view.theater.photo.enabled ? 'DIRECTED CAMERA' : 'PHOTO CAMERA';
+          if (view.readout) view.readout.textContent = view.theater.photo.enabled
+            ? 'DRAG TO ORBIT · WHEEL TO ZOOM · WASD TO PAN' : legendFor(view);
         }
       },
     });
@@ -802,6 +829,24 @@ function buildContent(container, recording, ctx) {
   tapeHost.addEventListener('pointerup', endScrub);
   tapeHost.addEventListener('pointercancel', endScrub);
 
+  let cameraDrag = null;
+  container.addEventListener('pointerdown', (event) => {
+    if (!view.theater?.photo.enabled || event.button !== 0 || event.target?.closest?.('button, .orr-replay__tape')) return;
+    cameraDrag = { x: event.clientX, y: event.clientY };
+    container.setPointerCapture?.(event.pointerId); event.preventDefault();
+  });
+  container.addEventListener('pointermove', (event) => {
+    if (!cameraDrag || !view.theater) return;
+    view.theater.orbit(event.clientX - cameraDrag.x, event.clientY - cameraDrag.y);
+    cameraDrag.x = event.clientX; cameraDrag.y = event.clientY;
+  });
+  const endCamera = () => { cameraDrag = null; };
+  container.addEventListener('pointerup', endCamera); container.addEventListener('pointercancel', endCamera);
+  container.addEventListener('wheel', (event) => {
+    if (!view.theater?.photo.enabled) return;
+    view.theater.zoom(event.deltaY); event.preventDefault();
+  }, { passive: false });
+
   const onKey = (ev) => {
     if (view.disposed) return;
     const inOverlay = openState && openState.view === view;
@@ -817,6 +862,12 @@ function buildContent(container, recording, ctx) {
     const inTransport = ev.target && ev.target.closest && ev.target.closest('.orr-replay__transport');
     const tickRate = summary.tickRate;
     const now = Math.floor(view.elapsed * tickRate);
+    if (view.theater?.photo.enabled && ['w', 'a', 's', 'd'].includes(ev.key.toLowerCase())) {
+      const key = ev.key.toLowerCase(), distance = ev.shiftKey ? 30 : 8;
+      view.theater.pan(key === 'a' ? -distance : key === 'd' ? distance : 0,
+        key === 'w' ? -distance : key === 's' ? distance : 0);
+      ev.preventDefault(); return;
+    }
     if ((ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') && !inTransport) {
       const dir = ev.key === 'ArrowLeft' ? -1 : 1;
       const step = (ev.shiftKey ? 5 : 1) * tickRate;
@@ -844,7 +895,7 @@ function buildContent(container, recording, ctx) {
     const dt = view.lastNow ? Math.min(0.1, Math.max(0, (now - view.lastNow) / 1000)) : 0;
     view.lastNow = now;
     pollTapeGamepad(view);
-    if (view.playing && summary.available) {
+    if (view.playing && summary.available && !view.theater?.exporting) {
       view.pulseT += dt;
       const before = Math.floor(view.elapsed * summary.tickRate);
       view.elapsed += dt * view.speed;

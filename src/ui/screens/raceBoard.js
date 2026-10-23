@@ -13,7 +13,8 @@ import { DEFAULT_STARTER_ID, NEW_GAME_STARTERS } from '../../data/newGameDefault
 import { RACING_DRIVES } from '../../data/racingLoadouts.js';
 import { isRacingCorridorSession } from '../../world/racingCorridor.js';
 import { RACING_MODES, RACING_DIFFICULTIES, CUP_HEATS, currentRacingCup, restoreRacingCup,
-  abandonRacingCup, stageRacingCupHeat, releaseRacingCupHeat, readRacingCareer, selectRacingLivery } from '../../systems/racingCareer.js';
+  abandonRacingCup, stageRacingCupHeat, releaseRacingCupHeat, readRacingCareer, selectRacingLivery,
+  awardCourseMedal } from '../../systems/racingCareer.js';
 import { RACING_COSMETICS, racingCosmeticFor, racingCosmeticUnlocked } from '../../data/racingCosmetics.js';
 import { listRacingGhosts, exportRacingGhostByKey, clearRacingGhostByKey } from '../../systems/racingGhosts.js';
 import { renderRacingRecognition } from '../racingRecognition.js';
@@ -118,6 +119,11 @@ export const raceBoardScreen={
       try{await runContract(ctx,contractId,level,{...fit});}finally{this._launching=false;this.refresh(ctx);}
     };
     const result=lastRacingResult();
+    if(result&&result.raceMode==='time-trial'&&result.status!=='dnf'&&Number.isFinite(result.raceElapsedS)&&!result.medalChecked){
+      const levelId=result.levelId||raceContractById(result.racingContractId)?.levelId;
+      const awarded=awardCourseMedal({levelId,elapsedS:result.raceElapsedS,raceMode:'time-trial'},storageOf());
+      if(awarded?.ok||awarded?.reason==='no_medal'||awarded?.reason==='not_time_trial')result.medalChecked=true;
+    }
     if(result){
       const receipt=el('section','race-board-result dp-glass');receipt.setAttribute('aria-label','Last circuit result');
       receipt.append(el('h2','k-t-sub',result.status==='dnf'?'RUN ENDED':`LAST FINISH / ${formatRaceTime(result.raceElapsedS)}`),
@@ -148,6 +154,12 @@ export const raceBoardScreen={
       card.append(el('p','k-sentence',level.blurb),el('p','k-sentence',`${Math.round(course.courseLengthWU).toLocaleString()} wu / lap · ${course.gates.length-1} legs · start / finish aligned`));
       const pieces=racingSetPieceDefinitions(course.courseId);
       if(pieces)card.appendChild(el('p','k-sentence',`Optional Massline anchors. ${pieces.crossing?'Watch for the scheduled cargo crossing; the amber ring marks a refuge.':pieces.wave?'Read the debris warning, then take a gap or wait in the amber refuge.':pieces.shutter?'A customs shutter closes the main cut; the green service lane stays open.':'Follow the marked line through the technical turns.'}`));
+      if(fit.raceMode==='time-trial'&&course.medalTimes){
+        const times=course.medalTimes;
+        card.appendChild(el('p','k-sentence',`${level.name} medal times · Gold ${formatRaceTime(times.gold)} · Silver ${formatRaceTime(times.silver)} · Bronze ${formatRaceTime(times.bronze)}`));
+        const earned=readRacingCareer(storageOf()).medals?.[level.id];
+        if(earned)card.appendChild(el('p','k-sentence',`Your medal: ${earned.medal}`));
+      }
       const contracts=[practiceContractForLevel(level.id),...(fit.raceMode==='cup'?[]:stories.filter(row=>row.levelId===level.id))].filter(Boolean);
       for(const row of contracts){
         const offer=racingOfferFor(row.id),recordPrefix=raceRecordKey(offer.params);

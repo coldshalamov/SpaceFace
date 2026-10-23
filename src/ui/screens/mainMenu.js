@@ -19,8 +19,72 @@ import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectTitleAsideLayouts } from '../orrery/titleAsideLayouts.js';
+import { shouldOfferFirstLight, applyFirstLightPreset } from '../accessibility.js';
+import { laneWriteSetting } from '../../core/simLaneCommands.js';
+import { confirm, dismissConfirm, isConfirmOpen } from '../confirm.js';
 
 const LS_PREFIX = 'sf.save.';
+
+// ---------------------------------------------------------------------------------------------------
+// Row 473 — the first-light offer.
+//
+// The title is the one screen every player sees before they know the game has settings at all, so it
+// is the honest place to ask once whether they would like the calmer, larger, captioned cut. It rides
+// the SHARED confirmation surface (ORRERY: no bespoke dialog, no new stylesheet) and it is offered,
+// never applied: `firstLightOffered` records the question, `firstLightChoice` records the answer.
+// ---------------------------------------------------------------------------------------------------
+export const FIRST_LIGHT_OFFER = Object.freeze({
+  title: 'First light',
+  // Play is the primary verb — the calm cut is the offer beside it, never the gate on playing.
+  body: 'Play as-is, or start with calmer motion, reduced flashing, high contrast, larger text and backed captions. Settings > Access has them any time.',
+  confirmLabel: 'Play',
+  cancelLabel: 'Use first light',
+  cancelValue: 'calm',
+  dismissValue: 'play',
+  danger: false,
+});
+
+/** The accessibility subtree, created on demand (a settings tree without one still gets offered). */
+function accessibilityOf(settings) {
+  if (!settings || typeof settings !== 'object') return {};
+  if (!settings.accessibility || typeof settings.accessibility !== 'object') settings.accessibility = {};
+  return settings.accessibility;
+}
+
+/** True when the loading shell still owns the screen. "Fully hidden" means display:none — the
+ *  `hidden` class is added at fade start, while the shell is still the only thing visible. */
+function bootOverlayBlocksMenu() {
+  if (typeof document === 'undefined' || !document || typeof document.getElementById !== 'function') return false;
+  const overlay = document.getElementById('boot-overlay');
+  if (!overlay) return false;
+  return !overlay.style || overlay.style.display !== 'none';
+}
+
+/** The manager keeps exactly one screen on top; anything else means this menu is not current. */
+function menuIsCurrent(ctx) {
+  const mgr = getManager(ctx);
+  if (!mgr || typeof mgr.top !== 'function') return true;
+  return mgr.top() === 'mainMenu';
+}
+
+function rootElement() {
+  if (typeof document === 'undefined' || !document) return null;
+  return document.documentElement || null;
+}
+
+/** Worker-lane parity: the accessibility subtree is copied wholesale, exactly like the motion ask. */
+function mirrorAccessibility(ctx, settings) {
+  const state = ctx && ctx.state;
+  if (!state || !settings || !settings.accessibility) return;
+  laneWriteSetting(state, 'settings.accessibility', { ...settings.accessibility });
+}
+
+function publishAccessibilityChange(ctx, key, value) {
+  const bus = ctx && ctx.bus;
+  if (!bus || typeof bus.emit !== 'function') return;
+  bus.emit('settings:changed', { section: 'accessibility', key, value });
+}
+
 /** Show or hide Continue's row on the dial, and re-seat the dial when it changes. */
 function bContinueRow(r, show) {
   const li = r && r.bContinue && r.bContinue.closest ? r.bContinue.closest('li') : null;
@@ -283,7 +347,11 @@ export function leftoverVersionLabel(payload) {
  */
 export function leftoverVersionDisplay(payload) {
   const version = leftoverVersionToken(payload);
-  return version ? 'SpaceFace v' + version : 'SpaceFace';
+  if (!version) return 'SpaceFace';
+  // O23/BETA identity: a prerelease version wears its tag on the player-facing line so a
+  // beta screenshot or clip can never pass for a retail build in a bug report.
+  const betaTag = /-(beta|alpha|rc)\b/i.test(version) ? ' · BETA' : '';
+  return 'SpaceFace v' + version + betaTag;
 }
 
 export function applyLeftoverVersionText(target, payload) {
@@ -353,6 +421,20 @@ export function titlePrimaryAction(demo, hasSave) {
 
 /** The verbs' reading order. DEMO_READINESS §5: in the demo the Crucible is the FIRST button,
  *  not just the lit one — Adventure (New Game renamed) second, Continue third. */
+/**
+ * SEED-ST-01 — the mode verbs say what they open. A sighted stranger never sees an aria-label,
+ * so each non-primary verb carries the same gloss as a visible sub line. The wording is the
+ * aria copy where one existed; Crucible and Archive had none and say what the code comment
+ * already promised ("the scored ten-wave Survival run", "the authored intro cinematics").
+ */
+export const MENU_MODE_GLOSSES = Object.freeze({
+  crucible: 'A scored ten-wave survival run',
+  archive: 'Authored intro reels, in the Codex',
+  circuits: 'Logic circuit sandbox',
+  sandbox: 'Free flight sandbox',
+  physics: 'Orbital physics challenges',
+});
+
 export function titleVerbOrder(demo) {
   if (demo) return ['crucible', 'newGame', 'continue', 'settings', 'quit'];
   return ['continue', 'newGame', 'load', 'crucible', 'settings', 'quit'];
@@ -433,6 +515,7 @@ export const mainMenuScreen = {
       action,
       label: labels[action],
       ...(action === 'continue' ? { sub: 'Checking saves...', current: true } : {}),
+      ...(MENU_MODE_GLOSSES[action] ? { sub: MENU_MODE_GLOSSES[action] } : {}),
       ...(action === 'quit' ? { danger: true } : {}),
     }));
     // The quiet line: reference and dev, at etch size, out of the way of the decision.
@@ -440,12 +523,12 @@ export const mainMenuScreen = {
     // Wave B11: Physics lab / Sandbox toy on front door.
     const asideItems = [
       { action: 'help', label: 'Help' },
-      { action: 'archive', label: 'Archive' },
-      { action: 'circuits', label: 'Circuits' },
+      { action: 'archive', label: 'Archive', sub: MENU_MODE_GLOSSES.archive },
+      { action: 'circuits', label: 'Circuits', sub: MENU_MODE_GLOSSES.circuits },
       // Sandbox before Physics challenges: on the dial the line sets as three short lines (title
       // aside overlay), and the longest label closes the block on a line of its own.
-      { action: 'sandbox', label: 'Sandbox' },
-      { action: 'physics', label: 'Physics challenges' },
+      { action: 'sandbox', label: 'Sandbox', sub: MENU_MODE_GLOSSES.sandbox },
+      { action: 'physics', label: 'Physics challenges', sub: MENU_MODE_GLOSSES.physics },
     ];
 
     // The decorative legend rail is gone (2026-09-22). It was a 64x787 nine-slice plate whose only
@@ -635,6 +718,10 @@ export const mainMenuScreen = {
         this._render(ctx);
       });
       if (typeof offLoaded === 'function') this._offBus.push(offLoaded);
+      // Row 473: the boot shell hides a moment AFTER this title is already up, so the loading-hidden
+      // receipt is the authoritative retry signal for that in-between window.
+      const offLoadingHidden = this._bindLoadingHidden(ctx);
+      if (typeof offLoadingHidden === 'function') this._offBus.push(offLoadingHidden);
     }
 
     this._render(ctx);
@@ -800,6 +887,8 @@ export const mainMenuScreen = {
 
   onShow(ctx) {
     this._render(ctx);
+    this._shown = true;
+    this._showToken = (this._showToken || 0) + 1;
     this._arrived = false;
     this._ctx = ctx;
     // Words stamp after the hull (kit motion). The plate is already up; the live stage may
@@ -814,8 +903,20 @@ export const mainMenuScreen = {
     }
     this._loadVersion();
     this._startIdleAttract({ ctx, state: ctx && ctx.state, rootEl: refs && refs.root });
+    // Row 473: ask once, on the real title. Usually the boot shell is still up here, so this
+    // returns false and the loading-hidden receipt below is what actually opens the offer.
+    this._maybeOfferFirstLight(ctx);
   },
   onHide() {
+    this._shown = false;
+    this._showToken = (this._showToken || 0) + 1;
+    // Only a dialog this screen opened is ours to dismiss. The pending flag doubles as "the promise
+    // is still live", and the show token makes any late resolution inert.
+    if (this._firstLightPending && this._firstLightConfirm) {
+      this._firstLightPending = null;
+      this._firstLightConfirm = false;
+      try { dismissConfirm(); } catch (e) { /* the session it belonged to is over */ }
+    }
     this._stopIdleAttract();
     // The lamp holds a ResizeObserver and four listeners on the menu; a screen that hides without
     // releasing them leaks one set per mount.
@@ -827,7 +928,92 @@ export const mainMenuScreen = {
     this._render(ctx);
   },
 
+  /** Row 473: the loading shell's completion receipt (loadingPresenter emits it after the overlay
+   *  actually flips to display:none). This is the moment the title is finally unobstructed. */
+  _bindLoadingHidden(ctx) {
+    if (!ctx || !ctx.bus || typeof ctx.bus.on !== 'function') return null;
+    return ctx.bus.on('ui:loadingHidden', () => { this._maybeOfferFirstLight(ctx); });
+  },
+
+  /** The seam the focused test replaces; the shipped route is the kit confirm. */
+  _confirmFirstLight(options) { return confirm(options); },
+
+  /**
+   * Offer the calm first-light bundle once, through the shared confirmation surface.
+   *
+   * Returns true when an offer was opened. The gate is deliberately strict — the menu must be the
+   * current screen, the boot shell must be fully gone, no other dialog may be open, and this menu
+   * instance must not already have an offer pending. "Offered" is recorded BEFORE the words appear,
+   * so a reload while the dialog is open cannot ask a second time.
+   */
+  _maybeOfferFirstLight(ctx) {
+    if (this._shown !== true) return false;
+    if (!menuIsCurrent(ctx)) return false;
+    if (this._firstLightPending) return false;
+    if (isConfirmOpen()) return false;
+    if (bootOverlayBlocksMenu()) return false;
+    const state = ctx && ctx.state;
+    const settings = state && state.settings;
+    if (!shouldOfferFirstLight(settings)) return false;
+
+    // Offered once, including a reload before an answer: the marker is persisted through the
+    // existing generic accessibility subtree before any dialog exists.
+    const access = accessibilityOf(settings);
+    access.firstLightOffered = true;
+    mirrorAccessibility(ctx, settings);
+    publishAccessibilityChange(ctx, 'firstLightOffered', true);
+
+    const token = (this._firstLightToken = (this._firstLightToken || 0) + 1);
+    const shownToken = this._showToken;
+    this._firstLightPending = token;
+    this._firstLightConfirm = true;
+    // The still's drift is a background behaviour; a decision owns the screen while it is open.
+    this._stopIdleAttract();
+
+    let answer;
+    try {
+      answer = this._confirmFirstLight(FIRST_LIGHT_OFFER);
+    } catch (e) {
+      answer = Promise.resolve(false);
+    }
+    Promise.resolve(answer).then((accepted) => {
+      // The pending flag tracks the live promise, so it clears on ANY settle — a superseded dialog
+      // included — not only on a real answer.
+      if (this._firstLightPending === token) {
+        this._firstLightPending = null;
+        this._firstLightConfirm = false;
+      }
+      // Navigated away or disposed while the words were up: no late write to a settings tree the
+      // next screen (or the next run) already owns.
+      if (this._showToken !== shownToken) return;
+      // 'calm' is the only answer that applies the preset: Play (the lamp key), Esc, backdrop,
+      // and an away-dismiss all mean "keep my settings" — the offer stays an offer, not a gate.
+      const settled = accepted === 'calm';
+      if (settled) applyFirstLightPreset(settings, rootElement());
+      // `access` predates the first mirror: the direct-write path replaces settings.accessibility
+      // with a copy, so the declined answer must land on the LIVE subtree or it is lost before
+      // this mirror runs (the sink path keeps the same object, which is why both stay correct).
+      else accessibilityOf(settings).firstLightChoice = 'kept';
+      mirrorAccessibility(ctx, settings);
+      if (settled && settings.video && typeof settings.video === 'object') {
+        laneWriteSetting(state, 'settings.video.motionReduce', settings.video.motionReduce);
+      }
+      // One persistent receipt for the settled choice: main applies it and the save owner writes
+      // the profile, so the answer survives the next launch.
+      publishAccessibilityChange(ctx, 'firstLightChoice', settled ? 'applied' : 'kept');
+      // The drift was stopped for the dialog; the title can breathe again if it still owns the screen.
+      if (this._shown === true && refs && refs.root) {
+        this._startIdleAttract({ ctx, state: ctx && ctx.state, rootEl: refs.root });
+      }
+    });
+    return true;
+  },
+
   dispose() {
+    this._shown = false;
+    this._showToken = (this._showToken || 0) + 1;
+    this._firstLightPending = null;
+    this._firstLightConfirm = false;
     this._stopIdleAttract();
     if (arcRail) { arcRail.dispose(); arcRail = null; }
     if (this._onTabKey && refs && refs.root) refs.root.removeEventListener('keydown', this._onTabKey);

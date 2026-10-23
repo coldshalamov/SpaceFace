@@ -584,3 +584,67 @@ export function maybePromptMotionChoice(settings, root, osReduced) {
   host.appendChild(dialog);
   return true;
 }
+
+// ---------------------------------------------------------------------------------------------------
+// FIRST LIGHT — the calm opening offer on the real title screen (build-map row 473).
+//
+// A stranger's first screen should be able to hand them a legible, still game once, before they have
+// any reason to go looking through Settings. This is an OFFER and never a default: nothing changes
+// until the player accepts, the marker records only that the question was ASKED, and every key it
+// writes stays individually editable in Settings > Access afterwards.
+//
+// It is deliberately separate from the INF-007 motion question above: that one is asked only when
+// the OS requests reduced motion, and its Full/Reduce contract is untouched. A player who says yes
+// here simply gets both — the calmer motion answer AND the rest of the bundle.
+//
+// Scope discipline: this never touches audio levels, bindings, assists, quality settings, UI scale or
+// gameplay numbers, and it adds no simulation state (it is a presentation preference, like its
+// neighbours). A missing marker means "not yet offered", so every existing profile is offered once.
+// ---------------------------------------------------------------------------------------------------
+
+/** The exact opt-in bundle. Frozen: a call site must not hand-tune half of it. */
+export const FIRST_LIGHT_PRESET = Object.freeze({
+  flashReduce: true,
+  highContrast: true,
+  textScale: 1.15,
+  captions: true,
+  captionSize: 'large',
+  captionBackground: true,
+});
+
+/**
+ * True until the first-light offer has been SHOWN once. Only the literal `firstLightOffered === true`
+ * suppresses it — a hand-edited or migrated profile carrying junk must not silently swallow the
+ * offer, and an absent accessibility subtree is simply "not offered yet".
+ */
+export function shouldOfferFirstLight(settings) {
+  const a = settings && settings.accessibility && typeof settings.accessibility === 'object'
+    ? settings.accessibility
+    : null;
+  return !(a && a.firstLightOffered === true);
+}
+
+/**
+ * Apply the first-light bundle and mark it as the player's answer. Returns true when it ran.
+ *
+ * Order is deliberate: recordMotionChoice() first, because it owns the two settled flags and the
+ * settings.video.motionReduce contract every feel/vfx/camera reader polls; then the rest of the
+ * bundle; then one applyAccessibility() pass so the screen answers immediately instead of waiting
+ * for the next `settings:changed` cycle. `target` is an optional document root override (tests).
+ */
+export function applyFirstLightPreset(settings, target) {
+  if (!settings || typeof settings !== 'object') return false;
+  const s = settings;
+  if (!s.accessibility || typeof s.accessibility !== 'object') s.accessibility = {};
+  recordMotionChoice(s, 'reduce', target);
+  const a = s.accessibility;
+  a.flashReduce = FIRST_LIGHT_PRESET.flashReduce;
+  a.highContrast = FIRST_LIGHT_PRESET.highContrast;
+  a.textScale = FIRST_LIGHT_PRESET.textScale;
+  a.captions = FIRST_LIGHT_PRESET.captions;
+  a.captionSize = FIRST_LIGHT_PRESET.captionSize;
+  a.captionBackground = FIRST_LIGHT_PRESET.captionBackground;
+  a.firstLightChoice = 'applied';
+  applyAccessibility(s, target);
+  return true;
+}

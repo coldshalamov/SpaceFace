@@ -3,11 +3,31 @@ import { mountBootRing } from './orrery/bootRing.js';
 import { createLoadingProgressDriver } from './loadingProgressDriver.js';
 import { observeBootWork, createBootWorkAccumulator } from '../core/bootWork.js';
 import { dataState } from './uiPrimitives.js';
+import { NEW_GAME } from '../data/newGameDefaults.js';
 
 const DEFAULT_STAGE = Object.freeze({ id: 'restoring-save', progress: .05,
   label: 'Restoring flight state', detail: 'Rebuilding the current sector and critical visuals' });
 const NO_ART = { updateProgress() {}, start() {}, stop() {}, destroy() {} };
 const NOOP = { show() {}, hide() {}, destroy() {} };
+// Row 473 — the loading shell names where the player is going. Boot stages are not a destination;
+// they are the command deck coming up.
+const BOOT_DESTINATION = 'Command deck';
+// A sector we cannot name still gets friendly words rather than a raw id.
+const UNKNOWN_DESTINATION = 'Uncharted destination';
+// The ordinary Adventure route before its sector is named: the route is known, the place is not yet.
+const ADVENTURE_DESTINATION = 'Adventure';
+// An Adventure embark carries the pilot's picks (name / hull / starter / difficulty). A bare
+// payload is a toy or sandbox launch with no named route, so it gets the generic slate instead of
+// borrowing the Adventure opening's sector name.
+const ADVENTURE_EMBARKS = ['name', 'shipId', 'starter', 'difficulty'];
+// Launch marks that are NOT the Adventure world. `crucibleLaunch` is the one
+// `gameNewOptionsForSandboxConfig` writes for a survival/sparring launch (the setup nests at
+// `crucibleSetup.survivalSetup`); racing and physics ride top-level booleans of their own.
+const SPECIALIZED_ROUTES = Object.freeze({
+  crucibleLaunch: 'Crucible',
+  racingSession: 'Circuits',
+  physicsVenueSession: 'Physics challenges',
+});
 // Longest the flight reveal waits on the opening first draw before lifting the veil anyway.
 export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
 export const FIRST_DRAW_STAGE_LABEL_MS = 3000;
@@ -53,7 +73,146 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   const lockup = overlay.querySelector?.('.boot-lockup') || null;
   const priorLockupDisplay = lockup?.style?.display || '';
   let session = 0;
+  // --- destination slate (row 473) -----------------------------------------------------------------
+  // A separate, transient value: stage label/detail are rewritten by every progress receipt, the
+  // destination is not. `destinationRoute` latches WHAT this launch is (null = the ordinary
+  // Adventure world); once latched, sector/scene refreshes cannot rename it.
+  let destinationText = '';
+  let destinationRoute = null;
+  let destinationEl = null;
+  let ordinarySectorName = '';
+  let ordinarySectorUnnamed = false;
+  let loadPending = false;
+  let loadingSlot = null;
   const visible = () => overlay.style.display !== 'none' && !overlay.classList.contains('hidden');
+
+  /** The one destination span, found in the authored lockup or created beside its label. Reuses the
+   *  shell's own type (`.boot-detail`); no inline layout and no new stylesheet. */
+  function destinationNode() {
+    if (destinationEl) return destinationEl;
+    if (!document || typeof document.createElement !== 'function') return null;
+    const existing = lockup?.querySelector?.('[data-loading-destination]') || null;
+    if (existing) { destinationEl = existing; return destinationEl; }
+    const host = lockup || overlay;
+    if (!host) return null;
+    const node = document.createElement('span');
+    node.className = 'boot-detail';
+    node.setAttribute('data-loading-destination', '');
+    const before = lockup?.querySelector?.('[data-loading-label]') || null;
+    if (before && before.parentNode === host && typeof host.insertBefore === 'function') host.insertBefore(node, before);
+    else host.appendChild(node);
+    destinationEl = node;
+    return destinationEl;
+  }
+  function paintDestination() {
+    const node = destinationNode();
+    if (!node) return;
+    if (node.textContent !== destinationText) node.textContent = destinationText;
+  }
+  function setDestination(route, text) {
+    destinationRoute = route;
+    destinationText = typeof text === 'string' ? text : '';
+    paintDestination();
+  }
+  /** A sector's display name from the live world, tolerating a lane facade / headless state. */
+  function sectorNameFromWorld(sectorId) {
+    if (!sectorId) return '';
+    let sector = null;
+    try { sector = state && state.world && state.world.sectors ? state.world.sectors[sectorId] : null; }
+    catch (_) { sector = null; }
+    const name = sector && (sector.name || sector.label);
+    return typeof name === 'string' && name.trim() ? name.trim() : '';
+  }
+  /** The envelope names its own sector — the slotCardFromEnvelopeData convention, which still reads
+   *  ids the live catalogue no longer knows. Falls back to the current world catalogue. */
+  function sectorNameFromEnvelope(payload) {
+    const data = payload && (payload.data || (payload.envelope && payload.envelope.data));
+    const world = data && data.world && typeof data.world === 'object' ? data.world : null;
+    if (!world) return '';
+    const sectorId = typeof world.currentSectorId === 'string' ? world.currentSectorId : '';
+    if (!sectorId) return '';
+    const sector = world.sectors && typeof world.sectors === 'object' ? world.sectors[sectorId] : null;
+    const name = sector && (sector.name || sector.label);
+    if (typeof name === 'string' && name.trim()) return name.trim();
+    return sectorNameFromWorld(sectorId);
+  }
+  function ordinaryDestinationText() {
+    if (ordinarySectorName) return `Adventure · ${ordinarySectorName}`;
+    return ordinarySectorUnnamed ? UNKNOWN_DESTINATION : ADVENTURE_DESTINATION;
+  }
+  /** Only an ordinary (Adventure) destination is allowed to follow the world. */
+  function refreshOrdinaryDestination(preferredSectorId) {
+    if (destinationRoute !== null) return;
+    const id = preferredSectorId || NEW_GAME.startingSectorId || NEW_GAME.startSectorId;
+    const named = sectorNameFromWorld(id);
+    if (named) { ordinarySectorName = named; ordinarySectorUnnamed = false; }
+    setDestination(null, ordinaryDestinationText());
+  }
+  function resetDestination() {
+    destinationRoute = null;
+    destinationText = '';
+    ordinarySectorName = '';
+    ordinarySectorUnnamed = false;
+    loadPending = false;
+    loadingSlot = null;
+    paintDestination();
+  }
+  /** An Adventure embark names the pilot's picks; a bare payload is a toy/sandbox launch. */
+  function looksLikeAdventureEmbark(opts) {
+    if (!opts || typeof opts !== 'object') return false;
+    return ADVENTURE_EMBARKS.some((key) => opts[key] != null);
+  }
+  function beginNewGame(opts = {}) {
+    // A new launch clears the previous destination: the slate describes THIS run only.
+    ordinarySectorName = '';
+    ordinarySectorUnnamed = false;
+    loadPending = false;
+    loadingSlot = null;
+    destinationRoute = null;
+    const mark = Object.keys(SPECIALIZED_ROUTES).find((key) => opts[key] === true);
+    if (mark) { setDestination(SPECIALIZED_ROUTES[mark], SPECIALIZED_ROUTES[mark]); return; }
+    // A plain Sandbox/toy launch (pendingConfig without a route mark) rides game:new with no
+    // embark picks: it is not the Adventure opening and not one of the named modes, so it reads
+    // the friendly generic slate.
+    if (!looksLikeAdventureEmbark(opts)) { setDestination(null, UNKNOWN_DESTINATION); return; }
+    refreshOrdinaryDestination();
+  }
+  function beginRestore(payload = {}) {
+    ordinarySectorName = '';
+    ordinarySectorUnnamed = false;
+    loadPending = true;
+    loadingSlot = payload && payload.slot != null ? String(payload.slot) : null;
+    setDestination('restore', 'Restoring destination');
+  }
+  function nameRestore(payload = {}) {
+    // Correlate to the most recent game:load: the receipt carries no generation, so the slot is the
+    // only handle that can refuse an envelope prepared for some other restore.
+    if (!loadPending) return;
+    const slot = payload && payload.slot != null ? String(payload.slot) : null;
+    if (loadingSlot != null && slot != null && slot !== loadingSlot) return;
+    loadPending = false;
+    const name = sectorNameFromEnvelope(payload);
+    setDestination('restore', name ? `Continue · ${name}` : 'Restoring destination');
+  }
+  /** game:scenePrepared and loading-time sector:enter refresh ONLY the ordinary Adventure slate. */
+  function refreshSceneDestination(payload = {}) {
+    if (destinationRoute !== null) return;   // a latched mode owns its words
+    if (!visible()) return;
+    if (!eventMatchesCurrentGeneration(payload)) return;
+    refreshOrdinaryDestination();
+  }
+  function nameSectorFromEnter(payload = {}) {
+    if (destinationRoute !== null) return;
+    if (!visible()) return;                  // a background enter must never light the loader
+    const sector = payload && payload.sector;
+    const name = sector && typeof sector.name === 'string' ? sector.name.trim() : '';
+    const id = payload && typeof payload.sectorId === 'string' ? payload.sectorId : '';
+    const resolved = name || sectorNameFromWorld(id);
+    if (resolved) { ordinarySectorName = resolved; ordinarySectorUnnamed = false; }
+    else if (id) { ordinarySectorUnnamed = true; }
+    setDestination(null, ordinaryDestinationText());
+  }
+
   function artwork() {
     if (terminalArt) return terminalArt;
     try {
@@ -149,6 +308,13 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     overlay.setAttribute('aria-busy', 'true'); overlay.dataset.loadingStage = String(stage.id || 'loading');
     if (label) label.textContent = String(stage.label || DEFAULT_STAGE.label);
     if (detail) detail.textContent = String(stage.detail || 'Preparing the playable scene');
+    // Row 473: the initial boot stages are the command deck coming up, not a place in the world.
+    // The discriminator is the same one the mode:changed handler uses for boot stages.
+    if (String(stage.id || '').startsWith('boot-')) {
+      ordinarySectorName = '';
+      ordinarySectorUnnamed = false;
+      setDestination(null, BOOT_DESTINATION);
+    }
     ring?.report(stage, { reset: fresh }); ring?.start();
     if (!ring || !raf) {
       const amount = Math.max(0, Math.min(.997, Number(stage.progress) || 0));
@@ -201,8 +367,18 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     if (hideTimer !== null) clearTimeout(hideTimer);
     hideTimer = setTimeout(() => {
       hideTimer = null;
-      if (overlay.classList.contains('hidden')) overlay.style.display = 'none';
+      // The `hidden` class is added at fade start and persists across repeat hide() calls, so the
+      // completion receipt must be gated on the flip actually happening this time.
+      let flipped = false;
+      if (overlay.classList.contains('hidden')) {
+        flipped = overlay.style.display !== 'none';
+        overlay.style.display = 'none';
+      }
       releaseHoldAfterPresentedFrame();
+      // Row 473: the authoritative "the shell is gone now" signal the title's first-light offer
+      // waits for. Fires inside this timer, so `show`, `showStartupFailure` and `destroy` — which
+      // all clear hideTimer — suppress a stale notification for free.
+      if (flipped) bus.emit('ui:loadingHidden', { mode: state?.mode });
     }, hideDelayMs);
   }
   const frameNow = () => {
@@ -334,6 +510,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     hideTimer = null;
     startupFailure = startupFailureCopy(payload);
     activeStage = null;
+    // Row 473: a failed launch has no destination to promise.
+    resetDestination();
     ring?.stop();
     (terminalArt || NO_ART).stop();
     detachPointer();
@@ -395,6 +573,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
         if (startupFailure) return;
         if (activeStage?.id?.startsWith('boot-')) return; // initial menu is revealed by main after init
         activeStage = null; hide({ completed: false });
+        // Row 473: a cancelled or aborted load leaves no destination slate behind.
+        resetDestination();
       }
     }),
     bus.on('game:startFailed', (payload = {}) => { showStartupFailure(payload); }),
@@ -402,6 +582,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     bus.on('game:load', resetForNewSession),
     bus.on('game:exitToMenu', () => {
       if (clearStartupFailure()) hide({ completed: false });
+      resetDestination();
     }),
     bus.on('save:error', (payload = {}) => {
       if (startupFailure) return;
@@ -421,6 +602,14 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       }
       hide({ completed: false });
     }),
+    // Row 473 — the destination slate. These are its own door: `resetForNewSession` above is a
+    // no-op on the normal path (it only clears a startup failure), so the slate needs its own
+    // listeners. `destroy` drains this same array.
+    bus.on('game:new', (opts = {}) => { beginNewGame(opts && typeof opts === 'object' ? opts : {}); }),
+    bus.on('game:load', (payload = {}) => { beginRestore(payload && typeof payload === 'object' ? payload : {}); }),
+    bus.on('save:envelopePrepared', (payload = {}) => { nameRestore(payload && typeof payload === 'object' ? payload : {}); }),
+    bus.on('game:scenePrepared', (payload = {}) => { refreshSceneDestination(payload && typeof payload === 'object' ? payload : {}); }),
+    bus.on('sector:enter', (payload = {}) => { nameSectorFromEnter(payload && typeof payload === 'object' ? payload : {}); }),
   ];
   if (visible()) {
     // Do not replace boot-modules with restoring-save at the entry -> main handoff.

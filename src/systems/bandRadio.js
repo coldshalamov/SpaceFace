@@ -5,6 +5,8 @@
 // for a matching, root-supplied canonical band:bearingResolved receipt.
 
 import { hash32 } from '../core/rng.js';
+import { weatherForecast } from '../data/seasonalWeather.js';
+import { WEATHER_SECTOR_IDS } from '../data/environmentalMachinery.js';
 import { localizeText } from '../localization/gameLocalization.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
@@ -14,6 +16,7 @@ import {
   BAND_EVENT_KEYS,
   TUNABLE_BAND_CHANNEL_IDS,
   bandSignalStrength,
+  eligibleBandLines,
   resolveLandmarkBleed,
   selectBandLine,
 } from '../data/bandRadio.js';
@@ -136,6 +139,7 @@ export function defaultBandRadioState() {
     proximitySources: {},
     lastLineIdByChannel: {},
     heardLineIds: [],
+    heardEventKeys: [],
     pendingBearingRequest: null,
     numbersReceipt: null,
     pendingBearingAnnouncement: null,
@@ -159,6 +163,7 @@ export function normalizeBandRadioState(value) {
     proximitySources: copyFiniteMap(input.proximitySources),
     lastLineIdByChannel: copyStringMap(input.lastLineIdByChannel),
     heardLineIds: uniqueStrings(input.heardLineIds, 256),
+    heardEventKeys: uniqueStrings(input.heardEventKeys, 128),
     pendingBearingRequest: normalizeBearingRequest(input.pendingBearingRequest),
     numbersReceipt: normalizeBearingReceipt(input.numbersReceipt),
     pendingBearingAnnouncement: normalizeBearingReceipt(input.pendingBearingAnnouncement),
@@ -306,13 +311,40 @@ export const bandRadio = {
       return;
     }
 
+    // A deed key earns one airing: once any line for the key has been heard the
+    // debt is settled and its alternates return to the open rotation.
+    const eventLines = !bleed && tuned ? eligibleBandLines(tuned, {
+      eventKeys: own.eventKeys,
+      reachRep: context.reachRep,
+    }).filter((line) => line.eventKey) : [];
+    const heardKeys = new Set(own.heardEventKeys);
+    for (const line of eventLines) {
+      if (own.heardLineIds.includes(line.id)) heardKeys.add(line.eventKey);
+    }
+    const pendingReports = [];
+    for (const line of eventLines) {
+      if (!heardKeys.has(line.eventKey) && !pendingReports.some((row) => row.eventKey === line.eventKey)) {
+        pendingReports.push(line);
+      }
+    }
+
+    const weatherSector = this.state.world && this.state.world.currentSectorId;
+    if (WEATHER_SECTOR_IDS.has(weatherSector)) {
+      const forecast = weatherForecast(weatherSector, now);
+      if (forecast.id !== own.lastWeatherForecastId && !pendingReports.length
+          && this._say(forecast, own.effectiveChannelId)) {
+        own.lastWeatherForecastId = forecast.id;
+        own.nextLineAtS = now + this._cadenceForSignal(own.signalStrength);
+        return;
+      }
+    }
+
     if (tuned.id === 'numbers_station' && !bleed) {
       const shadowLine = this._numbersShadowLine();
       if (shadowLine) {
         if (!this._say(shadowLine, tuned.id)) return;
         own.lastLineIdByChannel[effectiveKey] = shadowLine.id;
-        if (!own.heardLineIds.includes(shadowLine.id)) own.heardLineIds.push(shadowLine.id);
-        if (own.heardLineIds.length > 256) own.heardLineIds.splice(0, own.heardLineIds.length - 256);
+        this._noteHeard(own, shadowLine);
         own.sequence += 1;
         own.nextLineAtS = now + this._cadenceForSignal(own.signalStrength);
         return;
@@ -335,19 +367,32 @@ export const bandRadio = {
       }
     }
 
+    if (pendingReports.length) {
+      const report = pendingReports[own.sequence % pendingReports.length];
+      if (!this._say(report, tuned.id)) return;
+      own.lastLineIdByChannel[effectiveKey] = report.id;
+      this._noteHeard(own, report);
+      own.sequence += 1;
+      own.nextLineAtS = now + this._cadenceForSignal(own.signalStrength);
+      return;
+    }
+
+    // Once a deed's report has aired, its alternate lines leave the rotation —
+    // the receipt is heard once, then the band moves on.
+    const openEventKeys = own.eventKeys ? { ...own.eventKeys } : {};
+    for (const key of heardKeys) delete openEventKeys[key];
     const source = bleed || tuned;
     const line = bleed
       ? selectLandmarkLine(bleed, this._programSeed(), own.sequence, context.sectorId,
         own.lastLineIdByChannel[effectiveKey])
       : selectBandLine(tuned, {
-        eventKeys: own.eventKeys,
+        eventKeys: openEventKeys,
         reachRep: context.reachRep,
         lastLineId: own.lastLineIdByChannel[effectiveKey],
       }, this._programSeed(), own.sequence, context.sectorId);
     if (!line || !this._say(line, source.id || own.effectiveChannelId)) return;
     own.lastLineIdByChannel[effectiveKey] = line.id;
-    if (!own.heardLineIds.includes(line.id)) own.heardLineIds.push(line.id);
-    if (own.heardLineIds.length > 256) own.heardLineIds.splice(0, own.heardLineIds.length - 256);
+    this._noteHeard(own, line);
     own.sequence += 1;
     own.nextLineAtS = now + this._cadenceForSignal(own.signalStrength);
   },
@@ -575,6 +620,20 @@ export const bandRadio = {
 
   _cadenceForSignal(strength) {
     return BAND_LINE_INTERVAL_S + Math.round((1 - clamp01(strength)) * 10);
+  },
+
+  // The line-id list stays at 256 entries and evicts; the deed key receipt is what the
+  // pending-report gate actually reads, so a long session cannot evict the id and
+  // re-air a report that already settled.
+  _noteHeard(own, line) {
+    if (!line || !line.id) return;
+    if (!own.heardLineIds.includes(line.id)) own.heardLineIds.push(line.id);
+    if (own.heardLineIds.length > 256) own.heardLineIds.splice(0, own.heardLineIds.length - 256);
+    const key = line.eventKey;
+    if (key && !own.heardEventKeys.includes(key)) {
+      own.heardEventKeys.push(key);
+      if (own.heardEventKeys.length > 128) own.heardEventKeys.splice(0, own.heardEventKeys.length - 128);
+    }
   },
 
   _beginBearingRequest(now) {

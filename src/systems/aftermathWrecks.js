@@ -2524,6 +2524,25 @@ export const aftermathWrecks = {
       roster: [],
     });
     own.ecology[field.fieldId] = field;
+    if (source.cause === 'territory_flip') {
+      // Offscreen war casualties are real aftermath, rather than an empty ecology anchor.
+      // Use the normal marker/save/salvage pipeline; duplicate source receipts do not refill it.
+      for (let index = 0; index < 3; index++) {
+        const victimId = `front:${source.fieldId}:${field.bornAt}:${index}`;
+        const corpse = { id: victimId, type: 'ship', radius: 10 + index * 2,
+          mass: 30 + index * 10, pos: { x: pos.x + index * 48, z: pos.z + (index % 2 ? 38 : -38) },
+          factionId: source.losingFactionId || null,
+          data: { defId: index === 2 ? 'ship_mule' : 'ship_wasp',
+            name: `${source.losingFactionId || 'Retreating'} front casualty ${index + 1}` } };
+        const marker = makeMarker(state, { id: victimId, sectorId: source.sectorId,
+          victimClass: 'military', type: 'ship' }, corpse);
+        if (!marker) continue;
+        marker.markerId = `aft_front_${hash32(seedOf(state), victimId).toString(36)}`;
+        marker.source = 'territory_battle';
+        rememberMarker(state, this.bus, marker, null, { publishNews: false });
+      }
+      if (state.world?.currentSectorId === source.sectorId) this._spawnForSector(source.sectorId);
+    }
     this._populateField(field);
     return field;
   },

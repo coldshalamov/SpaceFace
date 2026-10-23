@@ -25,6 +25,9 @@ import { registerMachineryReconciliation, unregisterMachineryReconciliation, inv
 //     never touches player state. Economy impact is via the event bus.
 
 import { anvilTrafficMethods } from './anvilWork.js';
+import { materializeEndingWorldPresence } from './endingWorldPresence.js';
+import { installCaptainMemory, stampCaptainIdentity, normalizeCaptainRoster, applyCaptainRouteMemory } from './captainMemory.js';
+import { installColdburnRey, normalizeColdburnRey } from './coldburnRey.js';
 import { raceLeaseActive } from './racingSteer.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
@@ -86,6 +89,8 @@ import {
   CINDER_RUN_COURIER_CONTACT_ID,
   isPriorityCourierItinerary,
   isPassengerLinerItinerary,
+  passengerLinerFlyingTo,
+  carryPassengerLinerLastOutcome,
   pickNamedLaneContact,
 } from '../data/laneContacts.js';
 import { ASTEROIDS } from '../data/mining.js';
@@ -1924,6 +1929,8 @@ export const traffic = {
   },
 
   destroy() {
+    this._captainMemory?.destroy();
+    this._coldburnRey?.destroy();
     clearCeresWorkfleetControls(this.state);
     unregisterMachineryReconciliation(this.state, this);
   },
@@ -1936,6 +1943,8 @@ export const traffic = {
     this._registry = ctx.registry || null;
     // live freighter records: id -> {targetId, waitT, nextTradeT, manifest, dockSeq}
     this._ensureState();
+    this._captainMemory = installCaptainMemory(this);
+    this._coldburnRey = installColdburnRey(this);
     this._wellDragRegroup = new Map();
     this._wellDragSeen = new Set();
     this._active = []; // entity ids we spawned (for cleanup)
@@ -1978,6 +1987,8 @@ export const traffic = {
     }
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
+    this.bus.on('endgame:chosen', () => materializeEndingWorldPresence(this.state, this.helpers, this._active));
+    this.bus.on('save:loaded', () => materializeEndingWorldPresence(this.state, this.helpers, this._active));
     // Census arm: ambient traffic materialization lands inside the sector cook
     // deterministically (the handler falls back to world.currentSectorId itself). The cook
     // drives the chunked twin across the census's slice clock — the emit listener drains
@@ -2275,6 +2286,8 @@ export const traffic = {
       this._emittedEpoch = Number.isFinite(p.enterEpoch) ? p.enterEpoch : null;
     }
     const sectorId = sector.id || requestedSectorId;
+    materializeEndingWorldPresence(this.state, this.helpers, this._active);
+    this._coldburnRey?.materialize();
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
       this._retireLegacyCeresTraffic();
       this._materializeCeresActivityCast(sector);
@@ -3811,6 +3824,7 @@ export const traffic = {
     if (ent.data.worldSiteTrafficHookId || ent.data.claimTravelTrafficHookId) return; // infrastructure owns this slot
     const spec = this._buildJobSpec(role, ent, originStation, target, stations, sectorId);
     if (!spec) return;
+    applyCaptainRouteMemory(this.state, ent, spec);
     const jobId = assign(ent, spec);
     if (jobId && (role === 'miner' || role === 'ore_carrier' || occupationalJobKind(role) === 'miner')) {
       // A commissioned barge departs empty. Its real cargo is created only when a materialized work
@@ -4622,6 +4636,7 @@ export const traffic = {
       : itinerary.originStationId;
     const next = this._newPassengerLinerItinerary(entity, nextOrigin, nextDestination, itinerary.legSeq + 1);
     if (!next) return false;
+    carryPassengerLinerLastOutcome(itinerary, next);
     entity.data.itinerary = next;
     const origin = this._stationForPriorityCourier(stations, nextOrigin);
     rec.targetId = origin ? origin.id : rec.targetId;
@@ -5275,6 +5290,7 @@ export const traffic = {
       if (!ent.data.trafficLabel) ent.data.trafficLabel = 'Sightseer';
     }
     if (ent.data.worldRecordId) {
+      stampCaptainIdentity(this.state, ent);
       this._indexWorldRecordId(ent);
       return;
     }
@@ -5287,6 +5303,7 @@ export const traffic = {
     ent.data.identityKey = key;
     ent.data.durable = true;
     ent.data.recordCreatedTick = deferredEnterTick(this.state) | 0;
+    stampCaptainIdentity(this.state, ent);
     this._indexWorldRecordId(ent);
   },
 
@@ -5653,6 +5670,7 @@ export const traffic = {
     if (state.mode !== 'flight') return;
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     if (raceLeaseActive(state)) return;
+    this._coldburnRey?.update(dt);
     ensureActivityClassified(state);
     this._ensureState();
     if (state.world && state.world.currentSectorId === 'sector_pallas_drift') {
@@ -13193,7 +13211,7 @@ export const traffic = {
     if (passengerItinerary && (rec && rec.passengerLinerService === PASSENGER_LINER_SERVICE.id
       || this._passengerLinerIdIsSuspended(passengerItinerary.worldRecordId))) {
       if (rec) {
-        this._settlePassengerLinerLeg(ent, rec, passengerItinerary, 'LOST', null);
+        this._settlePassengerLinerLeg(ent, rec, passengerItinerary, 'LOST', passengerLinerFlyingTo(passengerItinerary));
         this.state.traffic.passengerLinerSuspendedIds = compactStableIds([
           ...(this.state.traffic.passengerLinerSuspendedIds || []), passengerItinerary.worldRecordId,
         ], PASSENGER_LINER_SUSPENSION_CAP);
@@ -13605,6 +13623,10 @@ export const traffic = {
     const heliosFreightTallies = normalizeHeliosFreightTallyList(this.state.traffic.heliosFreightTallies);
     return {
       schema: CERES_MINER_HAULER_SAVE_SCHEMA,
+      ...(this.state.traffic.captainRoster?.length
+        ? { captainRoster: normalizeCaptainRoster(this.state.traffic.captainRoster) } : {}),
+      ...(this.state.traffic.coldburnRey
+        ? { coldburnRey: normalizeColdburnRey(this.state.traffic.coldburnRey) } : {}),
       ...(this.state.traffic.depotServices?.length
         ? { depotServices: normalizeDepotServices(this.state.traffic.depotServices) } : {}),
       ceresMinerHaulerHandoff: normalizeCeresMinerHaulerHandoff(
@@ -13659,6 +13681,12 @@ export const traffic = {
     this._depotWatchRequested = new Set();
     yield 'traffic-releases';
     const depotServices = normalizeDepotServices(data?.depotServices);
+    const captainRoster = normalizeCaptainRoster(data?.captainRoster);
+    if (captainRoster.length) this.state.traffic.captainRoster = captainRoster;
+    else delete this.state.traffic.captainRoster;
+    const coldburnRey = normalizeColdburnRey(data?.coldburnRey);
+    if (coldburnRey) this.state.traffic.coldburnRey = coldburnRey;
+    else delete this.state.traffic.coldburnRey;
     if (depotServices.length) this.state.traffic.depotServices = depotServices;
     else delete this.state.traffic.depotServices;
     this.state.traffic.ceresMinerHaulerHandoff = data

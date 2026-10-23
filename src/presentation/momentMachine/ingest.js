@@ -229,8 +229,8 @@ export function fromAdventureTape(recording) {
       tick: absolute,
       simTime: absolute / stream.tickRate,
       kind,
-      actors: [],
-      position: null,
+      actors: Array.isArray(mark.actors) ? mark.actors : [],
+      position: mark.position || null,
       payload: { label: typeof mark.label === 'string' ? mark.label.slice(0, 80) : '' },
       source: 'tape',
     });

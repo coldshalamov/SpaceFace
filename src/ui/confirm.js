@@ -22,6 +22,9 @@
 import { planConfirmCopy } from './kit/motion.js';
 
 let _openResolver = null;   // tracks the currently-open dialog's resolver so only one is live at a time
+// The value a live dialog resolves on an "away" dismiss (dismissConfirm/Esc/backdrop when a
+// call site overrides dismissValue) — stored beside the resolver so dismissConfirm can honor it.
+let _openDismissValue = false;
 // True while the live confirm chain owns body.ui-modal-open (vs. a screen/dock session).
 // Inherited across supersession so B does not steal teardown rights from a screen-owned class.
 let _confirmOwnsModalOpen = false;
@@ -91,6 +94,8 @@ function tryFocusActiveScreen() {
  * @param {string} [opts.confirmLabel='Confirm']
  * @param {string} [opts.cancelLabel='Cancel']
  * @param {boolean} [opts.danger=false] - renders the confirm button + title in the danger color
+ * @param {*}      [opts.cancelValue=false] — resolved on the cancel key (Esc keeps dismissValue)
+ * @param {*}      [opts.dismissValue]      — resolved on Esc/backdrop/external dismiss; defaults to cancelValue
  * @returns {Promise<boolean>}
  */
 export function confirm(opts) {
@@ -100,6 +105,10 @@ export function confirm(opts) {
   // when the first still holds ui-modal-open during its delayed close cleanup.
   const wasConfirmOpen = !!_openResolver;
   if (_openResolver) { const r = _openResolver; _openResolver = null; r(false); }
+  // A call site may flip which verb is "the offer": First Light's safe path is Play, so the calm
+  // preset rides the cancel key and an away-dismiss means "keep my settings", not "calm me down".
+  const cancelValue = opts.cancelValue === undefined ? false : opts.cancelValue;
+  const dismissValue = opts.dismissValue === undefined ? cancelValue : opts.dismissValue;
 
   const root = getRoot();
   const token = Symbol('sf-confirm');
@@ -195,7 +204,7 @@ export function confirm(opts) {
   let _resolve;
   const promise = new Promise((res) => { _resolve = res; });
   function onBackdropClick(ev) {
-    if (ev.target === root) close(false);
+    if (ev.target === root) close(dismissValue);
   }
   const close = (v) => {
     if (settled) return;
@@ -235,17 +244,18 @@ export function confirm(opts) {
     }, 160);
   };
   _openResolver = close;
+  _openDismissValue = dismissValue;
 
   okBtn.addEventListener('click', () => close(true));
-  cancelBtn.addEventListener('click', () => close(false));
+  cancelBtn.addEventListener('click', () => close(cancelValue));
   // backdrop click (on the root, not the dialog) cancels
   root.addEventListener('click', onBackdropClick);
   // Esc cancels. Enter follows the focused button so danger dialogs can default safely to Cancel.
   dialog.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(false); }
+    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(dismissValue); }
     else if (ev.key === 'Enter') {
       if (document.activeElement === okBtn) { ev.preventDefault(); ev.stopPropagation(); close(true); }
-      else if (document.activeElement === cancelBtn) { ev.preventDefault(); ev.stopPropagation(); close(false); }
+      else if (document.activeElement === cancelBtn) { ev.preventDefault(); ev.stopPropagation(); close(cancelValue); }
     }
     else if (ev.key === 'Tab') {
       ev.preventDefault();
@@ -275,7 +285,7 @@ export function dismissConfirm() {
   if (!close) return false;
   const root = confirmRoot();
   if (root && root.style) root.style.pointerEvents = 'none';
-  close(false);
+  close(_openDismissValue);
   return true;
 }
 

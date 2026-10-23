@@ -3,6 +3,7 @@ import { el } from './kit/index.js';
 import { RACE_LEVELS } from '../data/raceLevels.js';
 import { CUP_HEATS, RACING_DIFFICULTIES, RACING_RIVALS, readRacingCareer,
   racingRecognitionStatus } from '../systems/racingCareer.js';
+import { racingTakedownReceipts } from '../missions/racingOpponents.js';
 
 export function renderRacingRecognition(storage) {
   const career = readRacingCareer(storage), section = el('section', 'race-board-result dp-glass');
@@ -37,6 +38,10 @@ export function renderRacingRecognition(storage) {
       const row = career.cups[difficulty.id];
       section.appendChild(el('p', 'k-sentence', `${row.medal} · ${difficulty.name} cup · best ${row.points}/18 · ${row.finishes} completed.`));
     }
+  }
+  for (const row of racingTakedownReceipts()) {
+    section.appendChild(el('p', 'k-sentence',
+      `Takedown · ${row.name} lost ${Number(row.lostS).toFixed(2)}s in the ${row.shutter}.`));
   }
   return section;
 }

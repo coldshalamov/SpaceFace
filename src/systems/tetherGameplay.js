@@ -15,6 +15,7 @@ import {
   stabilizeMasslineSelection,
 } from '../combat/masslineTargetScoring.js';
 import { automaticMasslineBreakAllowed, resolveWinchBrace, WINCH_BRACE } from '../combat/attachments.js';
+import { lineThrowTierForBody } from '../data/lineRating.js'; // row 483 Line-rating throw gate
 import { stepLatchRepair } from '../combat/latchRepair.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { occupantGenerationOf } from '../core/entity.js';
@@ -35,6 +36,12 @@ import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from './massSeed.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { lineSweepContact } from './masslineImpacts.js';
+import {
+  lineClassForIndex,
+  lineClassForTonnage,
+  normalizeLineProgression,
+  stampLineRecord,
+} from '../data/lineProgression.js';
 
 import { createCadenceWinch, stepCadenceWinch, readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
 // FB-013 — the copy owner for first-use lines. Pure data (no DOM, no Three.js), the same module
@@ -114,6 +121,11 @@ const NPC_ACE_BRIDLE_CUT_PHASES = new Set([
   'engine_flare', 'strike', 'commit', 'control', 'anchor_hold', 'broadside_fire', 'screen_hold', 'fire_window',
 ]);
 const STRAIN_EVENT_INTERVAL_S = 0.2;
+const LINE_OVERCLASS_HEAT_S = 7;
+const LINE_OVERCLASS_TURN_MIN = 0.45;
+const LINE_OVERCLASS_REEL_MIN = 0.28;
+const LINE_OVERCLASS_SNAP_GRACE_S = 2.5;
+const LINE_EXACT_MASS_T = 12.4;
 const RELATCH_COOLDOWN_S = 0.25;   // after cut/break — prevents same-press ghost re-latches
 const TAP_CUT_DELAY_S = 0.22;       // legacy direct-action path: hold becomes reel, tap becomes cut
 const CAPTURE_SLACK_S = 0.1;
@@ -235,6 +247,7 @@ export const tetherGameplay = {
     this._sweepCommitScratch = null;
     this._snag = null;
     this._snagMirror = null;
+    this._lineHold = null;
     this._snagScratch = [];
     this._snagQueryCenter = { x: 0, z: 0 };
     this._bridleAdoptionPending = true;
@@ -492,6 +505,20 @@ export const tetherGameplay = {
     }
 
     if (this._active) {
+      // Row 484 ROCK-FLAIL: a second catch while the Line is already thrown never reaches the
+      // acquisition path below, so the per-owner limit cannot deny it there. Offer the aimed
+      // body to rockCore's flail chain directly; an accepted link latched flail-side returns.
+      if (actions && actions.tetherFire && this.bus && typeof this.bus.emit === 'function') {
+        const second = state.entities.get(state.masslineAcquisition?.selected?.targetId);
+        if (second && second.id !== this._active.targetId) {
+          const offer = { targetId: second.id, ownerId: player.id, accepted: false };
+          this.bus.emit('massline:flailOffer', offer);
+          if (offer.accepted === true) {
+            this.bus.emit('tether:latched', { attachmentId: null, targetId: second.id, flail: true });
+            return;
+          }
+        }
+      }
       this._clearAcquisitionPreview(state);
       // Liveness belt-and-braces on the gameplay side: if the target vanished this tick and the
       // service sweep hasn't caught it yet, force the cut ourselves rather than orbit a ghost.
@@ -689,6 +716,18 @@ export const tetherGameplay = {
       ...attachWorlds,
     });
     if (!result || !result.ok || !result.attachment) {
+      // Row 484 ROCK-FLAIL: a second catch past the line's per-owner limit is offered to the
+      // flail chain before it denies — chained wrecks on the Line ARE the endgame weapon.
+      // rockCore owns the chain and stamps offer.accepted when the link takes.
+      if (result && result.reason === 'owner_attachment_limit'
+          && def && def.massline && target && target.id != null) {
+        const offer = { targetId: target.id, ownerId: player.id, accepted: false };
+        this.bus.emit('massline:flailOffer', offer);
+        if (offer.accepted === true) {
+          this.bus.emit('tether:latched', { attachmentId: null, targetId: target.id, flail: true });
+          return;
+        }
+      }
       // Passthrough of the attachment authority's existing result.reason (e.g. owner_attachment_limit).
       this.bus.emit('tether:latchDenied', {
         reason: (result && result.reason) || 'create_failed',
@@ -1676,21 +1715,30 @@ export const tetherGameplay = {
     const def = attachmentDef(combatKernel(this), attachment.defId);
     if (!def) return { changed: false, reason: 'unknown_attachment_def', attachment };
     const policy = typeof attachments.reelPolicy === 'function' ? attachments.reelPolicy(attachment.id) : null;
-    const reelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
+    // LINE-03/04 (rows 498–499): an over-class hold strains the line — the winch reels
+    // slower, commanded authority weakens, and the strained cable reads its break
+    // threshold early. Factors come from the lineProgression bag (1 when under class).
+    const strain = state && state.lineProgression ? state.lineProgression : null;
+    const baseReelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
+    const reelRate = baseReelRate * (Number.isFinite(strain && strain.overClassReelFactor) ? strain.overClassReelFactor : 1);
     const maxStep = positive(reelRate, 0) * Math.max(0, finite(dt));
     if (!(maxStep > 0)) return { changed: false, reason: 'reel_unavailable', attachment };
     const minLength = positive(def.minLength, 0);
     const maxLength = positive(policy && policy.maxLength, positive(def.maxLength, Infinity));
     const before = finite(attachment.restLength);
-    const maxTension = positive(policy && policy.break && policy.break.maxTension, Infinity);
+    const snapTensionFactor = Number.isFinite(strain && strain.overClassSnapTensionFactor) ? strain.overClassSnapTensionFactor : 1;
+    const maxTension = positive(policy && policy.break && policy.break.maxTension, Infinity) / Math.max(1e-6, snapTensionFactor);
     const automaticBreakAllowed = automaticMasslineBreakAllowed(def, player, target);
     const normalized = options && options.normalizedAxis === true;
     const runtime = this._ensureCadenceRuntime(state, attachment.id);
     let proposal = null, requested;
     if (normalized) {
       const command = state.input && state.input.actions && state.input.actions.massline;
+      // Over-class strain also costs commanded authority: the winch answers the stick
+      // weakly while the load is above the Line's class ceiling.
+      const turnFactor = Number.isFinite(strain && strain.overClassTurnFactor) ? strain.overClassTurnFactor : 1;
       proposal = stepCadenceWinch(runtime.winch, {
-        dt, axis: reelDelta, restLength: before, minLength, maxLength, reelRate,
+        dt, axis: reelDelta * turnFactor, restLength: before, minLength, maxLength, reelRate,
         tension: finite(attachment.lastTension), maxTension, automaticBreakAllowed,
         pair: readCadencePair(player, target, before),
         orbit: !!(command && command.lineControl && Math.abs(finite(command.orbitDirection)) > 0.08),
@@ -3170,6 +3218,11 @@ function buildAcquisitionSnapshot(host, player, def, state, intent, admissionSou
     isObstructed: (entity) => denialById.get(entity.id) === 'blocked',
     ownershipOf: (entity) => masslineScoringOwnership(entity, player, state),
     reachAllowanceOf: (entity) => Math.max(0, Number(entity && entity.radius) || 0),
+    // Row 483: the Line rating gates which body classes the massline can move. When rockCore
+    // has published a tier, over-class bodies score 'immovable'; absent the owner the gate
+    // is inert (legacy behavior preserved).
+    lineTier: Number.isFinite(state?.rockCore?.tier) ? state.rockCore.tier : null,
+    throwTierOf: lineThrowTierForBody,
   });
   return { ranked, byId, context, intent, aim, maxLength, denial: null, hostileContextTargetId };
 }
@@ -3303,7 +3356,11 @@ export function acquisitionDenialReason(entity, playerId) {
   const siteRole = entity.data?.role;
   if (siteRole === 'world_site_component' || siteRole === 'world_site_collision') return 'site-machinery';
   if (entity.data?.masslineTetherable === false || entity.flags?.masslineTetherable === false) return 'not-tetherable';
-  if (TRANSIENT_NON_TETHERABLE_TYPES.has(entity.type)) return 'not-tetherable';
+  // The mirror of isAttachable's gates includes its explicit-flag branch (AL-HF-07): a body the
+  // publish-eligibility path admits — the L torpedo — must never be quoted as not-tetherable.
+  const explicitlyTetherable = entity.data?.masslineTetherable === true
+    || entity.flags?.masslineTetherable === true;
+  if (!explicitlyTetherable && TRANSIENT_NON_TETHERABLE_TYPES.has(entity.type)) return 'not-tetherable';
   return 'target-lost';
 }
 

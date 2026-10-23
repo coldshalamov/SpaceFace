@@ -390,3 +390,22 @@ export function resolveRouteRibbon(input = {}) {
     actions,
   });
 }
+
+function routeCrossesSectors(route) {
+  const legs = route && Array.isArray(route.legs) ? route.legs : [];
+  const sectors = new Set();
+  for (const leg of legs) {
+    if (!leg) continue;
+    if (leg.from) sectors.add(leg.from);
+    if (leg.to) sectors.add(leg.to);
+  }
+  return sectors.size >= 2;
+}
+
+/** One line for a plotted, not-yet-engaged cross-sector route. Empty when there is nothing to teach. */
+export function plottedRouteEngageTeach(route, { engaged = false, mapHome = 'Star Map', mapLabel = '' } = {}) {
+  if (engaged || !routeCrossesSectors(route)) return '';
+  const where = String(mapHome || 'Star Map');
+  const key = String(mapLabel || '').trim();
+  return key ? `Engage on the ${where} ${key}.` : `Engage on the ${where}.`;
+}

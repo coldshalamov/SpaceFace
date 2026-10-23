@@ -2,6 +2,7 @@
 import { CAMPAIGN_BEATS, ENDINGS } from './campaignData.js';
 import { stationContactCounterValue } from '../../data/stationContacts.js';
 import { spineGreeting } from './storySpine.js';
+import { contactDeedMemory } from '../../data/contactDeedMemory.js';
 
 export const EMBODIED_DIALOGUE_ID = 'campaign47a.embodiedDialogue.v2';
 export const EMBODIED_DIALOGUE_SCHEMA_VERSION = 2;
@@ -117,6 +118,10 @@ export function depthContactAvailable(cardEntry, state = {}) {
 export function depthContactsForStation(stationId, state = {}) {
   return DEPTH_PROGRAM_CONTACTS.filter((entry) => entry.stationHints.includes(stationId) && depthContactAvailable(entry, state))
     .map((entry) => {
+      const memory = contactDeedMemory(entry.id, state.player?.stationContactCounters);
+      if (memory?.value && !['dorin.trust', 'kell.cover'].includes(memory.trackerId)) {
+        return { ...entry, blurb: memory.opener, memoryBand: memory.band, memoryGlyph: memory.glyph };
+      }
       const greeting = witnessSeamGreeting(entry.id, state);
       // G2: the two Witness Run contacts greet you by what you actually did — differently per
       // branch, and Kell's greeting erodes with his cover counter. Null keeps the authored blurb.

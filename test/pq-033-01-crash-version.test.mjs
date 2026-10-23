@@ -15,6 +15,7 @@ import vm from 'node:vm';
 import { CREDITS } from '../src/data/credits.js';
 import {
   leftoverBuildToken,
+  leftoverVersionDisplay,
   leftoverVersionLabel,
   leftoverVersionToken,
   loadLeftoverVersionPayload,
@@ -31,6 +32,7 @@ const autoUpdate = realRequire('./autoUpdate.cjs');
 const leftoverPkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const leftoverVersion = leftoverVersionToken(leftoverPkg);
 const leftoverLabel = leftoverVersionLabel(leftoverPkg);
+const leftoverDisplay = leftoverVersionDisplay(leftoverPkg);
 
 function emitter(base = {}) {
   const listeners = new Map();
@@ -382,9 +384,11 @@ test('pause copy includes leftover version', async () => {
     assert.ok(versionNode, 'pause must paint leftover version fine print');
     const target = versionNode.querySelector('span') || versionNode;
     const painted = await paintLeftoverVersion(target);
-    assert.equal(painted, leftoverLabel);
+    // Player-facing pause text is the display form — identical to the diagnostic label
+    // except the prerelease BETA tag (O23).
+    assert.equal(painted, leftoverDisplay);
     assert.match(versionNode.textContent, new RegExp('SpaceFace v' + leftoverVersion.replace(/\./g, '\\.')));
-    assert.equal(versionNode.textContent, leftoverLabel);
+    assert.equal(versionNode.textContent, leftoverDisplay);
     console.log('PQ-033.01 pause: ' + versionNode.textContent);
   } finally {
     dom.restore();
@@ -715,7 +719,7 @@ test('version paints from bundled credits plus the release receipt on the packag
 
     const versionNode = root.querySelector('[data-role="version"]');
     assert.ok(versionNode, 'pause still paints the version fine print');
-    assert.equal(versionNode.textContent, leftoverLabel);
+    assert.equal(versionNode.textContent, leftoverDisplay);
     assert.deepEqual(fetchedUrls, ['spaceface-release-build.json'],
       'the only fetch is the build receipt at the web root — never /package.json');
     console.log('PQ-033.01 packaged route: pause version = "' + versionNode.textContent + '"');

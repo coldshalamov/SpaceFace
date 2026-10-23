@@ -88,7 +88,8 @@ test('every defId the catalog names is a real module, and the recipe is honest',
   for (const defId of SURVIVAL_EVOLUTION_DEF_IDS) {
     assert.ok(MODULE_BY_ID.has(defId), `${defId} resolves to a module def`);
   }
-  assert.equal(SURVIVAL_EVOLUTIONS.length, 1, 'v1 ships exactly the one authored synthesis');
+  assert.ok(SURVIVAL_EVOLUTIONS.length >= 10, 'the synthesis shelf holds at least ten named trades');
+  assert.equal(SURVIVAL_EVOLUTIONS.filter((row) => row.id === 'storm_carom').length, 1);
 });
 
 test('the offer exists exactly when the build holds every part — fitted or in the hold', () => {

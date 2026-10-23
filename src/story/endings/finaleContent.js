@@ -1,6 +1,7 @@
 // Authored transmission scripts, not generated quest summaries. No gameplay or renderer imports.
 // Channels match story.js: comms:popup / graffiti:show / hud:phase.
 import { FACTION_META } from '../../data/factions.js';
+import { castLastCall } from '../../data/contactDeedMemory.js';
 import { freeze, integerText as n, text } from './value.js';
 
 const comms = (sender, line, delayS = 12, note = null) => ({
@@ -266,7 +267,8 @@ export function compileFinaleContent(id, facts) {
     subtitle: def.subtitle,
     // Insert the written aftermath before the last human/radio line. The terminal voice keeps the
     // final word, while the whole epilogue reaches existing comms/log consumers without new UI.
-    beats: [...def.beats.slice(0, -1), ...def.epilogue.map((line, i) =>
+    beats: [...def.beats.slice(0, -1), ...castLastCall(facts.contactCounters).map(entry =>
+      comms(`LAST CALL — ${entry.sender}`, entry.text, 14)), ...def.epilogue.map((line, i) =>
       comms(`CAPTAIN’S LOG — AFTERWORD ${i + 1}`, line, 14)), def.beats.at(-1)].map((b, i) => {
       const resolved = b.kind === 'evidence' ? { ...slots[b.slot](), delayS: b.delayS, evidenceSlot: b.slot } : { ...b };
       // Every displayed comm is sized for reading; long ledger inserts hold the one-voice floor.

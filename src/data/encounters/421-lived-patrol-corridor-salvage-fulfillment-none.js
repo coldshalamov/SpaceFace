@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_patrol_corridor_salvage_fulfillment_none",
   "title": "CASKET ON THE PATROL CORRIDOR",
   "factionId": "faction_fulfillment",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Secure the piece",
-      "playerLine": "I will secure the casket before it hits the lane."
+      "label": "Relay the casket past both hulls",
+      "playerLine": "I carry the casket past your hull, then the far one — in that order — and let it rest."
     },
     {
       "id": "b",
-      "label": "Mark the owner",
-      "playerLine": "Put the last owner on record before anyone cuts metal."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, DISPATCH — send the relief to Patrol Corridor instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the wreck",
-      "playerLine": "I will not claim it. Leave the casket at patrol corridor."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, DISPATCH — my hull is leaving Patrol Corridor."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "CASKET",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "DISPATCH: The casket came loose at patrol corridor. We have not called it scrap.",
+      "line": "DISPATCH: The casket came loose at patrol corridor. We have not called it scrap. — CASKET ON THE PATROL CORRIDOR.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "Their salvage clamp has one tooth bent toward the wreck.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "DISPATCH tags loose mass before anyone brings a torch.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The casket has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Full burn changes the distance, not how patrol corridor sounds.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "DISPATCH: Holding. The count finishes when it finishes.",
+      "line": "DISPATCH: Carry the casket past our hull, then the far hull, in that order. Release and let it rest. — CASKET ON THE PATROL CORRIDOR.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +142,91 @@ const spec = {
       "windowS": 56,
       "motion": "face",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Piece secured. The cut starts after the ownership mark.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_patrol_corridor_salvage_fulfillment_none:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "DISPATCH: Time ran out on the work ask — CASKET ON THE PATROL CORRIDOR. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "displaced",
+          "dist": 120
+        },
+        {
+          "kind": "near",
+          "subject": "prop",
+          "of": "hull_0",
+          "dist": 60
+        },
+        {
+          "kind": "near",
+          "subject": "prop",
+          "of": "hull_1",
+          "dist": 60
+        },
+        {
+          "kind": "released"
+        },
+        {
+          "kind": "settled",
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "DISPATCH: Time ran out on the work ask — CASKET ON THE PATROL CORRIDOR. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "DISPATCH: Time ran out on the work ask — CASKET ON THE PATROL CORRIDOR. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 54,
       "reason": "lived_patrol_corridor_salvage_fulfillment_none",
       "next": "rep_a"
     },
@@ -168,24 +239,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_fulfillment",
+      "delta": 3,
+      "reason": "lived_patrol_corridor_salvage_fulfillment_none:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Owner marked. DISPATCH kept the saws cold for one shift.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_fulfillment",
-      "delta": 2,
-      "reason": "lived_patrol_corridor_salvage_fulfillment_none",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +266,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left it. The casket remains loose at patrol corridor.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_fulfillment",
-      "delta": -1,
-      "reason": "lived_patrol_corridor_salvage_fulfillment_none",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +324,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Secure the piece",
-      "playerLine": "I will secure the casket before it hits the lane."
+      "label": "Relay the casket past both hulls",
+      "playerLine": "I carry the casket past your hull, then the far one — in that order — and let it rest."
     },
     {
       "id": "b",
-      "label": "Mark the owner",
-      "playerLine": "Put the last owner on record before anyone cuts metal."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, DISPATCH — send the relief to Patrol Corridor instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the wreck",
-      "playerLine": "I will not claim it. Leave the casket at patrol corridor."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, DISPATCH — my hull is leaving Patrol Corridor."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Piece secured. The cut starts after the ownership mark.",
-    "b": "Owner marked. DISPATCH kept the saws cold for one shift.",
-    "c": "You left it. The casket remains loose at patrol corridor."
+    "a": "The casket passed both hulls in order and rests loose at Patrol Corridor. — CASKET ON THE PATROL CORRIDOR.",
+    "b": "24 cr funded the relief call — DISPATCH sends the shift at Patrol Corridor on your credit. — CASKET ON THE PATROL CORRIDOR.",
+    "c": "You left Patrol Corridor. The work stayed with the crew that owned it. — CASKET ON THE PATROL CORRIDOR."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "relay",
+    "hasProp": true
   }
 });

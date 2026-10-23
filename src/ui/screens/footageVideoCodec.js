@@ -70,7 +70,9 @@ export function footageVideoCodecRuntime() {
   };
 
   self.onmessage = async ({ data }) => {
-    if (!data || failed) return;
+    // A transferred VideoFrame belongs to this worker once the message is delivered —
+    // dropping it on an early return leaves it unclosed and logs the host's GC warning.
+    if (!data || failed) { safeClose(data?.frame); return; }
     if (data.kind === 'dispose') {
       try { await encoder?.flush?.(); } catch { /* disposal must remain bounded */ }
       try { encoder?.close?.(); } catch { /* best effort */ }
@@ -119,7 +121,7 @@ export function footageVideoCodecRuntime() {
       } catch (error) { fail(error); }
       return;
     }
-    if (data.kind !== 'encode' || !encoder) return;
+    if (data.kind !== 'encode' || !encoder) { safeClose(data.frame); return; }
     const frame = data.frame;
     if (!frame) {
       self.postMessage({ kind: 'encode-error', id: data.id, error: 'missing VideoFrame' });
@@ -300,6 +302,10 @@ export function createFootageVideoCodec(scope = globalThis, {
           const entry = pending.get(id);
           if (!entry) return;
           pending.delete(id);
+          // The deleted entry is out of rejectPending's reach, so release the frame here.
+          // When ready never settled (a stalled configure), it was never transferred and
+          // this is the only close it gets; a transferred frame is already released.
+          try { entry.frame?.close?.(); } catch { /* frame may have transferred */ }
           reject(new Error('footage video codec timed out'));
           fail('footage video codec timed out');
         }, timeoutMs);

@@ -5,6 +5,7 @@
 import { BAND_BED_PROFILES } from './bandBeds.js';
 import { MUSIC_STEMS } from '../data/audioRecipes.js';
 import { resolveScoreIdentity, resolveFactionColour } from './scoreDirector.js';
+import { COMPOSED_SECTOR_BEDS } from './sectorScoreBeds.js';
 
 export const THEME_MATRIX_SEED = 15803;
 
@@ -138,7 +139,7 @@ export function scoreStemWeights(frame, theme) {
     const f = key === frame.stem ? SCORE_LEAD_SECTOR_FLOOR + (1 - SCORE_LEAD_SECTOR_FLOOR) * k : k;
     out[key] = Math.round((Number(frame.stemWeights[key]) || 0) * f * 1000) / 1000;
   }
-  return Object.freeze(out);
+  return Object.freeze(applySwarmStemLift(out, sector, theme.bed && theme.bed.place && theme.bed.place.swarmLift));
 }
 
 export const SCORE_LEAD_SECTOR_FLOOR = 0.6;
@@ -201,6 +202,7 @@ function clamp01(v) {
 
 export function resolveSectorBed(sectorId) {
   if (sectorId && SECTOR_BEDS[sectorId]) return SECTOR_BEDS[sectorId];
+  if (sectorId && COMPOSED_SECTOR_BEDS[sectorId]) return COMPOSED_SECTOR_BEDS[sectorId];
   const id = String(sectorId || '');
   if (!id) return DEFAULT_SECTOR_BED;
   // Unknown sector: still unique so a blind listen does not collapse to the void bed.
@@ -234,6 +236,7 @@ export function sectorBedToBandIntent(bed, options = {}) {
       waveB: bed.waveB,
       noise: bed.noise,
       tone: bed.tone,
+      composition: bed.composition || null,
     }),
   });
 }

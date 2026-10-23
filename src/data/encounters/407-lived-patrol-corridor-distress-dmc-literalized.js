@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_patrol_corridor_distress_dmc_literalized",
   "title": "PUCK ON THE PATROL CORRIDOR",
   "factionId": "faction_dmc",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Answer the call",
-      "playerLine": "I have the puck call. Send its last clean bearing."
+      "label": "Drag the puck clear of the lane",
+      "playerLine": "Line on the puck — I pull it a hundred-twenty out of the Patrol Corridor lane and let it settle."
     },
     {
       "id": "b",
-      "label": "Hold a lamp",
-      "playerLine": "I can hold a lamp outside the caller’s approach."
+      "label": "Sponsor relief — 30 cr",
+      "playerLine": "Take 30 cr, FOREMAN — send the relief to Patrol Corridor instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the call",
-      "playerLine": "I cannot answer. Keep my hull clear of patrol corridor."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, FOREMAN — my hull is leaving Patrol Corridor."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "PUCK",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "FOREMAN: A distress call names the puck near patrol corridor. Answer or stand clear.",
+      "line": "FOREMAN: A distress call names the puck near patrol corridor. Answer or stand clear. — PUCK ON THE PATROL CORRIDOR.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The distress tone repeats on the same damaged second.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "FOREMAN leaves the rescue channel open after the call ends.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The puck has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "The patrol corridor hums at one level. Your throttle is not it.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "FOREMAN: We hold. Quiet engines, patient hands.",
+      "line": "FOREMAN: Line on the puck. Drag it past the hundred-twenty mark, drop the line, let it settle. — PUCK ON THE PATROL CORRIDOR.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +142,79 @@ const spec = {
       "windowS": 56,
       "motion": "face",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Call answered. The bearing stopped moving while you listened.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 30,
+      "reason": "lived_patrol_corridor_distress_dmc_literalized:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "FOREMAN: Time ran out on the work ask — PUCK ON THE PATROL CORRIDOR. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "displaced",
+          "dist": 120
+        },
+        {
+          "kind": "released"
+        },
+        {
+          "kind": "settled",
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "FOREMAN: Time ran out on the work ask — PUCK ON THE PATROL CORRIDOR. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "FOREMAN: Time ran out on the work ask — PUCK ON THE PATROL CORRIDOR. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 60,
       "reason": "lived_patrol_corridor_distress_dmc_literalized",
       "next": "rep_a"
     },
@@ -168,24 +227,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_dmc",
+      "delta": 3,
+      "reason": "lived_patrol_corridor_distress_dmc_literalized:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Lamp held. FOREMAN took the caller through the marked gap.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_dmc",
-      "delta": 2,
-      "reason": "lived_patrol_corridor_distress_dmc_literalized",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +254,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left. The puck call stayed open on their board.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_dmc",
-      "delta": -1,
-      "reason": "lived_patrol_corridor_distress_dmc_literalized",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +312,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Answer the call",
-      "playerLine": "I have the puck call. Send its last clean bearing."
+      "label": "Drag the puck clear of the lane",
+      "playerLine": "Line on the puck — I pull it a hundred-twenty out of the Patrol Corridor lane and let it settle."
     },
     {
       "id": "b",
-      "label": "Hold a lamp",
-      "playerLine": "I can hold a lamp outside the caller’s approach."
+      "label": "Sponsor relief — 30 cr",
+      "playerLine": "Take 30 cr, FOREMAN — send the relief to Patrol Corridor instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave the call",
-      "playerLine": "I cannot answer. Keep my hull clear of patrol corridor."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, FOREMAN — my hull is leaving Patrol Corridor."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Call answered. The bearing stopped moving while you listened.",
-    "b": "Lamp held. FOREMAN took the caller through the marked gap.",
-    "c": "You left. The puck call stayed open on their board."
+    "a": "The puck drifted a hundred-twenty clear of its berth at Patrol Corridor and settled on its own. — PUCK ON THE PATROL CORRIDOR.",
+    "b": "30 cr funded the relief call — FOREMAN sends the shift at Patrol Corridor on your credit. — PUCK ON THE PATROL CORRIDOR.",
+    "c": "You left Patrol Corridor. The work stayed with the crew that owned it. — PUCK ON THE PATROL CORRIDOR."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "tow_clear",
+    "hasProp": true
   }
 });

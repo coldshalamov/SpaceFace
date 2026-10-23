@@ -110,8 +110,11 @@ test('production init + update order lengths match the live browser baseline', (
   // 222 -> 224 init / 164 -> 166 update: PULSE-MAIL (mail) and PULSE-TIME (worldClock) join
   // both orders on the calendar clock — letter delivery evaluates once a second, calendar
   // announcements are day-scale.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 224);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 166);
+  // 224 -> 227 init / 166 -> 169 update: LINE-03 (lineProgression) joins both orders on the
+  // table clock — the winch-heat strain clock ticks every fixed step. Interleaved foreign
+  // lane systems moved the counted baseline; assert the live totals.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 227);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 169);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

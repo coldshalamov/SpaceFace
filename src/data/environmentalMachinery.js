@@ -7,6 +7,7 @@
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { ANVIL_ORCHARD } from './anvilOrchard.js';
+import { seasonalWeatherPhase, SEASONAL_WEATHER_CYCLE } from './seasonalWeather.js';
 
 export const CINDER_SLUICE_SITE_ID = 'world_site_ceres_cinder_sluice';
 export const CINDER_SLUICE_SECTOR_ID = 'sector_ceres_belt';
@@ -1193,19 +1194,33 @@ export const WEATHER_SECTOR_IDS = Object.freeze(new Set([
   IO_REACH_WEATHER_SECTOR_ID,
 ]));
 
+export const SEASONAL_WEATHER_VOLUMES = Object.freeze([
+  [VEIL_WEATHER_SECTOR_ID, { x: -1250, z: 800 }],
+  [VESTA_WEATHER_SECTOR_ID, { x: 1450, z: -800 }],
+  [IO_REACH_WEATHER_SECTOR_ID, { x: -1500, z: -700 }],
+].flatMap(([sectorId, localPos]) => ['ion_storm', 'solar_wind', 'meteor_shower'].map(role => {
+  const volume = buildWeatherVolume({ id: `${sectorId}_${role}`, role, sectorId, hazardType: role,
+    localPos, rot: 0.65, scanScale: role === 'ion_storm' ? 0 : 1,
+    field: { kind: 'sheet', strength: role === 'solar_wind' ? 180 : 0, radius: 720, halfWidth: 300, falloff: 0.7 },
+  });
+  return Object.freeze({ ...volume, seasonal: true, cycle: SEASONAL_WEATHER_CYCLE });
+})));
+export const ALL_WEATHER_VOLUMES = Object.freeze([...WEATHER_VOLUMES, ...SEASONAL_WEATHER_VOLUMES]);
+
 // WEATHER_VOLUMES is frozen at module load, so per-sector slices are memoized: the tick loop
 // queries this every frame and every caller only iterates or maps (never mutates) the result.
 const WEATHER_VOLUMES_BY_SECTOR = new Map();
 export function weatherVolumesForSector(sectorId) {
   let rows = WEATHER_VOLUMES_BY_SECTOR.get(sectorId);
   if (!rows) {
-    rows = Object.freeze(WEATHER_VOLUMES.filter((volume) => volume.sectorId === sectorId));
+    rows = Object.freeze(ALL_WEATHER_VOLUMES.filter((volume) => volume.sectorId === sectorId));
     WEATHER_VOLUMES_BY_SECTOR.set(sectorId, rows);
   }
   return rows;
 }
 
 export function weatherPhase(volume, simTime, out = null) {
+  if (volume?.seasonal) return seasonalWeatherPhase(volume, simTime, out || {});
   const result = out || {};
   const cycle = volume && volume.cycle || WEATHER_CYCLE;
   const cycleS = cycle.warningS + cycle.surgeS + cycle.calmS;
@@ -1260,6 +1275,12 @@ export function weatherScanScale(sectorId, point, simTime) {
     if (volume.scanScale < scale) scale = volume.scanScale;
   }
   return scale;
+}
+
+export function ionStormBlackout(state, player) {
+  const sectorId = state?.world?.currentSectorId;
+  if (!player?.pos || !WEATHER_SECTOR_IDS.has(sectorId)) return false;
+  return weatherScanScale(sectorId, player.pos, state.simTime) === 0;
 }
 
 /** The soonest readable weather window at a point, or null if the point is clear. */

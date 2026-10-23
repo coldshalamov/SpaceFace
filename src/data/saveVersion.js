@@ -16,4 +16,6 @@
 // v16: exact compact native attestation tables; legacy schema3 remains accepted.
 // v17: permanent per-hull loss identities under world.records.hullLosses.
 // v18: imported cross-run dead hulls persist under player.uniqueWrecks.
-export const CURRENT_VERSION = 18;
+// v19: §34 world-pressure bag persists under data.worldPressure (Bloom tide,
+//      Gate Audit records, Slow Gray index, colossus remains — bounded receipts).
+export const CURRENT_VERSION = 19;

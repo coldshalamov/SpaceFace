@@ -2,7 +2,7 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
-const spec = {
+export const spec = {
   "id": "lived_derelict_field_wreck_vael_named",
   "title": "HYMN ON THE DERELICT FIELD",
   "factionId": "faction_vael",
@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Read the plate",
-      "playerLine": "I will read the hymn plate before anyone starts the tow."
+      "label": "Deliver the hymn to the second hull",
+      "playerLine": "The hymn berths at the second hull — I tow it there and park it inside thirty."
     },
     {
       "id": "b",
-      "label": "Hold the wreck",
-      "playerLine": "I can hold the wreck clear while you check the registry."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, VAEL — send the relief to Derelict Field instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave it drifting",
-      "playerLine": "I am leaving it here. Keep the hymn out of my route."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, VAEL — my hull is leaving Derelict Field."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "HYMN",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "VAEL: The hymn is stamped on a wreck at derelict field. Do not cut yet.",
+      "line": "VAEL: The hymn is stamped on a wreck at derelict field. Do not cut yet. — HYMN ON THE DERELICT FIELD.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -66,9 +76,7 @@ const spec = {
     },
     {
       "id": "a0",
-      "verb": "say",
-      "line": "The hull number stops halfway through the last digit.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p0"
     },
     {
@@ -80,9 +88,7 @@ const spec = {
     },
     {
       "id": "a1",
-      "verb": "say",
-      "line": "VAEL keeps the cutting torch pointed at the deck.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p1"
     },
     {
@@ -94,9 +100,7 @@ const spec = {
     },
     {
       "id": "a2",
-      "verb": "say",
-      "line": "The hymn has a serial someone still loves.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p2"
     },
     {
@@ -108,9 +112,7 @@ const spec = {
     },
     {
       "id": "a3",
-      "verb": "say",
-      "line": "Full burn changes the distance, not how derelict field sounds.",
-      "channel": "info",
+      "verb": "noop",
       "next": "p3"
     },
     {
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "VAEL: Holding. The count finishes when it finishes.",
+      "line": "VAEL: The hymn goes to the second hull, not ours. Tow it there, release, park it inside thirty. — HYMN ON THE DERELICT FIELD.",
       "channel": "info",
       "next": "offer"
     },
@@ -140,22 +142,81 @@ const spec = {
       "windowS": 56,
       "motion": "ring",
       "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
+        "a": "await_a",
+        "b": "charge_b",
+        "c": "await_c"
       }
     },
     {
-      "id": "say_a",
-      "verb": "say",
-      "line": "Plate read. The registry lists a shift, not a final owner.",
-      "channel": "info",
+      "id": "charge_b",
+      "verb": "charge",
+      "amount": 24,
+      "reason": "lived_derelict_field_wreck_vael_named:sponsor",
+      "next": "await_b"
+    },
+    {
+      "id": "await_a",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "VAEL: Time ran out on the work ask — HYMN ON THE DERELICT FIELD. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "latched"
+        },
+        {
+          "kind": "displaced",
+          "dist": 120
+        },
+        {
+          "kind": "released"
+        },
+        {
+          "kind": "parked",
+          "at": "hull_1",
+          "dist": 30,
+          "maxSpeed": 3,
+          "holdS": 3
+        }
+      ],
       "next": "grant_a"
+    },
+    {
+      "id": "await_b",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "VAEL: Time ran out on the work ask — HYMN ON THE DERELICT FIELD. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "meet",
+          "of": "hull_0",
+          "dist": 60,
+          "maxSpeed": 5,
+          "holdS": 2
+        }
+      ],
+      "next": "rep_b"
+    },
+    {
+      "id": "await_c",
+      "verb": "await",
+      "timeoutS": 120,
+      "timeoutLine": "VAEL: Time ran out on the work ask — HYMN ON THE DERELICT FIELD. Nothing owed either way — the lane forgets it.",
+      "keepMotion": false,
+      "steps": [
+        {
+          "kind": "depart",
+          "dist": 180,
+          "far": 1000
+        }
+      ],
+      "next": "done_c"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 54,
       "reason": "lived_derelict_field_wreck_vael_named",
       "next": "rep_a"
     },
@@ -168,24 +229,25 @@ const spec = {
       "next": "done_a"
     },
     {
+      "id": "rep_b",
+      "verb": "rep",
+      "factionId": "faction_vael",
+      "delta": 3,
+      "reason": "lived_derelict_field_wreck_vael_named:sponsor",
+      "next": "done_b"
+    },
+    {
+      "id": "say_a",
+      "verb": "noop"
+    },
+    {
       "id": "done_a",
       "verb": "resolve",
       "outcome": "a"
     },
     {
       "id": "say_b",
-      "verb": "say",
-      "line": "Wreck held. The next registry pass can happen without drift.",
-      "channel": "info",
-      "next": "rep_b"
-    },
-    {
-      "id": "rep_b",
-      "verb": "rep",
-      "factionId": "faction_vael",
-      "delta": 2,
-      "reason": "lived_derelict_field_wreck_vael_named",
-      "next": "done_b"
+      "verb": "noop"
     },
     {
       "id": "done_b",
@@ -194,23 +256,24 @@ const spec = {
     },
     {
       "id": "say_c",
-      "verb": "say",
-      "line": "You left it. The hymn keeps its slow turn at derelict field.",
-      "channel": "info",
-      "next": "rep_c"
-    },
-    {
-      "id": "rep_c",
-      "verb": "rep",
-      "factionId": "faction_vael",
-      "delta": -1,
-      "reason": "lived_derelict_field_wreck_vael_named",
-      "next": "done_c"
+      "verb": "noop"
     },
     {
       "id": "done_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "cost_a",
+      "verb": "noop"
+    },
+    {
+      "id": "rep_c",
+      "verb": "noop"
+    },
+    {
+      "id": "grant_b",
+      "verb": "noop"
     }
   ]
 };
@@ -251,24 +314,29 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Read the plate",
-      "playerLine": "I will read the hymn plate before anyone starts the tow."
+      "label": "Deliver the hymn to the second hull",
+      "playerLine": "The hymn berths at the second hull — I tow it there and park it inside thirty."
     },
     {
       "id": "b",
-      "label": "Hold the wreck",
-      "playerLine": "I can hold the wreck clear while you check the registry."
+      "label": "Sponsor relief — 24 cr",
+      "playerLine": "Take 24 cr, VAEL — send the relief to Derelict Field instead of my hands."
     },
     {
       "id": "c",
-      "label": "Leave it drifting",
-      "playerLine": "I am leaving it here. Keep the hymn out of my route."
+      "label": "Decline and depart",
+      "playerLine": "Not my work, VAEL — my hull is leaving Derelict Field."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Plate read. The registry lists a shift, not a final owner.",
-    "b": "Wreck held. The next registry pass can happen without drift.",
-    "c": "You left it. The hymn keeps its slow turn at derelict field."
+    "a": "The hymn is parked inside thirty of the second hull at Derelict Field — the first kept its hands off. — HYMN ON THE DERELICT FIELD.",
+    "b": "24 cr funded the relief call — VAEL sends the shift at Derelict Field on your credit. — HYMN ON THE DERELICT FIELD.",
+    "c": "You left Derelict Field. The work stayed with the crew that owned it. — HYMN ON THE DERELICT FIELD."
+  },
+  "livedRotation": true,
+  "livedPhysical": {
+    "recipeId": "deliver_second",
+    "hasProp": true
   }
 });

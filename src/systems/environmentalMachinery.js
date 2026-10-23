@@ -5,7 +5,8 @@ import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 // Pallas Drift debris reef, Veil/Vesta weather, and the Ceres hangar aperture jam.
 // World Site receipts are the durable Cinder Sluice state. The rest is authored furniture
 // derived from the saved sim clock plus live occupancy for the jam. This adapter owns no
-// saved timer and no movement state: it registers volumes into the ONE field kernel and
+// saved timer: seasonal meteor lots retain their ore and observed pose, while physics alone
+// advances motion. This adapter registers volumes into the ONE field kernel and
 // emits hazard-language boundaries. The field kernel/physics membrane remains the only
 // force writer. Death is the slam-law payoff against anvils or pinballed mass — never a
 // hull-drain aura. The hangar jam holds reinforcements by moving mass, not by a spawn flag.
@@ -36,7 +37,6 @@ import {
   METRONOME_SECTOR_ID,
   aperturePoint,
   WEATHER_SECTOR_IDS,
-  WEATHER_VOLUMES,
   VESTA_ORE_WINNOW,
   vestaWinnowPhase,
   aperturePhase,
@@ -58,8 +58,11 @@ import {
   pointInsideWeatherVolume,
   weatherPhase,
   weatherVolumesForSector,
+  ionStormBlackout,
+  ALL_WEATHER_VOLUMES,
 } from '../data/environmentalMachinery.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { updateWeatherMeteors, retireWeatherMeteor } from './weatherMeteors.js';
 import { writePickupRemainder } from '../core/pickupAcceptance.js';
 import { NEAR_EXIT_PAD_WU } from '../world/activityClassification.js';
 import {
@@ -191,6 +194,7 @@ export const environmentalMachinery = {
     this._unsubs = [];
     this.state = ctx.state;
     this._orchardHelpers=ctx.helpers;
+    this._weatherHelpers = ctx.helpers;
     this._orchardEpoch=(this._orchardEpoch||0)+1;
     this.bus = ctx.bus;
     this.registry = ctx.registry || null;
@@ -723,6 +727,7 @@ export const environmentalMachinery = {
 
   _onKillMachineDeath(receipt) {
     const entity = this.state?.entities?.get(receipt?.id);
+    retireWeatherMeteor(this.state, entity);
     const machine = ALL_KILL_MACHINE_BY_ID[entity?.data?.killMachineId];
     // Mining publishes before setting alive=false; depleted HP is the shared death fact.
     // An unrelated death or a sector unload must never be interpreted as a power cut.
@@ -1410,6 +1415,9 @@ export const environmentalMachinery = {
     const previous = this._weatherLastPhase.get(volume.id);
     if (previous === phase.phase) return;
     this._weatherLastPhase.set(volume.id, phase.phase);
+    // Inactive seasons are not a local weather event. Otherwise their initial calm receipt
+    // overwrites a real storm's HUD clock, despite carrying no force or blackout here.
+    if (volume.seasonal && phase.phase === 'calm' && previous !== 'surge' && previous !== 'warning') return;
     this._emitPhaseChanged({
       siteId: volume.id,
       kind: 'weather',
@@ -1490,10 +1498,17 @@ export const environmentalMachinery = {
       : null;
     for (const volume of weatherVolumesForSector(sectorId)) {
       const phase = weatherPhase(volume, simTime, this._weatherPhaseOut);
+      updateWeatherMeteors(this, volume, phase);
       if (phase.fieldActive) this._upsertWeatherField(volume, phase);
       else this._removeWeatherField(volume);
       this._publishWeatherPhase(volume, phase);
       this._updateWeatherPlayerBoundary(volume, player, phase);
+    }
+    const blackout = ionStormBlackout(state, player);
+    if (blackout !== this._ionStormBlackout) {
+      this._ionStormBlackout = blackout;
+      this.bus?.emit('weather:ionBlackout', { active: blackout, sectorId });
+      if (blackout) this.bus?.emit('audio:cue', { id: 'sfx_travel_interdiction', gain: 0.35 });
     }
   },
 
@@ -1678,7 +1693,7 @@ export const environmentalMachinery = {
   },
 
   _clearWeather(why) {
-    for (const volume of WEATHER_VOLUMES) {
+    for (const volume of ALL_WEATHER_VOLUMES) {
       this._removeWeatherField(volume);
       if (this._weatherPlayerInside.has(volume.id)) {
         this._emitHazardBoundary(false, volume.hazardType, volume.id, volume.id, why);
@@ -1687,6 +1702,8 @@ export const environmentalMachinery = {
     this._weatherPlayerInside.clear();
     this._weatherFieldStrength.clear();
     this._weatherLastPhase.clear();
+    if (this._ionStormBlackout) this.bus?.emit('weather:ionBlackout', { active: false });
+    this._ionStormBlackout = false;
   },
 
   _clear(why) {

@@ -846,6 +846,8 @@ export const settingsScreen = {
       // First control: Mute all, so silence is always one press away.
       rowToggle('Mute all', () => a.muted, (v) => this._set(ctx, 'audio', 'muted', v));
       rowToggle('Mute when the window loses focus', () => a.muteOnFocusLoss === true, (v) => this._set(ctx, 'audio', 'muteOnFocusLoss', v));
+      rowToggle('Mono audio', () => a.mono === true, (v) => this._set(ctx, 'audio', 'mono', v));
+      rowToggle('Night mode', () => a.nightMode === true, (v) => this._set(ctx, 'audio', 'nightMode', v));
       rowSlider('Master', () => a.master, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'master', v, persist));
       rowSlider('SFX', () => a.sfx, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'sfx', v, persist));
       rowSlider('Music', () => a.music, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'music', v, persist));

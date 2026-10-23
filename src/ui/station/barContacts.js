@@ -13,6 +13,7 @@ import { COMMODITIES }  from '../../data/commodities.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { CONTACT_VOICE_REGISTERS, barGreetingBarkFor, barApproachBarkFor } from '../../data/barks.js';
 import { depthContactsForStation } from '../../story/campaign47a/embodiedDialogue.js';
+import { contactDeedMemory } from '../../data/contactDeedMemory.js';
 import {
   stationContactMemoryFor,
   stationContactMemoryLine,
@@ -445,6 +446,7 @@ export function authoredBarContactsForStation(stationId, state = {}) {
       line: card.blurb,
       canonicalKey: card.id,
       trackerId: card.trackerId,
+      memoryGlyph: contactDeedMemory(card.id, state.player?.stationContactCounters)?.glyph,
       depthProgram: card.programId,
       voiceLines: voice ? voice.lines : [],
       choices: voice && voice.firstContact ? voice.firstContact.choices : [],
@@ -1039,6 +1041,8 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   const memory = stationContactMemoryFor(state, contact.id);
   if (memory && memory.met) add('Contact', stationContactStanding(memory), 'story');
   else if (contact.canonicalKey) add('Contact', 'New recurring contact', 'story');
+  const deedMemory = contactDeedMemory(contact.id, state.player?.stationContactCounters);
+  if (deedMemory) add('Record', `${deedMemory.glyph} ${deedMemory.band} · ${deedMemory.value}`, 'story');
 
   // INF-074: the one remembered rescue. Barkeeps only, unacknowledged only — it sits beside
   // the barkeep's standing Survey/service tags, pairing the recognition with the existing

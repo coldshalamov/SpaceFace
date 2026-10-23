@@ -24,6 +24,8 @@
 //   * The arc is untouched. This pool is appended only for the swarm ruleset.
 //   * Kind strings stay literal here so this file never imports survivalDraft (that file imports us).
 
+import { SWARM_RULESET } from './swarmMode.js';
+
 export const SWARM_DRAFT_SCHEMA_VERSION = 1;
 
 /**
@@ -187,3 +189,74 @@ export const SWARM_DRAFT_OFFERS = Object.freeze([
 
 /** Every defId this pool can offer, for validators and tests. */
 export const SWARM_DRAFT_DEF_IDS = Object.freeze(SWARM_DRAFT_OFFERS.map((o) => o.defId));
+
+// ── the room-control legendaries (build-map row 270) ───────────────────────────────────────────
+//
+// A LEGENDARY IS NOT A FITTING. It takes no hardpoint, it is not a module, and it never joins the
+// scored draft pool above. A legendary is a run-long change to the ROOM: the armory sells it from
+// the service counter, the run remembers it as a `swarm_legendary` record, and the runtime reads
+// that record to know the room has changed.
+//
+// `fromWave` counts CLEARED waves: the opening armory sits at wave 0, so a legendary gated at 3
+// reaches the shelf from the armory that follows the third cleared wave. Prices are run credits,
+// spent through the run wallet like every other armory row.
+
+export const SWARM_LEGENDARY_RECORD_KIND = 'swarm_legendary';
+
+export const SWARM_ROOM_LEGENDARIES = Object.freeze([
+  Object.freeze({
+    id: 'domino',
+    offerId: 'legendary_domino',
+    name: 'Domino',
+    verb: 'Domino',
+    price: 76,
+    fromWave: 3,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Every credited kill shoves nearby bodies outward.',
+  }),
+  Object.freeze({
+    id: 'graviton_heart',
+    offerId: 'legendary_graviton_heart',
+    name: 'Graviton Heart',
+    verb: 'Graviton Heart',
+    price: 112,
+    fromWave: 5,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'A weak gravity well follows your ship and pulls nearby bodies inward.',
+  }),
+]);
+
+const LEGENDARY_BY_ID = new Map(SWARM_ROOM_LEGENDARIES.map((entry) => [entry.id, entry]));
+
+/** The catalog row for one legendary id, or null for an id the catalog does not name. */
+export function swarmLegendaryById(id) {
+  return typeof id === 'string' ? (LEGENDARY_BY_ID.get(id) || null) : null;
+}
+
+/**
+ * The legendaries THIS run owns.
+ *
+ * Reads only recognized `swarm_legendary` records out of the run's own modifier ledger, and
+ * returns their ids, deduplicated, in first-seen order. Everything else is ignored: a missing run,
+ * a malformed run, a non-Swarm run, a record of another kind, an unknown legendary id. Ownership
+ * is a receipt the run keeps, never a guess.
+ */
+export function ownedSwarmLegendaryIds(run) {
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return [];
+  if (run.ruleset !== SWARM_RULESET) return [];
+  const modifiers = Array.isArray(run.modifiers) ? run.modifiers : [];
+  const ids = [];
+  const seen = new Set();
+  for (const record of modifiers) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) continue;
+    if (record.kind !== SWARM_LEGENDARY_RECORD_KIND) continue;
+    const id = record.legendaryId;
+    if (typeof id !== 'string' || !LEGENDARY_BY_ID.has(id)) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
