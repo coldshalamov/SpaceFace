@@ -102,3 +102,5 @@ The oldest OPEN row is the next second look.
 
 | R-9ee5b8b | 9ee5b8bb0b | Row466 continuation: empty industrial readout names the next step; full row waits402 | Re-check that the default empty works points to the actual Drones purchase requirements without replacing the existing contextual next-action control |
  | R-de968a6 | de968a6e55 | Row 445 GOLD-HOME: Long Berth claim/restore/trophy yard + dock card | Re-check the marker lifecycle: the non-colliding station entity respawns via _syncMarker after sector rematerialization and save:loaded — confirm no duplicate marker can persist when a serialized entity list already carries one, and that dockRange can never select it while collides:false bodies it occupies | OPEN |
+
+| R-21fbbd1 | 21fbbd1c40 | Row402 canonical material bills and legacy refinery retirement; completes466 dependency | Re-check a pre-unification paid crafting queue alongside a restored refinery bank: output quantity, fractional goods and debt must survive a second Continue without minting or losing value |
