@@ -1974,3 +1974,11 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`saveLayouts.js`, desktop only):** in `(min-width:1200px) and (max-width:1599px)` the context line is tracked at .06em and reads on one line, with room for the longer "FLOWN 29 DAYS AGO". Size stays 12px. ≤1199 and ≥1600 keep their rules. No selector or ID changes.
 
 **Checked:** ui-bench `save-load` clean at 1200×720, 1280×720, 1440×900 and 1599×900; 960×540, 1920×1080 and 390×844 are outside the query. Type floor OK. Shots: `ui-shots/polish100/{before,after,after2}/`.
+
+## Save/Load hull at 791–1100 wide (ui-polish-102)
+
+**Before (master cec514c06b):** at 791–1100 wide the berth ring stood empty beside the reading (960×540, 1100×720, 800×600). The deckplate's old ≤1100 stack still hid `.k-stage__poster`, `.k-world--stage` and the vacant word, but the orrery keeps the stage beside the reading down to 791 (the stacked band hides the whole stage).
+
+**After (`saveLayouts.js`, desktop only, `max-width:1100px`):** the hull (and on an empty slot, the vacant word's layer) shows again, as above 1100. No selector or ID changes; phone and the stacked band are untouched.
+
+**Checked:** bench `save-load` and `save-load-empty` at 800×600, 960×540, 1100×720, 1280×720; phone 390×844. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish102/`.
