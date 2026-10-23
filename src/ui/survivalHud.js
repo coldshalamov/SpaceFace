@@ -76,6 +76,19 @@ export function objectiveWord(objectiveKind) {
   return typeof word === 'string' ? word : null;
 }
 
+const MARK_GLYPHS = Object.freeze(['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']);
+
+/** Overhead bearing toward a circuit ring. Empty once the ship is inside it. */
+export function circuitMarkGlyph(player, mark) {
+  if (!player || !player.pos || !mark) return '';
+  const dx = Number(mark.x) - Number(player.pos.x);
+  const dz = Number(mark.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return '';
+  if (Math.hypot(dx, dz) <= (Number(mark.radius) || 0)) return '';
+  const octant = Math.round((Math.atan2(-dx, dz) / (Math.PI * 2)) * 8);
+  return MARK_GLYPHS[(octant + 8) % 8];
+}
+
 /** Arena label from the id. Data-free so a new arena needs no edit here. */
 export function arenaLabel(arenaId) {
   if (!arenaId) return 'ARENA';
@@ -343,10 +356,17 @@ export const survivalHud = {
         const durationSeconds = Math.max(1, Math.ceil(durationTicks / 60));
         // A survive round's clock is the objective itself: the wait IS the win.
         const surviving = this._objectiveKind === 'survive';
-        this._setText(dom.threatWord, surviving ? 'SURVIVE' : 'NEXT WAVE');
+        const zoned = this._objectiveKind === 'hold' || this._objectiveKind === 'reach';
+        const mark = zoned && circuitRound
+          ? (this._objectiveKind === 'hold' ? circuitRound.zone : circuitRound.gate)
+          : null;
+        const player = st.entities && st.entities.get && st.entities.get(st.playerId);
+        const glyph = circuitMarkGlyph(player, mark);
+        const word = zoned ? objectiveWord(this._objectiveKind) : (surviving ? 'SURVIVE' : 'NEXT WAVE');
+        this._setText(dom.threatWord, glyph ? `${word} ${glyph}` : word);
         this._setText(dom.threatFig, clock);
         this._setStyle(dom.threatFill, 'width', `${Math.round(waveElapsedFill(remainingTicks, durationTicks) * 100)}%`);
-        this._setAttr(dom.threat, 'aria-label', surviving ? `Survive ${clock}` : `Next wave in ${clock}`);
+        this._setAttr(dom.threat, 'aria-label', surviving ? `Survive ${clock}` : zoned ? `${word} ${clock}` : `Next wave in ${clock}`);
         this._setAttr(dom.threat, 'aria-valuemin', '0');
         this._setAttr(dom.threat, 'aria-valuenow', String(remainingSeconds));
         this._setAttr(dom.threat, 'aria-valuemax', String(durationSeconds));

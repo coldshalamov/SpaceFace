@@ -491,14 +491,20 @@ function cleanText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/** A campaign beat installed at the start is not the player pressing Accept. */
+function isPlayerDeskJob(mission) {
+  if (!mission) return false;
+  const tag = typeof mission.storyTag === 'string' ? mission.storyTag : '';
+  return !tag.startsWith('campaign47a:');
+}
+
 /** The word under Accept. Collateral always says hold. A first trade says hold even with nothing at risk. */
 export function contractAcceptHoldNote(state, collateral) {
   if (Number(collateral) > 0) return 'hold';
   const missions = state && state.missions;
-  const accepted = !!(missions && (
-    (Array.isArray(missions.active) && missions.active.some(Boolean))
-    || (Array.isArray(missions.receipts) && missions.receipts.some(Boolean))
-  ));
+  const active = missions && Array.isArray(missions.active) ? missions.active : [];
+  const receipts = missions && Array.isArray(missions.receipts) ? missions.receipts : [];
+  const accepted = active.some(isPlayerDeskJob) || receipts.some(isPlayerDeskJob);
   return accepted ? '' : 'hold';
 }
 

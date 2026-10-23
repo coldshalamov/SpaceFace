@@ -265,6 +265,7 @@ export const survivalWave = {
     this._swarm = swarm;
     this._circuitCores = [];
     this._coresFound = 0;
+    this._placeCircuitMark();
     this._pending = plan.schedule.map((entry, index) => ({ entry, index }));
     // A later Swarm wave opens the same way the first one does after its lesson: batch by batch,
     // a breath apart, so the escalation reads as packs arriving instead of one dump in 3 s.
@@ -514,6 +515,54 @@ export const survivalWave = {
     }
   },
 
+  _clearCircuitMark() {
+    const id = this._circuitMarkId;
+    this._circuitMarkId = null;
+    if (id == null) return;
+    const remove = this.helpers && this.helpers.removeEntity;
+    if (typeof remove === 'function') {
+      remove(id, { immediate: true });
+      return;
+    }
+    const entities = this.state && this.state.entities;
+    if (entities && typeof entities.delete === 'function') entities.delete(id);
+  },
+
+  /** A beacon the renderer already draws, sitting on the ring or the gate. Not a combatant. */
+  _placeCircuitMark() {
+    const spec = this._swarm && this._swarm.circuit;
+    if (!spec || (spec.kind !== 'hold' && spec.kind !== 'reach')) return;
+    const spot = spec.kind === 'hold' ? spec.zone : spec.gate;
+    if (!spot || !Number.isFinite(spot.x) || !Number.isFinite(spot.z)) return;
+    const entities = this.state && this.state.entities;
+    const existing = this._circuitMarkId != null && entities && typeof entities.get === 'function'
+      ? entities.get(this._circuitMarkId)
+      : null;
+    if (existing && existing.alive !== false) return;
+    this._circuitMarkId = null;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function') return;
+    const entity = spawn({
+      type: 'beacon',
+      pos: { x: spot.x, z: spot.z },
+      vel: { x: 0, z: 0 },
+      radius: 8,
+      mass: 1,
+      collides: false,
+      hull: 1,
+      hullMax: 1,
+      data: {
+        parentType: 'story_prop',
+        scanLabel: spec.kind === 'hold' ? 'Hold ring' : 'Gate',
+        storyPropKind: 'circuit_mark',
+        circuitMark: true,
+        tetherable: false,
+        masslineTetherable: false,
+      },
+    });
+    this._circuitMarkId = entity && entity.id != null ? entity.id : null;
+  },
+
   _playerPos() {
     const state = this.state;
     const player = state?.entities?.get?.(state.playerId);
@@ -535,6 +584,7 @@ export const survivalWave = {
     }
     const pos = this._playerPos();
     if ((spec.kind === 'hold' || spec.kind === 'reach') && pos) {
+      this._placeCircuitMark();
       const zone = spec.kind === 'hold' ? spec.zone : spec.gate;
       const inside = !!(zone && Math.hypot(pos.x - zone.x, pos.z - zone.z) <= zone.radius);
       if (inside) spec.fill = (spec.fill || 0) + 1;
@@ -1311,6 +1361,7 @@ export const survivalWave = {
     this._lessonReleased = false;
     this._lessonOpenedAt = null;
     this._bossIds = new Set();
+    this._clearCircuitMark();
     this._circuitCores = [];
     this._coresFound = 0;
     // A capital champion's fight record never outlives its wave: terminal, surviving or

@@ -435,6 +435,11 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
     } else if (round.kind === 'hold' || round.kind === 'reach') {
       const before = clearedCount(h);
       const zone = round.kind === 'hold' ? lastPlan(h).swarm.circuit.zone : lastPlan(h).swarm.circuit.gate;
+      const mark = [...h.state.entities.values()].find((entity) => entity.data && entity.data.circuitMark);
+      assert.ok(mark, `${round.kind} plants a beacon on the spot`);
+      assert.ok(Math.hypot(mark.pos.x - zone.x, mark.pos.z - zone.z) < 1, 'the beacon sits on the spot');
+      assert.ok(Math.hypot(h.player.pos.x - zone.x, h.player.pos.z - zone.z) > zone.radius,
+        'the ship is not already standing in the spot');
       h.player.pos.x = 0;
       h.player.pos.z = 0;
       killEverything(h);

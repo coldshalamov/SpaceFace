@@ -39,8 +39,10 @@ export const CIRCUIT_NODE_COUNT = 3;
 export const CIRCUIT_CORE_COUNT = 4;
 export const CIRCUIT_HOLD_TICKS = 600;
 export const CIRCUIT_REACH_TICKS = 180;
-export const CIRCUIT_HOLD_ZONE = Object.freeze({ x: 900, z: 400, radius: 140 });
-export const CIRCUIT_REACH_GATE = Object.freeze({ x: 1400, z: 0, radius: 120 });
+// Offsets from the arena the player is fighting in. The fight view keeps about 760 units.
+// The ship starts outside both spots, and both stay inside that view.
+export const CIRCUIT_HOLD_ZONE = Object.freeze({ x: 280, z: 160, radius: 140 });
+export const CIRCUIT_REACH_GATE = Object.freeze({ x: 620, z: 0, radius: 120 });
 export const CIRCUIT_COMMANDER_NAME = promotedPilotIdentity(4242, 'circuit-commander').name;
 
 /** Cohort slots that are a different contract. Local 2 stays survive. The last round stays the champion. */
@@ -51,6 +53,19 @@ const CIRCUIT_SPECIAL_KIND = Object.freeze({
   '3:3': 'commander',
   '4:1': 'reach',
 });
+
+/** The room the live run relocated the player into, or the origin when the arena is unknown. */
+export function circuitArenaSpawn(arenaId) {
+  const arena = COMBAT_LAB_ARENAS.find((row) => row && row.id === arenaId);
+  const spawn = arena && arena.spawnPos;
+  if (spawn && Number.isFinite(spawn.x) && Number.isFinite(spawn.z)) return { x: spawn.x, z: spawn.z };
+  return { x: 0, z: 0 };
+}
+
+function circuitSpot(arenaId, offset) {
+  const room = circuitArenaSpawn(arenaId);
+  return { x: room.x + offset.x, z: room.z + offset.z, radius: offset.radius };
+}
 
 export function circuitFightScale(fight) {
   if (fight === 'elite') return { pressureMul: 1.25, earnMul: 1.35 };
@@ -259,8 +274,8 @@ export function circuitRoundFor(run, wave) {
     coreCount: kind === 'collect' ? CIRCUIT_CORE_COUNT : null,
     holdTicks: kind === 'hold' ? CIRCUIT_HOLD_TICKS : null,
     reachTicks: kind === 'reach' ? CIRCUIT_REACH_TICKS : null,
-    zone: kind === 'hold' ? { x: CIRCUIT_HOLD_ZONE.x, z: CIRCUIT_HOLD_ZONE.z, radius: CIRCUIT_HOLD_ZONE.radius } : null,
-    gate: kind === 'reach' ? { x: CIRCUIT_REACH_GATE.x, z: CIRCUIT_REACH_GATE.z, radius: CIRCUIT_REACH_GATE.radius } : null,
+    zone: kind === 'hold' ? circuitSpot(run && run.arenaId, CIRCUIT_HOLD_ZONE) : null,
+    gate: kind === 'reach' ? circuitSpot(run && run.arenaId, CIRCUIT_REACH_GATE) : null,
   };
 }
 

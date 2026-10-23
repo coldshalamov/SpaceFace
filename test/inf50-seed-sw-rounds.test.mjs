@@ -7,6 +7,7 @@ import { waveOpeningLine } from '../src/systems/survivalAnnounce.js';
 import { circuitPanelLines } from '../src/ui/screens/crucibleDraft.js';
 import { OBJECTIVE_WORDS } from '../src/ui/survivalHud.js';
 import { SWARM_STAKES } from '../src/data/swarmStakes.js';
+import { COMBAT_LAB_ARENAS } from '../src/data/combatLabSetups.js';
 import {
   CIRCUIT_COMMANDER_NAME, circuitChoicesFor, circuitFor, circuitRoundFor,
 } from '../src/systems/survivalCircuit.js';
@@ -42,6 +43,13 @@ test('seed 4242: later cohort slots name a different contract, and stage one doe
       assert.equal(plan.swarm.boss, false, `${kind} is not a second champion`);
       const line = waveOpeningLine(Number(wave), plan);
       assert.match(line, /Destroy the hive nodes|Hold the zone|Collect the cores|Assassinate|Reach the gate/);
+    }
+    if (kind === 'hold' || kind === 'reach') {
+      const spot = kind === 'hold' ? round.zone : round.gate;
+      const arena = COMBAT_LAB_ARENAS.find((row) => row.id === ARENA);
+      const dist = Math.hypot(spot.x - arena.spawnPos.x, spot.z - arena.spawnPos.z);
+      assert.ok(dist > spot.radius, `${kind} does not start under the ship`);
+      assert.ok(dist < 700, `${kind} stays in the room the ship is fighting in`);
     }
   }
   const commander = circuitRoundFor(runAt(11), 11);
