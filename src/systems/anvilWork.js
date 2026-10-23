@@ -1,3 +1,4 @@
+import { orchardWorkerWeather } from '../world/anvilOrchardWorkWeather.js';
 import { validateOrchardTowQuote, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 // Stormshift's first normal shift, mixed into the existing traffic owner. The itinerary and
 // cargoManifest are existing world-record fields. No private inventory or offscreen production.
@@ -45,6 +46,33 @@ function actor(owner, role) {
   // into whichever duplicate happened to win the entity index.
   if (secondLiveWorldRecordCarrier(owner.state, id, e)) return null;
   return e;
+}
+
+// Read-only projection for the existing Hail/target surface, using the same actor
+// identity and corridor decision as work. It grants no movement or cargo authority.
+export function anvilCollectorWorkStatus(state, entity) {
+  if (state?.mode !== 'flight' || state.world?.currentSectorId !== PLANET_SITE.sectorId
+    || entity?.data?.worldRecordId !== anvilWorkerRecordId(state, 'collector')
+    || actor({ state }, 'collector') !== entity || entity?.data?.jobId) return null;
+  const route = itinerary(entity), center = route?.center;
+  if (!center || ![center.x, center.z].every(Number.isFinite)) return null;
+  if (route.phase === 'outbound') {
+    const weather = orchardWorkerWeather(state, entity, { x: center.x + ANVIL_WORK.radius, z: center.z });
+    if (weather?.crossing && !weather.exposed) {
+      return weather.phase === 'forecast' ? 'STORMSHIFT HOLD · LOCAL GUST FORECAST'
+        : 'STORMSHIFT HOLD · LOCAL GUST';
+    }
+    return 'STORMSHIFT · OUTBOUND TO SHALLOW HARVEST';
+  }
+  if (route.phase === 'clear_band') {
+    const weather = orchardWorkerWeather(state, entity, entity.pos);
+    if (weather?.exposed) return weather.phase === 'forecast'
+      ? 'STORMSHIFT · CLEARING FORECAST GUST CORRIDOR' : 'STORMSHIFT · CLEARING GUST CORRIDOR';
+    return 'STORMSHIFT · CLEARING BAND';
+  }
+  return ({ collect: 'STORMSHIFT · COLLECTING SHALLOW GAS',
+    return: 'STORMSHIFT · RETURNING TO RECEIVING TENDER',
+    berthed: 'STORMSHIFT · AT RECEIVING BERTH' })[route.phase] || null;
 }
 
 function retainedReceiver(owner) {
@@ -258,18 +286,29 @@ export const anvilTrafficMethods = {
       route.phase = 'outbound';
     }
     if (route.phase === 'outbound') {
-      if (steer(this, e, { x: center.x + ANVIL_WORK.radius, z: center.z }, 25, 55)) {
+      const target = { x: center.x + ANVIL_WORK.radius, z: center.z };
+      const weather = orchardWorkerWeather(state, e, target);
+      if (weather?.exposed) {
+        // Never wait inside the local gust. Clear the band through the existing
+        // physical return route, retaining the same finite load and actor.
+        route.phase = 'clear_band'; persist(this, e);
+      } else if (weather?.crossing) {
+        hold(e); return; // a safe worker waits for this corridor, not a global storm
+      }
+      if (route.phase === 'outbound' && steer(this, e, target, 25, 55)) {
         route.phase = 'collect'; persist(this, e);
       }
-      return;
+      if (route.phase === 'outbound' || route.phase === 'collect') return;
     }
     if (route.phase === 'collect') {
-      if (used(e) >= ANVIL_WORK.capacity || heat >= 0.58 || e.hull < e.hullMax * 0.5) {
+      const angle = Math.atan2(e.pos.z - center.z, e.pos.x - center.x) + 0.22;
+      const target = { x: center.x + Math.cos(angle) * ANVIL_WORK.radius,
+        z: center.z + Math.sin(angle) * ANVIL_WORK.radius };
+      if (orchardWorkerWeather(state, e, target) || used(e) >= ANVIL_WORK.capacity
+        || heat >= 0.58 || e.hull < e.hullMax * 0.5) {
         route.phase = 'clear_band'; persist(this, e);
       } else {
-        const angle = Math.atan2(e.pos.z - center.z, e.pos.x - center.x) + 0.22;
-        steer(this, e, { x: center.x + Math.cos(angle) * ANVIL_WORK.radius,
-          z: center.z + Math.sin(angle) * ANVIL_WORK.radius }, 0);
+        steer(this, e, target, 0);
         return;
       }
     }

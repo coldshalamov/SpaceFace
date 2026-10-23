@@ -1,3 +1,4 @@
+import { createStormshiftCollectorMotionDriver } from './stormshiftCollectorMotion.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { createOrchardVisualDriver } from './anvilOrchardVisuals.js';
 // LAST_ARGUMENT_INTEGRATION_V1
@@ -384,12 +385,14 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     primeMotionTravelPad(root);
   }
   // Ambient/attach clips arm on the first update so their anchor lands on the real clock.
+  const updateStormshiftCollector = createStormshiftCollectorMotionDriver(entity, live);
   let attachFired = false;
   root.userData.updateAuthoredMotion = function updateAuthoredMotion(liveEntity, simNow, a11y, state = null) {
     if (!attachFired) {
       attachFired = true;
       for (const controller of live) controller.handleEvent?.('authoredMotion:attach', {}, simNow);
     }
+    updateStormshiftCollector?.(liveEntity, simNow);
     for (const controller of live) controller.update(simNow, a11y);
     updatePhysical?.(liveEntity, a11y);
     tallyDriver?.update(liveEntity, simNow, a11y, state);
