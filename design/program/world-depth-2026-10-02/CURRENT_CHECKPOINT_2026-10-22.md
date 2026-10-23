@@ -1,4 +1,15 @@
 <!-- LIFETIME: DURABLE -->
+
+## Latest execution addendum: 2026-10-23 07:06 UTC
+
+All ten goals remain OPEN. This addendum supersedes earlier current-status prose, not historical evidence or scope.
+
+- Draft PR528 now has six files at a4a1e242810db056533753eb39a4d5a84d644e95, including the portable selected-owner native return fixture. Hosted run5887 (39911361059) completed with failure; the focused Choir command explicitly passed17/17. Browser shard3 was cancelled and the other jobs failed. Historical run5882 ended cancelled, with its focused Choir command passing. Neither aggregate result is a whole-game acceptance claim.
+- Draft PR526 remains at7b08cfd34e3ef98470cf64d6beecf4dfc3217ec9. Its original31focused cases omitted the world owner. Actual casualty tombstones exposed a second blocker: the rescued person could not return when the original destroyed body record existed. The reviewed, not-yet-published correction preserves that tombstone, gives the same person at most one distinct durable returning body, and retains the existing workplace/job authority. Final41distinct checks pass, including32world-owner/Continue cases and9adjacent regressions; original null-fix source fails7of10new world tests. Source candidate1a8feebd69ebf40a749c5631f8388a1a9bbad962. Independent review closed world ownership, foreign-body collision and pre-sync rematerialized death defects. No native rescue flight or full production acceptance is claimed.
+- Rhea radio remains a separately reviewed consumer, not published:43focused checks plus a diagnostic PR480 clock composition. Its former no-world positive fixture is being replaced with an actual-world return/Continue route. PR480's worker-clock/Ilex ownership remains separate; no duplicate clock or borrowed unlanded whole-file replacement.
+- Fresh master3d1bd1d756fcb6e1daef772c41cc1b675281bd17 includes a substantial new batch affecting Save, traffic, registry and package version. The Rhea candidate is qualified through bf2e72ff on its effective loaded graph; dot's implementation owner is now reconciling the exact3d1loaded dependency delta before publication. The package gate must preserve current beta/version and unrelated scripts.
+- Next executable action: finish current-source41case Rhea qualification, preserve the final source/test/report package, append tested commits safely to the existing open PR526 after a fresh head check, then qualify its radio consumer with world enabled. Publication, integration, visual acceptance and whole-game acceptance stay separate. Existing approval holds remain isolated and unchanged; no new user action is needed for this local qualification.
+
 # SpaceFace current execution checkpoint
 
 Updated 2026-10-23 06:17 UTC. All TEN goals remain OPEN. Published, exported, tested, integrated and accepted are separate states. No merge/deployment or final game acceptance is claimed.
