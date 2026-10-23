@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-23T04:33:00Z",
+  "updatedAt": "2026-10-23T04:49:00Z",
   "correction": "Prior #5860 both-gates-skipped attribution was incorrect. Exact matrix/shard ownership is required.",
   "old": {
     "run": 39888575049,
@@ -30,7 +30,7 @@
     "run": 39899281598,
     "number": 5867,
     "head": "424bdae718639df6af12117f6a5c5e9e15eee489",
-    "workflow": "in progress",
+    "workflow": "completed failure",
     "matrixCommands": 312,
     "staticCommands": 234,
     "routes": [
@@ -50,7 +50,7 @@
         "shard": 3
       }
     ],
-    "result": "All three command-level passes; not a green overall workflow.",
+    "result": "All three command-level passes; overall workflow FAILURE.",
     "artifacts": [
       {
         "id": 12477633971,
@@ -64,7 +64,14 @@
         "id": 12477947766,
         "sha256": "d04c9dfa17d3f6052482cb3805fb476752dd2e54ad82b658e77cc5888cee1e03"
       }
-    ]
+    ],
+    "terminalObservedAt": "2026-10-23T04:46:00Z",
+    "browser3": {
+      "job": 120236836285,
+      "result": "automatically cancelled after5/312",
+      "artifactId": 12478704519,
+      "artifactSha256": "e8f1ad3a1828d0ba9f35b6755b063259eedb59d227f4258aa4edbca07fbc375d"
+    }
   },
   "method": "Exact head package ordered matrix, recognized Node-test classification, round-robin static sharding, completed selection/pass/failure counts and absence from exhaustive failure entries. Passing command TAP output not retained, so do not relabel individual case counts as observed CI TAP.",
   "unchanged": "Local test counts, no merge/deploy, overall failures and all acceptance gaps remain."
