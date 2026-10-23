@@ -27,7 +27,7 @@ const CSS = `
 .orr-svg text.orr-hullring__label { font-family:var(--dp-face-label, var(--dp-face-display, "Archivo")), sans-serif; font-size: 12px;
   font-variation-settings:"wght" 600, "wdth" 112; letter-spacing:.24em; text-transform:uppercase; fill:rgb(${BONE} / .66);
   paint-order:stroke; stroke:rgb(4 6 9 / .7); stroke-width:3px; stroke-linejoin:round; }
-.orr-svg text.orr-hullring__gloss { font-family:var(--dp-face-label, var(--dp-face-display, "Archivo")), sans-serif; font-size: 8.5px;
+.orr-svg text.orr-hullring__gloss { font-family:var(--dp-face-label, var(--dp-face-display, "Archivo")), sans-serif; font-size: 12px;
   font-variation-settings:"wght" 500, "wdth" 100; letter-spacing:.04em; fill:rgb(${BONE} / .45);
   paint-order:stroke; stroke:rgb(4 6 9 / .7); stroke-width:3px; stroke-linejoin:round; }
 @media (forced-colors: active) { .orr-hullring { display:none; } }
