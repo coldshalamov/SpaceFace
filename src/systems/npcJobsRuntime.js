@@ -1,3 +1,4 @@
+import { tallyPassageTarget, tallyAdvanceDt, isTallyPassageJob } from './tethysTallyPassage.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { isTowlineCleanupTarget } from '../data/towlineTable.js';
@@ -4337,12 +4338,14 @@ export const npcJobsRuntime = {
       const approachingSeam = !claimedBeforeAdvance && starterRock && entity.pos
         && Math.hypot(entity.pos.x - starterRock.pos.x, entity.pos.z - starterRock.pos.z)
           > BEAM_MK1.range + (starterRock.radius || 0);
-      const physicalTarget = !claimedBeforeAdvance && this._livingAdventureWorkTarget(entry, entity);
+      const tallyTarget = isTallyPassageJob(entry.job) && claimedBeforeAdvance
+        ? { blocked: true } : tallyPassageTarget(this, entry, entity);
+      const physicalTarget = tallyTarget || (!claimedBeforeAdvance && this._livingAdventureWorkTarget(entry, entity));
       // The settle test is relative to the target: a hull riding a drifting rock at matching
       // velocity IS arrived, even though its world-frame speed stays at belt drift.
       // A cutter's commission is paperwork at the pad, not a docking manoeuvre; the seam face and
       // the unload berth are the stops that need the hull physically there.
-      const holdingForArrival = physicalTarget
+      const holdingForArrival = tallyTarget ? (tallyTarget.blocked || tallyTarget.holdClock || (!tallyTarget.moving && !tallyTarget.reached)) : physicalTarget
         && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
         && !(entry.job.phase === NPC_JOB_PHASE.COMMISSION && this._heliosStarterMinerRecordId != null
           && entry.worldRecordId === this._heliosStarterMinerRecordId)
@@ -4364,7 +4367,7 @@ export const npcJobsRuntime = {
       const braced = !claimedBeforeAdvance && entry.closeCallUntil != null && simT < entry.closeCallUntil;
       if (step > 0 && !approachingSeam && !holdingForArrival && !entry.berthHold && !braced
         && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
-        advance(entry.job, step, this._sink);
+        advance(entry.job, tallyAdvanceDt(entry.job, tallyTarget, step), this._sink);
       }
 
       // An owner intent is synchronous and may invoke Continue/New Game while advance() is still on
@@ -4400,7 +4403,7 @@ export const npcJobsRuntime = {
       if (entry.job.phase === NPC_JOB_PHASE.COMPLETE && !claimed) { this.release(jobId); continue; }
 
       if (!claimed) this._drive(entry, entity);
-      if (!claimed) applyLaneErrandIntent(this, entry, entity, simT);
+      if (!claimed && !isTallyPassageJob(entry.job)) applyLaneErrandIntent(this, entry, entity, simT);
     }
   },
 
@@ -4795,11 +4798,26 @@ export const npcJobsRuntime = {
   },
 
   _driveLivingAdventureWorker(entry, entity, target) {
-    const dx = target.pos.x - entity.pos.x, dz = target.pos.z - entity.pos.z;
+    const pos = target.workPose?.pos || entity.pos, vel = target.workPose?.vel || entity.vel;
+    const dx = target.pos.x - pos.x, dz = target.pos.z - pos.z;
     const distance = Math.hypot(dx, dz), close = distance <= target.reach;
     const aim = distance > 0.01 ? Math.atan2(dz, dx) : entity.rot || 0;
     const profile = resolvePropulsionProfile(entity, this.state);
-    const planningSpeed = Math.min(40, entry.job.speed || 35);
+    const planningSpeed = Math.min(isTallyPassageJob(entry.job) ? target.navigationSpeed || 40 : 40, entry.job.speed || 35);
+    if (isTallyPassageJob(entry.job)) {
+      // A count mark needs lateral-drift cancellation, not a heading-only orbit.
+      const stopRadius = target.stopRadius ?? target.reach * 0.5;
+      const closing = Math.min(planningSpeed, Math.max(0, distance - stopRadius) * 0.6);
+      const vx = dx / Math.max(1, distance) * closing - (vel?.x || 0);
+      const vz = dz / Math.max(1, distance) * closing - (vel?.z || 0);
+      const c = Math.cos(entity.rot || 0), s = Math.sin(entity.rot || 0);
+      const forward = vx * c + vz * s, side = -vx * s + vz * c;
+      this._writeIntent(entity, clamp(side / Math.max(1, profile.strafeAccel), -1, 1),
+        clamp(forward / Math.max(1, forward < 0 ? profile.reverseAccel : profile.mainAccel), -1, 1),
+        false, distance > stopRadius ? aim : entity.rot || 0, false);
+      return;
+    }
+
     if (profile.family === DRIVE_FAMILIES.PULSE_PLATE) {
       // PulsePlate's BRAKE fires the plate. Delicate work uses its authored RCS instead.
       const speed = close ? 0 : Math.min(planningSpeed,
@@ -4910,7 +4928,11 @@ export const npcJobsRuntime = {
     // reach this branch; everything else retains the authored route controller below.
     if (this._tryDriveCeresRealTarget(entry, entity)) return;
 
-    const physicalTarget = this._livingAdventureWorkTarget(entry, entity);
+    const physicalTarget = tallyPassageTarget(this, entry, entity) || this._livingAdventureWorkTarget(entry, entity);
+    if (physicalTarget?.blocked) {
+      this._driveLivingAdventureWorker(entry, entity, { pos: entity.pos, vel: { x: 0, z: 0 }, reach: 1, workPose: { pos: entity.pos, vel: entity.vel } });
+      return;
+    }
     if (physicalTarget) { this._driveLivingAdventureWorker(entry, entity, physicalTarget); return; }
 
     // A tug's only honest destination while the line is still off is the body it came for — not
@@ -6446,7 +6468,7 @@ export const npcJobsRuntime = {
     // would be both wrong (they didn't happen on-screen) and, under a pathological dt, unbounded.
     // The job STATE advances truthfully; only the current on-screen materialization is surfaced.
     const elapsed = Math.min(MAX_CATCHUP_S, Math.max(0, simT - finite(entry.lastAdvanceSimT, simT)));
-    if (elapsed > 0 && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
+    if (elapsed > 0 && !isTallyPassageJob(entry.job) && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
       let out = advance(entry.job, elapsed);
       let guard = 0;
       while (out.length && isTruncated(out[out.length - 1]) && guard++ < 100000) {

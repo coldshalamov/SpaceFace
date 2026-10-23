@@ -81,3 +81,6 @@ node scripts/program-dispatch.mjs --ready
 Choose the highest-priority result you want, add its short mutation row only when editing begins, and
 finish it. If one exact hunk is protected, continue the task's disjoint work or choose the next queue
 row; never report the whole program blocked.
+
+## 2026-10-20 Tethys count-lane passage
+Owner: dot/build_next_living_encounter. Active physical Kess/Tally passage: new src/data/tethysTallyPassage.js, src/systems/tethysTallyPassage.js; narrow priority-courier methods src/systems/traffic.js; narrow physical-target/clock adapters src/systems/npcJobsRuntime.js; src/data/contactHail.js priority status/route; test/tethys-tally-passage.test.mjs, test/fixtures/tethys-tally-native.mjs; package.json/index.html registration at seal; design/program/world-depth-2026-10-02/TETHYS_TALLY_PASSAGE_2026-10-20.md. No cargo title/reward invention, no duplicate keg, no native pose writes. Implemented: real hull corridor, bounded original Kess admission, truthful Hail, native player-collision clearance, one freight arrival and conservative timetable; adjacent regressions26/26. Native suite19/19 and adjacent26/26 pass, including safe exterior berth Continue. Active: independent sealed-candidate review and public-only reconstruction. Existing job pinning retained; defensive far roundtrip is not ordinary mid-job shelving.
