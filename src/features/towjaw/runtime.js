@@ -1,9 +1,10 @@
 import { getCombatKernel } from '../../combat/kernel.js';
 import { scalarHitToDamagePacket } from '../../combat/damage.js';
 import { deliverPhysicalImpulse } from '../../combat/physicalEffects.js';
-import { occupantGenerationOf } from '../../core/entity.js';
+import { Masks, occupantGenerationOf } from '../../core/entity.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../../core/physicsAuthority.js';
 import { PINNED_STATUS_ID } from '../../data/combatDefs.js';
+import { isMassSeedTetherEligible } from '../../systems/massSeed.js';
 import { makeShipEntitySpec } from '../../systems/ships.js';
 import { createTowjawController } from './controller.js';
 import { TOWJAW, TOWJAW_MECHANISMS } from './catalog.js';
@@ -21,6 +22,8 @@ const clone = value => JSON.parse(JSON.stringify(value));
 const keyFor = (encounterId, slot) => `${encounterId}/${slot}`;
 const activeBody = entity => !!entity && entity.alive !== false && Number(entity.hull) > 0 && validPoint(entity.pos);
 const sectorOf = state => state.world?.currentSectorId ?? null;
+const roleTypeMatches = (entity, role) => role === 'boss' ? entity?.type === 'ship'
+  : role === 'scrap' ? entity?.type === 'wreck' || entity?.type === 'pickup' : entity?.type === 'wreck';
 
 function remapControllerIds(snapshot, before, after) {
   const ids = new Map();
@@ -37,7 +40,7 @@ function remapControllerIds(snapshot, before, after) {
   }
   for (const field of ['armor', 'released']) {
     result[field] = (Array.isArray(result[field]) ? result[field] : []).slice(0, TOWJAW.maxTracked)
-      .map(row => ({ ...row, id: map(row.id) }));
+      .filter(row => row && typeof row === 'object').map(row => ({ ...row, id: map(row.id) }));
   }
   // All casts are cancelled by controller.restore. Keep the serialized shape
   // finite but never reinterpret old projectile/world geometry as a fresh cast.
@@ -48,6 +51,7 @@ function remapControllerIds(snapshot, before, after) {
  * ID reused by a civilian can never become scrap, armor, a mount, or a victim. */
 function matches(entity, record, binding) {
   return !!entity && !!binding && entity.id === binding.id
+    && roleTypeMatches(entity, binding.role)
     && entity.data?.towjaw?.encounterId === record.encounterId
     && entity.data.towjaw.key === binding.key
     && entity.data.towjaw.role === binding.role
@@ -64,7 +68,29 @@ function sweptContact(from, to, point, radius) {
 
 function isPinned(state, entity) {
   const status = state.combat?.entities?.[String(entity.id)]?.statuses?.[PINNED_STATUS_ID];
-  return !!status && Number(status.expiresTick) > finite(state.tick);
+  if (status && Number(status.expiresTick) > finite(state.tick)) return true;
+  const player = state.entities?.get(state.playerId);
+  if (!player) return false;
+  const rows = state.combat?.attachments?.byId || {};
+  let walked = 0;
+  for (const id in rows) {
+    if (++walked > 128) break;
+    const row = rows[id];
+    if (!row || row.state !== 'active') continue;
+    const source = row.ownerId === entity.id, target = row.targetId === entity.id;
+    if (!source && !target) continue;
+    const anchor = state.entities.get(source ? row.targetId : row.ownerId);
+    const bodyGen = source ? row.ownerGeneration : row.targetGeneration;
+    const anchorGen = source ? row.targetGeneration : row.ownerGeneration;
+    if (!anchor || bodyGen != null && bodyGen !== occupantGenerationOf(entity)
+      || anchorGen != null && anchorGen !== occupantGenerationOf(anchor)) continue;
+    // Number-row Pin authors a fixed Mass Seed; the player's actual Massline
+    // (including Twin Bridle) supplies the joint. Merely dropping one nearby
+    // never invents a pin, and we never change or break the player's constraint.
+    if (isMassSeedTetherEligible(anchor) && (anchor.ownerId ?? anchor.data?.ownerId) === player.id
+      && resolvePhysicsBodySpec(anchor)?.dynamic === false) return true;
+  }
+  return false;
 }
 
 function playerHolds(state, entity) {
@@ -80,9 +106,10 @@ function playerHolds(state, entity) {
     if (!row || row.state !== 'active') continue;
     const held = row.ownerId === player.id && row.targetId === entity.id;
     const reversed = row.targetId === player.id && row.ownerId === entity.id;
-    if (!held && !reversed) continue;
-    const bodyGen = held ? row.targetGeneration : row.ownerGeneration;
-    const playerGen = held ? row.ownerGeneration : row.targetGeneration;
+    const remote = row.controllerId === player.id && (row.ownerId === entity.id || row.targetId === entity.id);
+    if (!held && !reversed && !remote) continue;
+    const bodyGen = row.targetId === entity.id ? row.targetGeneration : row.ownerGeneration;
+    const playerGen = remote ? row.controllerGeneration : held ? row.ownerGeneration : row.targetGeneration;
     if (bodyGen != null && bodyGen !== occupantGenerationOf(entity)) continue;
     if (playerGen != null && playerGen !== occupantGenerationOf(player)) continue;
     return true;
@@ -131,7 +158,7 @@ export function buildTowjawSpawnSpecs({ encounterId, sectorId, origin, heading =
     const def = TOWJAW_MECHANISMS[key];
     rows.push({ slot: key, role: key, spec: { type: 'wreck', team: 1,
       pos: layout.mechanisms[key], radius: def.radius, mass: 10,
-      hull: def.hull, hullMax: def.hull, collides: true,
+      hull: def.hull, hullMax: def.hull, collides: true, collisionMask: Masks.PROJECTILE,
       physicsBody: { schemaVersion: 1, shape: 'capsule', mass: 10, dynamic: true },
       flags: { persistent: true }, data: { ...ownedData(encounterId, key, key, sectorId),
         parentType: 'debris', scanLabel: def.label, salvagePool: {}, salvageTimeLeft: 20,
@@ -145,6 +172,9 @@ export function buildTowjawSpawnSpecs({ encounterId, sectorId, origin, heading =
       type: cargo ? 'pickup' : 'wreck', team: 1,
       pos: { x: item.x, z: item.z }, vel: { x: item.vx, z: item.vz }, rot: heading + index * 0.63,
       radius: item.radius, mass: item.mass, hull: 44, hullMax: 44, collides: true,
+      // The native projectile sweep still owns its separate mask admission.
+      // Author the local pieces as shootable; never change the global wreck mask.
+      collisionMask: Masks.PROJECTILE | (cargo ? Masks.SHIP | Masks.DRONE : 0),
       physicsBody: { schemaVersion: 1, shape: cargo ? 'ball' : 'capsule', material: 'debris', mass: item.mass, dynamic: true },
       flags: { persistent: true }, data: { ...ownedData(encounterId, `scrap_${index}`, 'scrap', sectorId),
         parentType: 'debris', scanLabel: cargo ? 'Loose scrap freight' : 'Salvage plate',
@@ -213,7 +243,7 @@ export function createTowjawRuntime(ctx = {}) {
         : validPoint(attacker?.pos) ? attacker.pos : null;
       if (from && validPoint(hitPosition)) {
         const armor = (controller?.getView().armor || [])
-          .filter(row => row.status === 'latched').map(row => bodyForId(row.id)).filter(activeBody);
+          .filter(row => row.status === 'latched' || row.status === 'venting').map(row => bodyForId(row.id)).filter(activeBody);
         const intercepted = armorIntercept({ from, to: hitPosition, armor });
         if (intercepted) { targetId = intercepted.id; hitPosition = intercepted.point; }
         else if (binding.role === 'boss') {
@@ -241,6 +271,11 @@ export function createTowjawRuntime(ctx = {}) {
     ACTIVE.set(state, api);
     unregisterDamage = registerTowjawDamageRoute(state, incoming);
     if (bus?.on) {
+      unsubs.push(bus.on('entity:killed', event => {
+        const binding = bindingForId(event?.id);
+        const body = binding?.role === 'boss' ? entityFor(binding) : null;
+        if (body && body.alive === false && Number(body.hull) <= 0) record.bossKilled = true;
+      }));
       unsubs.push(bus.on('encounter:resolved', event => {
         if (event?.encounterId === record?.encounterId && !stopped) dispose('director_resolved', { preserveSalvage: true });
       }));
@@ -255,6 +290,7 @@ export function createTowjawRuntime(ctx = {}) {
   }
 
   function start(options = {}) {
+    if (stopped) return { ok: false, reason: 'disposed' };
     if (record) return { ok: false, reason: 'already_issued', encounterId: record.encounterId };
     if (ACTIVE.has(state)) return { ok: false, reason: 'already_active' };
     if (state.story?.flags?.towjawIssued) return { ok: false, reason: 'already_issued' };
@@ -415,8 +451,10 @@ export function createTowjawRuntime(ctx = {}) {
     if (!record || record.outcome) return;
     record.outcome = outcome === 'defeat' ? 'defeat' : 'retreat';
     record.rewardClaimed = record.rewardClaimed || rewardEligible;
-    // Reward is the nine existing physical bodies and their finite cargo/pools.
-    // There is no second loot burst, credit grant, or remint on restoration.
+    // This feature releases its nine existing physical bodies and finite pools.
+    // A real hull kill may also produce the normal finite hulk/shard (or stunt
+    // cell) through the existing aftermath/combat owners. We create no second
+    // reward burst, direct credit grant, or replacement loot on restoration.
     if (state.story?.flags) state.story.flags.towjawOutcome = record.outcome;
     dispose(record.outcome, { preserveSalvage: true });
   }
@@ -445,12 +483,17 @@ export function createTowjawRuntime(ctx = {}) {
       : { ...row, id: null, tombstone: true, generation: -1 });
     const controllerSave = controller?.snapshot() || null;
     return { ...clone(record), bindings,
+      // Combat settles after our pre-physics tick. Preserve a proven kill if the
+      // save owner captures that same frame before the controller sees it.
+      outcome: record.outcome || (record.bossKilled ? 'defeat' : null),
+      rewardClaimed: record.rewardClaimed || record.bossKilled === true,
       controller: controllerSave ? remapControllerIds(controllerSave, record.bindings, bindings) : null,
       // A restored round already in flight never gains a fresh damage allowance.
       launched: [...launched.entries()].slice(0, 6).map(([id, row]) => ({ id, until: row.until, hit: row.hit, lane: row.lane })) };
   }
 
   function restore(saved) {
+    if (stopped) return { ok: false, reason: 'disposed' };
     if (record || ACTIVE.has(state)) return { ok: false, reason: 'already_active' };
     if (saved?.schemaVersion !== SCHEMA || !saved.issued || saved.sectorId !== TOWJAW.sectorId
       || !validPoint(saved.origin) || !Array.isArray(saved.bindings) || saved.bindings.length > MAX_BODIES
@@ -482,15 +525,21 @@ export function createTowjawRuntime(ctx = {}) {
       const entity = matchesByKey.get(row.key);
       // A dead/missing slot is a tombstone. We never call spawnEntity in restore.
       return row.tombstone !== true && row.id != null && entity && activeBody(entity)
+        && roleTypeMatches(entity, row.role)
         && entity.data.towjaw.role === row.role && entity.data.towjaw.sectorId === record.sectorId
         ? { ...row, id: entity.id, generation: occupantGenerationOf(entity) }
         : { ...row, id: null, tombstone: true, generation: -1 };
     });
     state.story ||= { flags: {} }; state.story.flags ||= {};
     state.story.flags.towjawIssued ||= record.encounterId;
-    if (record.outcome || sectorOf(state) !== record.sectorId || !bossEntity()) {
-      record.outcome ||= 'lost'; stopped = true;
-      presentation?.destroy?.();
+    const unprovenMissingMechanism = KEYS.some(key => !entityFor(record.bindings.find(row => row.role === key))
+      && saved.controller.mechanisms?.[key]?.disabled !== true);
+    if (record.outcome || sectorOf(state) !== record.sectorId || !bossEntity() || unprovenMissingMechanism) {
+      record.outcome ||= 'lost';
+      if (record.outcome === 'defeat' || record.outcome === 'retreat') state.story.flags.towjawOutcome = record.outcome;
+      // An incomplete world restore is not a kill. Retire only verified survivors
+      // so this durable optional encounter cannot leave an immortal idle hull.
+      dispose(record.outcome, { preserveSalvage: true });
       return { ok: true, terminal: true, outcome: record.outcome };
     }
     controller = createTowjawController({ ...record,
@@ -502,7 +551,8 @@ export function createTowjawRuntime(ctx = {}) {
       presentation?.destroy?.();
       return { ok: false, reason: 'invalid_controller_snapshot' };
     }
-    for (const row of (saved.launched || []).slice(0, 6)) {
+    for (const row of (Array.isArray(saved.launched) ? saved.launched : []).slice(0, 6)) {
+      if (!row || typeof row !== 'object') continue;
       const oldBinding = saved.bindings.find(binding => binding.id === row.id);
       const newBinding = oldBinding && record.bindings.find(binding => binding.key === oldBinding.key);
       const entity = entityFor(newBinding);
@@ -537,7 +587,8 @@ export function createTowjawRuntime(ctx = {}) {
   function setPresentation(adapter) {
     if (adapter != null && typeof adapter.onEvents !== 'function') throw new TypeError('TOWJAW presentation requires onEvents');
     presentation?.destroy?.();
-    presentation = adapter;
+    presentation = stopped ? null : adapter;
+    if (stopped) adapter?.destroy?.();
   }
   if (!presentation) presentation = createTowjawPresentation({ state, bus, getSnapshot: getView });
   const api = Object.freeze({ start, step, getView, snapshot, restore, dispose, routeDamage, setPresentation });

@@ -79,7 +79,7 @@ export function isMechanismCovered(key, model, world) {
   const debris = world.debris || [];
   const armor = [];
   for (const plate of (model.armor || []).slice(0, 6)) {
-    if (plate.status !== 'latched') continue;
+    if (plate.status !== 'latched' && plate.status !== 'venting') continue;
     const body = debris.find(candidate => candidate.id === plate.id);
     if (body?.alive !== false && body) armor.push(body);
   }
@@ -137,8 +137,10 @@ export function encounterLayout(origin, heading = 0, count = 9, seed = 4242) {
     const angle = i * 2.399963229728653 + (random() - 0.5) * 0.24;
     const radius = 84 + 18 * (i % 4) + random() * 12;
     const position = localToWorld(body, { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius });
-    scrap.push({ ...position, mass: 8 + Math.floor(random() * 13), radius: 5.8 + random() * 1.6,
-      vx: (random() - 0.5) * 2, vz: (random() - 0.5) * 2 });
+    const mass = 8 + Math.floor(random() * 13), bodyRadius = 5.8 + random() * 1.6;
+    const drift = localToWorld({ pos: { x: 0, z: 0 }, rot: body.rot },
+      { x: (random() - 0.5) * 2, z: (random() - 0.5) * 2 });
+    scrap.push({ ...position, mass, radius: bodyRadius, vx: drift.x, vz: drift.z });
   }
   return { origin: { ...body.pos }, heading: body.rot,
     mechanisms: Object.fromEntries(Object.keys(TOWJAW_MECHANISMS).map(key => [key, mechanismPosition(body, key)])), scrap };

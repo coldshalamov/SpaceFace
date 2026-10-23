@@ -34,7 +34,7 @@ export function createTowjawController(options = {}) {
     origin: validPoint(options.origin) ? { x: options.origin.x, z: options.origin.z } : { x: 0, z: 0 },
     heading: wrapAngle(finite(options.heading)),
     phase: 'approach', phaseTime: 0, elapsed: 0, lastTime: null,
-    targetArmor: 3, armor: [], mechanisms: {}, attack: null,
+    targetArmor: 3, armor: [], mechanisms: {}, attack: null, coast: null,
     castSequence: 0, cycles: 0, starvations: 0, emptyFor: 0, awayFor: 0,
     outcome: null, outcomeEmitted: false, released: [], lostIds: [], spentIds: [],
     previousPlayer: null, previousBoss: null,
@@ -81,11 +81,33 @@ export function createTowjawController(options = {}) {
   function releaseAll(reason) {
     for (let index = model.armor.length - 1; index >= 0; index--) removePlate(index, reason);
   }
+  function ventMechanism(key, world) {
+    const plate = model.armor.filter(row => row.status === 'latched' && TOWJAW_SLOTS[row.slot].mechanism === key)
+      .sort((a, b) => a.slot - b.slot)[0];
+    if (!plate) return;
+    const body = bodyById(world, plate.id), boss = world.boss;
+    if (!live(body) || !live(boss)) return;
+    plate.status = 'venting'; plate.age = 0; plate.strainS = 0;
+    command({ type: 'release', entityId: body.id, reason: 'mechanism-vent' });
+    // An unlatched plate still blocks the ray until it really moves. Keep this
+    // short physical vent row for interception, but never pull it back to slot.
+    if (!body.pinned && !body.playerHeld) {
+      const side = TOWJAW_SLOTS[plate.slot].z < 0 ? -1 : 1;
+      const angle = finite(boss.rot) + side * Math.PI / 2;
+      const mass = clamp(finite(body.mass, 10), 0.5, 80);
+      const impulse = limitVector(Math.cos(angle) * mass * 14, Math.sin(angle) * mass * 14, TOWJAW.maxImpulse);
+      command({ type: 'impulse', entityId: body.id, ...impulse, reason: 'mechanism-vent' });
+      command({ type: 'impulse', entityId: boss.id, x: -impulse.x, z: -impulse.z, reason: 'vent-reaction' });
+    }
+    rememberReleased(body.id, TOWJAW.exposedS + TOWJAW.recoverS);
+    event('armor-vented', { entityId: body.id, slot: plate.slot, mechanism: key });
+  }
   function finish(outcome, reason) {
     if (model.outcomeEmitted) return;
     releaseAll(reason);
     if (model.attack) event('telegraph-cancel', { ...copy(model.attack), reason });
     model.attack = null; model.outcome = outcome;
+    model.coast = null;
     model.outcomeEmitted = true;
     setPhase('done', reason);
     command({ type: 'outcome', outcome, reason, rewardEligible: outcome === 'defeat' });
@@ -94,6 +116,7 @@ export function createTowjawController(options = {}) {
   function cancelAttack(reason) {
     if (model.attack) {
       event('telegraph-cancel', { ...copy(model.attack), reason });
+      retainRamCoast(model.attack, reason);
       model.cycles++;
     }
     model.attack = null;
@@ -106,6 +129,14 @@ export function createTowjawController(options = {}) {
     setPhase('retreat', reason);
   }
 
+  function retainRamCoast(attack, reason = 'braking') {
+    if (attack?.kind !== 'ram' || !live(currentWorld?.boss)) return;
+    const vel = velocity(currentWorld.boss);
+    if (Math.hypot(vel.x, vel.z) < 2) return;
+    model.coast = { ...copy(attack), cancelled: true, coasting: true, reason,
+      endAt: finite(currentWorld.simTime, model.elapsed) + 3 };
+  }
+
   function emitForce(body, acceleration, reason) {
     if (!body || !validId(body.id)) return;
     const mass = clamp(finite(body.mass, 1), 0.1, 2000);
@@ -114,7 +145,10 @@ export function createTowjawController(options = {}) {
   }
   function brake(boss) {
     const vel = velocity(boss);
-    emitForce(boss, limitVector(-vel.x * TOWJAW.bossBrake, -vel.z * TOWJAW.bossBrake, TOWJAW.bossAcceleration), 'brake');
+    const hard = !!model.coast || model.phase === 'exposed' || model.phase === 'recover';
+    const gain = hard ? TOWJAW.ramBrakeGain : TOWJAW.bossBrake;
+    const limit = hard ? TOWJAW.ramBrakeAcceleration : TOWJAW.bossAcceleration;
+    emitForce(boss, limitVector(-vel.x * gain, -vel.z * gain, limit), 'brake');
     // Translation braking does not damp yaw in Rapier. Without this physical
     // torque the approach turn persists forever and peels every new plate off.
     turn(boss, finite(boss.rot));
@@ -165,6 +199,10 @@ export function createTowjawController(options = {}) {
       const relative = { x: bodyVel.x - mountVel.x, z: bodyVel.z - mountVel.z };
       const relSpeed = Math.hypot(relative.x, relative.z);
       plate.age += dt;
+      if (plate.status === 'venting') {
+        if (error > TOWJAW.releaseDistance) removePlate(index, 'vent-complete');
+        continue;
+      }
       const pulled = body.playerHeld && (error > 6 || relSpeed > 10);
       const pinnedAway = body.pinned && error > TOWJAW.latchDistance;
       const overstretched = plate.status === 'latched' && error > TOWJAW.releaseDistance;
@@ -296,12 +334,21 @@ export function createTowjawController(options = {}) {
       startedAt: now, fireAt: now + def.telegraphS, endAt: now + def.telegraphS + def.activeS,
       ...geometry, fired: false, hitPlayer: false, activeTime: 0, ammo: [] };
     if (kind === 'shotgun') {
-      const plates = ammoCandidates.slice(0, def.maxScrap).map(row => row.plate);
+      const sideOf = body => (body.pos.x - world.boss.pos.x) * -Math.sin(geometry.heading)
+        + (body.pos.z - world.boss.pos.z) * Math.cos(geometry.heading);
+      const selected = ammoCandidates.slice(0, def.maxScrap)
+        .sort((a, b) => sideOf(a.body) - sideOf(b.body) || a.plate.slot - b.plate.slot);
+      const plates = selected.map(row => row.plate);
+      const centerIndex = plates.length === 2
+        ? Math.abs(sideOf(selected[0].body)) <= Math.abs(sideOf(selected[1].body)) ? 0 : 1 : Math.floor(plates.length / 2);
       attack.shapes = [];
       for (let index = 0; index < plates.length; index++) {
         const body = bodyById(world, plates[index].id);
         const origin = { x: body.pos.x, z: body.pos.z };
-        const spread = plates.length === 2 ? index * def.halfAngle
+        // Spread follows physical lateral order. Arbitrary slot/ID order can
+        // cross the projectiles immediately, turning a promised central shot
+        // into two pieces bouncing away before they ever reach the player.
+        const spread = plates.length === 2 ? index === centerIndex ? 0 : Math.sign(sideOf(body) || (index ? 1 : -1)) * def.halfAngle
           : plates.length > 1 ? (index / (plates.length - 1) * 2 - 1) * def.halfAngle : 0;
         const heading = Math.atan2(player.pos.z - origin.z, player.pos.x - origin.x) + spread;
         attack.ammo.push({ id: body.id, origin, heading });
@@ -350,8 +397,16 @@ export function createTowjawController(options = {}) {
     attack.activeTime += dt;
     if (attack.kind === 'ram') {
       const vel = velocity(boss);
-      const acceleration = limitVector(Math.cos(attack.heading) * def.speed - vel.x,
-        Math.sin(attack.heading) * def.speed - vel.z, 65);
+      const c = Math.cos(attack.heading), s = Math.sin(attack.heading);
+      const along = (boss.pos.x - attack.origin.x) * c + (boss.pos.z - attack.origin.z) * s;
+      const forwardSpeed = Math.max(0, vel.x * c + vel.z * s);
+      // Plan against a conservative loaded-tug deceleration, then brake with
+      // real bounded force before the hull leaves its advertised corridor.
+      const stopping = forwardSpeed * forwardSpeed / (2 * TOWJAW.ramBrakePlanning) + 10;
+      attack.braking ||= def.length - along <= stopping;
+      const acceleration = attack.braking
+        ? limitVector(-vel.x * TOWJAW.ramBrakeGain, -vel.z * TOWJAW.ramBrakeGain, TOWJAW.ramBrakeAcceleration)
+        : limitVector(c * def.speed - vel.x, s * def.speed - vel.z, 65);
       emitForce(boss, acceleration, 'committed-ram');
       turn(boss, attack.heading);
     } else brake(boss);
@@ -384,6 +439,8 @@ export function createTowjawController(options = {}) {
     }
     if (attack.activeTime >= def.activeS) {
       event('attack-end', copy(attack));
+      retainRamCoast(attack);
+      if (attack.kind !== 'shotgun') ventMechanism(attack.mechanism, world);
       model.attack = null; model.cycles++;
       setPhase('exposed', 'overcommitted');
     }
@@ -416,6 +473,12 @@ export function createTowjawController(options = {}) {
       return { commands, events, state: getView() };
     }
     model.heading = finite(boss.rot, model.heading);
+    if (model.coast) {
+      const vel = velocity(boss);
+      if (Math.hypot(vel.x, vel.z) < 2) {
+        event('coast-end', { castId: model.coast.castId }); model.coast = null;
+      } else model.coast.endAt = Math.max(model.coast.endAt, world.simTime + 0.25);
+    }
     reconcileArmor(world, dt);
     updateMechanisms(world);
     processScrapHits(world);
@@ -516,7 +579,8 @@ export function createTowjawController(options = {}) {
         if (!model.lostIds.includes(plate.id) && model.lostIds.length < TOWJAW.maxTracked) model.lostIds.push(plate.id);
         continue;
       }
-      model.armor.push({ id: plate.id, slot: plate.slot, status: plate.status === 'latched' ? 'latched' : 'reeling',
+      model.armor.push({ id: plate.id, slot: plate.slot,
+        status: plate.status === 'latched' || plate.status === 'venting' ? plate.status : 'reeling',
         age: clamp(finite(plate.age), 0, TOWJAW.reelS), settleS: 0, strainS: 0 });
     }
     for (const key of KEYS) {
@@ -525,10 +589,29 @@ export function createTowjawController(options = {}) {
       model.mechanisms[key].exposed = !isMechanismCovered(key, model, world);
     }
     model.attack = null;
+    model.coast = null;
     if (model.phase === 'commit' || model.phase === 'attack') { model.phase = 'recover'; model.phaseTime = 0; }
+    const oldRam = snapshot.coast?.kind === 'ram' ? snapshot.coast : snapshot.attack?.kind === 'ram' ? snapshot.attack : null;
+    const lane = oldRam?.shapes?.[0];
+    const bossSpeed = Math.hypot(finite(world.boss?.vel?.x), finite(world.boss?.vel?.z));
+    if (oldRam && lane?.kind === 'lane' && validPoint(lane.a) && validPoint(lane.b)
+      && validPoint(world.boss?.pos) && bossSpeed >= 2
+      && distance(lane.a, lane.b) <= TOWJAW_ATTACKS.ram.length + 1
+      && distance(world.boss.pos, lane.a) < TOWJAW.leashRadius) {
+      const now = finite(world.simTime, model.elapsed);
+      model.coast = { kind: 'ram', attack: 'ram', mechanism: 'drive',
+        castId: String(oldRam.castId || `${model.encounterId}:restored`).slice(0, 180),
+        startedAt: Math.min(finite(oldRam.startedAt, now - 0.01), now - 0.01), fireAt: now - 0.01, endAt: now + 3,
+        origin: { x: lane.a.x, z: lane.a.z },
+        heading: Math.atan2(lane.b.z - lane.a.z, lane.b.x - lane.a.x),
+        shapes: [{ kind: 'lane', a: { x: lane.a.x, z: lane.a.z },
+          b: { x: lane.b.x, z: lane.b.z }, radius: TOWJAW_ATTACKS.ram.radius }],
+        cancelled: true, coasting: true, reason: 'load-braking', fired: true };
+      model.phase = 'recover'; model.phaseTime = 0;
+    }
     model.outcome = snapshot.outcome === 'defeat' || snapshot.outcome === 'retreat' ? snapshot.outcome : null;
     model.outcomeEmitted = snapshot.outcomeEmitted === true || model.outcome !== null;
-    if (model.outcomeEmitted) { model.phase = 'done'; model.armor = []; }
+    if (model.outcomeEmitted) { model.phase = 'done'; model.armor = []; model.coast = null; }
     model.previousPlayer = null; model.previousBoss = null; model.lastTime = null;
     pending.push({ type: 'restored', reason: 'reconciled', cancelledAttack: !!snapshot.attack });
     return true;

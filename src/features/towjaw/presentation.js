@@ -48,6 +48,7 @@ export const TOWJAW_PRESENTATION_RECIPES = Object.freeze({
   'reel-start': freezeRecipe({ audio: 'sfx_doctrine_tether_spool', gain: 0.46, priority: 1, family: null }),
   'armor-latched': freezeRecipe({ audio: 'sfx_salvage_hydraulic', gain: 0.5, priority: 2, family: 'tether' }),
   'armor-lost': freezeRecipe({ audio: 'sfx_salvage_plate', gain: 0.64, priority: 4, family: 'tether' }),
+  'armor-vented': freezeRecipe({ audio: 'sfx_salvage_plate', gain: 0.5, priority: 4, family: 'tether' }),
   'telegraph-start': freezeRecipe({ audio: null, gain: 0.72, priority: 7, family: null }),
   'telegraph-cancel': freezeRecipe({ audio: 'sfx_doctrine_break', gain: 0.62, priority: 8, family: null }),
   'attack-start': freezeRecipe({ audio: null, gain: 0.76, priority: 6, family: null }),
@@ -148,7 +149,8 @@ export function buildTowjawPresentationFrame(view, world = view?.world || {}, se
     const body = plate && bodies.get(plate.id);
     if (!body || !Number.isInteger(plate.slot) || plate.slot < 0 || plate.slot >= MAX_ARMOR) continue;
     const reeling = plate.status === 'reeling';
-    if (!reeling) frame.armorCount++;
+    if (plate.status === 'latched') frame.armorCount++;
+    if (plate.status === 'venting') continue; // Released clamps have no cable; the body remains real.
     const mount = slotPosition(world.boss, plate.slot);
     const anchor = world.mechanisms?.[TOWJAW_SLOTS[plate.slot].mechanism];
     // A displaced mechanism is itself a physical body. Do not tether a plate
@@ -169,7 +171,7 @@ export function buildTowjawPresentationFrame(view, world = view?.world || {}, se
       disabled: mech.disabled === true, exposed: mech.exposed === true,
       pinned: mech.pinned === true, detached: mech.detached === true });
   }
-  const cast = view.telegraph || view.attack;
+  const cast = view.telegraph || view.attack || view.coast;
   if (cast && typeof cast.castId === 'string' && Array.isArray(cast.shapes)
       && Number.isFinite(cast.startedAt) && Number.isFinite(cast.fireAt) && Number.isFinite(cast.endAt)
       && cast.startedAt <= frame.clock && cast.fireAt >= cast.startedAt && cast.endAt > cast.fireAt
@@ -181,8 +183,9 @@ export function buildTowjawPresentationFrame(view, world = view?.world || {}, se
       if (outlines.length) shapes.push({ shape, outlines });
     }
     if (shapes.length) {
-      const active = frame.clock >= cast.fireAt;
-      frame.attack = { kind: cast.kind, castId: cast.castId, shapes, active,
+      const coasting = cast.cancelled === true && cast.kind === 'ram';
+      const active = coasting || frame.clock >= cast.fireAt;
+      frame.attack = { kind: cast.kind, castId: cast.castId, shapes, active, coasting, coastReason: coasting ? cast.reason : null,
         progress: clamp((frame.clock - cast.startedAt) / Math.max(1e-6, cast.fireAt - cast.startedAt), 0, 1),
         secondsUntil: Math.max(0, cast.fireAt - frame.clock),
         origin: point(cast.origin) ? copyPoint(cast.origin) : frame.origin,
@@ -196,7 +199,9 @@ export function buildTowjawPresentationFrame(view, world = view?.world || {}, se
     }
   }
   frame.caption = frame.attack
-    ? ATTACK_CAPTIONS[frame.attack.kind] || 'TOWJAW ATTACK — LEAVE THE MARKED AREA'
+    ? frame.attack.coasting ? frame.attack.coastReason === 'braking'
+      ? 'RAM SPENT — THE HULL IS STILL COASTING' : 'RAM CANCELLED — THE HULL IS STILL COASTING'
+      : ATTACK_CAPTIONS[frame.attack.kind] || 'TOWJAW ATTACK — LEAVE THE MARKED AREA'
     : PHASE_CAPTIONS[view.phase] || 'TOWJAW — STRIP THE CAGE; BREAK THE MACHINERY';
   return frame;
 }
@@ -244,6 +249,7 @@ export function describeTowjawPresentationEvent(event, view = {}, settings = {})
   } else if (event.type === 'feedstock-denied') {
     caption = 'FEEDSTOCK DENIED — THE CAGE CANNOT CLOSE';
   } else if (event.type === 'armor-lost') caption = 'ARMOR STRIPPED — THE GAP IS REAL';
+  else if (event.type === 'armor-vented') caption = 'CLAMPS OPEN — GAPS ARE FORMING';
   else if (event.type === 'outcome') {
     const outcome = event.outcome || view.outcome;
     caption = outcome === 'defeat' || outcome === 'defeated' ? PHASE_CAPTIONS.defeated
@@ -291,30 +297,36 @@ export function emitTowjawPresentationEvent(bus, event, view = {}, settings = {}
 
 function trace(ctx, outlines, project) {
   ctx.beginPath();
+  let complete = true;
   for (const contour of outlines) {
-    let started = false;
+    let started = false, uninterrupted = true;
     for (const p of contour) {
       const q = project(p);
-      if (!q || !Number.isFinite(q.x) || !Number.isFinite(q.y)) continue;
+      if (!q || !Number.isFinite(q.x) || !Number.isFinite(q.y) || q.behind === true) {
+        // Behind-camera projection mirrors coordinates. Break the path instead
+        // of inventing a closing edge across the visible half of the warning.
+        started = false; uninterrupted = false; complete = false; continue;
+      }
       if (!started) { ctx.moveTo(q.x, q.y); started = true; }
       else ctx.lineTo(q.x, q.y);
     }
-    if (started) ctx.closePath();
+    if (started && uninterrupted) ctx.closePath();
   }
+  return complete;
 }
 
 function segment(ctx, project, a, b) {
   const p = project(a);
-  if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+  if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.behind === true) return;
   const x = p.x, y = p.y; // projection ports commonly reuse their returned object
   const q = project(b);
-  if (!q || !Number.isFinite(q.x) || !Number.isFinite(q.y)) return;
+  if (!q || !Number.isFinite(q.x) || !Number.isFinite(q.y) || q.behind === true) return;
   ctx.moveTo(x, y); ctx.lineTo(q.x, q.y);
 }
 
 function drawMechanism(ctx, marker, project, palette) {
   const p = project(marker.pos);
-  if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+  if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.behind === true) return;
   const x = p.x, y = p.y, r = marker.exposed ? 9 : 6;
   ctx.strokeStyle = marker.disabled ? palette.calm : marker.exposed ? palette.open : palette.paper;
   ctx.lineWidth = marker.exposed ? 2 : 1;
@@ -365,10 +377,10 @@ export function createTowjawOverlay({ canvas, worldToScreen, getFrame }) {
       if (attack) {
         const color = attack.active ? palette.active : palette.threat;
         for (const item of attack.shapes) {
-          trace(ctx, item.outlines, worldToScreen);
+          const complete = trace(ctx, item.outlines, worldToScreen);
           ctx.fillStyle = color;
           ctx.globalAlpha = frame.policy.flashReduced ? 0.035 : attack.active ? 0.1 : 0.055;
-          ctx.fill('evenodd');
+          if (complete) ctx.fill('evenodd');
           ctx.strokeStyle = color; ctx.globalAlpha = 0.95; ctx.lineWidth = attack.active ? 2.5 : 1.6;
           ctx.setLineDash(attack.active ? DASH_NONE : DASH_TELL);
           ctx.stroke(); ctx.setLineDash(DASH_NONE);
@@ -382,10 +394,12 @@ export function createTowjawOverlay({ canvas, worldToScreen, getFrame }) {
         // separate scrap lanes, grapple an annular arc. One steady countdown
         // line teaches commitment without drawing the label once per round.
         const p = worldToScreen(attack.origin);
-        if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+        if (p && Number.isFinite(p.x) && Number.isFinite(p.y) && p.behind !== true) {
           ctx.fillStyle = palette.paper; ctx.font = '700 12px sans-serif'; ctx.textAlign = 'center';
           ctx.globalAlpha = 1;
-          ctx.fillText(attack.active ? attack.kind.toUpperCase() : `${attack.kind.toUpperCase()} ${attack.secondsUntil.toFixed(1)}`, p.x, p.y - 28);
+          const label = attack.coasting ? 'RAM BRAKING'
+            : attack.active ? attack.kind.toUpperCase() : `${attack.kind.toUpperCase()} ${attack.secondsUntil.toFixed(1)}`;
+          ctx.fillText(label, p.x, p.y - 28);
           ctx.lineWidth = 3; ctx.strokeStyle = palette.paper; ctx.beginPath();
           ctx.moveTo(p.x - 22, p.y - 22); ctx.lineTo(p.x - 22 + 44 * attack.progress, p.y - 22); ctx.stroke();
         }
@@ -526,8 +540,8 @@ export function mountTowjawPresentation({ root, state, bus, helpers, runtime, do
   let left = 0, top = 0;
   const project = (p) => {
     world.x = p.x; world.z = p.z;
-    const q = helpers.worldToScreen(world, projected);
-    if (!q || !Number.isFinite(q.x) || !Number.isFinite(q.y)) return null;
+    const q = typeof helpers.worldToScreen === 'function' ? helpers.worldToScreen(world, projected) : null;
+    if (!q || !Number.isFinite(q.x) || !Number.isFinite(q.y) || q.behind === true) return null;
     projected.x = q.x - left; projected.y = q.y - top;
     return projected;
   };

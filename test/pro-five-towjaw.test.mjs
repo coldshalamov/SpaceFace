@@ -1,5 +1,5 @@
 // TOWJAW source candidate: fixed-seed behavior and production-owner seam checks.
-// Run in a complete checkout: node --test test/pro-five-towjaw.test.mjs
+// Run in a complete checkout: node --test --test-isolation=none test/pro-five-towjaw.test.mjs
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
@@ -15,12 +15,22 @@ import { TOWJAW_ENCOUNTER_RUNTIME } from '../src/features/towjaw/encounter.js';
 import { createSimulation } from '../src/core/sim.js';
 import { createSg02DynamicBodyOwner, createSg02CombatPhysicsPort } from '../src/core/sg02DynamicBodyOwner.js';
 import { combat } from '../src/systems/combat.js';
+import { physics as physicsSystem } from '../src/core/physics.js';
+import { isForceableFieldBody, pullMarkTargetEligible } from '../src/systems/fields.js';
+import { isAttachable } from '../src/systems/tetherGameplay.js';
+import { massSeed, isMassSeedTetherEligible } from '../src/systems/massSeed.js';
+import { cargo } from '../src/systems/cargo.js';
+import { mining } from '../src/systems/mining.js';
 import { consumePhysicsCommand, queuePhysicsImpulse } from '../src/core/physicsAuthority.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { ensureCombatant } from '../src/combat/runtime.js';
 import { PINNED_STATUS_ID } from '../src/data/combatDefs.js';
 import { buildTowjawPresentationFrame, createTowjawPresentation } from '../src/features/towjaw/presentation.js';
+import '../src/features/towjaw/presentation.test.mjs';
+import '../src/features/towjaw/controller.test.mjs';
+import '../src/features/towjaw/runtime.test.mjs';
+import * as publicApi from '../src/features/towjaw/index.js';
 
 const DT = 1 / 60;
 const SEEDS = [4242, 7331];
@@ -80,8 +90,8 @@ function controllerFixture(seed = 4242) {
   return { controller, options, world, events, advance, reach };
 }
 
-function runtimeFixture(seed = 4242, start = true) {
-  const sim = createSimulation({ seed, systems: [combat], updateOrder: [] });
+function runtimeFixture(seed = 4242, start = true, systems = []) {
+  const sim = createSimulation({ seed, systems: [combat, ...systems], updateOrder: [] });
   const { state, bus, helpers, registry } = sim;
   state.mode = 'flight'; state.simTime = 9000; state.world.currentSectorId = TOWJAW.sectorId;
   const player = sim.spawn({ type: 'ship', team: 0, pos: { x: 0, z: 0 }, hull: 10000, hullMax: 10000, radius: 8, mass: 24 });
@@ -285,12 +295,12 @@ test('restoring a committed fight cancels the old warning and tombstones lost bo
 });
 
 for (const seed of SEEDS) {
-  test(`seed ${seed}: native Rapier bodies assemble at least three armor pieces and commit an attack`, async () => {
+  test(`seed ${seed}: native Rapier cage assembly leads to a damaging attack with bounded commitment`, async () => {
     const h = runtimeFixture(seed);
     const physics = await createSg02DynamicBodyOwner({ fixedDt: DT, mode: 'rapier-dynamic' });
     let maxArmor = 0, committed = false;
     try {
-      for (let i = 0; i < 60 * 40; i++) {
+      for (let i = 0; i < 60 * 60; i++) {
         const result = h.advance(physics);
         const view = h.runtime.getView();
         maxArmor = Math.max(maxArmor, view.armorCount || 0);
@@ -308,6 +318,25 @@ for (const seed of SEEDS) {
       const frame = buildTowjawPresentationFrame(h.runtime.getView(), undefined, h.state.settings);
       assert.ok(frame.attack, 'a late-sector global clock must show the committed warning');
       assert.ok(frame.attack.secondsUntil > 1);
+      const attack = clone(h.runtime.getView().attack), before = h.player.hull;
+      assert.equal(attack.kind, seed === 4242 ? 'shotgun' : 'ram');
+      let maxTravel = 0, ended = false, hitCommands = 0;
+      for (let i = 0; i < 60 * 12; i++) {
+        const result = h.advance(physics), view = h.runtime.getView();
+        hitCommands += result.commands.filter(command => command.type === 'damage' && command.targetId === h.player.id).length;
+        const boss = view.world.boss;
+        const travel = (boss.pos.x - attack.origin.x) * Math.cos(attack.heading)
+          + (boss.pos.z - attack.origin.z) * Math.sin(attack.heading);
+        maxTravel = Math.max(maxTravel, travel);
+        if (view.phase === 'exposed' && !view.coast) { ended = true; break; }
+      }
+      assert.equal(ended, true, 'the full committed attack finishes and opens recovery');
+      assert.ok(h.player.hull < before, `native ${attack.kind} must actually reach the stationary target`);
+      if (attack.kind === 'ram') {
+        assert.equal(hitCommands, 1, 'a real ram contact only applies one hit receipt');
+        assert.ok(maxTravel <= TOWJAW_ATTACKS.ram.length,
+          `native braking left the warned lane: ${maxTravel} > ${TOWJAW_ATTACKS.ram.length}`);
+      }
     } finally { h.runtime.dispose(); physics.dispose(); h.sim.dispose(); }
   });
 }
@@ -331,6 +360,32 @@ test('real combat routing spends directional plate HP, leaves a geometric flank,
     const foreign = { attackerId: h.player.id, targetId: outsider.id, packet: scalarHitToDamagePacket({ damage: 1 }) };
     assert.strictEqual(interceptTowjawDamage(h.state, foreign), foreign);
   } finally { h.dispose(); }
+});
+
+test('the native ram cannot retarget a physical lateral dodge made during its warning', async () => {
+  const h = runtimeFixture(7331);
+  const physics = await createSg02DynamicBodyOwner({ fixedDt: DT, mode: 'rapier-dynamic' });
+  try {
+    for (let i = 0; i < 60 * 60 && h.runtime.getView().phase !== 'commit'; i++) h.advance(physics);
+    const attack = clone(h.runtime.getView().attack);
+    assert.equal(attack?.kind, 'ram');
+    const before = h.player.hull;
+    queuePhysicsImpulse(h.player, { x: -Math.sin(attack.heading) * h.player.mass * 90,
+      y: 0, z: Math.cos(attack.heading) * h.player.mass * 90 }, { actorId: h.player.id, tag: 'towjaw_test_dodge' });
+    let active = false, dodged = false, ended = false;
+    for (let i = 0; i < 60 * 12; i++) {
+      h.advance(physics);
+      const view = h.runtime.getView();
+      if (view.phase === 'attack') {
+        active = true;
+        dodged ||= !pointInAttack(attack.shapes[0], h.player.pos, h.player.radius);
+        assert.deepEqual(view.attack.shapes, attack.shapes, 'aim cannot bend after a successful dodge');
+      }
+      if (active && view.phase === 'exposed' && !view.coast) { ended = true; break; }
+    }
+    assert.equal(active && dodged && ended, true);
+    assert.equal(h.player.hull, before);
+  } finally { h.runtime.dispose(); physics.dispose(); h.sim.dispose(); }
 });
 
 test('production Pin status cancels the actual grapple and releases its clamp without damaging the player', () => {
@@ -556,4 +611,204 @@ test('optional director offer/decline is inert and acceptance requires a safe Ve
     assert.equal(h.state.entityList.length, 14);
     assert.ok(getActiveTowjawRuntime(h.state));
   } finally { system.destroy(); h.dispose(); }
+});
+
+test('the deliberate public entry exposes the production controller, clock, and encounter ports', () => {
+  assert.strictEqual(publicApi.createTowjawRuntime, createTowjawRuntime);
+  assert.strictEqual(publicApi.createTowjawSystem, createTowjawSystem);
+  assert.strictEqual(publicApi.createTowjawController, createTowjawController);
+  assert.strictEqual(publicApi.TOWJAW_ENCOUNTER_RUNTIME, TOWJAW_ENCOUNTER_RUNTIME);
+  assert.strictEqual(publicApi.interceptTowjawDamage, interceptTowjawDamage);
+});
+
+test('normal save ID remapping rebinds only unique durable owned keys and preserves real motion', () => {
+  const h = runtimeFixture();
+  let restored = null;
+  try {
+    seatRuntimeUntilCommit(h);
+    const saved = clone(h.runtime.snapshot());
+    const oldIds = new Set(saved.bindings.map(row => row.id));
+    const specs = saved.bindings.map(row => {
+      const entity = h.state.entities.get(row.id);
+      return clone({ type: entity.type, team: entity.team, pos: entity.pos, vel: entity.vel,
+        rot: entity.rot, angVel: entity.angVel, mass: entity.mass, radius: entity.radius,
+        hull: entity.hull, hullMax: entity.hullMax, shield: entity.shield, shieldMax: entity.shieldMax,
+        physicsBody: entity.physicsBody, flightModel: entity.flightModel,
+        flags: entity.flags, data: entity.data, collides: entity.collides });
+    });
+    h.runtime.dispose('save_rebind', { retireBodies: false });
+    for (const id of oldIds) h.helpers.removeEntity(id, { immediate: true });
+    const outsiders = saved.bindings.map((_, i) => h.sim.spawn({ type: 'ship', team: 0,
+      pos: { x: 2000 + i * 30, z: 2000 }, hull: 100, hullMax: 100 }));
+    assert.deepEqual(new Set(outsiders.map(body => body.id)), oldIds, 'core ID reuse creates a real conflicting occupant set');
+    const bodies = specs.map(spec => h.sim.spawn(spec));
+    assert.ok(bodies.every(body => !oldIds.has(body.id)));
+    const before = bodies.map(body => ({ id: body.id, mass: body.mass, x: body.vel.x, z: body.vel.z }));
+    restored = createTowjawRuntime(h.sim.registry.ctx);
+    assert.deepEqual(restored.restore(saved), { ok: true, terminal: false,
+      bossId: bodies.find(body => body.data.towjaw.role === 'boss').id });
+    const view = restored.getView();
+    assert.equal(view.attack, null, 'the old cast never follows remapped IDs into a new victim');
+    assert.ok(view.armor.length >= 3);
+    assert.ok(view.armor.every(row => bodies.some(body => body.id === row.id)));
+    assert.deepEqual(bodies.map(body => ({ id: body.id, mass: body.mass, x: body.vel.x, z: body.vel.z })), before);
+    h.state.tick++; h.state.simTime += DT;
+    const result = restored.step(DT);
+    assert.equal(result.commands.some(command => oldIds.has(command.entityId) || oldIds.has(command.targetId)), false);
+    restored.dispose();
+    assert.ok(outsiders.every(body => body.alive && h.state.entities.get(body.id) === body));
+  } finally { restored?.dispose(); h.dispose(); }
+});
+
+test('saved tombstones cannot adopt a reappearing stale scrap body or mint another pickup', () => {
+  const h = runtimeFixture();
+  let restored = null;
+  try {
+    const first = h.runtime.snapshot(), missing = first.bindings.find(row => row.role === 'scrap');
+    const body = h.state.entities.get(missing.id);
+    const ghostSpec = clone({ type: body.type, team: body.team, pos: body.pos, vel: body.vel,
+      hull: body.hull, hullMax: body.hullMax, mass: body.mass, radius: body.radius,
+      data: body.data, flags: body.flags });
+    h.helpers.removeEntity(body.id, { immediate: true });
+    const saved = clone(h.runtime.snapshot());
+    assert.equal(saved.bindings.find(row => row.key === missing.key).tombstone, true);
+    h.runtime.dispose('save_rebind', { retireBodies: false });
+    const stale = h.sim.spawn(ghostSpec), count = h.state.entityList.length;
+    restored = createTowjawRuntime(h.sim.registry.ctx);
+    assert.equal(restored.restore(saved).ok, true);
+    assert.equal(restored.getView().world.debris.some(item => item.id === stale.id), false);
+    assert.equal(restored.snapshot().bindings.find(row => row.key === missing.key).id, null);
+    assert.equal(h.state.entityList.length, count);
+    restored.dispose();
+    assert.equal(stale.alive, true, 'unclaimed stale body belongs to the restoring owner, not this runtime');
+  } finally { restored?.dispose(); h.dispose(); }
+});
+
+test('malformed or cross-encounter save bindings fail closed without spawns, damage routes, or listener leaks', () => {
+  for (const mutate of [
+    saved => { saved.bindings.push({ ...saved.bindings[0] }); },
+    saved => { saved.bindings[1].key = 'foreign-encounter/jaw'; },
+    saved => { saved.controller.bossId = 1; },
+    saved => { saved.bindings[4].role = 'civilian'; },
+    saved => { saved.sectorId = 'sector_earth'; },
+  ]) {
+    const h = runtimeFixture(); let restored = null;
+    try {
+      const saved = clone(h.runtime.snapshot());
+      h.runtime.dispose('save_rebind', { retireBodies: false });
+      const count = h.state.entityList.length, listeners = listenerCount(h.bus), flags = clone(h.state.story.flags);
+      mutate(saved); restored = createTowjawRuntime(h.sim.registry.ctx);
+      assert.equal(restored.restore(saved).ok, false);
+      restored.dispose('invalid_restore', { retireBodies: false });
+      assert.equal(h.state.entityList.length, count);
+      assert.equal(getActiveTowjawRuntime(h.state), null);
+      assert.equal(listenerCount(h.bus), listeners);
+      assert.deepEqual(h.state.story.flags, flags);
+    } finally { restored?.dispose(); h.dispose(); }
+  }
+});
+
+test('real grapple damage is hit-once and a warned retreat outside its sweep avoids the grab', () => {
+  for (const dodge of [false, true]) {
+    const h = runtimeFixture();
+    try {
+      const view = seatRuntimeUntilCommit(h), end = view.attack.endAt;
+      assert.equal(view.attack.kind, 'grapple');
+      const before = h.player.hull;
+      if (dodge) h.player.pos.z += 180;
+      const hits = [];
+      while (h.state.simTime <= end + 0.1) {
+        const result = h.advance();
+        hits.push(...result.commands.filter(command => command.type === 'damage' && command.targetId === h.player.id));
+        for (const body of h.state.entityList) consumePhysicsCommand(body);
+      }
+      assert.equal(hits.length, dodge ? 0 : 1);
+      assert.equal(h.player.hull < before, !dodge);
+      assert.equal(h.runtime.getView().phase, 'exposed');
+    } finally { h.dispose(); }
+  }
+});
+
+test('ordinary projectile sweep, Pull, physical fields and Rig admit every real mechanism and scrap body', async () => {
+  const h = runtimeFixture();
+  const native = await createSg02DynamicBodyOwner({ fixedDt: DT, mode: 'rapier-dynamic' });
+  try {
+    const projectile = h.sim.spawn({ type: 'projectile', ownerId: h.player.id, team: 0,
+      pos: { x: 0, z: 0 }, radius: 0.5, hull: 1, hullMax: 1 });
+    native.syncFromEntities(h.state.entityList);
+    for (const binding of h.runtime.snapshot().bindings.filter(row => row.role !== 'boss')) {
+      const body = h.state.entities.get(binding.id);
+      const sweep = { _segmentHitScratch: {}, _bestSegmentHitScratch: {} };
+      assert.strictEqual(physicsSystem._bestProjectileTarget.call(sweep, projectile,
+        { x: body.pos.x - 100, z: body.pos.z }, { x: body.pos.x + 100, z: body.pos.z },
+        [body], null, false), body, `normal projectile masks must admit ${binding.key}`);
+      assert.equal(isForceableFieldBody(body), true, binding.key);
+      assert.equal(pullMarkTargetEligible(h.state, h.player, body, body.pos.x, body.pos.z, 50), true, binding.key);
+      assert.equal(isAttachable(body, h.player.id, h.state), true, binding.key);
+    }
+  } finally { h.runtime.dispose(); native.dispose(); h.sim.dispose(); }
+});
+
+test('the current number-3 Pin anchor plus a native Twin Bridle arrests the jaw and preserves the player line', async () => {
+  const h = runtimeFixture(4242, true, [massSeed]);
+  const native = await createSg02DynamicBodyOwner({ fixedDt: DT, mode: 'rapier-dynamic' });
+  try {
+    const seedOwner = h.registry.get('massSeed');
+    h.state.input.actions = { deployMassSeed: true };
+    h.state.input.aimWorld = { x: 500, z: 0 };
+    seedOwner.update(DT, h.state);
+    for (let i = 0; i < 125; i++) {
+      h.state.tick++; h.state.simTime += DT;
+      seedOwner.update(DT, h.state);
+    }
+    const anchor = h.state.entityList.find(body => body.type === 'massSeed' && isMassSeedTetherEligible(body));
+    assert.ok(anchor, 'the real input owner deploys and locks a legal Pin anchor');
+    const view = seatRuntimeUntilCommit(h), jaw = h.state.entities.get(view.world.mechanisms.jaw.id);
+    assert.equal(view.attack.kind, 'grapple');
+    assert.equal(view.world.mechanisms.jaw.pinned, false, 'a nearby unconnected anchor cannot invent a pin');
+    h.helpers.combatPhysics = createSg02CombatPhysicsPort(native);
+    native.syncFromEntities(h.state.entityList);
+    const kernel = getCombatKernel(h.sim.registry.ctx);
+    const link = kernel.attachments.create({ defId: 'attachment_twin_bridle',
+      ownerId: anchor.id, targetId: jaw.id, controllerId: h.player.id, controlMode: 'twin_bridle',
+      sourceWorld: anchor.pos, targetWorld: jaw.pos });
+    assert.equal(link.ok, true, link.reason);
+    const result = h.advance(native);
+    assert.equal(h.runtime.getView().world.mechanisms.jaw.pinned, true);
+    assert.ok(result.events.some(event => event.type === 'telegraph-cancel'));
+    assert.equal(kernel.attachments.get(link.attachment.id).state, 'active');
+    assert.ok(native.attachments.has(link.attachment.id));
+    assert.equal(jaw.alive, true);
+  } finally { h.runtime.dispose(); native.dispose(); h.registry.get('massSeed').destroy?.(); h.sim.dispose(); }
+});
+
+test('retreated cargo and wrecks use the real collection/mining owners and finite existing salvage pools', () => {
+  const h = runtimeFixture(4242, true, [cargo, mining]);
+  try {
+    h.state.player.cargo.capVolume = 100;
+    h.state.player.cargo.capMass = 100;
+    const bindings = h.runtime.snapshot().bindings;
+    const salvage = bindings.filter(row => row.role === 'scrap').map(row => h.state.entities.get(row.id));
+    const pickups = salvage.filter(body => body.type === 'pickup');
+    const wreck = salvage.find(body => body.type === 'wreck');
+    h.runtime.dispose('retreat', { preserveSalvage: true });
+    const yields = [];
+    h.bus.on('mining:yield', payload => yields.push(payload));
+    for (const pickup of pickups) physicsSystem._applyPickupCollection.call({ _diag: { pickupCollections: 0 } },
+      pickup, h.player, h.bus, h.state);
+    assert.ok(pickups.every(body => body.alive === false), 'both original cargo pickups are consumed by their owner');
+    const storedAfterCargo = h.state.player.cargo?.items?.cmdty_scrap_metal;
+    assert.equal(storedAfterCargo, 6, 'two authored three-unit pickups are actual cargo');
+    for (let i = 0; i < 8 && wreck.alive; i++) h.registry.get('mining')._drainWreck(h.player, wreck, 18, 1);
+    assert.equal(wreck.data.salvagePool.cmdty_scrap_metal, 0);
+    assert.equal(wreck.alive, false);
+    assert.equal(yields.reduce((total, row) => total + row.qty, 0), 2);
+    const released = h.state.entityList.filter(body => body.type === 'pickup' && body.alive
+      && body.data?.commodityId === 'cmdty_scrap_metal' && !pickups.includes(body));
+    for (const pickup of released) physicsSystem._applyPickupCollection.call({ _diag: { pickupCollections: 0 } },
+      pickup, h.player, h.bus, h.state);
+    assert.equal(h.state.player.cargo.items.cmdty_scrap_metal, 8);
+    assert.ok(yields.length > 0);
+    assert.equal(getActiveTowjawRuntime(h.state), null);
+  } finally { h.dispose(); }
 });

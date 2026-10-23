@@ -22,7 +22,7 @@ export const TOWJAW_ATTACKS = Object.freeze({
     inner: 15, outer: 112, halfAngle: 0.95, damage: 15, impulseDeltaV: 12 }),
   shotgun: Object.freeze({ mechanism: 'winch', telegraphS: 1.85, activeS: 2.5, recoveryS: 3.4,
     inner: 32, outer: 250, halfAngle: 0.34, scrapSpeed: 100, maxScrap: 3 }),
-  ram: Object.freeze({ mechanism: 'drive', telegraphS: 2.25, activeS: 3.2, recoveryS: 4.2,
+  ram: Object.freeze({ mechanism: 'drive', telegraphS: 2.25, activeS: 4.5, recoveryS: 4.2,
     length: 230, radius: 27, speed: 100, damage: 24, impulseDeltaV: 18 }),
 });
 
@@ -36,6 +36,7 @@ export const TOWJAW = Object.freeze({
   releaseDistance: 21, releaseHoldS: 0.12, reelRange: 230,
   spring: 4.2, damping: 3.8, reelAcceleration: 34, holdAcceleration: 48,
   bossAcceleration: 15, bossCruiseSpeed: 25, bossBrake: 1.8,
+  ramBrakeAcceleration: 65, ramBrakeGain: 4, ramBrakePlanning: 45,
   maxForce: 30000, maxImpulse: 20000, maxTurnRate: 0.6,
   leashRadius: 780, disengageRange: 650, disengageS: 8,
   maxDurationS: 240, starvationLimit: 3, retreatS: 5,
