@@ -3,6 +3,7 @@
 // Phase 1: adds a subtle camera roll that counter-leans into the ship's bank so high-G turns feel
 // dynamic without violating the no-yaw-follow rule (we never rotate the camera's heading).
 import * as THREE from 'three';
+import { createTrailerStaging } from './trailerStaging.js';
 import { damp } from '../core/math.js';
 import { globalToFrame } from '../core/coordinates.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
@@ -1444,7 +1445,8 @@ function resolveTetherCompositionAnchor(state, player, out = null) {
   return result;
 }
 
-export function createChaseCamera(state, viewport = globalThis.window, projectionCamera = null) {
+export function createChaseCamera(state, viewport = globalThis.window, projectionCamera = null, eventBus = null) {
+  const trailerStaging = createTrailerStaging(state, eventBus);
   // Far plane is deep (14k) so distant planets + far star layers render; fog still fades mid-distance.
   const cam = projectionCamera || new THREE.PerspectiveCamera(state.settings.video.fov || 50, viewport.innerWidth / viewport.innerHeight, 1, 14000);
   if (projectionCamera) {
@@ -1801,6 +1803,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     // CAMERA_CLEARANCE_RELEASE_WU_S, so the camera never eases through geometry or jitters at a
     // roof boundary.
     follow(dt, alphaParam, presentedLocal, clearanceAt) {
+      trailerStaging.step(this);
       const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 1 / 15) : 0;
       const alpha = Number.isFinite(alphaParam)
         ? Math.max(0, Math.min(1, alphaParam))

@@ -74,7 +74,9 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'moralTrapSystem',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
   // transition announcer — both slow observers on the calendar clock.
-  'mail', 'worldClock',
+  // worldPressure (§34 rows 520–523): the tide/gate-audit/slow-gray owner — reads
+  // settled aftermath + understory facts, writes only state.worldPressure.
+  'mail', 'worldClock', 'worldPressure',
   'render', 'vfx', 'feel', 'audio', 'ui', 'save',
 ]);
 
@@ -162,7 +164,9 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'voiceArbiter',
   // PULSE-MAIL / PULSE-TIME: mail delivery and calendar announcements run after the story
   // and deed systems so same-tick triggers resolve before letters and headlines go out.
-  'mail', 'worldClock',
+  // worldPressure: the day-scale tide/audit/gray pass runs on the same calendar cadence,
+  // after story and salvage so the day's clears and beats are settled facts when it reads.
+  'mail', 'worldClock', 'worldPressure',
   'save',
 ]);
 
@@ -303,6 +307,9 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // PULSE rows 435/439: letter delivery evaluates at most once a second; the calendar's
   // transition announcements are day-scale work — 2 Hz is generous for both.
   'mail', 'worldClock',
+  // §34 rows 520–523: tide/audit/gray all step on the 600 s world day; the only
+  // sub-day work is a cheap same-sector scaffold check — 2 Hz is plenty.
+  'worldPressure',
 ]);
 
 /**
