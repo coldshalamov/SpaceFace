@@ -591,6 +591,9 @@ export const automation = {
     // every button (buyDrone/hireTrader/buildOutpost/recall/assignRoute/dismiss/decommission/order*/
     // assignFleet) through this one event; `order` is the verb we switch on.
     bus.on('ui:fleetOrder', (p) => { if (p) this.handleOrder(p); });
+    import('../ui/automationSummary.js').then((mod) => {
+      if (mod && typeof mod.installAutomationLossSummary === 'function') mod.installAutomationLossSummary();
+    }).catch(() => {});
     bus.on('ui:wingOrder', (p) => { if (p) this.handleWingOrder(p); });
 
     // Combat dealing damage to one of our assets (drone group / outpost / fleet ship).
@@ -2927,7 +2930,10 @@ export const automation = {
       recordOperationWithdrawal(inst, shipmentUsed(inst));
       breakdown = cycleSnapshot(inst, 0);
     }
-    this.meta().lostAssetsLog.push({ kind, id: inst.id, value: value || 0, t: this.state.simTime || 0, ...(breakdown ? { breakdown } : {}) });
+    this.meta().lostAssetsLog.push({
+      kind, id: inst.id, value: value || 0, sectorId: sectorId || null,
+      t: this.state.simTime || 0, ...(breakdown ? { breakdown } : {}),
+    });
     this.bus.emit('automation:assetLost', {
       kind,
       id: inst.id,
