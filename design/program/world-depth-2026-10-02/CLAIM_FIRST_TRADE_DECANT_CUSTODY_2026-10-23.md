@@ -1,0 +1,10 @@
+<!-- LIFETIME: DURABLE -->
+# First-trade station Decant custody claim — 2026-10-23 07:30 UTC
+
+Owner: dot coordinates isolated implementation and independent review. Exact write scope: src/systems/stationServices.js and new test/first-trade-decant-custody.test.mjs. Root owns package gate, report, draft delivery and handoff. Public93706e9ff07563af29461ea4b4d65486b710ee7d stationServices baseline92a588a0d136e86247f37f5de810e3e2b82ffb78. Fresh07:29 filenames across49openPRs found no overlapping stationServices/decant owner. Preserve active stationApp, mission, cargo and economy owners.
+
+Actual ordinary route: buildFirstTradeOffer→acceptMission reserves8Fuel Cells for Helios→Ceres. In-flight Crack respects sellableCargoQty, but docked station Decant counts all held cells. It burns4sealed contract cells into96tank units. Actual destination delivery signs4/8, writes off4 and posts380credits; no-Decant control signs8/8 and posts760. This is unintended partial-delivery loss, NOT an impossible completion claim; the existing mission owner intentionally supports short delivery.
+
+Next action: reuse the existing sellable/free cargo calculation in Decant, retain the removal owner and all service caps, and give a truthful refused-service message when only sealed cells are carried. Cover mixed/legacy reservations, actual Save/Continue, released/failed contracts, repeat calls, free fuel and tank/pump boundaries. Do not invent a ledger, change partial-delivery policy or modify active UI owners. A still-enabled carried-stock UI button must be documented separately, not mistaken for fixed visual acceptance.
+
+Nyx clinic trust repair is now published and verified in draftPR532 at059f56b07273d6824f67876074a9231ef84cc45b, directly parented on93706. Four exact files;62current-source cases pass. Hosted run5900 is queued. Rhea PR526/531 and all larger game/sector goals remain open; no merge, deployment or acceptance claimed. Existing unrelated approval holds unchanged, no user action needed for this source/test unit.
