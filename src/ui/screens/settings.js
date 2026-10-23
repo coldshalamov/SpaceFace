@@ -552,7 +552,7 @@ const RESET_SKIP = Object.freeze({
 const RESET_FALLBACKS = Object.freeze({
   gameplay: Object.freeze({
     steeringView: 'overhead', racingDistance: 58, racingHeight: 22, racingLookAhead: 36,
-    velocityVectoring: true, damageNumbers: true,
+    velocityVectoring: true, damageNumbers: true, powerFire: 'hold',
   }),
   accessibility: Object.freeze({ textScale: 1 }),
 });
@@ -1041,6 +1041,13 @@ export const settingsScreen = {
         ['light', 'Light'],
         ['off', 'Off'],
       ], (v) => this._set(ctx, 'gameplay', 'targetAssistStrength', v));
+      // Row 493: the five powers preview while held. Absent = hold (the shipped default);
+      // powerVerbs.powersFireOnPress reads only 'press'.
+      rowSelect('Powers', () => (g.powerFire === 'press' ? 'press' : 'hold'), [
+        ['hold', 'Hold to preview'],
+        ['press', 'Use on press'],
+      ], (v) => this._set(ctx, 'gameplay', 'powerFire', v));
+      build.note('Hold to preview: while you hold a power key (1–5), every body it will move is outlined with where it will go, and letting go uses it; a quick tap still uses it at once.');
       rowToggle('Velocity vectoring assist', () => g.velocityVectoring !== false, (v) => this._set(ctx, 'gameplay', 'velocityVectoring', v));
       build.note('Turn your drift toward the nose while thrusting. Off leaves momentum unassisted.');
       const masslineFamilyOn = massline2Flag('enabled');

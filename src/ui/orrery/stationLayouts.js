@@ -354,6 +354,14 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-berth > :is(.sxb-tape, .sxb-handoff) { min-width:0 !important; max-width:100% !important; position:relative; z-index:1; }
   ${D} .sxb-berth.dp-frame__head > .sxb-tape { margin-top:8px !important; }
 }
+/* …and the two station signs (bay screen, station wire) stacked as full-width rows under the next
+   step, ~144px of an 800×600 head, so the tab body kept ~66px: the Missions list showed one cut
+   row and the dossier only its title. Above 460 tall they stand side by side on one band. */
+@media (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${D} .sxb-berth.dp-frame__head > .sxb-signs { grid-column:1 / -1 !important; display:flex !important; gap:0 24px !important; align-items:flex-start !important; min-width:0 !important; }
+  ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding-top:8px !important; }
+  ${D} .sxb-signs .sx-adboard__text { margin:2px 0 0 !important; }
+}
 /* …and its foot: the seven destination words (~715px at full tracking) were capped at 64vw, so at
    651–800 wide only MARKET and SHIPWORKS showed and INDUSTRY ran under COMMS. Now the words own the
    row's left side, closed up at the 12px floor, and the right side stacks UNDOCK over COMMS · HELP,

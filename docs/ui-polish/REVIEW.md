@@ -100,7 +100,7 @@ Shots: `ui-shots/polish36/{before-tabs,after1,after2}/` plus `compare-*.png`.
 - At ≤1100×≤640 the credits numeral is 48px×scale and the hull record reads in two columns, with keys sized to their words, so LOAD ends 30px above the foot.
 - 1280 and 1920 change only in the grid areas. Phone (portrait and landscape) is untouched. The empty slot (`save-load-empty`) is clean at every size. Selectors and IDs are unchanged.
 
-Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 1920×1080, phone), iterations in `iter1`–`iter6`. Bench note: the readings' decode animation is sometimes caught mid-scramble (for example "03:4█ &3"); that's the capture timing, not the layout.
+Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 1920×1080, phone), iterations in `iter1`–`iter6`. Bench note: `ui-bench` used to catch the readings mid-decrypt ("03:4█ &3") and shoot before the hull posters decoded, so 1920 and slot posters sometimes showed empty berths. Fixed in ui-polish-101: settle now waits for shown images to decode and page text to hold still. **Open:** at ≤1100px wide the big berth ring still shows with no hull (`.k-stage__poster` is `display:none` there).
 
 ## Station berth — session notes (2026-10-12, ui-polish-10)
 
@@ -1784,7 +1784,7 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 
 **Checked:** bench clean (no tangled, cut-off or offscreen type; primary controls reachable) at 960×540, 1280×720, 1920×1080, 761×800, 820×600 and 860×800, with the control walk at each. Phone unaffected (desktop-only selectors).
 
-**Leftover:** at 1280×720 the context line still wraps "DAYS AGO" onto a second line.
+**Leftover:** ~~at 1280×720 the context line still wraps "DAYS AGO" onto a second line~~ (fixed in ui-polish-100, see § Save/Load context line at 1200–1599).
 
 ## Save/Load: the context line wraps between readings, not inside one (ui-polish-82)
 
@@ -1845,3 +1845,132 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`archiveLayouts.js`, one `max-width:639px and max-height:620px` block):** the title drops to clamp(30px, 8vh, 44px), the list caps at 36vh (the selected ACTIVE row still shows) and the gaps tighten. The dossier gets 126px at 639×461 and 152px at 600×500, enough for the objective and the first terms row; the rest scrolls as before.
 
 **Checked:** bench `mission-log` clean at 639×461, 600×500, 390×600, 390×844 and 960×540; 390×844 and anything taller than 620 are outside the query. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish87/`.
+
+## Station signs side by side in a short narrow desktop window — 651–900 wide, 461–800 tall (ui-polish-89)
+
+**Before (master 5a7f93c4ef):** the bay screen and station wire stacked as two full-width rows under the next step, ~144px of the head. At 801×600 the head ran 420px and every tab's body got 66px: Missions showed one cut row and the dossier only its title.
+
+**After (`stationLayouts.js`, one desktop-only block):** in this band the two signs share one row, each taking half the width. The head drops to 339px and the body grows to ~147px, so at 801×600 the whole Missions list (both postings and YOURS) and the dossier through its reward are on screen before scrolling.
+
+**Checked:** bench `station-contracts` clean at 720×600, 801×600 and 900×600. Other tabs at 801×600 and 700×600 have no new findings and fewer old ones (Shipworks 16→12 and 15→7, Market 18→16, Ledger unchanged). 390×844, 960×540, 1280×720 and 1920×1080 can't match the rule (counts unchanged). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish89/`.
+
+**Leftovers:** Shipworks and Market are still cramped at 651–900 × 600 (pre-existing composition findings).
+## Pause in a narrow desktop window — session notes (2026-10-22, ui-polish-88)
+
+**Before:** a desktop window ≤760 wide without touch (no `data-sf-mobile`) still got the dial composition. At 390–700 wide the group banks ran off the right edge (RESUME, SETTINGS, SAVE… outside the frame), the brief's Next and Saved lines printed over RESUME and GAME, and the foot keycaps ran into EXIT (390×844: 52 findings; 600×800: 31; 700×800: 26). At 701–760 STATISTICS and the save note collided with the ladder.
+
+**After (`pause.js` one line, `pauseLayouts.js` one `max-width:760px` block scoped to `:not([data-sf-mobile="1"])`):** windows ≤760 wide take the existing phone column, and the sheet gives it the phone sheet's flow (one scroll owner, rows that wrap, a single-column body, 20–48px margins). 0 findings at 390×844, 600×800, 700×800, 701×800; 700×500 and 760×700 only report verbs below the fold of the scrolling list. 960×540, 1280×720, 1920×1080 and the real phone (`--phone` 390×844) are unchanged. Selectors and IDs are unchanged.
+
+**Still open:** at 761–~790 wide the dial's REFERENCE bank runs STATISTICS past the right edge.
+
+### ui-polish-88 review fixes (#499, after Code Work's 227ae0e47a hand-back)
+- pause.js watches `matchMedia('(max-width:760px)')` and remounts when the window crosses 760 (and on show if it crossed while covered); classes are reset first so the dial and the column never stack.
+- The column's key strip says `↑↓ MOVE` (a flat list) instead of `↑↓ CATEGORY / ←→ ITEM`; the dial keeps its two-level hints.
+- test/ui-polish-88-pause-narrow.test.mjs: mounts at 700, resizes 700→1280→700 and 1280→700.
+- Bench (mk499): resize 1280→700 now column, 0/18 unreachable (was dial, 7/18, 4 off-x); 700→1280 now dial, 0 overlaps (was column, 12). 390x844 / 760x800 / 1280x720 unchanged.
+
+## Pause: a resize across 760 keeps the player's place (ui-polish-91)
+
+**Before (master 065f9d293e, Code Work's #499 follow-ups):** the remount that runs when the window crosses 760 put focus back on RESUME, so a player on SETTINGS or MISSION LOG lost their place. The narrow-pause test had no gamepad case and no covered-then-shown case.
+
+**After:**
+- `pause.js`: before the remount it notes the focused verb's `data-action`; afterwards the rebuilt button with the same action takes focus (RESUME only if that verb is gone). Focus outside pause is left alone. No selector or ID changes.
+- `test/ui-polish-88-pause-narrow.test.mjs`, four new cases:
+  - gamepad in the column at 700: the pad's spatial focus (`spatialFocusTarget`, the one `moveFocus` uses) reaches every verb from RESUME, along the banked rows and back up, and the strip says `↑↓ MOVE`;
+  - focus on a verb survives 1280→700→1280 on the rebuilt button (fails on master);
+  - a crossing with focus outside pause doesn't pull focus in;
+  - covered then shown: a crossing that pause doesn't hear while covered is fixed on `onShow`, and a crossing it did hear isn't rebuilt a second time.
+
+**Checked:** narrow-pause test 7/7 (master: 6/7, the focus case fails). The other pause test files pass, except `pause-freezes-ship-presentation` 1 failure, which fails the same way on master. Type floor OK.
+## Industry: FABRICATE printed over "per run" at 720×800 (ui-polish-90)
+
+**Before (master 065f9d293e):** after #501 gave the 651–900 × 641–800 band a taller body, the chain kept its 42vh height (336px at 800 tall) and ran past the stage, and the key's seat (`--fab-foot-y`) was measured before the words above the chain finished reflowing. FABRICATE sat on the product's "per run" (bench `station-industry` 720×800: 4 findings; 900×800: 4).
+
+**After:**
+- `industry.js`: the key's seat is recomputed whenever the head rows (category, name, description) resize, not only when the chain itself does, so it always lands 12px under the product's words. The observer is disconnected with the chain.
+- `stationTabsLayouts.js`, one desktop-only block for 651–900 wide × 641–800 tall: the chain stands 264px and the run's count uses the short-body 30px size, so FABRICATE clears the stage's foot fade and the blocked reason still clears the title.
+
+**Checked:** bench `station-industry` 720×800 4→0, 900×800 4→0; 800×700, 860×760, 760×641, 651×700, 801×600, 900×600, 1280×720 clean; 700×600 keeps its pre-existing 4 ("Source in market" on "Titanium Ore", unchanged from master). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish90/`.
+
+**Leftovers:** at 720×800 the blocked reason ("NEEDS REFINERY / FIND A REFINERY ON THE CHART") still runs past the right edge (pre-existing); 700×600 Titanium Ore / Source in market overlap.
+
+## ui-polish-93 — pause column: d-pad Up/Down step every verb in order
+
+- **Bug (since #499):** at 700 wide, d-pad Down from RESUME jumped to ACHIEVEMENTS, skipping Settings..Help.
+- **Cause:** `moveFocus` used geometric `spatialFocusTarget` (primary distance + 2.35 × cross offset). In the
+  column RESUME is full-width (centre x≈350) above left-aligned banked rows, so the word sitting under
+  Resume's centre (cross ≈16px, three rows down) beat Settings (cross ≈262px, next row).
+- **Fix:** new `padFocusTarget` in `src/ui/input.js`: inside an ancestor marked `data-pad-linear`, Up/Down
+  step through the focusables in document order; Left/Right and every other screen stay geometric.
+  `pause.js` marks its list `data-pad-linear` only in the column (removed on the dial, re-applied on a
+  resize remount). No selector or id changes.
+- **Tests:** `test/ui-polish-88-pause-narrow.test.mjs` asserts the exact Down and Up order from Resume with
+  the Chromium-measured 700×800 rects, that pure geometry would skip, and that the dial is not linear.
+- **Chromium (ui-bench pause, real layout, padFocusTarget over listGamepadFocusables):** 390×844, 600×800,
+  700×800 Down = pause-0…17 in order, Up = 16…0; 1280×720 dial unchanged.
+## Save/Load: QUICK's CURRENT clear of SLOT 1 at 791–940 wide (ui-polish-92)
+
+**Before (master 2d35c9be33):** from 791 (where the page stops stacking) to ~940 wide above 460 tall, the filmstrip sits beside the reading with ~67–80px stations. QUICK's CURRENT ran into SLOT 1, and each filed save's line broke mid-word ("Adventur / e·Hitch") down to six lines; at 861×600 the quick save's credits fell off the frame.
+
+**After (`saveLayouts.js`, desktop only):** one block for 791–860 × 461–749 and 861–940 × 461+. A filed station shows its name and credits only (the reading on the left carries the selected save's line, as the stacked and short bands already do), and the slot name and badge close up their letter-spacing. Empty stations keep "Empty slot". No selector or ID changes.
+
+**Checked:** 791×600, 820×600, 860×600, 860×749, 861×600, 900×600 and 940×700 clean by eye and bench; 790×600 (stacked), 941×600, 960×540, 1280×720 and 1920×1080 unchanged. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish92/`.
+
+## ui-polish-94 — pause dial (>760): grouped d-pad order, as the foot strip says
+
+- **Bug:** on the 1280 dial the d-pad was purely geometric. Down from RESUME went Settings → Mission Log →
+  Photo → Physics → Sandbox → Main Menu (Reference never reached by Down), while the strip promises
+  `↑↓ CATEGORY / ←→ ITEM` and the keyboard (arcRail `onKey`) already walks that grid.
+- **Fix:** `padFocusTarget` (`src/ui/input.js`) learns a second mark beside #506's `data-pad-linear`:
+  inside a `data-pad-grouped` ancestor, rows are consecutive focusables sharing a `data-group` (the rows the
+  grouped rail seats; Resume is its own). Up/Down go to the neighbouring row's first verb; Left/Right step
+  verb by verb in list order and stop at the first/last verb (like the keyboard). Off the top/bottom row the
+  geometric fallback is kept but only to targets outside the dial (Up from Resume → the tracked-contract
+  link, as in the column), and any fallback must have `focus()`. `pause.js` sets `data-pad-grouped` on the
+  dial only (removed in the column, re-applied on a resize remount). No selector or id changes.
+- **The "SPAN" Up from Resume:** measured in Chromium it is the brief's tracked-contract link
+  (`span.sf-entity-link`, `role=link`, `tabindex=0`); it does take focus (activeElement after focus()).
+  Kept reachable as the edge fallback, matching #506's column behaviour.
+- **Tests:** `test/ui-polish-88-pause-narrow.test.mjs` +3 with Chromium-measured 1280×720 rects
+  (ui-bench pause, one run): category Down/Up order, Left/Right order and ends, edge fallback to the
+  contract link / outside-only / focusable-only, mark swaps across 760.
+
+## Save/Load: 941–1199 strip, 1101–1199 reading, and short wide windows (ui-polish-95)
+
+**Before (master e6418e4a7c):** at 941–1100 × 461+ a filed save's line under its station ran four or five ragged lines and, near 1000 wide, the context line dropped FLOWN 29 DAYS AGO to a second line. At 1101–1199 the reading fell to ~300px: DELETE dropped under LOAD, SAVED wrapped, and QUICK's CURRENT ran into SLOT 1. Above 1100 wide, short windows broke outright: at ≤460 tall EXPORT printed over RAP SHEET with LOAD off the frame (bench 10 findings at 1150–1920 × 440), at 461–520 the name field or LOAD ran into EXPORT, and at 1150×500 LOAD / SAVE HERE / DELETE were off the frame.
+
+**After (`saveLayouts.js`, desktop only):** the ≤1100 column rule now runs to 1199; 941–1199 × 461+ uses the 791–940 station treatment (name and credits; the reading carries the selected save's line) and closes up the context line. The 640-tall two-column hull record and the short-desktop page no longer stop at 1100 wide; the short page also covers 941+ wide up to 520 tall. No selector or ID changes.
+
+**Checked:** bench `save-load` and `save-load-empty` clean (0 findings) at 390×844, 790×600, 844×390, 860×600, 900×420, 941×600, 960×540, 1000×700, 1024×440, 1150×700, 1250×440, 1280×500, 1280×600, 1280×720 and 1920×1080; also 1101×700, 1199×800, 1280×521, 1920×440/460/520/600. 960×540, 1280×720 and 1920×1080 are outside every changed band. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish95/`.
+
+## Save/Load: short windows at 861+ × 461–560 take clicks (ui-polish-96)
+
+**Before (master a87ecf9a71):** at 1200–1239 × 521–539 (left over from master's 1200–1600 × 521–560 break) LOAD printed over EXPORT (86×13 px) and EXPORT / IMPORT / BACK failed an `elementFromPoint` check. At 940×461 and 940×480 the foot sat under the name field and LOAD, so EXPORT / IMPORT / BACK took no clicks (on master too).
+
+**After (`saveLayouts.js`, desktop only):** the short-desktop page (way back under the filmstrip, tighter reading) now covers 861+ wide up to 560 tall (was 941+ up to 520). No selector or ID changes.
+
+**Checked:** probe (text overlap, off-frame, `elementFromPoint` on every button and input, action/foot rect intersection) on `save-load` and `save-load-empty` at 1200×521, 1220×530, 1239×539, 1239×521, 1240×540, 1200×560, 1199×530, 940×461, 940×480, 941×461, 960×540, 1280×720, 1920×1080, plus 861×461, 900×520, 940×560, 1240×560: 0 overlaps, 0 dead buttons. 941×461, 1280×720 and 1920×1080 render identical to master. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish96/compare/`.
+
+## Save/Load: short windows at 791–860 × 461–560 take clicks (ui-polish-97)
+
+**Before (master 8ba1b59d4c):** at 791–860 × 461–~500 the page sat side by side with the way back along the foot: the name field printed over EXPORT / IMPORT (860×461, 791×461) and LOAD over EXPORT, SAVE HERE over IMPORT (820×480, 860×480, 860×500), so EXPORT / IMPORT / BACK took no clicks.
+
+**After (`saveLayouts.js`, desktop only):** the short-desktop page now starts at 791 wide (was 861) up to 560 tall. In 791–860 × 461–560 the strip's ~62px stations are too narrow for QUICK's CURRENT badge (it ran into SLOT 1 and its credits even with no tracking), so the badge steps aside there; the reading's context line still says "QUICK SAVE · CURRENT". No selector or ID changes.
+
+**Checked:** probe and rect check on `save-load` and `save-load-empty` at 791×461, 820×480, 860×461, 860×480, 860×500, 860×560, 861×461, 960×540 and 1280×720: 0 overlaps, 0 off-frame, 0 dead buttons, nothing under 12px. 790×461 is outside the band (stacked, scrolling page) and unchanged from master. 860×560 now uses the short page (clean on both). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish97/compare/`.
+
+## Save/Load: the stacked page's way back on screen at 641–790 × 461–749 (ui-polish-98)
+
+**Before (master 5e5b619b57):** at 641–790 × 461–749 the stacked page runs ~630–710px in a scrolling root, so EXPORT / IMPORT / BACK (and 12–15 text lines at 461–561 tall) sat under the fold and took no click until the page was scrolled.
+
+**After (`saveLayouts.js`, desktop only):** in `(min-width:641px) and (max-width:790px) and (min-height:461px) and (max-height:749px)` the way back moves into the title's row, top right (`grid-template-areas:"title foot" "page page" "hang hang"`), not pinned, so nothing scrolls under it; the title takes the short-desktop size (34px) and the subtitle gets 8px under it. ≤640 wide and ≤460 tall keep their own rules. No selector or ID changes. (A first cut pinned the foot with `position:sticky`; it covered LOAD at 461 tall and the strip's labels at 500, and was dropped. A ≤739 × ≤460 clause was dropped too: it put EXPORT under the LOAD title at 390×700.)
+
+**Checked (review-516/c2):** probe (text overlap, off-frame, `elementFromPoint` on every button and input, foot vs title/subtitle rects) on `save-load` and `save-load-empty` at 641/739/740/790 × 461/500/561/700/749, 760×461, 700×500, 700×700: EXPORT / IMPORT / BACK in view and clickable without a scroll, no title/foot overlap, off-frame text 15→11 (461), 14→10 (500), 12→4–5 (561), 3→0 (700). 640×*, *×460, *×750, 791×*, 390×700, 390×460, 500×460/600, 600×460/700/800, 960×540, 1280×720, 1366×768, 1440×900, 1920×1080, 390×844 and 375×667 phones render identical to master (layout rect hashes). Type floor OK. Shots: `/workspace/orchestra/state/review-516/c2/side-by-side-516-c2.png`.
+
+## Save/Load context line at 1200–1599 (ui-polish-100)
+
+**Before (master f56dfa6d32):** at 1280×720 the reading column is ~360px, so the context line at .2em tracking broke as "QUICK SAVE · CURRENT · / FLOWN 9/22/2026" and pushed the title and the reading down a line.
+
+**After (`saveLayouts.js`, desktop only):** in `(min-width:1200px) and (max-width:1599px)` the context line is tracked at .06em and reads on one line, with room for the longer "FLOWN 29 DAYS AGO". Size stays 12px. ≤1199 and ≥1600 keep their rules. No selector or ID changes.
+
+**Checked:** ui-bench `save-load` clean at 1200×720, 1280×720, 1440×900 and 1599×900; 960×540, 1920×1080 and 390×844 are outside the query. Type floor OK. Shots: `ui-shots/polish100/{before,after,after2}/`.

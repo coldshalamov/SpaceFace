@@ -207,7 +207,9 @@ ${SL} > .k-foot .k-word.sf-back:is(:hover, :focus-visible) { color:var(--dp-hand
 html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "page stage" "page hang" "foot foot" !important; }
 /* ui-polish-79: the hull record's key column fits its longest key (RAP SHEET ran into "Clean" at 761–1280) */
 html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-columns:max(96px, calc(104px * var(--sv))) minmax(0, 1fr); }
-@media (max-width:1100px) {
+/* ui-polish-95: to 1199 (was 1100). At 1101–1199 the reading fell to ~300px: DELETE dropped under LOAD, SAVED wrapped
+   and QUICK's CURRENT ran into SLOT 1 ("CURRENTSLOT 1"). */
+@media (max-width:1199px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-columns:minmax(356px, 38%) minmax(0, 1fr) !important; column-gap:28px !important; }
   /* the context line (QUICK SAVE · CURRENT · FLOWN 20 DAYS AGO) fits the column on one line */
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { font-size:12px; letter-spacing:.12em; }
@@ -215,6 +217,11 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badges { display:block !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { margin:0 !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge:not(.sf-slot-badge--calm)::before { content:none; }
+}
+/* ui-polish-100: at 1200–1599 the reading column is ~360px, so the context line at .2em tracking broke
+   "QUICK SAVE · CURRENT · / FLOWN 9/22/2026" onto two lines at 1280×720. It closes up to .06em (headroom for "FLOWN 29 DAYS AGO") and reads on one line. */
+@media (min-width:1200px) and (max-width:1599px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.06em; }
 }
 /* ≤860px-wide desktop: the strip under the hull is ~300–390px for five stations, so a slot's name,
    badge and line set smaller and tighter and neighbouring words keep a gap (at 761 they touched) */
@@ -225,7 +232,8 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
 }
 /* 960×540-class frames: the credits numeral steps down and the hull
    record reads in two columns, so LOAD stands clear above EXPORT / IMPORT / BACK */
-@media (max-width:1100px) and (max-height:640px) {
+/* ui-polish-95: any width (was ≤1100). Above 1100 at 461–640 tall the name field and LOAD ran into EXPORT / IMPORT. */
+@media (max-height:640px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-fact-n { font-size:calc(48px * var(--sv)); }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-save-portrait { display:grid; grid-template-columns:max-content minmax(0, 1fr) max-content minmax(0, 1fr);
     column-gap:6px; row-gap:5px; align-items:baseline; margin-bottom:4px; }
@@ -244,7 +252,14 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
    frame and the hull record printed through EXPORT / IMPORT. The way back moves under the filmstrip
    (the right column), the reading takes the left column's full height, and its type steps down:
    credits read on one line, the name field sits beside its label, the hull record runs tighter. */
-@media (max-width:1100px) and (max-height:460px) {
+/* ui-polish-95: any width ≤460 tall (was ≤1100), and 941+ wide up to 520 tall. Wider short windows printed
+   EXPORT over RAP SHEET with LOAD off the frame (1150–1920 × 440, 1150–1920 × 500). */
+/* ui-polish-96: to 560 tall from 861 wide (was 941+ × ≤520). 1200–1239 × 521–539 (left over from 1200–1600 × 521–560)
+   printed LOAD over EXPORT and buried EXPORT / IMPORT / BACK, and at 861–940 × 461–560 the foot sat under the name
+   field and LOAD, so none of the three took a click. */
+/* ui-polish-97: from 791 wide (was 861) to 560 tall. 791–860 × 461–~500 sat side by side with the name field over
+   EXPORT / IMPORT (860×461) and LOAD over EXPORT (860×480), and EXPORT / IMPORT / BACK took no click. */
+@media (max-height:460px), (min-width:791px) and (max-height:560px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:10px !important; padding-bottom:12px !important; row-gap:6px !important;
     grid-template-rows:auto minmax(0, 1fr) auto auto !important;
     grid-template-areas:"title stage" "page stage" "page hang" "page foot" !important; }
@@ -289,6 +304,12 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
      line (GRUDGE) takes the whole row instead of wrapping in half of it, and the top padding gives back 6px (16 -> 10). */
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(odd):nth-last-of-type(1) > :not(.sf-ledger-k) { grid-column:2 / -1; }
 }
+/* ui-polish-97: 791–860 in the short band, QUICK's CURRENT badge (~64px) ran past its ~62px station into SLOT 1
+   and its credits (closing its tracking was not enough). The badge steps aside there: the reading's context line
+   carries it ("QUICK SAVE · CURRENT · …"). */
+@media (min-width:791px) and (max-width:860px) and (min-height:461px) and (max-height:560px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { display:none !important; }
+}
 /* UI polish (ui-polish-68): a narrow desktop window (≤760 wide, not a phone). The reading's 356px floor
    left the hull and its filmstrip a 0–300px column, so at 390–700 the strip vanished or its five slot
    names printed on top of each other. The page stacks instead: title, reading, then the filmstrip across
@@ -316,6 +337,38 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { letter-spacing:.04em !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.04em; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__num { white-space:normal; }
+}
+/* ui-polish-98: the stacked page at 641–790 × 461–749 (narrower and ≤460-tall windows keep their own rules) runs ~630–710px, so on a
+   790×461–561 window EXPORT / IMPORT / BACK and 12–15 lines sat under the fold until the page was scrolled, and a
+   probe at the frame took no click on them. The way back moves up beside the title (top right), so the three are on
+   screen and take a click without a scroll and nothing scrolls under a pinned bar (#516's first cut pinned it to the foot,
+   which covered LOAD at 461 tall and the strip's labels at 500). */
+@media (min-width:641px) and (max-width:790px) and (min-height:461px) and (max-height:749px) {
+  /* the way back rides the title's row (top right), so it is on screen without a scroll and nothing scrolls under it */
+  html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:12px !important; row-gap:6px !important;
+    grid-template-columns:minmax(0, 1fr) auto !important; grid-template-rows:max-content max-content minmax(max-content, 1fr) !important;
+    grid-template-areas:"title foot" "page page" "hang hang" !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-title { font-size:34px !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-emph { margin-top:4px; margin-bottom:8px; font-size:13px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-stage__foot.sf-save-ledger { gap:4px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-foot { align-self:start; justify-self:end; gap:22px; padding-top:4px !important; }
+}
+/* ui-polish-92: from 791 (the stack's edge) to ~940 wide above 460 tall the strip sits beside the reading with
+   ~67-80px stations: QUICK's CURRENT ran into SLOT 1 and each filed save's line broke mid-word ("Adventur /
+   e·Hitch") down to six lines, its credits off the frame at 861x600. A filed station shows its name and credits
+   only (the reading carries the selected save's line, as in the stacked and short bands); the badge closes up. */
+@media (min-width:791px) and (max-width:860px) and (min-height:461px) and (max-height:749px), (min-width:861px) and (max-width:940px) and (min-height:461px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { letter-spacing:.04em !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.02em; }
+}
+/* ui-polish-95: 941–1199 wide above 460 tall, the ~100px stations still ran a filed save's line to four or five
+   ragged lines ("Adventure· / Hitch·Helios / Prime·1h / 12m played"), and at ~1000 the context line broke
+   FLOWN 29 DAYS AGO onto a second line. The 791–940 treatment carries on: a filed station shows its name and
+   credits (the reading carries the selected save's line), and the context line closes up to one line. */
+@media (min-width:941px) and (max-width:1199px) and (min-height:461px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.05em; }
 }
 /* review: a narrow and short window (≤739 × ≤460) stacks too; the title keeps the short-desktop size so LOAD stays above the fold */
 @media (max-width:739px) and (max-height:460px) {

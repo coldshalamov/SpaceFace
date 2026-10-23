@@ -592,6 +592,8 @@ finished plan — the board is finished only when every number in this table is 
 | Inference catalog (`INFERENCE_IDEAS.md`) | **55 OPEN lines** — section A-LIST (AL-HF-01…15, AL-LG-01…16, AL-PR-01…16), each already owned by a §N row and taken inside it, plus section PULSE (PULSE-01…08, volume fill for the living world, §31.6) and section REPORT CARD (RC-01…50, the audited small parts of rows 456–481, §32.7) — 105 OPEN in all; every earlier catalog line SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
 | vm-drop | code stack drained; only HOLDs and 9 chase REVISEs remain, waiting on the remote machine |
 
+**Public beta (2026-10-23):** the maturity report, the one direction and the beta task set (29 board-sourced, 43 found) live in [`BETA_PLAN_2026-10-23.md`](./design/program/BETA_PLAN_2026-10-23.md) — thread `claude-beta-oct23`.
+
 ### Seams — what is free, and what another agent has
 
 One seam is one set of files. Five agents take five different seams. Read the Claim cell
@@ -678,7 +680,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | discovery-shown | free | anatomy hunk of `ui/targetPanel.js`, `data/alienFauna.js` taxonomy, `alienEcology.js` toasts, `ui/comms.js` styling, codex species pages (serial with `pulse-print`), fauna/machine recipes in `audioRecipes.js`, Helios tease placement, `precursorMachines.js` clause decode (§32.7) | 468 |
 | records | free | `ui/screens/statistics.js`, photo Look in `pause.js`/`camera.js`, achievements screen, empty Replay/Clips copy (serial with `theater`), today's board in `survivalRecords.js`/crucible door, Range Licence in `range.js` (§32.7) | 471 |
 | front-door-speed | devin-fleet-oct20 | `ui/loadingPresenter.js`, `loadingTerminalArt.js`, `core/newGameBoot.js` (inside the L-MACHINE shader-admission work), first-light preset in `accessibility.js`/`mainMenu.js`, `orrery/settingsLayouts.js`, `saveLoad.js`/`saveNotices.js` (§32.7) | 473 |
-| glass | free | `hud.js` attention hunks, `hudAttention.js`, glass presets in `settings.js`, `masslineHud.js`, `orrery/hullRing.js`, `dockArrival.js`, `check-type-floor.mjs` SVG report (§32.7) | 474 |
+| glass | done | `hud.js` attention hunks, `hudAttention.js`, glass presets in `settings.js`, `masslineHud.js`, `orrery/hullRing.js`, `dockArrival.js`, `check-type-floor.mjs` SVG report (§32.7) | - |
 | feel | devin-fleet-oct20 | `systems/gamepad.js`, `ui/stuntCallout.js`, `combat/stuntEvidence.js`/`stuntRecognition.js`, trick book screen, `data/survivalArenas.js` signature tricks (serial with `swarm`), vent hunk of `weapons.js` (serial with `hostile-hands`), match burn in `flightV3.js` (§32.7) | 475 |
 | travel | done (devin-25-oct22) | `travelLanes.js`, `routePlanner.js`, stale-intel hunk of `galaxyMap.js`, `cruise.js` interdiction wrestle, toll hunk of `world.js` (serial with `sector-identity`), drift-vector presenter (§32.7) | - |
 | npc-read | devin-thirty-oct22 | `ai/factionBehavior.js`, contact-list job phases, grudge hails in `factionPresence.js`/`barks.js` (serial with `hull-ghost`), haulers-to-price hunk of `traffic.js` (serial with `world-answers-2`) (§32.7) | 477 |

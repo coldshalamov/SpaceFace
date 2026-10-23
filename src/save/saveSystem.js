@@ -9706,6 +9706,8 @@ function profileSettingsSnapshot(settings) {
       gameSpeed: normalizeGameSpeed(s.gameplay?.gameSpeed),
       velocityVectoring: s.gameplay?.velocityVectoring !== false,
       pauseOnFocusLoss: s.gameplay?.pauseOnFocusLoss !== false,
+      // Row 493: Settings → Gameplay → Powers. Only 'press' changes behaviour (powersFireOnPress).
+      powerFire: s.gameplay?.powerFire === 'press' ? 'press' : 'hold',
     },
   };
 }

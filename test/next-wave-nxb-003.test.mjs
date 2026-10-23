@@ -8,7 +8,9 @@ import { createUiInput } from '../src/ui/input.js';
 import { MASSLINE_HOLD_S } from '../src/systems/masslineInputGrammar.js';
 
 // The bomb key is BOMB (4) since the five powers (owner 2026-10-22); with no impulse charge aboard
-// it drops the selected drift bomb, the `dropBomb` edge these samples read.
+// it drops the selected drift bomb, the `dropBomb` edge these samples read. These samples count
+// verbs on the press, so they run the powers in "Use on press" (Settings → Gameplay → Powers);
+// test/power-hold-preview.test.mjs holds the same invariants for the default hold-to-preview.
 function flightState() {
   const player = {
     id: 1, type: 'ship', alive: true, team: 0,
@@ -19,7 +21,7 @@ function flightState() {
     mode: 'flight', simTime: 0, tick: 0,
     entities: new Map([[1, player]]), playerId: 1, player,
     settings: {
-      gameplay: { controlScheme: 'pilot' },
+      gameplay: { controlScheme: 'pilot', powerFire: 'press' },
       controls: {
         bindings: {},
         gamepad: { enabled: false },

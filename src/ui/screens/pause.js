@@ -614,6 +614,33 @@ let photo = null;
 // FB-085: the pause route owns P (BINDINGS.photo) — the handler lives while this screen is top.
 let pausePhotoKeyHandler = null;
 let pauseRootEl = null;
+// The narrow-window switch (≤760 wide takes the column). mount reads it once, so a resize across 760
+// while pause is up must remount, or the sheet keeps the wrong composition (review #499).
+const PAUSE_NARROW_QUERY = '(max-width:760px)';
+let pauseNarrowWatch = null;
+function pauseNarrowQuery() {
+  const mm = (globalThis.window && globalThis.window.matchMedia) || globalThis.matchMedia;
+  if (typeof mm !== 'function') return null;
+  try { return mm.call(globalThis.window || globalThis, PAUSE_NARROW_QUERY); } catch (e) { return null; }
+}
+function pauseWantsColumn() {
+  if (isPhoneLayout()) return true;
+  const w = globalThis.window && globalThis.window.innerWidth;
+  return typeof w === 'number' && w > 0 && w <= 760;
+}
+function pauseVerbButton(rootEl, action) {
+  if (!rootEl || typeof rootEl.querySelectorAll !== 'function') return null;
+  for (const button of rootEl.querySelectorAll('button')) {
+    if (typeof button.getAttribute === 'function' && button.getAttribute('data-action') === action) return button;
+  }
+  return null;
+}
+function unwatchPauseNarrow() {
+  if (!pauseNarrowWatch) return;
+  const { mql, onChange } = pauseNarrowWatch;
+  try { if (typeof mql.removeEventListener === 'function') mql.removeEventListener('change', onChange); else if (typeof mql.removeListener === 'function') mql.removeListener(onChange); } catch (e) {}
+  pauseNarrowWatch = null;
+}
 
 function photoHintText() {
   // Esc is the modal-close key uiInput owns; inside photo it returns to this screen.
@@ -1102,6 +1129,10 @@ export const pauseScreen = {
       },
     });
     list.classList.add('sf-pause-words', 'dp-menu--banked');
+    // The column is one list read top to bottom, but its banked runs share rows left-aligned under a
+    // full-width RESUME: geometric d-pad picking sent Down from Resume to whatever word sat under
+    // Resume's centre (ACHIEVEMENTS at 700). Mark it linear so Up/Down step verb by verb in order.
+    // Set below once `phone` is known.
     // ORRERY tiers: Resume is the lamp key; the interruption choices (Game) and the way out (Exit)
     // are mid; the Ship, Reference, Media and Dev verbs are the quiet tier.
     const LOW_TIER = new Set(['Ship', 'Reference', 'Media', 'Dev']);
@@ -1125,9 +1156,41 @@ export const pauseScreen = {
     injectPauseLayouts();
     // A phone has no room for the dial: the verbs stay the plain banked Deckplate column and the brief stays
     // above them in it, like the title's phone composition.
-    const phone = isPhoneLayout();
-    // add/remove, not toggle: the headless shims the pause tests mount on carry no classList.toggle
+    // A narrow desktop window (≤760 wide) has no room for the dial either:
+    // its group banks ran off the right edge and the brief printed over RESUME, so it takes the column too.
+    const phone = pauseWantsColumn();
+    // add/remove, not toggle: the headless shims the pause tests mount on carry no classList.toggle.
+    // Both go first: a remount across 760 must not leave the other composition's class behind.
+    rootEl.classList.remove('orr-pause', 'orr-pause--phone');
     rootEl.classList.add(phone ? 'orr-pause--phone' : 'orr-pause');
+    this._columnAtMount = phone;
+    if (phone) list.setAttribute('data-pad-linear', ''); else list.removeAttribute('data-pad-linear');
+    // The dial is two levels, like its foot strip says: the pad steps categories on Up/Down and verbs
+    // on Left/Right (ui-polish-94), not whichever word sits nearest under the last one.
+    if (phone) list.removeAttribute('data-pad-grouped'); else list.setAttribute('data-pad-grouped', '');
+    unwatchPauseNarrow();
+    const mql = pauseNarrowQuery();
+    if (mql) {
+      const onChange = () => {
+        if (pauseRootEl !== rootEl || pauseWantsColumn() === this._columnAtMount) return;
+        const active = globalThis.document ? globalThis.document.activeElement : null;
+        const hadFocus = !!(els && els.bResume && active && rootEl.contains && rootEl.contains(active));
+        // keep the player's place: the same verb (data-action survives the rebuild) takes focus again,
+        // not Resume (review #499 follow-up)
+        const keptAction = hadFocus && typeof active.getAttribute === 'function' ? active.getAttribute('data-action') : null;
+        this.mount(rootEl, ctx);
+        if (hadFocus && els && els.bResume) {
+          const again = keptAction ? pauseVerbButton(rootEl, keptAction) : null;
+          try { (again || els.bResume).focus(); } catch (e) {}
+        }
+        if (els && els.title && els.title.parentElement) els.title.parentElement.dataset.kReady = '1';
+      };
+      try {
+        if (typeof mql.addEventListener === 'function') mql.addEventListener('change', onChange);
+        else if (typeof mql.addListener === 'function') mql.addListener(onChange);
+        pauseNarrowWatch = { mql, onChange };
+      } catch (e) {}
+    }
     const brief = briefKicker.parentElement;
     if (brief && !phone) { brief.classList.add('orr-brief'); rootEl.appendChild(brief); }
     if (pauseRail) { pauseRail.dispose(); pauseRail = null; }
@@ -1153,8 +1216,10 @@ export const pauseScreen = {
     keyHint('F9', 'Quick Load');
     // the dial is two levels deep, and the strip says so: up/down steps between the categories on
     // the rim, left/right along the one you are in. Without this the arrow keys read as a mystery.
-    keyHint('↑↓', 'Category');
-    keyHint('←→', 'Item');
+    // The column has no dial: one flat list, up/down steps verb by verb and left/right does nothing,
+    // so its strip says just that instead of promising a category level it does not have.
+    if (phone) keyHint('↑↓', 'Move');
+    else { keyHint('↑↓', 'Category'); keyHint('←→', 'Item'); }
     foot.appendChild(keysLine);
     const version = el('p', 'dp-etch dp-bar--end');
     version.dataset.role = 'version';
@@ -1204,6 +1269,10 @@ export const pauseScreen = {
 
   onShow(ctx) {
     if (ctx.state.mode === 'flight') laneSetMode(ctx.state, ctx.bus, 'paused');
+    // the window may have crossed 760 while another screen was over this one
+    if (pauseRootEl && typeof this._columnAtMount === 'boolean' && pauseWantsColumn() !== this._columnAtMount) {
+      this.mount(pauseRootEl, ctx);
+    }
     // The Ending Archive row was gated at mount; a finale filed in a later session of this
     // mounted sheet must open the row. Remount once on the transition — mount owns the whole
     // sheet build, and the focus/settle work below lands on the fresh frame.

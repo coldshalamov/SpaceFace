@@ -380,12 +380,31 @@ export function radialFieldDeployCenter(kind, player, state) {
 }
 
 /**
- * The kernel record a player Pull well, Shove repulsor or Rig cone registers when it deploys right
- * now (ids, source and clock left to the caller). The deploys spread this, and the row-493 preview
- * normalizes the same object, so the predicted paths run on the field the press will make.
+ * The kernel record a player Pull well, Shove repulsor, Rig cone or Rig skim scoop registers when it
+ * deploys right now (ids, source and clock left to the caller). The deploys spread this, and the
+ * row-493 preview normalizes the same object, so the predicted paths run on the field the press
+ * will make.
  */
 export function playerFieldSpec(kind, player, state) {
   const def = FIELD_DEFS[kind];
+  if (kind === 'skim') {
+    const rot = finite(player.rot);
+    const dir = { x: Math.cos(rot), z: Math.sin(rot) };
+    return {
+      kind: def.kind,
+      volume: fieldVolumeOf(def),
+      center: { x: player.pos.x + dir.x * def.originGap, z: player.pos.z + dir.z * def.originGap },
+      dir,
+      radius: def.radius,
+      halfWidth: def.halfWidth,
+      strength: def.strength,
+      falloff: def.falloff,
+      durationS: Infinity,
+      ownerId: player.id,
+      team: player.team,
+      filters: { excludeId: player.id },
+    };
+  }
   if (kind === 'cone') {
     const rot = finite(player.rot);
     const dir = { x: Math.cos(rot), z: Math.sin(rot) };
@@ -1625,31 +1644,11 @@ export const fields = {
       return;
     }
     const def = FIELD_DEFS.skim;
-    const rot = finite(player.rot);
-    const dir = { x: Math.cos(rot), z: Math.sin(rot) };
-    const center = {
-      x: player.pos.x + dir.x * def.originGap,
-      z: player.pos.z + dir.z * def.originGap,
-    };
+    const spec = playerFieldSpec('skim', player, state);
+    const { center, dir } = spec;
     const fieldId = rt.skimFieldId || `field_skim_${player.id}`;
     if (!this._kernel.has(fieldId)) {
-      this._kernel.register({
-        id: fieldId,
-        kind: def.kind,
-        volume: fieldVolumeOf(def),
-        center,
-        dir,
-        radius: def.radius,
-        halfWidth: def.halfWidth,
-        strength: def.strength,
-        falloff: def.falloff,
-        durationS: Infinity,
-        sourceId: player.id,
-        ownerId: player.id,
-        team: player.team,
-        createdAt: nowOf(state),
-        filters: { excludeId: player.id },
-      });
+      this._kernel.register({ ...spec, id: fieldId, sourceId: player.id, createdAt: nowOf(state) });
       rt.skimFieldId = fieldId;
       this._emitDeployCue('sheet', center.x, center.z, def.radius);
       // CV-EAR: the sheet opening IS the skim deploy — publish it so the audio voice path

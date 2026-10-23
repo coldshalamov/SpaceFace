@@ -74,6 +74,28 @@ export function savedCodesForPower(saved, power) {
   return merged;
 }
 
+/**
+ * Do the five powers fire on PRESS (the old instant behaviour) instead of on release? Settings →
+ * Gameplay "Powers: use on press" writes `settings.gameplay.powerFire = 'press'`; anything else —
+ * including no value, the shipped default — is hold to preview, release to use (row 493).
+ */
+export function powersFireOnPress(state) {
+  return !!(state && state.settings && state.settings.gameplay && state.settings.gameplay.powerFire === 'press');
+}
+
+// The held-key preview's read seam (row 493): which power the pilot is gripping right now, keyed
+// by the simulation state it belongs to. input.js writes it; the preview reads it. Presentation
+// only — never on `state`, so it cannot enter a save, a replay or a determinism hash.
+const heldPowers = new WeakMap();
+export function setHeldPower(state, power) {
+  if (!state || typeof state !== 'object') return;
+  if (POWER_VERBS.includes(power)) heldPowers.set(state, power);
+  else heldPowers.delete(state);
+}
+export function heldPower(state) {
+  return (state && typeof state === 'object' && heldPowers.get(state)) || null;
+}
+
 /** Impulse charges the player carries (cargo owns the count). */
 export function playerImpulseCharges(state) {
   const items = state && state.player && state.player.cargo && state.player.cargo.items;

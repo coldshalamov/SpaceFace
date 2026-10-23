@@ -119,6 +119,10 @@ test('rebound charge input latches admission before its one-shot action is consu
     gamepad: null, touch: null,
   });
   host.update(1 / 60, h.state);
+  // Row 493: holding the key previews the throw; letting go is the act.
+  assert.equal(h.state.input.actions.chargeThrow, false, 'a held power key previews; it has not thrown');
+  host._keys.KeyO = false;
+  host.update(1 / 60, h.state);
   assert.equal(h.state.input.actions.chargeThrow, true);
   assert.equal(swarmPilotHasActed(h.state), true);
   h.state.input.actions.chargeThrow = false;

@@ -62,7 +62,9 @@ import { interactionProfileForEntity } from '../data/entityInteractionProfiles.j
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { resolveSteeringView } from './racingSteer.js';
 import { noteSwarmPilotAction, swarmPilotIsActing } from './swarmSafety.js';
-import { POWER_VERBS, bombUsesCharge, powerVerbFor, resolveRigTarget, savedCodesForPower } from './powerVerbs.js';
+import {
+  POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower,
+} from './powerVerbs.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
 // so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
@@ -757,6 +759,18 @@ function takeSampledPress(host, state, action) {
   return true;
 }
 
+// Row 493: another press of this power is still waiting in the sampled queue, so the press taken
+// this update was let go before it (the queue records presses only; see _resolvePowerFire).
+function queuedPowerPress(host, power) {
+  const queue = host._keyEdgeQueue;
+  if (!queue || queue.length === 0) return false;
+  for (let i = 0; i < queue.length; i += 1) {
+    const queued = queue[i];
+    if (queued && queued.pressed && queued.action === power) return true;
+  }
+  return false;
+}
+
 function takeOldestTetherEdge(host) {
   const queue = host._keyEdgeQueue;
   if (!queue || queue.length === 0) return null;
@@ -1382,6 +1396,8 @@ export const input = {
   releaseHeldControls(_reason = 'lifecycle') {
     const keys = this._keys;
     dropUnreleasedHeldEdges(this._keyEdgeQueue, keys);
+    // A power grip is a flight context: focus loss or a hidden page cancels it without firing.
+    this._cancelPowerHolds(this.state);
     if (this._swallowedFlightKeys) this._swallowedFlightKeys = Object.create(null);
     if (keys) {
       for (const code in keys) keys[code] = false;
@@ -1488,6 +1504,73 @@ export const input = {
   _gamepadLifecycleActionAllowed(action) {
     const quarantine = this._gamepadLifecycleQuarantine;
     return !quarantine || quarantine[action] !== true;
+  },
+
+  // Row 493 — which powers fire this update (see the call site). Grips live here, input-owned and
+  // never on state; the preview reads the newest live grip through powerVerbs.heldPower(state).
+  _resolvePowerFire(state, gp, presses) {
+    const fire = this._powerFire || (this._powerFire = { pull: false, shove: false, pin: false, bomb: false, rig: false });
+    const holds = this._powerHolds || (this._powerHolds = Object.create(null));
+    const instant = powersFireOnPress(state);
+    const sector = state.world ? state.world.currentSectorId : null;
+    let newest = null;
+    let newestPower = null;
+    for (const power of POWER_VERBS) {
+      fire[power] = false;
+      const press = presses[power] === true;
+      const keyHeld = this._held(state, power);
+      const padHeld = this._padHeld(gp, power);
+      const held = keyHeld || padHeld;
+      let hold = holds[power];
+      // The context moved under the grip — a new sector, or a pad grip fenced on resume (its
+      // fenced button reads as not held). Cancel; the eventual release must not fire.
+      if (hold && (hold.sector !== sector || (hold.pad && !keyHeld && !this._gamepadLifecycleActionAllowed(power)))) {
+        delete holds[power];
+        hold = null;
+      }
+      if (instant) { fire[power] = press; delete holds[power]; continue; }
+      // The sampled queue (applyFlightKeyEvent) keeps presses, not releases, and a catch-up runs
+      // several updates against the final key state. So a key press that lands on an open grip,
+      // or that has another press of the same power still queued behind it, was let go before
+      // that next press: one press then counts as one use however the updates were spaced
+      // (NXB-003). Pad edges are read fresh each update, so a repeated pad edge is the same press.
+      const keyPress = press && !this._padEdge(gp, power);
+      let pressNow = press;
+      if (pressNow && hold) {
+        if (!keyPress) {
+          pressNow = false;
+        } else {
+          fire[power] = true; // the open grip was released in between: use it
+          this._powerGripSeq = (this._powerGripSeq || 0) + 1;
+          hold = holds[power] = { since: state.simTime, sector, pad: false, order: this._powerGripSeq };
+          if (held && !queuedPowerPress(this, power) && (!newest || hold.order > newest.order)) {
+            newest = hold;
+            newestPower = power;
+          }
+          continue;
+        }
+      }
+      // A whole tap between updates (or a press already let go behind a queued one) fires now.
+      if (pressNow && !hold && (!held || (keyPress && queuedPowerPress(this, power)))) { fire[power] = true; continue; }
+      if (pressNow && !hold) {
+        this._powerGripSeq = (this._powerGripSeq || 0) + 1;
+        hold = holds[power] = { since: state.simTime, sector, pad: padHeld && !keyHeld, order: this._powerGripSeq };
+      }
+      if (hold && !held) { fire[power] = true; delete holds[power]; continue; } // let go: use it
+      if (hold) {
+        if (padHeld && !keyHeld) hold.pad = true;
+        if (!newest || hold.order > newest.order) { newest = hold; newestPower = power; }
+      }
+    }
+    setHeldPower(state, newestPower);
+    return fire;
+  },
+
+  /** Drop every power grip without firing it (screen, focus loss, death, dock). */
+  _cancelPowerHolds(state) {
+    const holds = this._powerHolds;
+    if (holds) for (const power in holds) delete holds[power];
+    if (state) setHeldPower(state, null);
   },
 
   /** Quarantine-gated pad action edge — FB-003 chord verbs merge through the same seam as stock. */
@@ -1620,6 +1703,8 @@ export const input = {
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
       acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false; acts.jettisonLotAll = false;
+      // A screen, dock or death over a power grip cancels it: the key-up afterwards fires nothing.
+      this._cancelPowerHolds(state);
       // The gyre verb rides the same modal-preservation contract as massline: a screen
       // opening must NOT synthesize a falling edge — zeroing it here would bowl the clump
       // out from under a held key (and re-fire the beam on close). The lash stays held
@@ -2064,18 +2149,24 @@ export const input = {
     const pinEdge = edge('pin') || this._padEdge(gp, 'pin');
     const bombEdge = edge('bomb') || this._padEdge(gp, 'bomb');
     const rigEdge = edge('rig') || this._padEdge(gp, 'rig');
-    const bombThrowsCharge = bombEdge && bombUsesCharge(state);
+    // Row 493 — hold to preview, release to use. A press grips the power (the preview draws what it
+    // will move); letting go fires it, and a whole tap between two updates fires at once. A screen,
+    // focus loss, a sector change or a fenced pad cancels the grip without firing. Settings →
+    // Gameplay "Powers: use on press" restores fire-on-press. Bomb's charge-or-bomb choice and
+    // Rig's cone-or-scoop target are read at the moment the power fires.
+    const fire = this._resolvePowerFire(state, gp, { pull: pullEdge, shove: shoveEdge, pin: pinEdge, bomb: bombEdge, rig: rigEdge });
+    const bombThrowsCharge = fire.bomb && bombUsesCharge(state);
     acts.chargeThrow = bombThrowsCharge;
-    acts.dropBomb = bombEdge && !bombThrowsCharge;
-    acts.chargeDetonate = shoveEdge;
+    acts.dropBomb = fire.bomb && !bombThrowsCharge;
+    acts.chargeDetonate = fire.shove;
     acts.scanPulse = edge('scanPulse') || this._padEdge(gp, 'scanPulse');
     acts.cruise = edge('cruise') || this._padEdge(gp, 'cruise');
     acts.autopursuit = false;
     acts.deployBeacon = edge('deployBeacon') || this._padEdge(gp, 'deployBeacon');
-    acts.deployMassSeed = pinEdge;
-    acts.deployWell = pullEdge;
-    acts.deployRepulsor = shoveEdge;
-    const rigTarget = rigEdge ? resolveRigTarget(state) : null;
+    acts.deployMassSeed = fire.pin;
+    acts.deployWell = fire.pull;
+    acts.deployRepulsor = fire.shove;
+    const rigTarget = fire.rig ? resolveRigTarget(state) : null;
     acts.toggleClearingCone = rigTarget === 'cone';
     acts.toggleSkimCollector = rigTarget === 'skim';
     // Ordnance cycle (Comma / pad dLeft) behind the same lifecycle gate as travelBurn. The bombs

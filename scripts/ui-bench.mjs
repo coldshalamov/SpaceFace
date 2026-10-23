@@ -91,6 +91,23 @@ async function settleAnimations(page) {
       if (!running.length) break;
       await new Promise(resolve => requestAnimationFrame(() => resolve()));
     }
+    // Async posters (decoding="async", e.g. the Save/Load hull) and rAF text effects (orrery decrypt,
+    // rolling counters) are not Web Animations, so finish() never reaches them: wait for every shown
+    // image to decode and for the page text to hold still, each with a short cap.
+    const capped = (promise, ms) => Promise.race([promise, new Promise(resolve => setTimeout(resolve, ms))]);
+    const shown = [...document.images].filter(img => img.getAttribute('src') && !img.hidden);
+    await capped(Promise.all(shown.map(img => (img.complete ? Promise.resolve() : new Promise(resolve => {
+      img.addEventListener('load', resolve, { once: true });
+      img.addEventListener('error', resolve, { once: true });
+    })).then(() => img.decode()).catch(() => {}))), 4000);
+    const textQuietBy = Date.now() + 2500;
+    let last = document.body.innerText;
+    for (let still = 0; still < 2 && Date.now() < textQuietBy;) {
+      await new Promise(resolve => setTimeout(resolve, 120));
+      const now = document.body.innerText;
+      still = now === last ? still + 1 : 0;
+      last = now;
+    }
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   });
 }

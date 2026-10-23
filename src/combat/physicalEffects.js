@@ -133,7 +133,13 @@ function gatherPhysicalCandidates(state, center, radius, options) {
 export function queryPhysicalBodies(state, center, radius, helpers, out = [], options = {}) {
   out.length = 0;
   if (!state || !center || !(radius > 0)) return out;
-  const rt = runtime(state);
+  // readOnly (the row-493 held-key preview): no promotion, no promotion-budget clock, and the
+  // eligibility test reads a shallow copy. Resolving a body spec fills in `physicsBody` on the
+  // object it is handed, and a dormant field rock that gains one changes what other readers see
+  // (masslineObstacleRadius takes the body radius over the collider rule), so a presentation
+  // query must never hand it the record itself.
+  const readOnly = options.readOnly === true;
+  const rt = readOnly ? null : runtime(state);
   const scratch = gatherPhysicalCandidates(state, center, radius, options);
   try {
     const candidates = scratch.out;
@@ -142,8 +148,8 @@ export function queryPhysicalBodies(state, center, radius, helpers, out = [], op
       // Visibility/contact queries can choose a recipient before paying the shared promotion
       // budget. Compact bodies remain real blockers even when no physics slot is available.
       const body = state.entities?.get(candidate.id)
-        || (options.promote === false ? candidate : promote(state, candidate, helpers, rt));
-      if (!eligible(body, options.includeAnchored !== false)) continue;
+        || (readOnly || options.promote === false ? candidate : promote(state, candidate, helpers, rt));
+      if (!eligible(readOnly ? { ...body } : body, options.includeAnchored !== false)) continue;
       out.push(body);
     }
   } finally {
