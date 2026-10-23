@@ -198,3 +198,13 @@ Canonical restored checkout remains dirty/read-only at25acfe5c97f069a34a045bea0c
 
 ### Active next exact unit, 05:54 UTC
 Choir relief service interruption is allocated under CLAIM_CHOIR_SERVICE_INTERRUPTION_2026-10-23.md. Same local living runner displaced from Helios incorrectly completes treatment by global clock. Preserve absent/offscreen semantics, existing nullable clock, one bed, bounded cast and all shared owners; implementer owns only Choir helper/new test, reviewer independent, root owns package/recovery/publication. Rhea publisher continues exact run39907432057/#5879; no green inferred.
+
+
+## Latest Veil research-place follow-up: 2026-10-23 15:37 UTC
+
+All twelve goals remain OPEN. This additive PR552 follow-up extends the authored world direction with a small offline place-composition slice; it is not full-sector or in-game acceptance.
+
+- [Draft PR552](https://github.com/coldshalamov/SpaceFace/pull/552) is open/draft and unmerged at head `2544cdaf1b151f0c785f3f7b9c6af88b8dae2d77`, parent `b7145c1f5e9ea68b2919e11cf6d6c45f544e082e`, tree `e01dc119fb861b7a2334724114055aef75bb0a30`, with 13 total paths. The eight-path follow-up adds four released pieces and two open spaces around Frontier Research Station Veil, plus a true local-rumors courtesy and authored-only occupation locker; the existing Tethys/random-46 catalog is preserved.
+- Focused local checks pass 20/20 (11 new plus 9 prior Tethys); 48 other picker cases remain unchanged. On this exact PR head, hosted Tethys is 9/9. The Veil gate did not run because static shard 1's `check:parallax` preflight failed on the “dressing stays below gameplay” assertion (19/20); paired-base evidence localizes this preflight failure to merge-parent `5b9b5f208c8c215e66040b91dfb0261a1b122aa2`: its drift band is y34/yJitter22, absent from PR base/head; the test is unchanged. This does not attribute the workflow’s other failures. Overall run [39978570839](https://github.com/coldshalamov/SpaceFace/actions/runs/39978570839) was still in progress at this update. Do not claim a hosted Veil pass, overall green, or attribute unrelated failures.
+- The actual-geometry preview was delivered as an offline composition, not live camera/PBR. Current evidence covers extracted resolver/kit placement methods; the legacy registered suite is syntax-only. Full world, native flight, Save/Continue, live camera/PBR, and full-sector acceptance remain open.
+- Next: continue the story/place composition and binding choices for Veil from the authored treatment, keeping its separate research stops legible. Rope and Blind Welder remain PARKED, preserved, and unaccepted; do not auto-resume. Existing holds and schedules are unchanged.

@@ -235,3 +235,8 @@ PR487 main run https://github.com/coldshalamov/SpaceFace/actions/runs/3970960863
 - Next: Use PALLAS_LIGHT_CUT_EXPERIENCE_ADDENDUM_2026-10-22.md for bounded Pallas checks, then validate real arrival/visit/time/choice/return/Continue evidence without rewriting the original register.
 - Awaiting user: no optional input pending; proceed with the authorized inventory and review.
 
+
+
+## Latest SF-WORLD-DIRECTION delivery addendum: 2026-10-23 15:37 UTC
+
+All twelve goals remain OPEN. PR552's draft follow-up composes four existing released pieces and two open spaces around Frontier Research Station Veil, with local-rumors courtesy and an authored-only occupation locker. It preserves the Tethys/random-46 catalog. Focused local checks are 20/20 and 48 other picker cases are unchanged. Hosted Tethys is 9/9 at the exact head; the focused Veil gate has no hosted result because static preflight stopped at 19/20 on `check:parallax`. Run #5977 remains in progress; paired-base evidence localizes this preflight failure to merge-parent `5b9b5f208c8c215e66040b91dfb0261a1b122aa2` (drift band y34/yJitter22), absent from PR base/head; the test is unchanged. Other failure causes remain unattributed; acceptance is unresolved. Offline geometry preview is not live camera/PBR; full world/native flight/Save/Continue/live-camera acceptance remain open. Continue grounded story/place composition around Veil; Rope/Blind Welder stays parked.
