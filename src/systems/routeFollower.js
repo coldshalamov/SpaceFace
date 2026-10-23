@@ -415,10 +415,11 @@ export const routeFollower = {
     // transition came from a gate jump or continuous M2a geography.
     bus.on('sector:enter', (p) => this._onSectorEnter(p || {}));
 
-    // Combat interrupts travel. Both seams are covered: a direct hit on the player, and the
-    // encounter-level interdiction receipt.
+    // Combat interrupts travel. Weapon hits arrive as combat:damage; the older hit and
+    // route-damage receipts stay covered too.
     bus.on('combat:hit', (p) => this._onCombatHit(p));
     bus.on('combat:routeDamage', (p) => this._onCombatHit(p));
+    bus.on('combat:damage', (p) => this._onHullStrike(p));
 
     // A restored save revalidates durable route identity before UI or the autopilot can consume it.
     bus.on('save:loaded', () => this._onSaveLoaded());
@@ -939,6 +940,18 @@ export const routeFollower = {
     const target = payload && (payload.targetId ?? payload.entityId ?? payload.id);
     if (target == null || String(target) !== String(playerId)) return;
     this.interrupt('combat');
+  },
+
+  /** A hull breach lets go of an engaged route. A shield graze does not. */
+  _onHullStrike(payload) {
+    const hit = payload || {};
+    if (!(Number(hit.hullDamage) > 0)) return;
+    const state = this.state;
+    if (!state || hit.targetId !== state.playerId) return;
+    const executor = state.nav && state.nav.executor;
+    if (!executor || executor.engaged !== true) return;
+    this.interrupt('hull-strike');
+    this._emit('toast', { text: 'Hull hit — the route let go', kind: 'warn', ttl: 1.6 });
   },
 
   _onSaveLoaded() {
