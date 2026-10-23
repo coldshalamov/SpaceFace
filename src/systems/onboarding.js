@@ -35,7 +35,7 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
 import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
 import { readCadencePair, rateCadenceTechnique, STRAIN_GLOW_DANGER_THRESHOLD } from './masslineControlLaw.js';
-import { resolveActionLabel } from './input.js';
+import { resolveActionLabel, MOUSE_ACTION_LABELS } from './input.js';
 import { decoyAnswersLock } from './countermeasures.js';
 import { fitFeelRowFor, pickFitFelt } from '../onboarding/fitFeel.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -51,6 +51,10 @@ import {
   freshPaceState, normalizePaceState, notePaceFlight, notePendingSwing, onboardingTrackerStep,
   paceCreditFor, settlePendingSwing, swingClinicDue, trackerStepDone,
 } from '../onboarding/firstHalfHourPace.js';
+import {
+  POWER_SITUATIONS, POWER_SITUATION_FIRST_S, POWER_SITUATION_GAP_S, POWER_SITUATION_TTL_S,
+  POWER_SITUATION_WINDOW_S, normalizePowerSit, propWorldPos, propWorldVel, situationFor,
+} from '../onboarding/powerSituations.js';
 
 export { MASS_ANCHOR_RATIO, STRAIN_GLOW_DANGER_THRESHOLD };
 
@@ -372,6 +376,28 @@ export const BEATS = [
 ];
 // Beat index for the choice beat (B5) — accepting its offer ends tutorial mode permanently.
 const CHOICE_BEAT_INDEX = BEATS.length - 1;
+
+// SEED-ST-04 — the taught verbs print their key. Each rail line that teaches a control names
+// that control's LIVE bound key once, resolved when the line is spoken or bound to the
+// objective, never at table-authoring time (a rebind is honored on the next beat; touch
+// resolves to no label and leaves the line exactly as authored).
+const TAUGHT_VERB_LINE_ACTIONS = Object.freeze({
+  // Beat lines, keyed by beat.key; followups, keyed by the firedFollowups id (beat.key + ':' + fu.on).
+  thrust: 'forward',            // Thrust until speed passes forty.
+  'tether:target:acquired': 'tether', // Latch it. Massline.
+  burst: 'fire',                // Fire a short burst into the raider.
+  seam: 'scanPulse',            // Pulse the scanner.
+  'seam:scan:hit': 'mine',      // Beam the bright seams.
+});
+
+/** The beat line with its taught control's live key appended, or the line unchanged. */
+export function taughtVerbLine(state, id, line) {
+  const action = TAUGHT_VERB_LINE_ACTIONS[id];
+  if (!action || !line) return line;
+  const label = verbBindingLabel(state, action) || MOUSE_ACTION_LABELS[action] || '';
+  if (!label) return line;
+  return `${line} (${label})`;
+}
 
 // The rescue verbs fill the new order's gaps: swing opens right after the first attach (the
 // player immediately re-uses the latch on a live rock), shove rides the gun lesson's exit, and
@@ -1321,6 +1347,9 @@ export const onboarding = {
       rangeFunnel: null,
       rangePromptRungId: null,
       trackerCaptions: [],        // bounded { id, text, startAtS, endAtS } — tutorial lifetime only
+      // Row 546: one situation per power inside the first ten minutes. Plain JSON so a save in
+      // the window resumes the ladder instead of replaying it.
+      powerSit: normalizePowerSit(null),
       startedAt: st.simTime || 0,
     };
     // Thesis-first tableau state (raid + claimed). Only staged on the default route — see
@@ -1422,6 +1451,7 @@ export const onboarding = {
       missingThree: rail ? railRecord(rail) : null,
       storeSentence: ob.storeSentence ? plainClone(ob.storeSentence) : null,
       pace: ob.pace ? normalizePaceState(ob.pace) : null,
+      powerSit: ob.powerSit ? normalizePowerSit(ob.powerSit) : null,
       choiceStationId: typeof ob.choiceStationId === 'string' ? ob.choiceStationId : null,
       choiceOfferIds: Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds.slice() : null,
       recommendedMissionId: ob.recommendedMissionId != null ? ob.recommendedMissionId : null,
@@ -1451,6 +1481,7 @@ export const onboarding = {
     ob.tetherBreaks = d.tetherBreaks | 0;
     ob.beatAction = typeof d.beatAction === 'string' ? d.beatAction : '';
     ob.pace = normalizePaceState(d.pace);
+    ob.powerSit = normalizePowerSit(d.powerSit);
     if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence); else delete ob.storeSentence;
     // B5's berth and offers survive a docked save, so the board keeps its choice framing.
     if (typeof d.choiceStationId === 'string') ob.choiceStationId = d.choiceStationId; else delete ob.choiceStationId;
@@ -1530,7 +1561,8 @@ export const onboarding = {
       const beat = BEATS[ob.currentBeat];
       if (beat && ob.beatDoneAt[beat.key] == null) {
         this._enterBeat(beat);
-        this._sayTutorial(beat.line);
+        if (!ob.beatAction) ob.beatAction = taughtVerbLine(this.state, beat.key, beat.line);
+        this._sayTutorial(ob.beatAction);
       } else {
         // A completed tether beat already dropped its salvage. Let the normal cadence
         // advance to its successor instead of replaying entry/reward work.
@@ -1702,12 +1734,12 @@ export const onboarding = {
     }
     ob.currentBeat = nextIndex;
     const beat = BEATS[nextIndex];
-    ob.beatAction = beat.line;
+    ob.beatAction = taughtVerbLine(this.state, beat.key, beat.line);
     this._enterBeat(beat);
     const waypoint = this.state.nav && this.state.nav.waypoint;
     const persistentObjectiveOwnsLine = !!(waypoint && waypoint.onboarding
-      && String(waypoint.reason || '').trim() === String(beat.line || '').trim());
-    this._sayTutorial(beat.line, { visual: !persistentObjectiveOwnsLine });
+      && String(waypoint.reason || '').trim() === String(ob.beatAction || '').trim());
+    this._sayTutorial(ob.beatAction, { visual: !persistentObjectiveOwnsLine });
     this._refreshBeatPanel();
   },
 
@@ -1859,8 +1891,8 @@ export const onboarding = {
       const fkey = beat.key + ':' + fu.on;
       if (ob.firedFollowups[fkey]) continue;
       ob.firedFollowups[fkey] = true;
-      ob.beatAction = fu.line;
-      this._sayTutorial(fu.line);
+      ob.beatAction = taughtVerbLine(this.state, fkey, fu.line);
+      this._sayTutorial(ob.beatAction);
     }
     this._resolveBeatDone(beat, eventName, payload);
     this._refreshBeatPanel();
@@ -2023,6 +2055,7 @@ export const onboarding = {
       this._resolveRaidDone();
       this._tickSwingClinic();
       this._tickClaimed();
+      this._tickPowerSituations(state);
       this._maybeAdvanceMissingThree();
       this._resolveMissingThreeDone();
       this._setObjectiveWaypoint(false);
@@ -2336,6 +2369,115 @@ export const onboarding = {
     if (this.state && this.state.onboarding) {
       this.state.onboarding._trainerId = null;
       this.state.onboarding._miningRockId = null;
+    }
+    this._despawnPowerSituation();
+  },
+
+  // ── Row 546 (W-TEACH): teach by situation, not by lock ──────────────────────────────────
+  // The first ten minutes place one physical setup per power — a loose pack for Pull, a drifter
+  // on the bow for Shove, a tumbling pod for Pin, a scrap knot for Bomb, a debris fan for Rig.
+  // The held-key preview (row 493) is the teacher: the one line names the key, the outlines show
+  // the outcome, and trying the power resolves it. "I've flown before" skips all of it — the
+  // pace flag gates the whole ladder before anything is placed. Specs live in
+  // src/onboarding/powerSituations.js (pure); this tick owns placement, expiry, and the voice.
+  _tickPowerSituations(state) {
+    const ob = state && state.onboarding;
+    if (!ob || !ob.active || ob.finished) return;
+    if (ob.pace && ob.pace.flownBefore === true) return;
+    if (state.mode && state.mode !== 'flight') return;
+    const now = state.simTime || 0;
+    const sit = ob.powerSit || (ob.powerSit = normalizePowerSit(null));
+    // Past the window the ladder stands down: nothing new is placed and a live setup expires.
+    if (now - (ob.startedAt || 0) > POWER_SITUATION_WINDOW_S) {
+      this._despawnPowerSituation(sit);
+      sit.next = POWER_SITUATIONS.length;
+      return;
+    }
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const acts = state.input && state.input.actions;
+
+    const active = sit.active;
+    if (active) {
+      const spec = situationFor(active.power);
+      if (!spec) { sit.active = null; return; }
+      const action = acts ? acts[spec.power] : null;
+      const used = !!(action && (action === true || action.held === true || action.pressed === true));
+      if (used) {
+        // Tried it — the physical result IS the resolution. The props stay in the world as
+        // ordinary rocks; what the pilot just threw or gathered does not vanish under them.
+        this._powerSitIds = null;
+        sit.doneAt[spec.power] = now;
+        sit.active = null;
+        sit.nextAtS = now + POWER_SITUATION_GAP_S;
+        this._emitMilestone('powerSituation', { power: spec.power, used: true });
+      } else if (now - active.placedAtS >= POWER_SITUATION_TTL_S) {
+        // Ignored — the rail guides, it never walls. The unstaged props stand down.
+        sit.doneAt[active.power] = now;
+        sit.active = null;
+        sit.nextAtS = now + POWER_SITUATION_GAP_S;
+        this._despawnPowerSituation(sit);
+        this._emitMilestone('powerSituation', { power: active.power, used: false });
+      }
+      return;
+    }
+    if (sit.next >= POWER_SITUATIONS.length) return;
+    // The first setup waits out the stick drills; later ones ride the voice-pacing gap.
+    const earliest = sit.next === 0 ? (ob.startedAt || 0) + POWER_SITUATION_FIRST_S : sit.nextAtS;
+    if (now < earliest) return;
+    const spec = POWER_SITUATIONS[sit.next];
+    // Consume the ladder slot only when the setup actually lands in the world — a placement
+    // failure (no spawn helper, despawned cast) retries the same power on the next window.
+    if (this._placePowerSituation(spec, now, player)) sit.next += 1;
+  },
+
+  _placePowerSituation(spec, nowS, player) {
+    const ob = this.state && this.state.onboarding;
+    if (!ob || !spec || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return false;
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const pos = { x: 0, z: 0 };
+    const vel = { x: 0, z: 0 };
+    const ids = [];
+    for (const p of spec.props) {
+      propWorldPos(p, player.pos, heading, pos);
+      propWorldVel(p, pos, player.pos, vel);
+      // A seeded ±5 % jitter keeps each setup physical without moving the authored read —
+      // deterministic through the onboarding rng, never ambient randomness.
+      const j = p.distWu * 0.05;
+      pos.x += (onboardingRandom(this.state) - 0.5) * 2 * j;
+      pos.z += (onboardingRandom(this.state) - 0.5) * 2 * j;
+      const rock = this.helpers.spawnEntity({
+        type: 'asteroid',
+        pos: { x: pos.x, z: pos.z },
+        vel: { x: vel.x, z: vel.z },
+        radius: p.radius,
+        mass: p.mass,
+        hull: p.radius * 4,
+        hullMax: p.radius * 4,
+        physicsBody: { radius: asteroidColliderRadius('ast_common_rock', p.radius) },
+        data: {
+          typeId: 'ast_common_rock', oreHP: 0, yieldU: 0,
+          onboarding: true, powerSituation: spec.power,
+        },
+      });
+      if (rock && rock.id != null) ids.push(rock.id);
+    }
+    if (!ids.length) return false;
+    this._powerSitIds = ids;
+    ob.powerSit.active = { power: spec.power, placedAtS: nowS };
+    // One line names the ONE power and asks for the hold — the preview teaches the rest.
+    this._sayTutorial(spec.line);
+    this._emitMilestone('powerSituationPlaced', { power: spec.power });
+    return true;
+  },
+
+  _despawnPowerSituation(sit) {
+    const ids = this._powerSitIds;
+    this._powerSitIds = null;
+    if (sit && sit.active) sit.active = null;
+    if (!ids || !ids.length || !this.helpers || typeof this.helpers.removeEntity !== 'function') return;
+    for (const id of ids) {
+      if (id != null) this.helpers.removeEntity(id);
     }
   },
 
