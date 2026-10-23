@@ -68,6 +68,7 @@ import { stuntBankTier, stuntGridTime, stuntLinkRate, stuntScoreBpm } from './st
 import { cachedBarkBuffer, barkPlaybackRate } from './barkPcmCache.js';
 import { applyOutputMix, heatScoreLift, stationIdentNotes } from './outputMix.js';
 import { createThreatEar } from './threatEar.js';
+import { bindTrailerScore } from './trailerScore.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 
@@ -3011,6 +3012,7 @@ export const audio = {
       });
     });
     bus.on('audio:cue', (p) => this._onCue(p));
+    rt._trailerScoreDispose = bindTrailerScore(this);
     bus.on('tether:reel', (p) => this._onMasslineInstrument('reel', p));
     bus.on('tether:releaseRated', (p) => this._onMasslineInstrument('release', p));
     bus.on('tether:broken', (p) => {
@@ -3293,6 +3295,7 @@ export const audio = {
       window.removeEventListener('keydown', this._gestureHandler);
     }
     this._gestureHandler = null;
+    rt._trailerScoreDispose?.();
     this._unbindOutputDeviceFollow();
     this._teardownMine();
     if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();

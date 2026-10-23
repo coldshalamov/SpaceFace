@@ -1,20 +1,23 @@
-# Audio caption helper recovery
+# Audio caption behavior after placeholder landing
 
-This change restores the missing recipe-caption adapter used by the audio system and removes only the dangling trailer-score binding that prevented the module graph from resolving. Existing trailer staging continues to route its real voice through `audio:cue`.
+The original candidate was based on `808d4a99c5c7010a0fb6cf7b9edeaf5393a738e9`, where the imported recipe-caption and trailer-score modules were absent. New upstream commit `91495d09f62ccd652dfbc529c99edd11e2adbf3b` supplies explicitly inert placeholders: recipe captions emit nothing and text passes through unchanged; trailer scoring binds nothing and returns a no-op disposer.
+
+This reconciled candidate replaces only the recipe-caption placeholder with a new functional adapter. It does not claim to recover the author's uncommitted original modules. Upstream's trailerScore file and audioSystem import, bind and dispose hooks are preserved unchanged. Existing trailer staging still routes actual cues through `audio:cue`.
 
 ## Scope
 
-- Add `src/audio/recipeCaptions.js`, using the canonical gameplay-recipe caption resolver and localization API.
-- In `src/audio/audioSystem.js`, preserve caption ownership at the existing same-call handlers, emit generated captions only for admitted voices, and remove the three references to the absent trailer-score module. Audio admission, synthesis, mixing, and the existing cue route are otherwise unchanged.
-- Register one focused test gate and one invocation in the existing default check chain.
-- Add the two direct audio-module preloads for `recipeCaptions.js` and the already imported `barkPcmCache.js`. No other preload or catalog entries change.
+- Delegate recipe text to the existing gameplay-caption resolver and localization API, emitting generated text only after voice admission.
+- Preserve same-call caption ownership for named events, relay/fuel/mine/anomaly, field deployment, visual cues, instrument and radio presentation. Named/physical text retains its existing audio-independent behavior where authored.
+- Keep four explicitly cosmetic place accents free of repetitive generated captions. This is not a blanket suppression of ambient semantic warnings.
+- Register the focused test gate and its default-chain invocation; add only the recipeCaptions and already imported barkPcmCache preloads.
+- Do not change the simulation, rewards, saves, audio admission, synthesis or mixing.
 
 ## Verification and limits
 
-The reviewed bounded VM test passed 16/16. It exercises the actual audio methods and ten event handlers with the real caption resolver, localization/runtime, synth and selected recipe rows. Three candidate files passed syntax checks. The bounded harness uses explicit boundary doubles; this result is not a full production audio-system import/init, browser output, real WebAudio, or full-game startup acceptance.
+Root and independent review each reran the bounded focused VM suite after restoring the three upstream trailer hooks: **16 passed, 0 failed**. Removing exactly those three restored lines reproduces the previously reviewed candidate byte-for-byte. Syntax checking passed. The suite exercises actual production methods and ten subscriptions, real synthesis, selected recipe rows, the caption resolver, localization runtime and trailer staging, with explicit WebAudio/runtime/locale-inventory boundaries. It is not a complete audioSystem import or initialization test.
 
-A differential fixture comparison recorded 7 passes and 9 failures against the original audio source with the helper restored. This comparison is not a full original-application run.
+The earlier differential fixture against original audio source with a functional helper recorded 7 passes and 9 failures. This is preserved as historical fixture evidence, not an executed original-application result. Previous public-head hosted results do not qualify this new reconciliation.
 
-A separate diagnostic remains intentionally failing (16 passed, 1 failed): an ordinary visual damage receipt followed by raw damage can produce two shield captions for one admitted voice. This cross-event ownership defect is preserved and explicitly unresolved; this change does not claim to fix it.
+The known cross-event damage-caption defect remains unresolved: the preserved diagnostic produces one admitted shield voice and two captions (16 passes, 1 failure). Visual and raw-damage producers do not carry a trustworthy shared receipt identity, and visual presentation can be absent or throttled. Blanket raw-caption suppression would lose useful warnings. No global duplicate-elimination claim is made.
 
-The existing diagnostic and differential evidence are retained separately from this public report.
+Bark/instructor/instrument changes include source-reviewed paths not exercised end-to-end. Full initialization, binder lifecycle, translated catalogs, real WebAudio, browser output, ordinary gameplay and Save/Continue acceptance remain open. The retained trailer placeholder is not an implemented trailer-scoring system.
