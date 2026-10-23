@@ -163,6 +163,7 @@ import { drill } from '../systems/drill.js';
 import { intervention } from '../systems/intervention.js';
 import { claims } from '../systems/claims.js';
 import { longBerth } from '../systems/longBerth.js';
+import { crew } from '../systems/crew.js';
 import { beacons } from '../systems/beacons.js';
 import { onboarding } from '../systems/onboarding.js';
 import { spawnBudget } from '../systems/spawnBudget.js';
@@ -448,6 +449,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['drill', drill],
     ['claims', claims],
     ['longBerth', longBerth],
+    ['crew', crew],
     ['beacons', beacons],
     ['bandRadio', bandRadio],
     ['v2FlavorRuntime', v2FlavorRuntime],

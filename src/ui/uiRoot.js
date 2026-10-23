@@ -131,6 +131,7 @@ import { createBandHud } from './bandHud.js';
 import { createWorldObjectInteraction } from './worldObjectInteraction.js';
 import { createAftermathChoicePrompt } from './aftermathChoicePrompt.js';
 import { createLongBerthPrompt } from './longBerthPrompt.js';
+import { createCrewPrompt } from './crewPrompt.js';
 import { createEncounterChoicePrompt } from './encounterChoicePrompt.js';
 import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
 import { createPromptDeck } from './promptDeck.js';
@@ -631,6 +632,10 @@ export const ui = {
       this.longBerthPrompt.destroy();
     }
     this.longBerthPrompt = null;
+    if (this.crewPrompt && typeof this.crewPrompt.destroy === 'function') {
+      this.crewPrompt.destroy();
+    }
+    this.crewPrompt = null;
     destroyCommsOwner(this);
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
@@ -843,6 +848,7 @@ export const ui = {
     this.encounterChoicePrompt = createEncounterChoicePrompt(ctx);
     this.aftermathChoicePrompt = createAftermathChoicePrompt(ctx);
     this.longBerthPrompt = createLongBerthPrompt(ctx);
+    this.crewPrompt = createCrewPrompt(ctx);
     this.lawfulInspectionPrompt = createLawfulInspectionPrompt(ctx);
 
     // Wingman command radial (Micro-Loops) — a quick fleet-command wheel on the Z key.
@@ -1980,6 +1986,10 @@ export const ui = {
       this.longBerthPrompt.destroy();
     }
     this.longBerthPrompt = null;
+    if (this.crewPrompt && typeof this.crewPrompt.destroy === 'function') {
+      this.crewPrompt.destroy();
+    }
+    this.crewPrompt = null;
     destroyCommsOwner(this);
     destroyMarketNewsOwner(this);
     if (this.nemesisComms && typeof this.nemesisComms.dispose === 'function') this.nemesisComms.dispose();

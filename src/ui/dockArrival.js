@@ -510,7 +510,13 @@ function longBerthHomeCard(state) {
   const roster = (state && state.crew && Array.isArray(state.crew.members) ? state.crew.members : [])
     .filter(Boolean);
   const crewNames = (roster.length ? roster : crew)
-    .map((c) => c && (c.name || c.id)).filter(Boolean).slice(0, 4);
+    .map((c) => {
+      if (!c) return null;
+      const name = c.name || c.id;
+      if (c.status === 'injured') return `${name} (hurt)`;
+      if (c.loyalty) return `${name} ◆`;
+      return name;
+    }).filter(Boolean).slice(0, 4);
   const trophies = Array.isArray(lb.trophies) ? lb.trophies.filter(Boolean) : [];
   const trophyNames = trophies.map((t) => t && t.label).filter(Boolean).slice(-3);
   const stage = Number(lb.stage) || 0;

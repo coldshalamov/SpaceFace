@@ -252,6 +252,7 @@ export const longBerth = {
         at: Number(this.state.simTime) || 0,
       });
       if (lb.trophies.length > 24) lb.trophies.splice(0, lb.trophies.length - 24);
+      this.bus.emit('longBerth:trophy', { worldRecordId: wrid, label: berthTrophyLabel(e), count: lb.trophies.length });
       this.bus.emit('toast', {
         text: `${berthTrophyLabel(e)} parked in the Long Berth yard.`,
         kind: 'info', ttl: 5,

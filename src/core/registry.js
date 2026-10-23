@@ -63,6 +63,7 @@ import { aceMemory } from '../systems/aceMemory.js';
 import { deedRecord } from '../systems/deedRecord.js';
 import { historyWear } from '../systems/historyWear.js';
 import { longBerth } from '../systems/longBerth.js';
+import { crew } from '../systems/crew.js';
 import { mail } from '../systems/mail.js';
 import { worldClock } from '../systems/worldClock.js';
 import { worldPressure } from '../systems/worldPressure.js';
@@ -703,6 +704,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['drill', drill],
     ['claims', claims],
     ['longBerth', longBerth], // GOLD-HOME: tow/restore/yard persistence on the abandoned tug
+    ['crew', crew], // GOLD-CREW: roster, perks via efficiencyMods, banter, loyalty, injury/loss
     ['beacons', beacons],
     ['bandRadio', bandRadio],
     ['v2FlavorRuntime', v2FlavorRuntime],

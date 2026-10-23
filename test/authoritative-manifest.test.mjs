@@ -122,8 +122,10 @@ test('production init + update order lengths match the live browser baseline', (
   // trinket/decal/graffiti projector). Neither ticks.
   // 229 -> 230 init / 177 -> 178 update: GOLD-HOME (row 445) registers longBerth — the claim /
   // restore / yard scan ticks on the calendar clock.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 230);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 178);
+  // 230 -> 231 init / 178 -> 179 update: GOLD-CREW (row 446) registers crew — recruit scan,
+  // perk writes, banter, loyalty, and injury recovery tick on the calendar clock.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 231);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 179);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));
