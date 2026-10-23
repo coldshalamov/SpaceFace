@@ -440,6 +440,7 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.ok(mark, `${round.kind} plants a beacon on the spot`);
       assert.equal(mark.physicsBody, false, 'the mark is not a solid body');
       assert.equal(mark.collides, false);
+      assert.equal(mark.data.ringRadius, zone.radius, 'the drawn circle is the circle the clock uses');
       assert.ok(Math.hypot(mark.pos.x - zone.x, mark.pos.z - zone.z) < 1, 'the beacon sits on the spot');
       const shipDist = Math.hypot(h.player.pos.x - zone.x, h.player.pos.z - zone.z);
       assert.ok(shipDist > zone.radius, 'the ship is not already standing in the spot');
@@ -463,7 +464,18 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
         step(h, 10);
       }
       assert.equal(clearedCount(h), before, 'cores on the field do not finish the round');
-      for (const core of survivalWave._circuitCores || []) {
+      const planted = survivalWave._circuitCores || [];
+      assert.equal(planted.length, need, 'the round spills one marker per core');
+      for (const core of planted) {
+        const mark = [...h.state.entities.values()].find((entity) => entity.data && entity.data.circuitCore
+          && entity.alive !== false && entity.pos
+          && Math.hypot(entity.pos.x - core.x, entity.pos.z - core.z) < 1);
+        assert.ok(mark, 'each core is a marker in the fight');
+        assert.equal(mark.physicsBody, false, 'a core is not a solid body');
+        assert.equal(mark.collides, false);
+        assert.notEqual(mark.data.wallet, 'run', 'a core is not a credit chip');
+      }
+      for (const core of planted) {
         h.player.pos.x = core.x;
         h.player.pos.z = core.z;
         step(h, 1);

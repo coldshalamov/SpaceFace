@@ -509,10 +509,79 @@ export const survivalWave = {
     }
     if (spec.kind === 'collect' && (this._circuitCores?.length || 0) < (spec.coreCount || 0)) {
       const pos = entry.entity && entry.entity.pos;
-      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
-        this._circuitCores.push({ x: pos.x, z: pos.z, taken: false });
-      }
+      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) this._dropCircuitCore(pos);
     }
+  },
+
+  _forgetSpawn(id) {
+    if (id == null) return;
+    const remove = this.helpers && this.helpers.removeEntity;
+    if (typeof remove === 'function') {
+      remove(id, { immediate: true });
+      return;
+    }
+    const entities = this.state && this.state.entities;
+    if (entities && typeof entities.delete === 'function') entities.delete(id);
+  },
+
+  /** A core is a marker in the fight, not a credit chip and not an invisible coordinate. */
+  _dropCircuitCore(pos) {
+    const core = { x: pos.x, z: pos.z, taken: false, markId: null };
+    if (!this._circuitCores) this._circuitCores = [];
+    this._circuitCores.push(core);
+    this._ensureCircuitCoreMark(core);
+  },
+
+  _ensureCircuitCoreMark(core) {
+    if (!core || core.taken) return;
+    const entities = this.state && this.state.entities;
+    const existing = core.markId != null && entities && typeof entities.get === 'function'
+      ? entities.get(core.markId)
+      : null;
+    const onSpot = existing && existing.alive !== false && existing.pos
+      && existing.collides === false && existing.physicsBody === false
+      && existing.data && existing.data.circuitCore === true
+      && Math.hypot(existing.pos.x - core.x, existing.pos.z - core.z) < 1;
+    if (onSpot) return;
+    if (core.markId != null) this._forgetSpawn(core.markId);
+    core.markId = null;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function') return;
+    const entity = spawn({
+      type: 'beacon',
+      pos: { x: core.x, z: core.z },
+      vel: { x: 0, z: 0 },
+      radius: 6,
+      mass: 1,
+      collides: false,
+      physicsBody: false,
+      hull: 1,
+      hullMax: 1,
+      data: {
+        parentType: 'story_prop',
+        scanLabel: 'Core',
+        storyPropKind: 'circuit_core',
+        circuitCore: true,
+        tetherable: false,
+        masslineTetherable: false,
+      },
+    });
+    core.markId = entity && entity.id != null ? entity.id : null;
+  },
+
+  _takeCircuitCore(core) {
+    if (!core || core.taken) return;
+    core.taken = true;
+    this._coresFound = (this._coresFound || 0) + 1;
+    this._forgetSpawn(core.markId);
+    core.markId = null;
+  },
+
+  _clearCircuitCores() {
+    for (const core of this._circuitCores || []) {
+      if (core && core.markId != null) this._forgetSpawn(core.markId);
+    }
+    this._circuitCores = [];
   },
 
   _clearCircuitMark() {
@@ -540,6 +609,8 @@ export const survivalWave = {
       : null;
     const onSpot = existing && existing.alive !== false && existing.pos
       && existing.collides === false && existing.physicsBody === false
+      && existing.data && existing.data.circuitMark === true
+      && Number(existing.data.ringRadius) === Number(spot.radius)
       && Math.hypot(existing.pos.x - spot.x, existing.pos.z - spot.z) < 1;
     if (onSpot) return;
     if (existing) this._clearCircuitMark();
@@ -561,6 +632,7 @@ export const survivalWave = {
         scanLabel: spec.kind === 'hold' ? 'Hold ring' : 'Gate',
         storyPropKind: 'circuit_mark',
         circuitMark: true,
+        ringRadius: spot.radius,
         tetherable: false,
         masslineTetherable: false,
       },
@@ -599,10 +671,8 @@ export const survivalWave = {
     if (spec.kind !== 'collect' || !pos) return;
     for (const core of this._circuitCores || []) {
       if (core.taken) continue;
-      if (Math.hypot(pos.x - core.x, pos.z - core.z) <= 48) {
-        core.taken = true;
-        this._coresFound = (this._coresFound || 0) + 1;
-      }
+      this._ensureCircuitCoreMark(core);
+      if (Math.hypot(pos.x - core.x, pos.z - core.z) <= 48) this._takeCircuitCore(core);
     }
   },
 
@@ -1367,7 +1437,7 @@ export const survivalWave = {
     this._lessonOpenedAt = null;
     this._bossIds = new Set();
     this._clearCircuitMark();
-    this._circuitCores = [];
+    this._clearCircuitCores();
     this._coresFound = 0;
     // A capital champion's fight record never outlives its wave: terminal, surviving or
     // run-ended, the next wave (or teardown) starts from an empty fight ledger.

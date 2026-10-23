@@ -6211,11 +6211,39 @@ function buildFallback(e) {
   return root;
 }
 
+// The Circuit hold and the reach gate are a circle the ship stands inside, not a post.
+// The band sits on the gameplay radius. A small buoy marks the center.
+function buildCircuitZone(e, ringRadius) {
+  const g = new THREE.Group();
+  const band = Math.max(1.6, ringRadius * 0.045);
+  const inner = Math.max(1, ringRadius - band);
+  const ring = new THREE.Mesh(
+    getGeometry(`circuit-zone:${inner}:${ringRadius}`, () => new THREE.RingGeometry(inner, ringRadius, 72)),
+    (() => {
+      const mat = emissiveMaterial('#ffb03a', 1.6).clone();
+      mat.side = THREE.DoubleSide;
+      return mat;
+    })(),
+  );
+  ring.name = 'circuit-zone';
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.35;
+  g.add(ring);
+  g.add(buildBeacon({ id: e && e.id, radius: 8, data: {} }));
+  g.userData.kind = 'beacon';
+  g.userData.interactionKind = 'beacon';
+  g.userData.visualLanguage = 'circuit-zone';
+  g.userData.animated = true;
+  return g;
+}
+
 // Route/nav buoy: a mast + fins + head lens scaled to the entity radius (lane beacons ~14,
 // story buoys ~5). Lane beacons carry data.laneBeaconDead — the OFFLINE tell is a dark unlit
 // lens so the dropout reads before the drive drops, matching the scanner label's contract.
 // Live beacons blink amber via the shared animateStation driver hosted on the mast mesh.
 function buildBeacon(e) {
+  const ringRadius = e && e.data && e.data.circuitMark === true ? Number(e.data.ringRadius) : 0;
+  if (ringRadius > 4) return buildCircuitZone(e, ringRadius);
   const R = Math.max(1, (e && e.radius) || 10);
   const dead = !!(e && e.data && e.data.laneBeaconDead);
   const g = new THREE.Group();

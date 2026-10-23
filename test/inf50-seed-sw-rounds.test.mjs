@@ -6,6 +6,7 @@ import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { waveOpeningLine } from '../src/systems/survivalAnnounce.js';
 import { circuitPanelLines } from '../src/ui/screens/crucibleDraft.js';
 import { OBJECTIVE_WORDS, survivalHud } from '../src/ui/survivalHud.js';
+import { createVisualFactory } from '../src/render/visualFactory.js';
 import { SWARM_STAKES } from '../src/data/swarmStakes.js';
 import { COMBAT_LAB_ARENAS } from '../src/data/combatLabSetups.js';
 import {
@@ -145,4 +146,19 @@ test('seed 4242: a score toast fading does not take the arrow off the ring', () 
     survivalHud.destroy();
     globalThis.document = previous;
   }
+});
+
+test('seed 4242: the hold and the gate draw the circle the ship stands in', () => {
+  const factory = createVisualFactory();
+  const mesh = factory.build({
+    type: 'beacon', id: 'circuit-ring', radius: 8,
+    data: { circuitMark: true, ringRadius: 44 },
+  });
+  const ring = mesh.getObjectByName('circuit-zone');
+  assert.ok(ring, 'the zone is a circle, not only a post');
+  const params = ring.geometry && ring.geometry.parameters;
+  assert.ok(params, 'the circle has a radius');
+  assert.ok(params.outerRadius >= 44 - 0.01 && params.outerRadius <= 44 + 0.01);
+  const plain = factory.build({ type: 'beacon', id: 'lane', radius: 8, data: {} });
+  assert.equal(plain.getObjectByName('circuit-zone'), undefined, 'an ordinary beacon stays a buoy');
 });
