@@ -123,7 +123,7 @@ export default defineFlavorPack({
         { id: 'c11_02', text: 'Dead rivers cross the inner face beneath cycling city lights.' },
         { id: 'c11_03', text: 'Those batteries should have failed before human history.' },
         { id: 'c11_04', text: 'The city grid spells something no translator will commit to.' },
-        { id: 'c11_05', text: 'One street lights when a hull holds station inside the shadow. The Archive pays for that reading.' },
+        { id: 'c11_05', text: 'One street lights when a hull holds station inside the shadow. Sedna Survey Post keeps the Grid Reading filing on its Jobs board.' },
       ],
     },
     {
