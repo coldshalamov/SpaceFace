@@ -32,6 +32,8 @@ import { spawnJettisonedCargoPod } from './lootShards.js';
 import { evaluateReceiverAcceptance, commitReceiverAcceptance } from './worldSiteRuntime.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { tickCustodianWork, tickMasonWork, tickSorterWork } from './machineWork.js';
+import { nextSuhlClause } from '../data/discoveryPresentation.js';
+import { tickDiscoverySound } from './discoverySound.js';
 import { judgePresentDirective, presentMissLine, presentOrderLine } from '../data/presentDirective.js';
 import { BOUNDARY_FIELD, BOUNDARY_FIELD_ID, ensureBoundaryField } from '../data/boundaryField.js';
 import { CURL_FIELD, CURL_FIELD_ID, ensureCurlField } from '../data/curlField.js';
@@ -183,6 +185,12 @@ function tickManifestAppeal(world, entity, player, machines, dt, now) {
   world.bus.emit('comms:log', { from: 'Appeals clerk', kind: 'machine',
     text: `INCIDENT ${incident.id}. WITNESSED CLEAN COMPARISON ACCEPTED. MANIFEST CLASSIFICATION OVERTURNED; TRANSIT EXCEPTION RESTORED.` });
   world.bus.emit('machine:appealAccepted', { siteId: m.siteId, incidentId: incident.id, comparison: appeal.comparison });
+  const clause = nextSuhlClause(ae.machineAccess.suhlClauses, incident.id, m.siteId, now);
+  if (clause) {
+    ae.machineAccess.suhlClauses = [...(ae.machineAccess.suhlClauses || []), clause];
+    world.bus.emit('comms:log', { from: 'Dr. Iren Suhl', kind: 'machine',
+      text: `Clause ${clause.index + 1}, decoded from the accepted comparison: ${clause.text} Transcript filed in your Codex.` });
+  }
   world.bus.emit('audio:cue', { id: 'scan_resolve', position: entity.pos });
   refreshMachineLabels(world);
 }
@@ -360,6 +368,7 @@ export function tickMachineLayer(world, dt) {
   const now = Number(state.simTime) || 0;
 
   const machines = machineScanForSector(state, sectorId);
+  tickDiscoverySound(world, machines, 'machine', player, now);
 
   for (const site of sites) {
     const rec = machineSiteRec(state, site.siteId);
@@ -591,6 +600,9 @@ export function tickMachineLayer(world, dt) {
           const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
           const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
           e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+          // The audit bar only sweeps while a hull is actually inside the ring —
+          // row 384's deployed-tool read keys off this flag.
+          m.interrogating = d < kind.interrogateR;
           if (d < kind.interrogateR && !m.interrogated) {
             m.interrogated = true;
             const marked = witnessSkipsInterrogation(state);

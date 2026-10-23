@@ -952,7 +952,7 @@ recorded in the lane's NOW row before minting.
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 384 | SFQ-B176 | Precursor machines visibly deploy their scanner arm or tool spindle while processing work (`src/render/machineVisuals.js`); judged at the gameplay camera | ART | CLAIMED devin-ten-oct23 |
+| 384 | SFQ-B176 | Precursor machines visibly deploy their scanner arm or tool spindle while processing work (`src/render/machineVisuals.js`); judged at the gameplay camera | ART | DONE devin-ten-oct23 |
 
 (The landed-candidate notes below are history: the ADMIT rows they refer to were closed on 2026-10-17, see above.)
 
@@ -1081,7 +1081,7 @@ production units, and never build what they write.
 | 427 | AL-LOOK-1 | Fill the frame without filling the path — readable hull scale, passable near-field dust, depth layers above/below the flight plane, yielding traffic; no new obstacles (clean-flight-plane law §31.6; guarded by 443) (§31.5) | ART | CLAIMED devin-ten-oct23 |
 | 428 | AL-LOOK-2 | Hero hulls first — the five hulls a player meets in the first two hours raised to hero craft before any other hull (§31.5; includes D72) | ART | OPEN — coordinate with L-PICTURE (D72 is claimed there) |
 | 429 | AL-HUD-1 | A HUD a stranger can read — fix the visible leaks (internal ids such as `ZONE_CERES_DERELICT`, the Overhead/Circuits buttons overlapping the target card, overlapping shipworks list text); hand the rest to ORRERY as one list (§31.5) | FIX | OPEN |
-| 430 | AL-SET-1 | Ten trailer moments — ten existing set pieces, each reachable in the first three hours, staged with a camera beat and a music beat (§31.5) | BUILD | DONE devin-25-oct22 |
+| 430 | AL-SET-1 | Ten trailer moments — ten existing set pieces, each reachable in the first three hours, staged with a camera beat and a music beat (§31.5) | BUILD | OPEN codex-bm30-oct23 — staging shipped; completing missing Clips collector, authored-place replay and ten required Theater judgments |
 | 431 | AL-STATION-1 | Arriving somewhere — docking feels like arrival: a live bay behind the station screen, a voiced barkeep greeting, regulars with faces (§31.5) | BUILD | DONE devin-25-oct22 |
 | 432 | PULSE-RADIO | Radio that's about this galaxy — ≥2 h per channel before a repeat, live-fact segments, The Margin as a show; FILL lines after (§31.6) | BUILD | OPEN |
 | 433 | PULSE-SIGNS | Screens and signs that talk back — billboards, bay screens, news crawls, wanted posters with the player's hull (§31.6) | BUILD | DONE devin-thirty-oct22 |
