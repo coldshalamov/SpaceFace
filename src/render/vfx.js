@@ -104,6 +104,7 @@ import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import { EVENT_LIGHT_DECAY, EVENT_LIGHT_GAIN, presetFor, scalePreset } from './vfxColorLightDirector.js';
+import { AMBIENT_FIXTURE_KEYS, AMBIENT_FIXTURE_RESERVE, makeAmbientFixtureReads, selectAmbientFixtures } from './ambientFixtures.js';
 import {
   collectStatusAttachedVictims,
   planStatusAttachedEmit,
@@ -444,6 +445,8 @@ const PROJECTILE_TRAIL_DIAG_CLASSES = Object.freeze([
 // accessibility scales intensity at the event choke point instead of adding/removing lights and
 // forcing a whole-scene shader recompile.
 export const EVENT_LIGHT_POOL_SIZE = 6;
+// Transient illumination gets at least two free slots even when every persistent system is awake.
+// The three headlights and two weapon lights are separately fixed-size owners.
 export { WEAPON_LIGHT_POOL_SIZE };
 const PLAYER_PLUME_EVENT_LIGHT_KEY = 'player-plume';
 const PLAYER_PLUME_EVENT_LIGHT_PRIORITY = 0.72;
@@ -1995,6 +1998,8 @@ export const vfx = {
     this._dockingCradle = null;
     this._selectionSigil = null;
     this._lights = [];
+    this._ambientFixtureReads = null;
+    this._ambientFixtureClock = 0;
     this._freeLights = null;
     this._energy = null;
     this._explosions = null;
@@ -12655,6 +12660,49 @@ export const vfx = {
       slot.admissionPriority = preset.priority;
     }
   },
+  // These are true PointLights at known light-emitting structures, not billboards or fake
+  // halos. They borrow the existing event pool (never an added scene light or shader variant).
+  // Stable allocations survive steady frames; movement and origin rebasing are followed every
+  // update. A conservative quarter-second census keeps dense asteroid belts cheap.
+  _syncAmbientFixtures(dt) {
+    if (!this._lights || !this.state) return;
+    if (!this._ambientFixtureReads) this._ambientFixtureReads = makeAmbientFixtureReads();
+    this._ambientFixtureClock -= Math.max(0, dt || 0);
+    if (this._ambientFixtureClock <= 0) {
+      const center = this._playerPos();
+      selectAmbientFixtures(this.state, center, this._ambientFixtureReads);
+      this._ambientFixtureClock = 0.25;
+    }
+    const reads = this._ambientFixtureReads;
+    for (let i = 0; i < reads.length; i++) {
+      const read = reads[i];
+      const key = AMBIENT_FIXTURE_KEYS[i];
+      let slot = this._findSustainedEventLight(key);
+      const entity = read.entity;
+      // An entity retired since the last census must lose its light on this same frame.
+      if (!entity || entity.alive === false || !entity.pos
+          || (this.state.entities && this.state.entities.get
+            && this.state.entities.get(entity.id) !== entity)) {
+        if (slot) this._retireEventLightSlot(slot);
+        continue;
+      }
+      // Actual combat, field and propulsion lights have first claim on the six slots.
+      // Decorative fixture lighting is never allowed to evict any of those residents.
+      slot = slot || this._claimEventLightSlot(read.profile.priority, key);
+      if (!slot) continue;
+      const local = this._toLocalXZ(entity.pos.x, entity.pos.z, this._spawnLocalXZ);
+      const y = Math.min(42, Math.max(16, (Number.isFinite(entity.radius) ? entity.radius : 20) * 0.45));
+      slot.obj.position.set(local.x, y, local.z);
+      slot.obj.color.setHex(read.profile.colorHex);
+      slot.obj.distance = read.profile.range;
+      slot.obj.intensity = read.profile.peak * EVENT_LIGHT_GAIN;
+      slot.intensity = slot.peak = read.profile.peak;
+      slot.decay = slot.t = 0;
+      slot.sustained = true;
+      slot.admissionPriority = read.profile.priority;
+    }
+  },
+
   _syncMaterialContactLight() {
     // One shared request, not one light per particle/system. Priority stays below actual weapon
     // hits and the player drive. Saturation simply denies this decorative contact request.
@@ -13038,6 +13086,7 @@ export const vfx = {
       sub.momentumSink = 0;
     }
     this._syncMaterialContactLight();
+    this._syncAmbientFixtures(dt);
     sub.eventLights = this._decayEventLights(dt) ? 1 : 0;
     this._publishVfxSubsystemDiag();
   },
@@ -15739,13 +15788,26 @@ export const vfx = {
   },
 
   /**
-   * Claim one existing PointLight slot without allocating. Sustained residents are never eviction
-   * candidates for transient flashes; this leaves five transient slots while the player plume is
-   * active and restores all six when it sleeps.
+   * Claim one existing PointLight slot without allocating. Persistent residents never evict
+   * the two reserved transient slots, and flashes can displace other transient flashes by
+   * priority. Low-priority scenery residents yield to higher-priority sustained effects.
    */
   _claimEventLightSlot(priority, sustainedKey = null) {
     const pool = this._lights;
     if (!pool) return null;
+    // Persistent lights may never consume the reserved transient capacity. High-priority
+    // sustained owners (live fields, a gyre payload) may reclaim a lower-priority scenery
+    // fixture first; flashes need no special case and always see the free reserves.
+    if (sustainedKey != null && this._freeLightCount <= AMBIENT_FIXTURE_RESERVE) {
+      let victim = null;
+      for (const candidate of pool) {
+        if (!candidate.active || !AMBIENT_FIXTURE_KEYS.includes(candidate.sustainedKey)
+            || candidate.admissionPriority >= priority) continue;
+        if (!victim || candidate.admissionPriority < victim.admissionPriority) victim = candidate;
+      }
+      if (victim) this._retireEventLightSlot(victim);
+      if (this._freeLightCount <= AMBIENT_FIXTURE_RESERVE) return null;
+    }
     let slotIndex = -1;
     if (this._freeLightCount > 0) {
       slotIndex = this._freeLights[--this._freeLightCount];

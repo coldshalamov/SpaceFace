@@ -10,7 +10,7 @@ import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { STENCIL_GLSL, stencilFallbackTexture } from './illustratedStencils.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
 import { registerGeometryPreservingShaderHook } from './shaderPoseProvenance.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v17';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v18-local-light-headroom';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -390,17 +390,26 @@ export function installIllustratedSurface(material) {
         vec3 sfRockFill = sfRockFloorPigment * sfLookShadowTint
           * (sfLookRockFill * sfRockShadowWeight);
         vec3 sfPaint = (totalDiffuse + sfRockFill) * sfContour;
-        float sfPaintY = dot(sfPaint, vec3(0.2126, 0.7152, 0.0722));
-        // Gloss needs headroom: on pigment already near the ceiling (sunlit ivory) the coat and
-        // rim fade, or a pale wall would stack them into a glowing white slab.
+        // The graphic paint ceiling is for the *sun and ambient*, not for nearby real
+        // lights. sfResidual is the physically evaluated high-frequency/direct-local part
+        // (point and spot pools plus normal-map detail); keeping its positive contribution
+        // outside the ceiling makes a lamp brighter as its irradiance rises. The colour
+        // and inverse-square falloff remain those of Three's physical light evaluation.
+        // This uses no extra shader loop, light, texture, varying, or render pass.
+        float sfLocalShare = clamp(max(sfResidual, 0.0) / max(sfShaped, 0.025), 0.0, 1.0);
+        vec3 sfLocalIllumination = sfPaint * sfLocalShare;
+        vec3 sfBoundedPigment = sfPaint - sfLocalIllumination;
+        float sfPaintY = dot(sfBoundedPigment, vec3(0.2126, 0.7152, 0.0722));
+        // Keep sunlit ivory under bloom without suppressing actual searchlights or impacts.
         float sfHeadroom = 1.0 - 0.72 * smoothstep(sfLookPaintCeiling * 0.45, sfLookPaintCeiling, sfPaintY);
         float sfKnee = sfLookPaintCeiling * 0.6;
         if (sfPaintY > sfKnee) {
           float sfOver = sfPaintY - sfKnee;
           float sfRoom = sfLookPaintCeiling - sfKnee;
-          sfPaint *= (sfKnee + sfOver * sfRoom / (sfOver + sfRoom)) / sfPaintY;
+          sfBoundedPigment *= (sfKnee + sfOver * sfRoom / (sfOver + sfRoom)) / sfPaintY;
         }
-        vec3 outgoingLight = sfPaint + sfRimLight * sfHeadroom + sfCoatLight + totalSpecular + totalEmissiveRadiance;`);
+        vec3 outgoingLight = sfBoundedPigment + sfLocalIllumination
+          + sfRimLight * sfHeadroom + sfCoatLight + totalSpecular + totalEmissiveRadiance;`);
   }
   Object.assign(illustratedSurfaceShader, previousHook);
   registerGeometryPreservingShaderHook(illustratedSurfaceShader, previousHook);
