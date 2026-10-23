@@ -24,6 +24,10 @@ import {
   isEverydaySpaceKitPlaceId,
 } from '../src/data/everydaySpaceKitDressing.js';
 import { OCCUPATIONAL_YARD_PLACE_IDS } from '../src/data/occupationalYardDressing.js';
+import {
+  TETHYS_WATCH_OVERLOOK_ANCHOR,
+  TETHYS_WATCH_OVERLOOK_PROPS,
+} from '../src/data/tethysWatchOverlook.js';
 import { resolvePlaceFileForEntity } from '../src/render/partsLibrary.js';
 import { world } from '../src/systems/world.js';
 
@@ -71,7 +75,7 @@ function collectKit(seed, sectorId) {
   sim.state.playerId = player.id;
   sim.registry.get('world').enterSector(sectorId, { placePlayer: false });
   const active = sim.state.world.sectorContents[sectorId] || {};
-  const stations = (active.stations || []).map((row) => ({ x: Number(row.pos.x), z: Number(row.pos.z) }));
+  const stations = (active.stations || []).map((row) => ({ stationId: row.stationId, x: Number(row.pos.x), z: Number(row.pos.z) }));
   const gates = (active.gates || []).map((row) => ({ x: Number(row.pos.x), z: Number(row.pos.z) }));
   const fields = (active.fields || []).map((row) => ({ x: Number(row.center.x), z: Number(row.center.z) }));
   const wrecks = (active.pois || [])
@@ -185,6 +189,18 @@ test('a handful of seeds yields distinct kit models, including the extended set'
         if (EVERYDAY_SPACE_KIT_PROMOTED_IDS.includes(row.placeId)) promoted.add(row.placeId);
         const model = EVERYDAY_SPACE_KIT_LEGAL_MODELS.find((item) => item.id === row.placeId);
         assert.ok(model);
+        if (sectorId === 'sector_tethys_junction') {
+          // Tethys uses the same four kit slots for an authored log-yard pass,
+          // not a random <=240 WU station ring. Verify the actual translated
+          // placement instead of weakening the proximity rule for other sectors.
+          const prop = TETHYS_WATCH_OVERLOOK_PROPS.find((item) => item.placeId === row.placeId);
+          const customs = stations.find((item) => item.stationId === TETHYS_WATCH_OVERLOOK_ANCHOR.stationId);
+          assert.ok(prop && customs, 'Tethys must resolve its authored kit and named station');
+          assert.equal(row.name, prop.name);
+          assert.equal(row.x, customs.x + prop.pos.x - TETHYS_WATCH_OVERLOOK_ANCHOR.x);
+          assert.equal(row.z, customs.z + prop.pos.z - TETHYS_WATCH_OVERLOOK_ANCHOR.z);
+          continue;
+        }
         const sites = model.anchor === 'lane' ? gates
           : (model.anchor === 'work' ? fields
             : (model.anchor === 'wreck' ? wrecks : stations));
