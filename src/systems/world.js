@@ -32,6 +32,7 @@ import { clearSurveyFix, bearingCharted } from './surveyFix.js';
 import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP, FUEL_CELL_COOK } from './fuelCrack.js';
 import { stepRadiationCargoCook } from './fragileCargo.js';
 import { writeHazardPresence } from '../data/hazardLanguage.js';
+import { stepDebrisCrossings } from './debrisCrossings.js';
 import { CHART_FILING, chartFilingBounty } from '../data/surveyCharts.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { FACTION_META } from '../data/factions.js';
@@ -6187,6 +6188,7 @@ export const world = {
         state.world.hazardPresence.nebula = false;
         state.world.hazardPresence.radiation = false;
       }
+      this._applyDebrisCrossings(dt, state);
       return;
     }
     const zones = state.world.activeSector.hazards || [];
@@ -6221,6 +6223,55 @@ export const world = {
     this._hazardNextSet = inside;
     const presence = state.world.hazardPresence || (state.world.hazardPresence = { nebula: false, radiation: false });
     writeHazardPresence(zones, player.pos, presence);
+    this._applyDebrisCrossings(dt, state);
+  },
+
+  // A debris disc throws a few shards across itself. The chart already calls
+  // that hull-on-impact. A slow crossing is a graze. Kill machines are not discs.
+  _applyDebrisCrossings(dt, state) {
+    const live = state || this.state;
+    const crossed = stepDebrisCrossings(this, dt, live);
+    const hits = crossed && crossed.hits;
+    if (!hits || !hits.length) return crossed;
+    const player = live.entities && live.entities.get(live.playerId);
+    for (let i = 0; i < hits.length; i++) this._applyDebrisImpact(player, hits[i], live);
+    return crossed;
+  },
+
+  _applyDebrisImpact(player, hit, state) {
+    if (!player || player.alive === false || !hit || !(hit.damage > 0)) return;
+    const packet = scalarHitToDamagePacket({
+      damage: hit.damage,
+      damageType: 'kinetic',
+      pos: player.pos,
+      source: { kind: 'hazard_debris', hazardId: null },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    const request = {
+      attackerId: null,
+      targetId: player.id,
+      packet,
+      origin: { kind: 'hazard_debris' },
+    };
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    if (combat && combat.state === state && typeof combat.ensureKernel === 'function') {
+      combat.ensureKernel().routeDamage(request);
+      return;
+    }
+    if (combat && combat.state === state && combat.kernel && typeof combat.kernel.routeDamage === 'function') {
+      combat.kernel.routeDamage(request);
+      return;
+    }
+    if (player.flags && (player.flags.invuln || player.flags.docked)) return;
+    if (state && state.ui && state.ui.docked) return;
+    const shield = Math.max(0, Number(player.shield) || 0);
+    let remaining = hit.damage;
+    if (shield > 0) {
+      const absorbed = Math.min(shield, remaining);
+      player.shield = shield - absorbed;
+      remaining -= absorbed;
+    }
+    if (remaining > 0) player.hull = Math.max(0, (Number(player.hull) || 0) - remaining);
   },
 
   // WORLD-25: radiation and nebula entry/exit raise the HUD alert line. Damage is unchanged.
