@@ -12,6 +12,7 @@
 import { NEW_GAME } from './newGameDefaults.js';
 import { TECH_NODES } from './tech.js';
 import { MODULES } from './modules.js';
+
 import { STORY_BEATS } from './missions.js';
 import { RESEARCH_GRANTS } from './researchGrants.js';
 
@@ -568,6 +569,8 @@ const MODULE_BY_ID = new Map(MODULES.map((mod) => [mod.id, mod]));
  * the authored ladder, and not the hour before. Helios rack offers and modules
  * with no research gate count as hour 0. Salvage-only hulls are not a door on
  * this route. Seed 4242 does not reshuffle the table: hours come from costs.
+ * Nothing past hour 10 is printed: the next existing verb door is capital
+ * weapons at 12.31, and no later hour through 15 opens a new one.
  */
 export const HOUR_VERB_CURVE = Object.freeze([
   Object.freeze({ hour: 1, nodeId: 'tech_impulse_ballistics', moduleId: 'mod_charge_vector_rack', verbKey: 'bombPropulsion', label: 'Propelled charge' }),
@@ -622,8 +625,8 @@ export function verbKeyFirstHour(verbKey, ladder = TECH_VERB_LADDER, nodes = TEC
 }
 
 /**
- * Empty when each curve hour is the first hour that verb can be bought, the
- * named node is what opens it, and hours 1–10 are all present.
+ * Empty when hours 1–10 each open in that hour on the named node.
+ * A row past hour 10 is a gap: no existing verb door opens in each of 11–15.
  */
 export function hourVerbCurveGaps(curve = HOUR_VERB_CURVE, ladder = TECH_VERB_LADDER, nodes = TECH_NODES) {
   const gaps = [];
@@ -640,25 +643,29 @@ export function hourVerbCurveGaps(curve = HOUR_VERB_CURVE, ladder = TECH_VERB_LA
       gaps.push(`missing node ${row.nodeId}`);
       continue;
     }
-    if (row.moduleId) {
-      const modules = node.unlocks && node.unlocks.modules;
-      if (!Array.isArray(modules) || !modules.includes(row.moduleId)) {
-        gaps.push(`${row.nodeId} does not unlock ${row.moduleId}`);
+    if (row.hour <= 10) {
+      if (row.moduleId) {
+        const modules = node.unlocks && node.unlocks.modules;
+        if (!Array.isArray(modules) || !modules.includes(row.moduleId)) {
+          gaps.push(`${row.nodeId} does not unlock ${row.moduleId}`);
+        }
+        const mod = MODULE_BY_ID.get(row.moduleId);
+        if (!moduleCarriesVerbKey(mod, row.verbKey)) {
+          gaps.push(`${row.moduleId} does not carry ${row.verbKey}`);
+        }
+        if (!mod || mod.requiresTech !== row.nodeId) {
+          gaps.push(`${row.moduleId} is not gated by ${row.nodeId}`);
+        }
+      } else if (!node.unlocks || node.unlocks[row.verbKey] == null) {
+        gaps.push(`${row.nodeId} does not grant ${row.verbKey}`);
       }
-      const mod = MODULE_BY_ID.get(row.moduleId);
-      if (!moduleCarriesVerbKey(mod, row.verbKey)) {
-        gaps.push(`${row.moduleId} does not carry ${row.verbKey}`);
+      const first = verbKeyFirstHour(row.verbKey, ladder, nodes);
+      if (!(first > row.hour - 1 && first <= row.hour)) {
+        gaps.push(`${row.verbKey} first opens at ${first}, not during hour ${row.hour}`);
       }
-      if (!mod || mod.requiresTech !== row.nodeId) {
-        gaps.push(`${row.moduleId} is not gated by ${row.nodeId}`);
-      }
-    } else if (!node.unlocks || node.unlocks[row.verbKey] == null) {
-      gaps.push(`${row.nodeId} does not grant ${row.verbKey}`);
+      continue;
     }
-    const first = verbKeyFirstHour(row.verbKey, ladder, nodes);
-    if (!(first > row.hour - 1 && first <= row.hour)) {
-      gaps.push(`${row.verbKey} first opens at ${first}, not during hour ${row.hour}`);
-    }
+    gaps.push(`hour ${row.hour} is past the last hour an existing verb door opens in`);
   }
   for (let hour = 1; hour <= 10; hour += 1) {
     if (!hours.has(hour)) gaps.push(`missing hour ${hour}`);

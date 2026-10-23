@@ -196,6 +196,7 @@ export const STUNT_TITLE_RULES = Object.freeze([
   ['needle_thread','Needle',1,'pilot',"Needle went through that. Don't ask me how.",'escape'],
   ['one_two','Second Thought',1,'pilot','Second Thought changed its mind halfway there.','kill'],
   ['slingshot_golf','Slingwright',1,'pilot','Slingwright. Rope, well, wreck. I saw the whole thing.','kill'],
+  ['ore_shotgun','Shellwright',1,'pilot_ship','Shellwright. That pod was a shell.','kill'],
 ].map(([trickId,title,count,scope,bark,kind])=>Object.freeze({id:`title_${trickId}`,trickId,title,count,scope,bark,kind})));
 export const STUNT_SITUATION_LINES = Object.freeze({
   bolas:["You threw him into his own wingman.","That was a ship. You threw a ship.","Break the line! Don't bunch up!"],

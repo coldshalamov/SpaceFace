@@ -363,9 +363,10 @@ function round6(value) {
  *
  * A clip is a marked window in the replay ring: the detector watches the same
  * authoritative receipts the live game already emits (`stunt:trickDetected` from
- * systems/stuntGrammar.js and attributed `entity:killed`) and records a bounded
- * [moment - preRoll, moment + postRoll] window. It never records video and never
- * mutates gameplay; the window is resolved against the ring by differentialReplay.
+ * systems/stuntGrammar.js, a player-attributed `entity:killed`, and `player:death`)
+ * and records a bounded [moment - preRoll, moment + postRoll] window. It never
+ * records video and never mutates gameplay; the window is resolved against the
+ * ring by differentialReplay. NPC kills stay off the reel.
  * ------------------------------------------------------------------------- */
 
 export const CLIP_SCHEMA_VERSION = 'spaceface.clip.v1';
@@ -374,6 +375,7 @@ export const CLIP_POST_ROLL_SECONDS = 2;
 const CLIP_MAX_CLIPS = 64;
 
 function clipLabel(kind, trickId, fallback) {
+  if (kind === 'death') return 'Death';
   if (fallback) return String(fallback);
   if (trickId) {
     return String(trickId)
@@ -387,6 +389,7 @@ function clipLabel(kind, trickId, fallback) {
  * Bounded clip list keyed off rated-moment receipts. Newest first from `list()`.
  */
 export function createClipDirector(options = {}) {
+  const playerIdOf = typeof options.playerIdOf === 'function' ? options.playerIdOf : null;
   const tickRate = Number.isFinite(options.tickRate) && options.tickRate > 0
     ? options.tickRate
     : 60;
@@ -452,9 +455,22 @@ export function createClipDirector(options = {}) {
     });
   }
 
+  function isPlayerKill(receipt) {
+    const killerId = receipt.killerId != null ? receipt.killerId : receipt.actorId;
+    if (killerId == null) return false;
+    if (killerId === 'player' || receipt.killedByPlayer === true) return true;
+    let playerId = receipt.playerId != null ? receipt.playerId : null;
+    if (playerId == null && playerIdOf) {
+      const resolved = playerIdOf();
+      if (resolved != null) playerId = resolved;
+    }
+    return playerId != null && killerId === playerId;
+  }
+
   function observeKill(receipt) {
     if (!receipt || typeof receipt !== 'object') return null;
     if (receipt.trick) return observeTrick(receipt.trick);
+    if (!isPlayerKill(receipt)) return null;
     const rawTick = Number(receipt.tick);
     if (!Number.isFinite(rawTick)) return null;
     return mark({
@@ -464,6 +480,20 @@ export function createClipDirector(options = {}) {
       rarity: receipt.rarity || null,
       actorId: receipt.killerId != null ? receipt.killerId : receipt.actorId,
       targetId: receipt.id != null ? receipt.id : receipt.targetId,
+      seed: receipt.seed,
+    });
+  }
+
+  function observeDeath(receipt) {
+    if (!receipt || typeof receipt !== 'object') return null;
+    const rawTick = Number(receipt.tick);
+    if (!Number.isFinite(rawTick)) return null;
+    return mark({
+      tick: rawTick,
+      kind: 'death',
+      label: 'Death',
+      actorId: receipt.killerId != null ? receipt.killerId : null,
+      targetId: receipt.playerId != null ? receipt.playerId : (receipt.id != null ? receipt.id : null),
       seed: receipt.seed,
     });
   }
@@ -490,6 +520,7 @@ export function createClipDirector(options = {}) {
     mark,
     observeTrick,
     observeKill,
+    observeDeath,
     list,
     latest,
     find,
@@ -507,16 +538,27 @@ export function attachClipDirectorToBus(bus, director, options = {}) {
   if (!bus || typeof bus.on !== 'function' || !director) return () => {};
   const seedOf = typeof options.seedOf === 'function' ? options.seedOf : null;
   const tickOf = typeof options.tickOf === 'function' ? options.tickOf : null;
+  const playerIdOf = typeof options.playerIdOf === 'function'
+    ? options.playerIdOf
+    : (typeof options.stateOf === 'function'
+      ? () => {
+        const state = options.stateOf();
+        return state && state.playerId != null ? state.playerId : null;
+      }
+      : null);
   const decorate = (receipt) => {
     if (!receipt || typeof receipt !== 'object') return receipt;
     const seed = seedOf ? seedOf() : null;
     const tick = tickOf ? tickOf() : null;
+    const playerId = playerIdOf ? playerIdOf() : null;
     const needSeed = Number.isFinite(Number(seed));
     const needTick = !Number.isFinite(Number(receipt.tick)) && Number.isFinite(Number(tick));
-    if (!needSeed && !needTick) return receipt;
+    const needPlayer = playerId != null && receipt.playerId == null;
+    if (!needSeed && !needTick && !needPlayer) return receipt;
     const next = { ...receipt };
     if (needSeed) next.seed = Number(seed);
     if (needTick) next.tick = Number(tick);
+    if (needPlayer) next.playerId = playerId;
     return next;
   };
   const unsubs = [];
@@ -530,6 +572,11 @@ export function attachClipDirectorToBus(bus, director, options = {}) {
   });
   on('combat:kill', (receipt) => {
     if (receipt && receipt.killerId != null) director.observeKill(decorate(receipt));
+  });
+  on('player:death', (receipt) => {
+    if (typeof director.observeDeath === 'function') {
+      director.observeDeath(decorate(receipt && typeof receipt === 'object' ? receipt : {}));
+    }
   });
   return () => {
     for (const unsub of unsubs) {

@@ -383,9 +383,23 @@ function moduleDossier(state, id) {
   return { kicker, facts, lines, links: [], route: { screen: 'ship', focus: 'module:' + id } };
 }
 
+function rosterCaptains(state) {
+  const rows = state && state.traffic && state.traffic.captainRoster;
+  return Array.isArray(rows) ? rows : [];
+}
+
+/** A remembered captain, matched by the roster id or by the id a `captain:` link parses out. */
+function rosterCaptain(state, id) {
+  if (!id) return null;
+  const text = String(id);
+  const full = text.startsWith('captain:') ? text : `captain:${text}`;
+  const bare = text.startsWith('captain:') ? text.slice('captain:'.length) : text;
+  return rosterCaptains(state).find((row) => row && (row.id === text || row.id === full || row.id === bare)) || null;
+}
+
 function captainDossier(state, id) {
   const a = aceById(id);
-  if (!a) return null;
+  if (!a) return rosterCaptainDossier(state, id);
   const facts = [];
   const owner = factionLabel(a.factionId);
   if (owner) facts.push({ k: 'Flies for', v: owner, tone: 'calm' });
@@ -407,6 +421,36 @@ function captainDossier(state, id) {
   const links = [];
   if (a.factionId && FACTION_BY_ID.has(a.factionId)) links.push({ ref: 'faction:' + a.factionId, label: FACTION_BY_ID.get(a.factionId).name });
   return { kicker: 'Captain', facts, lines, links, route: null };
+}
+
+function rosterCaptainDossier(state, id) {
+  const row = rosterCaptain(state, id);
+  if (!row || !row.name) return null;
+  const facts = [];
+  if (row.homeStationId) {
+    const station = STATION_BY_ID.get(row.homeStationId);
+    const home = station && station.name ? `${station.name} · ${row.homeStationId}` : String(row.homeStationId);
+    facts.push({ k: 'Home', v: home, tone: 'calm' });
+  }
+  if (row.outcomes && typeof row.outcomes === 'object') {
+    const rescued = Number(row.outcomes.rescued) || 0;
+    const robbed = Number(row.outcomes.robbed) || 0;
+    const killed = Number(row.outcomes.killed) || 0;
+    facts.push({ k: 'Outcomes', v: `rescued ${rescued} · robbed ${robbed} · killed ${killed}`, tone: 'calm' });
+  }
+  if (row.avoidsPlayerLane === true) facts.push({ k: 'Lane', v: 'Avoids yours', tone: 'foe' });
+  const lines = [];
+  if (row.lastOutcome && row.lastAtS != null && Number.isFinite(Number(row.lastAtS))) {
+    lines.push({ label: 'Last meeting', text: `${row.lastOutcome} · ${Math.round(Number(row.lastAtS))}s` });
+  }
+  const links = [];
+  if (row.homeStationId && STATION_BY_ID.has(row.homeStationId)) {
+    links.push({ ref: 'station:' + row.homeStationId, label: STATION_BY_ID.get(row.homeStationId).name });
+  }
+  if (row.factionId && FACTION_BY_ID.has(row.factionId)) {
+    links.push({ ref: 'faction:' + row.factionId, label: FACTION_BY_ID.get(row.factionId).name });
+  }
+  return { kicker: 'Captain', label: String(row.name), facts, lines, links, route: null };
 }
 
 /** The live contract record for an id, across active/available/offered and every station board.
@@ -536,6 +580,15 @@ export function searchEntities(state, query, { limit = 14 } = {}) {
   for (const h of SHIPS) push('hull', h.id, h.name);
   for (const m of MODULES.concat(WEAPONS, BODY_MODULES)) push('module', m.id, m.name);
   for (const a of knownAces()) push('captain', a && a.id, a && a.name, a && a.crew ? String(a.crew) : '');
+  for (const row of rosterCaptains(state)) {
+    if (!row || !row.id || !row.name) continue;
+    if (aceById(row.id) || aceById(String(row.id).replace(/^captain:/, ''))) continue;
+    const name = String(row.name);
+    if (!name.toLowerCase().includes(q)) continue;
+    const ref = String(row.id).startsWith('captain:') ? String(row.id) : `captain:${row.id}`;
+    if (!parseEntityRef(ref)) continue;
+    rows.push({ ref, label: name, type: 'captain', kicker: 'captain', detail: row.homeStationId ? String(row.homeStationId) : '' });
+  }
   for (const s of SECTORS) push('sector', s.id, s.name);
 
   // Contracts are live records — enumerate the same pools findContractRecord scans.

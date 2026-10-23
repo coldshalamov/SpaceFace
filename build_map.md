@@ -682,7 +682,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | feel | devin-fleet-oct20 | `systems/gamepad.js`, `ui/stuntCallout.js`, `combat/stuntEvidence.js`/`stuntRecognition.js`, trick book screen, `data/survivalArenas.js` signature tricks (serial with `swarm`), vent hunk of `weapons.js` (serial with `hostile-hands`), match burn in `flightV3.js` (§32.7) | 475 |
 | travel | devin-thirty-oct22 | `travelLanes.js`, `routePlanner.js`, stale-intel hunk of `galaxyMap.js`, `cruise.js` interdiction wrestle, toll hunk of `world.js` (serial with `sector-identity`), drift-vector presenter (§32.7) | 476 |
 | npc-read | devin-thirty-oct22 | `ai/factionBehavior.js`, contact-list job phases, grudge hails in `factionPresence.js`/`barks.js` (serial with `hull-ghost`), haulers-to-price hunk of `traffic.js` (serial with `world-answers-2`) (§32.7) | 477 |
-| station-stage | free | `ui/station/screens/bar.js`, `barContacts.js` (serial with `market-why`), ledger appeal, codex redactions, Manifest card game screen + data, logbook from `chronicler/` (§32.4, §32.7) | 478, 447, 451 |
+| station-stage | devin-25-oct22 | `ui/station/screens/bar.js`, `barContacts.js` (serial with `market-why`), ledger appeal, codex redactions, Manifest card game screen + data, logbook from `chronicler/` (§32.4, §32.7) | 478, 447 |
 | screens-true | devin-fleet-oct20 | `ui/screens/missionLog.js`, station shell scroll padding, `gameOver` bench fixture and fallback copy, map destination strip in `galaxyMap.js`, `orrery/settingsPreview.js`, ledger/factions empty states (§32.7) | 479 |
 | home-crew | free | the Long Berth (`worldOneOffs.js` hunk serial with `run-memory`; `claims.js` hunk serial with `works`), trophy yard persistence, crew data + perk hook through the ships derived-stat writer (serial with `hull-commit`) (§32.4) | 445, 446 |
 | weather | devin-thirty-oct22 | weather kinds via `fields`/`sectorSim` hazards, forecast hunk of `bandRadio.js` (serial with `pulse-voice`), seasonal schedule beside row 439 (§32.4) | 449 |
@@ -1099,7 +1099,7 @@ production units, and never build what they write.
 | 448 | GOLD-COLOSSI | Colossi — capital bosses get rope-detachable plates, exposed weak points and readable phase changes (§32.4) | BUILD | OPEN — after 463 in the seam |
 | 449 | GOLD-WEATHER | Weather is physics — ion storm, solar wind and meteor shower, forecast on the band, sector-seasonal (§32.4) | BUILD | OPEN |
 | 450 | GOLD-WONDERS | One wonder per sector — the first six missing signature landmarks, each a place with a verb (§32.4; list from 419) | BUILD | OPEN — after 464 in the seam; coordinate with L-PICTURE |
-| 451 | GOLD-LOGBOOK | The pilot's logbook — automatic house-voice journal with Moment Machine stills and a "previously" recap (§32.4) | BUILD | OPEN |
+| 451 | GOLD-LOGBOOK | The pilot's logbook — automatic house-voice journal with Moment Machine stills and a "previously" recap (§32.4) | BUILD | DONE devin-25-oct22 |
 | 452 | GOLD-INSPECTOR | The inspector's shift — weigh and rule on traffic at a Concord checkpoint; a fourth career branch (§32.4) | BUILD | OPEN — after 423 and 462 |
 | 453 | GOLD-CABINET | The cabinet — Swarm attract, initials, daily seed up front, shareable run card; presentation only (§32.4) | BUILD | OPEN — M2; after 456 |
 | 454 | GOLD-M1 | M1 First Hour Gold — integration lane: play-capture-fix the first hour until every first-hour system is Gold or names its blocker (§32.4, §32.5) | BUILD | OPEN — M1; claims exact paths per sitting |

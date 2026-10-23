@@ -209,6 +209,35 @@ export function factionDoctrineFor(factionId) {
   return FACTION_DOCTRINES[factionId] || null;
 }
 
+// Flight words, not people. A spawned squad draws one word plus a number. No captain, no ace.
+const FALLBACK_CALLSIGNS = Object.freeze(['ELEMENT', 'FLIGHT', 'WING', 'SECTION']);
+
+export const FACTION_CALLSIGNS = freeze({
+  faction_scn: ['WARRANT', 'STATUTE', 'HOLDFAST', 'MEASURE', 'DOCKET', 'CORDON'],
+  faction_mts: ['LEDGER', 'TARIFF', 'CONVOY', 'INVOICE', 'ESCROW', 'BOND'],
+  faction_dmc: ['SHIFT', 'SEAM', 'CUTTER', 'CLAIM', 'HEADLAMP', 'MUCK'],
+  faction_reach: ['SCAR', 'RAKE', 'BITE', 'HOOK', 'ASH', 'SPLINTER'],
+  faction_quiet: ['HUSH', 'STILL', 'BLIND', 'LONGWATCH', 'ORBIT', 'PALE'],
+  faction_vael: ['CLAUSE', 'WRIT', 'SEAL', 'LATTICE', 'FINEPRINT', 'COVENANT'],
+  faction_free: ['NEIGHBOR', 'SKIFF', 'BERTH', 'MUTUAL', 'OPENLAMP', 'KIN'],
+  faction_choir: ['CHORUS', 'VERSE', 'HYMN', 'CHORD', 'PROCESSION', 'BELL'],
+  faction_helix: ['COMPLY', 'DIRECTIVE', 'AUDIT', 'GRID', 'FILE', 'SEALED'],
+  faction_understory: ['SPORE', 'SHADE', 'HOST', 'AFTERWAKE', 'RING', 'MULCH'],
+  faction_fulfillment: ['ROUTE', 'STACK', 'COLUMN', 'SLOT', 'MANIFEST', 'HOLDING'],
+  faction_archive: ['FOLIO', 'REDACT', 'MARGIN', 'INDEX', 'CLOSED', 'QUIRE'],
+  faction_pitborn: ['YARD', 'SCRAP', 'BROKEN', 'PACK', 'DISABLE', 'HOOKBAY'],
+  faction_verge_layers: ['PRISM', 'PHASE', 'TESSERA', 'ARC', 'LATTICEWATCH', 'OBSERVER'],
+});
+
+/** Deterministic flight callsign. Same faction, seed, and squad id → the same word. */
+export function squadCallsign(factionId, seed, squadId) {
+  const pool = FACTION_CALLSIGNS[factionId];
+  const words = pool && pool.length ? pool : FALLBACK_CALLSIGNS;
+  const word = words[hash32(seed >>> 0, String(factionId || 'unknown'), String(squadId), 'squad-callsign') % words.length];
+  const flight = (hash32(seed >>> 0, String(squadId), 'squad-flight') % 90) + 10;
+  return `${word}-${flight}`;
+}
+
 function between(rng, range) {
   return range[0] + (range[1] - range[0]) * rng();
 }

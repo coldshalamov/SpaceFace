@@ -19,18 +19,18 @@ export const LANE_ERRANDS = Object.freeze([
   { id: 'neighbor_tick', kinds: ['hauler', 'tender', 'miner'], motion: 'flash', seconds: 4, line: 'Neighbor: Cyan twice. You\'re seen. That\'s the courtesy.' },
   { id: 'cradle_gap', kinds: ['hauler'], motion: 'brake', seconds: 14, line: 'Hauler: Cradle\'s full. I hold until the dent leaves.' },
   { id: 'rock_square', kinds: ['surveyor'], motion: 'orbit', seconds: 16, line: 'Survey: Four sides. The rock doesn\'t get a fifth.' },
-  { id: 'slack_look', kinds: ['salvor', 'tender'], motion: 'face', seconds: 7, partner: true, line: 'Salvor: Line\'s slack on your side. Mine is not.' },
+  { id: 'slack_look', kinds: ['salvor', 'tender'], motion: 'face', seconds: 7, partner: true, line: 'Salvor: Line\'s slack on your side. Mine is not.', reply: 'Tender: Slack taken in on this side.' },
   { id: 'cone_room', kinds: ['miner', 'hauler'], motion: 'half', seconds: 9, line: 'Miner: Red cone. I give it the wide number.' },
   { id: 'manifest_aloud', kinds: ['hauler'], motion: 'brake', seconds: 12, line: 'Hauler: Reading the mass aloud. The hold lies less if it hears.' },
-  { id: 'puck_borrow', kinds: ['miner', 'tender'], motion: 'face', seconds: 6, partner: true, line: 'Tender: Spare\'s taped on. Asking before I take it.' },
+  { id: 'puck_borrow', kinds: ['miner', 'tender'], motion: 'face', seconds: 6, partner: true, line: 'Tender: Spare\'s taped on. Asking before I take it.', reply: 'Miner: Spare is free. Tape stays.' },
   { id: 'dust_cheek', kinds: ['miner'], motion: 'orbit', seconds: 10, line: 'Miner: Turning the scoop. Your dust, not my face.' },
   { id: 'plate_wipe', kinds: ['surveyor', 'salvor'], motion: 'brake', seconds: 8, line: 'Survey: Numerals full of grit. Wiping. Claim stays filed.' },
   { id: 'hull_count', kinds: ['patrol'], motion: 'flash', seconds: 6, line: 'Patrol: Three hulls, one pin. I count them so the log can\'t.' },
   { id: 'ribbon_pin', kinds: ['tender'], motion: 'orbit', seconds: 13, line: 'Tender: Ribbon on the whistle. I do not wake it.' },
   { id: 'invoice_match', kinds: ['hauler'], motion: 'half', seconds: 15, line: 'Hauler: Matching the gold heartbeat. A late blink means the post is sick.' },
-  { id: 'tag_return', kinds: ['miner'], motion: 'face', seconds: 5, partner: true, line: 'Miner: Your tag snagged my vane. Returning it facing you.' },
+  { id: 'tag_return', kinds: ['miner'], motion: 'face', seconds: 5, partner: true, line: 'Miner: Your tag snagged my vane. Returning it facing you.', reply: 'Tender: Tag is back. Vane is clear.' },
   { id: 'can_for_filter', kinds: ['hauler', 'tender'], motion: 'brake', seconds: 9, line: 'Hauler: Air can for a filter. Count both. Don\'t round.' },
-  { id: 'wrong_star', kinds: ['surveyor', 'patrol'], motion: 'face', seconds: 7, partner: true, line: 'Survey: That bearing is a lamp, not a star. We look anyway.' },
+  { id: 'wrong_star', kinds: ['surveyor', 'patrol'], motion: 'face', seconds: 7, partner: true, line: 'Survey: That bearing is a lamp, not a star. We look anyway.', reply: 'Patrol: Lamp confirmed. Bearing holds.' },
   { id: 'slag_warn', kinds: ['miner'], motion: 'flash', seconds: 4, line: 'Miner: Dump in three. Flash is the manners I have left.' },
   { id: 'soft_pay', kinds: ['salvor'], motion: 'half', seconds: 18, line: 'Salvor: Paying line. The mass is heavier than the chit.' },
   { id: 'stamp_wait', kinds: ['patrol'], motion: 'brake', seconds: 12, line: 'Patrol: Window\'s open. The stamp is not. Ref stays Ref.' },
@@ -42,11 +42,17 @@ export const LANE_ERRANDS = Object.freeze([
   { id: 'strike_idle', kinds: ['miner', 'hauler'], motion: 'brake', seconds: 11, line: 'Foreman: Cones stay dark. I am not cutting this face.' },
   { id: 'busker_loop', kinds: ['patrol', 'tender', 'hauler'], motion: 'orbit', seconds: 12, line: 'Lane: I\'ll play the pin once. Filters or silence.' },
   { id: 'false_chirp', kinds: ['hauler', 'miner', 'surveyor'], motion: 'flash', seconds: 5, line: 'Hauler: That was the boot, not a mayday. Ignore the red.' },
-  { id: 'shift_wave', kinds: ['miner', 'patrol', 'tender'], motion: 'face', seconds: 6, partner: true, line: 'Relief: Lamp\'s yours. I flash twice and I\'m gone.' },
-  { id: 'customs_stare', kinds: ['patrol', 'hauler'], motion: 'face', seconds: 9, partner: true, line: 'Patrol: This look is the drill. Your hold stays shut.' },
-  { id: 'wedding_hold', kinds: ['hauler', 'tender'], motion: 'face', seconds: 8, partner: true, line: 'Crew: Two hulls, one berth. Hold the outside.' },
+  { id: 'shift_wave', kinds: ['miner', 'patrol', 'tender'], motion: 'face', seconds: 6, partner: true, line: 'Relief: Lamp\'s yours. I flash twice and I\'m gone.', reply: 'Miner: Lamp taken. Two flashes logged.' },
+  { id: 'customs_stare', kinds: ['patrol', 'hauler'], motion: 'face', seconds: 9, partner: true, line: 'Patrol: This look is the drill. Your hold stays shut.', reply: 'Hauler: Hold stays shut. The look is logged.' },
+  { id: 'wedding_hold', kinds: ['hauler', 'tender'], motion: 'face', seconds: 8, partner: true, line: 'Crew: Two hulls, one berth. Hold the outside.', reply: 'Tender: Outside is held. The berth stays.' },
   { id: 'skiff_dare', kinds: ['patrol', 'hauler'], motion: 'orbit', seconds: 9, line: 'Skiff: One lap of the can. No adults in the loop.' },
   { id: 'lost_glint', kinds: ['surveyor', 'salvor', 'tender'], motion: 'weave', seconds: 12, line: 'Survey: Orange flash on the spar. Not a jump. Looking.' },
+  { id: 'gossip_loaded_lane', kinds: ['hauler'], motion: 'half', seconds: 8, gossip: true, line: 'Hauler: {callsign} is {state}. That hull gets the lane.' },
+  { id: 'gossip_disabled_pin', kinds: ['patrol'], motion: 'flash', seconds: 6, gossip: true, line: 'Patrol: {callsign} is {state}. The pin stays on that hull.' },
+  { id: 'gossip_fleeing_slot', kinds: ['miner'], motion: 'brake', seconds: 7, gossip: true, line: 'Miner: {callsign} is {state}. The slot can take the dust.' },
+  { id: 'gossip_loaded_shade', kinds: ['surveyor'], motion: 'orbit', seconds: 9, gossip: true, line: 'Survey: {callsign} is {state}. Shade stays off that hull.' },
+  { id: 'gossip_disabled_line', kinds: ['salvor'], motion: 'half', seconds: 8, gossip: true, line: 'Salvor: {callsign} is {state}. The paying line stays clear.' },
+  { id: 'gossip_fleeing_ribbon', kinds: ['tender'], motion: 'orbit', seconds: 7, gossip: true, line: 'Tender: {callsign} is {state}. The ribbon stays dark.' },
 ]);
 
 const CONTRACT_SLOTS = new Set([
@@ -145,9 +151,92 @@ export function errandsForKind(kind) {
   return LANE_ERRANDS.filter((row) => row.kinds.includes(kind));
 }
 
+function hullName(hull) {
+  const data = hull && hull.data;
+  if (!data) return '';
+  const name = data.callsign || data.trafficLabel || data.scanLabel || data.name;
+  if (typeof name !== 'string') return '';
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.includes('{')) return '';
+  return trimmed;
+}
+
+function hullStatus(runtime, hull) {
+  if (!hull || hull.alive === false) return null;
+  const data = hull.data || {};
+  if (data.fleeing === true) return 'fleeing';
+  const byId = runtime && typeof runtime._byId === 'function' ? runtime._byId() : null;
+  if (byId) {
+    for (const other of Object.values(byId)) {
+      if (!other || other.entityId !== hull.id || !other.job) continue;
+      if (other.job.phase === 'flee') return 'fleeing';
+    }
+  }
+  if (hull.disabled === true || data.disabled === true) return 'disabled';
+  if (data.loaded === true || data.carrying === true) return 'loaded';
+  const manifest = data.cargoManifest;
+  if (Array.isArray(manifest) && manifest.length > 0) return 'loaded';
+  if (manifest && typeof manifest === 'object' && Object.keys(manifest).length > 0) return 'loaded';
+  return null;
+}
+
+function gossipCandidates(runtime, speaker) {
+  const state = runtime && runtime.state;
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return [];
+  const out = [];
+  for (const hull of entities.values()) {
+    if (!hull || hull.alive === false) continue;
+    if (speaker && hull.id === speaker.id) continue;
+    if (state.playerId != null && hull.id === state.playerId) continue;
+    if (hull.type && hull.type !== 'ship') continue;
+    if (!hullName(hull) || !hullStatus(runtime, hull)) continue;
+    out.push(hull);
+  }
+  out.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  return out;
+}
+
+function gossipSubject(runtime, speaker, seed, recordId, window) {
+  const rows = gossipCandidates(runtime, speaker);
+  if (!rows.length) return null;
+  return rows[hash32(seed, recordId || 'job', window, 'gossip-hull') % rows.length];
+}
+
+function errandText(runtime, errand) {
+  if (!errand || !errand.line) return null;
+  if (!errand.gossip) return errand.line;
+  const hull = errand.subjectId != null && runtime.state && runtime.state.entities
+    ? runtime.state.entities.get(errand.subjectId)
+    : null;
+  if (!hull || hull.alive === false) return null;
+  if (runtime.state.playerId != null && hull.id === runtime.state.playerId) return null;
+  const name = hullName(hull);
+  const status = hullStatus(runtime, hull);
+  if (!name || !status) return null;
+  const text = errand.line.replaceAll('{callsign}', name).replaceAll('{state}', status);
+  if (text.includes('{')) return null;
+  return text;
+}
+
+function partnerReply(runtime, entity, errand) {
+  if (!errand || !errand.reply || errand.partnerId == null) return null;
+  if (runtime.state.playerId != null && errand.partnerId === runtime.state.playerId) return null;
+  const partner = runtime.state.entities && runtime.state.entities.get(errand.partnerId);
+  if (!partner || partner.alive === false || !partner.pos || !entity || !entity.pos) return null;
+  const dx = partner.pos.x - entity.pos.x;
+  const dz = partner.pos.z - entity.pos.z;
+  if (dx * dx + dz * dz > PARTNER_RANGE * PARTNER_RANGE) return null;
+  return { text: errand.reply, speakerId: errand.partnerId };
+}
+
 /** Pure pick. Same seed, record, and window → same errand id. */
-export function pickLaneErrand(seed, recordId, window, kind, hasPartner) {
-  const rows = errandsForKind(kind).filter((row) => !row.partner || hasPartner);
+export function pickLaneErrand(seed, recordId, window, kind, hasPartner, canGossip = false) {
+  const rows = errandsForKind(kind).filter((row) => {
+    if (row.partner && !hasPartner) return false;
+    if (row.gossip && !canGossip) return false;
+    return true;
+  });
   if (!rows.length) return null;
   const index = hash32(seed, recordId || 'job', window, kind, 'lane-errand') % rows.length;
   return rows[index];
@@ -179,7 +268,8 @@ export function armLaneErrands(runtime, simT) {
       continue;
     }
     const partner = partnerOf(runtime, entry, entity);
-    const picked = pickLaneErrand(seed, recordId, window, entry.job.kind, !!partner);
+    const subject = gossipSubject(runtime, entity, seed, recordId, window);
+    const picked = pickLaneErrand(seed, recordId, window, entry.job.kind, !!partner, !!subject);
     entry.errandWindow = window;
     if (!picked) continue;
     entry.errand = {
@@ -187,10 +277,13 @@ export function armLaneErrands(runtime, simT) {
       motion: picked.motion,
       until: simT + picked.seconds,
       line: picked.line,
+      reply: picked.reply || null,
+      gossip: picked.gossip === true,
       said: false,
       origin: { x: entity.pos.x, z: entity.pos.z },
       started: simT,
       partnerId: partner ? partner.entry.entityId : null,
+      subjectId: picked.gossip ? (subject ? subject.id : null) : null,
     };
   }
 }
@@ -209,7 +302,18 @@ export function applyLaneErrandIntent(runtime, entry, entity, simT) {
   if (!errand.said && runtime.bus && typeof runtime.bus.emit === 'function') {
     errand.said = true;
     try {
-      runtime.bus.emit('toast', { text: errand.line, kind: 'info', ttl: 3.5 });
+      const text = errandText(runtime, errand);
+      if (text) {
+        runtime.bus.emit('toast', {
+          text, kind: 'info', ttl: 3.5, speakerId: entry.entityId,
+        });
+      }
+      const reply = partnerReply(runtime, entity, errand);
+      if (reply && reply.speakerId !== entry.entityId) {
+        runtime.bus.emit('toast', {
+          text: reply.text, kind: 'info', ttl: 3.5, speakerId: reply.speakerId,
+        });
+      }
       runtime.bus.emit('npcjobs:errand', {
         jobId: entry.job && entry.job.id,
         errandId: errand.id,

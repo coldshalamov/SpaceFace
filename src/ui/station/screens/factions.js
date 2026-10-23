@@ -22,6 +22,8 @@ import {
   factionContractLadderRows,
   factionHistoryLines,
 } from '../../factionStanding.js';
+import { missions } from '../../../systems/missions.js';
+import { offerHistoryTierLabel } from '../../../data/missions.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { icon, factionIcon } from '../icons.js';
@@ -128,9 +130,44 @@ function rungDetailLines(unlocks) {
   return lines.map((l) => (l.length > 28 ? `${l.slice(0, 27).trim()}\u2026` : l)).slice(0, 2);
 }
 
+function alliedRetainerOpen(row, rep) {
+  return !!(row && row.aspirational && Number(rep) >= Number(row.minRep));
+}
+
+/** List word for one contract rung. Allied Retainers reads 'reached' once the standing is real. */
+export function contractRungWord(row, rep) {
+  if (!row) return 'locked';
+  if (row.unlocked) return 'unlocked';
+  if (alliedRetainerOpen(row, rep)) return 'reached';
+  if (row.aspirational) return 'sealed';
+  return 'locked';
+}
+
+/** Scale state for the same rung. 'reached' is the word the ruler already uses for an open rung. */
+export function contractRungScaleState(row, rep) {
+  if (!row) return 'locked';
+  if (row.unlocked || alliedRetainerOpen(row, rep)) return 'reached';
+  if (row.aspirational) return 'sealed';
+  return 'locked';
+}
+
+/** History-tier name the contracts desk already weights. Score 0 is 'First contracts'. */
+export function contractHistoryTierLabel(state) {
+  if (!state || typeof missions._playerHistoryScore !== 'function') return '';
+  let score = 0;
+  try { score = missions._playerHistoryScore.call({ state }); } catch (_) { return ''; }
+  const label = offerHistoryTierLabel(score);
+  return typeof label === 'string' ? label : '';
+}
+
+export function contractAccessHeading(state) {
+  const label = contractHistoryTierLabel(state);
+  return label ? `Contract access · ${label}` : 'Contract access';
+}
+
 function nextRungLine(rep) {
   const rows = factionContractLadderRows(rep);
-  const next = rows.find((row) => !row.unlocked);
+  const next = rows.find((row) => !row.unlocked && !alliedRetainerOpen(row, rep));
   if (!next) return 'Every contract rung is open.';
   return `Next: ${escapeHtml(next.name)} at ${next.minRep > 0 ? '+' : ''}${next.minRep}<span class="sx-fac-rung-next__more"> · ${escapeHtml(next.unlocks)}</span>`;
 }
@@ -253,7 +290,7 @@ export function createFactionsScreen(ctx) {
         // WRAPS. Truncating it with an ellipsis hides the part that says what the rung buys you.
         // The standing ladder above is one short tier name per row and keeps `k-row__name`.
         `<span class="sx-ladder__name sx-ladder__name--wrap${row.unlocked ? '' : ' k-62'}">${escapeHtml(row.name)} · ${escapeHtml(row.unlocks)}` +
-          `<span class="k-row__sub"> · ${row.aspirational ? 'sealed' : row.unlocked ? 'unlocked' : 'locked'}</span></span>` +
+          `<span class="k-row__sub"> · ${contractRungWord(row, rep)}</span></span>` +
         `<span class="k-row__num sx-ladder__min">${row.minRep > 0 ? '+' : ''}${row.minRep}</span>` +
       `</li>`
       );
@@ -293,11 +330,11 @@ export function createFactionsScreen(ctx) {
                 ...(next && next.need > 0 ? [{ from: rep, to: rep + next.need, label: `${next.need} \u00b7 TO ${String(next.name).toUpperCase()}`, anchor: 'start' }] : []),
                 ...(buffer > 0 ? [{ from: FACTION_AGGRO_THRESHOLD, to: rep, label: `${buffer} \u00b7 ABOVE HOSTILE`, anchor: 'end' }] : []),
               ],
-              rungs: (() => { const rows = factionContractLadderRows(rep); const nextRow = rows.find((row) => !row.unlocked && !row.aspirational); return rows.map((row) => ({ minRep: row.minRep, name: row.name, state: row.aspirational ? 'sealed' : row.unlocked ? 'reached' : 'locked', detail: row === nextRow && !compactHeight() ? rungDetailLines(row.unlocks) : null })); })() }) +
+              rungs: (() => { const rows = factionContractLadderRows(rep); const nextRow = rows.find((row) => !row.unlocked && !row.aspirational); return rows.map((row) => ({ minRep: row.minRep, name: row.name, state: contractRungScaleState(row, rep), detail: row === nextRow && !compactHeight() ? rungDetailLines(row.unlocks) : null })); })() }) +
             ladderRows(standingLadder) +
           `</div>` +
           `<div class="sx-fac-ladder sx-fac-contracts" aria-label="Contract access">` +
-            `<p class="k-caps">Contract access</p>` +
+            `<p class="k-caps">${escapeHtml(contractAccessHeading(state))}</p>` +
             ladderRows(contractLadder) +
             // the rungs hang off the standing scale; the reading names the next one and what it buys
             `<p class="k-sentence sx-fac-rung-next${compactHeight() ? '' : ' is-on-scale'}">${nextRungLine(rep)}</p>` +

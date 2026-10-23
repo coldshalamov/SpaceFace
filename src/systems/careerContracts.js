@@ -18,6 +18,17 @@ const SETTLED_CAP = 96;
 const REFRESH_SECONDS = 600;
 const RUN_STATUS = Object.freeze({ READY: 'ready', OFFERED: 'offered', ACTIVE: 'active', RECOVERING: 'recovering', COMPLETED: 'completed' });
 
+function circuitOrdinal(n) {
+  const value = Math.max(1, n | 0);
+  const teen = value % 100;
+  const suffix = teen >= 11 && teen <= 13 ? 'th'
+    : value % 10 === 1 ? 'st'
+      : value % 10 === 2 ? 'nd'
+        : value % 10 === 3 ? 'rd'
+          : 'th';
+  return `${value}${suffix}`;
+}
+
 // station id → authored name, resolved from the same SECTORS graph missions.js reads. The chain's
 // settlement voice names the place the next leg posts — a real place, never a raw id.
 const STATION_NAMES = new Map();
@@ -439,10 +450,13 @@ export const careerContracts = {
     if (!this.bus?.emit || !def || !settledStage) return;
     if (completed && run.status === RUN_STATUS.COMPLETED) {
       const reopen = stationNameFor(def.stages[0] && def.stages[0].boardStationId) || 'its origin board';
+      const lap = (run.cycle | 0) >= 1
+        ? ` — ${def.actor && def.actor.name ? def.actor.name : 'the client'}'s ${circuitOrdinal((run.cycle | 0) + 1)} circuit`
+        : '';
       this.bus.emit('comms:popup', {
         sender: def.title,
         factionId: def.actor.factionId,
-        text: `That closes ${def.title}. ${def.consequence} It reopens at ${reopen} next board cycle.`,
+        text: `That closes ${def.title}${lap}. ${def.consequence} It reopens at ${reopen} next board cycle.`,
         category: 'personal',
         ttl: 8,
       });

@@ -67,9 +67,9 @@ function recipeIdsHas(id) {
   return RECIPES.some((r) => r.id === id);
 }
 
-test('thirteen faction registers are distinct; mechanic is a fourteenth close-mic register', () => {
-  assert.equal(BARK_FACTIONS.length, 13);
-  assert.equal(Object.keys(FACTION_VOICE_REGISTERS).length, 13);
+test('fourteen faction registers are distinct; mechanic is a fifteenth close-mic register', () => {
+  assert.equal(BARK_FACTIONS.length, 14);
+  assert.equal(Object.keys(FACTION_VOICE_REGISTERS).length, 14);
   assert.equal(factionRegistersAreDistinct(), true);
   const f0s = new Set(BARK_FACTIONS.map((id) => FACTION_VOICE_REGISTERS[id].f0));
   const rates = new Set(BARK_FACTIONS.map((id) => FACTION_VOICE_REGISTERS[id].rate));
@@ -223,7 +223,7 @@ test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all thirteen registers 
     assert.equal(got, factionId, `unlabeled ${factionId} callsign named ${got}`);
     named.push(got);
   }
-  assert.equal(new Set(named).size, 13);
+  assert.equal(new Set(named).size, 14);
   console.log(`[pq-158.04 pcm-blind] seed=${MEASURE_SEED} order=${shuffled.join(',')} named=${named.join(',')}`);
 });
 
@@ -235,7 +235,7 @@ test(`seed ${MEASURE_SEED}: unlabeled on-disk clips name thirteen registers with
     assert.equal(got, clip.factionId, `${clip.file} named ${got}, expected ${clip.factionId}`);
     named.push(got);
   }
-  assert.equal(new Set(named).size, 13);
+  assert.equal(new Set(named).size, 14);
   console.log(`[pq-158.04 blind-files] seed=${MEASURE_SEED} named=${named.join(',')}`);
 });
 
@@ -249,7 +249,7 @@ test(`seed ${MEASURE_SEED}: shipped utterance PCM names each faction register (n
     assert.equal(got, factionId, `utterance ${factionId} named ${got}`);
     named.push(got);
   }
-  assert.equal(new Set(named).size, 13);
+  assert.equal(new Set(named).size, 14);
   console.log(`[pq-158.04 utterance-pcm] seed=${MEASURE_SEED} named=${named.join(',')}`);
 });
 
@@ -265,6 +265,6 @@ test(`seed ${MEASURE_SEED}: player-heard bark WAVs name thirteen registers from 
     assert.equal(got, factionId, `${entry.file} named ${got}, expected ${factionId}`);
     named.push(got);
   }
-  assert.equal(new Set(named).size, 13);
+  assert.equal(new Set(named).size, 14);
   console.log(`[pq-158.04 bark-wav-blind] seed=${MEASURE_SEED} named=${named.join(',')}`);
 });

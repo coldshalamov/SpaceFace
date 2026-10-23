@@ -175,7 +175,7 @@ export const MISSION_STANDING_LADDER = [
     maxRisk: 4,
     name: 'Allied Retainers',
     short: 'Allied+',
-    unlocks: 'future faction-chain retainers and faction-exclusive work',
+    unlocks: 'the Drift allied retainer haul, posted on Collective desks',
     aspirational: true,
   },
 ];
@@ -202,8 +202,14 @@ export function missionMinRepForRisk(riskTier) {
   return gate ? gate.minRep : 0;
 }
 
-// FB-044 — one contract row per faction, posted only at the second rank step and above.
-// These are board rows, not a story gate and not a second reputation number.
+// One standing row per faction. Most post at the first named rank. The Choir row waits
+// for step 2, the Free Captains row for step 3, and the Drift row waits for allied
+// standing (400) — the retainer the ladder names. Not a second reputation number.
+const RANK_STEP_BY_FACTION = Object.freeze({
+  faction_choir: 2,
+  faction_free: 3,
+});
+const ALLIED_RETAINER_FACTION = 'faction_dmc';
 const RANK_CONTRACT_FACTIONS = Object.freeze([
   ['faction_scn', 'Concord cleared escort', 'escort'],
   ['faction_mts', 'Meridian known haul', 'cargo_delivery'],
@@ -221,15 +227,18 @@ const RANK_CONTRACT_FACTIONS = Object.freeze([
   ['faction_verge_layers', 'Verge noticed sounding', 'recon_scan'],
 ]);
 
-export const RANK_GATED_CONTRACTS = Object.freeze(RANK_CONTRACT_FACTIONS.map(([factionId, title, type]) => Object.freeze({
-  id: `rank_contract_${factionId}`,
-  factionId,
-  type,
-  title,
-  minRankStep: 1,
-  minRep: -29,
-  rankGated: true,
-})));
+export const RANK_GATED_CONTRACTS = Object.freeze(RANK_CONTRACT_FACTIONS.map(([factionId, title, type]) => {
+  const allied = factionId === ALLIED_RETAINER_FACTION;
+  return Object.freeze({
+    id: `rank_contract_${factionId}`,
+    factionId,
+    type,
+    title: allied ? 'Drift allied retainer haul' : title,
+    minRankStep: RANK_STEP_BY_FACTION[factionId] || 1,
+    minRep: allied ? 400 : -29,
+    rankGated: true,
+  });
+}));
 
 // The board row's dedupe/settle identity — one stable source tag for the whole catalog so
 // ensureBoard's sync can tell a faction's rank row from an ordinary procedural roll.
@@ -2566,6 +2575,13 @@ export const OFFER_HISTORY_MIX = Object.freeze({
     demolition: 1.4, rescue_under_fire: 1.4, tow_recovery: 1.3,
   }),
 });
+
+/** The desk label for a history score. Score 0 is 'First contracts'. */
+export function offerHistoryTierLabel(score) {
+  const id = offerHistoryTierFor(score);
+  const tier = OFFER_HISTORY_TIERS.find((row) => row.id === id) || OFFER_HISTORY_TIERS[0];
+  return tier.label;
+}
 
 /** Pure score→tier band. The score itself is computed by the owning system from durable state. */
 export function offerHistoryTierFor(score) {

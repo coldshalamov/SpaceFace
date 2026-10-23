@@ -543,7 +543,9 @@ export const presentationOrchestrator = {
   },
 
   _onTetherAttached(payload) {
-    this._emitCue('tether.attach', payload, {
+    const playerId = this.state && this.state.playerId;
+    const onYou = playerId != null && payload.targetId === playerId && payload.actorId !== playerId;
+    this._emitCue(onYou ? 'tether.line_on_you' : 'tether.attach', payload, {
       sourceEvent: 'tether:attached',
       sourceId: payload.actorId,
       targetId: payload.targetId,

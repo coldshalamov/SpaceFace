@@ -38,12 +38,13 @@ export const PRESENTATION_RECIPES = Object.freeze({
   'travel.corridor.continuity': travelRecipe(0.44, 30, 'corridor', 'vfx.direct_travel_corridor', ['travel', 'continuity', 'corridor']),
   'travel.jump.aligning': travelRecipe(0.56, 30, 'jump_drive', 'vfx.direct_travel_alignment', ['travel', 'alignment']),
   'travel.jump.commit_window': travelRecipe(0.7, 60, 'jump_drive', 'vfx.direct_travel_commit', ['travel', 'commit', 'anticipation']),
-  'travel.jump.committed': travelRecipe(0.82, 60, 'jump_drive', 'vfx.direct_travel_commit', ['travel', 'commit', 'no_return']),
+  // Spoken beats reuse the existing caption lane. Continuity stays visual.
+  'travel.jump.committed': travelRecipe(0.82, 60, 'jump_drive', 'vfx.direct_travel_commit', ['travel', 'commit', 'no_return'], 'accessibility.caption_priority'),
   'travel.transition.continuity': travelRecipe(0.68, 60, 'jump_drive', 'vfx.direct_travel_transition', ['travel', 'continuity', 'transition']),
-  'travel.arrival.oriented': travelRecipe(0.72, 30, 'arrival', 'vfx.direct_travel_arrival', ['travel', 'arrival', 'oriented']),
+  'travel.arrival.oriented': travelRecipe(0.72, 30, 'arrival', 'vfx.direct_travel_arrival', ['travel', 'arrival', 'oriented'], 'accessibility.caption_priority'),
   'travel.arrival.sector_identity': travelRecipe(0.58, 30, 'sector', 'vfx.direct_travel_identity', ['travel', 'arrival', 'sector_identity']),
   'travel.discovery.mapped': travelRecipe(0.62, 30, 'discovery', 'vfx.direct_travel_discovery', ['travel', 'discovery', 'mapped']),
-  'travel.interdiction.triggered': travelRecipe(0.92, 30, 'interdiction', 'vfx.direct_travel_interdiction', ['travel', 'disruption', 'interdiction']),
+  'travel.interdiction.triggered': travelRecipe(0.92, 30, 'interdiction', 'vfx.direct_travel_interdiction', ['travel', 'disruption', 'interdiction'], 'accessibility.caption_priority'),
   'travel.jump.failed': travelRecipe(0.7, 20, 'jump_drive', 'vfx.direct_travel_failure', ['travel', 'disruption', 'failure']),
   'travel.recovery.resumed': travelRecipe(0.48, 30, 'travel_recovery', 'vfx.direct_travel_recovery', ['travel', 'recovery', 'resumed']),
   'travel.aftermath.clear': travelRecipe(0.46, 30, 'arrival', 'vfx.direct_travel_aftermath', ['travel', 'aftermath', 'clear']),
@@ -217,6 +218,22 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { cameraTrauma: 0.12, particles: 48, voices: 2, uiPulses: 1 },
     shape: SEVERITY_SHAPE_TIERS[1],
     tags: ['critical', 'tether', 'slice'],
+  }),
+  // SEED-HF-10 — a hostile line on the player's hull is a threat, not the player's own latch.
+  'tether.line_on_you': recipe({
+    importance: 0.9,
+    dedupeWindowTicks: 6,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.payload_composition',
+      vfx: 'vfx.tether_snap',
+      audio: 'audio.tether_snap',
+      ui: 'ui.tension_warning',
+      accessibility: 'accessibility.tension_alt',
+    },
+    budgets: { cameraTrauma: 0.12, particles: 48, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2] || SEVERITY_SHAPE_TIERS[1],
+    tags: ['critical', 'tether', 'line_on_you'],
   }),
   'tether.near_break': recipe({
     importance: 0.72,
@@ -830,12 +847,12 @@ function miningRecipe(importance, dedupeWindowTicks, material, vfx, tags) {
   });
 }
 
-function travelRecipe(importance, dedupeWindowTicks, material, vfx, tags) {
+function travelRecipe(importance, dedupeWindowTicks, material, vfx, tags, accessibility = 'accessibility.none') {
   return recipe({
     importance,
     dedupeWindowTicks,
     material,
-    lanes: { ...laneSet(vfx), audio: 'audio.travel' },
+    lanes: { ...laneSet(vfx, 'ui.none', accessibility), audio: 'audio.travel' },
     // One semantic journey cue owns the audible floor for each source event. Layered synth
     // recipes still count as one scheduled voice and remain beneath the global SG-08 cap.
     budgets: { voices: 1 },

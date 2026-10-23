@@ -356,7 +356,30 @@ export const WARRANT_TIPPED_LINES = Object.freeze([
   'No luck involved — {fence} told us where to wait. Power down.',
 ]);
 
-export function warrantHunterLine(hunter, kind, { seed = 0, salt = 0, grievance = null, fenceId = null } = {}) {
+/** How many times this hunter already lost the pilot. Zero means the ordinary first hail. */
+export function warrantStreakCount(rec) {
+  if (!rec || typeof rec !== 'object') return 0;
+  const escaped = rec.timesYouEscaped | 0;
+  if (escaped >= 2) return escaped;
+  if (rec.lastOutcome === 'disabled' && (rec.timesDisabled | 0) >= 2) return rec.timesDisabled | 0;
+  return 0;
+}
+
+/** The hail kind the live contact path speaks. Grievance and a tipped wave keep their own lines. */
+export function warrantContactKind(entry, rec) {
+  if (entry && entry.tippedBy) return 'tipped';
+  if (entry && entry.returning && rec && rec.grievance) return 'grievance';
+  if (warrantStreakCount(rec) >= 2) return 'streak';
+  return 'first';
+}
+
+export function warrantHunterLine(hunter, kind, { seed = 0, salt = 0, grievance = null, fenceId = null, count = 0 } = {}) {
+  if (kind === 'streak') {
+    const n = count | 0;
+    if (n < 2) return '';
+    const name = hunter && hunter.name ? hunter.name : 'Hunter';
+    return `${name}: ${n} times you got away. The warrant still has your name.`;
+  }
   if (!hunter || !hunter.voice) return '';
   const voice = hunter.voice;
   let pool = null;
