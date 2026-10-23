@@ -768,3 +768,6 @@ by the integrator; nothing below is an owner ruling until the owner says so.
 ### Polish pass 2026-10-03 (closed)
 
 Every row resolved in its sitting; the pass record was retired to git history in the 2026-10-15 token-reduction pass.
+
+- 2026-10-23 — 408 actual-view repair (0157484feb, codex-bm30): reveal the title tape instead of its fallback plate, start its clock only on first presentation, and frame the real catch clear of menu verbs. Standard and reduced-flash 1280x720 views inspected; 14 focused title/tape checks pass. Recorded impact appeared about 18.24 seconds after idle eligibility including measured preparation. Adventure route separately measured 153.2 simulated seconds with zero hidden-player frames; its INCOMPLETE verdict retains unmeasured threat readability, edge markers and quiet-host performance.
+
