@@ -22,6 +22,23 @@ function clamp(v, lo, hi) {
 const SOFTWARE_RE = /swiftshader|llvmpipe|software|basic render|microsoft basic|softpipe|mesa offscreen|apple software/i;
 // Substrings that identify integrated / mobile GPUs (fast enough, but a lower floor is safer).
 const INTEGRATED_RE = /intel|uhd|hd graphics|iris|apple m\d|apple gpu|adreno|mali|powervr|integrated|vivante/i;
+// AMD's integrated parts say neither "intel" nor "integrated": a Ryzen APU reports "Radeon(TM)
+// Graphics", "Radeon Vega 8 Graphics" (also "RX Vega 11 Graphics" on the 2400G/3400G), a mobile
+// "Radeon 780M", the Steam Deck's "AMD Custom GPU 0405" / "0932", or a Mesa codename ("AMD RENOIR",
+// "(radeonsi, vangogh, LLVM ...)"). Every form is anchored so the dedicated cards that share a
+// family word stay out: "Radeon RX 6800M" and "Radeon Pro 5500M" have a word between "Radeon" and
+// the digits, and "RX Vega 64" / "Pro Vega 20" carry no "Graphics" suffix. The codenames are APU-only
+// (no navi/polaris/vega10, which are dedicated cards).
+const AMD_INTEGRATED_RE = /radeon(?:\s*\(tm\))?\s+(?:graphics|r[2-7]\s+graphics|\d{3,4}m\b)|vega\s*(?:\d+\s+graphics|mobile)|\bamd\s+custom\s+gpu\b|\b(?:raven2?|picasso|renoir|lucienne|cezanne|barcelo|rembrandt|mendocino|phoenix|stoney|carrizo|kaveri|vangogh)\b/i;
+// Intel's dedicated Arc cards carry the "intel" the integrated test keys on, so they are named here
+// and tested BEFORE it: Alchemist A-series (desktop, "M" mobile, Pro), Battlemage B570/B580, and
+// Pro B50/B60. The branding is NOT a reliable split by letter: integrated parts are "Arc(TM)
+// Graphics", "Arc(TM) 140V GPU" and the Panther Lake "Arc B390/B370", so B-series is matched by
+// its known dedicated model numbers, never by letter alone.
+const INTEL_ARC_DISCRETE_RE = /\barc(?:\s*\(tm\))?\s+(?:a\d{2,3}m?|b5\d{2}|pro\s+[ab]\d{2,3})\b/i;
+// What a browser reports when it hides the real GPU (the unmasked-renderer extension is blocked or
+// absent, so the fallback is gl.RENDERER). It names no hardware, so it is `unknown`, not `discrete`.
+const UNIDENTIFIED_RENDERER_RE = /^\s*(?:webkit webgl|mozilla|webgl|generic(?: renderer)?)\s*$/i;
 
 // Read the unmasked renderer/vendor strings and classify the GPU into a coarse performance tier.
 export function detectGpu(renderer) {
@@ -43,8 +60,9 @@ export function detectGpu(renderer) {
   const software = SOFTWARE_RE.test(rendererStr) || SOFTWARE_RE.test(vendorStr);
   let tier;
   if (software) tier = 'software';
-  else if (!rendererStr) tier = 'unknown';
-  else if (INTEGRATED_RE.test(rendererStr)) tier = 'integrated';
+  else if (!rendererStr || UNIDENTIFIED_RENDERER_RE.test(rendererStr)) tier = 'unknown';
+  else if (INTEL_ARC_DISCRETE_RE.test(rendererStr)) tier = 'discrete';
+  else if (INTEGRATED_RE.test(rendererStr) || AMD_INTEGRATED_RE.test(rendererStr)) tier = 'integrated';
   else tier = 'discrete';
 
   return {
@@ -335,6 +353,18 @@ export function dynResFloorForTier(tier) {
   if (tier === 'software') return GPU_TIER_DYNRES_FLOOR.software;
   if (tier === 'integrated') return GPU_TIER_DYNRES_FLOOR.integrated;
   return GPU_TIER_DYNRES_FLOOR.default;
+}
+
+/**
+ * Whether the adaptive-resolution controller may run on this GPU tier. Software (emergency) and
+ * integrated machines may, and so may `unknown`: a browser that hides the GPU name could be hiding
+ * a weak laptop, and the controller only trades internal resolution under sustained load. It is
+ * still gated by `settings.video.dynamicResolution` (shipped off) — this only decides whether
+ * that toggle, or the Integrated GPU preset, takes effect on the tier. `discrete` stays off:
+ * steady state holds the frame budget at full quality.
+ */
+export function dynamicResolutionAllowedForTier(tier) {
+  return tier === 'software' || tier === 'integrated' || tier === 'unknown';
 }
 
 export const SOFTWARE_RENDERER_TOAST = Object.freeze({
