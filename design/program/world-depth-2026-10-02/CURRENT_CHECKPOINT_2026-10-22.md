@@ -1,5 +1,18 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current Archive delivery and remaining integration: 2026-10-23 20:43 UTC
+
+**The model bank is now durably published in draft PR562. The complete runtime candidate is backed up and being reconciled with newer upstream work before publication.** All twelve larger goals remain OPEN. World/story composition remains primary; Rope and Blind Welder remain parked.
+
+[PR562](https://github.com/coldshalamov/SpaceFace/pull/562) is open, draft and unmerged at `010ad659fde1e9804597d2f3175a95aedab8043f`, tree `89ea044687d99e84972d0d4d7224d1f62781ed01`, with sole public parent `deffb00377f7cae647d20b3f98f9a572bc3e280a`. All nine repository paths were verified by exact byte readbacks, including the three GLBs and review image. This is one distinct model with three LODs, not three models. The earlier interrupted LOD0 transfer was not a proven size limit or denial. A controlled retry after successful smaller probes and a fresh absence check succeeded at 20:33:05 UTC. The previous blocked-publication diagnosis is superseded. [CI run 40020337693](https://github.com/coldshalamov/SpaceFace/actions/runs/40020337693) remains in progress at 20:43 UTC; a hosted bank-gate result is not established.
+
+The separate 35-path runtime candidate is implemented, locally reviewed and durably preserved, but not yet published. The actual selected render-package build and check passed. Its snapshot preserves all 353 original binding objects and appends one cradle binding. The focused runtime gate passes 22/22, and Triton dressing passes 12/12. The actual native probe checks one fixed, nonsensor body with 16 colliders, solid keel/seat contacts, the empty diagnostic western region and nonduplicating recreation. The portable persistence regression exercises actual world serialization and chunked deserialization with authored POI/kit regeneration, retaining one Archive anchor, five kit rows and one native cradle. These are bounded owner/method tests, **not full player-facing Continue acceptance** or proof of ship clearance.
+
+Current master advanced to `3095a835eb3dbda178d359bbb0541e3ee6124f4c`, fourteen commits beyond the runtime snapshot's public base. The integration owner is preparing a public-only three-way union that preserves newer world guards and postcards, release/pilot entries, and the Hush Gap/Sedna package additions. Current 355 bindings must become 356 with the cradle, not be replaced by the older 354-binding snapshot. The independent reviewer is checking only the new union. No runtime public write is established by this handoff, and the older recovery snapshot must never overwrite newer upstream work.
+
+Next: finish and review that narrow union, rerun affected integration checks, and publish a coherent runtime draft with exact remote readbacks. Preserve the existing browser approval hold. Full enter-sector boot, menu Continue, ordinary player flight, live-camera PBR quality and end-to-end performance remain unproven. Exported, reviewed, published, integrated and accepted remain separate states; no sector or whole-game goal is complete.
+
+
 ## Native cradle contact qualification: 2026-10-23 20:16 UTC
 
 The portable actual SG02/Rapier probe passed 1/1 and was independently rerun at 20:12:03 UTC. The extracted current world spawn method and real dressing admission create one fixed, nonsensor body with 16 colliders. Native raycasts and dynamic contacts confirm solid keel/seat and no blanket hull across the tested western empty region; remove/recreate and native-owner disposal/recreation preserve one body without duplication. The diagnostic ball radius is 0.25 WU: this does **not** certify a ship lane. The fixture uses the actual `sector_triton_wake` identity.
