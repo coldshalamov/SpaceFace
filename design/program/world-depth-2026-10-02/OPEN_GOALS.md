@@ -1,5 +1,12 @@
 <!-- LIFETIME: DURABLE -->
 
+## Native cradle contact qualification: 2026-10-23 20:16 UTC
+
+The portable actual SG02/Rapier probe passed 1/1 and was independently rerun at 20:12:03 UTC. The extracted current world spawn method and real dressing admission create one fixed, nonsensor body with 16 colliders. Native raycasts and dynamic contacts confirm solid keel/seat and no blanket hull across the tested western empty region; remove/recreate and native-owner disposal/recreation preserve one body without duplication. The diagnostic ball radius is 0.25 WU: this does **not** certify a ship lane. The fixture uses the actual `sector_triton_wake` identity.
+
+The integration owner's four local scale/body consumer tests pass. The broader Triton fixture run is 11/12, with one existing freight GLB absent from the isolated overlay, not a demonstrated public-repository absence. Renderer package/metadata work and durable readback verification of the latest integration bundle remain active. Full boot, ordinary player flight, renderer acceptance and actual Save/Continue remain open. All twelve goals remain OPEN; no asset/runtime publication or final acceptance is implied.
+
+
 ## Archive instrument and placement progress: 2026-10-23 20:11 UTC
 
 All twelve goals remain OPEN. This is substantial **local implementation and qualification**, not published runtime integration or game acceptance. World/story composition remains primary; Rope/Blind Welder remain PARKED.
