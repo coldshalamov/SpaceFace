@@ -54,6 +54,7 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { validateRunState } from '../core/runState.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { dominoDeltaVelocity } from './swarmLegendaries.js';
 import { playerTowedLure } from '../ai/towedLure.js';
 import { gateBearing } from './waveMaterialization.js';
 import { findSwarmArrival } from './swarmSafety.js';
@@ -276,6 +277,22 @@ export function createBroodEngine(deps = {}) {
   const killScore = new Int32Array(CAUSE_N);
   const killPosX = new Float32Array(CAUSE_N);
   const killPosZ = new Float32Array(CAUSE_N);
+  // Row-270 Domino ledger: every CREDITED death leaves its own actual position here, in kill
+  // order. The per-cause killPosX/Z sample is one coordinate per cause and cannot say where a
+  // body died — Domino must radiate from each body, so each keeps a stable per-life key (the
+  // spawn serial for cells, the chain slot for segments, which never respawn) and its own
+  // coordinates. Retained scratch: the step allocates nothing; the emit below allocates only
+  // when a flush actually has deaths, exactly like the kill receipts it rides beside.
+  const deathScratch = [];
+  let deathScratchCount = 0;
+  function noteCreditedDeath(key, x, z) {
+    let rec = deathScratch[deathScratchCount];
+    if (!rec) { rec = { key: '', x: 0, z: 0 }; deathScratch[deathScratchCount] = rec; }
+    rec.key = key;
+    rec.x = finite(x);
+    rec.z = finite(z);
+    deathScratchCount += 1;
+  }
   const CAUSE_INDEX = {};
   SWARM_BROOD_KILL_CAUSES.forEach((cause, i) => { CAUSE_INDEX[cause] = i; });
 
@@ -420,6 +437,8 @@ export function createBroodEngine(deps = {}) {
     hiveMode = false;
     sacBudget = 0;
     immediateQuota = Infinity;
+    // The Domino ledger dies with the room: an unflushed death must never shove in the next one.
+    deathScratchCount = 0;
     publish();
     void reason;
   }
@@ -1181,6 +1200,9 @@ export function createBroodEngine(deps = {}) {
     const pay = killPayFor(TENDRIL_SEG_PAY_FAMILY);
     killCredits[c] += pay.credits;
     killScore[c] += pay.score;
+    // The Domino receipt: the segment's own coordinates — not the blast sample — because the
+    // shove radiates from the body that died. Segments never respawn, so the slot is the life.
+    noteCreditedDeath(`seg:${i}`, segX[i], segZ[i]);
   }
 
   function stepTendril(state, dt, simTime) {
@@ -1374,6 +1396,7 @@ export function createBroodEngine(deps = {}) {
     creditedCount.fill(0);
     killCredits.fill(0);
     killScore.fill(0);
+    deathScratchCount = 0;
     for (let i = 0; i < CAP; i++) {
       if (!alive[i]) continue;
       const dx = px[i] - ex;
@@ -1421,6 +1444,9 @@ export function createBroodEngine(deps = {}) {
     const pay = killPayFor(liveFamilyId[family[i]]);
     killCredits[c] += pay.credits;
     killScore[c] += pay.score;
+    // Same Domino receipt as the chain: the cell's own last position, keyed by its spawn serial
+    // so a slot reused inside the wave still counts as a new death.
+    noteCreditedDeath(`cell:${serial[i]}`, px[i], pz[i]);
   }
 
   function flushKills(state) {
@@ -1456,10 +1482,22 @@ export function createBroodEngine(deps = {}) {
         });
       }
     }
+    // One batch, in kill order, on the same payable gate as the receipts above: these are the
+    // positions Domino shoves FROM. An unpaid room (draft phase, ended run, no flight) clears
+    // the ledger with the counters — a death that could not pay cannot shove.
+    if (canPay && deathScratchCount > 0) {
+      const deaths = [];
+      for (let d = 0; d < deathScratchCount; d++) {
+        const rec = deathScratch[d];
+        deaths.push({ key: rec.key, pos: { x: rec.x, z: rec.z } });
+      }
+      bus.emit('swarm:broodDeathPositions', { wave, deaths });
+    }
     killCount.fill(0);
     creditedCount.fill(0);
     killCredits.fill(0);
     killScore.fill(0);
+    deathScratchCount = 0;
   }
 
   // --- B4: the Hive's seams ------------------------------------------------------------
@@ -1500,6 +1538,36 @@ export function createBroodEngine(deps = {}) {
     publish();
   }
 
+  /**
+   * The Domino seam (row 270). The arena passes one credited death's actual position; this
+   * engine — the only writer of these buffers — adds the shared radial falloff to every living
+   * cell and chain segment around it. The velocity write is exactly what the room's own slams
+   * do (additive, integrated next step): the flock's step carries it, a freed segment keeps
+   * weaving faster, an attached one reads it as flex for a tick. Returns the count moved.
+   */
+  function applyLegendaryShove(request) {
+    const center = request && (request.center || request);
+    if (!center || !Number.isFinite(center.x) || !Number.isFinite(center.z)) return 0;
+    let moved = 0;
+    for (let i = 0; i < CAP; i++) {
+      if (!alive[i]) continue;
+      const dv = dominoDeltaVelocity(center, { x: px[i], z: pz[i] });
+      if (!dv.x && !dv.z) continue;
+      vx[i] += dv.x;
+      vz[i] += dv.z;
+      moved += 1;
+    }
+    for (let i = 0; i < TENDRIL_SEG_MAX; i++) {
+      if (!segAlive[i]) continue;
+      const dv = dominoDeltaVelocity(center, { x: segX[i], z: segZ[i] });
+      if (!dv.x && !dv.z) continue;
+      segVX[i] += dv.x;
+      segVZ[i] += dv.z;
+      moved += 1;
+    }
+    return moved;
+  }
+
   function publish() {
     view.aliveCount = aliveCount;
     view.pendingCount = pendingPlan ? pendingPlan.reduce((sum, part) => sum + part.count, 0) : 0;
@@ -1533,6 +1601,8 @@ export function createBroodEngine(deps = {}) {
     // B4 — the Hive's seams: sacs spend the wave's reserve, sacs drip acid.
     sacRelease,
     hivePool,
+    // Row-270 — the Domino shove lands here through the arena, never across the buffers' owner.
+    applyLegendaryShove,
     /** Live population figures, for tests and the lab overlay. */
     census() {
       return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget };
@@ -1555,6 +1625,7 @@ export function createBroodEngine(deps = {}) {
       creditedCount.fill(0);
       killCredits.fill(0);
       killScore.fill(0);
+      deathScratchCount = 0;
       kill(i, cause, px[i], pz[i]);
       flushKillsFrom(getState());
       publish();
@@ -1564,6 +1635,7 @@ export function createBroodEngine(deps = {}) {
       creditedCount.fill(0);
       killCredits.fill(0);
       killScore.fill(0);
+      deathScratchCount = 0;
       killSeg(i, cause, segX[i], segZ[i]);
       flushKillsFrom(getState());
       publish();

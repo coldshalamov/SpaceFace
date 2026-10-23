@@ -295,6 +295,7 @@ test('a credited kill moves an eligible neighbor outward through real Rapier sol
     physics.syncFromEntities(h.state.entityList);
 
     victim.alive = false;
+    physics.syncFromEntities(h.state.entityList);
     h.bus.emit('entity:killed', { id: victim.id, killerId: h.player.id, pos: { x: 400, z: 0 } });
     tickArena(h);
     for (let i = 0; i < 30; i++) physics.step(DT);
@@ -310,7 +311,7 @@ test('a credited kill moves an eligible neighbor outward through real Rapier sol
     h.bus.emit('entity:killed', { id: victim.id, killerId: h.player.id, pos: { x: 400, z: 0 } });
     tickArena(h);
     for (let i = 0; i < 30; i++) physics.step(DT);
-    assert(Math.abs(neighbor.vel.x - vxAfterFirst) < 1, 'the ledger deduplicates the same body');
+    assert(Math.abs(neighbor.vel.x - vxAfterFirst) < 1, `the ledger deduplicates the same body: ${neighbor.vel.x} vs ${vxAfterFirst}`);
 
     // A new body object reusing the id is a new life — it shoves again.
     h.state.entities.delete(victim.id);
