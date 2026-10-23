@@ -361,7 +361,7 @@
     "check:experience": "node scripts/probe-game-experience.mjs",
     "check:experience:strict": "node scripts/probe-game-experience.mjs --strict-experience",
     "check:first-15-runtime": "node scripts/check-first-15-runtime.mjs",
-    "check:combat": "node scripts/check-combat-grammar.mjs && npm run check:sg03:save-reload && node --test test/combat-table-query-scratch.test.mjs",
+    "check:combat": "node scripts/check-combat-grammar.mjs && npm run check:sg03:save-reload && node --test test/combat-table-query-scratch.test.mjs && node --test test/industrial-beam-lifecycle.test.mjs test/industrial-beam-sector-transition.test.mjs",
     "check:combat-ceiling": "node scripts/check-combat-ceiling.mjs",
     "check:story-beats": "node scripts/check-story-beats.mjs",
     "check:wave15-flight-boot": "node scripts/check-wave15-flight-boot.mjs",

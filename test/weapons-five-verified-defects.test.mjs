@@ -6,6 +6,8 @@ import { createLineage, resetLineageIds } from '../src/combat/attackLineage.js';
 import { handlePayloadSectorTransition, spawnPayloadEntity } from '../src/combat/industrialBeam.js';
 import { createSurfaceContactReceipt } from '../src/core/surfaceContact.js';
 import { createBus } from '../src/core/eventBus.js';
+import { createSimulation } from '../src/core/sim.js';
+import { world } from '../src/systems/world.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { weapons } from '../src/systems/weapons.js';
 
@@ -254,7 +256,7 @@ test('defect 4: Tether Capacitor scale is applied to the event payload and hop p
   assert.equal(directEvent.damagePacket.channels.energy, 12);
 });
 
-test('defect 5: payload sector cleanup removes entityList rows and is wired to sector:enter', () => {
+test('defect 5: payload cleanup removes entityList rows at departure, never arrival', () => {
   const state = {
     nextEntityId: 40,
     entities: new Map(),
@@ -268,10 +270,20 @@ test('defect 5: payload sector cleanup removes entityList rows and is wired to s
   assert.equal(state.entities.has(payload.id), false);
   assert.equal(state.entityList.some((row) => row && row.id === payload.id), false);
 
-  const harness = makeHarness({ state: { nextEntityId: 80 } });
-  const live = spawnPayloadEntity(harness.state, { pos: { x: 4, z: 5 } });
-  assert.equal(harness.state.entityList.some((row) => row && row.id === live.id), true);
-  harness.bus.emit('sector:enter', { sectorId: 'sector-b' });
-  assert.equal(harness.state.entities.has(live.id), false);
-  assert.equal(harness.state.entityList.some((row) => row && row.id === live.id), false);
+  const sim = createSimulation({ seed: 1, systems: [world, weapons] });
+  try {
+    const owner = sim.registry.get('world');
+    // Keep the production enter/departure boundary; unrelated catalog population
+    // is replaced at world's residency observer seam.
+    owner._applyResidencyPlan = () => {};
+    sim.state.world.currentSectorId = 'sector_helios_prime';
+    const live = spawnPayloadEntity(sim.state, { pos: { x: 4, z: 5 } }, sim.helpers);
+    sim.bus.emit('sector:enter', { sectorId: 'sector_helios_prime' });
+    assert.equal(sim.state.entities.get(live.id), live, 'arrival must preserve its fresh payload');
+    assert.equal(sim.state.entityList.includes(live), true);
+    owner.enterSector('sector_ceres_belt');
+    assert.equal(sim.state.entities.has(live.id), false);
+    assert.equal(sim.state.entityList.some((row) => row && row.id === live.id), false);
+    assert.equal(sim.state.entityIndex.payloads.includes(live), false);
+  } finally { sim.dispose(); }
 });
