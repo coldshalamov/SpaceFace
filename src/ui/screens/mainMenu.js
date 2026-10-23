@@ -347,7 +347,11 @@ export function leftoverVersionLabel(payload) {
  */
 export function leftoverVersionDisplay(payload) {
   const version = leftoverVersionToken(payload);
-  return version ? 'SpaceFace v' + version : 'SpaceFace';
+  if (!version) return 'SpaceFace';
+  // O23/BETA identity: a prerelease version wears its tag on the player-facing line so a
+  // beta screenshot or clip can never pass for a retail build in a bug report.
+  const betaTag = /-(beta|alpha|rc)\b/i.test(version) ? ' · BETA' : '';
+  return 'SpaceFace v' + version + betaTag;
 }
 
 export function applyLeftoverVersionText(target, payload) {

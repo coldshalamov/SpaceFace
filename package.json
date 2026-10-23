@@ -1,6 +1,6 @@
 {
   "name": "spaceface",
-  "version": "0.1.0",
+  "version": "0.2.0-beta.1",
   "description": "SpaceFace — a semi-3D top-down space trading/combat/mining game (Three.js).",
   "type": "module",
   "main": "electron/main.cjs",
