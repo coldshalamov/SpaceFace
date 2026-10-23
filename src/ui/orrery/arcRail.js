@@ -331,11 +331,12 @@ export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 
   // is the fallback, so a first pass still plans against something real.
   const lineW = seatLineW(headWidthFor(headText, headSizeGuess, headWidth), seatOpts);
   const spareStops = Math.max(0, 9 - all.length);
-  let spent = 0;
-  const out = [];
-  for (const row of all) {
-    if (!row.group || row.items.length < 2 || lineW(row.group, row.items) <= runway) { out.push(row); continue; }
-    // plan the row's minimal split: greedily pack verbs onto lines that each fit the runway
+  // plan each overrunning row's minimal split: greedily pack verbs onto lines that each fit the runway
+  const plans = new Map();
+  all.forEach((row, i) => {
+    if (!row.group || row.items.length < 2) return;
+    const w = lineW(row.group, row.items);
+    if (w <= runway) return;
     const chunks = [];
     let cur = [];
     for (const li of row.items) {
@@ -344,13 +345,28 @@ export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 
       else cur = next;
     }
     if (cur.length) chunks.push(cur);
-    if (chunks.length - 1 > spareStops - spent) { out.push(row); continue; }
-    spent += chunks.length - 1;
+    plans.set(i, { chunks, over: w - runway });
+  });
+  // the spare stops go to the rows that overrun furthest first: dealt in list order, a shorter row
+  // above (SHIP) spent the last stop and the longest (REFERENCE, four verbs) was left whole off the
+  // edge at 761–820 wide, though SHIP alone fits once the tight cut seats it. A row the budget can't
+  // split stays whole, as before.
+  const split = new Set();
+  let spent = 0;
+  for (const [i, plan] of [...plans].sort((a, b) => b[1].over - a[1].over || a[0] - b[0])) {
+    if (plan.chunks.length - 1 > spareStops - spent) continue;
+    spent += plan.chunks.length - 1;
+    split.add(i);
+  }
+  const out = [];
+  all.forEach((row, i) => {
+    if (!split.has(i)) { out.push(row); return; }
     // …then deal the same number of lines evenly: the greedy pack can leave one verb alone on a
     // continuation row (STATISTICS under three siblings); the balanced cut keeps the stop count and
     // gives each line its fair share, the shortest longest-line wins and a tie keeps the greedy deal
+    const { chunks } = plans.get(i);
     for (const items of balanceChunks(row.items, chunks, (items) => lineW(row.group, items))) out.push({ group: row.group, items });
-  }
+  });
   return out.length === all.length ? all : out;
 }
 

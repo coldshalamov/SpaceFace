@@ -17,6 +17,16 @@ const BOTH = 'html body #screens > .of-pause:is(.orr-pause, .orr-pause--phone)';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
 const HALO = 'text-shadow:0 0 2px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .9), 0 0 18px rgb(4 6 9 / .75) !important;';
 
+// When pause takes the column instead of the dial. Below 761 wide always. Above it, the dial grows with
+// the window's height (pivot and radius are fractions of H) while the longest group row (SHIP or
+// REFERENCE, four verbs) keeps its width, so a narrow, tall window runs that row past the right edge
+// even after the width split and the tight cut: 761×800 put RECORDS WALL at x 767–858. Measured on the
+// bench, the dial fits while W ≥ ~780 + 0.3·(H − 700); each band below uses its narrowest width.
+// pause.js matches the same list, so the sheet and the mount always agree.
+const PAUSE_DIAL_TOO_TALL = [[761, 779, 637], [780, 799, 701], [800, 819, 767], [820, 849, 833], [850, 899, 933], [900, 960, 1100]];
+export const PAUSE_COLUMN_QUERY = ['(max-width:760px)',
+  ...PAUSE_DIAL_TOO_TALL.map(([lo, hi, h]) => `(min-width:${lo}px) and (max-width:${hi}px) and (min-height:${h}px)`)].join(', ');
+
 export const PAUSE_LAYOUT_CSS = `
 /* Photo controls are siblings of Pause: keep each label in flow beside its own range. */
 body.k-photo #screens > .sf-photo-bar {
@@ -178,11 +188,13 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
     font-size:12px !important; letter-spacing:.1em !important; margin-right:clamp(9px, 1.4vw, 14px) !important; }
 }
 
-/* ≤760 wide (e.g. 720×480) the strip has ~620px: tighten once more so it still holds one line. */
-@media (min-width:701px) and (max-width:760px) {
+/* ≤840 wide the strip has ≤744px (761×700: 665px), and at the 901px cut ←→ ITEM still wrapped under
+   ESC from 761 to ~830 wide: tighten once more so it holds one line. */
+@media (min-width:701px) and (max-width:840px) {
   ${P} > .sf-pause-foot .dp-kbd.sf-pause-key,
   ${P} > .sf-pause-foot .sf-pause-key.dp-kbd { margin-right:4px !important; padding:3px 4px 4px !important; font-size:12px !important; letter-spacing:.06em !important; }
-  ${P} > .sf-pause-foot .sf-pause-key-verb { font-size:12px !important; letter-spacing:.07em !important; margin-right:9px !important; }
+  ${P} > .sf-pause-foot .sf-pause-key-verb { font-size:12px !important; letter-spacing:.05em !important; margin-right:9px !important; }
+  ${P} > .sf-pause-foot .sf-pause-key-verb:last-child { margin-right:0 !important; }
 }
 /* narrow + short (≤560 tall): the foot's keys line and the version line close up, so the keys sit
    lower and leave a clear band under EXIT / MAIN MENU. */
@@ -234,8 +246,9 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
 
 /* narrow desktop window (≤760 wide, no touch): pause.js gives it the phone column, but the phone sheet's
    flow rules are keyed to data-sf-mobile, so the grid cut the verb list off under REFERENCE and long
-   names ran off the right edge. The same flow here: one scroll owner (the screen), rows that wrap. */
-@media (max-width:760px) {
+   names ran off the right edge. The same flow here: one scroll owner (the screen), rows that wrap.
+   A narrow window too tall for the dial (PAUSE_COLUMN_QUERY) takes the same column. */
+@media ${PAUSE_COLUMN_QUERY} {
   ${PN} { --dp-margin:clamp(20px, 6vw, 48px); display:flex !important; flex-direction:column !important;
     justify-content:flex-start !important; gap:18px !important; overflow-y:auto !important; overflow-x:hidden !important;
     min-height:0 !important; height:100% !important; max-height:100dvh !important; scroll-padding:12px 0 90px; }
