@@ -51,6 +51,17 @@ export const SWARM_CHAIN_WARN_S = 1;
 export const SWARM_CHAIN_WARN_CUE = 'swarm.chainWarn';
 /** Nothing above this pays more; the number keeps climbing, the score stops running away. */
 export const SWARM_CHAIN_SCORE_CAP = 60;
+/**
+ * Reaching the score cap opens one overdrive window for this chain. Fitted player guns
+ * read the rate; the window stays up while the chain holds and dies when the chain breaks.
+ * Heat and capacitor costs are not part of this — weapons must not refund them.
+ */
+export const SWARM_CHAIN_OVERDRIVE_RATE = 3;
+
+/** Player gun cooldown scale. 1 until this chain has opened its single overdrive window. */
+export function swarmChainFireRateScale() {
+  return swarmChain._overdrive ? SWARM_CHAIN_OVERDRIVE_RATE : 1;
+}
 
 /** Chain values worth saying out loud. Milestones only — a line per kill would be noise. */
 export const SWARM_CHAIN_MILESTONES = Object.freeze([10, 25, 50, 100, 200]);
@@ -176,6 +187,7 @@ export const swarmChain = {
       chain: this._chain,
       best: this._best,
       lastCause: this._lastCause,
+      overdrive: !!this._overdrive,
       expiresIn: this._chain > 0
         ? Math.max(0, SWARM_CHAIN_WINDOW_S - (simTimeOf(this.state) - this._lastKillAt))
         : 0,
@@ -192,6 +204,8 @@ export const swarmChain = {
     this._pendingMilestone = 0;
     this._warned = false;
     this._pinned = false;
+    this._overdrive = false;
+    this._overdriveOpened = false;
     // A new run is new bodies: last run's claims die with it. INF-034.
     if (this._deathLedger) this._deathLedger.clear();
   },
@@ -244,6 +258,7 @@ export const swarmChain = {
     // instead of calculating a second score of its own. INF-031. `at` anchors the readout's
     // depletion mark to the same sim clock the lapse check runs on — slow time and pause
     // slow and freeze the mark with the window itself. INF-032.
+    this._openOverdrive();
     this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, step, at: now, wave: run.wave });
     this._maybeTeachVariety({ cause, step, wave: run.wave });
   },
@@ -302,6 +317,7 @@ export const swarmChain = {
       this._milestone = milestone;
       if (milestone > this._pendingMilestone) this._pendingMilestone = milestone;
     }
+    this._openOverdrive();
     this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, step, at: now, wave: run.wave });
     this._maybeTeachVariety({ cause, step, wave: run.wave });
   },
@@ -313,9 +329,22 @@ export const swarmChain = {
     this._reset();
   },
 
+  _openOverdrive() {
+    if (this._overdrive || this._overdriveOpened) return;
+    if (this._chain < SWARM_CHAIN_SCORE_CAP) return;
+    this._overdrive = true;
+    this._overdriveOpened = true;
+    this._emit('swarm:overdrive', {
+      active: true,
+      chain: this._chain,
+      rate: SWARM_CHAIN_OVERDRIVE_RATE,
+    });
+  },
+
   _break(reason) {
     if (this._chain <= 0) return;
     const ended = this._chain;
+    const overdrive = !!this._overdrive;
     this._chain = 0;
     this._lastCause = null;
     this._lastStep = 0;
@@ -324,7 +353,12 @@ export const swarmChain = {
     this._pendingMilestone = 0;
     this._warned = false;
     this._pinned = false;
+    this._overdrive = false;
+    this._overdriveOpened = false;
     this._emit('swarm:chainBroken', { chain: ended, best: this._best, reason });
+    if (overdrive) {
+      this._emit('swarm:overdrive', { active: false, chain: ended, rate: 1, reason });
+    }
   },
 
   _emit(event, payload) {
