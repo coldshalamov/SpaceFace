@@ -100,7 +100,7 @@ Shots: `ui-shots/polish36/{before-tabs,after1,after2}/` plus `compare-*.png`.
 - At ≤1100×≤640 the credits numeral is 48px×scale and the hull record reads in two columns, with keys sized to their words, so LOAD ends 30px above the foot.
 - 1280 and 1920 change only in the grid areas. Phone (portrait and landscape) is untouched. The empty slot (`save-load-empty`) is clean at every size. Selectors and IDs are unchanged.
 
-Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 1920×1080, phone), iterations in `iter1`–`iter6`. Bench note: the readings' decode animation is sometimes caught mid-scramble (for example "03:4█ &3"); that's the capture timing, not the layout.
+Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 1920×1080, phone), iterations in `iter1`–`iter6`. Bench note: `ui-bench` used to catch the readings mid-decrypt ("03:4█ &3") and shoot before the hull posters decoded, so 1920 and slot posters sometimes showed empty berths. Fixed in ui-polish-101: settle now waits for shown images to decode and page text to hold still. **Open:** at ≤1100px wide the big berth ring still shows with no hull (`.k-stage__poster` is `display:none` there).
 
 ## Station berth — session notes (2026-10-12, ui-polish-10)
 
