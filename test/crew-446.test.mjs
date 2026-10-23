@@ -223,6 +223,24 @@ test('a missing or empty crew key in an old save restores the fresh bag', () => 
   assert.deepEqual(cold.crew.lostIds, []);
 });
 
+test('corrupt member entries are dropped, not adopted — restore never throws', () => {
+  const cold = makeState();
+  const sys2 = Object.create(crew);
+  sys2.init({ state: cold, bus: makeBus(), registry: { get: () => null } });
+  sys2.deserialize({
+    members: [null, 'junk', 42, { id: 'crew_bram' }, { id: 'crew_marko', status: 'injured', loyaltyJob: null }],
+    declinedIds: ['crew_yella', 7, null],
+    lostIds: [false, 'crew_paolo'],
+  });
+  assert.deepEqual(cold.crew.members.map((m) => m.id), ['crew_bram', 'crew_marko']);
+  assert.equal(cold.crew.members[0].status, 'active', 'missing status normalizes to active');
+  assert.equal(cold.crew.members[1].status, 'injured');
+  assert.ok(Number.isFinite(cold.crew.members[1].injuredAt), 'injured member carries a start time');
+  assert.equal(cold.crew.members[1].loyaltyJob, null, 'guarded by the !job check downstream');
+  assert.deepEqual(cold.crew.declinedIds, ['crew_yella']);
+  assert.deepEqual(cold.crew.lostIds, ['crew_paolo']);
+});
+
 test('New Game clears the roster — no inherited crew, no negative stat drift', () => {
   const state = makeState();
   const { bus } = wire(state);

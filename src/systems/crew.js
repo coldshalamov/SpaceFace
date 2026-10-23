@@ -106,13 +106,33 @@ export const crew = {
   deserialize(data) {
     if (!data || typeof data !== 'object') return;
     const c = ensureSlice(this.state);
-    c.members = Array.isArray(data.members) ? data.members : [];
-    c.declinedIds = Array.isArray(data.declinedIds) ? data.declinedIds : [];
-    c.lostIds = Array.isArray(data.lostIds) ? data.lostIds : [];
+    // Entries are hostile until shaped: a corrupt save must not abort the restore
+    // with a TypeError on m.status, and downstream readers assume the hired shape.
+    c.members = (Array.isArray(data.members) ? data.members : [])
+      .filter((m) => m && typeof m === 'object' && typeof m.id === 'string')
+      .map((m) => ({
+        id: m.id,
+        name: typeof m.name === 'string' ? m.name : m.id,
+        role: typeof m.role === 'string' ? m.role : '',
+        status: m.status === 'injured' || m.status === 'lost' ? m.status : 'active',
+        hiredAt: Number.isFinite(m.hiredAt) ? m.hiredAt : 0,
+        loyalty: Number.isFinite(m.loyalty) ? m.loyalty : 0,
+        injuredAt: Number.isFinite(m.injuredAt) ? m.injuredAt : null,
+        loyaltyJob: m.loyaltyJob && typeof m.loyaltyJob === 'object'
+          ? {
+              kind: typeof m.loyaltyJob.kind === 'string' ? m.loyaltyJob.kind : '',
+              label: typeof m.loyaltyJob.label === 'string' ? m.loyaltyJob.label : '',
+              progress: Number.isFinite(m.loyaltyJob.progress) ? m.loyaltyJob.progress : 0,
+              goal: Number.isFinite(m.loyaltyJob.goal) ? m.loyaltyJob.goal : 1,
+              done: m.loyaltyJob.done === true,
+            }
+          : null,
+      }));
+    c.declinedIds = (Array.isArray(data.declinedIds) ? data.declinedIds : []).filter((id) => typeof id === 'string');
+    c.lostIds = (Array.isArray(data.lostIds) ? data.lostIds : []).filter((id) => typeof id === 'string');
     c.banterAt = Number.isFinite(data.banterAt) ? data.banterAt : 0;
     c.banterPick = Number.isFinite(data.banterPick) ? data.banterPick : 0;
     for (const m of c.members) {
-      m.status = m.status === 'injured' || m.status === 'lost' ? m.status : 'active';
       // Same guard init runs: an injured member always carries a start time, or the
       // field-recovery check in update() can never fire.
       if (m.status === 'injured' && !Number.isFinite(m.injuredAt)) {

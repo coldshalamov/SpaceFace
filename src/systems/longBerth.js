@@ -83,10 +83,19 @@ export const longBerth = {
     const lb = ensureSlice(this.state);
     lb.claimed = data.claimed === true;
     lb.stage = Number.isFinite(data.stage) ? data.stage : 0;
-    lb.trophies = Array.isArray(data.trophies) ? data.trophies : [];
-    lb.crew = Array.isArray(data.crew) ? data.crew : [];
-    lb.towedIds = Array.isArray(data.towedIds) ? data.towedIds : [];
-    lb.tugWorldRecordId = data.tugWorldRecordId || null;
+    // Entries are hostile until shaped: _yardTrophies dereferences t.worldRecordId
+    // every scan, so a corrupt save must not adopt junk that throws per tick.
+    lb.trophies = (Array.isArray(data.trophies) ? data.trophies : [])
+      .filter((t) => t && typeof t === 'object' && typeof t.worldRecordId === 'string')
+      .map((t) => ({
+        worldRecordId: t.worldRecordId,
+        label: typeof t.label === 'string' ? t.label : t.worldRecordId,
+        type: typeof t.type === 'string' ? t.type : 'wreck',
+        at: Number.isFinite(t.at) ? t.at : 0,
+      }));
+    lb.crew = (Array.isArray(data.crew) ? data.crew : []).filter((id) => typeof id === 'string');
+    lb.towedIds = (Array.isArray(data.towedIds) ? data.towedIds : []).filter((id) => typeof id === 'string');
+    lb.tugWorldRecordId = typeof data.tugWorldRecordId === 'string' ? data.tugWorldRecordId : null;
     lb.markerEntityId = null;
   },
 

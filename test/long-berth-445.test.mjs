@@ -282,6 +282,21 @@ test('a missing longBerth key in an old save restores the fresh bag', () => {
   assert.deepEqual(cold.longBerth.trophies, []);
 });
 
+test('corrupt trophy/id entries are dropped, not adopted — the yard scan stays safe', () => {
+  const cold = makeState();
+  const { sys } = wire(cold);
+  sys.deserialize({
+    claimed: true, stage: 2,
+    trophies: [null, 'junk', { label: 'no id' }, { worldRecordId: 'wr:hulk:9', label: 'Hulk', type: 'wreck', at: 5 }],
+    crew: ['crew_bram', 9], towedIds: [null, 'wr:tug:1'], tugWorldRecordId: 42,
+  });
+  assert.deepEqual(cold.longBerth.trophies.map((t) => t.worldRecordId), ['wr:hulk:9']);
+  assert.deepEqual(cold.longBerth.crew, ['crew_bram']);
+  assert.deepEqual(cold.longBerth.towedIds, ['wr:tug:1']);
+  assert.equal(cold.longBerth.tugWorldRecordId, null);
+  scan(sys, cold); // the yard scan iterates the adopted trophies without throwing
+});
+
 test('docking at the berth paints the home card: hull, crew, and the trophy yard', () => {
   const state = makeState();
   const { bus, sys } = wire(state);
