@@ -55,6 +55,14 @@ const CIRCUIT_NODE_SPOTS = Object.freeze([
   Object.freeze({ x: 40, z: 88 }),
 ]);
 
+// A core that fell outside the picture is brought forward onto one of these spots.
+const CIRCUIT_CORE_SPOTS = Object.freeze([
+  Object.freeze({ x: -46, z: 64 }),
+  Object.freeze({ x: -16, z: 92 }),
+  Object.freeze({ x: 18, z: 90 }),
+  Object.freeze({ x: 48, z: 66 }),
+]);
+
 /**
  * The opening lesson's pack hold is a ceiling, not a sentence. The tick the board has nothing
  * left to fight — the lone hull dead or disabled — the held schedule advances to this far out,
@@ -552,9 +560,34 @@ export const survivalWave = {
     if (entities && typeof entities.delete === 'function') entities.delete(id);
   },
 
+  /**
+   * Keep a core that already fell in front of the ship. Anything outside that picture
+   * is set down on a forward spot so the token can be seen and flown to.
+   */
+  _circuitCorePos(pos) {
+    const player = this._playerPos();
+    const radius = 6;
+    if (player && pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+      && Number.isFinite(player.x) && Number.isFinite(player.z)) {
+      const dx = pos.x - player.x;
+      const dz = pos.z - player.z;
+      const dist = Math.hypot(dx, dz);
+      if (dz > 16 && Math.abs(dx) <= 80 && dist > 12 && dist + radius <= CIRCUIT_VIEW_AHEAD) {
+        return { x: pos.x, z: pos.z };
+      }
+    }
+    const index = this._circuitCores ? this._circuitCores.length : 0;
+    const spot = CIRCUIT_CORE_SPOTS[index % CIRCUIT_CORE_SPOTS.length];
+    const origin = player && Number.isFinite(player.x) && Number.isFinite(player.z)
+      ? player
+      : (pos || { x: 0, z: 0 });
+    return { x: origin.x + spot.x, z: origin.z + spot.z };
+  },
+
   /** A core is a marker in the fight, not a credit chip and not an invisible coordinate. */
   _dropCircuitCore(pos) {
-    const core = { x: pos.x, z: pos.z, taken: false, markId: null };
+    const placed = this._circuitCorePos(pos);
+    const core = { x: placed.x, z: placed.z, taken: false, markId: null };
     if (!this._circuitCores) this._circuitCores = [];
     this._circuitCores.push(core);
     this._ensureCircuitCoreMark(core);

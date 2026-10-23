@@ -13,7 +13,7 @@ import { survivalArena } from '../src/systems/survivalArena.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
-import { survivalAnnounce } from '../src/systems/survivalAnnounce.js';
+import { MAX_LINES_PER_WAVE, survivalAnnounce } from '../src/systems/survivalAnnounce.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import {
   CIRCUIT_BOSS_SEQUENCE,
@@ -475,6 +475,10 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
         assert.equal(mark.physicsBody, false, 'a core is not a solid body');
         assert.equal(mark.collides, false);
         assert.notEqual(mark.data.wallet, 'run', 'a core is not a credit chip');
+        const dist = Math.hypot(core.x - h.player.pos.x, core.z - h.player.pos.z);
+        assert.ok(dist > 12, 'a core is not sitting on the ship');
+        assert.ok(core.z > h.player.pos.z, 'a core is ahead of the ship');
+        assert.ok(dist + 6 <= CIRCUIT_VIEW_AHEAD + 0.01, 'a core stays inside the swarm picture');
       }
       for (const core of planted) {
         h.player.pos.x = core.x;
@@ -536,6 +540,7 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.notEqual(commander.data.swarmChampion, true, 'the commander is not a second stage boss');
       survivalAnnounce.init(h.ctx);
       survivalAnnounce._wave = h.state.run.wave;
+      survivalAnnounce._linesThisWave = MAX_LINES_PER_WAVE;
       clearCohortRound(h);
       const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
       assert.equal(receipt.completionKind, 'commander');
