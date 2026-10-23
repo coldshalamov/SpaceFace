@@ -1,0 +1,14 @@
+<!-- LIFETIME: DURABLE -->
+# Rhea shift radio recap, 2026-10-23 06:36 UTC
+
+Owner: dot's existing broadcast investigator implements new src/data/rheaShiftBroadcast.js, a narrow import/line-selection/validity seam in src/systems/stationBroadcast.js, and new test/rhea-shift-broadcast.test.mjs. Root owns package registration, evidence report, integration/recovery/publication. This extends existing radio, not a new controller.
+
+Missing behavior: rescued-worker return already has a one-time toast/event and personal hail. Ordinary Rhea station visits have no work-backed recap after those are missed, or remembered local loss after a returned worker dies. Do not describe all acknowledgement as missing. Sker's distant paid-hauler banter was inspected but is not established as a broken economy and is not being stripped.
+
+Pure read-only projection: station_rhea_cinder/sector_rhea_cinder, the captured rhea_miner_yard_face→rhea_miner_slag_face workplace, explicit finite non-null event times and authoritative outcome. A return line requires the same currently living world-record/person-stamped hull and a non-corrupt real NPC job linked to the same entity/world record and captured route. Loss uses genuine returned/lost outcome evidence, not an absent actor guess or unoccurred nullable timestamp. No invented name, fresh 'today' claim, player blame, reward, saved flag or actor.
+
+Use ordinary recurring ambient cadence, not a second one-shot notification system. A deterministic subset of existing broadcast buckets may offer recap while generic chatter remains on other beats. Existing ambient rate/combat/onboarding/voice rules stay authoritative. Recheck projected fact identity at queued delivery; no new lifecycle listeners, cancellation registry, persistent clock or dedupe fields.
+
+PR480 owns the worker clock, Ilex selector and restore lifecycle in stationBroadcast, published blobbf993cae8953af1957d1375347dcbb2528dc4524. Do not duplicate/edit those hunks. Place recap in the later generic line-selection/voice-payload seam rather than competing with the Ilex insertion. Verify composition with existing PR480 source separately and disclose the still-unlanded worker-clock prerequisite; no full ordinary-worker acceptance claim from a headless selector. Current public owner6e414e3e2a9bac50c606b6c0765cb27a5a71cdec is the source baseline.
+
+Tests: actual Rhea placement/job/rescue/Save owners where runnable; current return, pending/closed/malformed/stale/recycled actors, changed job/route, final loss, save/revisit projection, cadence and generic fallback, queued validity, no state/RNG/economy mutation. Preserve Latch Nine and Ilex priority/behavior, original radio flavor and all shared traffic/Save/worker projections. Exact source overlaps are coordinated, not declared absent. All game/world/sector goals remain open until integrated ordinary experience is demonstrated and accepted.
