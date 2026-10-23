@@ -353,6 +353,39 @@ export const MIGRATIONS = [
       }
     },
   },
+  {
+    from: 18,
+    to: 19,
+    // §34 rows 520–523/549: seed the world-pressure bag for pre-v19 saves. The
+    // system's deserialize() normalizes shape/caps on adopt; the migration only
+    // guarantees the key exists so restore never depends on an absent-owner
+    // default path. Tide starts flat (no legacy facts to convert), no audits are
+    // filed retroactively, and the Slow Gray index starts at its authored value —
+    // a mid-run save resumes the clock from its own simTime, never re-falls.
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      // Resume the Book clock at the save's own simTime: a mid-run pilot's air
+      // index has already fallen the Books that elapsed, and any audit whose Book
+      // has already arrived announces on the next day step — never pre-closed.
+      const simTime = Number(data.entities && data.entities.simTime) || 0;
+      const book = Math.max(0, Math.min(7, Math.floor(simTime / 3000))); // 5×600 s days per Book
+      const grayIndex = Math.max(9.0, 64.0 - 3.0 * book);
+      if (!data.worldPressure || typeof data.worldPressure !== 'object' || Array.isArray(data.worldPressure)) {
+        data.worldPressure = {
+          schemaVersion: 1,
+          lastDay: -1,
+          lastBook: book,
+          tide: {},
+          clearBuffer: {},
+          gates: {},
+          gateEvents: [],
+          tideNotices: [],
+          slowGray: { index: grayIndex, lastBookIndex: book },
+          colossusRemains: [],
+        };
+      }
+    },
+  },
 ];
 
 /**
