@@ -49,6 +49,8 @@ export const cloak = {
     this.bus = ctx.bus;
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
+      // A hull breach is a hole in the shroud. Shield-only grazes do not tear it.
+      this._unsubs.push(this.bus.on('combat:damage', (p) => this._onHullStrike(p)));
       if (CLOAK_BREAK_ON_FIRE) {
         this._unsubs.push(this.bus.on('combat:fire', (p) => {
           if (!p || p.ownerId == null) return;
@@ -196,6 +198,24 @@ export const cloak = {
     }
   },
 
+  /** Hull damage opens the shroud. The player's drop is a sentence; an NPC's is the same
+   *  active=false the fire rule already uses, so the ship can be seen again. */
+  _onHullStrike(payload) {
+    const hit = payload || {};
+    if (!(Number(hit.hullDamage) > 0) || hit.targetId == null) return;
+    const state = this.state;
+    if (!state) return;
+    if (hit.targetId === state.playerId) {
+      this._drop('torn');
+      return;
+    }
+    const entity = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(hit.targetId)
+      : null;
+    const rt = entity && cloakRuntimeFor(state, entity);
+    if (rt && rt.active === true) rt.active = false;
+  },
+
   _drop(reason) {
     const state = this.state;
     const runtime = state ? ensureCloak(state) : null;
@@ -212,6 +232,8 @@ export const cloak = {
         this.bus.emit('toast', { text: 'Cloak depleted', kind: 'warn', ttl: 1.6 });
       } else if (reason === 'fired') {
         this.bus.emit('toast', { text: 'Cloak dropped — you fired', kind: 'warn', ttl: 1.6 });
+      } else if (reason === 'torn') {
+        this.bus.emit('toast', { text: 'Hull breach — the shroud tore', kind: 'warn', ttl: 1.6 });
       }
     }
   },
