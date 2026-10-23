@@ -108,6 +108,11 @@ ${S} .sxb-vitals { display:flex !important; flex-wrap:nowrap !important; justify
 ${S} .sxb-vital { display:flex !important; flex-direction:column; align-items:center; position:relative; min-width:132px !important; width:auto !important; flex:none !important;
   margin:0 !important; padding:0 !important; gap:0 !important; background:none !important; border:0 !important; box-shadow:none !important; }
 ${S} .sxb-vital::before, ${S} .sxb-vital::after { display:none !important; }
+/* The authored narrow-frame wrap (station.css ≤1280px, two gauges per row inside the crown
+   column) is defeated by this sheet's !important nowrap — 4×132px readings then overflow the
+   326px column leftward and print over the news tape. Restoring wrap at the same breakpoint
+   keeps the one-row strip at real widths and stacks it 2×2 when the frame narrows. */
+@media (max-width:1280px) { ${S} .sxb-vitals { flex-wrap:wrap !important; } }
 @media (min-width:900px) { ${S} .sxb-berth > .sxb-handoff { max-width:max(320px, calc(100vw - 816px)) !important; }
   /* the next step's title is one line (OPEN YOUR HOLD, not OPEN YOUR / HOLD); its sentence wraps instead */
   ${S} .sxb-next__t { white-space:nowrap !important; flex:none !important; } }

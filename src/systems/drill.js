@@ -444,7 +444,7 @@ function settleBlastYield(host, d, rockEnt, col, row, ore, yieldU) {
   return added;
 }
 
-function chargeRefusalText(reason, cost = CHARGE_COST_CR) {
+export function chargeRefusalText(reason, cost = CHARGE_COST_CR) {
   switch (reason) {
     case 'armed': return 'A charge is already cooking — stand clear.';
     case 'cooldown': return 'The boom arm is still retracting.';
