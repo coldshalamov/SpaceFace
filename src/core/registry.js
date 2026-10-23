@@ -61,6 +61,7 @@ import { shipjack } from '../systems/shipjack.js';
 import { custodyConsequences } from '../systems/custodyConsequences.js';
 import { aceMemory } from '../systems/aceMemory.js';
 import { deedRecord } from '../systems/deedRecord.js';
+import { historyWear } from '../systems/historyWear.js';
 import { mail } from '../systems/mail.js';
 import { worldClock } from '../systems/worldClock.js';
 import { worldPressure } from '../systems/worldPressure.js';
@@ -696,6 +697,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['crafting', crafting],
     ['heat', heat],
     ['deedRecord', deedRecord],   // THE WORLD REMEMBERS: listener-only ledger of player deeds under state.story.record
+    ['historyWear', historyWear], // PULSE-HISTORY: deeds → trinkets/decal/graffiti; loss ledger → memorial arrays
     ['traffic', traffic],
     ['drill', drill],
     ['claims', claims],

@@ -70,6 +70,14 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // init order matters (bus subscriptions); all are deliberately absent from
   // PRODUCTION_UPDATE_ORDER.
   'impoundPayPrompt', 'warrantOfferPrompt', 'moralTrapPrompt', 'wreckChoicePrompt', 'stuckTowPrompt',
+  // deedRecord: the world-remembers ledger was a lookup-only entry — it materialized but never
+  // initialized, so its receipt listeners never attached and the deed record stayed empty in
+  // production (found while wiring PULSE-HISTORY). Event-only: no update, no clock.
+  'deedRecord',
+  // historyWear (PULSE-HISTORY, row 440): event-only like the prompts — it listens on
+  // lossLedger:recorded and dock:docked, projects the deed ledger into trinket/decal intents and
+  // memorial arrays, and is deliberately absent from PRODUCTION_UPDATE_ORDER.
+  'historyWear',
   'cargoConscience', 'securityReadoutSystem', 'priceForecastSystem', 'contractClausesSystem',
   'moralTrapSystem',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
