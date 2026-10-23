@@ -76,6 +76,34 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${GO} { --sv:1.1; }
 }
+/* stacked (<=1100): the screen scrolls, so the rays and the scrim hold to the window instead of
+   stretching the scroll sideways and past the tape into bare backdrop */
+@media (max-width:1100px) {
+  ${GO} { overflow-x:hidden !important; }
+  ${GO} > .orr-go-rays { position:fixed; }
+  ${GO}.k-screen::before { position:fixed; }
+}
+/* phone: a headline that fits the width, the lamp key across the column, and the career ring as a
+   small dial over a two-up list of its figures (the rim stations need ~750px) */
+@media (max-width:640px) {
+  ${GO} { --sv:1; --r:76px; padding:28px 22px 24px !important; row-gap:22px !important; }
+  ${GO} > .k-title .k-t-title { font-size:clamp(28px, 9vw, 42px) !important; line-height:.98 !important; max-width:none; overflow-wrap:break-word; }
+  ${GO} .sf-go-grid { gap:14px 28px !important; }
+  ${GO} .sf-go-foot, ${GO} .sf-go-foot > .k-words { width:100%; }
+  ${GO} .sf-go-foot > .k-words { flex-wrap:wrap !important; column-gap:28px !important; row-gap:4px !important; }
+  ${GO} .sf-go-foot > .k-words > li:first-child { flex:1 0 100%; min-width:0; max-width:100%; }
+  ${GO} .sf-go-foot .k-word.orr-lampkey .orr-lampkey__word { white-space:normal !important; text-align:center; min-width:0; }
+  ${GO} .sf-go-foot .k-word.orr-lampkey { box-sizing:border-box; width:100% !important; justify-content:center; padding:0 18px !important; letter-spacing:.14em !important; }
+  ${GO} > .sf-go-recap { justify-self:stretch; width:100%; height:auto; padding-top:calc(34px + var(--r) * 2.4 + 22px) !important; }
+  ${GO} > .sf-go-recap::before { top:calc(34px + var(--r) * 1.2); width:calc(var(--r) * 3.4); height:calc(var(--r) * 3.4); }
+  ${GO} .sf-go-ring, ${GO} .sf-go-st--hub, ${GO} .sf-go-hubscrub { top:calc(34px + var(--r) * 1.2); }
+  ${GO} .sf-go-recap__rows { position:static !important; display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px 20px !important; }
+  ${GO} .sf-go-st:not(.sf-go-st--hub), ${GO} .sf-go-st[data-side] { position:static; transform:none; text-align:left; align-items:flex-start; white-space:normal; }
+  ${GO} .sf-go-st--hub { padding:10px 14px !important; }
+  ${GO} .sf-go-st--hub .sf-go-recap__v, ${GO} .sf-go-hubscrub__t { font-size:30px !important; }
+  ${GO} > .sf-go-tape { height:160px; }
+  ${GO} > .sf-go-tape::before { inset:-14px -22px -8px; }
+}
 `;
 
 export function injectGameOverLayouts(doc = globalThis.document) {
