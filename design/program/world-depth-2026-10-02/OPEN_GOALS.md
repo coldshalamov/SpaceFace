@@ -1,5 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
+## Proteus return delivery and Helios hosted evidence: 2026-10-23 22:12 UTC
+
+Draft [PR565](https://github.com/coldshalamov/SpaceFace/pull/565) publishes the five-path Proteus return increment at `5dcc9970e82e7a0ed609d111d1a9de6d75226040`, with sole public parent `3095a835eb3dbda178d359bbb0541e3ee6124f4c`. The verified remote head is open, draft and unmerged. Existing eligible Pyrrha now recognizes a genuinely investigated Below-Deck Cache and offers its current system-map position. Hidden coordinates remain hidden before investigation, and clicks revalidate stale state. Navigation, rewards, missions, scans, eligibility and filing are unchanged. Unsupported Den-first payment/secrecy prose is corrected; cartography still owns payout. Shipping source is Proteus-only, PR532 is unchanged, and composed Nyx compatibility was checked separately.
+
+Independent bounded tests passed 22/22 against 52 freshly verified public dependency hashes, exercising actual map/fence modules and the extracted buildReply body. Persistence evidence is a structural discovery roundtrip plus inspection of fresh public world methods, not actual world serialization, full Continue, browser interaction or native flight. Source and tests are durably preserved. All five remote files were byte-verified against the frozen candidates and their Git blob hashes. The publication owner is monitoring exact-head check run 40031923717 and mobile-readiness run 40031923482; publication is not final acceptance.
+
+Helios PR563 now has a hosted focused 12/12 pass, including the actual director serializer subset. Static shard 2 records command exit 0 in 937 ms. This closes the earlier local serializer-bootstrap evidence gap, not full player-facing Continue. Its overall workflow was still in progress at the 22:11 UTC read, with other failures already observed; the native followed-route proof remains local and mixed-dependency.
+
+Next creative work is read-only grounding of Proteus's actual Den margin, placed assets and recurring activity under the existing composition owner. No source-write allocation or new fictional payment/secrecy system is implied. All twelve goals remain OPEN. Archive PR562 preserves the model bank; the runtime union remains backed up but unpublished with only two census objects missing. The parts-library object remains verified, no authentication or user-action requirement is established, and the browser approval hold remains unchanged.
+
 ## Helios procession delivery: 2026-10-23 21:51 UTC
 
 Draft [PR563](https://github.com/coldshalamov/SpaceFace/pull/563) now publishes the three-path Helios procession increment at `013bc80e3d80e591409e4b08a69ccf6a3ec088d5`, with sole public parent `3095a835eb3dbda178d359bbb0541e3ee6124f4c`. The remote head is open, draft and unmerged; all three published paths were byte-verified by the publisher. This supersedes the earlier unpublished Helios status.
