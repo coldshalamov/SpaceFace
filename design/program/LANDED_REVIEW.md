@@ -1,4 +1,6 @@
 
+| R-6e5a2f4 | 6e5a2f46b6 | board 384: precursor machines deploy scanner arm / tool spindle while working | Re-check the deploy keys: interrogating is written only while the player is inside interrogateR (set in the auditor tick, cleared when the player leaves); prism uses sweepT vs scanPeriodS*0.55; confirm no tool deploys while a machine is dead or off-sector | OPEN |
+
 | R-PENDING415 | PENDING | board 415 script tiers: SCRIPT_TIERS.md + two retired zero-ref aliases | Re-check the reference-scan method (corpus = .github/docs/scripts/design/tools/test + npm-run chains): confirm no retired alias was referenced by an unscanned caller, and the tier doc's counts still match package.json | OPEN |
 
 | R-c9dcf24 | c9dcf240c3 | board 414 toolchain: three 0.186.1, electron 43.8.0, electron-builder 26.17.0 (all >=7-day pins); rapier3d-compat held at 0.19.3 because 0.21.0 moved the authoritative hash | Re-check: the post-bump live digest equals the pre-bump live digest (59148655... under the standing D241 drift, not the stale expected envelope), and no unrelated dep crept into the lockfile | OPEN |
