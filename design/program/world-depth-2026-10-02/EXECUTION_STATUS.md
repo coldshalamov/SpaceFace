@@ -1,4 +1,8 @@
 <!-- LIFETIME: DURABLE -->
+## Current authoritative state pointer — 23 October 2026, 11:41 UTC
+
+For current execution state, read [CURRENT_CHECKPOINT_2026-10-22.md](CURRENT_CHECKPOINT_2026-10-22.md), [OPEN_GOALS.md](OPEN_GOALS.md), and [SECTOR_EXPERIENCE_REGISTER_2026-10-21.md](SECTOR_EXPERIENCE_REGISTER_2026-10-21.md). All eleven outcomes, including SF-MOTIVES, remain OPEN. The dated checkpoint below begins 22 October at 08:38 UTC and is retained as historical evidence only; its named next operations, counts, and current-state claims are superseded by the linked latest checkpoint. Preserve its acceptance/reviewer fields and the original authorized scope: [IMPLEMENTATION](IMPLEMENTATION.md), [original twenty-concept map](TWENTY_CONCEPT_MAP.json), and [real build map](../../../build_map.md).
+
 # Expansion execution: current result and next step
 
 ## Current recovery and integration checkpoint — 22 October 2026, 08:38 UTC
