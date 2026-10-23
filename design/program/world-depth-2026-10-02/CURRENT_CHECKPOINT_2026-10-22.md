@@ -1,5 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 
+## Latest project-direction and work-state addendum: 2026-10-23 13:48 UTC
+
+All twelve goals remain OPEN. This addendum supersedes active-work routing only; preserve historical evidence, scope, and acceptance boundaries.
+
+- New primary direction SF-WORLD-DIRECTION: author a longform expansion grounded in actual lore, sectors, placed assets, character/faction motivations, and connected playable experiences. Use existing pieces first, script/place them, and identify missing set pieces or large changes through the build map for local build work or project builds. No longform experience or new canon is claimed as delivered yet.
+- Next: read the actual canon, sector and asset maps; develop a coherent experience and prioritize concrete placement/script/build-map increments. The project owner is directing this world-experience work.
+- The prior mechanical Rope/Blind Welder work is PARKED, preserved, and neither finished nor accepted. No new publication for that work is underway. This priority change does not cancel schedules or alter existing holds.
+- [Draft PR547](https://github.com/coldshalamov/SpaceFace/pull/547) remains open/draft at head `bca906c5d7f65a423e2523d407fd7007dd3a92db`. Its production-world Save/Continue test is 1/1 hosted at the exact head; the bounded witness records one real Cut refinery recreation, 300 held ticks, progress 0.6, and the same worker/cargo/token restored with 25 seconds remaining. This is not a traffic-populated full-sector journey or post-Continue physical-flight/browser/visual acceptance.
+- Exact-head run [39959037315 / #5941](https://github.com/coldshalamov/SpaceFace/actions/runs/39959037315) is terminal FAILURE. Its three focused gates have 80 hosted passes: Cut 51, cargo helper 28, world restore 1. Broad static/sim/feel groups failed; browser shard 3 was cancelled and produced no report totals. No cause attribution or overall-green claim.
+- All prior eleven outcomes stay OPEN. SF-MOTIVES remains a grounding lens for the new direction; its bounded deliveries do not complete the world-development goal.
+
 ## Latest verified delivery and active-work addendum: 2026-10-23 13:13 UTC
 
 All eleven goals remain OPEN. This addendum supersedes earlier current-status statements only; preserve historical evidence, scope, and acceptance boundaries.

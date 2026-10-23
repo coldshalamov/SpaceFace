@@ -1,5 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
+## Latest project-direction and open-goal addendum: 2026-10-23 13:48 UTC
+
+All twelve goals remain OPEN. This addendum adds one stable goal marker and supersedes current-priority routing only; it does not close or replace any existing outcome.
+
+- New highest priority: SF-WORLD-DIRECTION, a longform authored game-world expansion grounded in actual lore, sectors, placed assets, motivations and connected playable experiences. Existing pieces should be composed and scripted first; missing set pieces or major changes should be captured in the build map for local build work or project builds.
+- Next: inspect actual canon, sector and asset maps; develop a coherent experience; identify concrete placements/scripts and justified build-map needs. No completed expansion or new canon is claimed yet.
+- Rope/Blind Welder mechanical work is PARKED and preserved, not finished or accepted; no new publication for it. Existing schedules and holds are unchanged.
+- Draft PR547 remains open at head `bca906c5d7f65a423e2523d407fd7007dd3a92db`. Exact-head #5941 failed overall, although its focused Cut/cargo/world-restore gates passed 51/28/1. Broad static/sim/feel groups failed; browser shard 3 was cancelled without report totals. This bounded evidence does not close any of the twelve outcomes.
+- See the current checkpoint for detailed evidence and limits. Continue to keep SF-MOTIVES OPEN as a grounding lens within the broader world direction.
+
 ## Latest verified delivery and open-goal addendum: 2026-10-23 13:13 UTC
 
 All eleven goals remain OPEN. This addendum supersedes current-status prose only; it does not close any outcome or broaden acceptance.
@@ -132,10 +142,18 @@ PR487 main run https://github.com/coldshalamov/SpaceFace/actions/runs/3970960863
 
 ## SF-MOTIVES
 - Outcome: character and faction wants, fears, obligations, beliefs and conflicts actively drive coherent playable development grounded in established lore and actual behavior.
-- State: OPEN. The canon/inference/proposal study and Hesper/Cut receiving voices remain in draft PR532/531; Cut intake courtesy is open/draft PR547. No gameplay or sector acceptance is claimed.
-- Owner and next action: dot. The bounded registered-world restore regression is delivered in PR547; runtime mutation remains released and no world-record/Save source edit is allocated. Follow exact-head CI, then keep full ordinary flight/sector and visual acceptance open. Existing `berthHold` is the sole pause authority; scope stays eligible ore-carrying Cut haulers, not a fixed Ossa actor.
-- Evidence: hosted on prior PR547 head, Cut 51/51 and cargo helper 28/28; five existing berth regressions are local. The newly registered-world restore test passes 1/1 locally: real refinery recreation exactly once, 300 held ticks, progress 0.6, same worker/cargo/token after Save/Continue, with 25 seconds remaining and one clearance. This bounded proof is not a full-sector journey, post-Continue physical flight, browser/live-camera, or PBR acceptance. Broader motivation-driven development remains open.
+- State: OPEN. The canon/inference/proposal study and Hesper/Cut receiving voices remain in draft PR532/531; Cut intake courtesy is open/draft PR547. No gameplay or sector acceptance is claimed. Grounded motivations remain a core lens within the new SF-WORLD-DIRECTION.
+- Owner and next action: dot. SF-WORLD-DIRECTION now carries the primary creative priority. The bounded PR547 restore regression remains delivered evidence; Cut/Rope/Blind Welder source work is parked, with no new publication or Save/world-record edit. Existing `berthHold` remains sole pause authority; ordinary flight/sector and visual acceptance remain open.
+- Evidence: PR547 exact-head hosted focused gates pass Cut 51/51, cargo helper 28/28 and registered-world restore 1/1; five existing berth regressions are local. The bounded world test recreates one real refinery, holds for 300 ticks at progress 0.6, and restores the same worker/cargo/token with 25 seconds left and one clearance. Overall CI failed; this is not a full-sector journey, post-Continue physical flight, browser/live-camera, or PBR acceptance.
 - Awaiting user: none.
+## SF-WORLD-DIRECTION
+- Outcome: author a longform game-world expansion grounded in actual lore, sectors, placed assets, character/faction motivations, and connected playable experiences; use existing pieces first, then script/place them and identify genuinely missing set pieces or large changes through the build map.
+- State: OPEN. This is the current primary project direction, not a completed expansion or new canon claim.
+- Owner: dot.
+- Next: read the actual canon, sector and asset maps; shape a coherent longform experience; prioritize concrete placement/script increments and record justified large changes or missing set pieces in the build map for local build work or project builds.
+- Evidence: the user direction is recorded in the latest checkpoint. No new source, asset, or build-map delivery is claimed yet.
+- Awaiting user: none.
+
 ## SF-GAME
 - Outcome: finish, review, polish and obtain acceptance for the authorized game and original twenty concepts.
 - State: OPEN. Current 08:38 update: Reconciled light-cut/native residency and mobile candidates are separately tested and recoverable, not combined or accepted. Exact e7 main CI is terminal failed. Historical evidence:  Thimble finite recorder/through-or-outside routes and reviewed camera are locally sealed; Mile and connected Ilex work are retained. Physical salvage and Pallas escorted passage have independent public draft delivery. Charon approach discovery is now source-delivered in PR486; the independent stale-preload repair is source-delivered in PR487. Full ordinary-route, device, performance and experience acceptance remain incomplete. Latest reconciliation: Native-world reconciliation is source-delivered in https://github.com/coldshalamov/SpaceFace/pull/488 at 129aa830917b738dd7d5374b28e3710b159c3da7, tree efbeec6f31efd56febabf6685da1c58bc5dc7705, with sole public parent e61a83e6ff93fc8f598998db1df6d549952f698d. Focused tests pass 53/53, including Ilex 13/13; earlier candidate limits above are historical. Physical Grave Drift work and ordinary-play/visual acceptance remain open.

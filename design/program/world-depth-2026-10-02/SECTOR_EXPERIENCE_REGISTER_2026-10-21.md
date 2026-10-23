@@ -1,5 +1,13 @@
 <!-- LIFETIME: DURABLE -->
 
+## Latest project-direction addendum: 2026-10-23 13:48 UTC
+
+All twelve project goals remain OPEN. The primary creative direction is now SF-WORLD-DIRECTION: develop a longform authored game-world expansion grounded in actual lore, sectors, asset placement, character/faction motivations and connected playable experiences.
+
+Use existing pieces first, compose and script them into coherent play, then record genuinely missing set pieces or substantial changes in the build map for local build work or project builds. Next: read the actual canon, sector and asset maps, and turn them into a coherent experience plan with concrete placement/script priorities. No new source, asset or build-map delivery is claimed yet.
+
+Earlier mechanical Rope/Blind Welder work is PARKED, preserved, and neither finished nor accepted. Schedules and existing holds are unchanged. The bounded Cut registered-world Save/Continue result remains evidence for one behavior, not full-sector or story acceptance; its exact-head overall CI failed, with details in the current checkpoint. Keep SF-MOTIVES OPEN and use grounded motivations as part of the longform direction.
+
 ## Latest sector-experience evidence addendum: 2026-10-23 13:13 UTC
 
 All eleven goals remain OPEN. This addendum supersedes older current-status prose only; it does not convert a bounded fixture into ordinary sector or game acceptance.
