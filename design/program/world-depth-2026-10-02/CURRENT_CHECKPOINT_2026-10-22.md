@@ -1,5 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 
+## Latest verified delivery and active-work addendum: 2026-10-23 12:42 UTC
+
+All eleven goals remain OPEN. This addendum supersedes earlier current-status statements only; preserve historical evidence, scope, and acceptance boundaries.
+
+- [Draft PR547](https://github.com/coldshalamov/SpaceFace/pull/547) delivers bounded Cut intake courtesy at head `836b6bb5cc53aaf0f30c125af488a7a9ec06fdae`, sole public-master parent `5df6709c2ad275440229e4944450f05c18571ece`, tree `26bb12e28690067dc46663e3220a11d1e5e32499`, and 8 exact paths. Runtime mutation is released after publication; PR remains open/draft/unmerged. Report: [CUT_INTAKE_COURTESY_2026-10-23.md](CUT_INTAKE_COURTESY_2026-10-23.md).
+- Verification totals 84 distinct focused checks, not 84 new: Cut suite 51/51, five existing berth regressions, shared cargo helper 28/28. Independent queue review reproduces old ghost-queue baseline 0/1 and confirms queue-safe behavior; partial medicine acceptance uses existing mission owner and proportional pay. No new cargo, contract, reputation, reward, work clock, mission, traffic, or Save schema.
+- Native evidence: existing refinery geometry is 73.17 WU with a 55-tonne Mule; work pauses at 0.6 seconds. Holder error improves from 173.84 to 63.39 WU over 10 seconds; physical departure at 112.883 seconds releases before the 130-second token expiry. Body-record/Save-Continue fixtures retain worker identity, cargo, and token only with the same static station fixture. This is not full-world rehydration, sector return, live-camera/PBR, or sector acceptance. The user received an actual-exported-mesh/native-pose CPU image, not a live-game image.
+- Cut scope remains eligible ore-carrying haulers; it does not guarantee a fixed Ossa actor. Existing `berthHold` is the sole pause authority. Next: investigate the existing world/static-restore harness; no world-record or Save edits are allocated.
+- PR544 remains open/draft at `f2e5969b3b15a5c72dc777b3932a7b6fc51568da`. Exact-head main run [39949146417 / #5936](https://github.com/coldshalamov/SpaceFace/actions/runs/39949146417) ended FAILURE; browser shard 3 was cancelled, cause unknown, with no manual action. Complete artifact report proves 65/65 focused Rope/cargo/Kessler cases pass at that exact head. Its mobile run [39949146466 / #524](https://github.com/coldshalamov/SpaceFace/actions/runs/39949146466) failed. The latest preload report has only `travelVectorHud` newly missing and 16 stale entries; `massSlipConversation` is fixed. UI baseline has not been recaptured and native Rope remains RED. Do not retry browser or alter budgets/preload en masse.
+- [PR545](https://github.com/coldshalamov/SpaceFace/pull/545) is open/unmerged and carries the identical shared cargo-helper/test blobs, with no other Rope or clinic delta. PR547's exact-head workflow [39954421893 / #5938](https://github.com/coldshalamov/SpaceFace/actions/runs/39954421893) is in progress; no hosted result is claimed.
+- [PR471](https://github.com/coldshalamov/SpaceFace/pull/471) remains the existing open/draft two-path fix at `9cbb68b9eb642b699545d22643605f1963ff0ff0`, currently mergeable. Current-master test/probe stayed unchanged; paired checks reproduced 12/18→20/20 with the original fix. The PR body records verification only; no code, ref, or workflow changed. This is not full mobile acceptance; do not duplicate the implementation.
+- Recovery remains active: some flat-file writes returned ENOSPC, while verified GitHub commits remain durable. This does not block the whole assignment.
+
+
+
 ## Latest verified delivery and active-work addendum: 2026-10-23 11:54 UTC
 
 All eleven goals remain OPEN. This addendum supersedes earlier current-status prose, not historical evidence, scope, or acceptance boundaries.
