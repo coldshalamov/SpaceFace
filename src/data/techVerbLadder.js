@@ -12,6 +12,8 @@
 import { NEW_GAME } from './newGameDefaults.js';
 import { TECH_NODES } from './tech.js';
 import { MODULES } from './modules.js';
+import { WEAPONS } from './weapons.js';
+import { ATTACK_TRAIT_BY_ID } from './attackTraits.js';
 import { STORY_BEATS } from './missions.js';
 import { RESEARCH_GRANTS } from './researchGrants.js';
 
@@ -562,12 +564,14 @@ export function assertCommittedLadder(ladder = TECH_VERB_LADDER) {
 }
 
 const MODULE_BY_ID = new Map(MODULES.map((mod) => [mod.id, mod]));
+const WEAPON_BY_ID = new Map(WEAPONS.map((wpn) => [wpn.id, wpn]));
 
 /**
  * LG-VERB-CURVE. Ten verb keys whose first station door opens in that hour of
  * the authored ladder, and not the hour before. Helios rack offers and modules
  * with no research gate count as hour 0. Salvage-only hulls are not a door on
  * this route. Seed 4242 does not reshuffle the table: hours come from costs.
+ * Hours 11–15 live on LATE_HOUR_VERBS; this array stays the opening route.
  */
 export const HOUR_VERB_CURVE = Object.freeze([
   Object.freeze({ hour: 1, nodeId: 'tech_impulse_ballistics', moduleId: 'mod_charge_vector_rack', verbKey: 'bombPropulsion', label: 'Propelled charge' }),
@@ -582,6 +586,41 @@ export const HOUR_VERB_CURVE = Object.freeze([
   Object.freeze({ hour: 10, nodeId: 'tech_outpost_charter', moduleId: null, verbKey: 'outpostConstruction', label: 'Raise an outpost' }),
 ]);
 
+/**
+ * AL-LG-12. One verb per hour after the opening route, from nodes that already
+ * exist, earliest research gate first. Capital Weapons contributes both of its
+ * weapons: the later tree has no fifth verb that is not a hull license or a
+ * percent. Gate hours are not rewritten to match 11–15.
+ */
+export const LATE_HOUR_VERBS = Object.freeze([
+  Object.freeze({ hour: 11, nodeId: 'tech_payload_conduction', moduleId: 'mod_gravity_tag', verbKey: 'gravityTag', label: 'Gravity-tag a payload' }),
+  Object.freeze({ hour: 12, nodeId: 'tech_orbit_cryo', moduleId: 'mod_cryo_gyros', verbKey: 'cryoOrbit', label: 'Lock a target in a cryo orbit' }),
+  Object.freeze({ hour: 13, nodeId: 'tech_capital_weapons', moduleId: 'wpn_heavy_beam_l', verbKey: 'heavyBeam', label: 'Fire a heavy beam' }),
+  Object.freeze({ hour: 14, nodeId: 'tech_capital_weapons', moduleId: 'wpn_torpedo_l', verbKey: 'torpedo', label: 'Fire a torpedo' }),
+  Object.freeze({ hour: 15, nodeId: 'tech_flagship_command', moduleId: 'wpn_siege_lance_l', verbKey: 'siegeLance', label: 'Fire the siege lance' }),
+]);
+
+/** Opening route plus hours 11–15. Authored; a seed does not reshuffle it. */
+export const HOUR_VERB_CURVE_THROUGH_15 = Object.freeze([
+  ...HOUR_VERB_CURVE,
+  ...LATE_HOUR_VERBS,
+]);
+
+const STAT_PERCENT = /%/;
+
+function gearIsVerbNotStat(moduleId) {
+  const mod = MODULE_BY_ID.get(moduleId);
+  if (mod) return !!ATTACK_TRAIT_BY_ID[mod.id];
+  const wpn = WEAPON_BY_ID.get(moduleId);
+  if (!wpn) return false;
+  if (Number(wpn.impulsePerHit) > 0) return true;
+  if (wpn.continuous === true) return true;
+  if (wpn.deployKind || wpn.tracking === 'deploy') return true;
+  if (Array.isArray(wpn.statuses) && wpn.statuses.length > 0) return true;
+  if (Number(wpn.subsystemShare) > 0 || Number(wpn.shieldBypass) > 0) return true;
+  return false;
+}
+
 function moduleCarriesVerbKey(mod, verbKey) {
   if (!mod || !verbKey) return false;
   if (mod[verbKey] != null) return true;
@@ -589,7 +628,7 @@ function moduleCarriesVerbKey(mod, verbKey) {
 }
 
 /** One line the research screen prints under its title. */
-export function hourVerbCurveLine(curve = HOUR_VERB_CURVE) {
+export function hourVerbCurveLine(curve = HOUR_VERB_CURVE_THROUGH_15) {
   return curve.map((row) => `${row.hour} ${row.label}`).join(' · ');
 }
 
@@ -622,10 +661,11 @@ export function verbKeyFirstHour(verbKey, ladder = TECH_VERB_LADDER, nodes = TEC
 }
 
 /**
- * Empty when each curve hour is the first hour that verb can be bought, the
- * named node is what opens it, and hours 1–10 are all present.
+ * Empty when hours 1–10 each open in that hour on the named node, hours 11–15
+ * each name one existing late-node verb (not a stat percent), and hours 1–15
+ * are all present.
  */
-export function hourVerbCurveGaps(curve = HOUR_VERB_CURVE, ladder = TECH_VERB_LADDER, nodes = TECH_NODES) {
+export function hourVerbCurveGaps(curve = HOUR_VERB_CURVE_THROUGH_15, ladder = TECH_VERB_LADDER, nodes = TECH_NODES) {
   const gaps = [];
   const hours = new Set();
   const keys = new Set();
@@ -640,27 +680,53 @@ export function hourVerbCurveGaps(curve = HOUR_VERB_CURVE, ladder = TECH_VERB_LA
       gaps.push(`missing node ${row.nodeId}`);
       continue;
     }
-    if (row.moduleId) {
-      const modules = node.unlocks && node.unlocks.modules;
-      if (!Array.isArray(modules) || !modules.includes(row.moduleId)) {
-        gaps.push(`${row.nodeId} does not unlock ${row.moduleId}`);
+    if (row.hour <= 10) {
+      if (row.moduleId) {
+        const modules = node.unlocks && node.unlocks.modules;
+        if (!Array.isArray(modules) || !modules.includes(row.moduleId)) {
+          gaps.push(`${row.nodeId} does not unlock ${row.moduleId}`);
+        }
+        const mod = MODULE_BY_ID.get(row.moduleId);
+        if (!moduleCarriesVerbKey(mod, row.verbKey)) {
+          gaps.push(`${row.moduleId} does not carry ${row.verbKey}`);
+        }
+        if (!mod || mod.requiresTech !== row.nodeId) {
+          gaps.push(`${row.moduleId} is not gated by ${row.nodeId}`);
+        }
+      } else if (!node.unlocks || node.unlocks[row.verbKey] == null) {
+        gaps.push(`${row.nodeId} does not grant ${row.verbKey}`);
       }
-      const mod = MODULE_BY_ID.get(row.moduleId);
-      if (!moduleCarriesVerbKey(mod, row.verbKey)) {
-        gaps.push(`${row.moduleId} does not carry ${row.verbKey}`);
+      const first = verbKeyFirstHour(row.verbKey, ladder, nodes);
+      if (!(first > row.hour - 1 && first <= row.hour)) {
+        gaps.push(`${row.verbKey} first opens at ${first}, not during hour ${row.hour}`);
       }
-      if (!mod || mod.requiresTech !== row.nodeId) {
-        gaps.push(`${row.moduleId} is not gated by ${row.nodeId}`);
-      }
-    } else if (!node.unlocks || node.unlocks[row.verbKey] == null) {
-      gaps.push(`${row.nodeId} does not grant ${row.verbKey}`);
+      continue;
     }
-    const first = verbKeyFirstHour(row.verbKey, ladder, nodes);
-    if (!(first > row.hour - 1 && first <= row.hour)) {
-      gaps.push(`${row.verbKey} first opens at ${first}, not during hour ${row.hour}`);
+    if (classifyTechNode(node, 'strict') !== 'verb' || classifyTechNode(node, 'broad') !== 'verb') {
+      gaps.push(`${row.nodeId} is stat-only`);
+    }
+    if (node.unlocks && node.unlocks.efficiency) {
+      gaps.push(`${row.nodeId} carries an efficiency percent`);
+    }
+    const verb = VERBS[row.nodeId] || '';
+    if (STAT_PERCENT.test(row.label) || STAT_PERCENT.test(verb)) {
+      gaps.push(`${row.nodeId} hour ${row.hour} is a stat percent`);
+    }
+    const unlocked = node.unlocks && node.unlocks.modules;
+    if (!Array.isArray(unlocked) || !unlocked.includes(row.moduleId)) {
+      gaps.push(`${row.nodeId} does not unlock ${row.moduleId}`);
+    }
+    if (!gearIsVerbNotStat(row.moduleId)) {
+      gaps.push(`${row.moduleId} is not a verb`);
+    }
+    const mod = MODULE_BY_ID.get(row.moduleId);
+    const wpn = WEAPON_BY_ID.get(row.moduleId);
+    const gate = (mod && mod.requiresTech) || (wpn && wpn.requiresTech);
+    if (gate !== row.nodeId) {
+      gaps.push(`${row.moduleId} is not gated by ${row.nodeId}`);
     }
   }
-  for (let hour = 1; hour <= 10; hour += 1) {
+  for (let hour = 1; hour <= 15; hour += 1) {
     if (!hours.has(hour)) gaps.push(`missing hour ${hour}`);
   }
   return gaps;
