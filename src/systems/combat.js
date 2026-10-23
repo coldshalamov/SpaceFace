@@ -57,6 +57,13 @@ const WHIP_DAMAGE_MAX = 45;                  // ceiling for the heaviest slings
 const RECOVERY_BERTH_CLEARANCE_WU = 140;
 /** Seconds of invulnerability after undock / soft respawn window extension (overnight B1). */
 export const UNDOCK_INVULN_S = 8;
+/**
+ * SEED-SW-16 — the tap-dash's grace window. From the dash impulse, damage packets against the
+ * player are rejected for this long: dodging through a closing gap is a skill read, not a
+ * contact trade. The window rides the same flag + expiry the undock grace uses (the generic
+ * `_invulnUntil` sweep clears it), never a held boost — only the dash's own press arms it.
+ */
+export const DASH_IFRAME_S = 0.2;
 const BASE_AI_CAPABILITIES = Object.freeze(['drive', 'sensor', 'weapon']);
 // One vocabulary: the emitter validates against the same table the downstream readers use
 // (src/combat/killCausality.js), so a new cause cannot silently degrade to GENERIC downstream.
@@ -763,6 +770,19 @@ export const combat = {
     });
     ctx.bus.on('dock:undocked', () => { wakeQuiet(); this.setPlayerDocked(false); });
     ctx.bus.on('player:recoveryRequested', (payload) => { wakeQuiet(); this.recoverPendingPlayer(payload || {}); });
+    // SEED-SW-16 — the dash's grace window. Only the player hull is armed (NPC craft have no
+    // dash); the generic `_invulnUntil` sweep in update() expires it. A held boost never emits
+    // ship:dash, so the window is the tap alone.
+    ctx.bus.on('ship:dash', (p) => {
+      const state = this.state;
+      if (!state || !p || p.shipId !== state.playerId) return;
+      const player = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(state.playerId) : null;
+      if (!player) return;
+      player.flags = player.flags || {};
+      player.flags.invuln = true;
+      player._invulnUntil = (state.simTime || 0) + DASH_IFRAME_S;
+    });
     const clearPendingDefeat = () => {
       wakeQuiet();
       this._recoveryInFlight = false;
