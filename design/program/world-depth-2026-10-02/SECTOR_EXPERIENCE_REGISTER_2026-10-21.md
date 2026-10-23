@@ -568,3 +568,10 @@ The unmanned Kiln source and compiled package are locally integrated and indepen
 ### Triton delivery update, 23 October 2026 01:15 UTC
 
 The five-file Field Lab increment is now remotely verified in draft PR #518 at 48c5be52d35c6a857769d98b4a546c57cff34d7f. It is published, not merged or accepted. CI remains in progress with individually investigated failures. The adjacent causal-retirement issue is now classified as an obsolete test spy cardinality expectation: actual target retirement, investigated scanner receipt and one settlement hold in the bounded owner/serializer probe. Test-only observable-state coverage is allocated; no narrative/gameplay repair is claimed. Native flight, visible player comprehension, performance and whole-sector acceptance remain open.
+
+
+### Veil Far Sounding reviewed successor, 23 October 2026 01:59 UTC
+
+The existing Far Sounding wormhole identity now has reviewed local three-range survey behavior instead of descriptor-only sound metadata. It is independently discoverable during the neighboring Veil visit, not gated on Triton's mission and not a new portal. A300-WU footprint teaches close/middle/far readings through the real existing voice consumer, with repeat-scan recovery of missed instructions and no extra progress. Actual scanner/mission/economy owners connect the result to station_veil's neighboring Io Reach investigation and one measured normal payout. Accepted mission and five-day charted aftermath survive actual Save/Continue; partial ranges still reset.
+
+Review fixed missing first-approach guidance, repeated aftermath speech and tutorial readout churn. Fourteen new plus31 existing Triton/generic cases pass independently. Publication is pending; all five source hashes and verified recovery are in CURRENT_CHECKPOINT_2026-10-22.md. Native flight, visible comprehension, asset composition, phone/performance and sector acceptance remain open. No new gravity physics, route unlock, NPC routine, global zone or reward authority is claimed.
