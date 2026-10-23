@@ -1,0 +1,100 @@
+{
+  "date": "2026-10-23T03:37:21Z",
+  "result": "PASS",
+  "scope": "Read-only compatibility of PR474's exact three production diffs with pinned current master. No production edit, PR mutation, merge, deployment or CI rerun.",
+  "baseline": "45a97fdbda62611cc13001bd16790f8afa844753",
+  "pr": {
+    "number": 474,
+    "head": "1a21bb0e044b5105abe20caac10f7afb43bd50d0",
+    "url": "https://github.com/coldshalamov/SpaceFace/pull/474",
+    "stateAtRead": "open draft"
+  },
+  "test": {
+    "name": "complete production factory commissions the public site worker and yields real cargo to player custody",
+    "path": "test/ceres-workfleet-runtime.test.mjs",
+    "command": "NODE_DISABLE_COMPILE_CACHE=1 GIT_NO_LAZY_FETCH=1 GIT_OPTIONAL_LOCKS=0 node --max-old-space-size=256 --import <verified-read-only-loader> --test --test-concurrency=1 --test-name-pattern='complete production factory commissions' test/ceres-workfleet-runtime.test.mjs",
+    "node": "v24.19.0",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 103607.470846,
+    "processDurationMs": 107541.807253,
+    "completedAssertions": "Original extraction, actual Save/Continue, original tow rebinding, and player-custody yield.",
+    "priorHarnessAttempt": "Initial import-only attempt failed to resolve a locally absent but mapped public rockSubstances.js. Added resolve hook; no gameplay assertion had executed in that attempt.",
+    "blob": "9e248f9ac0d7e7c2150d01a65b1f9ad57b284337"
+  },
+  "patches": [
+    {
+      "path": "src/data/sectorActivityPockets.js",
+      "historicalPrBlob": "453b4ddb63243961e50a4984c4ebbefbd826c0e2",
+      "testedOutputBlob": "453b4ddb63243961e50a4984c4ebbefbd826c0e2",
+      "baselineBlob": "9f6bc1de92e55536dacae4da18e519c30702f65d"
+    },
+    {
+      "path": "src/systems/aiPorts.js",
+      "historicalPrBlob": "d76e4f1739ae5ca51aceab043e0596c2017ec107",
+      "testedOutputBlob": "429384f0c9a760081ec58688332b6d6e05aa9159",
+      "note": "Exact PR diff applied uniquely to newer upstream source, preserving upstream changes; not wholesale historical blob replacement.",
+      "baselineBlob": "be2397705afd1c9aeef46c08d1d08769b9a2b96a"
+    },
+    {
+      "path": "src/systems/npcJobsRuntime.js",
+      "historicalPrBlob": "a27a3d8286b7bb960859e15743c1738b46c3668e",
+      "testedOutputBlob": "a27a3d8286b7bb960859e15743c1738b46c3668e",
+      "baselineBlob": "a272b5b7b75bfeb8cbc91c149909c2decfcc70c6"
+    }
+  ],
+  "verification": {
+    "distinctRepositoryInputs": 1532,
+    "method": "Every repository module and intercepted repository readFileSync input checked against pinned Git blob; three exact production patches applied in memory with unique full-context anchors. Installed node_modules outside repository closure verification.",
+    "loadedClosureDigest": null,
+    "loadedClosureDigestLimit": "Loaded path list and aggregate digest were not emitted. Do not mislabel the full-input-map digest below as a loaded-closure digest.",
+    "baseInventoryCommit": "c855b6a6b9fb488d44a4fdfa4e865a9a854826b9",
+    "baseInventoryTree": "4c6a609d86477dc161a49e1c466c12d90deca911",
+    "baseInventoryProof": "Reconstructed tree from master-tree.tsv matches GitHub commit tree.",
+    "delta1": "c855b6a6b9fb488d44a4fdfa4e865a9a854826b9...250b53e579979599238144fbb6b27d43a5a0d0aa (18 commits)",
+    "delta2": "250b53e579979599238144fbb6b27d43a5a0d0aa...45a97fdbda62611cc13001bd16790f8afa844753 (6 commits)",
+    "fullPinnedInputMapSha256": "2215f96519700ad2cccfffea00be943a5ce2d4a52bdac534e98a447629921b55",
+    "fullPinnedInputMapCount": 23750
+  },
+  "native": {
+    "backend": "rapier-dynamic",
+    "profile": "production",
+    "manifestHash": "16b65c278857a7c7f7954a91a57a77f43426a69646f682d7536fea8114f2b54a",
+    "phase": "extract",
+    "tick": 7078,
+    "maxWorkerTravelWu": 2.0069580078125,
+    "sawThrust": true,
+    "sectionMass": 1800,
+    "sectionNativeRecord": true,
+    "sectionSalvagePool": {},
+    "sectionPosition": {
+      "x": -12868,
+      "y": 0,
+      "z": 9790.875
+    }
+  },
+  "limits": [
+    "This run is 1/1, not the historical 285/285 Ceres leaf.",
+    "No separate PR474 tender observer was added; current public test does not contain it.",
+    "No same-current-master unpatched local baseline run; original failure is hosted PR518 evidence, not a matched local control.",
+    "Does not establish precise collision provenance of newest CI failure, whole-world acceptance, rendered clearance or physical-phone usability.",
+    "No recovery allowance, deadline, seed, hull, collision or custody assertion was weakened.",
+    "No aggregate suite, npm check/check:ci, or forbidden anvil-receiver-delivery test executed."
+  ],
+  "references": {
+    "currentFailure": "https://github.com/coldshalamov/SpaceFace/actions/runs/39888575049/job/120202525663",
+    "historicalPr474Pass": "https://github.com/coldshalamov/SpaceFace/actions/runs/39487775425/job/118852596811"
+  },
+  "next": "Preserve existing PR474 ownership; refresh its broader validation/integration when authorized, rather than create a duplicate fix.",
+  "loader": {
+    "bytes": 12506,
+    "sha256": "b7e3447a2ab36fe4770f06c2f64adb3081fceb80a784ecc8f36cbb661ed53a64"
+  },
+  "recovery": {
+    "bytes": 7539,
+    "members": 2,
+    "sha256": "0049b13b56a99b810f15d9d8b09b0bb3be4dacd5d9bbf251075d63b86d749fa7",
+    "readbackVerified": true
+  }
+}
