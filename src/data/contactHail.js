@@ -1498,6 +1498,7 @@ export function livingWorkStatusText(entity, opts = {}) {
   const passengerStatus = passengerLinerStatusText(opts.state || null, entity);
   if (passengerStatus) return passengerStatus.replace(/^STATUS · /, 'SERVICE · ');
   const salvorSource = salvorSourceTruth(opts.state || null, entity);
+  if (salvorSource?.state === 'held') return 'WORK · SALVAGE HELD · NO YARD INTAKE';
   if (salvorSource && salvorSource.state === 'aboard') return 'WORK · SALVAGE ABOARD · FORGE';
   if (salvorSource && salvorSource.state === 'disputed') return 'WORK · SALVAGE DISPUTED';
   if (salvorSource && salvorSource.state === 'cutting') return 'WORK · CUTTING';
@@ -1600,6 +1601,7 @@ const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
 function workerStatusText(target, state = null) {
   const data = target && target.data || {};
   const salvorSource = salvorSourceTruth(state, target);
+  if (salvorSource?.state === 'held') return 'STATUS · SALVAGE HELD ABOARD · YARD CANNOT ACCEPT REMAINDER';
   if (salvorSource && salvorSource.state === 'aboard') return 'STATUS · SALVAGE ABOARD · FORGE INBOUND';
   if (salvorSource && salvorSource.state === 'disputed') return 'STATUS · SALVAGE DISPUTED · WRECK STRIPPED';
   if (salvorSource && salvorSource.state === 'cutting') return 'STATUS · CUTTING · DEAD FREIGHTER DRIFT';
@@ -1664,6 +1666,7 @@ function salvorSourceTruth(state, target) {
   const manifest = data.cargoManifest && typeof data.cargoManifest === 'object' ? data.cargoManifest : null;
   const manifestSource = manifest && typeof manifest.salvageSource === 'string' ? manifest.salvageSource : null;
   const sourceKey = manifestSource || (typeof data.salvageSource === 'string' ? data.salvageSource : null);
+  if (manifest?.salvageIntakeHeld && manifest.totalQty > 0) return { state: 'held', sourceKey };
   if (!sourceKey) return null;
   const totalQty = manifest && Number.isSafeInteger(manifest.totalQty) ? manifest.totalQty : 0;
   if (manifestSource && totalQty > 0) return { state: 'aboard', sourceKey };

@@ -2813,6 +2813,14 @@ export const npcJobsRuntime = {
   },
 
   _findSalvorTractorTarget(entry, entity) {
+    const bookedSource = this.helpers.traffic?.salvorSourceTarget?.(entry, entity);
+    if (bookedSource !== undefined) {
+      // The physical cutter and its tractor share traffic's durable source resolution.
+      // Continue or a recycled allocator slot cannot make the line grab another body.
+      return bookedSource && isSalvorTractorTarget(bookedSource, entity.data?.worldRecordId)
+        && Math.hypot(bookedSource.pos.x - entity.pos.x, bookedSource.pos.z - entity.pos.z) <= NPC_TOW_MAX_RANGE_WU
+        ? bookedSource : null;
+    }
     const data = entity && entity.data;
     const ownerRecordId = data && typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
     const payload = entry && entry.job && entry.job.payload;
@@ -2990,6 +2998,11 @@ export const npcJobsRuntime = {
     }
     const attachments = this._combatAttachments();
     if (!attachments) return false;
+    const salvorSource = this.helpers.traffic?.salvorSourceTarget?.(entry, entity);
+    if (salvorSource !== undefined && entry.towAttachmentId != null
+      && (!salvorSource || entry.towTargetRef !== salvorSource)) {
+      this._clearTugAttachment(entry, 'npc_salvor_source_changed');
+    }
 
     if (entry.towAttachmentId != null) {
       const existing = attachments.get(entry.towAttachmentId);
@@ -4337,18 +4350,20 @@ export const npcJobsRuntime = {
       const approachingSeam = !claimedBeforeAdvance && starterRock && entity.pos
         && Math.hypot(entity.pos.x - starterRock.pos.x, entity.pos.z - starterRock.pos.z)
           > BEAM_MK1.range + (starterRock.radius || 0);
-      const physicalTarget = !claimedBeforeAdvance && this._livingAdventureWorkTarget(entry, entity);
+      const salvorTarget = !claimedBeforeAdvance && this.helpers.traffic?.salvorWorkTarget?.(entry, entity);
+      const physicalTarget = salvorTarget || (!claimedBeforeAdvance && this._livingAdventureWorkTarget(entry, entity));
       // The settle test is relative to the target: a hull riding a drifting rock at matching
       // velocity IS arrived, even though its world-frame speed stays at belt drift.
       // A cutter's commission is paperwork at the pad, not a docking manoeuvre; the seam face and
       // the unload berth are the stops that need the hull physically there.
       const holdingForArrival = physicalTarget
-        && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
+        && (physicalTarget.blocked || physicalTarget.ready === false
+          || (![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
         && !(entry.job.phase === NPC_JOB_PHASE.COMMISSION && this._heliosStarterMinerRecordId != null
           && entry.worldRecordId === this._heliosStarterMinerRecordId)
-        && (Math.hypot(entity.pos.x - physicalTarget.pos.x, entity.pos.z - physicalTarget.pos.z) > physicalTarget.reach
+        && (physicalTarget.settled === false || Math.hypot(entity.pos.x - physicalTarget.pos.x, entity.pos.z - physicalTarget.pos.z) > physicalTarget.reach
           || Math.hypot((entity.vel?.x || 0) - (physicalTarget.vel?.x || 0),
-            (entity.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8);
+            (entity.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8)));
       // SF-080: a queued berth wait is the same class of bounded physical hold — the hull waits
       // out the line at a real position, so the kernel clock waits with it (no work at distance).
       // Leased hulls keep their clock: their owner drives, we never gate a controller's route.
@@ -4364,7 +4379,7 @@ export const npcJobsRuntime = {
       const braced = !claimedBeforeAdvance && entry.closeCallUntil != null && simT < entry.closeCallUntil;
       if (step > 0 && !approachingSeam && !holdingForArrival && !entry.berthHold && !braced
         && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
-        advance(entry.job, step, this._sink);
+        advance(entry.job, salvorTarget ? Math.min(step, 0.1) : step, this._sink);
       }
 
       // An owner intent is synchronous and may invoke Continue/New Game while advance() is still on
@@ -4795,17 +4810,22 @@ export const npcJobsRuntime = {
   },
 
   _driveLivingAdventureWorker(entry, entity, target) {
-    const dx = target.pos.x - entity.pos.x, dz = target.pos.z - entity.pos.z;
+    const pos = target.workPose?.pos || entity.pos, vel = target.workPose?.vel || entity.vel;
+    const dx = target.pos.x - pos.x, dz = target.pos.z - pos.z;
     const distance = Math.hypot(dx, dz), close = distance <= target.reach;
     const aim = distance > 0.01 ? Math.atan2(dz, dx) : entity.rot || 0;
     const profile = resolvePropulsionProfile(entity, this.state);
     const planningSpeed = Math.min(40, entry.job.speed || 35);
     if (profile.family === DRIVE_FAMILIES.PULSE_PLATE) {
       // PulsePlate's BRAKE fires the plate. Delicate work uses its authored RCS instead.
-      const speed = close ? 0 : Math.min(planningSpeed,
-        Math.sqrt(2 * Math.max(1, profile.rcsReverseAccel) * Math.max(0, distance - target.reach * 0.6)));
-      const vx = (target.vel?.x || 0) + dx / Math.max(1, distance) * speed - (entity.vel?.x || 0);
-      const vz = (target.vel?.z || 0) + dz / Math.max(1, distance) * speed - (entity.vel?.z || 0);
+      const speed = close ? 0 : target.workPose
+        // General salvage uses a velocity-error RCS controller. Its response takes time:
+        // taper early, stopping outside the two hull envelopes rather than ramming a light wreck.
+        ? Math.min(20, planningSpeed, Math.max(0, distance - (target.reach - 4)) * 0.5)
+        : Math.min(planningSpeed,
+          Math.sqrt(2 * Math.max(1, profile.rcsReverseAccel) * Math.max(0, distance - target.reach * 0.6)));
+      const vx = (target.vel?.x || 0) + dx / Math.max(1, distance) * speed - (vel?.x || 0);
+      const vz = (target.vel?.z || 0) + dz / Math.max(1, distance) * speed - (vel?.z || 0);
       const c = Math.cos(entity.rot || 0), s = Math.sin(entity.rot || 0);
       const forward = vx * c + vz * s, side = -vx * s + vz * c;
       this._writeIntent(entity, clamp(side / Math.max(1, profile.rcsStrafeAccel), -1, 1),
@@ -4825,7 +4845,7 @@ export const npcJobsRuntime = {
     const dvz = tvz + uz * closing;
     const dSpeed = Math.hypot(dvx, dvz);
     const chaseAim = dSpeed > 0.01 ? Math.atan2(dvz, dvx) : entity.rot || 0;
-    const approach = ((entity.vel?.x || 0) - tvx) * ux + ((entity.vel?.z || 0) - tvz) * uz;
+    const approach = ((vel?.x || 0) - tvx) * ux + ((vel?.z || 0) - tvz) * uz;
     const targetStill = tvx * tvx + tvz * tvz <= 0.25;
     const brake = Math.cos(chaseAim - (entity.rot || 0)) < 0.85
       || (close ? targetStill
@@ -4910,7 +4930,15 @@ export const npcJobsRuntime = {
     // reach this branch; everything else retains the authored route controller below.
     if (this._tryDriveCeresRealTarget(entry, entity)) return;
 
-    const physicalTarget = this._livingAdventureWorkTarget(entry, entity);
+    const physicalTarget = this.helpers.traffic?.salvorWorkTarget?.(entry, entity)
+      || this._livingAdventureWorkTarget(entry, entity);
+    if (physicalTarget?.blocked) {
+      // PulsePlate BRAKE is a charge/flip-burn, not a safe idle. Keep a denied worksite
+      // stationary through the same drive-family-aware RCS controller, without firing it.
+      this._driveLivingAdventureWorker(entry, entity, { pos: entity.pos, vel: { x: 0, z: 0 },
+        reach: 1, workPose: { pos: entity.pos, vel: entity.vel } });
+      return;
+    }
     if (physicalTarget) { this._driveLivingAdventureWorker(entry, entity, physicalTarget); return; }
 
     // A tug's only honest destination while the line is still off is the body it came for — not

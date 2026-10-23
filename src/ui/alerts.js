@@ -509,7 +509,7 @@ export function createAlerts(ctx) {
     announce({
       key: `salvage-intake:${p.intakeId || p.lotId || 'x'}`,
       sev: 'info',
-      text: `SALVAGE INTAKE — ${qty}t scrap taken in at ${yard} · ~${value} CR`,
+      text: `SALVAGE INTAKE — ${qty}u salvage taken in at ${yard} · ~${value} CR`,
       ttl: 4,
     });
   });
