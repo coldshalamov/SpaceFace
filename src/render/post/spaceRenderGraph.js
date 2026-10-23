@@ -19,6 +19,10 @@ import {
 } from '../bloom.js';
 import { recordPostRenderTargetAllocation } from '../postTelemetry.js';
 import { LOOK_POST_UNIFORMS } from '../look.js';
+import {
+  createAtmosphereCompositeUniforms,
+  NOCTURNE_ATMOSPHERE_COMPOSITE_GLSL,
+} from '../nocturne/atmosphere.js';
 
 const POST_DEFAULTS = Object.freeze({
   bloom: true,
@@ -239,6 +243,7 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform float uGrainFrame;
 
   ${SPACE_POST_PRESENTATION_GLSL}
+  ${NOCTURNE_ATMOSPHERE_COMPOSITE_GLSL}
   void main() {
     vec4 distortion = texture2D(tDistortion, vUv);
     // DistortionField stores signed offsets in LDR RG around a 0.5 neutral
@@ -252,7 +257,9 @@ const COMPOSITE_FRAG = /* glsl */`
                  texture2D(tBloom1,vUv).rgb * 0.28 +
                  texture2D(tBloom2,vUv).rgb * 0.15 +
                  texture2D(tBloom3,vUv).rgb * 0.07;
-    vec3 aoScene = scene * mix(1.0, ao, uAoStrength);
+    // AO modulates surfaces. Participating-media radiance is composed afterwards, in linear HDR,
+    // so the surface-only approximation cannot darken light scattered in front of those surfaces.
+    vec3 aoScene = composeNocturneAtmosphere(scene * mix(1.0, ao, uAoStrength), uv, uv);
     vec3 spill = bloom * uBloomStrength * uBloomNorm;
     gl_FragColor = vec4(composeSpacePostPresentation(
       aoScene, spill, vUv, gl_FragCoord.xy, uExposure, uAces,
@@ -323,6 +330,7 @@ export class SpaceRenderGraph {
     });
     // The shared presentation block reads the Look; attach the same objects the native route uses.
     Object.assign(this.compositeMaterial.uniforms, LOOK_POST_UNIFORMS);
+    Object.assign(this.compositeMaterial.uniforms, createAtmosphereCompositeUniforms());
     this.gradeMaterial = shaderMaterial(PHOTO_GRADE_FRAG, {
       tSource: null,
       uFilterLift: new THREE.Vector3(0, 0, 0),
@@ -340,6 +348,9 @@ export class SpaceRenderGraph {
     this.distortionTarget = null;
     this._distortionLive = false;
     this._distortionProducerLiveCount = 0;
+    // Runtime owns the shared pass; the graph owns only its binding and already-existing depth.
+    this.atmosphere = null;
+    this._atmosphereCamera = null;
     this._rendererClearColorScratch = new THREE.Color();
     this._distortionNeutralClear = new THREE.Color(0.5, 0.5, 0);
     this.setOptions({});
@@ -437,6 +448,12 @@ export class SpaceRenderGraph {
       } else {
         renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
       }
+      if (this.atmosphere) {
+        // Route/preset changes can select different scene sizes. This is a no-op in steady play.
+        this.atmosphere.setSize(this.sceneTarget.width, this.sceneTarget.height);
+        this._atmosphereCamera = camera;
+        this.atmosphere.render(this.sceneTarget.depthTexture, camera);
+      }
       if (this._bloomActive()) this._renderBloom();
       this._renderDistortion(camera);
       // FB-085: the grade is the LAST stage. Off — the default — composite lands on the output
@@ -454,6 +471,22 @@ export class SpaceRenderGraph {
   get sceneColorTexture() { return this.sceneTarget.texture; }
   get depthTexture() { return this.sceneTarget.depthTexture; }
   get distortionTexture() { return this.distortionTarget ? this.distortionTarget.texture : null; }
+
+  // Share the runtime's one transport pass with the default bloom route. Never dispose it here.
+  attachAtmosphere(pass) {
+    if (pass === this.atmosphere) return;
+    this.atmosphere = pass || null;
+    this._atmosphereCamera = null;
+    if (this.atmosphere) {
+      this.atmosphere.setSize(this.sceneTarget.width, this.sceneTarget.height);
+      this.atmosphere.invalidateHistory('render-graph-attached');
+    }
+    const u = this.compositeMaterial.uniforms;
+    u.uNocturneAtmosphere.value = 0;
+    u.tNocturneScatter.value = this.blackBloomTexture;
+    u.tNocturneDepth.value = this.blackBloomTexture;
+    u.tNocturneSceneDepth.value = this.blackBloomTexture;
+  }
 
   // Compatibility: one DistortionField. Prefer attachDistortionProducers when the presenter
   // owns weapon haze plus well slots. Either path is a no-op on the bloom/native route —
@@ -516,6 +549,7 @@ export class SpaceRenderGraph {
   get normalTexture() { return this.normalTarget ? this.normalTarget.texture : null; }
 
   diagnostics() {
+    const atmosphere = this.atmosphere ? this.atmosphere.getDiagnostics() : null;
     return {
       width: this.width,
       height: this.height,
@@ -543,7 +577,8 @@ export class SpaceRenderGraph {
       bloomLevels: this.bloomTargets.length,
       fullFramePasses: 2 + (this.options.ao ? 1 : 0),
       bloomPasses: this._bloomActive() ? this.bloomTargets.length : 0,
-      renderTargetCount: 1 + (this.options.ao ? 3 : 0) + this.bloomTargets.length + 1,
+      renderTargetCount: 1 + (this.options.ao ? 3 : 0) + this.bloomTargets.length + 1 + (atmosphere?.targets || 0),
+      atmosphere,
       presentationComposite: true,
       presentationParity: 'canonical-base-ao-off-bloom-neutral',
       bloomKernelParity: false,
@@ -551,6 +586,7 @@ export class SpaceRenderGraph {
         scene: 1,
         normal: this.options.ao ? 1 : 0,
         ao: this.options.ao ? 3 : 0,
+        atmosphere: this.atmosphere?.active ? 1 : 0,
         bloom: this._bloomActive() ? this.bloomTargets.length : 0,
         distortion: this._distortionLive ? 1 : 0,
         composite: 1,
@@ -568,6 +604,7 @@ export class SpaceRenderGraph {
     if (this.options.ao) materials.push(this.normalMaterial, this.aoMaterial, this.blurMaterial);
     if (this._bloomActive()) materials.push(this.bloomMaterial);
     if (this._photoFiltersActive()) materials.push(this.gradeMaterial);
+    if (this.atmosphere) materials.push(...this.atmosphere.openingProgramMaterials());
     return materials;
   }
 
@@ -592,7 +629,13 @@ export class SpaceRenderGraph {
       : null;
     const previousMaterial = this.quad.mesh.material;
     const previousDistortionLive = this._distortionLive;
+    let atmosphereTargets = 0;
     try {
+      if (this.atmosphere) {
+        this.atmosphere.setSize(this.sceneTarget.width, this.sceneTarget.height);
+        await this.atmosphere.prepareResources(yieldToMain);
+        atmosphereTargets = this.atmosphere.getDiagnostics().targets;
+      }
       for (const target of targets) {
         await yieldToMain();
         renderer.initRenderTarget(target);
@@ -615,7 +658,7 @@ export class SpaceRenderGraph {
       if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
     }
     await yieldToMain();
-    return { skipped: false, targets: targets.length };
+    return { skipped: false, targets: targets.length + atmosphereTargets };
   }
 
   contextLossResources() {
@@ -627,10 +670,12 @@ export class SpaceRenderGraph {
       this.distortionTarget,
       this.gradeTarget,
       ...(this.bloomTargets || []),
+      ...(this.atmosphere ? this.atmosphere.contextLossResources() : []),
     ].filter(Boolean);
   }
 
   dispose() {
+    this.attachAtmosphere(null);
     this._disposeTargets();
     this.normalMaterial.dispose();
     this.aoMaterial.dispose();
@@ -688,6 +733,14 @@ export class SpaceRenderGraph {
 
   _renderComposite(outputTarget) {
     const u = this.compositeMaterial.uniforms;
+    if (this.atmosphere) {
+      this.atmosphere.bindComposite(u, this.sceneTarget.depthTexture, this._atmosphereCamera, this.blackBloomTexture);
+    } else {
+      u.uNocturneAtmosphere.value = 0;
+      u.tNocturneScatter.value = this.blackBloomTexture;
+      u.tNocturneDepth.value = this.blackBloomTexture;
+      u.tNocturneSceneDepth.value = this.blackBloomTexture;
+    }
     u.tScene.value = this.sceneTarget.texture;
     u.tAo.value = this.options.ao ? this.aoTarget.texture : this.neutralAoTexture;
     const bloomActive = this._bloomActive();
@@ -751,6 +804,7 @@ export class SpaceRenderGraph {
     const dh = Math.max(1, rh >> 1);
     this.distortionTarget = ldrTarget(dw, dh, false);
     this.distortionTarget.texture.name = 'SpaceRenderGraph:Distortion';
+    if (this.atmosphere) this.atmosphere.setSize(rw, rh);
   }
 
   _forEachDistortionProducer(fn) {

@@ -1,0 +1,160 @@
+{
+  "evidence": "synthetic-cpu-diagnostic",
+  "certifying": false,
+  "limitations": [
+    "No GPU render, shader compilation, shadow-map draw, atmosphere or full game is measured.",
+    "CPU wall time on this host is not an integrated-GPU or desktop-GPU performance acceptance result.",
+    "Source digest binds the actual measured working files; gitHead alone does not describe uncommitted edits."
+  ],
+  "generatedAt": "2026-10-23T16:43:43.696Z",
+  "gitHead": "d5f5c74533efcfdeaa5872cd66676b21ad8e2bcf",
+  "sourceSha256": "b4bf176628c9de0dda3054266df894ac21e40ceb06af9095da457d277e6b630c",
+  "sourceFiles": [
+    "src/render/nocturne/registry.js",
+    "src/render/nocturne/director.js",
+    "src/render/nocturne/shadows.js",
+    "scripts/nocturne-director-bench.mjs"
+  ],
+  "environment": {
+    "node": "v24.19.0",
+    "threeRevision": "184",
+    "platform": "linux",
+    "arch": "x64",
+    "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+    "logicalCpus": 9
+  },
+  "configuration": {
+    "frames": 2000,
+    "warmup": 200,
+    "timestep": 0.016666666666666666,
+    "selectionHz": 8,
+    "camera": {
+      "position": [
+        0,
+        300,
+        400
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "verticalFov": 60,
+      "aspect": 1.6
+    },
+    "scene": "Stationary square grid at 22-unit spacing, 150-unit point-light influence, varied fixture priorities."
+  },
+  "runs": [
+    {
+      "logicalSources": 128,
+      "registeredSources": 128,
+      "eligibleCandidates": 128,
+      "gpuLightStructure": {
+        "points": 8,
+        "spots": 3,
+        "shadowMaps": 0
+      },
+      "selectionPasses": 250,
+      "allUpdates": {
+        "samples": 2000,
+        "meanMs": 0.013898565000000416,
+        "p50Ms": 0.003545000000002574,
+        "p95Ms": 0.058747000000010985,
+        "p99Ms": 0.16846799999999007,
+        "maxMs": 0.9960800000000063
+      },
+      "selectionUpdates": {
+        "samples": 250,
+        "meanMs": 0.07792725200000064,
+        "p50Ms": 0.05304800000001819,
+        "p95Ms": 0.20265299999999797,
+        "p99Ms": 0.4494709999999884,
+        "maxMs": 0.9960800000000063
+      },
+      "retainedSelectionUpdates": {
+        "samples": 1750,
+        "meanMs": 0.0047516097142861,
+        "p50Ms": 0.0035049999999898773,
+        "p95Ms": 0.006559999999993238,
+        "p99Ms": 0.02386500000000069,
+        "maxMs": 0.4164220000000114
+      },
+      "processHeapDeltaBytes": 337888,
+      "heapMeasurement": "Uncollected process heap delta includes harness samples and JIT; not allocation or residency proof."
+    },
+    {
+      "logicalSources": 512,
+      "registeredSources": 512,
+      "eligibleCandidates": 512,
+      "gpuLightStructure": {
+        "points": 8,
+        "spots": 3,
+        "shadowMaps": 0
+      },
+      "selectionPasses": 250,
+      "allUpdates": {
+        "samples": 2000,
+        "meanMs": 0.018574591500000095,
+        "p50Ms": 0.004977999999994154,
+        "p95Ms": 0.0771739999999852,
+        "p99Ms": 0.2155869999999993,
+        "maxMs": 0.49759199999999737
+      },
+      "selectionUpdates": {
+        "samples": 250,
+        "meanMs": 0.10575976800000012,
+        "p50Ms": 0.07618199999998865,
+        "p95Ms": 0.23304300000000922,
+        "p99Ms": 0.2907079999999951,
+        "maxMs": 0.49759199999999737
+      },
+      "retainedSelectionUpdates": {
+        "samples": 1750,
+        "meanMs": 0.006119566285714378,
+        "p50Ms": 0.004947000000015578,
+        "p95Ms": 0.008994000000001279,
+        "p99Ms": 0.02429499999999507,
+        "maxMs": 0.13845399999999586
+      },
+      "processHeapDeltaBytes": -214432,
+      "heapMeasurement": "Uncollected process heap delta includes harness samples and JIT; not allocation or residency proof."
+    },
+    {
+      "logicalSources": 1024,
+      "registeredSources": 1024,
+      "eligibleCandidates": 1024,
+      "gpuLightStructure": {
+        "points": 8,
+        "spots": 3,
+        "shadowMaps": 0
+      },
+      "selectionPasses": 250,
+      "allUpdates": {
+        "samples": 2000,
+        "meanMs": 0.03545361400000026,
+        "p50Ms": 0.008612999999996873,
+        "p95Ms": 0.16329099999998675,
+        "p99Ms": 0.24965800000001082,
+        "maxMs": 3.1262780000000134
+      },
+      "selectionUpdates": {
+        "samples": 250,
+        "meanMs": 0.20676030800000114,
+        "p50Ms": 0.15780200000000377,
+        "p95Ms": 0.2540929999999548,
+        "p99Ms": 1.5495689999999627,
+        "maxMs": 3.1262780000000134
+      },
+      "retainedSelectionUpdates": {
+        "samples": 1750,
+        "meanMs": 0.010981229142857273,
+        "p50Ms": 0.008543000000003076,
+        "p95Ms": 0.010696000000024242,
+        "p99Ms": 0.06421499999999014,
+        "maxMs": 0.9483040000000074
+      },
+      "processHeapDeltaBytes": -585672,
+      "heapMeasurement": "Uncollected process heap delta includes harness samples and JIT; not allocation or residency proof."
+    }
+  ]
+}

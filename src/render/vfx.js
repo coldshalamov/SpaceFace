@@ -105,6 +105,7 @@ import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import { EVENT_LIGHT_DECAY, EVENT_LIGHT_GAIN, presetFor, scalePreset } from './vfxColorLightDirector.js';
 import { AMBIENT_FIXTURE_KEYS, AMBIENT_FIXTURE_RESERVE, makeAmbientFixtureReads, selectAmbientFixtures } from './ambientFixtures.js';
+import { nocturneForScene, eventPriorityClass } from './nocturne/bridge.js';
 import {
   collectStatusAttachedVictims,
   planStatusAttachedEmit,
@@ -1862,7 +1863,10 @@ export const vfx = {
     for (const bucket of spriteBucketValues(this._spriteBatches)) {
       disposeVfxRoot(bucket && bucket.mesh, disposeState);
     }
-    for (const slot of this._lights || []) disposeVfxRoot(slot && slot.obj, disposeState);
+    for (const slot of this._lights || []) {
+      if (slot?.obj?._nocturneSource) slot.obj.dispose();
+      else disposeVfxRoot(slot && slot.obj, disposeState);
+    }
     disposeVfxRoot(this._miningBeam && this._miningBeam.mesh, disposeState);
     disposeVfxRoot(this._miningBeam && this._miningBeam.glow, disposeState);
     for (const key of ['mesh', 'glow', 'band', 'anchorCore']) {
@@ -2642,7 +2646,7 @@ export const vfx = {
     // outbound over the same 0.28 s fade). The ACTION_VFX_EVENTS row above owns the vent
     // primitive; this subscription is the cradle hologram's half of the same departure.
     add('dock:undocked', () => this._releaseDockingCradle());
-    for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
+    for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'game:exitToMenu', 'save:restoring', 'save:loaded']) {
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._emergentPayloads?.clear(); this._retireEventLightSlot(this._findSustainedEventLight('gyre-payload')); this._releaseTransientEventLights(); });
       add(name, () => this._clearWorldTransientMatter());
       add(name, () => this._resetDamagedPortVfx());
@@ -2748,7 +2752,7 @@ export const vfx = {
       const rec = broadcastDishBeatRecord(p);
       if (!rec) return;
       this._onStationSideEvent({
-        kind: 'sensor_sweep',
+        kind: rec.profileId,
         eventId: `broadcast:${rec.stationId}:${rec.tic}`,
         stationId: rec.stationId,
         from: rec.pos,
@@ -4791,6 +4795,10 @@ export const vfx = {
       this._drawInertFieldPass(p);
       return;
     }
+    if (p.id === 'thermal.mark' || p.kind === 'thermalMark') {
+      this._drawThermalMark(p);
+      return;
+    }
     // The normalized cue retains measured subsystem identity before the generic adapter drops it.
     if (p.id === 'subsystem.disabled' || p.id === 'subsystem.restored') return;
     if (p.lane === STRUCTURAL_FX_CUE_KIND || p.kind === STRUCTURAL_FX_CUE_KIND) {
@@ -4886,6 +4894,28 @@ export const vfx = {
       bloomIndependent: true,
       lights: 0,
       opacity: ring ? ring.op0 : 0,
+    };
+  },
+
+  // A burn or a coolant patch is a ring in that patch's colour. No particles, no light,
+  // and the ring does not outlive the field (the field itself never lasts past four seconds).
+  _drawThermalMark(p) {
+    const pos = (p && (p.position || p.pos)) || null;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+    const radius = Math.max(1.5, Math.min(160, Number(p.radius) || 8));
+    const life = Math.max(0.15, Math.min(4, Number(p.life) || 0.4));
+    const ink = typeof p.color === 'string' && p.color
+      ? p.color
+      : (p.thermalKind === 'coolant' ? '#7ec8e8' : '#e85a20');
+    const ring = this._spawnSprite(
+      SPR_RING, pos.x, 0.16, pos.z, life, radius * 0.35, radius, 0.72, 0.0, ink, 0, 0, 1, 0,
+    );
+    this._lastThermalMark = {
+      color: ink,
+      life,
+      radius,
+      shape: ring ? 'ring' : null,
+      lights: 0,
     };
   },
 
@@ -11884,7 +11914,7 @@ export const vfx = {
       const dx = miner.pos.x - pos.x, dz = miner.pos.z - pos.z;
       if (dx * dx + dz * dz > 1) backA = Math.atan2(dz, dx);
     }
-    this._c0.set('#ffc078'); this._c1.set('#582510');
+    this._c0.set(col); this._c1.set(col);
     const n = Math.max(2, Math.round(5 * (this._burst || 1)));
     for (let k = 0; k < n; k++) {
       // Ejection off the work face toward the miner, with two tangential cutting lobes.
@@ -12060,7 +12090,7 @@ export const vfx = {
       );
     }
     this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, 0.3, 3.0, 8.0, 0.8, 0.0, col, 0, 0);
-    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, 3.2, 9.0, 0.4, 0.0, crystal ? '#c2dce8' : '#cbb9a0',
+    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, 3.2, 9.0, 0.4, 0.0, crystal ? '#c2dce8' : col,
       (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
     if (this._gas) {
       // Granular fracture dust: lumpy, unlit, heavy, and it disperses instead of rising.
@@ -12667,6 +12697,9 @@ export const vfx = {
   // Stable allocations survive steady frames; movement and origin rebasing are followed every
   // update. A conservative quarter-second census keeps dense asteroid belts cheap.
   _syncAmbientFixtures(dt) {
+    // NOCTURNE authors actual model sockets and allocates all sources together. The original
+    // two-fixture bridge remains only for independent VFX fixtures without the runtime owner.
+    if (nocturneForScene(this._scene)) return;
     if (!this._lights || !this.state) return;
     if (!this._ambientFixtureReads) this._ambientFixtureReads = makeAmbientFixtureReads();
     this._ambientFixtureClock -= Math.max(0, dt || 0);
@@ -12713,14 +12746,14 @@ export const vfx = {
     const source = readMaterialContact(this._scene, read);
     let slot = this._findSustainedEventLight('living-material-contact');
     if (!source.active) { this._retireEventLightSlot(slot); return; }
-    slot = slot || this._claimEventLightSlot(24, 'living-material-contact');
+    slot = slot || this._claimEventLightSlot(0.24, 'living-material-contact');
     if (!slot) return;
     slot.obj.position.set(source.x, source.y, source.z);
     slot.obj.color.setRGB(source.r, source.g, source.b);
     slot.obj.distance = source.range;
     slot.obj.intensity = source.intensity * EVENT_LIGHT_GAIN;
     slot.intensity = slot.peak = source.intensity;
-    slot.decay = slot.t = 0; slot.sustained = true; slot.admissionPriority = 24;
+    slot.decay = slot.t = 0; slot.sustained = true; slot.admissionPriority = 0.24;
   },
 
   _updateGyrePayloadLight() {
@@ -12729,7 +12762,7 @@ export const vfx = {
     if (!source?.active) { this._retireEventLightSlot(slot); return; }
     // One of the existing six event lights reveals actual gathered surfaces. No new light
     // or shader variant is created; the presenter owns position, intensity and accessibility.
-    slot = slot || this._claimEventLightSlot(90, 'gyre-payload');
+    slot = slot || this._claimEventLightSlot(0.9, 'gyre-payload');
     if (!slot) return;
     slot.obj.position.set(source.x, source.y, source.z);
     slot.obj.color.set(source.color);
@@ -12738,7 +12771,7 @@ export const vfx = {
     slot.intensity = slot.peak = source.intensity;
     slot.decay = slot.t = 0;
     slot.sustained = true;
-    slot.admissionPriority = 90;
+    slot.admissionPriority = 0.9;
   },
 
   _fieldFlowRelevant() {
@@ -15747,13 +15780,17 @@ export const vfx = {
     // motion/flash reduction remains live without changing the visible PointLight count.
     this._activeLightCount = 0;
     this._lights = [];
-    for (let i = 0; i < this._LIGHT_NPOOL; i++) {
-      const l = new THREE.PointLight(0xffffff, 0, 400, EVENT_LIGHT_DECAY); // color, intensity, distance, decay
+    const nocturne = nocturneForScene(this._scene);
+    const logicalCapacity = nocturne ? 32 : this._LIGHT_NPOOL;
+    for (let i = 0; i < logicalCapacity; i++) {
+      const l = nocturne
+        ? nocturne.createLight(`vfx:${i}`, 'point', { decay: EVENT_LIGHT_DECAY })
+        : new THREE.PointLight(0xffffff, 0, 400, EVENT_LIGHT_DECAY);
       // Pool lights stay VISIBLE forever and flash via intensity only. three bakes the visible
       // light COUNT into every shader program, so toggling .visible forces a synchronous
       // whole-scene shader recompile (measured multi-second stalls on Intel/ANGLE). The count
       // must never change at runtime — precompile.js warms shaders against this same count.
-      this._scene.add(l);
+      if (!nocturne) this._scene.add(l);
       this._lights.push({
         slot: i,
         obj: l,
@@ -15768,15 +15805,15 @@ export const vfx = {
         sustained: false,
       });
     }
-    this._freeLights = new Int32Array(this._LIGHT_NPOOL);
-    for (let i = 0; i < this._LIGHT_NPOOL; i++) this._freeLights[i] = this._LIGHT_NPOOL - 1 - i;
-    this._freeLightCount = this._LIGHT_NPOOL;
+    this._freeLights = new Int32Array(logicalCapacity);
+    for (let i = 0; i < logicalCapacity; i++) this._freeLights[i] = logicalCapacity - 1 - i;
+    this._freeLightCount = logicalCapacity;
     // Retained as an inspectable last-grab cursor; free allocation is stack-backed.
     this._lightCur = 0;
     // The pool mounts are a real light-census mutation (the deferred _initPools
     // path can land after lit programs linked) — bump the epoch so the census
     // memo and parked-lightSig compares re-verify instead of riding stale sigs.
-    noteShadowCensusLightMutation();
+    if (!nocturne) noteShadowCensusLightMutation();
   },
 
   _findSustainedEventLight(key) {
@@ -15838,6 +15875,10 @@ export const vfx = {
     slot.sustained = sustainedKey != null;
     slot.admissionPriority = priority;
     slot.admissionSerial = this._admissionSerial++;
+    if (slot.obj._nocturneSource) {
+      slot.obj._nocturneSource.priority = eventPriorityClass(priority);
+      slot.obj._nocturneSource.importance = 1 + Math.max(0, priority || 0);
+    }
     return slot;
   },
 
@@ -17869,8 +17910,11 @@ function tetherVisualRadius(entity) {
 }
 
 // ore/commodity -> tint (cosmetic; falls back to a warm amber)
-function oreColor(id) {
+export function oreColor(id) {
   if (!id) return '#d8a050';
+  // The beam and the shatter pass asteroid ids. "icy" is not "ice", and a grey rock is not amber.
+  if (id === 'ast_common_rock') return '#c8c0a8';
+  if (id === 'ast_icy') return '#9fd8e8';
   if (id.indexOf('ice') >= 0 || id.indexOf('water') >= 0) return '#9fd8e8';
   if (id.indexOf('volatile') >= 0 || id.indexOf('gas') >= 0) return '#40d090';
   if (id.indexOf('crystal') >= 0 || id.indexOf('lumin') >= 0) return '#b060ff';

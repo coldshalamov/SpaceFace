@@ -52,7 +52,11 @@ export const crew = {
     this.bus.on('crew:hire', (p) => this._tryHire(p && p.candidateId));
     this.bus.on('crew:decline', (p) => {
       const id = p && p.candidateId;
-      if (id && !c.declinedIds.includes(id)) c.declinedIds.push(id);
+      // Resolve the slice live — resetRunState replaces state.crew on New Game, so the
+      // bag captured at init would take the decline into a detached object and the
+      // candidate would hail again on the next approach.
+      const slice = ensureSlice(this.state);
+      if (id && !slice.declinedIds.includes(id)) slice.declinedIds.push(id);
     });
 
     // Banter + loyalty counters ride the same real events; each line is a fact about something
@@ -67,7 +71,6 @@ export const crew = {
       this._banter('missions');
     });
     this.bus.on('longBerth:stage', () => {
-      this._loyaltyProgress('berth_stages');
       this._banter('stages');
     });
     this.bus.on('longBerth:trophy', () => {
@@ -81,7 +84,64 @@ export const crew = {
     this.bus.on('dock:docked', (p) => {
       // Recovering on your own berth is the fiction the fitted crew berth sells.
       if (p && p.stationId === LONG_BERTH_STATION_ID) this._healAll();
+      // A berth homecoming is the engineers' loyalty seam — the berth exists to be used.
+      if (p && p.stationId === LONG_BERTH_STATION_ID) this._loyaltyProgress('berth_homecomings');
     });
+  },
+
+  // The roster is people, not runtime handles — every field is plain durable data. A save without
+  // the key restores nothing over the fresh bag init already minted.
+  serialize() {
+    const c = ensureSlice(this.state);
+    return {
+      version: c.version,
+      members: c.members,
+      declinedIds: c.declinedIds,
+      lostIds: c.lostIds,
+      banterAt: c.banterAt,
+      banterPick: c.banterPick || 0,
+    };
+  },
+
+  deserialize(data) {
+    if (!data || typeof data !== 'object') return;
+    const c = ensureSlice(this.state);
+    // Entries are hostile until shaped: a corrupt save must not abort the restore
+    // with a TypeError on m.status, and downstream readers assume the hired shape.
+    c.members = (Array.isArray(data.members) ? data.members : [])
+      .filter((m) => m && typeof m === 'object' && typeof m.id === 'string')
+      .slice(0, CREW_CAP)
+      .map((m) => ({
+        id: m.id,
+        name: typeof m.name === 'string' ? m.name : m.id,
+        role: typeof m.role === 'string' ? m.role : '',
+        status: m.status === 'injured' || m.status === 'lost' ? m.status : 'active',
+        hiredAt: Number.isFinite(m.hiredAt) ? m.hiredAt : 0,
+        loyalty: Number.isFinite(m.loyalty) ? m.loyalty : 0,
+        injuredAt: Number.isFinite(m.injuredAt) ? m.injuredAt : null,
+        loyaltyJob: m.loyaltyJob && typeof m.loyaltyJob === 'object'
+          ? {
+              kind: typeof m.loyaltyJob.kind === 'string' ? m.loyaltyJob.kind : '',
+              label: typeof m.loyaltyJob.label === 'string' ? m.loyaltyJob.label : '',
+              progress: Number.isFinite(m.loyaltyJob.progress) ? m.loyaltyJob.progress : 0,
+              goal: Number.isFinite(m.loyaltyJob.goal) ? m.loyaltyJob.goal : 1,
+              done: m.loyaltyJob.done === true,
+            }
+          : null,
+      }));
+    c.declinedIds = (Array.isArray(data.declinedIds) ? data.declinedIds : []).filter((id) => typeof id === 'string');
+    c.lostIds = (Array.isArray(data.lostIds) ? data.lostIds : []).filter((id) => typeof id === 'string');
+    c.banterAt = Number.isFinite(data.banterAt) ? data.banterAt : 0;
+    // banterPick indexes the pool array — a fractional or negative pick selects
+    // pool[3.5]/pool[-2] as undefined and the emit below throws mid-update.
+    c.banterPick = Number.isFinite(data.banterPick) ? Math.max(0, Math.floor(data.banterPick)) : 0;
+    for (const m of c.members) {
+      // Same guard init runs: an injured member always carries a start time, or the
+      // field-recovery check in update() can never fire.
+      if (m.status === 'injured' && !Number.isFinite(m.injuredAt)) {
+        m.injuredAt = Number(this.state.simTime) || 0;
+      }
+    }
   },
 
   update(dt, state) {

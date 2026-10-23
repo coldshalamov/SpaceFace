@@ -303,6 +303,8 @@ export function resetRunState(state, opts = {}) {
   state.interventionMeta = fresh.interventionMeta;
   state.drill = fresh.drill;
   state.claims = fresh.claims;
+  state.longBerth = fresh.longBerth;
+  state.crew = fresh.crew;
   state.traffic = fresh.traffic;
   // Mark the fresh world's epoch newer than any pending emit tail: a sector:enter slice
   // deferred across this reset drains inside the next emit or pump frame, and without an

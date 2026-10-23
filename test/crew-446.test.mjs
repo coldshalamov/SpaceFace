@@ -114,12 +114,16 @@ test('roster caps at four; a declined candidate stays declined', () => {
 test('loyalty jobs complete on real events and speak once', () => {
   const state = makeState();
   const { bus, sys } = wire(state);
-  bus.emit('crew:hire', { candidateId: 'crew_bram' }); // job: berth_stages ×2
+  bus.emit('crew:hire', { candidateId: 'crew_bram' }); // job: berth homecomings ×2
   const bram = state.crew.members[0];
-  bus.emit('longBerth:stage', { stage: 1 });
+  // The crew berth is the last stage — post-hire stage events can never arrive, so
+  // the engineers' seam is docking home. Any other berth does not count.
+  bus.emit('dock:docked', { stationId: 'station_forge' });
+  assert.equal(bram.loyaltyJob.progress, 0, 'a foreign dock is not a homecoming');
+  bus.emit('dock:docked', { stationId: LONG_BERTH_STATION_ID });
   assert.equal(bram.loyaltyJob.progress, 1);
   assert.equal(bram.loyaltyJob.done, false);
-  bus.emit('longBerth:stage', { stage: 2 });
+  bus.emit('dock:docked', { stationId: LONG_BERTH_STATION_ID });
   assert.equal(bram.loyaltyJob.done, true);
   assert.equal(bram.loyalty, 1);
   const loyaltyPops = bus.emitted.filter((e) => e.evt === 'crew:loyalty');
@@ -184,4 +188,99 @@ test('the persisted slice re-inits cleanly after a reload', () => {
   sys2.update(2.0, state);
   assert.equal(state.crew.members.length, 1);
   assert.equal(state.crew.members[0].loyalty, 1);
+});
+
+test('the roster survives the real save envelope — JSON round-trip, no handles', () => {
+  const state = makeState();
+  const { bus, sys } = wire(state);
+  bus.emit('crew:hire', { candidateId: 'crew_bram' });
+  bus.emit('crew:hire', { candidateId: 'crew_isese' });
+  bus.emit('crew:decline', { candidateId: 'crew_yella' });
+  const snapshot = JSON.parse(JSON.stringify(sys.serialize()));
+  // Cold state — the roster did not exist.
+  const cold = makeState();
+  const sys2 = Object.create(crew);
+  sys2.init({ state: cold, bus: makeBus(), registry: { get: () => null } });
+  sys2.deserialize(snapshot);
+  assert.equal(cold.crew.members.length, 2);
+  assert.deepEqual(
+    cold.crew.members.map((m) => m.id).sort(),
+    ['crew_bram', 'crew_isese'],
+  );
+  assert.deepEqual(cold.crew.declinedIds, ['crew_yella']);
+  // The perks themselves ride the player record; the roster must too — a member
+  // that vanished here would leave its multiplier orphaned on the sheet.
+  assert.equal(cold.crew.members[0].status, 'active');
+});
+
+test('a missing or empty crew key in an old save restores the fresh bag', () => {
+  const cold = makeState();
+  const sys2 = Object.create(crew);
+  sys2.init({ state: cold, bus: makeBus(), registry: { get: () => null } });
+  sys2.deserialize(undefined);
+  sys2.deserialize(null);
+  assert.deepEqual(cold.crew.members, []);
+  assert.deepEqual(cold.crew.lostIds, []);
+});
+
+test('corrupt member entries are dropped, not adopted — restore never throws', () => {
+  const cold = makeState();
+  const sys2 = Object.create(crew);
+  sys2.init({ state: cold, bus: makeBus(), registry: { get: () => null } });
+  sys2.deserialize({
+    members: [
+      null, 'junk', 42,
+      { id: 'crew_bram' }, { id: 'crew_marko', status: 'injured', loyaltyJob: null },
+      { id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' },
+    ],
+    declinedIds: ['crew_yella', 7, null],
+    lostIds: [false, 'crew_paolo'],
+    banterPick: 2.7,
+  });
+  assert.deepEqual(cold.crew.members.map((m) => m.id), ['crew_bram', 'crew_marko', 'a', 'b'],
+    'junk drops and the roster honors the live crew cap');
+  assert.equal(cold.crew.members[0].status, 'active', 'missing status normalizes to active');
+  assert.equal(cold.crew.members[1].status, 'injured');
+  assert.ok(Number.isFinite(cold.crew.members[1].injuredAt), 'injured member carries a start time');
+  assert.equal(cold.crew.members[1].loyaltyJob, null, 'guarded by the !job check downstream');
+  assert.equal(cold.crew.banterPick, 2, 'a fractional pick cannot index the banter pool');
+  assert.deepEqual(cold.crew.declinedIds, ['crew_yella']);
+  assert.deepEqual(cold.crew.lostIds, ['crew_paolo']);
+});
+
+test('New Game clears the roster — no inherited crew, no negative stat drift', () => {
+  const state = makeState();
+  const { bus } = wire(state);
+  bus.emit('crew:hire', { candidateId: 'crew_bram' });
+  assert.equal(state.player.efficiencyMods.shieldRegenMult, 1.08);
+  // newGameBoot assigns the fresh state's crew and player slices — simulate both.
+  state.crew = undefined;
+  state.player.efficiencyMods.shieldRegenMult = 1; // fresh.player replaces the old sheet
+  const sys2 = Object.create(crew);
+  const bus2 = makeBus();
+  sys2.init({ state, bus: bus2, registry: { get: () => null } });
+  sys2.update(2.0, state);
+  assert.deepEqual(state.crew.members, [], 'nobody followed you into the new run');
+  // The defect: a casualty against a surviving roster subtracted a perk the reset
+  // already removed (1 → 0.92). An empty roster makes the death a no-op.
+  bus2.emit('player:death', {});
+  assert.equal(state.player.efficiencyMods.shieldRegenMult, 1, 'no ghost perk to subtract');
+});
+
+test('a decline after the run reset still lands — the handler re-reads the live slice', () => {
+  const state = makeState();
+  const { bus, sys } = wire(state);
+  // resetRunState swaps state.crew for the fresh run's slice without re-running init —
+  // the same system instance keeps listening.
+  state.crew = undefined;
+  sys.update(2.0, state);
+  bus.emit('crew:decline', { candidateId: 'crew_bram' });
+  assert.deepEqual(state.crew.declinedIds, ['crew_bram'],
+    'the decline must reach the bag a New Game minted, not the pre-reset one');
+  // And the offer scan honors it.
+  state.entities.get('player').pos = { x: 50, z: 5000 };
+  sys._scanT = 0;
+  sys.update(0.1, state);
+  const offer = offers(bus).at(-1);
+  assert.notEqual(offer.candidateId, 'crew_bram');
 });

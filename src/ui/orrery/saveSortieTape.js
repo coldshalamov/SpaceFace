@@ -246,7 +246,7 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     const placed = [];
     for (const ev of model.events) {
       const xx = x(ev.t);
-      if (x1 - xx < 40) continue; // the kill owns the far end
+      if (foldsIntoLoss(ev)) continue; // the killing blow is the loss's own mark
       const upper = String(ev.label).toUpperCase();
       const w = textW(upper, 'orr-tape__label', upper.length * 7.4 * k) + 8 * k;
       // the word slides along its row to stay inside the tape; its mark stays on the moment
@@ -295,13 +295,28 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   /** One button per stop, seated on the channel at its moment. */
   function buildStops() {
     stopsLayer.textContent = '';
-    stopEls = stops().map((t) => {
+    const ts = stops();
+    const at = (t) => (t >= model.lengthS - 0.5 ? geo.x1 - 22 * geo.k : x(t));
+    const xs = ts.map(at);
+    stopEls = ts.map((t, i) => {
       const b = doc.createElement('button');
       b.type = 'button';
       b.className = 'orr-tape__stop';
       b.tabIndex = -1;
-      b.style.left = `${f(t >= model.lengthS - 0.5 ? geo.x1 - 22 * geo.k : x(t))}px`;
+      // close stops split the gap between them, so each target is its own (22px where there is room);
+      // a squeezed stop keeps at least 12px and takes half the channel's height instead, upper and
+      // lower halves alternating, so squeezed neighbours never share a pixel
+      const lo = i > 0 ? Math.max(xs[i] - 11, (xs[i - 1] + xs[i]) / 2) : xs[i] - 11;
+      const hi = i < xs.length - 1 ? Math.min(xs[i] + 11, (xs[i] + xs[i + 1]) / 2) : xs[i] + 11;
+      b.style.left = `${f(xs[i])}px`;
       b.style.top = `${f(geo.mid)}px`;
+      if (hi - lo < 21.5) {
+        const w = Math.max(12, 2 * Math.min(xs[i] - lo, hi - xs[i]), hi - lo);
+        b.style.width = `${f(Math.min(22, w))}px`;
+        b.style.marginLeft = `${f(-Math.min(22, w) / 2)}px`;
+        b.style.height = '11px';
+        b.style.marginTop = i % 2 ? '0px' : '-11px';
+      }
       const ev = model.events.find((e) => e.t === t);
       const word = t >= model.lengthS - 0.5 ? (model.killLabel || 'the loss') : t === 0 ? 'launch' : ev ? ev.label : '';
       b.setAttribute('aria-label', `${fmtSortieTime(t)}${word ? ', ' + word : ''}`);
@@ -362,7 +377,10 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   }
 
   // stops: the launch, every event, the loss
-  const stops = () => [0, ...model.events.map((e) => e.t), model.lengthS].sort((a, b) => a - b);
+  // the killing blow (its warning, or anything in the loss's last second) at the far end is the loss's
+  // stop, not a second one; every other event keeps its own stop, however close to the end
+  const foldsIntoLoss = (e) => !!geo && geo.x1 - x(e.t) < 40 && (e.kind === 'telegraph' || model.lengthS - e.t <= 1);
+  const stops = () => [0, ...model.events.filter((e) => !foldsIntoLoss(e)).map((e) => e.t), model.lengthS].sort((a, b) => a - b).filter((t, i, a) => i === 0 || t !== a[i - 1]);
   let press = null;
   const hostX = (event) => event.clientX - host.getBoundingClientRect().left;
   const onDown = (event) => {

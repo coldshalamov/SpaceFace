@@ -180,10 +180,14 @@ export class HeadlightPool {
     this._assignClock = ASSIGN_INTERVAL;
   }
 
-  dispose() {
+  dispose({ disposeGpu = true } = {}) {
     const mounted = this.group.parent != null;
+    this.clear();
     this.group.removeFromParent();
-    for (const slot of this.slots) slot.light.dispose?.();
+    if (disposeGpu) for (const slot of this.slots) slot.light.dispose?.();
+    this.group.clear();
+    this.slots.length = 0;
+    this._nearEntity.fill(null);
     if (mounted) noteShadowCensusLightMutation();
     this.scene = null;
   }

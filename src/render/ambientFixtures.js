@@ -80,6 +80,7 @@ export function selectAmbientFixtures(state, center, reads, reach = 380) {
   const source = Array.isArray(state?.entityList) ? state.entityList : state?.entities?.values?.();
   if (!source) return reads;
   for (const entity of source) {
+    if (state?.entities?.get && state.entities.get(entity.id) !== entity) continue;
     const preset = fixtureProfileForEntity(entity);
     if (!preset || !entity.pos) continue;
     const dx = entity.pos.x - px, dz = entity.pos.z - pz;

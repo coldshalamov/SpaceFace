@@ -35,7 +35,9 @@ export const CREW_ROLES = Object.freeze({
 // Loyalty jobs: each candidate carries one, keyed to real bus events the system counts.
 // kind → the event stream and field the counter reads; every job is completable in play.
 export const LOYALTY_JOB_KINDS = Object.freeze({
-  berth_stages: { event: 'longBerth:stage', label: 'See the Long Berth restored' },
+  // The crew berth is the last stage, so post-hire stage events never arrive again —
+  // the engineers' seam is bringing the ship home to the yard they keep.
+  berth_homecomings: { event: 'dock:docked', label: 'Bring the ship home to the Long Berth' },
   trophies:     { event: 'longBerth:trophy', label: 'Park trophies in the yard' },
   kills:        { event: 'entity:killed', label: 'Fight alongside — hulls you broke' },
   missions:     { event: 'mission:completed', label: 'Fly contracts together' },
@@ -54,7 +56,7 @@ export const CREW_CANDIDATES = Object.freeze([
       missions: 'Contract closed. I logged the hull wear while you shook hands.',
       stages: 'Another stage welded into her. I know every plate by name now.',
     }),
-    loyaltyJob: Object.freeze({ kind: 'berth_stages', goal: 2 }),
+    loyaltyJob: Object.freeze({ kind: 'berth_homecomings', goal: 2 }),
     loyaltyLine: 'The berth answers to my welds now. I am not leaving her.',
   }),
   Object.freeze({
@@ -102,7 +104,7 @@ export const CREW_CANDIDATES = Object.freeze([
       missions: 'Clean work. The engine did not even notice.',
       stages: 'She takes load now. Real load.',
     }),
-    loyaltyJob: Object.freeze({ kind: 'berth_stages', goal: 2 }),
+    loyaltyJob: Object.freeze({ kind: 'berth_homecomings', goal: 2 }),
     loyaltyLine: 'My torque stamps are in her ribs. Where would I go?',
   }),
   Object.freeze({

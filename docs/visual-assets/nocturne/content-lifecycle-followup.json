@@ -1,0 +1,32 @@
+{
+  "schema": "spaceface.nocturne.content-lifecycle-followup.v1",
+  "createdAt": "2026-10-23T16:54:25.869870+00:00",
+  "capturedReport": "content-report.json",
+  "captureCreatedAt": "2026-10-23T16:52:23.883Z",
+  "scope": "Only teardown ownership flags changed after the captured images. No content selection, source parameters, shader, probe sampling, transport or steady-render behavior changed. The original captured source hashes remain unmodified.",
+  "changes": {
+    "src/render/nocturne/content.js": {
+      "capturedSha256": "56d0554caca3a0b9e06c17cb56497a383bf1a01538b7c6e10ee26da89fd9085b",
+      "followupSha256": "f038abf267b1b63ac9ee73caf07a034914d919dfc0ec037a15bdcd91d5896c37",
+      "reason": "Forward disposeGpu options through content dispose/clear/_remove."
+    },
+    "src/render/nocturne/probes.js": {
+      "capturedSha256": "d099a3da60b9bf807f61a7ff6750df5cd1069692b3b9afdfc853a0863b465864",
+      "followupSha256": "ede65dd20ab52d85891d916aa1ed9b1e18ea7a881549e1ac137213883f5d5363",
+      "reason": "Restore borrowed originals and drop reflection bindings without clone.dispose when disposeGpu:false."
+    },
+    "src/render/bloom.js": {
+      "capturedSha256": "c1fc6760e7bedb36eea39022c43dba57129d00587dd3d303387111865eaf5b2f",
+      "followupSha256": "b2b83640b86f14e37d2fb2c5bf12b189610f33fe585584208df6fecef66fa863",
+      "reason": "attachAtmosphere accepts disposeGpu:false to suppress scene-target disposal on lost-context detach and clears sampler references; see shared atmosphere lifecycle receipt."
+    }
+  },
+  "verification": {
+    "command": "node test/nocturne-content.test.mjs",
+    "exitCode": 0,
+    "caseCount": 20,
+    "rawOutput": "content-lifecycle-tests.txt",
+    "meaning": "Focused lifecycle/source contracts, not GPU or gameplay acceptance."
+  },
+  "bloomReceipt": "atmosphere-lifecycle-followup.json"
+}

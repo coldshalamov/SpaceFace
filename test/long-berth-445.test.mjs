@@ -247,6 +247,76 @@ test('save reload re-registers the station and keeps claim, stages, and trophies
   assert.equal(state.longBerth.trophies.length, 1);
 });
 
+test('the yard survives the real save envelope — claim, stage, trophies, tow ledger', () => {
+  const state = makeState({ cargo: { cmdty_alloys: 6 } });
+  const { bus, sys } = wire(state);
+  bus.emit('tether:latched', { targetId: 7 });
+  scan(sys, state);
+  bus.emit('longBerth:claim', {});
+  bus.emit('longBerth:restore', {});
+  bus.emit('longBerth:restore', {});
+  state.longBerth.trophies.push({ worldRecordId: 'wr:hulk:9', label: 'Hulk of the Held Dock', type: 'wreck', at: 100 });
+  state.longBerth.towedIds.push('wr:tug:7');
+  const snapshot = JSON.parse(JSON.stringify(sys.serialize()));
+  // Cold boot: no slice, no registered station row.
+  const cold = makeState();
+  STATION_INFO.delete(LONG_BERTH_STATION_ID);
+  const { bus: bus2, sys: sys2 } = wire(cold);
+  sys2.deserialize(snapshot);
+  assert.equal(cold.longBerth.claimed, true);
+  assert.equal(cold.longBerth.stage, 2);
+  assert.equal(cold.longBerth.trophies.length, 1);
+  assert.deepEqual(cold.longBerth.towedIds, state.longBerth.towedIds);
+  assert.equal(cold.longBerth.markerEntityId, null, 'the marker handle is reminted, not saved');
+  bus2.emit('save:loaded', {});
+  assert.ok(STATION_INFO.get(LONG_BERTH_STATION_ID), 'the station row is re-registered on load');
+});
+
+test('a missing longBerth key in an old save restores the fresh bag', () => {
+  const cold = makeState();
+  const { sys } = wire(cold);
+  sys.deserialize(undefined);
+  sys.deserialize(null);
+  assert.equal(cold.longBerth.claimed, false);
+  assert.equal(cold.longBerth.stage, 0);
+  assert.deepEqual(cold.longBerth.trophies, []);
+});
+
+test('corrupt trophy/id entries are dropped, not adopted — the yard scan stays safe', () => {
+  const cold = makeState();
+  const { sys } = wire(cold);
+  sys.deserialize({
+    claimed: true, stage: 2,
+    trophies: [null, 'junk', { label: 'no id' }, { worldRecordId: 'wr:hulk:9', label: 'Hulk', type: 'wreck', at: 5 }],
+    crew: ['crew_bram', 9], towedIds: [null, 'wr:tug:1'], tugWorldRecordId: 42,
+  });
+  assert.deepEqual(cold.longBerth.trophies.map((t) => t.worldRecordId), ['wr:hulk:9']);
+  // The live collection caps bind on adopt too — an oversized payload can't plant
+  // a list every yard scan walks.
+  sys.deserialize({ claimed: true, stage: 2,
+    trophies: Array.from({ length: 30 }, (_, i) => ({ worldRecordId: `wr:n:${i}` })),
+    towedIds: Array.from({ length: 200 }, (_, i) => `wr:t:${i}`) });
+  assert.equal(cold.longBerth.trophies.length, 24);
+  assert.equal(cold.longBerth.trophies[23].worldRecordId, 'wr:n:29', 'oldest entries drop first');
+  assert.equal(cold.longBerth.towedIds.length, 128);
+  sys.deserialize({ claimed: true, stage: 2,
+    trophies: [{ worldRecordId: 'wr:hulk:9', label: 'Hulk', type: 'wreck', at: 5 }],
+    crew: ['crew_bram', 9], towedIds: ['wr:tug:1'], tugWorldRecordId: 42 });
+  assert.deepEqual(cold.longBerth.crew, ['crew_bram']);
+  assert.deepEqual(cold.longBerth.towedIds, ['wr:tug:1']);
+  assert.equal(cold.longBerth.tugWorldRecordId, null);
+  // A towed hulk parked inside the lit yard forces _yardTrophies to iterate the
+  // adopted trophy list — a surviving junk entry would throw on t.worldRecordId.
+  const hulk = {
+    id: 51, type: 'wreck', alive: true,
+    pos: { x: 1000 + BERTH_YARD_RADIUS_WU - 20, z: 800 }, vel: { x: 0, z: 0 }, radius: 12,
+    data: { name: 'Towed Hulk', worldRecordId: 'wr:tug:1' },
+  };
+  cold.entities.set(hulk.id, hulk); cold.entityList.push(hulk);
+  scan(sys, cold);
+  assert.deepEqual(cold.longBerth.trophies.map((t) => t.worldRecordId), ['wr:hulk:9', 'wr:tug:1']);
+});
+
 test('docking at the berth paints the home card: hull, crew, and the trophy yard', () => {
   const state = makeState();
   const { bus, sys } = wire(state);

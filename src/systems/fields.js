@@ -601,6 +601,30 @@ export function fieldEntityIsPrimed(registry, state, entity) {
   return false;
 }
 
+export const THERMAL_MARK_COLORS = Object.freeze({
+  burn: '#e85a20',
+  coolant: '#7ec8e8',
+});
+
+/** One ring for a burn or a coolant patch. Particles stay at zero; the ring cannot outlive the field. */
+export function thermalMarkCue(record, thermal, durationS) {
+  if (!record || !record.center || !thermal) return null;
+  const life = Math.min(4, Math.max(0, Number(durationS) || 0));
+  if (!(life > 0) || !Number.isFinite(record.center.x) || !Number.isFinite(record.center.z)) return null;
+  const color = THERMAL_MARK_COLORS[thermal.kind] || THERMAL_MARK_COLORS.burn;
+  return {
+    id: 'thermal.mark',
+    kind: 'thermalMark',
+    particles: 0,
+    lights: 0,
+    position: { x: record.center.x, z: record.center.z },
+    radius: record.radius,
+    color,
+    life,
+    thermalKind: thermal.kind,
+  };
+}
+
 export const fields = {
   name: 'fields',
 
@@ -1818,6 +1842,8 @@ export const fields = {
     this.bus.emit('fields:thermalCreated', { fieldId: record.id, kind: thermal.kind,
       sourceKey: thermal.sourceKey, center: { ...record.center }, dir: { ...record.dir },
       radius: record.radius, halfAngleRad: record.halfAngleRad, expireAt: record.expireAt });
+    const mark = thermalMarkCue(record, thermal, spec.durationS);
+    if (mark) this.bus.emit('presentation:vfxCue', mark);
     return record;
   },
   thermalPointCooled(point) { return !!this._kernel && thermalPointCooled(this._kernel.list(), point); },

@@ -939,6 +939,10 @@ export const save = {
       ['npcJobs', () => this._callSerialize('npcJobsRuntime') || {}], // PQ-014 live NPC job bag (v12)
       ['traffic', () => this._callSerialize('traffic') || {}],
       ['claims', () => this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] })],
+      // GOLD-CREW/GOLD-LONG-BERTH (v20): keep the incremental capture plan aligned
+      // with _serializeDataSteps or worker-encoded saves silently drop these bags.
+      ['crew', () => this._callSerialize('crew') || clonePlain(state.crew || {})],
+      ['longBerth', () => this._callSerialize('longBerth') || clonePlain(state.longBerth || {})],
       ['sites', () => this._callSerialize('asteroidSites') || clonePlain(state.sites || {})],
       ['formations', () => this._callSerialize('asteroidFormations') || clonePlain(state.formations || {})],
       ['aceMemory', () => this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {})],
@@ -1115,6 +1119,12 @@ export const save = {
     yield 'serialize:traffic';
     data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
     yield 'serialize:claims';
+    // GOLD-CREW/GOLD-LONG-BERTH (v20): roster and home-yard bags — the systems own
+    // shape and normalization; absent keys restore their fresh bags.
+    data.crew = this._callSerialize('crew') || clonePlain(state.crew || {});
+    yield 'serialize:crew';
+    data.longBerth = this._callSerialize('longBerth') || clonePlain(state.longBerth || {});
+    yield 'serialize:longBerth';
     data.sites = this._callSerialize('asteroidSites') || clonePlain(state.sites || {});
     yield 'serialize:sites';
     data.formations = this._callSerialize('asteroidFormations') || clonePlain(state.formations || {});
@@ -6968,6 +6978,13 @@ export const save = {
       // Claimed bases (after world so sectorId/poiId resolve to real sectors/POIs).
       yield* this._callDeserializeChunked('claims', data.claims);
       yield 'claims-restored';
+      // Long Berth before crew: the yard's dock:docked homecoming listener on crew
+      // only matters in play, but ordering keeps the home slice ahead of the roster
+      // either way (v20).
+      yield* this._callDeserializeChunked('longBerth', data.longBerth);
+      yield 'long-berth-restored';
+      yield* this._callDeserializeChunked('crew', data.crew);
+      yield 'crew-restored';
       yield* this._callDeserializeChunked('asteroidSites', data.sites);
       this._resumeCeresEntityReferences();
       this._resumeCeresAttachmentRestore();
@@ -9703,6 +9720,15 @@ function sanitizeRestoredSettings(settings) {
   if (s.gameplay.ironmanChoiceLocked !== true) delete s.gameplay.ironmanChoiceLocked;
   if (!s.audio || typeof s.audio !== 'object' || Array.isArray(s.audio)) s.audio = {};
   s.audio.muteOnFocusLoss = s.audio.muteOnFocusLoss === true;
+  if (!s.video || typeof s.video !== 'object' || Array.isArray(s.video)) s.video = {};
+  // Render-only NOCTURNE preferences follow the profile. Older saves inherit the shipped
+  // picture, and malformed values cannot silently turn off a feature or name an unknown tier.
+  for (const key of ['nocturne', 'nocturneShadows', 'nocturneAtmosphere']) {
+    s.video[key] = s.video[key] !== false;
+  }
+  if (!['auto', 'integrated', 'balanced', 'high'].includes(s.video.nocturneQuality)) {
+    s.video.nocturneQuality = 'auto';
+  }
   // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
   // false, so interval autosave stops firing for the rest of the session with no error at all,
   // and the Settings row renders it as '[object Object]'.

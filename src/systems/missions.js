@@ -5080,6 +5080,11 @@ export const missions = {
     if (m.collateral_cr > 0) {
       this.bus.emit('economy:grantCredits', { amount: m.collateral_cr, reason: `collateral_refund:${m.id}` });
     }
+    // RC-MISSION-VOICE: the payday speaks in the payer's voice — a bounty is crossed off the wall,
+    // a fence settles fast, a logged yard pays by the book. One receipt line, on the toast lane
+    // every other settle fact rides.
+    const paydayLine = missionPaydayLine(m, settledRewardCr);
+    if (paydayLine) this.bus.emit('toast', { text: paydayLine, kind: 'info', ttl: 6 });
 
     // ── offering-faction rep: route through mission:completed{repMult} (factions applies 15*repMult).
     // We size repMult so factions' applied rep ≈ the spec's risk-scaled BASE_REP value, plus the
@@ -5869,6 +5874,29 @@ export function missionRepDeltaFor(m, outcome) {
   if (!m || !m.factionId) return 0;
   const specRep = missionSpecRep(m);
   return outcome === 'completed' ? specRep : -Math.ceil(specRep * 0.6);
+}
+
+/**
+ * RC-MISSION-VOICE — the payday receipt line. Only voiced jobs get a voiced receipt: a named
+ * writ's wall, a fence, a logged yard. Ordinary contracts keep their plain payout toast.
+ * One middot per line, always — the flight-HUD receipt filter drops denser strings.
+ */
+export function missionPaydayLine(m, rewardCr) {
+  const cr = Math.max(0, Math.round(Number(rewardCr) || 0));
+  if (cr <= 0) return null;
+  if (m && m.counterweight) {
+    return `PAYDAY ${cr} cr — the yard paid for what actually crossed.`;
+  }
+  if (m && m.heist) {
+    return m.heist.settledOutcome === 'fenced_success'
+      ? `PAYDAY ${cr} cr — the fence settles fast and forgets your face.`
+      : `PAYDAY ${cr} cr — logged, receipted, and paid on the tick.`;
+  }
+  const markName = m && m.storyTarget && m.storyTarget.role === 'board_writ' ? m.storyTarget.name : null;
+  if (m && m.type === 'bounty_hunt' && markName) {
+    return `PAYDAY ${cr} cr — the wall crossed ${markName} off.`;
+  }
+  return null;
 }
 
 export function missionReceiptFor(m, outcome, reason, settlement = {}) {

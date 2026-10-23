@@ -111,8 +111,8 @@ export const LOOK_BASE = deepFreeze({
 // beam geometry is ever drawn. Material-physics-like: the same lamp in every mood.
 export const LOOK_HEADLIGHT = deepFreeze({
   colorHex: 0xffe6c4,      // warm sodium-white
-  intensity: 420,          // candela-like; physical falloff below
-  decay: 1.0,              // gentler than inverse-square so the pool still reads at mid range
+  intensity: 25200,        // calibrated to the previous lamp at a 60 WU reference distance
+  decay: 2.0,              // physical inverse-square response shared by NOCTURNE local lights
   range: 450,              // WU; hard cutoff of the light
   angle: 0.46,             // radians, half-angle of the cone (~26°)
   penumbra: 0.75,          // soft-edged pool, no hard disc

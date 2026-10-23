@@ -1,0 +1,28 @@
+✔ actual model sockets bind real sources and track animated, scaled parents without sim writes (8.042677ms)
+✔ power loss immediately extinguishes fixtures and probe contribution; repair restores it (1.462953ms)
+✔ a dark mesh or missing named authored socket never invents a light at its origin (1.819718ms)
+✔ automatic lamp fallback uses visible emissive geometry, not radius-based imaginary bulbs (2.438739ms)
+✔ removed and same-id rematerialized entities release old handles, never leak source residency (0.970688ms)
+✔ source and media capacities stay bounded when the yard is dense (39.892319ms)
+✔ stationary light shadows invalidate when an ordinary nearby non-emitting caster moves (0.827838ms)
+✔ vacuum and combat have no participating medium; derelict smoke requires an active source (0.792687ms)
+✔ classification is explicit for luminous rocks/biology and all explicit opt-outs win (0.275575ms)
+✔ probe irradiance has compact spatial support and true normal-dependent colour response (0.462822ms)
+✔ static reflection binding isolates shared materials and restores/disposes only owned clones (1.298887ms)
+✔ invalid medium metadata fails closed and explicit false leaves vacuum optically clear (0.652921ms)
+✔ visible LOD replacement retargets sources without keeping hidden emitters alive (0.632681ms)
+✔ native vented reactor state extinguishes its removed core and fauna emits without invented gas (0.805876ms)
+✔ one-slot headlight census stays bounded and explicit power-off states extinguish it (0.799327ms)
+✔ headlights rebind a hidden LOD socket to its visible replacement instead of following stale geometry (1.078137ms)
+✔ a named emissive socket is reserved once and its material power controls indirect composition (2.995738ms)
+✔ authoring descriptors reject malformed identifiers, fractional priorities and unsafe numeric output (0.828208ms)
+✔ native fabrication and Sker anchors retain industrial identity even with generic station packages (0.334483ms)
+✔ lost-context content disposal restores reflection materials without dispatching GPU disposal (1.746341ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 77.688637

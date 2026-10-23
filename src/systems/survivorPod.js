@@ -1072,6 +1072,11 @@ export const survivorPod = {
       }
       // Keep entity annotation in sync for save/Continue.
       entity.data.survivorPodCausal = { ...rec, entityId: entity.id };
+      // Unnoticed, the pod is just a pod. Once the player has come within hail, the air left is readable.
+      if (Number.isFinite(rec.playerNoticedAt)) {
+        const left = Math.max(0, Math.ceil((Number(rec.expireAt) || 0) - now));
+        entity.data.scanLabel = `Survivor Pod - oxygen ${left}s`;
+      }
 
       if (Number.isFinite(rec.expireAt) && now >= rec.expireAt) {
         this._resolveCausal(state, own, rec, entity, 'abandoned', {

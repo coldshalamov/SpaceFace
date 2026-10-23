@@ -63,6 +63,45 @@ export const longBerth = {
     });
   },
 
+  // Everything durable is plain data; markerEntityId is a runtime handle the save:loaded
+  // registration and _syncMarker remint, so it stays out of the envelope.
+  serialize() {
+    const lb = ensureSlice(this.state);
+    return {
+      version: lb.version,
+      claimed: lb.claimed === true,
+      stage: lb.stage,
+      trophies: lb.trophies,
+      crew: lb.crew,
+      towedIds: lb.towedIds,
+      tugWorldRecordId: lb.tugWorldRecordId || null,
+    };
+  },
+
+  deserialize(data) {
+    if (!data || typeof data !== 'object') return;
+    const lb = ensureSlice(this.state);
+    lb.claimed = data.claimed === true;
+    lb.stage = Number.isFinite(data.stage) ? data.stage : 0;
+    // Entries are hostile until shaped: _yardTrophies dereferences t.worldRecordId
+    // every scan, so a corrupt save must not adopt junk that throws per tick.
+    lb.trophies = (Array.isArray(data.trophies) ? data.trophies : [])
+      .filter((t) => t && typeof t === 'object' && typeof t.worldRecordId === 'string')
+      .map((t) => ({
+        worldRecordId: t.worldRecordId,
+        label: typeof t.label === 'string' ? t.label : t.worldRecordId,
+        type: typeof t.type === 'string' ? t.type : 'wreck',
+        at: Number.isFinite(t.at) ? t.at : 0,
+      }))
+      // Same caps the live paths enforce — a hostile save can't adopt an
+      // unbounded list that every yard scan and roster includes() then walks.
+      .slice(-24);
+    lb.crew = (Array.isArray(data.crew) ? data.crew : []).filter((id) => typeof id === 'string');
+    lb.towedIds = (Array.isArray(data.towedIds) ? data.towedIds : []).filter((id) => typeof id === 'string').slice(-128);
+    lb.tugWorldRecordId = typeof data.tugWorldRecordId === 'string' ? data.tugWorldRecordId : null;
+    lb.markerEntityId = null;
+  },
+
   update(dt, state) {
     this._scanT -= dt;
     if (this._scanT > 0) return;
