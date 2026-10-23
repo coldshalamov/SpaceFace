@@ -1982,3 +1982,13 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`saveLayouts.js`, desktop only, `max-width:1100px`):** the hull (and on an empty slot, the vacant word's layer) shows again, as above 1100. No selector or ID changes; phone and the stacked band are untouched.
 
 **Checked:** bench `save-load` and `save-load-empty` at 800×600, 960×540, 1100×720, 1280×720; phone 390×844. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish102/`.
+
+## Help in a narrow desktop window, and the Research foot (ui-polish-106)
+
+**Before (master 93706e9ff0):** at ≤760 wide (taller than 460) nothing composed Help on a desktop: the 172px section ladder kept its column, EVERY KEY ran off the right edge ("Steer left (yaw + ban…"), and the rig's "PRESS ANY KEY · THE RIG LIGHTS…" echo printed over CLOSE (bench: 11 findings at 390×844). On Research (phone and ≤760), the docked foot was 97% opaque, so the reading's REQUIRES / "No prerequisites." ghosted through Back.
+
+**After:** `helpLayouts.js`, desktop only, `(max-width:760px) and (min-height:461px)`: one column (title, the sections as one scrolling row of words on a rule, the stage, Close). Controls gives the stage to EVERY KEY (the rig sleeps, as at ≤460 tall). Ships / Commodities / Ores scroll as one column (list, instrument at 320px, reading); Factions shows the crest ring at 380px over its reading, and at ≤560 only the chosen, hovered or focused crest shows its name (the east/west names ran off the window; each crest keeps its aria-label). `constellationLayouts.js`: the ≤760 Research foot is fully opaque. No selector or ID changes; the phone (`data-sf-mobile`), ≤460 tall, and ≥761 are untouched.
+
+**Checked:** bench `help --walk` through all six sections at 390×844, 600×800 and 760×900: 0 findings (was 11 at 390×844). `tech-tree` at 390×844 phone: no ghost under Back (the bench's BURIED note is the page's fold under the docked foot, by design). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish106/`.
+
+**Leftover:** on the phone, Help's Factions shows no crest ring (the orbit collapses to 0 height), so only Concord can be read.
