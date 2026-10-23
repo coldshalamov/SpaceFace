@@ -372,7 +372,8 @@ export const SOUTH_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_hush',
         pos: Object.freeze({ x: 0, z: -1800 }),
-        landmarkGlb: 'place_asteroid_rock_a',
+        landmarkGlb: 'place_hush_gap',
+        placeTargetRadius: 420,
         landmark: true,
       }),
     ]),
@@ -428,7 +429,9 @@ export const SOUTH_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_sedna_ringworld',
         pos: Object.freeze({ x: 1600, z: 1100 }),
-        landmarkGlb: 'place_asteroid_seamed',
+        landmarkGlb: 'place_sedna_ringworld_arc',
+        placeTargetRadius: 420,
+        visualRadius: 420,
         landmark: true,
       }),
     ]),

@@ -139,9 +139,23 @@ export const EVERYDAY_SPACE_KIT_LEGAL_MODELS = Object.freeze([
 
 export const EVERYDAY_SPACE_KIT_UNUSED_MODELS = Object.freeze([]);
 
-export const EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID = Object.freeze(Object.fromEntries(
-  EVERYDAY_SPACE_KIT_LEGAL_MODELS.map((model) => [model.id, model.file]),
-));
+// Frontier postcards. A landmark POI is an authored set piece, so partsLibrary
+// resolves these ids from this map. They are not dressing models: ordinary
+// sectors must not scatter a world-gap or a ringworld arc.
+export const POSTCARD_LANDMARK_PLACE_FILE_BY_ID = Object.freeze({
+  place_hush_gap: 'places/place_hush_gap.glb',
+  place_sedna_ringworld_arc: 'places/place_sedna_ringworld_arc.glb',
+});
+
+export const POSTCARD_LANDMARK_RELEASE_URL_BY_ID = Object.freeze({
+  place_hush_gap: 'assets/ships/release/parts/places/place_hush_gap.glb',
+  place_sedna_ringworld_arc: 'assets/ships/release/parts/places/place_sedna_ringworld_arc.glb',
+});
+
+export const EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID = Object.freeze({
+  ...Object.fromEntries(EVERYDAY_SPACE_KIT_LEGAL_MODELS.map((model) => [model.id, model.file])),
+  ...POSTCARD_LANDMARK_PLACE_FILE_BY_ID,
+});
 
 export const EVERYDAY_SPACE_KIT_MODEL_BY_ID = Object.freeze(Object.fromEntries(
   EVERYDAY_SPACE_KIT_LEGAL_MODELS.map((model) => [model.id, model]),

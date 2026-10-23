@@ -126,7 +126,12 @@ test('thirty newly-legal kit identities route through the release place family',
 test('forty-six legal kit identities route through the release place family', () => {
   assert.equal(EVERYDAY_SPACE_KIT_LEGAL_MODELS.length, 46);
   assert.deepEqual([...EVERYDAY_SPACE_KIT_ORIGINAL_IDS].sort(), [...OCCUPATIONAL_YARD_PLACE_IDS].sort());
-  assert.equal(Object.keys(EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID).length, 46);
+  assert.deepEqual(
+    Object.keys(EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID)
+      .filter((id) => !EVERYDAY_SPACE_KIT_LEGAL_IDS.includes(id))
+      .sort(),
+    ['place_hush_gap', 'place_sedna_ringworld_arc'],
+  );
   for (const model of EVERYDAY_SPACE_KIT_LEGAL_MODELS) {
     assert.equal(everydaySpaceKitFileForPlaceId(model.id), model.file);
     assert.ok(existsSync(resolve(ROOT, model.releaseUrl)), model.releaseUrl);

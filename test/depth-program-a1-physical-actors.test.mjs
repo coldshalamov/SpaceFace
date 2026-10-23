@@ -169,7 +169,7 @@ test('Eunomia Gulf materializes one Hush carrier for Band silence and authored s
   const hush = entitiesWith(state, (entity) => entity.data?.poiId === 'poi_hush'
     && entity.data.flavorSourceId === 'planet_hush');
   assert.equal(hush.length, 1);
-  assert.equal(hush[0].data.landmarkGlb, 'place_asteroid_rock_a');
+  assert.equal(hush[0].data.landmarkGlb, 'place_hush_gap');
   assert.equal(hush[0].data.bandProximityRadius, 2400);
   assert.ok(hush[0].radius >= 400);
   assert.ok(entitiesWith(state, (entity) => entity.data?.worldDressing === true)
