@@ -563,3 +563,8 @@ The unmanned Kiln source and compiled package are locally integrated and indepen
 - Return/time: actual Save/Continue retains accepted mission and resolved lab aftermath. Incomplete readings still reset under existing serialization. The six-day expiry reopens the existing research activity; generic Wake/Glow aftermath remains independently pinned.
 - Review: the first candidate allowed stale scans after departure. A transient authored-lab-only presence guard now rejects them until valid reentry. Wrong-sector, outside, repeated and nonfinite pulses cannot earn a reading. Exact POI binding avoids annotating an unrelated neighbor.
 - Evidence/limits: nine new and22 existing living-POI cases pass. One causal tombstone assertion fails identically on baseline and is separately investigated. Four existing NPC routine slots are unchanged. Ordinary flight, rendered comprehension, phone performance and whole-sector acceptance remain open. Draft publication is active, not yet verified; see CLAIM_TRITON_FIELD_LAB_2026-10-23.md.
+
+
+### Triton delivery update, 23 October 2026 01:15 UTC
+
+The five-file Field Lab increment is now remotely verified in draft PR #518 at 48c5be52d35c6a857769d98b4a546c57cff34d7f. It is published, not merged or accepted. CI remains in progress with individually investigated failures. The adjacent causal-retirement issue is now classified as an obsolete test spy cardinality expectation: actual target retirement, investigated scanner receipt and one settlement hold in the bounded owner/serializer probe. Test-only observable-state coverage is allocated; no narrative/gameplay repair is claimed. Native flight, visible player comprehension, performance and whole-sector acceptance remain open.
