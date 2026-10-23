@@ -59,6 +59,7 @@ import {
   NPC_JOB_SCHEMA,
 } from './npcJobs.js';
 import { hash32 } from '../core/rng.js';
+import { captainDetourRoute } from './captainMemory.js';
 import { armLaneErrands, applyLaneErrandIntent } from './laneErrands.js';
 import { tickLivedVignettes } from './livedWorldDirector.js';
 import { syncEntityActivitySlotMembership, syncEntitySectorMembership } from '../core/coreSystem.js';
@@ -1136,6 +1137,7 @@ export const npcJobsRuntime = {
     if (this.helpers) {
       this.helpers.npcJobs = {
         assign: (entity, spec) => this.assign(entity, spec),
+        rerouteCaptain: (entity, captainId) => this.rerouteCaptain(entity, captainId),
         get: (jobId) => this._byId()[jobId] || null,
         byEntity: (entityId) => this._entryForEntity(entityId),
         release: (jobId) => this.release(jobId),
@@ -2422,6 +2424,20 @@ export const npcJobsRuntime = {
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     this._refreshCeresRealTargetsForEntry(entry, entity);
     return jobId;
+  },
+
+  rerouteCaptain(entity, captainId) {
+    if (!entity?.data || entity.data.captainId !== captainId || entity.data.activityActorSlotId) return false;
+    const entry = this._entryForEntity(entity.id);
+    if (!entry || entry.kind !== 'hauler' || !entry.job?.route?.length) return false;
+    const route = captainDetourRoute(captainId, entry.job.route);
+    if (route === entry.job.route) return false;
+    // This owner replaces its own plan. Traffic never edits a kernel job or its steering.
+    entry.job = createJob({ id: entry.job.id, kind: entry.kind, route,
+      speed: entry.job.speed, payload: entry.job.payload }, (this.state.meta?.seed || 0));
+    entry.lastAdvanceSimT = finite(this.state.simTime, 0);
+    entry.threatId = null;
+    return true;
   },
 
   // ── PQ-195.04: Berth Three's local consequence ───────────────────────────────────────────────

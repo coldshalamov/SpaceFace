@@ -3,6 +3,8 @@
 // functions directly — do not re-implement them in a check.
 
 import { isVoiceOwnedAlertToast } from './alerts.js';
+import { getPromptDevice } from './bindings.js';
+import { controlPrompt } from './controlPrompts.js';
 
 export const RECEIPT_MAX = 2;
 export const VITAL_NUMERIC_LOW = 0.5;
@@ -11,7 +13,7 @@ export const SHIP_GLYPH_BOX = Object.freeze({ width: 62, height: 74 });
 const TARGET_RECEIPT = /^\s*target\s*:/i;
 const CONTROL_LAUNDRY = /\s+•\s+/;
 const BIND_WALL = /\b(thrusts?|steer|mouse aims|lmb fire|left stick flies)\b/i;
-const COMBAT_KEEP = /\b(cr|credit|cargo|rep|save|saved|cannot|insufficient|no wingmen)\b/i;
+const COMBAT_KEEP = /\b(cr|credit|cargo|rep|save|saved|cannot|insufficient|no wingmen|wanted)\b/i;
 const RADIO_CHATTER = /^["'“‘]|(\b(chatter|radio|hail|routine transponder|incident logged|clause \w+ observed|witness the|the pattern sings|meridian floor:|saw that|caught that|clause satisfied)\b)/i;
 
 export function vitalNumericVisible(frac) {
@@ -212,6 +214,9 @@ export function openingInstructionSolo(state) {
 }
 
 export function hudJobFromState(state = {}, tether = null) {
+  // The flight HUD already calls this every slow frame. That is the first-flight
+  // moment this module can see — onboarding.js is not a mount point.
+  if (state && state.mode === 'flight') syncTutorialFlightCard(state);
   const player = state.entities && state.playerId != null
     ? state.entities.get && state.entities.get(state.playerId)
     : null;
@@ -226,6 +231,92 @@ export function hudJobFromState(state = {}, tether = null) {
     }
   }
   return 'cruise';
+}
+
+const TUTORIAL_FLIGHT_CARD_ID = 'sf-tutorial-flight-card';
+
+function tutorialFlightHintsOff(state) {
+  const gameplay = state && state.settings && state.settings.gameplay;
+  return !!(gameplay && gameplay.tutorialHints === false);
+}
+
+/** True on the first free flight of a new game, before the card has been spent. */
+export function tutorialFlightMoment(state) {
+  if (!state || state.mode !== 'flight') return false;
+  if (state.ui && state.ui.docked) return false;
+  if (state.player && state.player.flags && state.player.flags.docked) return false;
+  if (state.physicsVenueSession) return false;
+  if (state.run && state.run.kind === 'survival' && state.run.phase && state.run.phase !== 'inactive') return false;
+  if (tutorialFlightHintsOff(state)) return false;
+  const ob = state.onboarding;
+  if (!ob || ob.active !== true || ob.finished === true) return false;
+  if (ob.pace && ob.pace.flownBefore === true) return false;
+  return shouldShowFirstUseHint(state.player && state.player.hints, 'firstFlight');
+}
+
+export function tutorialFlightCardText(state) {
+  return controlPrompt('tutorialFlight', getPromptDevice(), state);
+}
+
+function ensureTutorialFlightCardStyle(doc) {
+  if (!doc || typeof doc.createElement !== 'function' || typeof doc.getElementById !== 'function') return;
+  if (doc.getElementById('sf-tutorial-flight-card-style')) return;
+  const style = doc.createElement('style');
+  if (!style) return;
+  style.id = 'sf-tutorial-flight-card-style';
+  if (style.setAttribute) style.setAttribute('id', 'sf-tutorial-flight-card-style');
+  style.textContent = '.sf-tutorial-flight-card{position:absolute;left:50%;top:18%;transform:translateX(-50%);max-width:min(42rem,86vw);pointer-events:none;z-index:30;text-align:center;line-height:1.35;}';
+  const parent = doc.head || doc.body || doc.documentElement;
+  if (parent && parent.appendChild) parent.appendChild(style);
+}
+
+/**
+ * Mount CONTROL_PROMPTS.tutorialFlight once per profile. The flight HUD's slow
+ * tick is the caller. A keys wall (bullet-separated bind list) is refused.
+ */
+export function syncTutorialFlightCard(state, doc) {
+  const documentRef = doc || (typeof document !== 'undefined' ? document : null);
+  if (!documentRef || typeof documentRef.getElementById !== 'function') return null;
+  const existing = documentRef.getElementById(TUTORIAL_FLIGHT_CARD_ID);
+  const inFlight = !!(state && state.mode === 'flight'
+    && !(state.ui && state.ui.docked)
+    && !(state.player && state.player.flags && state.player.flags.docked));
+  if (existing && !inFlight) {
+    existing.hidden = true;
+    return null;
+  }
+  if (existing && inFlight && existing.hidden !== true) {
+    const live = tutorialFlightCardText(state);
+    if (live && !live.includes(' • ') && existing.textContent !== live) existing.textContent = live;
+  }
+  if (!tutorialFlightMoment(state)) return existing && existing.hidden !== true ? existing : null;
+  const root = documentRef.getElementById('hud');
+  if (!root || typeof documentRef.createElement !== 'function') return null;
+  const text = tutorialFlightCardText(state);
+  if (!text || text.includes(' • ')) return null;
+  ensureTutorialFlightCardStyle(documentRef);
+  let card = existing;
+  if (!card) {
+    card = documentRef.createElement('div');
+    card.id = TUTORIAL_FLIGHT_CARD_ID;
+    if (card.setAttribute) card.setAttribute('id', TUTORIAL_FLIGHT_CARD_ID);
+    card.className = 'sf-tutorial-flight-card';
+    if (card.setAttribute) card.setAttribute('role', 'status');
+    if (root.appendChild) root.appendChild(card);
+  }
+  card.hidden = false;
+  card.textContent = text;
+  if (state.player) state.player.hints = markFirstUseHint(state.player.hints, 'firstFlight');
+  return card;
+}
+
+/** The first wanted mark, once per profile. Empty on later heat. Never the surrender line. */
+export function noteFirstWantedMark(state, wantedNow) {
+  if (!state || !state.player || wantedNow !== true) return '';
+  if (tutorialFlightHintsOff(state)) return '';
+  if (!shouldShowFirstUseHint(state.player.hints, 'firstWanted')) return '';
+  state.player.hints = markFirstUseHint(state.player.hints, 'firstWanted');
+  return firstUseLine('firstWanted');
 }
 
 export function contactRosterExpanded({
@@ -290,6 +381,8 @@ export const FIRST_USE_LINE = Object.freeze({
   firstStation: 'Dock.',
   firstGate: 'Plot a jump.',
   firstCargoFull: 'Sell cargo.',
+  // SEED-ST-12 — the mark itself, not TEACH-10's surrender line.
+  firstWanted: 'WANTED. It clears over time outside the search, or with distance.',
   firstFrontier: 'The rim keeps no records. Chart it yourself.',
   firstHub: "Pick a service above. Undock when you're ready.",
   firstDrill: 'Bore beside useful seams. Keep the faces.',

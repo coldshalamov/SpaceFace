@@ -8,6 +8,19 @@ import { RACING_PERSONALITIES, createRacingDriver, racingDriverIntent } from '..
 import { stepRacingDraft } from './racingDraft.js';
 
 const compareId = (a, b) => String(a).localeCompare(String(b), 'en');
+export const RACING_TAKEDOWN_LOSS_S = 2;
+const takedownReceipts = [];
+export function racingTakedownReceipts() { return takedownReceipts.slice(); }
+export function clearRacingTakedownReceipts() { takedownReceipts.length = 0; }
+function isShutter(body) {
+  const piece = body?.data?.raceSetPiece;
+  return piece?.kind === 'shutter' || piece?.id === 'tally_customs_shutter';
+}
+function bodiesTouch(a, b, pad) {
+  if (!a?.pos || !b?.pos || a.alive === false || b.alive === false) return false;
+  const reach = (Number(a.radius) || 18) + (Number(b.radius) || 18) + pad;
+  return Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z) <= reach;
+}
 export function racingOpponentGrid(params, index) {
   const gates = raceGateGlobals(params), a = gates[0], b = gates[1];
   if (!a || !b) return null;
@@ -33,6 +46,35 @@ export function rankRacingEntrants(rows) {
 export function createRacingOpponents({ state, bus, helpers }) {
   let heat = null;
   const nearby = [];
+  const shutterScratch = [];
+  function noteShutterTakedown(row, entity, now) {
+    // Rook only. A player shove into the shutter costs race time. His own crash does not.
+    // The hold is a real pause on his line, never a pace or catch-up change.
+    if (row.id !== 'rook' || row.takedownToken || row.status !== 'racing') return;
+    const player = state.entities?.get(state.playerId);
+    if (player && bodiesTouch(player, entity, 10)) {
+      const dx = entity.pos.x - player.pos.x, dz = entity.pos.z - player.pos.z;
+      const gap = Math.hypot(dx, dz) || 1;
+      const push = ((player.vel?.x || 0) * dx + (player.vel?.z || 0) * dz) / gap;
+      if (push > 20) row.playerShoveAt = now;
+    }
+    const bodies = queryNearbyEntities(state, entity.pos, 80, shutterScratch);
+    let shutter = null;
+    for (const body of bodies) {
+      if (!isShutter(body) || body === entity || body === player) continue;
+      if (bodiesTouch(entity, body, 6)) { shutter = body; break; }
+    }
+    const shoved = Number.isFinite(row.playerShoveAt) && now - row.playerShoveAt <= 3;
+    if (!shutter || !shoved) return;
+    row.takedownToken = String(shutter.id ?? 'shutter');
+    row.lostS = (row.lostS || 0) + RACING_TAKEDOWN_LOSS_S;
+    row.resumeAt = now + RACING_TAKEDOWN_LOSS_S;
+    const receipt = { rivalId: 'rook', name: row.name, lostS: RACING_TAKEDOWN_LOSS_S, cause: 'shutter',
+      shutter: shutter.data?.name || 'Tally customs shutter', at: now };
+    if (takedownReceipts.length >= 24) takedownReceipts.shift();
+    takedownReceipts.push(receipt);
+    bus?.emit?.('race:takedown', receipt);
+  }
   const eligible = mission => mission?.type === 'race' && mission.status === 'active'
     && mission.params?.racingContractId && !mission.params.adventureSpeedId
     && ['race', 'cup'].includes(mission.params.raceMode) && isRacingCorridorSession(state);
@@ -42,6 +84,7 @@ export function createRacingOpponents({ state, bus, helpers }) {
     const player = state.entities?.get(state.playerId);
     const rows = heat.rivals.map(row => ({ id: row.id, name: row.name, entityId: row.entityId,
       hullId: row.hullId, style: row.style, status: row.status, elapsedS: row.elapsedS,
+      lostS: row.lostS || 0,
       lap: row.params.lap | 0, nextGate: row.params.nextGate | 0, recoveries: row.driver.recoveries,
       progress: row.status === 'finished' ? 1 : circuitProgress(row.params, entityFor(row)?.pos, heat.gates).fraction }));
     rows.push({ id: 'player', name: 'You', entityId: state.playerId, player: true,
@@ -107,16 +150,18 @@ export function createRacingOpponents({ state, bus, helpers }) {
         const events = advanceCircuit(row.params, { prev: row.previous, pos: entity.pos, vel: entity.vel,
           gates: heat.gates, previousTime: row.previousTime, now });
         const finish = events.find(event => event.finished);
-        if (finish) { row.status = 'finished'; row.elapsedS = finish.elapsedS; terminalChanged = true;
+        if (finish) { row.status = 'finished'; row.elapsedS = finish.elapsedS + (Number(row.lostS) || 0); terminalChanged = true;
           bus?.emit?.('race:rivalFinished', { missionId: mission.id, rivalId: row.id, name: row.name, elapsedS: row.elapsedS }); }
         else if (now - startS > Math.max(240, (Number(p.courseLengthWU) || 5000) * Math.max(1, p.laps || 1) / 24)) {
           row.status = 'dnf'; terminalChanged = true;
         }
       }
       row.previous.x = entity.pos.x; row.previous.z = entity.pos.z; row.previousTime = now;
+      if (row.status === 'racing') noteShutterTakedown(row, entity, now);
+      const takedownHeld = Number.isFinite(row.resumeAt) && now < row.resumeAt;
       entity.data.intent = racingDriverIntent(row.driver, { entity, params: row.params, gates: heat.gates,
         nearby: queryNearbyEntities(state, entity.pos, 350, nearby), dt,
-        held: held || row.status !== 'racing' });
+        held: held || row.status !== 'racing' || takedownHeld });
     }
     // Reuse the bounded entrant records; both player and opponents obey the same wake rule.
     const count = heat.rivals.length + 1;
@@ -147,6 +192,8 @@ export function createRacingOpponents({ state, bus, helpers }) {
     },
     inspect() { return heat ? { missionId: heat.missionId, rivals: heat.rivals.map(row => ({
       id: row.id, entityId: row.entityId, status: row.status, elapsedS: row.elapsedS,
+      lostS: row.lostS || 0, resumeAt: Number.isFinite(row.resumeAt) ? row.resumeAt : null,
+      pace: row.driver.personality?.pace ?? null, difficulty: row.driver.difficulty,
       nextGate: row.params.nextGate, lap: row.params.lap, recoveries: row.driver.recoveries })) } : null; },
   };
 }

@@ -5,6 +5,7 @@
 
 import { createScoreDirector } from './scoreDirector.js';
 import { createRoomToneRuntime } from './roomTone.js';
+import { renderComposedSectorBedPcm } from './sectorScoreBeds.js';
 
 export const BAND_BED_PROFILES = Object.freeze({
   civil_service: profile({ waveA: 'square', waveB: 'sine', hzA: 118, hzB: 236, detune: 2,
@@ -173,6 +174,7 @@ function mergeBedProfile(base, bed) {
     waveB: typeof bed.waveB === 'string' ? bed.waveB : src.waveB,
     noise: Number.isFinite(bed.noise) ? bed.noise : src.noise,
     tone: Number.isFinite(bed.tone) ? bed.tone : src.tone,
+    composition: bed.composition || null,
   };
 }
 
@@ -232,8 +234,21 @@ function buildGraph(ctx, destination, profileKey, cfg, noiseBuffer) {
     nodes.push(oscillator, gain);
     sources.push(oscillator);
   };
-  addOscillator(cfg.waveA, cfg.hzA, 0, 0.54);
-  addOscillator(cfg.waveB, cfg.hzB, cfg.detune, 0.26);
+  if (cfg.composition && ctx.createBufferSource && ctx.createBuffer) {
+    const pcm = renderComposedSectorBedPcm(cfg);
+    const buffer = ctx.createBuffer(1, pcm.length, 16000);
+    buffer.getChannelData(0).set(pcm);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.connect(filter);
+    source.start();
+    nodes.push(source);
+    sources.push(source);
+  } else {
+    addOscillator(cfg.waveA, cfg.hzA, 0, 0.54);
+    addOscillator(cfg.waveB, cfg.hzB, cfg.detune, 0.26);
+  }
 
   if (noiseBuffer && typeof ctx.createBufferSource === 'function') {
     const noise = ctx.createBufferSource();

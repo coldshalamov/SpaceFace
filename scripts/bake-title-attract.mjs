@@ -33,11 +33,11 @@ const TICKS = Math.max(60, Number(arg('ticks', TAPE_DURATION_TICKS)) | 0);
 const WARMUP = Math.max(0, Number(arg('warmup', 0)) | 0);
 const OUT = resolve(here, '..', String(arg('out', 'src/sim/titleAttractTapeData.js')));
 
-const world = createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
+const world = await createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
 world.start();
 if (WARMUP > 0) world.runTicks(WARMUP);
 
-const recorder = createTapeRecorder({ ticks: TICKS, seed: TITLE_ATTRACT_SEED });
+const recorder = createTapeRecorder({ ticks: TICKS, seed: TITLE_ATTRACT_SEED, events: world.scenario.events });
 const t0 = Date.now();
 let keepGoing = true;
 while (keepGoing) {

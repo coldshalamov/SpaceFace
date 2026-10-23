@@ -863,9 +863,13 @@ export const factions = {
     const loser = winner === a ? b : a;
     const sectorId = CONTESTED[key];
     if (sectorId && state.world && state.world.sectors && state.world.sectors[sectorId]) {
+      const previousOwner = state.world.sectors[sectorId].owner;
+      c.flipSequence = Math.max(0, Math.floor(Number(c.flipSequence) || 0)) + 1;
+      c.lastFlip = { pairKey: key, sectorId, previousOwner, newOwner: winner,
+        t: Number(state.simTime) || 0, flipId: `front:${key}:${c.flipSequence}` };
       state.world.sectors[sectorId].owner = winner; // §0.6: factions writes sector owner
       if (this.bus) {
-        this.bus.emit('conflict:flip', { pairKey: key, sectorId, newOwner: winner });
+        this.bus.emit('conflict:flip', { ...c.lastFlip });
         this.bus.emit('toast', {
           text: `${sectorLabel(sectorId)} changes hands — ${factionLabel(winner)} takes it from ${factionLabel(loser)}`,
           kind: 'warn',

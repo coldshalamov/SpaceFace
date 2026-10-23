@@ -31,7 +31,8 @@
 //             [x n][z n][r n] at the full tick rate.
 //   Tick zero is the first recorded tick, not world tick zero.
 
-export const TITLE_ATTRACT_TAPE_SCHEMA = 'spaceface.titleAttractTape.v1';
+import { createForceTapeRecorder } from './forceTape.js';
+export const TITLE_ATTRACT_TAPE_SCHEMA = 'spaceface.titleAttractTape.v2';
 export const TAPE_TICK_RATE = 60;
 /** Ships are smooth movers; 30 Hz samples + interpolation are visually identical at title distance. */
 export const TAPE_SHIP_RATE = 2;
@@ -71,6 +72,7 @@ export function createTapeRecorder(options = {}) {
   const open = new Map();
   const ships = [];
   const rounds = [];
+  const forces = createForceTapeRecorder(Math.ceil(ticks / shipRate));
   let tapeTick = -1;
 
   function close(id, entity, died) {
@@ -96,6 +98,7 @@ export function createTapeRecorder(options = {}) {
     tick(state) {
       tapeTick += 1;
       const t = tapeTick;
+      if (t % shipRate === 0) forces.note(state, t / shipRate);
       const seen = new Set();
       const list = state && state.entityList;
       if (Array.isArray(list)) {
@@ -104,10 +107,11 @@ export function createTapeRecorder(options = {}) {
           if (e.type !== 'ship' && e.type !== 'projectile') continue;
           seen.add(e.id);
           let rec = open.get(e.id);
+          if (rec && rec.entityIdentity !== e) { close(e.id, rec.entityIdentity, t); rec = null; }
           if (!rec) {
             rec = e.type === 'ship'
               ? {
-                  kind: 'ship', born: t, died: -1,
+                  kind: 'ship', born: t, died: -1, entityIdentity: e,
                   visual: (e.data && (e.data.lootTableId || e.data.defId)) || null,
                   silhouette: (e.data && e.data.silhouette) || null,
                   team: e.team | 0,
@@ -116,7 +120,8 @@ export function createTapeRecorder(options = {}) {
                   x: [], z: [], r: [],
                 }
               : {
-                  kind: 'round', born: t, died: -1,
+                  kind: 'round', born: t, died: -1, entityIdentity: e,
+                  weaponId: e.data?.weaponId || null,
                   team: e.team | 0,
                   x: [], z: [], r: [],
                   vx: e.vel && Number.isFinite(e.vel.x) ? e.vel.x : 0,
@@ -168,7 +173,7 @@ export function createTapeRecorder(options = {}) {
           }
         }
         if (straight) {
-          shots.push({ b: rec.born, d: rec.died, t: rec.team,
+          shots.push({ b: rec.born, d: rec.died, t: rec.team, weaponId: rec.weaponId,
             x: qPos(rec.x[0]), z: qPos(rec.z[0]),
             vx: qVel(rec.vx), vz: qVel(rec.vz) });
         } else if (n > 0) {
@@ -186,6 +191,9 @@ export function createTapeRecorder(options = {}) {
         ships,
         shots,
         guided,
+        forces: forces.encode(0, Math.floor(tapeTick / shipRate)),
+        events: (options.events || []).map((event) => ({ ...event })),
+        scenario: options.scenario || 'title.catch-swing-release-impact',
       };
     },
   };
@@ -236,7 +244,7 @@ export function encodeTape(tape) {
       ints[n + i] = qPos(rec.z[i]);
       ints[2 * n + i] = qAng(rec.r[i]);
     }
-    return { b: rec.born | 0, d: rec.died | 0, n, t: rec.team | 0, o: take(ints) };
+    return { b: rec.born | 0, d: rec.died | 0, n, t: rec.team | 0, w: rec.weaponId || null, o: take(ints) };
   });
 
   const shotCount = tape.shots.length;
@@ -267,7 +275,8 @@ export function encodeTape(tape) {
     quant: tape.quant,
     ships,
     guided,
-    shots: { count: tape.shots.length, o: shotsOffset },
+    shots: { count: tape.shots.length, o: shotsOffset, weapons: tape.shots.map((s) => s.weaponId || null) },
+    forces: tape.forces || [], events: tape.events || [], scenario: tape.scenario,
     bin: base64FromBytes(new Uint8Array(bin.buffer, bin.byteOffset, bin.byteLength)),
   };
 }
@@ -296,12 +305,13 @@ export function decodeTape(encoded) {
     x: chan(s.o, s.n, 0), z: chan(s.o, s.n, 1), r: chan(s.o, s.n, 2),
   }));
   const guided = (encoded.guided || []).map((g) => ({
-    born: g.b | 0, died: g.d | 0, n: g.n | 0, team: g.t | 0,
+    born: g.b | 0, died: g.d | 0, n: g.n | 0, team: g.t | 0, weaponId: g.w || null,
     x: chan(g.o, g.n, 0), z: chan(g.o, g.n, 1), r: chan(g.o, g.n, 2),
   }));
   const shotMeta = encoded.shots || { count: 0, o: 0 };
   const shotCount = shotMeta.count | 0;
   const shots = {
+    weapons: shotMeta.weapons || [],
     count: shotCount,
     b: chan(shotMeta.o, shotCount, 0),
     d: chan(shotMeta.o, shotCount, 1),
@@ -321,6 +331,7 @@ export function decodeTape(encoded) {
     seconds: (encoded.ticks | 0) / (encoded.tickRate || TAPE_TICK_RATE),
     quant: q,
     ships, shots, guided,
+    forces: encoded.forces || [], events: encoded.events || [], scenario: encoded.scenario,
   };
 }
 

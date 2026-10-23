@@ -18,8 +18,17 @@ const AUTHORED_RECORD_WU_S = 520;
 const RAZOR_CAP_MULT = 1.15;
 const STANDARD_CAP_MULT = 1.9;
 const GRID_HOLD_S = 3.2;
+// Course medal standards in WU/s. Authored paces, never a player's best and never a payout.
+const MEDAL_PACE_WU_S = Object.freeze({ gold: 680, silver: 520, bronze: 390 });
 
 function round2(v) { return Math.round(v * 100) / 100; }
+
+function medalTimesFor(lengthWU) {
+  const gold = Math.max(12, Math.round(lengthWU / MEDAL_PACE_WU_S.gold));
+  const silver = Math.max(gold + 1, Math.round(lengthWU / MEDAL_PACE_WU_S.silver));
+  const bronze = Math.max(silver + 1, Math.round(lengthWU / MEDAL_PACE_WU_S.bronze));
+  return Object.freeze({ gold, silver, bronze });
+}
 
 function courseLengthWU(gates) {
   let len = 0;
@@ -49,6 +58,7 @@ function freezeCourse(spec) {
     gateRadiusWU: spec.gateRadiusWU,
     courseLengthWU: round2(lengthWU),
     recordS,
+    medalTimes: medalTimesFor(lengthWU),
     bandCapsS: Object.freeze([
       Math.round(recordS * RAZOR_CAP_MULT),
       Math.round(recordS * STANDARD_CAP_MULT),
@@ -167,6 +177,16 @@ export function raceLevelById(id) {
 export function courseForLevel(id) {
   const level = raceLevelById(id);
   return level && level.course ? level.course : null;
+}
+
+/** Best medal a time-trial lap strictly beats. Gold is fastest. Not the player's best. */
+export function medalForCourseTime(levelId, elapsedS) {
+  const times = courseForLevel(levelId)?.medalTimes;
+  if (!times || !Number.isFinite(elapsedS) || elapsedS <= 0) return null;
+  if (elapsedS < times.gold) return 'Gold';
+  if (elapsedS < times.silver) return 'Silver';
+  if (elapsedS < times.bronze) return 'Bronze';
+  return null;
 }
 
 const globalGateCache = new WeakMap();

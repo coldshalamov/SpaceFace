@@ -40,7 +40,8 @@ import { evaluateArrivalCue, isEarnedSpeed, resolveThrusterCap } from '../core/f
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { previewBrakeStop, resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
 import { travelFlag } from '../data/featureFlags.js';
-import { BINDINGS } from './bindings.js';
+import { BINDINGS, promptLabel } from './bindings.js';
+import { plottedRouteEngageTeach } from './map/mapRouteRibbon.js';
 import { coreText } from './localizedCoreCopy.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
@@ -93,10 +94,14 @@ import {
   buildCorridorOpeningWaypoint,
 } from '../systems/missions.js';
 import {
+  admitReceipt,
   contactRosterExpanded,
   firstUseAttachKind,
   formatRosterCount,
   hudJobFromState,
+  markFirstUseHint,
+  noteFirstWantedMark,
+  shouldShowFirstUseHint,
   flightInstrumentRects,
   bingoFuelLine,
   masslineInstrumentReadout,
@@ -954,7 +959,88 @@ export function buildVelocityReadout(playerOrSpeed, profileOrCap, out = null) {
   result.thrusterCap = thrusterCap;
   result.earnedSpeed = earnedSpeed;
   result.text = `${Math.max(0, Math.round(speed))} WU/S${earnedSpeed ? ' · EARNED' : ''}`;
+  result.spoken = speedUnitSpeech(speed, earnedSpeed);
   return result;
+}
+
+/** Spelled-out speed. The visible unit stays WU/S. */
+export function speedUnitSpeech(speed, earned = false) {
+  const n = Math.max(0, Math.round(Number(speed) || 0));
+  return earned ? `${n} world units per second, earned` : `${n} world units per second`;
+}
+
+/** Spelled-out distance. The visible unit stays WU or u. Empty when the text is not a distance. */
+export function distanceUnitSpeech(distanceText) {
+  const raw = String(distanceText || '').trim();
+  if (!raw || raw === 'ROUTE PENDING') return '';
+  if (/\bWU\b/.test(raw)) return raw.replace(/\bWU\b/g, 'world units');
+  if (/\d(?:\.\d+)?\s*u\b/i.test(raw)) return raw.replace(/(\d(?:\.\d+)?)\s*u\b/i, '$1 world units');
+  return '';
+}
+
+function cargoOccupied(cargo) {
+  if (!cargo) return false;
+  const items = cargo.items;
+  if (items && typeof items === 'object') {
+    for (const key of Object.keys(items)) {
+      if (Number(items[key]) > 0) return true;
+    }
+  }
+  return Number(cargo.usedVolume) > 0;
+}
+
+function receiptCombatNow() {
+  const job = typeof document !== 'undefined' && document.body && document.body.dataset
+    ? document.body.dataset.sfHudJob
+    : '';
+  return job === 'fight' || job === 'hurt';
+}
+
+function applySpeedSpeech(el, spoken) {
+  if (!el || !spoken) return;
+  setTitle(el, spoken);
+  setAttr(el, 'aria-label', spoken);
+}
+
+function applyDistanceSpeech(el, distanceText) {
+  const spoken = distanceUnitSpeech(distanceText);
+  if (!el || !spoken) return '';
+  setTitle(el, spoken);
+  setAttr(el, 'aria-label', spoken);
+  return spoken;
+}
+
+/** The first cargo:changed that fills an empty hold, once per profile. Does not open the panel. */
+export function noteFirstCargoLanding(state, { wasEmpty = false, cargo = null, bindingLabel = '' } = {}) {
+  if (!state || !state.player || !wasEmpty || !cargoOccupied(cargo)) return '';
+  const gameplay = state.settings && state.settings.gameplay;
+  if (gameplay && gameplay.tutorialHints === false) return '';
+  if (!shouldShowFirstUseHint(state.player.hints, 'firstCargoManifest')) return '';
+  const key = String(bindingLabel || '').trim();
+  const line = key ? `Cargo aboard. Manifest ${key}.` : 'Cargo aboard. Open the manifest.';
+  if (!admitReceipt({ text: line, kind: 'info', combat: receiptCombatNow() }).admit) return '';
+  state.player.hints = markFirstUseHint(state.player.hints, 'firstCargoManifest');
+  return line;
+}
+
+/** The first plotted cross-sector route, once per profile. Does not engage it. */
+export function speakPlottedRouteTeach(state, bus) {
+  if (!state || !state.player) return '';
+  const gameplay = state.settings && state.settings.gameplay;
+  if (gameplay && gameplay.tutorialHints === false) return '';
+  if (!shouldShowFirstUseHint(state.player.hints, 'plottedRouteEngage')) return '';
+  const nav = state.nav || {};
+  const engaged = !!(nav.executor && nav.executor.engaged === true);
+  const line = plottedRouteEngageTeach(nav.route, {
+    engaged,
+    mapHome: 'Star Map',
+    mapLabel: promptLabel('starmap'),
+  });
+  if (!line) return '';
+  if (!admitReceipt({ text: line, kind: 'info', combat: receiptCombatNow() }).admit) return '';
+  state.player.hints = markFirstUseHint(state.player.hints, 'plottedRouteEngage');
+  if (bus && typeof bus.emit === 'function') bus.emit('toast', { text: line, kind: 'info', ttl: 6 });
+  return line;
 }
 
 /** Non-colour flight feedback for the manufactured route read model. The travel owner publishes
@@ -2041,6 +2127,7 @@ export function createHud(ctx, alerts) {
   const elNavLabel = elNavReadout.querySelector('.sf-nav-label');
   const elNavDist = elNavReadout.querySelector('.sf-nav-dist');
   const elNavEta = elNavReadout.querySelector('.sf-nav-eta');
+  applyDistanceSpeech(elNavDist, '0 u');
   const elDecision = document.createElement('div');
   elDecision.className = 'sf-nav-label';
   elDecision.style.display = 'none';
@@ -3929,8 +4016,19 @@ export function createHud(ctx, alerts) {
     closeCargoPanel();
   });
 
-  // Refresh when cargo changes
-  on('cargo:changed', () => { if (cargoPanelOpen) refreshCargoPanel(); });
+  // Refresh when cargo changes. The first fill of an empty hold names the manifest key once.
+  let holdWasEmpty = !cargoOccupied(state.player && state.player.cargo);
+  on('cargo:changed', (payload) => {
+    if (cargoPanelOpen) refreshCargoPanel();
+    const cargo = (payload && payload.cargo) || (state.player && state.player.cargo);
+    const line = noteFirstCargoLanding(state, {
+      wasEmpty: holdWasEmpty,
+      cargo,
+      bindingLabel: promptLabel('cargo'),
+    });
+    holdWasEmpty = !cargoOccupied(cargo);
+    if (line) ctx.bus.emit('toast', { text: line, kind: 'info', ttl: 6 });
+  });
 
   // Expose toggle/close for the input system
   on('ui:toggleCargo', toggleCargoPanel);
@@ -3973,6 +4071,8 @@ export function createHud(ctx, alerts) {
       if (wanted && !wantedActive) {
         alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, false), ttl: Infinity });
         wantedActive = true;
+        const teach = noteFirstWantedMark(state, true);
+        if (teach) ctx.bus.emit('toast', { text: teach, kind: 'info', ttl: 6 });
       } else if (wanted && wantedActive) {
         // refresh the text to show the new tier (raise dedups by key but updates text/sev)
         alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, true), ttl: Infinity });
@@ -4525,7 +4625,11 @@ export function createHud(ctx, alerts) {
       rec.stateCls = stateCls;
     }
     if (rec.tier !== c.threatTier) { rec.tierEl.textContent = tierPips(c.threatTier); rec.tier = c.threatTier; }
-    if (rec.dist !== dist) { rec.distEl.textContent = String(dist); rec.dist = dist; }
+    if (rec.dist !== dist) {
+      rec.distEl.textContent = String(dist);
+      applyDistanceSpeech(rec.distEl, `${dist} u`);
+      rec.dist = dist;
+    }
     if (rec.speed !== speedText) { rec.speedEl.textContent = speedText; rec.speed = speedText; }
     if (rec.detail !== detail) {
       if (detail) {
@@ -4973,9 +5077,11 @@ export function createHud(ctx, alerts) {
       else if (nearCeiling) note = 'AT TOP SPEED';
       // INST-35: speed the pilot earned (above the thruster cap) reads differently from speed
       // the thrusters bought — a text mark on the existing note, never a second gauge.
-      if (buildVelocityReadout(p, profile).earnedSpeed) note = note ? `${note} · EARNED` : 'EARNED';
+      const velocity = buildVelocityReadout(p, profile);
+      if (velocity.earnedSpeed) note = note ? `${note} · EARNED` : 'EARNED';
       const laneStatus = travelTapeLaneStatus(state.travelLanes);
       setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));
+      if (note.includes('WU/S') || velocity.earnedSpeed) applySpeedSpeech(vt.spool, velocity.spoken);
     }
 
     // --- approach row: the stopping arc, manual burns and the held brake ---
@@ -5000,10 +5106,12 @@ export function createHud(ctx, alerts) {
       setStyle(vt.arcRing, 'left', (clamp01(cue.distance / span) * 100).toFixed(1) + '%');
       setClass(vt.root, 'sf-vtape--overshoot', !!cue.overshoot);
       if (slow) {
-        setText(vt.arcLabel, cue.overshoot
+        const arcText = cue.overshoot
           ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' WU / ARRIVAL ' + Math.round(cue.distance) + ' WU'
           : 'STOP ' + Math.round(cue.stopDistance) + ' WU · ARRIVAL ' + Math.round(cue.distance)
-            + ' WU · ' + brakeModeWords(cue.bestMode).toUpperCase());
+            + ' WU · ' + brakeModeWords(cue.bestMode).toUpperCase();
+        setText(vt.arcLabel, arcText);
+        applyDistanceSpeech(vt.arcLabel, arcText);
       }
     } else if (showBrakeStop) {
       const span = Math.max(brakeStop.stopDistance, 1) * 1.1;
@@ -5011,7 +5119,11 @@ export function createHud(ctx, alerts) {
       setStyle(vt.arcStop, 'width', endPct);
       setStyle(vt.arcRing, 'left', endPct);
       setClass(vt.root, 'sf-vtape--overshoot', false);
-      if (slow) setText(vt.arcLabel, 'BRAKING · SETTLES ~' + Math.round(brakeStop.stopDistance) + ' WU');
+      if (slow) {
+        const brakeText = 'BRAKING · SETTLES ~' + Math.round(brakeStop.stopDistance) + ' WU';
+        setText(vt.arcLabel, brakeText);
+        applyDistanceSpeech(vt.arcLabel, brakeText);
+      }
     }
 
     // --- BRAKE NOW ---
@@ -5199,6 +5311,7 @@ export function createHud(ctx, alerts) {
 
     // --- mission tracker @10Hz ---
     if (slow) {
+      speakPlottedRouteTeach(state, ctx.bus);
       // Resolve corridor fallback once, then let the owner resolver keep mission/nav data disjoint.
       const navWaypoint = state.nav && state.nav.waypoint;
       const wp = navWaypoint || buildCorridorOpeningWaypoint(state);
@@ -5407,6 +5520,7 @@ export function createHud(ctx, alerts) {
       const markerText = `GOAL · ${conciseLabel} · ${travel.distanceText} · ${travel.etaText}`;
       if (markerText !== lastObjectiveMarkerText) {
         setText(arrowLabel, markerText);
+        applyDistanceSpeech(arrowLabel, travel.distanceText);
         setAttr(arrow, 'aria-label', `Current objective: ${conciseLabel}, ${travel.distanceText}, ${travel.etaText}`);
         lastObjectiveMarkerText = markerText;
       }
@@ -5414,7 +5528,11 @@ export function createHud(ctx, alerts) {
     if (slow || !lastNavDist) {
       const distText = Math.round(dist) + ' u';
       const etaText = isFinite(etaS) ? (etaS < 60 ? Math.round(etaS) + 's' : Math.round(etaS / 60) + 'm') : '—';
-      if (distText !== lastNavDist) { setText(elNavDist, distText); lastNavDist = distText; }
+      if (distText !== lastNavDist) {
+        setText(elNavDist, distText);
+        applyDistanceSpeech(elNavDist, distText);
+        lastNavDist = distText;
+      }
       if (etaText !== lastNavEta) { setText(elNavEta, etaText); lastNavEta = etaText; }
     }
     const w = window.innerWidth, h = window.innerHeight;

@@ -341,7 +341,7 @@ test('PULSE-01 dock notices and PULSE-02 / EXP-06 walls cover the live map', () 
       assert.doesNotMatch(entry.text, /\b(WREN|PILOT|CAPTAIN|PLAYER|CALLSIGN|YOU|YOUR|YOURS)\b/i, entry.id);
     }
   }
-  const castAndLandmarks = ['KESSLER', 'SENNA', 'VOLS', 'QUIESCENCE', 'SKER BAZAAR', 'WRECK CATHEDRAL', 'LUNG MARKER'];
+  const castAndLandmarks = ['KESSLER', 'SENNA', 'VOLS', 'QUIESSENCE', 'SKER BAZAAR', 'WRECK CATHEDRAL', 'LUNG MARKER'];
   for (const needle of castAndLandmarks) {
     assert.equal(keyedTags.some((entry) => entry.text.includes(needle)), true, needle);
   }

@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { buildKillcamStage } from '../src/render/killcamStage.js';
 import { canonicalStringify, snapshotSimState } from '../src/core/simSnapshot.js';
 import { createSimulation } from '../src/core/sim.js';
+import { analyzeMomentStream } from '../src/presentation/momentMachine/index.js';
 
 function recording() {
   return { seed: 4242, ticks: 181, tickRate: 60, absoluteBaseTick: 120, playerId: 'pilot',
@@ -123,6 +124,13 @@ test('German clip captions declare de, use localized logged text, and identify t
   assert.equal(sidecar.soundtrack, 'recorded-master-bus');
   assert.match(sidecar.cues[0].text, /SCHIFF ZERSTÖRT/i);
   assert.ok(captionVtt(sidecar).startsWith('WEBVTT'));
+  // The public Clips route selects a semantic fallback rather than passing the
+  // human label directly. This was previously English under a German language tag.
+  const moment = analyzeMomentStream({ adventureTape: recording(), locale: 'de-DE' }).selection.ranked[0];
+  const actual = captionSidecar(moment, null, { locale: 'de-DE' });
+  assert.match(actual.cues[0].text, /Aufgezeichnete Zerstörung/);
+  assert.doesNotMatch(actual.cues[0].text, /Logged|Recorded footage|from tape/);
+  assert.ok(moment.eventIds.every((id) => actual.cues[0].text.includes(id)));
 });
 
 test('720p export schedules thirty fresh tape renders per second against the same audio clock', async () => {

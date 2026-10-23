@@ -20,6 +20,7 @@ export function createWrittenFinale(choiceId, facts, receiptId) {
     // Readable, bounded evidence snapshot sealed BEFORE heat clear / rep grant / payment.
     basis: freeze({
       recordedAtS: now, seed: facts.seed, wealthBasis: facts.wealthBasis,
+      contactCounters: { ...facts.contactCounters },
       credits: facts.credits, debt: facts.debt, netWorthCr: facts.netWorthCr,
       heatBefore: facts.heat, incidentCountLowerBound: facts.incidentIds.length,
       crimeCoverage: facts.crimeCoverage, killsNotClassifiedAsCrimes: facts.kills,

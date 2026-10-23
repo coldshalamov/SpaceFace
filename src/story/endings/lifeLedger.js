@@ -1,6 +1,7 @@
 // One read-only normalization boundary for live GameState, raw v14 data, and {data: v14} saves.
 // A current wanted level is not a lifetime crime count. Unknown is never silently made innocent.
 import { dossArchiveEvidence } from '../../data/dossArchive.js';
+import { normalizeStationContactCounters } from '../../data/stationContacts.js';
 import { spineRoadFrom } from '../campaign47a/storySpine.js';
 import { CAPITAL_SHIP_DEF_IDS, BRANCH_FACTION } from './endingDefs.js';
 import { array, object, number, count, key, text, timestamp, freeze } from './value.js';
@@ -186,6 +187,7 @@ export function readLifeLedger(input) {
   const actualFields = Object.values(object(world.discovery)).reduce((n, r) => n + Object.values(object(object(r).fieldsDepleted)).filter(v => number(v) > 0).length, 0);
   return freeze({
     schema: LIFE_LEDGER_SCHEMA, seed: src.seed, simTime: src.simTime,
+    contactCounters: normalizeStationContactCounters(player.stationContactCounters),
     beatIndex: count(story.beatIndex), branch, branchFactionId, branchRep,
     endgameFlag: flags.endgame === true, endgameOffered: story.endgameOffered === true,
     endgameChoice: typeof story.endgameChoice === 'string' ? story.endgameChoice : null,

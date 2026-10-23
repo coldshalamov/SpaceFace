@@ -12,6 +12,7 @@ import { applyReflectedVelocity } from '../core/surfaceContact.js';
 // not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
 // projectile:hit/combat:damage are owned by physics + combat.
 import { WEAPONS } from '../data/weapons.js';
+import { swarmChainFireRateScale } from './swarmChain.js';
 import { mothlightAllowsFire } from '../data/mothlight.js';
 import {
   modelTruthBoltRadius,
@@ -373,6 +374,13 @@ function npcWeaponsSubsystemQuiet(state) {
     if (intent && intent.fire) return false;
   }
   return true;
+}
+
+// Overdrive shortens the player gun's cooldown only. Heat and capacitor still charge in full.
+function armedCooldown(playerGun, rof, fallback) {
+  const scale = playerGun ? swarmChainFireRateScale() : 1;
+  const effective = rof > 0 ? rof * scale : 0;
+  return effective > 0 ? 1 / effective : fallback;
 }
 
 
@@ -1262,7 +1270,7 @@ export const weapons = {
     }
     if ((w._cooldown || 0) > 0) return capLeft;
     const rof = w.rof != null ? w.rof : def.rof || 0;
-    w._cooldown = rof > 0 ? 1 / rof : 0.2;
+    w._cooldown = armedCooldown(!!state && e.id === state.playerId, rof, 0.2);
     launchEmergent(state, e, def, aim);
     const origin = this._muzzle ? this._muzzle(e, w, aim) : { x: e.pos.x, z: e.pos.z };
     this.bus.emit('combat:fire', {
@@ -1558,7 +1566,7 @@ export const weapons = {
       if (w._heat >= heatMax) this._beginVent(e, state, w);
     }
     const rof = w.rof != null ? w.rof : def.rof || 0;
-    w._cooldown = rof > 0 ? 1 / rof : 0.1;
+    w._cooldown = armedCooldown(isPlayer, rof, 0.1);
 
     // consume missile lock so each missile needs a fresh lock
     if (isMissile && e.data.combat) { e.data.combat.lockProgress = 0; }
@@ -1591,7 +1599,7 @@ export const weapons = {
     const stored = plant.storedReceding;
     if (!queueMomentumSinkRelease(e, plant, this._momentumSinkImpulse, state)) return false;
     const rof = w.rof != null ? w.rof : def.rof || 0;
-    w._cooldown = rof > 0 ? 1 / rof : 0.1;
+    w._cooldown = armedCooldown(!!state && e.id === state.playerId, rof, 0.1);
     if (this.bus) {
       this.bus.emit('weapons:momentumSinkReleased', {
         ownerId: e.id,
@@ -1862,7 +1870,7 @@ export const weapons = {
       if (w._heat >= heatMax) this._beginVent(e, state, w);
     }
     const rof = w.rof != null ? w.rof : def.rof || 0;
-    w._cooldown = rof > 0 ? 1 / rof : 2;
+    w._cooldown = armedCooldown(isPlayer, rof, 2);
     this._spawnVectorMine(e, w, def, state);
     return capLeft;
   },

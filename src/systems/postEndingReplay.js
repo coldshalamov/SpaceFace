@@ -9,6 +9,7 @@ import {
 } from '../data/postEndingReplayChains.js';
 import { getRegionalEcologyProfile } from '../data/regionalEcology.js';
 import { normalizePostEndingContinuity } from '../story/endings/resolve.js';
+import { replayStandingLines } from '../story/endings/worldAfter.js';
 
 const REFRESH_SECONDS = 600;
 const RECEIPT_CAP = 48;
@@ -139,7 +140,8 @@ export function buildPostEndingReplayOffer(state, branchHint = null) {
   const rewardCr = Math.max(1, Math.round(stage.rewardCr * attemptMult * cycleMult * (1 + ecology.danger.baseline * 0.12)));
   const collateralCr = Math.max(0, Math.round(stage.collateralCr * Math.max(0.50, 1 - run.attempt * 0.15)));
   const choiceLine = branch ? ` Choice: ${branch.label}. Tradeoff: ${branch.tradeoff}` : '';
-  const summary = `${chain.actor.name}: ${chain.actor.motive} ${stage.instruction}${choiceLine} Failure: ${stage.failureText} Recovery: ${stage.recoveryText}`;
+  const standing = replayStandingLines(state).join(' ');
+  const summary = `${chain.actor.name}: ${chain.actor.motive} ${stage.instruction}${choiceLine} Failure: ${stage.failureText} Recovery: ${stage.recoveryText}${standing ? ` Standing order: ${standing}` : ''}`;
   return {
     id: `offer_${fingerprint}`,
     source: POST_ENDING_REPLAY_SOURCE,
