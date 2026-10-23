@@ -118,3 +118,107 @@ export function ensureCommittedIntents(state) {
   }
   return state.economy.committedIntents;
 }
+
+// Rope-scale read contracts. These helpers do not move cargo, mint a measurement,
+// or file a slip; their callers retain those authorities.
+const massScaleKinds = new Set(['weight_audit', 'sealed_recovery', 'carrier_frame']);
+const massRecord = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
+const massText = (v) => typeof v === 'string' && v.length > 0;
+const massPositive = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
+const massSlot = (v) => Number.isSafeInteger(v) && v >= 0;
+const massKey = (v) => massText(v) && !['__proto__', 'constructor', 'prototype'].includes(v);
+
+/** Match the physical mass precedence used by tetherGameplay, but never invent 1 t. */
+export function physicalMassT(entity) {
+  if (!entity || entity.alive === false) return null;
+  if (massPositive(entity.physicsBody?.mass)) return entity.physicsBody.mass;
+  return massPositive(entity.mass) ? entity.mass : null;
+}
+
+/** Read only an active tow target's authored declaration, never its displayed title. */
+export function massDeclarationForTarget(state, target) {
+  if (!target || target.alive === false || target.id == null
+      || state?.entities?.get?.(target.id) !== target) return null;
+  const data = target.data;
+  if (!massRecord(data)) return null;
+  const tag = data.missionTag ?? data.missionId;
+  if (tag == null || (data.missionTag != null && data.missionId != null
+      && String(data.missionTag) !== String(data.missionId))) return null;
+  const matches = (Array.isArray(state?.missions?.active) ? state.missions.active : [])
+    .filter((m) => m && String(m.id) === String(tag));
+  if (matches.length !== 1) return null;
+  const m = matches[0], d = m.params?.massDeclaration;
+  if (m.status !== 'active' || m.type !== 'tow_recovery' || !massRecord(d)
+      || d.version !== 1 || !massScaleKinds.has(d.kind) || !massPositive(d.declaredMassT)
+      || !massSlot(d.targetSlot) || !massText(d.issuer) || !massText(d.reference)
+      || !massText(m.sourceOfferId) || !massText(m.stationId)
+      || !Array.isArray(m.targetEntityIds) || !m.targetEntityIds.includes(target.id)) return null;
+  let slot = data.missionTargetSlot;
+  const prefix = 'mission:' + m.id + ':';
+  if (slot == null && typeof data.identityKey === 'string' && data.identityKey.startsWith(prefix)) {
+    const tail = data.identityKey.slice(prefix.length);
+    if (/^\d+$/.test(tail)) slot = Number(tail);
+  }
+  if (!massSlot(slot) || slot !== d.targetSlot) return null;
+  return {
+    missionId: m.id, sourceOfferId: m.sourceOfferId, targetSlot: slot,
+    kind: d.kind, issuer: d.issuer, reference: d.reference,
+    declaredMassT: d.declaredMassT, issuingStationId: m.stationId,
+  };
+}
+
+/** Absolute mismatch and ratio in tonnes; 1e-6 is the caller consistency epsilon, not a gameplay margin. */
+export function massDiscrepancy(declaredMassT, measuredMassT) {
+  if (!massPositive(declaredMassT) || !massPositive(measuredMassT)) return null;
+  const deltaMassT = Math.abs(measuredMassT - declaredMassT);
+  const ratio = measuredMassT / declaredMassT;
+  if (!Number.isFinite(deltaMassT) || (!Number.isFinite(ratio) || ratio <= 0)) return null;
+  return { declaredMassT, measuredMassT, deltaMassT, ratio, discrepant: deltaMassT > 1e-6 };
+}
+
+const massTime = (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null;
+
+/** Detached plain save data. Invalid evidence is discarded, not upgraded into a slip. */
+export function normalizeMassScaleState(raw) {
+  const out = { version: 1, slips: {}, completed: {}, fenceOffers: {} };
+  if (!massRecord(raw) || (raw.version != null && raw.version !== 1)) return out;
+  for (const [key, s] of Object.entries(massRecord(raw.slips) ? raw.slips : {})) {
+    if (!massKey(key) || !massRecord(s) || key !== s.slipId
+        || !massText(s.sourceOfferId) || !massText(s.missionId)
+        || !massSlot(s.targetSlot) || key !== 'mass-slip:' + s.sourceOfferId + ':' + s.targetSlot
+        || !massScaleKinds.has(s.kind) || !massText(s.issuer) || !massText(s.reference)
+        || !massText(s.issuingStationId)) continue;
+    const disc = massDiscrepancy(s.declaredMassT, s.measuredMassT);
+    if (!disc) continue;
+    const row = {
+      slipId: key, sourceOfferId: s.sourceOfferId, missionId: s.missionId,
+      kind: s.kind, issuer: s.issuer, reference: s.reference, targetSlot: s.targetSlot,
+      ...disc, issuingStationId: s.issuingStationId,
+      weighedTick: massSlot(s.weighedTick) ? s.weighedTick : null,
+      weighedSimTime: massTime(s.weighedSimTime), filedAtStations: {},
+    };
+    for (const [station, filing] of Object.entries(massRecord(s.filedAtStations) ? s.filedAtStations : {})) {
+      const outcome = s.kind === 'weight_audit' ? 'mass_discrepancy_filed'
+        : s.kind === 'carrier_frame' ? 'mass_frame_disputed' : null;
+      if (!massKey(station) || station !== s.issuingStationId || !outcome
+          || !massRecord(filing) || filing.outcome !== outcome) continue;
+      row.filedAtStations[station] = {
+        outcome, tick: massSlot(filing.tick) ? filing.tick : null, simTime: massTime(filing.simTime),
+      };
+    }
+    if (s.storyLine === true) row.storyLine = true;
+    out.slips[key] = row;
+  }
+  for (const [key, done] of Object.entries(massRecord(raw.completed) ? raw.completed : {})) {
+    if (massKey(key) && key.startsWith('eco_mass_scale_') && done === true) out.completed[key] = true;
+  }
+  for (const [key, f] of Object.entries(massRecord(raw.fenceOffers) ? raw.fenceOffers : {})) {
+    if (!massKey(key) || !massRecord(f) || f.offerId !== 'eco_mass_scale_fence_' + key) continue;
+    out.fenceOffers[key] = { offerId: f.offerId, completed: f.completed === true };
+  }
+  if (Array.isArray(raw.pendingNotices)) {
+    out.pendingNotices = raw.pendingNotices.filter((n) => massRecord(n) && massText(n.text))
+      .slice(0, 8).map((n) => ({ text: n.text, statusText: massText(n.statusText) ? n.statusText : null }));
+  }
+  return out;
+}

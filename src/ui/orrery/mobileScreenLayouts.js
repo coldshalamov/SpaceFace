@@ -106,7 +106,7 @@ export const MOBILE_SCREEN_CSS = `
   ${B} { display:flex !important; flex-direction:column; gap:8px !important; overflow:hidden !important;
     height:100% !important; max-height:100dvh !important; }
   ${B} header.sxb-berth { position:relative !important; display:grid !important; grid-template-columns:minmax(0,1fr) 44px !important;
-    grid-template-areas:"title title" "tape find" "crown crown" "hand hand" !important; column-gap:6px !important; row-gap:6px !important;
+    grid-template-areas:"title title" "tape find" "crown crown" "hand hand" "signs signs" !important; column-gap:6px !important; row-gap:6px !important;
     align-items:center !important; padding:0 !important; min-width:0 !important; flex:0 0 auto !important; max-height:none; }
   ${B} header.sxb-berth > .so-station-mark { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; opacity:0 !important; }
   ${B} .so-station-title { grid-area:title; width:100% !important; max-width:100% !important; min-width:0 !important; }
@@ -151,6 +151,23 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sxb-tape :is(.sxb-event__badge, .sxb-event__title) { font-size:12px !important; letter-spacing:.14em !important; white-space:nowrap !important; }
   ${B} .sxb-tape .sxb-event__body { font-size:12px !important; line-height:15px !important; opacity:.74; white-space:normal !important;
     overflow:visible !important; text-overflow:clip !important; max-width:none !important; }
+  /* Bay screen and station wire: one swipeable two-line strip under the next step, like the tape, instead of two
+     full-width cards (~170px at 390x844). The second sign peeks in from the right. */
+  ${B} .sxb-signs { grid-area:signs; display:flex !important; flex-wrap:nowrap !important; gap:12px !important; min-width:0 !important;
+    max-width:100% !important; margin:0 !important; padding:6px 0 0 !important; border-top:1px solid rgb(236 230 216 / .14) !important;
+    overflow-x:auto !important; overflow-y:hidden !important; scroll-snap-type:x mandatory; overscroll-behavior-x:contain; scrollbar-width:none; }
+  ${B} .sxb-signs::-webkit-scrollbar { display:none; }
+  ${B} .sxb-signs:not(:has(> .sx-adboard:not([hidden]))) { display:none !important; }
+  ${B} .sxb-signs > .sx-adboard:not([hidden]) { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+    flex:0 0 100% !important; min-width:0 !important; max-width:100% !important; max-height:30px; overflow:hidden !important;
+    scroll-snap-align:start; margin:0 !important; padding:0 !important; background:none !important; border:0 !important;
+    box-shadow:none !important; font-size:12px !important; line-height:15px !important; color:rgb(236 230 216 / .86) !important; }
+  ${B} .sxb-signs:has(> .sx-adboard:not([hidden]) ~ .sx-adboard:not([hidden])) > .sx-adboard:not([hidden]) { flex-basis:86% !important; }
+  ${B} .sxb-signs > .sx-adboard:not([hidden]) ~ .sx-adboard:not([hidden]) { padding-left:12px !important; border-left:1px solid rgb(236 230 216 / .22) !important; }
+  ${B} .sxb-signs .sx-adboard > * { display:inline !important; margin:0 !important; padding:0 !important; }
+  ${B} .sxb-signs .sx-adboard__k { font-size:12px !important; letter-spacing:.14em !important; text-transform:uppercase; color:rgb(236 230 216 / .96) !important; }
+  ${B} .sxb-signs .sx-adboard__sponsor { opacity:.74; }
+  ${B} .sxb-signs .sx-adboard__text::before { content:" "; }
   /* Next step: one line, after the vitals. */
   ${B} .sxb-handoff { grid-area:hand; max-width:100% !important; min-width:0 !important; margin:0 !important;
     padding:0 !important; gap:4px 12px !important; flex-wrap:nowrap !important; align-items:center !important; overflow:hidden !important; }
@@ -268,6 +285,9 @@ export const MOBILE_SCREEN_CSS = `
     background:var(--dp-hand, #f2b950) !important; color:#1c1406 !important; font-size:12px !important; font-weight:750 !important;
     letter-spacing:0 !important; line-height:15px !important; transform:translateY(-5px); }
   ${B} .sxb-ops .orr-stationrow__rule { display:none !important; }
+  /* The rail's help lines (desktop shows them under each name or as a hover caption) have no hover on glass and took
+     ~280px from the Market at 390x844; each name's aria-label still speaks its line. */
+  ${B} .sxb-ops .sx-tile__gloss { display:none !important; }
   ${B} .sxb-ops .sx-comms { order:2; margin:0 !important; }
   ${B} .sxb-ops .sxb-launch-seat { order:3; margin:0 0 0 auto !important; }
   ${B} .sxb-launch { gap:8px !important; padding:4px 2px 4px !important; min-height:44px !important; }
