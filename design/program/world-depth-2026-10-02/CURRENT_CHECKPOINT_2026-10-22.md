@@ -1,5 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
+## Latest world-direction delivery addendum: 2026-10-23 14:40 UTC
+
+All twelve goals remain OPEN. This update records the first authored world-experience and placement slice; it is not completion or game acceptance.
+
+- [Draft PR552](https://github.com/coldshalamov/SpaceFace/pull/552) is open/draft at head `b7145c1f5e9ea68b2919e11cf6d6c45f544e082e`, tree `ecfa2bc3336fa7378e4db86a912be886dfdc0302`, sole parent and current master `b47254fcfb12992ff84c30cd6bed5a2d110e3ae7`. Nine paths publish the longform treatment and bounded build requests in `design/program/world-experience-2026-10-23/`, link them from `build_map.md`, and add a placement-only Tethys Watch Overlook using four existing Everyday Space Kit slots. Existing board rows, ownership/status and original SF20 scope are unchanged.
+- The treatment resolves Veil Free Frontier versus Vael hospitality/binding debt, keeps Triton Wake Lab distinct from Archive Field Lab, and frames two separate contracts. The first physical slice places an east-facing apron pull-off and a separate cache-side lookout with a clear outside pass; no new actors, events, traffic, law or rewards are added.
+- Focused placement test: 9/9 locally. 128 other-sector generator comparisons remain unchanged. The exact consumer was statically exercised; full registered-world acceptance is open. A composition from exact release meshes was delivered as an offline two-view preview, not live-camera or PBR acceptance. Native flight, Save/Continue and live-camera acceptance remain unclaimed.
+- PR552 check [39971472486 / #5977](https://github.com/coldshalamov/SpaceFace/actions/runs/39971472486) is in progress; no hosted result is claimed.
+- SF-WORLD-DIRECTION remains OPEN. Next creative work is story/place binding and composition of the separate Veil research stops, or a justified missing-piece request in the build map, not mechanical repair. Rope and Blind Welder work remain PARKED, preserved, and unaccepted; do not automatically resume them. Existing holds and schedules are unchanged.
+
 ## Latest project-direction and work-state addendum: 2026-10-23 13:48 UTC
 
 All twelve goals remain OPEN. This addendum supersedes active-work routing only; preserve historical evidence, scope, and acceptance boundaries.

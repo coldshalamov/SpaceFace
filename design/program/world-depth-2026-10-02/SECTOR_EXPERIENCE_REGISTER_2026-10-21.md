@@ -1,5 +1,14 @@
 <!-- LIFETIME: DURABLE -->
 
+## Latest authored world-direction slice: 2026-10-23 14:40 UTC
+
+All twelve goals remain OPEN. The first SF-WORLD-DIRECTION delivery is an authored treatment plus a bounded placement slice, not a completed sector or gameplay acceptance.
+
+- [Draft PR552](https://github.com/coldshalamov/SpaceFace/pull/552) publishes the longform world-experience treatment and build requests, linked from `build_map.md`. The treatment separates Veil Free Frontier/Vael hospitality binding debt, Triton Wake Lab/Archive Field Lab, and two distinct contracts.
+- Tethys Watch Overlook is a placement-only first slice using four existing kit slots: an east-facing apron pull-off, separate cache-side lookout, and clear outside pass. It adds no actors, events, traffic, law or reward behavior. Focused checks pass 9/9; 128 unaffected-sector generator comparisons remain unchanged. Registered-world, native-flight, Save/Continue and live-camera/PBR acceptance remain open.
+- The inspected exact-release-mesh composition is an offline two-view preview, not a live camera capture. CI #5977 remains in progress with no hosted result yet.
+- Next creative work: story/place binding and composing the Veil research stops as distinct places, or a justified missing-set-piece request through the build map. Rope and Blind Welder work are PARKED and unaccepted; no automatic resumption.
+
 ## Latest project-direction addendum: 2026-10-23 13:48 UTC
 
 All twelve project goals remain OPEN. The primary creative direction is now SF-WORLD-DIRECTION: develop a longform authored game-world expansion grounded in actual lore, sectors, asset placement, character/faction motivations and connected playable experiences.

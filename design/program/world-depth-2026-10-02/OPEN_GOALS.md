@@ -1,5 +1,14 @@
 <!-- LIFETIME: DURABLE -->
 
+## Latest world-direction delivery and goal-status addendum: 2026-10-23 14:40 UTC
+
+All twelve goals remain OPEN. SF-WORLD-DIRECTION is now the primary creative priority and has a first published candidate, not a completed outcome.
+
+- Open/draft [PR552](https://github.com/coldshalamov/SpaceFace/pull/552) publishes the longform authored world-experience treatment and bounded build requests, with a supporting `build_map.md` link and an initial placement-only Tethys Watch Overlook using four existing kit slots. The original board rows, ownership/status and SF20 scope are preserved.
+- The authored direction resolves Veil Free Frontier versus Vael hospitality/binding debt, distinguishes Triton Wake Lab from Archive Field Lab, and keeps two contracts separate. The physical slice adds the east-facing apron pull-off and cache-side lookout with a clear outside pass.
+- Evidence is 9/9 focused placement tests and 128 unchanged generator comparisons. Exact-head CI #5977 is still in progress. This does not claim registered-world/native/Save/live-camera/PBR or full-sector acceptance.
+- Next: continue story/place binding and composition of the separate Veil research stops; if the experience truly needs a missing set piece, describe it through the build map. Rope and Blind Welder work remain PARKED, preserved, and unaccepted. No existing schedule or hold changes.
+
 ## Latest project-direction and open-goal addendum: 2026-10-23 13:48 UTC
 
 All twelve goals remain OPEN. This addendum adds one stable goal marker and supersedes current-priority routing only; it does not close or replace any existing outcome.
@@ -148,10 +157,10 @@ PR487 main run https://github.com/coldshalamov/SpaceFace/actions/runs/3970960863
 - Awaiting user: none.
 ## SF-WORLD-DIRECTION
 - Outcome: author a longform game-world expansion grounded in actual lore, sectors, placed assets, character/faction motivations, and connected playable experiences; use existing pieces first, then script/place them and identify genuinely missing set pieces or large changes through the build map.
-- State: OPEN. This is the current primary project direction, not a completed expansion or new canon claim.
+- State: OPEN. The longform treatment and bounded build requests are in open/draft PR552; this is a first authored direction, not a completed playable expansion or new canon claim.
 - Owner: dot.
-- Next: read the actual canon, sector and asset maps; shape a coherent longform experience; prioritize concrete placement/script increments and record justified large changes or missing set pieces in the build map for local build work or project builds.
-- Evidence: the user direction is recorded in the latest checkpoint. No new source, asset, or build-map delivery is claimed yet.
+- Next: continue story/place binding from the reviewed treatment; compose the Veil research stops as distinct places and decide whether any truly missing set piece merits a build-map request. Keep focus on experience composition, not mechanical repair.
+- Evidence: PR552 includes the linked treatment/build requests and the Tethys Watch Overlook placement-only slice; focused test 9/9, 128 unaffected generator comparisons. Exact-head CI is pending. This is not full registered-world/native/Save/live-camera or sector acceptance.
 - Awaiting user: none.
 
 ## SF-GAME
