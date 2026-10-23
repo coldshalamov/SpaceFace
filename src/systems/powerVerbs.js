@@ -19,6 +19,7 @@
 // Pure module: no bus, no registry, no DOM. input.js, gamepad.js, the rail and tests share it.
 
 import { PLANET_REGION_RANK } from '../data/planets.js';
+import { swarmCallinCount } from '../data/swarmDraft.js';
 
 /** The five power verbs, in rail and number-row order. */
 export const POWER_VERBS = Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']);
@@ -110,6 +111,20 @@ export function playerImpulseCharges(state) {
  * by the bombs system; this only reads it). A chosen bomb with nothing loaded falls back to the
  * charge, so the key is never dry while a charge is aboard.
  */
+/**
+ * SEED-SW-01/03 — which swarm call-in charge a Bomb press would spend, or null. The swarm
+ * charges sit in the ordnance fallback AFTER the cargo impulse charge and BEFORE the drift
+ * bomb: a stocked smart bomb throws first, then a stocked lance paints and strikes, and only a
+ * dry rack falls through to the bay's own bomb. Reads the run's own ledger; never writes it.
+ */
+export function swarmBombSelection(state) {
+  const run = state && state.run;
+  if (!run || typeof run !== 'object' || run.kind !== 'survival') return null;
+  if (swarmCallinCount(run, 'smart_bomb') > 0) return 'smart_bomb';
+  if (swarmCallinCount(run, 'orbital_lance') > 0) return 'orbital_lance';
+  return null;
+}
+
 export function bombUsesCharge(state) {
   if (playerImpulseCharges(state) <= 0) return false;
   const bay = state && state.bombs;

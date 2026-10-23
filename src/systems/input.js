@@ -63,7 +63,7 @@ import { resolveWorldPresentationEntity } from '../world/presentationSources.js'
 import { resolveSteeringView } from './racingSteer.js';
 import { noteSwarmPilotAction, swarmPilotIsActing } from './swarmSafety.js';
 import {
-  POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower,
+  POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
 } from './powerVerbs.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
@@ -2176,7 +2176,11 @@ export const input = {
     const fire = this._resolvePowerFire(state, gp, { pull: pullEdge, shove: shoveEdge, pin: pinEdge, bomb: bombEdge, rig: rigEdge });
     const bombThrowsCharge = fire.bomb && bombUsesCharge(state);
     acts.chargeThrow = bombThrowsCharge;
-    acts.dropBomb = fire.bomb && !bombThrowsCharge;
+    // SEED-SW-01/03 — the stocked swarm charges (smart bomb, then lance) are the next ordnance
+    // in the fallback before the bay's own bomb. The director owns the resolution; this only
+    // routes the press, with no new power slot or key.
+    acts.swarmBombThrow = fire.bomb && !bombThrowsCharge && !!swarmBombSelection(state);
+    acts.dropBomb = fire.bomb && !bombThrowsCharge && !acts.swarmBombThrow;
     acts.chargeDetonate = fire.shove;
     acts.scanPulse = edge('scanPulse') || this._padEdge(gp, 'scanPulse');
     acts.cruise = edge('cruise') || this._padEdge(gp, 'cruise');

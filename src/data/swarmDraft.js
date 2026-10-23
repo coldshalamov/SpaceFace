@@ -260,3 +260,132 @@ export function ownedSwarmLegendaryIds(run) {
   }
   return ids;
 }
+
+// ── the call-in charges (SEED-SW-01..07) ────────────────────────────────────────────────────────
+//
+// A call-in charge is SPENT STOCK, not a fitting and not a room upgrade: the armory sells the
+// charge, the run remembers how many it holds as `swarm_callin` records (count summed across
+// rows of the same callinId), and one fire spends exactly one. Like the legendaries they ride
+// the run's own modifier ledger — nothing here reads a save, and a charge lives exactly as long
+// as the run that bought it. `fromWave` counts CLEARED waves (the opening armory sits at 0).
+
+export const SWARM_CALLIN_RECORD_KIND = 'swarm_callin';
+
+/** Restock cap per charge type: stock is a rack, not a vault. */
+export const SWARM_CALLIN_MAX_PER_TYPE = 3;
+
+export const SWARM_CALLIN_CATALOG = Object.freeze([
+  Object.freeze({
+    id: 'smart_bomb',
+    offerId: 'callin_smart_bomb',
+    name: 'Smart Bomb',
+    verb: 'Bomb',
+    price: 64,
+    fromWave: 1,
+    category: 'Service',
+    slotLabel: 'Call-in charge · one Bomb press · spends one',
+    blurb: 'One Bomb press detonates a room-clearing blast that throws and breaks the pack, never you.',
+  }),
+  Object.freeze({
+    id: 'orbital_lance',
+    offerId: 'callin_orbital_lance',
+    name: 'Orbital Lance',
+    verb: 'Lance',
+    price: 90,
+    fromWave: 2,
+    category: 'Service',
+    slotLabel: 'Call-in charge · telegraphed strike · spends one',
+    blurb: 'Paints the aim point, then a beam column lands a real hit and a shove on everything in it.',
+  }),
+  Object.freeze({
+    id: 'turret_drop',
+    offerId: 'callin_turret_drop',
+    name: 'Turret Drop',
+    verb: 'Turret',
+    price: 96,
+    fromWave: 2,
+    category: 'Service',
+    slotLabel: 'Call-in charge · fights this wave · spends one',
+    blurb: 'Drops an allied turret that fights beside you until the wave clears, then strikes its colors.',
+  }),
+  Object.freeze({
+    id: 'drone_wing',
+    offerId: 'callin_drone_wing',
+    name: 'Drone Wing',
+    verb: 'Wing',
+    price: 104,
+    fromWave: 3,
+    category: 'Service',
+    slotLabel: 'Call-in charge · four escorts · spends one',
+    blurb: 'Launches four escort drones that shoot the pack for the wave and leave with it.',
+  }),
+  Object.freeze({
+    id: 'shield_dome',
+    offerId: 'callin_shield_dome',
+    name: 'Shield Dome',
+    verb: 'Dome',
+    price: 84,
+    fromWave: 2,
+    category: 'Service',
+    slotLabel: 'Call-in charge · plants where you stand · spends one',
+    blurb: 'Plants a fixed dome that stops the pack and its shots at the rim while yours leave. Runs on a clock.',
+  }),
+  Object.freeze({
+    id: 'decoy',
+    offerId: 'callin_decoy',
+    name: 'Decoy',
+    verb: 'Decoy',
+    price: 56,
+    fromWave: 1,
+    category: 'Service',
+    slotLabel: 'Call-in charge · throwable lure · spends one',
+    blurb: 'A thrown lure the pack cannot resist. It dies like debris when the battery does.',
+  }),
+]);
+
+const CALLIN_BY_ID = new Map(SWARM_CALLIN_CATALOG.map((entry) => [entry.id, entry]));
+
+/** The catalog row for one call-in id, or null for an id the catalog does not name. */
+export function swarmCallinById(id) {
+  return typeof id === 'string' ? (CALLIN_BY_ID.get(id) || null) : null;
+}
+
+/**
+ * How many of one charge THIS run holds: the sum of counts across recognized `swarm_callin`
+ * records of that id. Restocks append rows; the count is the truth, not any single row.
+ */
+export function swarmCallinCount(run, callinId) {
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return 0;
+  if (typeof callinId !== 'string' || !CALLIN_BY_ID.has(callinId)) return 0;
+  if (run.ruleset !== SWARM_RULESET) return 0;
+  const modifiers = Array.isArray(run.modifiers) ? run.modifiers : [];
+  let total = 0;
+  for (const record of modifiers) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) continue;
+    if (record.kind !== SWARM_CALLIN_RECORD_KIND) continue;
+    if (record.callinId !== callinId) continue;
+    const n = Number(record.count);
+    if (Number.isFinite(n) && n > 0) total += Math.floor(n);
+  }
+  return total;
+}
+
+/**
+ * Spend one charge of `callinId` from the run's own ledger: rows are consumed FIFO (a restock
+ * never short-changes an older row), and the row that reaches zero is removed. Returns the count
+ * held after the spend — the caller compares before/after to know the fire was real.
+ */
+export function spendSwarmCallin(run, callinId) {
+  if (!run || !Array.isArray(run.modifiers)) return 0;
+  const rows = run.modifiers.filter((record) => record && typeof record === 'object'
+    && !Array.isArray(record) && record.kind === SWARM_CALLIN_RECORD_KIND && record.callinId === callinId);
+  for (const row of rows) {
+    const n = Number(row.count);
+    if (!(Number.isFinite(n) && n > 0)) continue;
+    const left = Math.floor(n) - 1;
+    if (left > 0) row.count = left;
+    else run.modifiers.splice(run.modifiers.indexOf(row), 1);
+    return swarmCallinCount(run, callinId);
+  }
+  return swarmCallinCount(run, callinId);
+}
