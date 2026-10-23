@@ -625,6 +625,12 @@ export const survivalAnnounce = {
     // Swarm waves end on the clock: "survived", not "clear". Prefer actual kills when the
     // receipt names them — admissions count bodies the stream fielded, not bodies the player
     // put down.
+    // The commander round already wrote the named kill line. Say that, not a generic clear.
+    const namedDown = typeof rec.killWord === 'string' ? rec.killWord.trim() : '';
+    if (namedDown) {
+      this._say('objective', `survival:w${wave}:down`, namedDown, 4);
+      return;
+    }
     const killed = Number.isInteger(rec.killed) && rec.killed >= 0 ? rec.killed : null;
     const admitted = Number.isInteger(rec.admitted) && rec.admitted > 0 ? rec.admitted : 0;
     const tallyCount = killed != null ? killed : admitted;

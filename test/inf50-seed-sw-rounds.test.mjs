@@ -162,3 +162,62 @@ test('seed 4242: the hold and the gate draw the circle the ship stands in', () =
   const plain = factory.build({ type: 'beacon', id: 'lane', radius: 8, data: {} });
   assert.equal(plain.getObjectByName('circuit-zone'), undefined, 'an ordinary beacon stays a buoy');
 });
+
+test('seed 4242: a hive node is a sac, and the commander wears a ring', () => {
+  const factory = createVisualFactory();
+  const node = factory.build({
+    type: 'ship', id: 'circuit-node', radius: 9,
+    data: { circuitNode: true },
+  });
+  assert.ok(node.getObjectByName('circuit-node'), 'the node is a sac, not a fighter');
+  const fighter = factory.build({
+    type: 'ship', id: 'ordinary', radius: 9, data: {},
+  });
+  assert.equal(fighter.getObjectByName('circuit-node'), undefined, 'an ordinary ship stays a ship');
+  const commander = factory.build({
+    type: 'ship', id: 'circuit-commander', radius: 9,
+    data: { circuitCommander: true, callsign: 'ADA VENN' },
+  });
+  assert.ok(commander.getObjectByName('circuit-commander'), 'the commander is marked');
+  assert.equal(commander.getObjectByName('circuit-node'), undefined);
+});
+
+test('seed 4242: the commander\'s name is on the glass', () => {
+  const previous = globalThis.document;
+  const node = () => ({
+    children: [], parentNode: null, isConnected: true, style: {}, dataset: {},
+    className: '', id: '', hidden: false, textContent: '',
+    classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } },
+    appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
+    removeChild() {}, setAttribute() {}, getAttribute() { return null; },
+  });
+  globalThis.document = {
+    body: node(), head: node(),
+    querySelector() { return null; },
+    getElementById() { return null; },
+    createElement() { return node(); },
+  };
+  const player = { id: 1, alive: true, pos: { x: 400, z: 0 }, type: 'ship' };
+  const commander = {
+    id: 2, alive: true, type: 'ship', hull: 40, hullMax: 80,
+    data: { circuitCommander: true, scanLabel: CIRCUIT_COMMANDER_NAME, callsign: CIRCUIT_COMMANDER_NAME },
+  };
+  const entities = new Map([[player.id, player], [commander.id, commander]]);
+  const state = {
+    mode: 'flight', simTime: 0, ui: {}, playerId: player.id, entities,
+    run: {
+      kind: 'survival', phase: 'active', ruleset: 'swarm', wave: 11, arenaId: ARENA,
+      score: 0, credits: 0, level: 1, xp: 0,
+    },
+  };
+  const bus = { on() { return () => {}; } };
+  try {
+    survivalHud.init({ state, bus, helpers: {} });
+    survivalHud.update(1 / 60, state);
+    assert.equal(survivalHud._dom.boss.hidden, false);
+    assert.equal(survivalHud._dom.bossWord.textContent, CIRCUIT_COMMANDER_NAME);
+  } finally {
+    survivalHud.destroy();
+    globalThis.document = previous;
+  }
+});

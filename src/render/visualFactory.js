@@ -2714,7 +2714,8 @@ function hideSwarmThreatMarks(mesh) {
 
 export function syncSwarmThreatPlate(mesh, entity, camera) {
   if (!mesh || typeof mesh.getObjectByName !== 'function') return;
-  if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2) {
+  if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2
+    || (entity.data && entity.data.circuitNode === true)) {
     hideSwarmThreatMarks(mesh);
     return;
   }
@@ -6197,6 +6198,51 @@ function buildMasslineSnareAnchor(e) {
   return g;
 }
 
+// A Circuit hive node is a rooted sac, not the fighter it was spawned as.
+function buildCircuitNode(e) {
+  const g = new THREE.Group();
+  const R = Math.max(4, (e && e.radius) || 8);
+  const flesh = emissiveMaterial('#d2642a', 0.9).clone();
+  const rootMat = emissiveMaterial('#6a3418', 0.4).clone();
+  const bulb = new THREE.Mesh(
+    getGeometry('circuit-node:bulb', () => new THREE.SphereGeometry(0.62, 18, 14)),
+    flesh,
+  );
+  bulb.name = 'circuit-node';
+  bulb.scale.set(R * 1.15, R * 0.82, R * 1.15);
+  bulb.position.y = R * 0.55;
+  g.add(bulb);
+  const stalk = new THREE.Mesh(
+    getGeometry('circuit-node:root', () => new THREE.CylinderGeometry(0.22, 0.46, 1, 8)),
+    rootMat,
+  );
+  stalk.scale.set(R, R * 0.7, R);
+  stalk.position.y = R * 0.15;
+  g.add(stalk);
+  g.userData.kind = 'ship';
+  g.userData.visualLanguage = 'circuit-node';
+  return g;
+}
+
+// The commander wears the same hull, with a ring so the one ship is obvious.
+function markCircuitCommander(mesh, e) {
+  const R = Math.max(4, (e && e.radius) || 12);
+  const ring = new THREE.Mesh(
+    getGeometry('circuit-commander:ring', () => new THREE.RingGeometry(1.15, 1.32, 48)),
+    (() => {
+      const mat = emissiveMaterial('#ffd27a', 1.8).clone();
+      mat.side = THREE.DoubleSide;
+      return mat;
+    })(),
+  );
+  ring.name = 'circuit-commander';
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.4;
+  ring.scale.setScalar(R);
+  mesh.add(ring);
+  return mesh;
+}
+
 function buildFallback(e) {
   const root = new THREE.Group();
   root.name = `VisualBuildFailed_${e && e.type || 'unknown'}`;
@@ -6475,7 +6521,21 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
         // RUBRIC: the marker and its paint marks are authored; the filing hull (rubricPart 'hull') is an ordinary wreck.
         if (e.data?.rubricPart === 'body' || e.data?.rubricPart === 'mark') return stampBuiltVisual(buildRubricVisual(e));
         switch (e.type) {
-          case 'ship': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));
+          case 'ship': {
+            if (e.data?.circuitNode === true) return stampBuiltVisual(buildCircuitNode(e));
+            // The commander ring has to land even when a headless build cannot paint the hull.
+            // In the game the hull builds, and the ring is added to that hull.
+            const marked = e.data?.circuitCommander === true;
+            let hull = null;
+            try {
+              hull = stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));
+            } catch (err) {
+              if (!marked) throw err;
+              hull = new THREE.Group();
+            }
+            if (marked) return markCircuitCommander(hull, e);
+            return hull;
+          }
           case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e), { merge: false }));
           case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
           case 'pickup': return stampBuiltVisual(buildPickup(e));

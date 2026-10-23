@@ -406,12 +406,16 @@ export const survivalHud = {
       this._setHidden(dom.boss, !bossVitals);
       if (bossVitals) {
         const pct = bossVitals.pct == null ? null : Math.max(0, Math.min(1, bossVitals.pct));
-        this._setText(dom.bossWord, bossVitals.count > 1 ? `BOSS ×${bossVitals.count}` : 'BOSS');
+        const bossLabel = bossVitals.name
+          ? bossVitals.name
+          : (bossVitals.count > 1 ? `BOSS ×${bossVitals.count}` : 'BOSS');
+        this._setText(dom.bossWord, bossLabel);
         this._setText(dom.bossFig, pct == null ? '—' : `${Math.round(pct * 100)}%`);
         this._setStyle(dom.bossFill, 'width', `${pct == null ? 0 : Math.round(pct * 100)}%`);
+        const hullWord = bossVitals.name || 'Boss';
         this._setAttr(dom.boss, 'aria-label', pct == null
-          ? 'Boss hull'
-          : `Boss hull ${Math.round(pct * 100)} percent`);
+          ? `${hullWord} hull`
+          : `${hullWord} hull ${Math.round(pct * 100)} percent`);
         this._setAttr(dom.boss, 'aria-valuenow', String(pct == null ? 0 : Math.round(pct * 100)));
       }
     }
@@ -624,11 +628,17 @@ export const survivalHud = {
     let count = 0;
     let hull = 0;
     let max = 0;
+    let name = null;
     for (const entity of entities.values()) {
       if (!entity || entity.alive === false) continue;
       const data = entity.data;
-      if (!data || data.swarmChampion !== true) continue;
+      const commander = data && data.circuitCommander === true;
+      if (!data || (data.swarmChampion !== true && !commander)) continue;
       count += 1;
+      if (commander && !name) {
+        const label = data.scanLabel || data.callsign;
+        if (typeof label === 'string' && label) name = label;
+      }
       const hullMax = Number.isFinite(entity.hullMax) ? entity.hullMax
         : Number.isFinite(entity.data.hullMax) ? entity.data.hullMax : 0;
       const hullNow = Number.isFinite(entity.hull) ? Math.max(0, entity.hull)
@@ -639,7 +649,7 @@ export const survivalHud = {
       }
     }
     if (count === 0) return null;
-    return { count, pct: max > 0 ? hull / max : null };
+    return { count, pct: max > 0 ? hull / max : null, name };
   },
 
   // ---- DOM ------------------------------------------------------------------

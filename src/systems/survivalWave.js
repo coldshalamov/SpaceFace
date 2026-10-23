@@ -38,6 +38,7 @@ import {
 } from '../data/swarmMode.js';
 import { validateCombatChoreography } from '../presentation/combatChoreography.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
+import { CIRCUIT_VIEW_AHEAD } from './survivalCircuit.js';
 import {
   SURVIVAL_SPAWN_DISTANCE,
   levelForWave,
@@ -46,6 +47,13 @@ import {
 import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
 
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
+
+// Three rooted sacs, ahead of the ship, with the far edge inside the swarm picture.
+const CIRCUIT_NODE_SPOTS = Object.freeze([
+  Object.freeze({ x: -38, z: 86 }),
+  Object.freeze({ x: 0, z: 108 }),
+  Object.freeze({ x: 40, z: 88 }),
+]);
 
 /**
  * The opening lesson's pack hold is a ceiling, not a sentence. The tick the board has nothing
@@ -484,14 +492,34 @@ export const survivalWave = {
       member.circuitNode = true;
       entity.data = entity.data || {};
       entity.data.circuitNode = true;
-      const pos = entity.pos || { x: 0, z: 0 };
-      member.root = { x: pos.x, z: pos.z };
-      spec.nodesMarked = (spec.nodesMarked || 0) + 1;
+      entity.data.scanLabel = 'Hive node';
+      const index = spec.nodesMarked || 0;
+      const spot = CIRCUIT_NODE_SPOTS[index % CIRCUIT_NODE_SPOTS.length];
+      const player = this._playerPos();
+      const origin = player && Number.isFinite(player.x) && Number.isFinite(player.z)
+        ? player
+        : (entity.pos || { x: 0, z: 0 });
+      const radius = Number(entity.radius) > 0 ? Number(entity.radius) : 8;
+      const dist = Math.hypot(spot.x, spot.z);
+      const maxCenter = Math.max(0, CIRCUIT_VIEW_AHEAD - radius);
+      let center = dist;
+      if (center > maxCenter) center = maxCenter;
+      const outside = Math.min(radius + 8, maxCenter);
+      if (center < outside) center = outside;
+      const scale = dist > 0 ? center / dist : 1;
+      const x = origin.x + spot.x * scale;
+      const z = origin.z + spot.z * scale;
+      member.root = { x, z };
+      if (!entity.pos) entity.pos = { x, z };
+      else { entity.pos.x = x; entity.pos.z = z; }
+      if (entity.vel) { entity.vel.x = 0; entity.vel.z = 0; }
+      spec.nodesMarked = index + 1;
     } else if (spec.kind === 'commander' && !spec.commanderMarked) {
       member.circuitCommander = true;
       entity.data = entity.data || {};
       entity.data.circuitCommander = true;
       entity.data.callsign = spec.commanderName;
+      entity.data.scanLabel = spec.commanderName;
       spec.commanderMarked = true;
     }
   },
@@ -970,6 +998,12 @@ export const survivalWave = {
     for (const [id, member] of this._cohort) {
       const entity = this._resolveCohortEntity(id, member);
       if (!entity || entity.alive === false || !entity.pos || !entity.data?.ai) continue;
+      // A hive node is a rooted sac, not a shooter. Hold the gun for the whole round.
+      if (entity.data.circuitNode === true) {
+        entity.data.ai.swarmFireHeld = true;
+        entity.data.ai.swarmFireHoldUntil = now + 2 / 60;
+        continue;
+      }
       // Opt-in bracket. The default plate stays on entity.radius so a hull without
       // this field cannot grow a halo. The stroke stays just outside the hull
       // (see SWARM_THREAT_MARK_SCALE). The in-hull glyph is what lifts the dark
