@@ -671,7 +671,7 @@
     "probe:ceres-production-cycle": "node scripts/probe-ceres-production-cycle.mjs",
     "check:phone-startup-recovery": "node --test test/save-slot-discovery.test.mjs test/title-continue-failure.test.mjs test/shared-player-store-capability.test.mjs test/shared-player-store-write-queue.test.mjs test/vercel-deployment-branches.test.mjs test/mobile-worker-contract.test.mjs test/package-geometry-detach.test.mjs test/render-package-loader.test.mjs test/probe-continue-route.test.mjs test/mobile-worker-contract-host-timeout.test.mjs test/authored-build-yield-lifetime.test.mjs test/authored-prepared-registry-release.test.mjs test/worker-paused-save-completion.test.mjs test/mobile-worker-contract-body-drain.test.mjs test/opening-first-picture-lifetime.test.mjs",
     "check:html-preload-targets": "node --test test/html-preload-targets.test.mjs",
-    "check:hawser-attended-repair": "node --test test/salvage-watch-encounter.test.mjs test/hawser-powered-departure-native.test.mjs"
+    "check:hawser-attended-repair": "node --test test/salvage-watch-encounter.test.mjs test/hawser-powered-departure-native.test.mjs test/hawser-repair-vfx.test.mjs"
   },
   "private": true,
   "devDependencies": {

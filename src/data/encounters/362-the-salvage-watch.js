@@ -393,7 +393,8 @@ export const runtime = Object.freeze({
     // 1.5 s; longer gaps cannot buy work offscreen. Separation pauses, never erases a patch.
     const pressed = nearestEnemyDistTo(d, live, tug) < TUG_PRESS_WU;
     const qualified = attended && !pressed;
-    if (qualified && own.qualified && step <= 1.6) w.t += step;
+    const worked = qualified && own.qualified && step > 0 && step <= 1.6;
+    if (worked) w.t += step;
     own.qualified = qualified;
     if (w.phase === 'work') {
       const reason = pressed ? 'pressure' : !attended ? 'separation' : null;
@@ -442,6 +443,17 @@ export const runtime = Object.freeze({
       // alive — released to the world, not deleted.
       releaseSquadToWorld(live);
       return d.resolve(live, w.tenderLost ? 'tender_lost' : 'watch_over', { speak: true });
+    }
+    // Presentation follows earned work, never the tender label or elapsed offscreen time.
+    // Latch before emit: synchronous listeners may revisit this same scene tick.
+    if (worked && !own.stopped && !w.completed
+      && (own.lastWorkCueAt == null || now - own.lastWorkCueAt >= 0.3)) {
+      own.lastWorkCueAt = now;
+      d.emit('salvageWatch:repairWork', {
+        encounterId: live.id, sectorId: live.sectorId, simTime: now,
+        sourceId: tug.id, sourceGeneration: tug.occupantGeneration,
+        targetId: freighter.id, targetGeneration: freighter.occupantGeneration,
+      });
     }
   },
 

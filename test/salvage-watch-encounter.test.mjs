@@ -482,3 +482,54 @@ test('salvage watch: rotated local helm axes burn outward along the observed ser
     }
   }
 });
+
+
+test('salvage watch: repair cues follow positive qualified work, not approach, pressure or missing time', () => {
+  const q = serviceFixture('work-cues'), pulses = [];
+  q.bus.on('salvageWatch:repairWork', p => pulses.push(p));
+  q.tug.pos.x += 1000; q.tick(); assert.equal(pulses.length, 0);
+  q.berth(); q.tick(); assert.equal(pulses.length, 0, 'arrival alone earns no work');
+  q.tick(); assert.equal(pulses.length, 1);
+  assert.deepEqual(pulses[0], { encounterId: q.id, sectorId: SECTOR, simTime: q.state.simTime,
+    sourceId: q.tug.id, sourceGeneration: q.tug.occupantGeneration,
+    targetId: q.mule.id, targetGeneration: q.mule.occupantGeneration });
+  q.tick(0); assert.equal(pulses.length, 1);
+  q.raiders[0].alive = true; q.raiders[0].pos = { ...q.tug.pos };
+  q.tick(); assert.equal(pulses.length, 1, 'pressure pauses presentation');
+  q.raiders[0].alive = false; q.tick(); assert.equal(pulses.length, 1);
+  q.tick(); assert.equal(pulses.length, 2);
+  q.tick(2); assert.equal(pulses.length, 2, 'unobserved time is not work');
+  q.tug.pos.x += 1000; q.tick(); assert.equal(pulses.length, 2);
+});
+
+test('salvage watch: work cue is latched before reentrant listeners and stops at completion or abandon', () => {
+  const q = serviceFixture('work-cue-reentry'), pulses = [];
+  q.bus.on('salvageWatch:repairWork', p => {
+    pulses.push(p); runtime.tick(q.director, q.live, q.state, q.state.simTime);
+  });
+  q.tick(); q.tick();
+  assert.equal(pulses.length, 1);
+  assert.equal(q.live.data.watch.t, 1, 'same-time callback does not buy work');
+  q.live.data.watch.t = 54.5;
+  q.tick();
+  assert.equal(paid(q), 1); assert.equal(pulses.length, 1, 'completion emits no continuing work');
+  const other = serviceFixture('work-cue-abandon'), stopped = [];
+  other.bus.on('salvageWatch:repairWork', p => stopped.push(p));
+  other.tick(); other.bus.emit('save:restoring', {}); other.tick();
+  assert.equal(stopped.length, 0);
+});
+
+test('salvage watch: qualifying work pulses remain cadence-bounded over a long interval', () => {
+  const q = serviceFixture('work-cue-cadence'), pulses = [];
+  q.bus.on('salvageWatch:repairWork', p => pulses.push(p));
+  q.tick();
+  for (let i = 0; i < 100; i++) q.tick(0.1);
+  assert.ok(pulses.length > 10 && pulses.length <= 34);
+  for (let i = 1; i < pulses.length; i++) assert.ok(pulses[i].simTime - pulses[i-1].simTime >= 0.3);
+  q.tug.pos.x += 1000;
+  for (let i = 0; i < 20; i++) q.tick(0.1);
+  const count = pulses.length;
+  q.bus.emit('sector:exit', { sectorId: SECTOR });
+  q.tick();
+  assert.equal(pulses.length, count);
+});

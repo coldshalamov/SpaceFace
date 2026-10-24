@@ -1,13 +1,55 @@
-# Hawser attended repair and powered departure
+# Hawser repair-work presentation
 
-## Current successor: powered departure and custody
+## Current repair-cue successor
+The existing repair scene now emits a scalar salvageWatch:repairWork receipt only after positive, continuously qualified work. Approach, pressure, separation, missing-time intervals, zero elapsed time, completion and Save abandonment do not renew it. A >=0.3 simulation-second cadence and a pre-emit latch bound pulses and synchronous reentry. Repair progress, rewards, voice, departure, custody and simulation owners are otherwise unchanged.
+
+ActionVfx adds one existing deposition/repair primitive, not another renderer or light. Admission requires flight mode, matching sector, finite nonfuture receipt time younger than 0.45 seconds, distinct safe-integer ship IDs and matching occupant generations. No player fallback. Receipt scalar fields are copied; active slots also retain exact original object references and retire on actor death/replacement/generation changes, sector mismatch or nonflight mode. Existing surfaceWork measured-hull-bounds anchoring keeps the patch on the Mule's Hawser-facing surface; existing interpolation/frame-origin support follows it. Reduced motion/flash use the existing controls.
+
+### Honest lifetime boundary
+Pressure/separation stop renewal; they do not erase already earned cosmetic matter. The surface expires within 0.45 simulation seconds of the last receipt, not its delivery time. Actor/sector/mode invalidation retires that surface on the next update.
+
+Previously emitted particles are independent numeric frame-local parcels, not actor attachments. They are NOT globally cleared when this one slot retires. Each has life at most 0.387 seconds; the conservative total residual after the last receipt is less than 0.837 simulation seconds. They cannot follow or rebind a recycled actor. Frame rebasing translates numeric origins; reduced motion clears particles through the existing accessibility path.
+
+### Verification and scope
+- Initial coherent local run: 48/48 passed (23 scene, 20 existing action-VFX, five new renderer/transport tests).
+- Independent review identified the distinction between surface and emitted-particle lifetime. A sixth actual-particle regression was added; six renderer/transport tests then passed. The other 43 tests were unchanged, not rerun. This is 49 unique covered tests across those runs, NOT one final 49-test run.
+- Baseline with the original scene/renderer and eight initial new tests: seven failed, one malformed-receipt rejection passed by absence.
+- Transport coverage uses actual projectBridgeEvent and createSimLaneRuntime ready/tickDone processing with a mocked worker channel, actual spawnInfos occupant-generation mirrors, then real ActionVfx admission. Existing vfx.js auto-subscribes ACTION_VFX_EVENTS. No event bridge or vfx.js changes.
+- Actual non-reduced ForceParticleFlow emission verifies source/target recycling far away, immediate surface retirement without new matter, stable numeric origins, numeric frame reproject and complete expiry by receipt age 0.838 seconds. Natural surface expiry is also tested.
+- Anchoring uses actual Three.js hull bounds and finite batch attributes. These are headless renderer/transport tests, NOT GPU, screenshot, browser or live visual-quality acceptance.
+- Local qualification uses mixed archive/public-owner fallback dependencies with exact owned modules and transport/read-model/VFX overlays. The earlier native propulsion/custody proof belongs to prior head 32103806; it was not redundantly replayed locally for this presentation-only change. Hosted full-checkout evidence is still required.
+
+Current reproduction:
+```sh
+npm run check:hawser-attended-repair
+# scene23 + powered-departure native3 + repair renderer/transport6 = 32 named tests
+```
+The new file is appended to the existing named command. Check-chain position, classification, relative order and workflows remain unchanged; the standalone existing action-VFX suite is not duplicated by this leaf.
+
+### Ownership and pins
+Fresh 75-open-PR census found only test/action-vfx.test.mjs overlapping PR498 at 0c3ee79707b122f0dc79bde9cdb31aca02048bbe. Its shunt fixture near line126 and appended shunt assertion are disjoint from this new-event generic fixture near line32; no PR498 changes were absorbed. No overlapping scene362 or actionVfx runtime owner was found.
+
+- Scene: 86115321c98f05dfad464cfa7d97510da41be747
+- ActionVfx: a10cedf61183068ece20419bd7a38e86f07339d1
+- Scene tests: 453c7726a64bdd4bff54471e9164694255f2f782
+- New renderer/transport tests: 7bb7a9b944b0f952e5ee1231ae2a17ea74ac2227
+- Existing action fixture: de0753ada4120ad98028107e1da5f641d9211090
+- ForceParticleFlow: 230c5c9567f53f2d969a47098f17a74066220280
+- Action primitives: 316e598af6eedf6f54762d402305e05a8916d8b0
+
+Historical preflight failures were oversized argument/input setup, missing vendor mapping and baseline reconstruction syntax, not gameplay regressions. No models, shared simulation owners, bridge schemas, workflows, merge or deployment changes.
+
+## Historical attended repair and departure
+The following report belongs to prior head 32103806c3b34779022e3b2be274efc997db27f8 and its ancestors, not the current cue successor. That head's hosted 23-test gate passed in run40092100386; overall CI failed with known baseline failures and incomplete cancelled browser3 comparison.
+
+## Prior successor: powered departure and custody
 This successor extends the attended-repair increment below without changing reward timing or adding a quest, tick handler or persistent controller. The repair receipt and 300-credit/+6-MTS reward still resolve immediately at repair. Both original ships then receive diverging assisted-propulsion packets for the ordinary 20-second expiry window, with explicit assistMode 'assisted', turnIntent 0 and no aimAngle.
 
 Exact packet identity, original actor reference and generation bound the short-lived lease. Confirmed secure capture or a committed control-changing event clears only our packet and its matching owned expiry. Failed transfer attempts, foreign successor packets and foreign expiry are untouched. Save restore, sector/menu exit, new game and retirement remove all seven listeners. Installation is guarded when the event bus is absent. No shared AI, flight, traffic, shipControlTransfer, Save, schema or model changes.
 
 Receipt/news copy now says drives restored and clearing the berth; it does not claim home arrival. No docking, destination routing or completed voyage is implemented.
 
-### Current gate and qualification
+### Prior gate and qualification
 ```sh
 npm run check:hawser-attended-repair
 # node --test test/salvage-watch-encounter.test.mjs test/hawser-powered-departure-native.test.mjs
@@ -84,4 +126,5 @@ Publication parent: a3c49d376fc7734c41ea218ceb63a4c4c9afd262. Source/test and al
 
 ## Original handoff
 Keep this as a draft. Inspect the native trace output, focused assertions and hosted named-gate result before expanding scope. The next acceptance layer is natural admission and visual/browser inspection, not a replacement for these causal tests. No merge or deployment is part of this increment.
+
 
