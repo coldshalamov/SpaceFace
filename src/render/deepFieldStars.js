@@ -27,6 +27,10 @@ export const STELLAR_FORMATIONS = Object.freeze([
   Object.freeze({ recipe: 'galactic_spur', name: 'wide-galactic-band', shape: 'stream',
     anchor: [0.04, 0.50], span: 0.88, tilt: -0.09, flatten: 0.52,
     cool: '#9db0d0', warm: '#e6d8bf', intensity: 0.44, parallax: 0.013 }),
+  // Inside the Bolus: a short, low, flesh-warm stream. Not the face-on trade spiral.
+  Object.freeze({ recipe: 'viscera_wet_throat', name: 'close-wet-throat', shape: 'stream',
+    anchor: [0.02, -0.18], span: 0.28, tilt: 0.04, flatten: 0.22,
+    cool: '#6a3040', warm: '#e0a090', intensity: 0.28, parallax: 0.009 }),
 ]);
 const FAMILIES = STELLAR_FORMATIONS.length;
 export const STELLAR_CAPACITY_PER_FORMATION = 8192;

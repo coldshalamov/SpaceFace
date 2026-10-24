@@ -33,3 +33,9 @@ The successor adds one bounded Node-side report on rejection of that same initia
 Exact successor helper/test/fixture strings passed nine Node-only tests; error-identity and bounded-output negative controls fail as expected. Three syntax checks passed. Negative-control excerpts are labeled as summaries, not complete raw output, in [the sanitized extension proof](BAR_PROBE_BOOT_ISSUES_PROOF.json). No local browser execution was performed, and this is observability rather than a boot or gameplay fix.
 
 The existing named alias reaches all nine tests on static shard 2/3 without changing package commands, prior order, shared runner or workflows. Publication uses a public merge child of the initial diagnostic head and current master 8d2373447b187b4f476c7fba0268910af98b2106, preserving newer weapon-level and VFX-lab work. The historical initial proof is retained. Hosted successor results must be evaluated separately; no full-CI green claim is made.
+
+
+## Landed startup repair reconciliation
+The preceding diagnostic head completed run40121650020 with nine focused passes and a failed full workflow. Its initial readiness report counted four issues but omitted their unrecognized text shapes; it did not identify their cause itself.
+
+External PR595 subsequently landed the missing caption export and resolver metadata on master4eb30c840accfdf20a2a696bfb2c2550aeac4769. This diagnostic branch now merges that public master to obtain new browser evidence beyond the already-fixed import boundary. It does not duplicate the external fix, change the nine tests, widen issue disclosure or claim the browser now starts. Other newer deep-field rendering and program work is preserved. Original package line endings are restored while retaining only the additive diagnostic alias/check-chain change. Successor CI remains pending.

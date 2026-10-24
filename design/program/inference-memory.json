@@ -114,45 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-fauna-flinch",
-      "date": "2026-10-22",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "Scanning the veil rays at Quiet Ice makes them flinch and keep fleeing.",
-      "fingerprint": "verb=flinch,subject=veil-ray,sector=veil,domain=wf-15",
-      "references": [],
-      "integration": "live",
-      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-fauna-scatter",
-      "date": "2026-10-22",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "Gunfire breaks the needle swarm's ring and they run, while a veil ray nearby stays put.",
-      "fingerprint": "verb=scatter,subject=needle-swarm,sector=charon,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-fauna-pile",
-      "date": "2026-10-22",
-      "wf": "WF-10",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "An archive crab builds a debris pile you can read, and the pile falls when the crab dies.",
-      "fingerprint": "verb=pile,subject=archive-crab,sector=ashfall,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-fauna-lead",
       "date": "2026-10-22",
       "wf": "WF-02",
@@ -1671,6 +1632,45 @@
       "references": [],
       "integration": "live",
       "commit": "18ea461d26",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sc-22",
+      "date": "2026-10-24",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The Bolus throat draws its own close red sky instead of the Helios trade constellation.",
+      "fingerprint": "verb=show,subject=viscera-sky,sector=bolus,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "5ef2693e9d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pulse-08",
+      "date": "2026-10-24",
+      "wf": "WF-13",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Every faction radio cell has twelve distinct lines a pilot can hear.",
+      "fingerprint": "verb=speak,subject=barks,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "91f9cc76da",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-13",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A fitted gun can be bought up through five faster cadences, and a maxed pulse laser can evolve.",
+      "fingerprint": "verb=cycle,subject=weapon-level,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "2d70c692a0",
       "verification": "focused_green"
     }
   ],
