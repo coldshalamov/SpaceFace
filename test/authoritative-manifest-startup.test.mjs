@@ -22,3 +22,19 @@ test('DOCKET remains registered on the table before physics', () => {
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('docket') >= 0);
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('docket') < PRODUCTION_UPDATE_ORDER.indexOf('physics'));
 });
+
+test('Node production factory imports and supplies initialized Node-safe systems', async () => {
+  const { getNodeSystemFactoryTable, createNodeProductionSystemLookup } =
+    await import('../src/runtime/nodeSystemFactoryTable.js');
+  const { isNodeSafeSystemId } =
+    await import('../src/runtime/authoritativeSystemManifest.js');
+  assert.equal(typeof getNodeSystemFactoryTable, 'function');
+  assert.equal(typeof createNodeProductionSystemLookup, 'function');
+  const lookup = getNodeSystemFactoryTable();
+  assert.ok(lookup instanceof Map);
+  for (const id of PRODUCTION_INIT_ORDER) {
+    if (!isNodeSafeSystemId(id)) continue;
+    assert.ok(lookup.has(id), `initialized Node-safe owner ${id} must have a factory`);
+    assert.ok(lookup.get(id), `factory ${id} must supply a system definition`);
+  }
+});

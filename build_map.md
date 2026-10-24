@@ -1154,7 +1154,7 @@ production units, and never build what they write.
 | 503 | W-COUPLING | Coupling you can see — filaments; panic, aggression and grief cascades (§34.2) | BUILD | OPEN |
 | 504 | W-PATHOLOGY | Pain loop, route-memory, host-shadow Husks (§34.2) | BUILD | OPEN — after 503 |
 | 505 | W-ONEOFFS | The ~35 one-offs mapped to a sector, a Book and the chart; a census test (§34.3) | BUILD | DONE devin-ten-oct22 (32918b94f6) |
-| 506 | W-SHIFT | The Orphaned Shift — twelve new machine-people, one per sitting (§34.3) | BUILD | OPEN — after 505; 1/12 shipped: DOCKET / PX-14 (0a59973d4e + latch fix 11d0e3731c), Io Reach parcel-delivery encounter |
+| 506 | W-SHIFT | The Orphaned Shift — twelve new machine-people, one per sitting (§34.3) | BUILD | OPEN — after 505; 5/12 shipped: DOCKET / PX-14 (0a59973d4e + latch fix 11d0e3731c) Io Reach parcel delivery; BOUNCER / DR-0 (e2c7fbc2f8) Sker no-weapons ring; RECEIPT / PR-8 (a993fc3fde) Kepler kill-feed printer; MOP / CL-5 (ad52bdc13b) Nyx evidence sweep; TALLYHO / CN-2 (ca65bf9fdb) Rhea kill-rating board + crowd |
 | 507 | W-BLOOM-LOW | Bloom ladder T0–T2 — spore drift, Lantern cyst, Glassback, Wake eel, Bellows (§34.2) | BUILD | OPEN — landed-note 2026-10-23 (75e483cf01): roster + engine laws binding — massOnly/blastOnly/swells kill gates, wake-eel steering, hazard slow, cyst prime/burst, shard splash, per-family silhouettes; still open: telegraphs, counter lines, death throwables, wake-eel whip-when-held |
 | 508 | W-BLOOM-HIGH | Bloom ladder T3–T6 — Bristle ram, Furnace maw, Husks, Blind shepherd, Hive-hulk, Veil ray, Anchor beast, the Long Field (§34.2) | BUILD | OPEN — after 507 |
 | 512 | W-STATIONS | Fourteen faction station kits (§34.4) | ART | OPEN |
@@ -1215,6 +1215,27 @@ Claim rows by editing the ledger, not this table.
 | 556 | ATT-S13 | Wreck/debris fields: named dead, salvage notes, kill-marks across the wreck surfaces | BUILD | OPEN |
 | 557 | ATT-H01/H02 | Hull markings: stencils and wear on starter hulls; kill tallies and owner names on traffic variants | ART | OPEN |
 | 558 | ATT-E04 | Secrets layer: easter eggs, coded barks, ritual sights that reward poking | BUILD | OPEN |
+
+### P. The experience program — the journey, first boot to mastery (owner direction 2026-10-24)
+
+Law: [`design/program/EXPERIENCE_PROGRAM.md`](design/program/EXPERIENCE_PROGRAM.md). The
+player's path is a spine of seven phases (P0 boot→play, P1 rail, P2 first hour, P3 first
+session, P4 early arc, P5 mid arc, P6 late arc); each phase has a bar it must hit by
+evidence. Units follow the same catalog → personas → tribunal → 3×-gate → implement
+pipeline as the attention program (the two interleave: experience rows set the sequence,
+attention rows fill the surfaces).
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 559 | X-01 | P2 first-hour life — tier-0 encounter deck, one real fight, loop-closure beat (joint with ledger E-01) | BUILD | OPEN |
+| 560 | X-02 | P1 raid beat teeth — staged hostile that shoots and flees at ≤30% hull | BUILD | OPEN |
+| 561 | X-03 | First purchase staged — a sub-5k module that changes a verb | BUILD | OPEN |
+| 562 | X-04 | Guided gate jump beat — first jump + return, toll math lands | BUILD | OPEN |
+| 563 | X-05 | Law/consequence persists past the rail — heat, wanted, witnesses in sandbox | BUILD | OPEN |
+| 564 | X-06 | Per-sector bark banks so ambient comms register outside the rail (ledger V-01) | BUILD | OPEN |
+| 565 | X-07 | Mining payoff surface — seam/overheat skill variance | BUILD | OPEN |
+| 566 | X-08 | Sling income verb — authored thrown-mass kill payoff | BUILD | OPEN |
+| 567 | X-09 | Per-cause death lessons beyond massline-snap | BUILD | OPEN |
 
 ### Landed rows index (consolidated 2026-10-15)
 

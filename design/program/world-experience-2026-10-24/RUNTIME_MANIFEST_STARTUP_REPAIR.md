@@ -1,3 +1,13 @@
+# Current additive factory import regression
+
+The original orphan-registration correction landed independently in PR585; all current master manifest, membership test, factory and character work remains unchanged. Mop and Receipt export repairs also landed upstream. This successor adds only a third asynchronous test to the existing isolated gate: dynamically import the actual Node factory module, verify its public factory functions, construct the default lookup and require every current Node-safe initialized owner to have a definition. No hardcoded actor list/count, factory workaround, workflow edit or gameplay initialization.
+
+The two original pure-manifest tests remain unchanged. The new test is syntax checked and source reviewed, not locally executed against a complete current graph; hosted qualification is explicitly pending. Mixed archive dependencies would not establish the required import contract, so no local current-graph pass is claimed. The reachable gate now expects3 TAP tests.
+
+Prior head74cba490/run40109520149 passed2/2 startup tests, then broader CI ended failure16:34:51 UTC. Completed static2/static3/sim/feel failures matched actual-base9a88; cancelled comparison groups prevent blanket baseline equivalence. That prior gate did not exercise the new dynamic factory import.
+
+## Historical repair and evidence
+
 # Isolated startup gate after the landed manifest repair
 
 PR585 landed the orphan-registration correction at03fb16fd792001ce5abc668711d5611e28a9972d and added a real Node-factory membership regression. PR586 subsequently landed the split-identifier and warm-teardown runtime fixes atb683b23ce299fe7dd746da9547c34d1cac5aff05. This draft now preserves those changes and every newer master file. It does not reapply or duplicate the landed runtime repair.

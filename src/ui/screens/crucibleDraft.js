@@ -43,6 +43,7 @@ import {
   circuitRouteView,
   circuitStateError,
   CIRCUIT_EVENT,
+  CIRCUIT_SERVICES,
   CIRCUIT_STAGE_COUNT,
 } from '../../systems/survivalCircuit.js';
 import { survivalRun } from '../../systems/survivalRun.js';
@@ -680,8 +681,13 @@ export function circuitPanelLines(run) {
                   : 'break the pack';
     next = `Next — stage ${round.stage}, round ${round.localRound}: ${objectiveLine}.`;
   }
+  const openService = circuit.service
+    ? CIRCUIT_SERVICES.find((svc) => svc.id === circuit.service.id)
+    : null;
   const status = circuit.card
     ? CIRCUIT_EVENT.line
+    : openService
+      ? openService.line
     : circuit.status === 'route'
     ? `Stage ${circuit.clearedStages} cleared. Choose where stage ${circuit.clearedStages + 1} fights.`
     : circuit.status === 'finale'
@@ -696,7 +702,8 @@ export function circuitPanelLines(run) {
     status,
     next,
     choices: choices.map((choice) => ({
-      id: choice.id, kind: choice.kind, label: choice.label, line: choice.line, fight: choice.fight || null,
+      id: choice.id, kind: choice.kind, label: choice.label, line: choice.line,
+      fight: choice.fight || null, node: choice.node || null,
     })),
     stages: route.stages.map((stage) => ({
       stage: stage.stage,
@@ -1155,11 +1162,16 @@ export const crucibleDraftScreen = {
     const circuit = run ? circuitFor(run) : null;
     const error = circuitStateError(run);
     if (!error && (!circuit || (circuit.status !== 'route' && circuit.status !== 'finale'))) return false;
+    const openService = circuit && circuit.service
+      ? CIRCUIT_SERVICES.find((svc) => svc.id === circuit.service.id)
+      : null;
     const text = error || (circuit.card
       ? CIRCUIT_EVENT.line
-      : circuit.status === 'route'
-        ? 'Choose a destination before launching.'
-        : 'Finish the Circuit or enter Overtime.');
+      : openService
+        ? openService.line
+        : circuit.status === 'route'
+          ? 'Choose a destination before launching.'
+          : 'Finish the Circuit or enter Overtime.');
     if (this._note) this._note.textContent = text;
     const first = this._circuit && this._circuit.choices
       ? this._circuit.choices.querySelector('button')
