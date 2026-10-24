@@ -128,6 +128,60 @@ function attendWatch(own) {
     && Math.hypot(tug.vel.x - mule.vel.x, tug.vel.z - mule.vel.z) <= WORK_SPEED_MAX;
 }
 
+
+// A completed rescue keeps its receipt immediately; only this short civilian burn remains.
+// The closure owns two exact packets, never a new world job or a persistent controller.
+function departWatch(d, state, tug, mule, now) {
+  if (!d.bus?.on) return;
+  const dx = tug.pos.x - mule.pos.x, dz = tug.pos.z - mule.pos.z;
+  const distance = Math.hypot(dx, dz);
+  const nx = distance > 0 ? dx / distance : 1, nz = distance > 0 ? dz / distance : 0;
+  const off = [];
+  const leases = [tug, mule].map((actor, index) => {
+    const sign = index === 0 ? 1 : -1, c = Math.cos(actor.rot), s = Math.sin(actor.rot);
+    const intent = { moveX: sign * (-nx * s + nz * c) * 0.65,
+      moveZ: sign * (nx * c + nz * s) * 0.65, turnIntent: 0, assistMode: 'assisted' };
+    const lease = { actor, generation: actor.occupantGeneration, intent,
+      previous: actor.data.intent, expiry: now + 20, active: true };
+    actor.data.intent = intent;
+    actor.data.despawnAt = lease.expiry;
+    return lease;
+  });
+  const current = lease => state.entities.get(lease.actor.id) === lease.actor
+    && lease.actor.occupantGeneration === lease.generation;
+  function release(lease, custody = false) {
+    if (!lease.active) return;
+    lease.active = false;
+    const actor = lease.actor;
+    if (actor.data?.intent === lease.intent) {
+      lease.intent.moveX = lease.intent.moveZ = lease.intent.turnIntent = 0;
+      if (custody || lease.previous === undefined) delete actor.data.intent;
+      else actor.data.intent = lease.previous;
+    }
+    // Only a committed change of custody cancels our retirement, never an attempted one.
+    if (custody && current(lease) && actor.data?.despawnAt === lease.expiry) delete actor.data.despawnAt;
+    if (leases.every(item => !item.active)) {
+      for (const unsubscribe of off) if (typeof unsubscribe === 'function') unsubscribe();
+      off.length = 0;
+    }
+  }
+  off.push(d.bus.on('ship:captured', event => {
+    for (const lease of leases) if (current(lease) && event?.targetId === lease.actor.id
+      && lease.actor.flags?.persistent && event.vesselId === lease.actor.data?.vesselId) release(lease, true);
+  }));
+  // This event is emitted after every fallible handoff guard, at the synchronous commit.
+  off.push(d.bus.on('ship:controlChanging', event => {
+    for (const lease of leases) if (current(lease)
+      && (event?.toId === lease.actor.id || event?.fromId === lease.actor.id)) release(lease, true);
+  }));
+  off.push(d.bus.on('entity:destroyed', event => {
+    for (const lease of leases) if (event?.entity === lease.actor) release(lease);
+  }));
+  for (const event of ['save:restoring', 'sector:exit', 'game:exitToMenu', 'game:new']) {
+    off.push(d.bus.on(event, () => { for (const lease of leases) release(lease); }));
+  }
+}
+
 function nearestEnemyDistTo(d, live, body) {
   if (!body || !body.pos) return Infinity;
   let best = Infinity;
@@ -364,9 +418,9 @@ export const runtime = Object.freeze({
       // The payoff: the freighter leaves under its own power, paid and named on the wire.
       if (freighter && freighter.data) {
         freighter.hull = freighter.hullMax;
-        freighter.data.despawnAt = now + 20;
+
       }
-      if (tug && tug.data) tug.data.despawnAt = now + 20;
+      departWatch(d, state, tug, freighter, now);
       d.grant(300, 'salvage_watch:repaired');
       d.rep('faction_mts', 6, 'salvage_watch_repaired');
       d.emit('comms:log', {
@@ -375,7 +429,7 @@ export const runtime = Object.freeze({
         kind: 'encounter',
       });
       d.emit('news:publish', {
-        text: 'SALVAGE WATCH CLOSED CLEAN: lane casualty repaired under escort and hauling again. The watch channel names its escort.',
+        text: 'SALVAGE WATCH CLOSED CLEAN: lane casualty drive restored under escort; rescue pair clearing the service berth. The watch channel names its escort.',
         kind: 'incidents', source: 'watch-relay', sourceRef: `salvage_watch:${live.id}`,
         eventId: `salvage_watch:${live.id}`,
       });
@@ -434,7 +488,7 @@ export default defineEncounter(trigger, {
     passive: true,
   },
   receipts: {
-    repaired: 'WATCH CLOSED — the mule burned home under its own power. The station pays for hulls it keeps, and it heard your name on the channel.',
+    repaired: 'WATCH CLOSED — the mule’s drive is restored; both ships are clearing the service berth. The station pays for hulls it keeps, and it heard your name on the channel.',
     tender_lost: 'THE TUG IS GONE — the station answers maydays with hulls, and this lane kept one. No rescue is coming for the mule.',
     casualty_lost: 'THE CASUALTY BROKE UP — spilled fuel cells are floating free on the lane. The tug marked the field and went home quiet.',
     watch_over: 'THE WATCH CLOSED — the tug had to break off. Whatever the lane kept, it kept.',

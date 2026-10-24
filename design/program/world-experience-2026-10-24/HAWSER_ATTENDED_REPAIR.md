@@ -1,4 +1,35 @@
-# Hawser attended repair
+# Hawser attended repair and powered departure
+
+## Current successor: powered departure and custody
+This successor extends the attended-repair increment below without changing reward timing or adding a quest, tick handler or persistent controller. The repair receipt and 300-credit/+6-MTS reward still resolve immediately at repair. Both original ships then receive diverging assisted-propulsion packets for the ordinary 20-second expiry window, with explicit assistMode 'assisted', turnIntent 0 and no aimAngle.
+
+Exact packet identity, original actor reference and generation bound the short-lived lease. Confirmed secure capture or a committed control-changing event clears only our packet and its matching owned expiry. Failed transfer attempts, foreign successor packets and foreign expiry are untouched. Save restore, sector/menu exit, new game and retirement remove all seven listeners. Installation is guarded when the event bus is absent. No shared AI, flight, traffic, shipControlTransfer, Save, schema or model changes.
+
+Receipt/news copy now says drives restored and clearing the berth; it does not claim home arrival. No docking, destination routing or completed voyage is implemented.
+
+### Current gate and qualification
+```sh
+npm run check:hawser-attended-repair
+# node --test test/salvage-watch-encounter.test.mjs test/hawser-powered-departure-native.test.mjs
+```
+The existing check-chain leaf, order, classification and workflow prerequisites remain unchanged. On the preserved PR-parent graph this is static shard 2/3. The previous hawser-attended-native.test.mjs remains a historical/manual test file and is not redundantly included in this gate.
+
+- 20 focused tests passed on final source 3b86cabc2372920d3fc4450780bbe1e6b357c1f1 and focused test 3fdc7969c004c26fe9394c20f6a32601ee9ae594. They were additionally qualified against the actual public shipControlTransfer owner d1416dce8d6e4f7b609d0cc17f67bde1dfb0bc9c.
+- New portable native/owner file 001adf852d111e6af9c23a115c6b30cda50b0364: 3/3 passed. This reuses the original stock Wasp/pulse pilot and adds the 20-second departure tail, prior native Save cases and six narrow capture/custody cases.
+- The initial three-test qualification used archived transfer owner 3047c9b6f0071fb20a78780891dfb10c7db3160a. Only the custody test was then rerun against actual public owner d1416dce8d6e4f7b609d0cc17f67bde1dfb0bc9c: 1/1 passed, all six custody cases. Source, test and narrow adapter were unchanged; this was not another native-pilot run.
+- Thus the current local evidence comprises 23 named checks plus the current-owner custody requalification, not a claim that the entire native graph was originally current. Qualification used 1558/1557 archive fallback modules; full coherent checkout acceptance awaits hosted CI.
+- The earlier source's 11 existing focused tests passed while the new powered-departure assertion failed: after repair both intents were absent despite the 20-second expiry. That measured gap motivates this follow-through.
+- Preflight stdin/loader placeholder failures occurred before gameplay assertions; a later storage-write guard occurred after a passing custody check. These are qualification/persistence failures, not game defects.
+
+### Native results and limits
+Repair remains at 154.083333 seconds, minimum approach gap 33.52025 WU, with one immediate 300/+6 payment and one receipt. At one second after repair Mule speed increased from 0.315 to 18.754 WU/s and Hawser from 0.314 to 14.929 WU/s. By 19 seconds, displacement was 1536.323 WU for Mule and 1643.316 WU for Hawser; minimum departure gap 35.0081 WU, no pair contact, both alive. Both were absent by 21 seconds through normal expiry.
+
+Actual capture APIs and registered Save owners verified secure/full-control custody for both hulls past the old 75.7667-second expiry through 78.7667 seconds, plus two foreign-successor cases. These six cases use a narrow owner adapter, not player-flown capture, and are distinct from the native propulsion/physics route. No natural scheduler admission, rendered departure, browser-playthrough or frame-performance acceptance is claimed.
+
+This commit is a child of reviewed PR head ad9b52dd00bf8cf78e64ba3ff70f7cb12390f3c5; it does not replace or rewrite that history. The historical model preview reflects attended repair on scene 1124851, not this powered-departure tail.
+
+## Historical attended-repair increment
+The following records the prior increment at ad9b52dd00bf8cf78e64ba3ff70f7cb12390f3c5. Its 13-test hosted result is historical, not a current-successor CI result. Hosted run 40088669919 passed that named gate 13/13 on synthetic merge b1d42d3be35ef0027878a8cf5899c01add8cb808, tree 301e394c9c270d0323f12dd95ce531bcffc21665. The overall run failed; completed failure-command comparisons matched its actual parent, while browser 3 was cancelled and incompletely comparable.
 
 ## Scope
 The existing salvage-watch scene now gives its original Hawser a transient civilian helm lease. Ordinary flightV3 and physics move it toward a 35 WU surface standoff from the original Mule. No shared AI, traffic, npcJobs, flight, combat, Save, schema, generator, model or workflow changes.
@@ -9,7 +40,7 @@ The lease requires the original actor identities, generations, bodies, encounter
 
 This does not implement or claim physical return-home/docking after repair beyond the unchanged release/expiry behavior.
 
-## Reproduction
+## Historical reproduction
 Run only the named gate:
 ```sh
 npm run check:hawser-attended-repair
@@ -21,7 +52,7 @@ node --test test/salvage-watch-encounter.test.mjs test/hawser-attended-native.te
 
 The package alias is appended once to the existing check chain and is reachable through check:ci. On the publication graph it is command check-hawser-attended-repair, static shard 2 of 3 (311 commands total; 233 static). All pre-existing command relative order and workflow prerequisites remain unchanged. No broad local aggregate was executed.
 
-## Reviewed local qualification
+## Historical reviewed local qualification
 - Focused scene suite: 11/11 passed. Covers spawn/escalation, repaired/lost outcomes, distance/speed/overlap/pressure, separation and return, skipped time, reward reentrancy, foreign identity/body/role ownership, actor disappearance/death, terminal lifecycle, revival and malformed geometry.
 - Conventional native suite: 2/2 passed, zero failed, skipped or cancelled, on the final frozen scene. Thirteen named tests total. Approximately 15 seconds wall time is an observation, not performance acceptance.
 - Before the change, a passive tug 100000 WU away still repaired the Mule to full hull and awarded 300/+6 after 55.7667 seconds. This is the measured defect, not a valid successful route.
@@ -51,5 +82,6 @@ Publication parent: a3c49d376fc7734c41ea218ceb63a4c4c9afd262. Source/test and al
 - src/systems/aiPorts.js: 72f838463067e20186e3125dfa8e461da4b64bb3
 - src/systems/combat.js: f0dc041f7ad4e592a919de69b72bf25867deb9f0
 
-## Handoff
+## Original handoff
 Keep this as a draft. Inspect the native trace output, focused assertions and hosted named-gate result before expanding scope. The next acceptance layer is natural admission and visual/browser inspection, not a replacement for these causal tests. No merge or deployment is part of this increment.
+

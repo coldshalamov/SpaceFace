@@ -18,6 +18,7 @@ import assert from 'node:assert/strict';
 
 import { createSimulation } from '../src/core/sim.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
+import { admitCapturedVessel, captureAndTransfer } from '../src/systems/shipControlTransfer.js';
 import { runtime } from '../src/data/encounters/362-the-salvage-watch.js';
 
 const OBSERVED = Object.freeze([
@@ -325,4 +326,159 @@ test('salvage watch: malformed geometry pauses work and neutralizes the owned he
   assert.equal(q.live.data.watch.t, 0);
   q.berth(); q.tick();
   assert.equal(q.live.data.watch.t, 0);
+});
+
+function departed(suffix) {
+  const q = serviceFixture('departure-' + suffix);
+  for (let n = 0; n < 56; n++) q.tick();
+  assert.equal(paid(q), 1);
+  assert.equal(countOf(q.rows, 'encounter:receipt'), 1, 'receipt commits at repair, not tail expiry');
+  assert.equal(liveOf(q, q.id), undefined);
+  return q;
+}
+function captureOwner(q, actor) {
+  actor.data.vesselId = 'watch:' + actor.id;
+  actor.data.shipjackGeneration = 1;
+  q.state.run = { kind: 'adventure' };
+  q.state.player.ownedShips ||= [];
+  q.state.player.activeShipIndex = 0;
+  if (!q.state.player.ownedShips.length) q.state.player.ownedShips.push({ defId: 'ship_hawser', fittings: [] });
+  const owner = { state: q.state, bus: q.bus, validateTransferFittings: () => true,
+    nextInstanceId: () => 'watch:instance', getTransferCargoCapacity: () => 100,
+    recomputeEntity() {}, publishActiveRoleContext() {} };
+  const request = { targetId: actor.id, targetGeneration: 1, vesselId: actor.data.vesselId,
+    operationId: 'watch:transfer' };
+  return { owner, request };
+}
+test('salvage watch: repair immediately pays and receipts once while originals request diverging assisted burns', () => {
+  const q = departed('packets');
+  for (const actor of [q.tug, q.mule]) {
+    const intent = actor.data.intent;
+    assert.equal(intent.assistMode, 'assisted'); assert.equal(intent.turnIntent, 0);
+    assert.equal(intent.aimAngle, undefined); assert.equal(actor.data.despawnAt, q.state.simTime + 20);
+    const sign = actor === q.tug ? 1 : -1;
+    assert.ok(sign * (intent.moveZ * Math.cos(actor.rot) - intent.moveX * Math.sin(actor.rot)) > 0.6);
+    assert.equal(actor.data.ai.passive, true);
+  }
+  assert.ok(q.raiders.every(actor => !actor.data.intent?.assistMode));
+  q.tick(); assert.equal(paid(q), 1); assert.equal(countOf(q.rows, 'encounter:receipt'), 1);
+  const receipt = q.rows.find(row => row.name === 'encounter:receipt');
+  assert.ok(!JSON.stringify(receipt).includes('burned home'));
+});
+test('salvage watch: actual secure capture clears its burn and expiry before persistent serialization', () => {
+  for (const actorKind of ['tug', 'mule']) {
+    const q = departed('secure-' + actorKind), actor = q[actorKind];
+    const { owner, request } = captureOwner(q, actor), intent = actor.data.intent;
+    const result = admitCapturedVessel(owner, request);
+    assert.equal(result.ok, true); assert.equal(actor.flags.persistent, true);
+    assert.equal(actor.data.intent, undefined); assert.equal(actor.data.despawnAt, undefined);
+    const saved = JSON.parse(JSON.stringify(actor.data));
+    assert.equal(saved.intent, undefined); assert.equal(saved.despawnAt, undefined);
+    assert.equal(intent.moveX, 0); assert.equal(intent.moveZ, 0);
+    const other = actor === q.tug ? q.mule : q.tug;
+    assert.equal(other.data.intent.assistMode, 'assisted');
+    assert.equal(countOf(q.rows, 'encounter:receipt'), 1); assert.equal(paid(q), 1);
+  }
+});
+test('salvage watch: failed physical handoff preserves burn; actual committed transfer cancels retirement', () => {
+  const q = departed('handoff'), actor = q.tug, { owner, request } = captureOwner(q, actor);
+  const packet = actor.data.intent, expiry = actor.data.despawnAt;
+  const player = q.state.entities.get(q.state.playerId);
+  player.pos = { x: actor.pos.x + 10000, z: actor.pos.z };
+  assert.equal(captureAndTransfer(owner, request).ok, false);
+  assert.equal(actor.data.intent, packet); assert.equal(actor.data.despawnAt, expiry);
+  player.pos = { ...actor.pos }; player.vel = { ...actor.vel };
+  q.bus.on('ship:parkedHoldSwap', event => q.bus.emit('cargo:parkedHoldSwapped', event));
+  const result = captureAndTransfer(owner, request);
+  assert.equal(result.ok, true, result.reason);
+  assert.equal(q.state.playerId, actor.id); assert.equal(actor.data.intent, null);
+  assert.equal(actor.data.despawnAt, undefined); assert.equal(packet.moveZ, 0);
+});
+test('salvage watch: lifecycle release never erases successor packets or successor expiry', () => {
+  for (const event of ['save:restoring', 'sector:exit', 'game:exitToMenu', 'game:new', 'entity:destroyed']) {
+    const q = departed(event), own = q.tug.data.intent, expiry = q.tug.data.despawnAt;
+    const successor = { moveZ: 0.2, owner: 'successor' };
+    q.tug.data.intent = successor; q.tug.data.despawnAt = expiry + 30;
+    q.bus.emit(event, { entity: q.tug, id: q.tug.id });
+    assert.equal(q.tug.data.intent, successor); assert.equal(q.tug.data.despawnAt, expiry + 30);
+    assert.equal(paid(q), 1); assert.equal(countOf(q.rows, 'encounter:receipt'), 1);
+  }
+  const q = departed('successor-custody'), { owner, request } = captureOwner(q, q.tug);
+  const successor = { moveZ: 0.2 }; q.tug.data.intent = successor;
+  q.tug.data.despawnAt += 10; const expiry = q.tug.data.despawnAt;
+  assert.equal(admitCapturedVessel(owner, request).ok, true);
+  assert.equal(q.tug.data.intent, successor); assert.equal(q.tug.data.despawnAt, expiry);
+});
+test('salvage watch: retirement is identity guarded and still occurs after the normal twenty seconds', () => {
+  const q = departed('retirement'), packet = q.tug.data.intent;
+  q.bus.emit('entity:destroyed', { id: q.tug.id, entity: { ...q.tug } });
+  assert.equal(q.tug.data.intent, packet);
+  for (let i = 0; i < 19 * 60; i++) q.sim.step();
+  assert.equal(q.tug.alive, true); assert.equal(q.mule.alive, true);
+  for (let i = 0; i < 2 * 60; i++) q.sim.step();
+  assert.equal(q.state.entities.has(q.tug.id), false); assert.equal(q.state.entities.has(q.mule.id), false);
+  assert.equal(packet.moveX, 0); assert.equal(packet.moveZ, 0);
+  assert.equal(paid(q), 1); assert.equal(countOf(q.rows, 'encounter:receipt'), 1);
+});
+
+test('salvage watch: departure listeners are bounded to the original pair and release on final retirement', () => {
+  const q = serviceFixture('departure-listeners');
+  const registrations = [], on = q.bus.on.bind(q.bus);
+  q.bus.on = (name, callback, ...options) => {
+    const row = { name, active: true }; registrations.push(row);
+    const off = on(name, callback, ...options);
+    return () => { row.active = false; off(); };
+  };
+  for (let i = 0; i < 56; i++) q.tick();
+  assert.equal(registrations.length, 7, 'two custody, one retirement, four scene lifecycle hooks only');
+  assert.ok(registrations.every(row => row.active));
+  q.bus.emit('entity:destroyed', { entity: { ...q.tug }, id: q.tug.id });
+  assert.ok(registrations.every(row => row.active), 'foreign same-id event does not terminate original');
+  q.bus.emit('entity:destroyed', { entity: q.tug, id: q.tug.id });
+  assert.ok(registrations.every(row => row.active), 'other original still has a live departure');
+  q.bus.emit('entity:destroyed', { entity: q.mule, id: q.mule.id });
+  assert.ok(registrations.every(row => !row.active), 'no permanent event subscription remains');
+});
+test('salvage watch: scene cleanup neutralizes owned packets without changing ordinary expiry', () => {
+  for (const event of ['save:restoring', 'sector:exit', 'game:exitToMenu', 'game:new']) {
+    const q = departed('owned-' + event), packets = [q.tug.data.intent, q.mule.data.intent];
+    const expiry = q.tug.data.despawnAt;
+    q.bus.emit(event, {});
+    for (const [index, actor] of [q.tug, q.mule].entries()) {
+      assert.notEqual(actor.data.intent, packets[index]);
+      assert.equal(packets[index].moveX, 0); assert.equal(packets[index].moveZ, 0);
+      assert.equal(actor.data.despawnAt, expiry, 'only actual custody cancels retirement');
+    }
+  }
+});
+test('salvage watch: stale actor generation and replacement ids cannot cancel retirement by capture event', () => {
+  for (const kind of ['generation', 'replacement']) {
+    const q = departed('stale-' + kind), actor = q.tug, packet = actor.data.intent, expiry = actor.data.despawnAt;
+    actor.flags ||= {}; actor.flags.persistent = true; actor.data.vesselId = 'stale:watch';
+    if (kind === 'generation') actor.occupantGeneration = (actor.occupantGeneration || 0) + 1;
+    else q.state.entities.set(actor.id, { ...actor, data: { ...actor.data } });
+    q.bus.emit('ship:captured', { targetId: actor.id, vesselId: 'stale:watch' });
+    q.bus.emit('ship:controlChanging', { toId: actor.id });
+    assert.equal(actor.data.intent, packet); assert.equal(actor.data.despawnAt, expiry);
+    q.bus.emit('save:restoring', {});
+  }
+});
+
+test('salvage watch: rotated local helm axes burn outward along the observed service bearing', () => {
+  for (const bearing of [0.7, -2.2]) {
+    const q = serviceFixture('departure-bearing-' + bearing);
+    const gap = q.tug.radius + q.mule.radius + 35;
+    q.tug.pos = { x: q.mule.pos.x + Math.cos(bearing) * gap, z: q.mule.pos.z + Math.sin(bearing) * gap };
+    q.tug.rot = 1.3; q.mule.rot = -0.9;
+    for (let i = 0; i < 56; i++) q.tick();
+    assert.equal(paid(q), 1);
+    for (const actor of [q.tug, q.mule]) {
+      const intent = actor.data.intent, sign = actor === q.tug ? 1 : -1;
+      const worldX = intent.moveZ * Math.cos(actor.rot) - intent.moveX * Math.sin(actor.rot);
+      const worldZ = intent.moveZ * Math.sin(actor.rot) + intent.moveX * Math.cos(actor.rot);
+      assert.ok(Math.abs(worldX - sign * Math.cos(bearing) * 0.65) < 1e-12);
+      assert.ok(Math.abs(worldZ - sign * Math.sin(bearing) * 0.65) < 1e-12);
+      assert.equal(intent.turnIntent, 0); assert.equal(intent.assistMode, 'assisted');
+    }
+  }
 });
