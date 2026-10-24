@@ -1,5 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 
+## Pilgrim cadence resolution and draft delivery: 2026-10-24 03:32 UTC
+
+This supersedes the previous ordinary-director publication blocker without discarding its failed-test history. Draft [PR569](https://github.com/coldshalamov/SpaceFace/pull/569) is verified open at `52edcfd90e775411285af384ee01b761132fc0bd`, with nine changed paths, tree `1298b8cc08678d8363caa14399efe297a05e1e55` and sole public parent `316eed66`. The publisher verified all complete remote file bytes and owns exact-head CI monitoring.
+
+The isolated cause was numerical clock accumulation: 0.9999999999999432 skipped a nominal one-second gate, repeatedly producing 1.5-second updates. The exact-public director correction adds only an epsilon gate and explanatory comment; it does not change the helm, shared interpreter or controller. The baseline regression passed 2/3 with a genuine cadence-gap failure; corrected numerical and existing calendar/session checks passed 17/17.
+
+Final shipping native-plus-clock checks passed 4/4 using real director.update and requestAuthoredEncounter. Three original actual Choir actors remained present, alive and native. Acceptance at twenty seconds settled at 33.0833 seconds after 643.852 WU of advance, with one 30-credit reward, one +2 reputation event and one receipt, no repeat and zero captured impacts. The native hold assertion uses the existing interpreter's 1e-9 tolerance.
+
+Qualification remains bounded: admission was forced, the pilot was controlled along +X, hold was sampled rather than continuously checked at 60 Hz, and the local dependency graph is mixed. Unfinished Save abandons rather than resumes this encounter; a reputation event is not full saved-faction persistence. A successful two-pose capture exists, but offline rendering is still pending and no new rendered image is claimed.
+
+Source, tests, successful traces and original failures are durably preserved as one verified recovery union. All twelve goals remain OPEN. Full visual/game acceptance, existing ownership constraints, Archive's two-object block and browser hold remain unchanged. No merge, deployment or new ledger number is implied.
+
 ## Pilgrim ordinary-route correction: 2026-10-24 03:12 UTC
 
 The five-path Pilgrim candidate has reviewed bounded manual/neighbor tests passing 31/31, but it is **not ready for publication**. Actual requestAuthoredEncounter with director.update enabled spawns the correct candidate yet fails to settle by the full authored 120-second deadline, with no payment. Heading-relative, turning/controller and existing world/ui:setCourse attempts also time out; the subject's yaw oscillates in transit with many captured impacts. No causal diagnosis is established.
