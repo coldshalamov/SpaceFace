@@ -1384,7 +1384,7 @@
       "fingerprint": "verb=birth,subject=brood-mother,sector=circuit,domain=wf-02",
       "references": [],
       "integration": "live",
-      "commit": "e6d2a94e79",
+      "commit": "c8d27d479c",
       "verification": "focused_green"
     },
     {
