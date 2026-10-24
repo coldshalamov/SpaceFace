@@ -333,7 +333,7 @@ export const EAST_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'station_nereid_claim',
         pos: Object.freeze({ x: -780, z: 920 }),
-        archetypeGlb: 'place_station_mining',
+        archetypeGlb: 'place_claim_outpost_base',
       }),
     ]),
     gates: Object.freeze([
