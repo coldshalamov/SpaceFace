@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "seed-wl-10",
-      "date": "2026-10-22",
-      "wf": "WF-08",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A repeat career close names the lap. The first circuit still reads the old line.",
-      "fingerprint": "verb=name,subject=career-lap,sector=career,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "47e649be4c92a7a53e44df7c3b59d1bfa28c16db",
-      "verification": "focused_green"
-    },
-    {
       "id": "exp-01-helix-barks",
       "date": "2026-10-22",
       "wf": "WF-01",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "f559f37b31",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-30",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Circuit wave fifteen escorts one unarmed freighter. Arrival clears the round. A loss cuts the purse and the run continues.",
+      "fingerprint": "verb=escort,subject=freighter,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "7bcdae72e7",
       "verification": "focused_green"
     }
   ],
