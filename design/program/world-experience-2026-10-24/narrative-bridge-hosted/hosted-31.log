@@ -1,0 +1,232 @@
+{
+  "schema": "spaceface.ciCommandDiagnostic.v1",
+  "id": "check-narrative-worker-entry",
+  "command": "npm run check:narrative-worker-entry",
+  "ok": true,
+  "code": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 12730,
+  "reason": "passed",
+  "classification": {
+    "category": "passed",
+    "confidence": "high",
+    "evidence": "command exited with code 0",
+    "flake": {
+      "status": "unknown",
+      "attemptsObserved": 1,
+      "passedAttempts": 0,
+      "failedAttempts": 0
+    }
+  },
+  "artifactPath": "scratch/check-ci-report/2026-10-24T23-08-27-238Z/check-narrative-worker-entry.log",
+  "structured": null
+}
+--- stdout ---
+
+> spaceface@0.2.0-beta.1 check:narrative-worker-entry
+> node --test --test-concurrency=1 test/towline-player-path.test.mjs test/ilex-player-path.test.mjs test/last-shift-worker-entry.test.mjs test/event-surface-optional-chain.test.mjs
+
+TAP version 13
+# Subtest: optional main-side racing receipt is classified without crossing back into the simulation
+ok 1 - optional main-side racing receipt is classified without crossing back into the simulation
+  ---
+  duration_ms: 6797.042909
+  type: 'test'
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# [simLane] worker lane active — the sim realm runs the whole authoritative step
+# Subtest: actual worker-main registry retains Ilex deck adapter
+ok 2 - actual worker-main registry retains Ilex deck adapter
+  ---
+  duration_ms: 12.706491
+  type: 'test'
+  ...
+# Subtest: only four Ilex player actions cross the exact production event gate
+ok 3 - only four Ilex player actions cross the exact production event gate
+  ---
+  duration_ms: 0.863112
+  type: 'test'
+  ...
+# Subtest: an unrendered finish choice cannot emit
+ok 4 - an unrendered finish choice cannot emit
+  ---
+  duration_ms: 0.69623
+  type: 'test'
+  ...
+# Subtest: old callback cannot emit after restore
+ok 5 - old callback cannot emit after restore
+  ---
+  duration_ms: 0.497499
+  type: 'test'
+  ...
+# Subtest: production registry owns the prompt on main and the actual worker offer/action crosses both bridges
+ok 6 - production registry owns the prompt on main and the actual worker offer/action crosses both bridges
+  ---
+  duration_ms: 636.920086
+  type: 'test'
+  ...
+# Subtest: explicit filing commits exactly 0/6 originals and never repays after restore
+ok 7 - explicit filing commits exactly 0/6 originals and never repays after restore
+  ---
+  duration_ms: 10.688253
+  type: 'test'
+  ...
+# Subtest: explicit filing commits exactly 1/6 originals and never repays after restore
+ok 8 - explicit filing commits exactly 1/6 originals and never repays after restore
+  ---
+  duration_ms: 3.319617
+  type: 'test'
+  ...
+# Subtest: explicit filing commits exactly 5/6 originals and never repays after restore
+ok 9 - explicit filing commits exactly 5/6 originals and never repays after restore
+  ---
+  duration_ms: 2.530965
+  type: 'test'
+  ...
+# Subtest: explicit filing commits exactly 6/6 originals and never repays after restore
+ok 10 - explicit filing commits exactly 6/6 originals and never repays after restore
+  ---
+  duration_ms: 2.323488
+  type: 'test'
+  ...
+# Subtest: stale finish and forged expiry cannot bypass current voyage receiver rules
+ok 11 - stale finish and forged expiry cannot bypass current voyage receiver rules
+  ---
+  duration_ms: 1.905237
+  type: 'test'
+  ...
+# Subtest: every lifecycle, replacement and rejected card invalidates old choices but leaves current choices usable
+ok 12 - every lifecycle, replacement and rejected card invalidates old choices but leaves current choices usable
+  ---
+  duration_ms: 0.528406
+  type: 'test'
+  ...
+# Subtest: three realm-local prompt adapters stay on main; only current Last Shift commands are exposed
+ok 13 - three realm-local prompt adapters stay on main; only current Last Shift commands are exposed
+  ---
+  duration_ms: 1.584618
+  type: 'test'
+  ...
+# Subtest: current Last Shift owner offer projects to prompt and archives exactly once without invented evidence or reward
+ok 14 - current Last Shift owner offer projects to prompt and archives exactly once without invented evidence or reward
+  ---
+  duration_ms: 2.300575
+  type: 'test'
+  ...
+# Subtest: unrendered, replaced, rejected and empty Last Shift offers cannot invoke archived callbacks
+ok 15 - unrendered, replaced, rejected and empty Last Shift offers cannot invoke archived callbacks
+  ---
+  duration_ms: 0.28936
+  type: 'test'
+  ...
+# Subtest: all existing lifecycle interruptions invalidate Last Shift callbacks; fresh offers still work once
+ok 16 - all existing lifecycle interruptions invalidate Last Shift callbacks; fresh offers still work once
+  ---
+  duration_ms: 0.861288
+  type: 'test'
+  ...
+# Subtest: return-only Last Shift offer emits only rendered return command with original revision
+ok 17 - return-only Last Shift offer emits only rendered return command with original revision
+  ---
+  duration_ms: 0.235319
+  type: 'test'
+  ...
+# Subtest: nine explicit Ilex and Towline commands preserve authority payload boundaries
+ok 18 - nine explicit Ilex and Towline commands preserve authority payload boundaries
+  ---
+  duration_ms: 1.293756
+  type: 'test'
+  ...
+# Subtest: Ilex current-choice and once-only guards do not expose an unrendered finish
+ok 19 - Ilex current-choice and once-only guards do not expose an unrendered finish
+  ---
+  duration_ms: 0.506506
+  type: 'test'
+  ...
+# Subtest: port adds only nine intended commands and preserves every existing public bridge contract
+ok 20 - port adds only nine intended commands and preserves every existing public bridge contract
+  ---
+  duration_ms: 0.224108
+  type: 'test'
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# [simLane] worker lane active — the sim realm runs the whole authoritative step
+# Subtest: all five rendered Towline action types are admitted by the production main-to-worker allowlist
+ok 21 - all five rendered Towline action types are admitted by the production main-to-worker allowlist
+  ---
+  duration_ms: 1.60713
+  type: 'test'
+  ...
+# Subtest: displayed handover preserves player actor authority, rather than interpreting target ID as actor
+ok 22 - displayed handover preserves player actor authority, rather than interpreting target ID as actor
+  ---
+  duration_ms: 1.176266
+  type: 'test'
+  ...
+# Subtest: retained prompt cannot act after Continue begins or invoke a choice never rendered
+ok 23 - retained prompt cannot act after Continue begins or invoke a choice never rendered
+  ---
+  duration_ms: 0.561979
+  type: 'test'
+  ...
+# Subtest: production registry owns the prompt on main and the actual worker offer/action crosses both bridges
+ok 24 - production registry owns the prompt on main and the actual worker offer/action crosses both bridges
+  ---
+  duration_ms: 1907.652297
+  type: 'test'
+  ...
+# Subtest: actual finite handover with numeric target preserves one player labor receipt
+ok 25 - actual finite handover with numeric target preserves one player labor receipt
+  ---
+  duration_ms: 7.660111
+  type: 'test'
+  ...
+# Subtest: actual finite handover with null target preserves one player labor receipt
+ok 26 - actual finite handover with null target preserves one player labor receipt
+  ---
+  duration_ms: 3.86705
+  type: 'test'
+  ...
+# Subtest: actual finite handover with crew target preserves one player labor receipt
+ok 27 - actual finite handover with crew target preserves one player labor receipt
+  ---
+  duration_ms: 3.427899
+  type: 'test'
+  ...
+# Subtest: caller-controlled crew target cannot clear crew-owned original; trusted internal crew delivery remains valid
+ok 28 - caller-controlled crew target cannot clear crew-owned original; trusted internal crew delivery remains valid
+  ---
+  duration_ms: 2.969554
+  type: 'test'
+  ...
+# Subtest: failed physical line cut retains original and no reward; fresh valid prompt can retry
+ok 29 - failed physical line cut retains original and no reward; fresh valid prompt can retry
+  ---
+  duration_ms: 3.285774
+  type: 'test'
+  ...
+# Subtest: all lifecycle interruptions and replaced/rejected cards invalidate old callbacks without silencing a fresh choice
+ok 30 - all lifecycle interruptions and replaced/rejected cards invalidate old callbacks without silencing a fresh choice
+  ---
+  duration_ms: 0.925207
+  type: 'test'
+  ...
+# Subtest: earned labor dispatch binds one original, retains the first deadline through Continue and exhausts without a refill
+ok 31 - earned labor dispatch binds one original, retains the first deadline through Continue and exhausts without a refill
+  ---
+  duration_ms: 3.966345
+  type: 'test'
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 31
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12588.216983
+
+--- stderr ---
+(empty)

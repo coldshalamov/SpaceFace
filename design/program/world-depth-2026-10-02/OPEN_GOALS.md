@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 24 October 2026, 23:06 UTC.
+Updated: 24 October 2026, 23:16 UTC.
 
 All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
 
@@ -29,7 +29,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 - State: OPEN; PR597 passes20 hosted cases but full CI failed. PR598 preserves the full P08 candidate source/model recovery; runtime integration and acceptance remain pending. Publication is not integration/acceptance.
 - Owner: publisher, root and exact feature owners.
 - Evidence: [PR590](https://github.com/coldshalamov/SpaceFace/pull/590); current checkpoint separates exact heads, passes and failures.
-- Next: qualify published PR599 hosted31 and full CI; keep recovery-only PR598 and P08 guidance distinct.
+- Next: fix PR599’s attributable manifest-test omission; retain hosted31 pass and separate guidance boundaries.
 - Awaiting user: existing publication holds; no repeated approval cards.
 
 ## SF-RECOVER
