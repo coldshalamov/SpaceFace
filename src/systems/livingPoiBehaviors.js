@@ -5,16 +5,18 @@
 // authorizes hostility, writes cargo, or fires weapons. Named-zone presence and combat remain owned
 // by world/encounterDirector/AI; this layer gives places causal interaction and durable aftermath.
 
+import { isTritonResearch, tritonArrivalPhase, tritonResearchLine, tritonResearchInRange } from '../world/tritonResearchArrival.js';
 import { hash32 } from '../core/rng.js';
 import { zonesForSector, zoneAt } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
-import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS, authoredPlacePlansForSector } from '../data/poiBehaviorFamilies.js';
+import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS, authoredPlacePlansForSector, TRITON_FIELD_LAB_INTERACTION, VEIL_FAR_SOUNDING_INTERACTION } from '../data/poiBehaviorFamilies.js';
 import { buildPoiCausalOffer } from '../missions/poiCausalOffers.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { hasContractsDesk } from '../data/missions.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
+const AUTHORED_INTERACTIONS = [TRITON_FIELD_LAB_INTERACTION, VEIL_FAR_SOUNDING_INTERACTION];
 const DAY_SECONDS = 600;
 // Catalog spend is 13 with seven grammars (1+2+2+2+1+2+3); the budget preserves the
 // standing property that every family holding a candidate zone plans, instead of silently
@@ -43,7 +45,10 @@ export function poiBehaviorFingerprint(row) {
     row.dayIndex,
     row.dangerMode,
     row.contract && row.contract.verb,
-    row.contract && row.contract.required,
+    // This is the same pre-existing fissure research route. Its three-bearing identity
+    // remains stable when the local measurement is specialized to calm/surge, preserving
+    // offered/accepted missions, deterministic destination/reward and old save receipts.
+    isFissureSurvey(row) ? 3 : row.contract && row.contract.required,
   ).toString(36);
 }
 
@@ -128,6 +133,7 @@ export const livingPoiBehaviors = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
+    this.registry = ctx.registry || null;
     this.helpers = ctx.helpers || (ctx.helpers = {});
     this._unsubs = [];
     this._deferredAutomaticGuidance = new Map();
@@ -146,6 +152,7 @@ export const livingPoiBehaviors = {
     this._listen('contraband:scanned', (payload) => this._onContrabandScanned(payload || {}));
     this._listen('cargo:changed', (payload) => this._onCargoChanged(payload || {}));
     this._listen('tutorial:finished', () => this._onTutorialFinished());
+    this._listen('voice:surface', (payload) => this._ackTritonGuidance(payload));
   },
 
   _listen(event, fn) {
@@ -164,8 +171,32 @@ export const livingPoiBehaviors = {
     this._syncWorldReadouts();
   },
 
-  // Event-driven by design: no timers can silently turn ambience into combat.
-  update() {},
+  // Only this authored footprint lacks a world-zone entry event. Observe one current
+  // player/site pair; the existing entered/deferred bookkeeping owns the first cue.
+  // No progress, reward, world-zone mutation or actor iteration occurs here.
+  update() {
+    const state = this.state;
+    const own = ensureState(state);
+    const triton = own.activeByZone[TRITON_FIELD_LAB_INTERACTION.zoneId];
+    const tritonPhase = tritonArrivalPhase(state, own, triton);
+    if (tritonPhase) this._publishGuidance(triton, tritonPhase);
+    const row = own.activeByZone[VEIL_FAR_SOUNDING_INTERACTION.zoneId];
+    if (authoredInteraction(row) !== VEIL_FAR_SOUNDING_INTERACTION
+        || row.status === 'resolved' || row.status === 'aftermath'
+        || row._presenceSuspended || state.mode !== 'flight'
+        || !state.world || state.world.currentSectorId !== row.sectorId
+        || state.ui && state.ui.docked
+        || own.entered[row.behaviorId] && (!this._deferredAutomaticGuidance.has(row.behaviorId)
+          || tutorialOwnsObjectiveVoice(state))) return;
+    const player = state.entities && state.entities.get(state.playerId);
+    const pos = player && player.pos;
+    if (!player || player.alive === false || !pos
+        || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)
+        || dist2(pos, row.zoneCenter) > row.zoneRadius * row.zoneRadius) return;
+    const priorZoneId = own.currentZoneId;
+    this._onZoneEntered({ zoneId: row.zoneId });
+    own.currentZoneId = priorZoneId;
+  },
 
   _activateSector(payload = {}) {
     // payload whose enterEpoch no longer matches the world's serial is stale — a queued tail
@@ -184,7 +215,16 @@ export const livingPoiBehaviors = {
     // Continuous membership handoffs may repeat their destination receipt. Preserve the exact live
     // plan (including progress/status) when identity+day already match, but rebuild after Continue
     // because deserialize intentionally restores durable consequences without stale live rows.
-    if (sameActivation) return [];
+    if (sameActivation) {
+      // The epoch guard above admits this return; retained generic rows stay unchanged.
+      for (const def of AUTHORED_INTERACTIONS) {
+        const row = own.activeByZone[def.zoneId];
+        if (authoredInteraction(row)) delete row._presenceSuspended;
+      }
+      const fissure = own.activeByZone.zone_haumea_fissure;
+      if (isFissureSurvey(fissure)) delete fissure._presenceSuspended;
+      return [];
+    }
     return this.planSector(sectorId, { dayIndex, sector: payload.sector || sectorOf(this.state, sectorId) });
   },
 
@@ -194,6 +234,23 @@ export const livingPoiBehaviors = {
     // Departure clears presence only. Aftermath, receipts, entered identities, and the plan remain
     // available until the destination identity activates; no consequence is rolled back here.
     own.currentZoneId = null;
+    const fissure = own.activeByZone.zone_haumea_fissure;
+    if (isFissureSurvey(fissure)) {
+      fissure._presenceSuspended = true;
+      if (!own.aftermath[fissure.behaviorId]) {
+        fissure.progress = 0; fissure.status = 'available';
+        delete fissure._fissureBaseline; delete fissure._fissureSteady;
+        delete fissure._fissureGeneration;
+        delete fissure._fissureGuidanceAt;
+        delete own.entered[fissure.behaviorId];
+        this._syncWorldReadouts(own);
+      }
+    }
+    for (const def of AUTHORED_INTERACTIONS) {
+      const row = own.activeByZone[def.zoneId];
+      if (authoredInteraction(row)) row._presenceSuspended = true;
+      if (isTritonResearch(row)) { row._tritonInside = false; delete row._tritonPending; delete row._tritonSurface; }
+    }
     return true;
   },
 
@@ -217,6 +274,24 @@ export const livingPoiBehaviors = {
       sector,
       pinnedByFamily,
     });
+    // Independent authored footprints do not replace generic sector plans.
+    for (const def of AUTHORED_INTERACTIONS) {
+      const place = sectorId === def.sectorId
+        && (sector && sector.pois || []).find((poi) => poi && poi.id === def.placeId);
+      if (place && place.pos && Number.isFinite(place.pos.x) && Number.isFinite(place.pos.z)) {
+        const authored = planPoiBehaviors({
+          seed: this.state.meta && this.state.meta.seed || 1,
+          sectorId, dayIndex, sector,
+          zones: [{ id: def.zoneId, name: place.name, type: POI_BEHAVIOR_FAMILIES[def.familyId].zoneTypes[0],
+            center: place.pos, radius: def.radius, factionId: place.factionId }],
+        });
+        if (def === VEIL_FAR_SOUNDING_INTERACTION && authored[0]) {
+          authored[0].entryLine = 'Far Sounding: take a scanner reading in each range band.';
+          authored[0].contract.objective = 'Scan Far Sounding at close <105 WU, middle 105–<210 WU, and far 210–300 WU.';
+        }
+        rows.push(...authored);
+      }
+    }
     const priorZoneId = own.activeSectorId === sectorId ? own.currentZoneId : null;
     own.activeSectorId = sectorId;
     own.plannedDayIndex = dayIndex;
@@ -226,6 +301,16 @@ export const livingPoiBehaviors = {
       // sectorZones are authored in sector-local coordinates while scanner courses, entities,
       // autopilot, and the seamless world all consume global_v1. Keep the authored coordinate for
       // diagnostics, but expose exactly one composed global position on the live/public row.
+      if (isFissureSurvey(row)) {
+        // Specialize the existing row, not the global anomaly grammar or its reward owner.
+        row.contract = { ...row.contract, required: 2,
+          cause: 'a quiet fracture baseline compared with the working drill separates the return',
+          objective: 'Scan in calm, then surge from outside the drill envelope; a stopped drill yields a steady reading.' };
+        row.entryLine = 'Ice Fissure: take a fresh calm baseline, then compare the surge from a safe distance.';
+        row.mapLabel = 'ICE FISSURE SURVEY';
+        row.fingerprint = poiBehaviorFingerprint(row);
+        if (!own.aftermath[row.behaviorId]) delete own.entered[row.behaviorId];
+      }
       row.zoneLocalCenter = { x: row.zoneCenter.x, z: row.zoneCenter.z };
       row.zoneCenter = sectorLocalToGlobalForSector(row.zoneLocalCenter, row.sectorId);
       const aftermath = own.aftermath[row.behaviorId];
@@ -275,6 +360,17 @@ export const livingPoiBehaviors = {
     const row = own.activeByZone[payload.zoneId];
     own.currentZoneId = payload.zoneId || null;
     if (!row) return;
+    if (isTritonResearch(row)) {
+      const aftermath = own.aftermath[row.behaviorId];
+      // Preserve the existing explicit zone-entry retry for a previously closed desk.
+      if (row.status === 'aftermath' && aftermath && aftermath.leadEmitted !== true
+          && aftermath.expiresDay > Math.floor((this.state.simTime || 0) / DAY_SECONDS)) {
+        this._emitMissionLead(row, LEAD_FAMILY_SUMMARIES[row.familyId]);
+      }
+      const phase = tritonArrivalPhase(this.state, own, row);
+      if (phase) this._publishGuidance(row, phase);
+      return;
+    }
     if (row.status === 'aftermath') {
       this._emit('poi:behaviorReadout', readoutOf(row));
       const aftermath = own.aftermath[row.behaviorId] || null;
@@ -350,12 +446,30 @@ export const livingPoiBehaviors = {
     const row = zoneId && own.activeByZone[zoneId];
     if (!row || row.status === 'aftermath' || row.status === 'resolved') return false;
     if (verb !== row.contract.verb) return false;
+    if (authoredInteraction(row)) {
+      // Even an explicit zoneId must not let a remote/malformed pulse earn this reading.
+      const pos = payload && payload.pos;
+      if (row._presenceSuspended || !this.state.world
+          || this.state.world.currentSectorId !== row.sectorId
+          || (payload && payload.sectorId != null && payload.sectorId !== row.sectorId)) return false;
+      if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)
+          || dist2(pos, row.zoneCenter) > row.zoneRadius * row.zoneRadius) return false;
+    }
     this._deferredAutomaticGuidance.delete(row.behaviorId);
-    if (row.familyId === 'anomaly_research') {
+    if (isFissureSurvey(row)) {
+      if (!this._observeFissure(row, payload)) return false;
+    } else if (row.familyId === 'anomaly_research') {
       if (!payload || !payload.pos) return false;
       const local = this._localPosition(payload.pos);
       row._bearings = row._bearings || [];
-      if (row._bearings.some((point) => dist2(point, local) < 180 * 180)) return false;
+      if (row._bearings.some((point) => dist2(point, local) < 180 * 180)) {
+        const now = Number(this.state.simTime) || 0;
+        if (isTritonResearch(row) && (!Number.isFinite(row._tritonGuidanceAt)
+            || now < row._tritonGuidanceAt || now - row._tritonGuidanceAt >= 3.5)) {
+          this._publishGuidance(row, 'rejected');
+        }
+        return false;
+      }
       row._bearings.push(local);
     }
     if (row.familyId === 'gravity_well_sounding') {
@@ -369,7 +483,15 @@ export const livingPoiBehaviors = {
       const band = d2 < (radius * 0.35) * (radius * 0.35) ? 0
         : d2 < (radius * 0.7) * (radius * 0.7) ? 1 : 2;
       row._soundedBands = row._soundedBands || [];
-      if (row._soundedBands.includes(band)) return false;
+      if (row._soundedBands.includes(band)) {
+        // A requested repeat reading recovers the instruction after its toast expires,
+        // but never earns another sample. Use the existing progress TTL as the throttle.
+        const now = Number(this.state.simTime) || 0;
+        if (authoredInteraction(row) === VEIL_FAR_SOUNDING_INTERACTION
+            && (!Number.isFinite(row._rangeGuidanceAt) || now < row._rangeGuidanceAt
+              || now - row._rangeGuidanceAt >= 3.5)) this._publishGuidance(row, 'progress');
+        return false;
+      }
       row._soundedBands.push(band);
     }
     row.progress = Math.min(row.contract.required, (row.progress || 0) + 1);
@@ -386,6 +508,40 @@ export const livingPoiBehaviors = {
     if (row.progress < row.contract.required) this._publishGuidance(row, 'progress');
     else this._resolve(row, row.contract.successOutcome, payload);
     return true;
+  },
+
+  _observeFissure(row, payload) {
+    const state = this.state, player = state.entities?.get(state.playerId), pos = payload?.pos;
+    if (row._presenceSuspended || state.mode !== 'flight'
+      || state.world?.currentSectorId !== row.sectorId
+      || ensureState(state).activeSectorId !== row.sectorId
+      || (payload?.sectorId != null && payload.sectorId !== row.sectorId)
+      || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)
+      || !player || pos.x !== player.pos?.x || pos.z !== player.pos?.z
+      || dist2(pos, row.zoneCenter) > row.zoneRadius*row.zoneRadius) return false;
+    const observation = this.registry?.get?.('environmentalMachinery')?.readFissureSurvey?.(player);
+    if (!observation) return false;
+    if (row._fissureGeneration && row._fissureGeneration !== observation.generation) {
+      row.progress = 0; row.status = 'available'; delete row._fissureBaseline;
+      delete row._fissureGuidanceAt;
+      this._syncWorldReadouts();
+    }
+    row._fissureGeneration = observation.generation;
+    if (observation.phase === 'shutdown') {
+      // Authored alternative: stopped machinery leaves a steady fracture return. The durable
+      // stop is not a failed survey and never causes this reader to restart the machine.
+      row._fissureSteady = true; row.progress = row.contract.required - 1;
+      return true;
+    }
+    if (observation.phase === 'calm' && !row._fissureBaseline) {
+      row._fissureBaseline = true;
+      return true;
+    }
+    if (observation.phase === 'surge' && row._fissureBaseline) return true;
+    const now = Number(state.simTime) || 0;
+    if (!Number.isFinite(row._fissureGuidanceAt) || now < row._fissureGuidanceAt
+      || now-row._fissureGuidanceAt >= 3.5) this._publishGuidance(row, 'progress');
+    return false;
   },
 
   _resolve(row, outcome, payload = {}) {
@@ -475,20 +631,65 @@ export const livingPoiBehaviors = {
         + ` · ${family.riskLabel} → ${family.rewardLabel}`;
       kind = row.dangerMode === 'telegraphed' ? 'warn' : 'info';
     }
+    if (authoredInteraction(row) === VEIL_FAR_SOUNDING_INTERACTION
+        && phase !== 'outcome' && phase !== 'aftermath') {
+      row._rangeGuidanceAt = Number(this.state.simTime) || 0;
+      const bands = ['close <105 WU', 'middle 105–<210 WU', 'far 210–300 WU'];
+      const missing = bands.filter((_, i) => !(row._soundedBands || []).includes(i));
+      text = `FAR SOUNDING · SCAN ${row.progress || 0}/3 · Next: ${missing.join('; ')}`;
+    }
+    if (isFissureSurvey(row)) {
+      if (phase === 'outcome') {
+        text = `ICE FISSURE · ${row._fissureSteady ? 'Drill stopped; steady fracture return recorded' : 'Calm and surge compared'}`
+          + (durable?.leadEmitted ? ' · Research lead at Rift Observatory' : ' · Reading recorded');
+      } else if (phase !== 'aftermath') {
+        row._fissureGuidanceAt = Number(this.state.simTime) || 0;
+        text = row._fissureBaseline
+          ? 'ICE FISSURE · Quiet baseline recorded. Scan the next surge from outside the drill envelope.'
+          : 'ICE FISSURE · Take a fresh scan in calm, then compare the surge from outside the drill envelope. A stopped drill gives a steady reading.';
+      }
+    }
+    const tritonLine = tritonResearchLine(row, phase, durable);
+    if (tritonLine) {
+      text = tritonLine;
+      row._tritonGuidanceAt = Number(this.state.simTime) || 0;
+      // The completion itself is not a return; a later physical approach can acknowledge it.
+      if (phase === 'outcome') { row._tritonInside = true; delete row._tritonPending; delete row._tritonSurface; }
+    }
     // Resolution receipts must survive a same-tick campaign/tutorial line. A four-second story
     // floor is common on first-hour authority events; keep the durable result live long enough to
     // take the floor afterwards instead of expiring unseen in the arbiter queue.
-    const ttl = phase === 'outcome' ? 8 : phase === 'aftermath' ? 6 : phase === 'approach' ? 5 : 3.5;
+    const ttl = tritonLine ? (phase === 'progress' ? 5 : 8)
+      : phase === 'outcome' ? 8 : phase === 'aftermath' ? 6 : phase === 'approach' ? 5 : 3.5;
+    const pending = isTritonResearch(row) && row._tritonPending?.phase === phase ? row._tritonPending : null;
+    if (pending) pending.text = text;
     const voice = this.helpers && this.helpers.voice;
     const spoken = voice && typeof voice.say === 'function' && voice.say({
       id: `poi:${row.behaviorId}`,
+      ...(pending ? { valid: () => (row._tritonPending === pending || row._tritonSurface === pending)
+        && ensureState(this.state).activeByZone[row.zoneId] === row
+        && tritonResearchInRange(this.state, ensureState(this.state), row) } : {}),
       channel: phase === 'aftermath' ? 'info' : 'objective',
       text,
       kind,
       ttl,
     });
-    if (!spoken) this._emit('toast', { text, kind, ttl });
+    if (!spoken) {
+      this._emit('toast', { text, kind, ttl });
+      if (pending) this._ackTritonGuidance({ id: `poi:${row.behaviorId}`, text });
+    }
     return true;
+  },
+
+  _ackTritonGuidance(payload) {
+    const own = ensureState(this.state);
+    const row = own.activeByZone[TRITON_FIELD_LAB_INTERACTION.zoneId];
+    const pending = row?._tritonPending;
+    if (!pending || payload?.id !== `poi:${row.behaviorId}` || payload.text !== pending.text
+        || !tritonResearchInRange(this.state, own, row)) return;
+    own.entered[pending.key] = true;
+    row._tritonSurface = pending; // Keep the displayed cue valid until expiry or real departure.
+    delete row._tritonPending;
   },
 
   _emitConsequences(row, outcome, payload) {
@@ -647,6 +848,13 @@ export const livingPoiBehaviors = {
     if (!pos) return null;
     const sectorId = ensureState(this.state).activeSectorId || this.state.world && this.state.world.currentSectorId;
     if (!sectorId) return null;
+    for (const def of AUTHORED_INTERACTIONS) {
+      const row = ensureState(this.state).activeByZone[def.zoneId];
+      if (authoredInteraction(row) && !row._presenceSuspended
+          && this.state.world && this.state.world.currentSectorId === row.sectorId
+          && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+          && dist2(pos, row.zoneCenter) <= row.zoneRadius * row.zoneRadius) return row.zoneId;
+    }
     const local = globalToSectorLocalForSector(pos, sectorId);
     const zone = zoneAt(sectorId, local.x, local.z);
     return zone && zone.id || null;
@@ -661,6 +869,20 @@ export const livingPoiBehaviors = {
     const active = this.state.world && this.state.world.activeSector;
     if (!active || !this.state.entities || typeof this.state.entities.get !== 'function') return;
     const center = row.zoneCenter;
+    const def = authoredInteraction(row);
+    if (def) {
+      const target = (active.pois || []).find((item) => {
+        const entity = item && this.state.entities.get(item.id);
+        return item && item.poiId === def.placeId
+          && entity && entity.data && entity.data.poiId === def.placeId;
+      });
+      const entity = target && this.state.entities.get(target.id);
+      if (entity) {
+        row.anchorEntityId = target.id;
+        entity.data.poiBehavior = readoutOf(row);
+      }
+      return; // Never annotate an unrelated near neighbour if the authored body is absent.
+    }
     // A lawful-yard contract resolves at one exact authored station. Its public anchor must point
     // at that same station rather than whichever unrelated POI/gate happens to be closer to the
     // broad jurisdiction zone centre.
@@ -859,10 +1081,22 @@ function pruneExpiredAftermath(own, dayIndex) {
   }
 }
 
+function isFissureSurvey(row) {
+  return row?.sectorId === 'sector_haumea_rift' && row.zoneId === 'zone_haumea_fissure'
+    && row.familyId === 'anomaly_research';
+}
+
+function authoredInteraction(row) {
+  return row && AUTHORED_INTERACTIONS.find((def) => row.sectorId === def.sectorId
+    && row.zoneId === def.zoneId && row.familyId === def.familyId);
+}
+
 function activeAftermathPins(own, sectorId, dayIndex) {
   const pins = {};
   for (const aftermath of Object.values(own.aftermath || {})) {
     if (!aftermath || aftermath.sectorId !== sectorId || aftermath.expiresDay <= dayIndex) continue;
+    // Independent authored footprints must not steal generic aftermath pins.
+    if (authoredInteraction(aftermath)) continue;
     const prior = pins[aftermath.familyId];
     if (!prior || compareAftermathAge(aftermath, prior) >= 0) pins[aftermath.familyId] = aftermath;
   }
