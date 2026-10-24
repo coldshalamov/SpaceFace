@@ -114,45 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-machine-catalogue",
-      "date": "2026-10-22",
-      "wf": "WF-12",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "The first Charon pylon sighting announces the observed scan label, not a compliance grade you have not earned.",
-      "fingerprint": "verb=announce,subject=scanner-catalogue,sector=charon,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "b0d0977f7839ec309d52249a77bac1270925020f",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-claim-rearm",
-      "date": "2026-10-22",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "When a claim fight falls apart, the yard says the raid is still coming and how long you have to get back.",
-      "fingerprint": "verb=warn,subject=claim-raid,sector=io-reach,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "48f2126d70a803609a0d7c99fac905838e7afe82",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-loss-house",
-      "date": "2026-10-22",
-      "wf": "WF-12",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "A loss headline names the house that lost the hull, including Helix and the Archive, and an unknown house is no longer called A a ship.",
-      "fingerprint": "verb=name,subject=loss-house,sector=dione,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "2a98ab5c3e31795c30506fdbf6cc56c5581b3842",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-jump-spool",
       "date": "2026-10-22",
       "wf": "WF-15",
@@ -1671,6 +1632,45 @@
       "references": [],
       "integration": "live",
       "commit": "efd9882bfc",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sc-01",
+      "date": "2026-10-24",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Io's wreck cathedral draws the cathedral hull instead of a dead hulk.",
+      "fingerprint": "verb=show,subject=wreck-cathedral,sector=io,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "3ed5e8930a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sc-02",
+      "date": "2026-10-24",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Nyx's arrival station draws the claim-outpost fence instead of the shared black-market kit.",
+      "fingerprint": "verb=show,subject=fence,sector=nyx,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "3ee8732a04",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sc-13",
+      "date": "2026-10-24",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The Nereid claim draws a claim outpost and the waystation stays a trade hub.",
+      "fingerprint": "verb=show,subject=claim,sector=nereid,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "345fd6decc",
       "verification": "focused_green"
     }
   ],
