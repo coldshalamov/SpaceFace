@@ -8,6 +8,7 @@
 // a Quiet contact is worth more than one stolen pod.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { setEntityDoctrine } from '../../ai/doctrine.js';
+import { queuePhysicsImpulse, resolvePhysicsBodySpec } from '../../core/physicsAuthority.js';
 
 export const encounterOrder = 357;
 export const trigger = deepFreeze({
@@ -79,6 +80,20 @@ function holdingAlongside(state, player, seller) {
   const pv = player.vel, sv = seller.vel;
   if (!pv || !sv || ![pv.x, pv.z, sv.x, sv.z].every(Number.isFinite)) return false;
   return Math.hypot(pv.x - sv.x, pv.z - sv.z) <= PARLEY_RELATIVE_SPEED;
+}
+
+// Native bodies own their velocity after adoption. Match the transfer actor's drift
+// with one mass-scaled impulse; only the legacy integrator accepts a velocity write.
+function transferVelocity(state, pod, velocity, kind) {
+  if (state.settings?.gameplay?.physicsBackend === 'rapier-dynamic') {
+    const mass = resolvePhysicsBodySpec(pod).mass;
+    return queuePhysicsImpulse(pod, {
+      x: (velocity.x - (pod.vel?.x || 0)) * mass, y: 0,
+      z: (velocity.z - (pod.vel?.z || 0)) * mass,
+    }, { provenance: 'encounter:off_book_handoff', tick: state.tick | 0, kind });
+  }
+  pod.vel = velocity;
+  return true;
 }
 
 export const runtime = Object.freeze({
@@ -193,7 +208,7 @@ export const runtime = Object.freeze({
           e.data.deliveredBy = live.id;
           e.data.ownerId = buyer.id;
           e.data.ownerName = 'BOUGHT — OFF-BOOK MANIFEST';
-          e.vel = { x: 0, z: 0 };
+          transferVelocity(state, e, { x: buyer.vel?.x || 0, z: buyer.vel?.z || 0 }, 'buyer_receipt');
           live.data.delivered++;
         }
       }
@@ -294,11 +309,14 @@ export const runtime = Object.freeze({
             escrow.data.ownerName = 'BONDED — OFF-BOOK MANIFEST';
             escrow.data.bondedBy = live.id;
             escrow.data.committedTo = player.id;
-            // A shove toward the player's hull at the conveyor's own crawl — the pod is a
+            // A shove toward the player at the conveyor's crawl relative to their drift; a
             // dumb body on a real trajectory; wherever it ends up, the name stays on it.
             const ddx = player.pos.x - escrow.pos.x, ddz = player.pos.z - escrow.pos.z;
             const dl = Math.hypot(ddx, ddz) || 1;
-            escrow.vel = { x: (ddx / dl) * POD_SPEED, z: (ddz / dl) * POD_SPEED };
+            transferVelocity(state, escrow, {
+              x: (player.vel?.x || 0) + (ddx / dl) * POD_SPEED,
+              z: (player.vel?.z || 0) + (ddz / dl) * POD_SPEED,
+            }, 'bonded_shove');
             live.data.custodyCommit = {
               podId: escrow.id, playerId: player.id, acceptedAt: now, settled: false,
             };
@@ -379,7 +397,7 @@ export default defineEncounter(trigger, {
   },
   receipts: {
     deal_lapsed: 'DEAL LAPSED — the crews broke off. Unreceived pods are still on the line; no new bond was signed.',
-    deal_done: 'DEAL DONE — manifest moved, no record. The pocket is empty again.',
+    deal_done: 'DEAL DONE — manifest paid, no record. The original pods remain beside the buyer.',
     deal_burned: 'DEAL BURNED — a body dropped; the survivor ran with the record.',
     take_taken: 'TAKEN — the pods are yours; the Quiet ledger remembers it.',
     take_burned: 'BURNED — shot freight buys nothing but a story.',

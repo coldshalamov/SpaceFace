@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import encounter, { runtime } from '../src/data/encounters/357-the-handoff.js';
 import { spawnJettisonedCargoPod } from '../src/systems/lootShards.js';
+import { consumePhysicsCommand, resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
 import { authoredPayloadFileForEntity, authoredPayloadSlotForEntity } from '../src/render/partsLibrary.js';
 
 function harness() {
@@ -153,3 +154,49 @@ test('pending warm declares the actual handoff pod render body and slot', () => 
     assert.ok(encounter.warmAssets.includes(file), `missing pending decode for ${file}`);
   }
 });
+
+// These assert the real command membrane, not native motion. The separate Flight/Rapier
+// route owns next-publication braking and directed displacement evidence.
+function commandedVelocity(pod, before, kind, backend) {
+  if (backend !== 'rapier-dynamic') {
+    assert.equal(consumePhysicsCommand(pod), null, 'legacy must not also queue an impulse');
+    return pod.vel;
+  }
+  assert.deepEqual(pod.vel, before, 'native projection is not a second motion writer');
+  const command = consumePhysicsCommand(pod);
+  assert.equal(command.impulses.length, 1);
+  assert.equal(command.impulses[0].kind, kind);
+  assert.equal(command.impulses[0].provenance, 'encounter:off_book_handoff');
+  const mass = resolvePhysicsBodySpec(pod).mass;
+  const target = { x: before.x + command.impulses[0].x / mass,
+    z: before.z + command.impulses[0].z / mass };
+  assert.equal(consumePhysicsCommand(pod), null, 'command consumes exactly once');
+  return target;
+}
+for (const backend of ['legacy', 'rapier-dynamic']) for (const drift of [0, 40]) {
+  test(`${backend}: paid original matches buyer drift ${drift} exactly once`, () => {
+    const h = harness(); h.state.settings = { gameplay: { physicsBackend: backend } };
+    h.buyer.vel = { x: 2, z: drift }; h.player.pos.x = 2000;
+    const pod = h.pods[0]; pod.pos = { x: h.buyer.pos.x + 10, z: h.buyer.pos.z };
+    const before = { ...pod.vel }; h.tick(0);
+    assert.equal(pod.data.ownerId, h.buyer.id); assert.equal(h.live.data.delivered, 1);
+    const target = commandedVelocity(pod, before, 'buyer_receipt', backend);
+    assert.ok(Math.abs(target.x - h.buyer.vel.x) < 1e-10);
+    assert.ok(Math.abs(target.z - h.buyer.vel.z) < 1e-10);
+    h.tick(1); assert.equal(h.live.data.delivered, 1);
+    assert.equal(consumePhysicsCommand(pod), null); assert.equal(h.pods.length, 4); noBond(h);
+  });
+  test(`${backend}: bonded original gets crawl relative to player drift ${drift} once`, () => {
+    const h = harness(); h.state.settings = { gameplay: { physicsBackend: backend } };
+    h.seller.vel.z = h.player.vel.z = drift;
+    for (const pod of h.pods) pod.vel.z = drift;
+    const before = new Map(h.pods.map(p => [p.id, { ...p.vel }]));
+    for (let t = 0; t <= 6; t++) h.tick(t);
+    accepted(h); const pod = bonded(h)[0], delta = { x: h.player.pos.x - pod.pos.x, z: h.player.pos.z - pod.pos.z };
+    const length = Math.hypot(delta.x, delta.z) || 1;
+    const target = commandedVelocity(pod, before.get(pod.id), 'bonded_shove', backend);
+    assert.ok(Math.abs(target.x - h.player.vel.x - delta.x / length * 3.2) < 1e-10);
+    assert.ok(Math.abs(target.z - h.player.vel.z - delta.z / length * 3.2) < 1e-10);
+    h.tick(7); accepted(h); assert.equal(consumePhysicsCommand(pod), null);
+  });
+}
