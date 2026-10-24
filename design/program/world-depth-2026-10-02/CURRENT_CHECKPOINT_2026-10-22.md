@@ -1,5 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
+## Grandee causal consequences delivered: 2026-10-24 10:34 UTC
+
+[Draft PR578](https://github.com/coldshalamov/SpaceFace/pull/578) is verified at `e7d2d8d3a637035b0816b00353921a2bf5dfac1e`, a report-only child of `19a8419648db273ec98154cbe2175301b55ca979`; the initial six-path increment has sole public parent `ee049a838cff81446865cd8bbb46d056391f9965`. Grandee now warns only for positive player damage to the original target, memorializes only confirmed original death, and applies the -8 consequence only when byPlayer is true. Missing/unloaded targets abort neutrally; terminal guards and neutral loss/remembrance copy prevent unsupported blame. See the [causal-consequences report](https://github.com/coldshalamov/SpaceFace/blob/e7d2d8d3a637035b0816b00353921a2bf5dfac1e/design/program/world-experience-2026-10-24/GRANDEE_CAUSAL_CONSEQUENCES.md).
+
+Focused checks pass 17/17 versus baseline 5/17, plus an actual combat/director/Save-owner test at 1/1. Save preserves the deed without replay; its 1,800-second TTL is inclusive and expires at 1,800.01. This is not physics, flight, browser or performance acceptance. The final report corrects the archived snapshot identifier `34310c83`, not a file count; source/tests/package are unchanged by that correction. Run 40086172183 is active under the Grandee publisher.
+
+PR577 is now `c78f986822b1f78730c481a9535361e3fca02428`, a package-only child of `d98ea998`. Moving only the new invocation one leaf earlier made its focused gate reachable in static 3; existing command order and workflows remain unchanged. Hosted 11/11 passed in run 40085344535. CI uses a synthetic merge, with the four owned files verified identical; broad CI is still pending and parent baseline coverage is partially cancelled. The predecessor run was superseded after its static-1 prerequisite prevented the focused gate, so it has no hosted focused-pass claim.
+
+All twelve goals remain OPEN. The integration-absorption and browser-document holds remain separately pending after the latest check, and routine reminders grant neither. No new source queue is assigned by this handoff. Archive recovery/publication limits and both schedules are unchanged.
+
 ## Native trajectory diagnostic: 2026-10-24 10:13 UTC
 
 ![Measured convoy native-physics samples, not a game camera](../world-experience-2026-10-24/convoy-native-preview/convoy-trajectory.png)

@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Grandee causal consequences delivered: 2026-10-24 10:34 UTC
+
+All twelve goals remain OPEN. [PR578](https://github.com/coldshalamov/SpaceFace/pull/578) publishes Grandee's causal attribution and neutral missing-target behavior at `e7d2d8d3`. The [report](https://github.com/coldshalamov/SpaceFace/blob/e7d2d8d3a637035b0816b00353921a2bf5dfac1e/design/program/world-experience-2026-10-24/GRANDEE_CAUSAL_CONSEQUENCES.md) records 17/17 focused and one actual combat/director/Save-owner pass, without physics, flight, browser or performance acceptance.
+
+PR577's package-only successor `c78f9868` has hosted 11/11 focused passes, but broad CI remains active with partially cancelled parent coverage. Both publishers retain their monitor ownership. No new source queue is assigned; integration absorption and browser approval remain pending separately, Archive stays recoverable but runtime-unpublished, and both schedules are unchanged.
+
 ## Accompanied formation delivered: 2026-10-24 10:10 UTC
 
 All twelve goals remain OPEN. [PR577](https://github.com/coldshalamov/SpaceFace/pull/577) publishes the accompanied-formation progress correction at `d98ea998`, preserving newer public ancestry. The [report](https://github.com/coldshalamov/SpaceFace/blob/d98ea998bf93dfcd2e36dff401c3432bee1418a1/design/program/world-experience-2026-10-24/ACCOMPANIED_FORMATION_PROGRESS.md) records focused 11/11, eight existing RC passes, ordinary-selection native success and a midpoint Save abort with no payout/readmission.
