@@ -1187,7 +1187,7 @@ production units, and never build what they write.
 | 539 | W-CULL | The Cull ladder — ten leagues, Ma Sprocket, Clatter (§34.7) | BUILD | OPEN — after 519 and 541 |
 | 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | DONE devin-ten-oct22 (0749dfe36e) |
 | 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | DONE devin-25-oct22 |
-| 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | OPEN — 2/7 wired: Wex smell ticket (72b4a4f84b), Drift moisture loss (afce9e08c5) |
+| 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | OPEN — 3/7 wired: Wex ticket (72b4a4f84b), Drift moisture (afce9e08c5), Rook booth (37043e0e0d) |
 | 543 | W-FACES | Canon, new and culture portrait pools (§34.8) | ART | OPEN |
 | 544 | W-ECONOMY | Economy re-pace — travel ≤50 %, a play-changing purchase every 15–25 minutes, pay by the tonne (§34.9) | BUILD | OPEN |
 | 545 | W-CAMERA | The camera follows the weight (§34.9) | BUILD | OPEN |
@@ -1209,11 +1209,11 @@ Claim rows by editing the ledger, not this table.
 |---|---|---|---|---|
 | 551 | ATT-SEED | Attention program scaffolding: program law + coverage ledger + dossier phase | PLAN | DONE — this section |
 | 552 | ATT-DOSSIER-A | Four evidence dossiers (first hour, audio/feel, world memory, economy/failure) → `design/program/attention/` | ANALYZE | IN PROGRESS — first-hour landed; three running |
-| 553 | ATT-E01 | First-hour post-rail surface: tier-0 life, guided beat, ambient traffic (dossier-first-hour directions 1-3,7) | BUILD | OPEN |
+| 553 | ATT-E01 | Onboarding rail + first hour (minutes 0-60): rail texture, tier-0 life, guided beat, ambient traffic (dossier-first-hour directions 1-3,7) | BUILD | OPEN |
 | 554 | ATT-V01 | Comms/bark density: per-sector bark banks so ambient life registers outside the rail | BUILD | OPEN |
 | 555 | ATT-T02 | Station life: named regulars, rumors, overheard plots on the most-docked stations | BUILD | OPEN |
-| 556 | ATT-S08 | Wreck/debris fields: named dead, salvage notes, kill-marks across the wreck surfaces | BUILD | OPEN |
-| 557 | ATT-H01 | Hull markings: stencils, wear, kill tallies, owner names on traffic variants | ART | OPEN |
+| 556 | ATT-S13 | Wreck/debris fields: named dead, salvage notes, kill-marks across the wreck surfaces | BUILD | OPEN |
+| 557 | ATT-H01/H02 | Hull markings: stencils and wear on starter hulls; kill tallies and owner names on traffic variants | ART | OPEN |
 | 558 | ATT-E04 | Secrets layer: easter eggs, coded barks, ritual sights that reward poking | BUILD | OPEN |
 
 ### Landed rows index (consolidated 2026-10-15)
