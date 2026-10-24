@@ -1,5 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current admission and hosted results: 2026-10-24 13:52 UTC
+
+All twelve goals remain OPEN. This delta supersedes the 13:47 pending/admission statements, not their historical evidence.
+
+[PR580](https://github.com/coldshalamov/SpaceFace/pull/580), head `c770f20ff92d86f8cdc1c59f0f58f22266d0d451`, has terminal FAILURE in [run 40097265920](https://github.com/coldshalamov/SpaceFace/actions/runs/40097265920), completed 13:44:41 UTC. Its focused gate passed 32 checks. Browser 3 was cancelled, as was the actual base's browser 3; a Market wait rejection remains unmatched despite observed 5000→4965 credits and cargo +1 at simulation time 0. It is not proven flaky or unrelated. No blanket-green attribution.
+
+[Draft PR582](https://github.com/coldshalamov/SpaceFace/pull/582), head `46ea815817f706c61b5aca77ccc23af144fd9405`, has hosted 24/24 focused/native checks passing, exit 0, 4,973 ms. Artifact 12561834461 SHA256 `4006c19075717991cc6cb9619004f72d2ef03e9006e4ba64b94a2272f05d38e0`; synthetic `963c25372be85f53cc966317af60a43a6d626e92` has candidate tree `ea9bd985490028bb8b3ab1f5b88fc1ced8e6634e`. [Main run 40099448954](https://github.com/coldshalamov/SpaceFace/actions/runs/40099448954) is still active. Actual base run 40099007885 was cancelled; ten other static-2 failing commands match, which does not establish complete base equivalence.
+
+Exact PR582 scene `557c7146` now has bounded natural admission evidence: configured progressed Vesta seed 113/storybeat 7, starting at Dead Freighter Drift, normal sector entry with unchanged planner weights/gates/peers and no force/requestAuthoredEncounter call. Scheduled slot 115.502 seconds admits at 116.583 seconds; all three original Rapier cast bodies exist at 116.6 seconds. The actual three-minute briefing, lawful claim, all 13 wreck units and towable pod are present; prior patrol resolves cleanly and both planned peers remain pending. This is not flown/new-player arrival, populated full-sector terrain/traffic, rescue replay, browser capture or another Save proof.
+
+The original native command exited 1 on `180.00000000000003 !== 180` after emitting complete results. Ten separately applied retained-result checks pass with only the duration comparison changed to tolerance below 1e-9. The corrected fixture is preserved for reproduction but was not rerun; do not call the original command green. The ordinary packet and compact recovery index are independently raw-byte verified. Existing source/revision/native/visual recoveries and the Git-preserved [measured preview](../world-experience-2026-10-24/pitborn-native-preview/README.md) remain intact.
+
+Scene 367 choice differentiation is the next active investigation, with no source writer approved at this checkpoint. Generic motive metadata alone was rejected as a non-player-facing change; no metadata edit was made. Existing ownership, both specific approval holds, Archive publication limits and both schedules remain unchanged. No game source or PR CI was restarted for this handoff.
+
+
 ## Current physical recovery and presentation: 2026-10-24 13:47 UTC
 
 All twelve goals remain OPEN, including the original [twenty-concept map](TWENTY_CONCEPT_MAP.json), [P00–P21 implementation scope](IMPLEMENTATION.md) and [build map](../../../build_map.md). This checkpoint supersedes older current-state/next-operation claims without erasing historical evidence or acceptance requirements.
