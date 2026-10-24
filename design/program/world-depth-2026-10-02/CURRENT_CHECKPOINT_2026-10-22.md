@@ -1,5 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current ordinary Tail admission and startup gate: 2026-10-24 15:16 UTC
+
+All twelve goals remain OPEN. The following separates newly observed ordinary admission, hosted startup success and unfinished cargo implementation.
+
+On exact [PR583 head9c645e68](https://github.com/coldshalamov/SpaceFace/pull/583), seed22/configured simulation600/day1 in Concord Core, normal sector entry schedules Salvage Tail at860.493845 seconds and naturally publishes the original encounter plus all three choices at861.083333. At861.1 the original Mule/two raiders materialize alongside the player in Rapier. No authored-request shortcut, rule/weight/peer suppression, gate override or sanctuary bypass was used. This is configured progressed state, not a played first raid or flown first arrival.
+
+The planner also queues the guarantee before the opening-raid prerequisite exists. A non-mutating comparison through the actual gate on copied state rejects the absent prerequisite and admits the present one; no second full native absent-prerequisite wait was run. All three originals initially lie within Helios's1400-WU sanctuary. The authorized hostile-spawn trigger does not bypass engagementAuthority's firing protection. Admission/three choices therefore do not prove ordinary combat permission or a complete first-fight/Save route. Exact raw result, fixture and pins are preserved independently; no runtime source was changed for this probe.
+
+[PR584 head9fdc03d9](https://github.com/coldshalamov/SpaceFace/pull/584) now has hosted startup gate2/2 PASS, exit0, command212ms/TAP64.487ms. Artifact12564332140 SHA256 `9c252db8d972a661b8b09ccb677360242371fd21f25fb2b4dff7912bc87224d4`; actual synthetic `5e3597dcccb4bc3b29675b0ccaff089977654e23`, parentsc564312e+9fdc03d9, equals candidate tree `ddfd4a71b4238f2a8f5aea982093d2670b8d9501`. [Main40104569872](https://github.com/coldshalamov/SpaceFace/actions/runs/40104569872) remains active, while [RUCKUS40104569871](https://github.com/coldshalamov/SpaceFace/actions/runs/40104569871) succeeded. Static2 has68/78 commands passing; remaining failures are newly reachable past the import blocker and are not all baseline-equivalent. This does not mean PR584 landed, full boot succeeded or consumer PR582/583 became fixed.
+
+Finite Tail cargo custody remains an active, unfinished implementation. Its authorized owner has an initial three-module recipe for encounterScripts, encounterDirector's normalizer/clear hunks and scene367; publisher checked other PR515/569 hunks are disjoint. Only syntax checks have passed on that initial packet: it is UNTESTED, unpublished and not acceptance evidence. The source owner continues RAM tests; the separate native qualifier must prove real death/spill, finite pickup and terminal custody without inventing inventory. No broader director/shared-owner authority is implied.
+
+The ordinary proof and initial custody recipe are independently saved and full-byte/identity verified, with a compact restoration successor. Existing exact public source, tested history, visual bundles and original failed evidence remain preserved. Next executable work is custody source/native qualification through those owners and terminal startup CI under its publisher. Browser/integration holds, Archive publication limits and both continuation schedules are unchanged. No merge/deploy or whole-sector/game completion.
+
+
 ## Current startup repair and terminal consumer CI: 2026-10-24 14:55 UTC
 
 All twelve goals remain OPEN. The previously unassigned manifest investigation was approved, implemented and published by its exact owner; the earlier “no approved shared writer” statement is now historical.
