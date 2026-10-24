@@ -20,6 +20,195 @@ import { normalizeColdburnRey } from './coldburnRey.js';
 import { BREAKER_FEED_CHUNK_RADIUS_HI_WU, BREAKER_FEED_CHUNK_RADIUS_LO_WU, BREAKER_FEED_DRIFT_WU_S, BREAKER_FEED_MEAN_INTERVAL_S, BREAKER_FEED_PRODUCTS_HI, BREAKER_FEED_PRODUCTS_LO, BREAKER_FEED_PRODUCT_SPIT_WU_S, BREAKER_FEED_PRODUCT_TTL_S, BREAKER_FEED_RIM_PAD_WU, BREAKER_FEED_TTL_S, BREAKER_FEED_TYPE_ID, CERES_ACTIVITY_CAST_BY_SLOT_ID, CERES_ACTIVITY_JOB_KINDS, CERES_CALVED_SEAM_BONUS_U, CERES_CAPSULE_BATCH_U, CERES_CAPSULE_COAST_SPEED_WU_S, CERES_CAPSULE_LAUNCH_CLEARANCE_WU, CERES_CAPSULE_TTL_S, CERES_CATHEDRAL_SALVOR_SLOT_ID, CERES_CAUSAL_CHAIN_CYCLE_GAP_S, CERES_CAUSAL_CHAIN_EVENT, CERES_CAUSAL_CHAIN_SCHEMA, CERES_CAUSAL_STAMP_KEYS, CERES_CLAMP_POD_CLEARANCE_WU, CERES_CLAMP_POD_DRIFT_WU_S, CERES_CLAMP_POD_TTL_S, CERES_CLAMP_POD_U, CERES_CUTTER_SPILL_PICKUPS, CERES_CUTTER_SPILL_QTY, CERES_CUTTER_SPILL_TTL_S, CERES_DISABLED_HAULER_LAW_KIND, CERES_DISABLED_HAULER_OFFENDER_STABLE_ID, CERES_DISABLED_HAULER_TERMINAL_STATES, CERES_MINER_HAULER_SAVE_SCHEMA, CERES_PROBE_DROP_COUNT, CERES_PROBE_SPACING_WU, CERES_PROBE_TTL_S, CERES_RICH_SEAM_OBJECT_SLOT_ID, CERES_SEAM_MINER_SLOT_ID, CERES_SEAM_SURVEYOR_SLOT_ID, CERES_TENDER_SLOT_ID, DEBRIS_FIELD_DRIFT_JITTER_WU_S, DEBRIS_FIELD_EXIT_PAD_S, DEBRIS_FIELD_MEAN_INTERVAL_S, DEBRIS_FIELD_MISS_MAX_WU, DEBRIS_FIELD_PIECES_HI, DEBRIS_FIELD_PIECES_LO, DEBRIS_FIELD_SPAWN_RADIUS_WU, DEBRIS_FIELD_SPEED_HI_WU_S, DEBRIS_FIELD_SPEED_LO_WU_S, DEBRIS_FIELD_SPREAD_WU, DEBRIS_STREAM_EXIT_PAD_S, DEBRIS_STREAM_HEADING_JITTER_RAD, DEBRIS_STREAM_MEAN_INTERVAL_S, DEBRIS_STREAM_MISS_MAX_WU, DEBRIS_STREAM_PIECES_HI, DEBRIS_STREAM_PIECES_LO, DEBRIS_STREAM_RADIUS_HI_WU, DEBRIS_STREAM_RADIUS_LO_WU, DEBRIS_STREAM_RIBBON_WU, DEBRIS_STREAM_SPAWN_RADIUS_WU, DEBRIS_STREAM_SPEED_HI_WU_S, DEBRIS_STREAM_SPEED_LO_WU_S, DEBRIS_STREAM_TYPE_ID, HITCH_SHED_AMOUNT_HI, HITCH_SHED_AMOUNT_LO, HITCH_SHED_BACK_OFF_WU, HITCH_SHED_BACK_VEL_WU_S, HITCH_SHED_MEAN_INTERVAL_S, HITCH_SHED_MIN_SPEED_WU_S, METEOR_PASS_EXIT_PAD_S, METEOR_PASS_MEAN_INTERVAL_S, METEOR_PASS_MISS_MAX_WU, METEOR_PASS_RADIUS_HI_WU, METEOR_PASS_RADIUS_LO_WU, METEOR_PASS_SPAWN_RADIUS_WU, METEOR_PASS_SPEED_HI_WU_S, METEOR_PASS_SPEED_LO_WU_S, METEOR_PASS_TYPE_ID, PASSENGER_LINER_INVALIDATED_CAP, PASSENGER_LINER_RECEIPT_CAP, PASSENGER_LINER_SUSPENSION_CAP, SECTOR_CAUSAL_CHAINS, SMUGGLER_CACHE_AMOUNT_HI, SMUGGLER_CACHE_AMOUNT_LO, SMUGGLER_CACHE_DRIFT_WU_S, SMUGGLER_CACHE_LANDMARK_MAX_WU, SMUGGLER_CACHE_LANDMARK_MIN_WU, SMUGGLER_CACHE_MEAN_INTERVAL_S, SMUGGLER_CACHE_OFFSET_HI_WU, SMUGGLER_CACHE_OFFSET_LO_WU, SMUGGLER_CACHE_TTL_S, TETHYS_HANDOFF_DRIFT_WU_S, TETHYS_HANDOFF_PICKUPS, TETHYS_HANDOFF_TTL_S, TETHYS_JETTISON_PICKUPS, TETHYS_JETTISON_SPREAD_WU_S, TETHYS_JETTISON_TTL_S, TRAFFIC_LAW_LOSS_CAUSE, VOLATILE_SLOUGH_AMOUNT, VOLATILE_SLOUGH_BACK_OFF_WU, VOLATILE_SLOUGH_BACK_VEL_WU_S, VOLATILE_SLOUGH_MEAN_INTERVAL_S, VOLATILE_SLOUGH_MIN_SPEED_WU_S, WEIR_TILL_AMOUNT, WEIR_TILL_COMMODITY, WEIR_TILL_CROSS_MIN_SPEED_WU_S, WEIR_TILL_DRIFT_SCALE, WEIR_TILL_EMBARGO_S, WEIR_TILL_MAX_PODS, _CERES_CAUSAL_ACTOR_SCRATCH, ceresActivityActorWorldRecordId, ceresSeamMinerOwnerIdentity, compactStableIds, entityWithWorldRecord, heliosFreightTallies, lawPresenceRole, leftoverHaulerSlot, leftoverNormalizeDisruptedStationIds, leftoverSlotTargetsStation, liveEntity, normalizeCeresDisabledHaulerIncident, normalizeCeresMinerHaulerHandoff, normalizeCeresTenderServiceIncident, normalizeDepotServices, normalizeHeliosFreightTallyList, stationIdentity, terminalWorldRecord } from './traffic.js';
 
 export const trafficCausalChainOps = {
+  // Authored once on a genuinely fresh hull, never inferred from an absent/empty hold.
+  _initializeTethysShipment(entity, entry, wasFresh, record) {
+    if (wasFresh !== true || record || entity?.alive === false
+      || entry?.slot?.id !== 'tethys_quiet_runner'
+      || entity?.data?.activityActorSlotId !== 'tethys_quiet_runner'
+      || entity.homeSectorId !== TETHYS_ACTIVITY_SECTOR_ID
+      || !entity.data.worldRecordId || Object.hasOwn(entity.data, 'cargoManifest')) return false;
+    const worldRecordId = entity.data.worldRecordId;
+    if (worldRecordId !== stableRecordId(this.state.meta?.seed || 1, TETHYS_ACTIVITY_SECTOR_ID,
+      RECORD_KIND.CONVOY, entry.slot.worldRecordSlotId) || this.state.entities.get(entity.id) !== entity) return false;
+    return this._setTrafficManifest(entity, null, {
+      manifestId: `tethys-quiet-shipment:${worldRecordId}`, role: 'smuggler',
+      ownerFactionId: entity.factionId || entity.data.factionId || null,
+      lines: [{ commodityId: 'cmdty_stolen_goods', qty: 6 }], totalQty: 6,
+      tethysShipment: { schema: 1, worldRecordId, handoffDone: false, jettisonDone: false },
+    });
+  },
+
+  _tethysShipmentActor(slotId = 'tethys_quiet_runner') {
+    if (!['tethys_quiet_runner', 'tethys_quiet_keeper'].includes(slotId)) return null;
+    const bound = this._ceresCausalActorBySlot(slotId);
+    const entity = bound && bound.entity, rec = bound && bound.rec;
+    const slot = activityActorSlotById(slotId);
+    const worldRecordId = slot && stableRecordId(this.state.meta?.seed || 1,
+      TETHYS_ACTIVITY_SECTOR_ID, RECORD_KIND.CONVOY, slot.worldRecordSlotId);
+    if (!entity || entity.type !== 'ship' || entity.alive === false || !rec || !worldRecordId
+      || this.state.entities.get(entity.id) !== entity || rec.id !== entity.id
+      || rec.worldRecordId !== worldRecordId || entity.data?.worldRecordId !== worldRecordId
+      || rec.activityActorSlotId !== slotId || entity.data.activityActorSlotId !== slotId
+      || entity.homeSectorId !== TETHYS_ACTIVITY_SECTOR_ID
+      || entity.data.manifestPayloadDropped === true) return null;
+    if (this.state.entityList.some(other => other !== entity && other.alive !== false
+      && other.data?.worldRecordId === worldRecordId)) return null;
+    return { entity, rec, worldRecordId };
+  },
+
+  _rebindTethysSavedCast() {
+    const sectorId = TETHYS_ACTIVITY_SECTOR_ID;
+    const records = this.state.world?.records?.byId || {};
+    this._tethysSavedCastRebindPending = false;
+    for (const pocket of activityPocketsForSector(sectorId)) for (const slot of pocket.actorSlots) {
+      const id = stableRecordId(this.state.meta?.seed || 1, sectorId, RECORD_KIND.CONVOY, slot.worldRecordSlotId);
+      const record = records[id];
+      if (!record || record.kind !== RECORD_KIND.CONVOY || record.recordId !== id || terminalWorldRecord(record)
+        || record.sectorId !== sectorId || record.trafficRole !== slot.presentationRole) continue;
+      const matches = this.state.entityList.filter(e => e.alive !== false && e.data?.worldRecordId === id);
+      if (matches.length !== 1) continue;
+      const entity = matches[0];
+      const rows = this.state.traffic?.freighters?.filter(row => row.id === entity.id) || [];
+      const job = this.helpers?.npcJobs?.get?.(entity.data.jobId || `job:${id}`);
+      if (rows.length !== 1 || entity.type !== 'ship' || this.state.entities.get(entity.id) !== entity
+        || entity.homeSectorId !== sectorId || entity.data.trafficRole !== slot.presentationRole
+        || (entity.data.activityActorSlotId && entity.data.activityActorSlotId !== slot.id)) continue;
+      if (entity.data.activityActorSlotId === slot.id && rows[0].worldRecordId === id
+        && rows[0].activityActorSlotId === slot.id) continue;
+      if (job?.control || job?.job?.phase === 'flee') {
+        this._tethysSavedCastRebindPending = true;
+        continue;
+      }
+      // Restore only authored identity on an already adopted original hull. Stock is untouched,
+      // including explicit empty/malformed manifests. Never materialize or initialize here.
+      this._stampAuthoredActivityEntity(entity, entity.data, { pocket, slot }, sectorId, id);
+      rows[0].worldRecordId = id;
+      rows[0].activityActorSlotId = slot.id;
+      rows[0].manifest = entity.data.cargoManifest || null;
+    }
+  },
+
+  _tethysQuietCacheCenter() {
+    const pocket = activityPocketsForSector(TETHYS_ACTIVITY_SECTOR_ID)
+      .find(entry => entry.id === 'tethys_quiet_cache');
+    return pocket?.activityAnchor?.localPos
+      ? sectorLocalToGlobalForSector(pocket.activityAnchor.localPos, TETHYS_ACTIVITY_SECTOR_ID) : null;
+  },
+
+  _prepareTethysRendezvous(live) {
+    if (live.tethysRendezvous) return;
+    const center = this._tethysQuietCacheCenter(), jobs = this.helpers?.npcJobs;
+    if (!center || !jobs?.assign || !jobs.release || !jobs.get) return;
+    const pair = ['tethys_quiet_runner', 'tethys_quiet_keeper'].map(slot => this._tethysShipmentActor(slot));
+    if (pair.some(actor => !actor)) return;
+    const prior = pair.map(actor => jobs.get(actor.entity.data.jobId));
+    if (prior.some(entry => entry?.control || entry?.job?.phase === 'flee')) return;
+    live.redirectedSlots ||= [];
+    for (let i = 0; i < pair.length; i++) {
+      const { entity } = pair[i], slotId = entity.data.activityActorSlotId;
+      if (live.redirectedSlots.some(row => row.slotId === slotId)) continue;
+      if (this._tethysShipmentActor(slotId)?.entity !== entity) continue;
+      const priorJobId = entity.data.jobId || null;
+      const priorJobEntry = priorJobId ? jobs.get(priorJobId) : null;
+      if (priorJobEntry?.control || priorJobEntry?.job?.phase === 'flee') continue;
+      if (priorJobId) jobs.release(priorJobId);
+      const current = () => this._tethysShipmentActor(slotId)?.entity === entity;
+      if (!current() || entity.data.jobId || jobs.get(`job:${pair[i].worldRecordId}`)) continue;
+      const pos = { x: center.x + (i === 0 ? -56 : 56), z: center.z - 70 };
+      // Bounded paperwork hold uses the ordinary arrival gate and physical feedback driver.
+      // The two hulls meet outside the cache prop, 112 WU apart; no pose or velocity writes.
+      const assignedJobId = jobs.assign(entity, { kind: activityActorSlotById(slotId).jobKind,
+        sectorId: TETHYS_ACTIVITY_SECTOR_ID, speed: 26, commissionS: 120,
+        route: [{ id: 'tethys:quiet-meet:hold', pos }, { id: 'tethys:quiet-meet:return', pos }] });
+      const assignedEntry = assignedJobId && jobs.get(assignedJobId);
+      if (!assignedEntry) {
+        if (current() && !entity.data.jobId && !jobs.get(`job:${pair[i].worldRecordId}`)
+          && priorJobId && priorJobEntry) {
+          this.state.npcJobs.byId[priorJobId] = priorJobEntry;
+          entity.data.jobId = priorJobId;
+        }
+        continue;
+      }
+      if (!current() || assignedEntry.entityId !== entity.id || assignedEntry.control
+        || assignedEntry.job?.route?.[0]?.id !== 'tethys:quiet-meet:hold') continue;
+      live.redirectedSlots.push({ slotId, priorJobId, priorJobEntry, assignedJobId,
+        tethysEntity: entity, tethysAssignedEntry: assignedEntry });
+    }
+    live.tethysRendezvous = live.redirectedSlots.filter(row => row.tethysEntity).length === 2;
+  },
+
+  _tethysShipmentValid(manifest, worldRecordId) {
+    const marker = manifest && manifest.tethysShipment;
+    return !!marker && marker.schema === 1 && marker.worldRecordId === worldRecordId
+      && manifest.manifestId === `tethys-quiet-shipment:${worldRecordId}`
+      && typeof marker.handoffDone === 'boolean' && typeof marker.jettisonDone === 'boolean'
+      && Number.isSafeInteger(manifest.totalQty) && manifest.totalQty >= 0 && manifest.totalQty <= 6
+      && Array.isArray(manifest.lines) && manifest.lines.length <= 1
+      && (manifest.totalQty === 0 ? manifest.lines.length === 0
+        : manifest.lines.length === 1 && manifest.lines[0]?.commodityId === 'cmdty_stolen_goods'
+          && manifest.lines[0].qty === manifest.totalQty);
+  },
+
+  _emitTethysShipmentPortion(actor, phase, makeSpec) {
+    if (!actor || !['handoff', 'jettison'].includes(phase)
+      || typeof this.helpers?.stageEntitySpawn !== 'function') return 0;
+    const { entity, rec, worldRecordId } = actor;
+    const busy = this._tethysShipmentBusy || (this._tethysShipmentBusy = new WeakSet());
+    if (busy.has(entity)) return 0;
+    let manifest = entity.data.cargoManifest;
+    if (!this._tethysShipmentValid(manifest, worldRecordId)
+      || manifest.tethysShipment[`${phase}Done`]
+      || (phase === 'handoff' && manifest.tethysShipment.jettisonDone)) return 0;
+    busy.add(entity);
+    let emitted = 0;
+    try {
+      // A portion has one attempt. Failed admissions stay aboard, not silently reassigned
+      // to the next handoff after Continue. These are completion flags, never stock counters.
+      manifest = { ...manifest, tethysShipment: { ...manifest.tethysShipment, [`${phase}Done`]: true } };
+      this._setTrafficManifest(entity, rec, manifest);
+      const count = Math.min(3, manifest.totalQty);
+      for (let index = 0; index < count; index++) {
+        const original = manifest;
+        const current = () => {
+          const bound = this._tethysShipmentActor();
+          return bound?.entity === entity && bound.rec === rec && bound.worldRecordId === worldRecordId
+            && entity.data.cargoManifest === original && rec.manifest === original;
+        };
+        if (!current()) break;
+        const spec = makeSpec(index);
+        if (!spec) continue;
+        spec.flags = { ...spec.flags, persistent: true };
+        spec.data = { ...spec.data, manifestId: original.manifestId, ownerRecordId: worldRecordId,
+          ownerFactionId: original.ownerFactionId || entity.factionId || entity.data.factionId || null };
+        const remaining = original.totalQty - 1;
+        const next = { ...original, totalQty: remaining,
+          lines: remaining ? [{ commodityId: 'cmdty_stolen_goods', qty: remaining }] : [] };
+        let stage;
+        try {
+          stage = this.helpers.stageEntitySpawn(spec);
+          if (!stage) continue;
+          stage.commit({
+            preflight: current,
+            commit: () => current() && this._setTrafficManifest(entity, rec, next) === true,
+            abort: () => {
+              if (this.state.entities.get(entity.id) === entity && entity.alive !== false
+                && entity.data.worldRecordId === worldRecordId && entity.data.cargoManifest === next
+                && rec.manifest === next) this._setTrafficManifest(entity, rec, original);
+            },
+          });
+        } catch (error) {
+          // Publication observers can throw AFTER the pod and debit committed. That stock
+          // is still spent even if the new pod was immediately collected or destroyed.
+          if (!stage?.committed) stage?.abort();
+        }
+        if (stage?.committed) emitted++;
+        if (entity.data.cargoManifest !== (stage?.committed ? next : original)) break;
+        manifest = entity.data.cargoManifest;
+      }
+    } finally { busy.delete(entity); }
+    return emitted;
+  },
+
   // ── PQ-045.causal-chain — Ceres-only choreography timer ────────────────────────────────────────
 
   _wipeCeresCausalDataKeys(data) {
@@ -96,6 +285,7 @@ export const trafficCausalChainOps = {
 
   _ensureCeresCausalChain(reason = 'ensure') {
     const sectorId = this.state && this.state.world && this.state.world.currentSectorId;
+    if (reason === 'save_loaded' && sectorId === TETHYS_ACTIVITY_SECTOR_ID) this._rebindTethysSavedCast();
     const spec = sectorId ? SECTOR_CAUSAL_CHAINS.get(sectorId) : null;
     if (!spec) {
       this._resetCeresCausalChain('wrong_sector');
@@ -423,6 +613,11 @@ export const trafficCausalChainOps = {
    */
   _applyCeresCausalJobHints(def, live, phaseName) {
     if (!def || !live || !Array.isArray(def.jobHints) || !def.jobHints.length) return;
+    if (this._ceresCausal?.sectorId === TETHYS_ACTIVITY_SECTOR_ID && def.id === 'ev_criminal_handoff') {
+      if (['converge', 'standoff', 'swap'].includes(phaseName)) this._prepareTethysRendezvous(live);
+      else if (phaseName === 'part') this._restoreCeresCausalJobs(live);
+      return;
+    }
     for (let i = 0; i < def.jobHints.length; i++) {
       const hint = def.jobHints[i];
       if (!hint || !Array.isArray(hint.phases) || !hint.phases.includes(phaseName)) continue;
@@ -560,38 +755,50 @@ export const trafficCausalChainOps = {
   },
 
   /**
-   * ev_criminal_handoff's swap: three contraband pickups drifting in the gap between the keeper
-   * and the runner — the catalog's "three pickups cross the gap one at a time, each fully landed
-   * before the next leaves". They land mid-gap on a slow spread so the meet reads as an exchange,
-   * not a dump, and each is a standard cargo pickup the player can pocket: the chain's evidence
-   * is real freight, not a decal. Deterministic spread (hash32, no shared-rng draw), TTL-bounded,
-   * once per link.
+   * The original runner's three-unit exchange portion becomes ordinary cargo pickups only
+   * at a real, slow, hull-clear Quiet Cache rendezvous. The other three units remain aboard
+   * for the later jettison. The manifest's durable completion flag prevents phase/load replay.
    */
   _dropTethysHandoffLoad(live) {
     if (!live || live.handoffDropped) return;
-    const runner = this._ceresCausalActorBySlot('tethys_quiet_runner');
-    const keeper = this._ceresCausalActorBySlot('tethys_quiet_keeper');
-    if (!runner || !runner.entity || !runner.entity.pos) return;
-    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const actor = this._tethysShipmentActor();
+    const runner = actor && actor.entity;
+    if (!runner || !runner.pos) return;
+    // Actor lookup returns a shared scratch row: retain each actual hull, never the row.
+    const keeperBound = this._tethysShipmentActor('tethys_quiet_keeper');
+    const keeper = keeperBound && keeperBound.entity;
+    if (!keeper || !keeper.pos || keeper === runner) return;
+    const a = runner.pos, b = keeper.pos;
+    if (![a.x,a.z,b.x,b.z].every(Number.isFinite)) return;
+    const cache = this._tethysQuietCacheCenter();
+    if (!cache || Math.hypot(a.x-cache.x,a.z-cache.z)>130
+      || Math.hypot(b.x-cache.x,b.z-cache.z)>130) return;
+    const gap = Math.hypot(b.x - a.x, b.z - a.z);
+    const runnerClear = Math.max(0, Number(runner.radius) || 0) + 6.4;
+    const keeperClear = Math.max(0, Number(keeper.radius) || 0) + 6.4;
+    // A missed rendezvous keeps the portion aboard. Never bridge a distant pair with loot.
+    const rvx = Number(runner.vel?.x) || 0, rvz = Number(runner.vel?.z) || 0;
+    if (gap > 180 || gap < runnerClear + keeperClear + 12
+      || Math.hypot(rvx - (Number(keeper.vel?.x) || 0), rvz - (Number(keeper.vel?.z) || 0)) > 8) return;
     const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
-    const a = runner.entity.pos;
-    const b = keeper && keeper.entity && keeper.entity.pos ? keeper.entity.pos : a;
-    for (let index = 0; index < TETHYS_HANDOFF_PICKUPS; index++) {
+    this._emitTethysShipmentPortion(actor, 'handoff', (index) => {
       // Piece i crosses first: the three land spaced across the gap, drifting gently on the
       // line between the hulls so a witness reads the exchange order.
-      const t = (index + 1) / (TETHYS_HANDOFF_PICKUPS + 1);
+      const t = (runnerClear + (gap - runnerClear - keeperClear)
+        * index / (TETHYS_HANDOFF_PICKUPS - 1)) / gap;
       const jitter = (hash32(live.eventId, index, 'handoff-jitter') % 6284) / 1000;
-      const jx = Math.cos(jitter) * 2;
-      const jz = Math.sin(jitter) * 2;
       const dx = b.x - a.x;
       const dz = b.z - a.z;
       const dist = Math.hypot(dx, dz) || 1;
-      this.helpers.spawnEntity({
+      // Jitter is perpendicular: it cannot erode longitudinal hull or pod spacing.
+      const jx = -dz / dist * Math.sin(jitter) * 2;
+      const jz = dx / dist * Math.sin(jitter) * 2;
+      return {
         type: 'pickup',
         pos: { x: a.x + dx * t + jx, z: a.z + dz * t + jz },
         vel: {
-          x: (dx / dist) * TETHYS_HANDOFF_DRIFT_WU_S,
-          z: (dz / dist) * TETHYS_HANDOFF_DRIFT_WU_S,
+          x: rvx + (dx / dist) * TETHYS_HANDOFF_DRIFT_WU_S,
+          z: rvz + (dz / dist) * TETHYS_HANDOFF_DRIFT_WU_S,
         },
         radius: 2.4, mass: 0.4, collides: true,
         homeSectorId: TETHYS_ACTIVITY_SECTOR_ID,
@@ -601,8 +808,8 @@ export const trafficCausalChainOps = {
           despawnAt: now + TETHYS_HANDOFF_TTL_S,
           tethysHandoff: true,
         },
-      });
-    }
+      };
+    });
     live.handoffDropped = true;
   },
 
@@ -614,22 +821,22 @@ export const trafficCausalChainOps = {
    */
   _sprayTethysRunnerJettison(live) {
     if (!live || live.jettisonSprayed) return;
-    const bound = this._ceresCausalActorBySlot('tethys_quiet_runner');
-    if (!bound || !bound.entity || !bound.entity.pos) return;
-    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const actor = this._tethysShipmentActor();
+    if (!actor || !actor.entity.pos) return;
+    const entity = actor.entity;
     const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
-    const entity = bound.entity;
     const vx = (entity.vel && entity.vel.x) || 0;
     const vz = (entity.vel && entity.vel.z) || 0;
     const speed = Math.hypot(vx, vz);
     const heading = speed > 0.5 ? Math.atan2(vz, vx) : 0;
-    for (let index = 0; index < TETHYS_JETTISON_PICKUPS; index++) {
+    this._emitTethysShipmentPortion(actor, 'jettison', (index) => {
       // Fan the three pieces behind the hull: mostly aft, each on its own scatter so the spray
       // is a cone, not a stack.
       const scatter = ((hash32(live.eventId, index, 'jettison-scatter') % 6284) / 1000) - Math.PI;
       const back = heading + Math.PI + scatter * 0.35;
-      const drop = 4 + (hash32(live.eventId, index, 'jettison-drop') % 7);
-      this.helpers.spawnEntity({
+      const drop = Math.max(0, Number(entity.radius) || 0) + 6.4
+        + (hash32(live.eventId, index, 'jettison-drop') % 7);
+      return {
         type: 'pickup',
         pos: {
           x: entity.pos.x + Math.cos(back) * drop,
@@ -647,8 +854,8 @@ export const trafficCausalChainOps = {
           despawnAt: now + TETHYS_JETTISON_TTL_S,
           tethysJettison: true,
         },
-      });
-    }
+      };
+    });
     live.jettisonSprayed = true;
   },
 
@@ -1785,10 +1992,18 @@ export const trafficCausalChainOps = {
       const bound = this._ceresCausalActorBySlot(slotId);
       if (!bound || !bound.entity) continue;
       const entity = bound.entity;
+      if (redirected.tethysEntity) {
+        const original = this._tethysShipmentActor(slotId);
+        const current = this.helpers?.npcJobs?.get?.(entity.data?.jobId);
+        if (original?.entity !== redirected.tethysEntity || current !== redirected.tethysAssignedEntry
+          || current?.control || current?.job?.phase === 'flee') continue;
+      }
       const assignedJobId = redirected && typeof redirected === 'object' && redirected.assignedJobId
         ? redirected.assignedJobId
         : entity.data && entity.data.jobId;
       if (typeof release === 'function' && assignedJobId) release(assignedJobId);
+      if (redirected.tethysEntity && (this._tethysShipmentActor(slotId)?.entity !== entity
+        || entity.data?.jobId || this.helpers?.npcJobs?.get?.(assignedJobId))) continue;
       if (entity.data) {
         const priorJobId = redirected && typeof redirected === 'object' ? redirected.priorJobId : null;
         const priorJobEntry = redirected && typeof redirected === 'object' ? redirected.priorJobEntry : null;
@@ -1809,7 +2024,7 @@ export const trafficCausalChainOps = {
     // pickup (see _launchCeresCargoCapsule), and the clamp pod's drift phase tumbles one real
     // cargo pod off the refinery face (see _shearCeresClampPod). All ride the standard pickup
     // pipeline — the collecting player owns the cargo write, exactly like the disabled-hauler
-    // spill — so traffic mints no cargo onto any hull.
+    // spill. Tethys instead spends its explicitly authored fresh-hull manifest below.
     const isCeres = this._causalIsCeres();
     if (isCeres && def.id === 'ev_surveyor_probe_line') {
       const phaseDef = (def.phases || []).find((phase) => phase && phase.name === phaseName);
@@ -2101,6 +2316,18 @@ export const trafficCausalChainOps = {
   _stepCeresCausalChain(dt) {
     const chain = this._ensureCeresCausalChain('step');
     if (!chain) return;
+    // Keep the original runner on its authored local circuit between one-shot hauler jobs.
+    // Ceres has its own recurring cast branch; Tethys must not fall into ambient smuggler flight.
+    if (chain.sectorId === TETHYS_ACTIVITY_SECTOR_ID) {
+      if (this._tethysSavedCastRebindPending && this.state.simTime >= (this._tethysSavedCastRebindAt || 0)) {
+        this._tethysSavedCastRebindAt = this.state.simTime + 1;
+        this._rebindTethysSavedCast();
+      }
+      const runner = this._tethysShipmentActor();
+      const retained = runner && this.helpers?.npcJobs?.get?.(`job:${runner.worldRecordId}`);
+      if (runner && runner.entity.data.trafficRole === 'smuggler'
+        && !runner.entity.data.jobId && !retained) this._reaffirmCeresCausalActorJob('tethys_quiet_runner');
+    }
     // The miner-to-hauler handoff ledger is Ceres machinery; another sector's chain has none.
     if (this._causalIsCeres()) this._rehydrateCeresCausalHandoffSeeds();
     const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
@@ -2109,6 +2336,10 @@ export const trafficCausalChainOps = {
       const snapshot = chain.active.slice();
       for (let i = 0; i < snapshot.length; i++) {
         if (chain.active.includes(snapshot[i])) this._advanceCeresCausalLive(snapshot[i], simTime);
+        if (chain.sectorId === TETHYS_ACTIVITY_SECTOR_ID && chain.active.includes(snapshot[i])
+          && snapshot[i].eventId === 'ev_criminal_handoff' && snapshot[i].phase === 'swap') {
+          this._dropTethysHandoffLoad(snapshot[i]);
+        }
       }
     }
     this._tryStartNextCeresCausalEvents(simTime);
