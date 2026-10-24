@@ -1378,6 +1378,46 @@ function emitAmbient(row) {
     timeoutChoice: 'c',
     receipts: { a: row.receipts[0], b: row.receipts[1], c: row.receipts[2] },
   };
+  // Pilgrim-only escort: existing cast/settlement, earned by trailing the last lamp.
+  // Save/exit abandons unfinished work through the existing transient director owner.
+  if (row.id === 'pilgrim_lamp_walk') {
+    body.livedRotation = true;
+    cast.forEach((member, index) => { member.dx = -90 * index; member.dz = 0; });
+    // Offer at rest; even late acceptance retains the finite column leg.
+    Object.assign(phases.find((phase) => phase.id === 'run'), { verb: 'noop' });
+    const offer = phases.find((phase) => phase.id === 'offer');
+    offer.motion = null;
+    offer.onChoice.a = 'escort_instruction';
+    const hail = 'CANTOR: Three lamps are ready. Will you follow the last through the dark?';
+    phases.find((phase) => phase.id === 'hail').line = hail;
+    body.primaryLine = hail;
+    phases.find((phase) => phase.id === 'a0').line = 'The lamp line waits for your answer.';
+    choices[1].label = 'Dismiss the cantor (-1 Choir standing)';
+    choices[1].playerLine = 'Your procession is not worth my time.';
+    choices[2].label = 'Decline the escort';
+    choices[2].playerLine = 'Not this passage. Keep your lamps together.';
+    const refusal = 'The cantor heard your dismissal and closed the channel.';
+    const decline = 'You declined the escort. The lamp line remains the crew\'s work.';
+    phases.find((phase) => phase.id === 'say_b').line = body.receipts.b = refusal;
+    phases.find((phase) => phase.id === 'say_c').line = body.receipts.c = decline;
+    choices[0].label = 'Escort the last lamp';
+    choices[0].playerLine = 'I will follow the last pilgrim and match its drift.';
+    const receipt = "You matched the last pilgrim's wake. The Choir acknowledges your escort.";
+    phases.find((phase) => phase.id === 'say_a').line = receipt;
+    body.receipts.a = receipt;
+    phases.push(
+      { id: 'escort_instruction', verb: 'say', channel: 'info',
+        line: 'CANTOR: Stay 60–180 WU behind PILGRIM 3 and match its drift. Hold the wake for eight seconds once we\'re underway; wait for my acknowledgment.',
+        next: 'escort_launch' },
+      { id: 'escort_launch', verb: 'motion', motion: 'column', seconds: 1,
+        next: 'escort_last_lamp' },
+      { id: 'escort_last_lamp', verb: 'await', keepMotion: true, timeoutS: 120,
+        timeoutLine: 'CANTOR: The escort ended unfinished. No courtesy is owed.',
+        steps: [{ kind: 'trail', of: 'ship_2', min: 60, max: 180,
+          maxRelSpeed: 8, holdS: 8, leaderProgress: 100 }],
+        next: 'say_a' },
+    );
+  }
   const text = `// ${title} — lived vignette. External-only: ambient world scene.\n`
     + `import { deepFreeze, defineEncounter } from './catalog.js';\n`
     + `import { compileVignette } from '../../systems/vignetteInterpreter.js';\n\n`
@@ -1386,6 +1426,13 @@ function emitAmbient(row) {
     + `export const trigger = deepFreeze(${JSON.stringify(trigger, null, 2)});\n`
     + `export const runtime = compileVignette(spec);\n`
     + `export default defineEncounter(trigger, ${JSON.stringify(body, null, 2)});\n`;
+  // Pilgrim-only initial placement follows the scheduler's actual bearing.
+  if (row.id === 'pilgrim_lamp_walk') {
+    const alignedRuntime = "const compiledRuntime = compileVignette(spec);\nexport const runtime = Object.freeze({\n  ...compiledRuntime,\n  fire(d, live, state) {\n    const axis = live.data && live.data.sceneAxis;\n    const length = axis && Math.hypot(axis.ux, axis.uz);\n    const ux = length > 0 && Number.isFinite(length) ? axis.ux / length : 1;\n    const uz = length > 0 && Number.isFinite(length) ? axis.uz / length : 0;\n    // Only initial spawn coordinates rotate. Native navigation owns every later pose.\n    const aligned = { ...spec, cast: spec.cast.map((member) => ({\n      ...member, dx: member.dx * ux - member.dz * uz,\n      dz: member.dx * uz + member.dz * ux,\n    })) };\n    compileVignette(aligned).fire(d, live, state);\n  },\n});";
+    writeFileSync(join(DIR, row.file),
+      text.replace('export const runtime = compileVignette(spec);', alignedRuntime));
+    return;
+  }
   writeFileSync(join(DIR, row.file), text);
 }
 
