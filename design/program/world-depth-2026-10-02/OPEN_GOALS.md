@@ -1,5 +1,13 @@
 <!-- LIFETIME: DURABLE -->
 
+## Pilgrim ordinary-route correction: 2026-10-24 03:12 UTC
+
+The five-path Pilgrim candidate has reviewed bounded manual/neighbor tests passing 31/31, but it is **not ready for publication**. Actual requestAuthoredEncounter with director.update enabled spawns the correct candidate yet fails to settle by the full authored 120-second deadline, with no payment. Heading-relative, turning/controller and existing world/ui:setCourse attempts also time out; the subject's yaw oscillates in transit with many captured impacts. No causal diagnosis is established.
+
+The existing source owner and a separate read-only navigation investigator are comparing actual versus manual plan, activity and cadence behavior. No Pilgrim branch or PR exists. All source, tests and failed attempts are durably preserved, including the earlier backup separately. The brief executor disconnect recovered at 03:10:30 UTC without an established loss of work. Manual fixture success is not ordinary gameplay attainability or acceptance.
+
+All twelve goals remain OPEN. Existing source ownership, Archive publication block, browser hold and other acceptance limits remain unchanged. No image, game source, ledger, merge or deployment change accompanies this correction.
+
 ## Completed MTS material study and active Pilgrim work: 2026-10-24 02:59 UTC
 
 The [existing MTS review](../world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) now includes a distinct textured studio JPEG. All six embedded KTX2 maps were decoded in memory and rendered with Blender 4.3.2 Cycles CPU at 32 samples using actual normal, roughness, metallic and emissive inputs. Authored AO was not applied. This replaces the earlier feasibility-only status without claiming game shader/lighting parity or visual acceptance. Geometry and material assignments are unchanged; no new model is counted.
