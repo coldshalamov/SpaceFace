@@ -39,7 +39,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
   'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   'masslineImpactDamage', 'lootShards', 'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens', 'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads', 'terrainAnchors', 'jettisonImpulse', 'volatileExposure', 'mining',
-  'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
+  'fieldDepletion', 'cargo', 'fragileCargo', 'moistureLoss', 'economy', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
   'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake',
   // Nemesis packet: the arc engine (nemesis) decides and schedules, the encounter host
@@ -122,7 +122,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
   // NXB-008: exposure-driven volatile cargo state; its own 15-tick gate limits the pass,
   // so it runs on the full-rate table clock beside lootShards/fragileCargo.
-  'volatileExposure', 'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'automation', 'asteroidSites',
+  'volatileExposure', 'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'moistureLoss', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'crafting', 'economy', 'intervention', 'world',
   'heistFacilities',
   'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
@@ -328,6 +328,9 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // §34 rows 520–523: tide/audit/gray all step on the 600 s world day; the only
   // sub-day work is a cheap same-sector scaffold check — 2 Hz is plenty.
   'worldPressure',
+  // row 542 Drift's hook: ice sublimates in sun; a seconds-scale drip is calendar work,
+  // not a per-frame pass. Appended last so every existing cohort index stays put.
+  'moistureLoss',
 ]);
 
 /**

@@ -130,8 +130,11 @@ test('production init + update order lengths match the live browser baseline', (
   // drone at Shepherd's Ring queues station-keeping impulses on the table clock.
   // 239 -> 240 init: W-CAST-HANDS (row 542) registers wexTicket — the smell ticket at Helios
   // Bay 7 is event-driven (sector sync + pickup:collected), so it never ticks.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 240);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 185);
+  // 240 -> 241 init / 185 -> 186 update: W-CAST-HANDS registers moistureLoss — Drift's
+  // sun-sublimation drip is real elapsed-seconds work, so it joins both orders on the
+  // calendar clock (appended last; no existing cohort index moves).
+  assert.equal(PRODUCTION_INIT_ORDER.length, 241);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 186);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));
