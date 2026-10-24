@@ -8,6 +8,10 @@
     "node": ">=22.12.0 <25"
   },
   "scripts": {
+    "check:nocturne": "node scripts/check-nocturne.mjs",
+    "check:nocturne:authoring": "node scripts/check-nocturne-authoring.mjs",
+    "check:nocturne:gameplay": "node scripts/check-nocturne-gameplay.mjs",
+    "bench:nocturne": "node scripts/nocturne-director-bench.mjs",
     "postinstall": "node scripts/patch-playwright-electron.mjs",
     "stranger-lab": "node tools/agentic/stranger-lab/cli.mjs",
     "causal-foundry": "node tools/causal-foundry/cli.mjs",

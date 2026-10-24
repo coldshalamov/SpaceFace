@@ -16,6 +16,7 @@ import {
 import { bolusCoughOffset, bolusIrisShutter } from '../data/bolusPlay.js';
 import { bolusSilhouette } from './bolusSilhouettes.js';
 import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
+import { nocturneForScene } from './nocturne/bridge.js';
 
 const scratch = { x: 0, y: 0, z: 0 };
 const FREEZE = new Set(['louse', 'fingerling', 'mite']);
@@ -94,7 +95,15 @@ export function syncBolusView(renderer) {
   }
   const pulseBase = 4 + 3 * Math.sin(sim * 0.7);
   for (let i = 0; i < view.lights.length; i++) {
-    view.lights[i].intensity = pulseBase + i * 0.15;
+    const light = view.lights[i];
+    if (light._nocturneSource) {
+      const socket = BOLUS_LANTERN_SHAFTS[i];
+      light.position.set(socket.x + view.group.position.x, socket.y,
+        socket.z + view.group.position.z);
+      // Preserve the authored strength at a 48-world-unit reference distance while making
+      // the new local source obey inverse-square attenuation.
+      light.intensity = (pulseBase + i * 0.15) * Math.pow(48, 0.6);
+    } else light.intensity = pulseBase + i * 0.15;
   }
   syncFreezeCards(view, renderer.state);
 }
@@ -136,13 +145,17 @@ function ensureView(renderer) {
   const lightGroup = new THREE.Group();
   lightGroup.name = 'SF_BolusLanternShafts';
   const lights = [];
+  const nocturne = nocturneForScene(renderer.scene);
   for (let i = 0; i < BOLUS_LANTERN_SHAFTS.length; i++) {
     const shaft = BOLUS_LANTERN_SHAFTS[i];
-    const light = new THREE.PointLight(0xffb090, 4, 180, 1.4);
+    const light = nocturne
+      ? nocturne.createLight(`bolus:lantern:${i}`, 'point', { color: 0xffb090,
+        range: 180, decay: 2, priority: 2, stationary: true })
+      : new THREE.PointLight(0xffb090, 4, 180, 1.4);
     light.position.set(shaft.x, shaft.y, shaft.z);
     light.castShadow = false;
     light.name = `bolus_shaft_${i}`;
-    lightGroup.add(light);
+    if (!nocturne) lightGroup.add(light);
     lights.push(light);
   }
   const cards = new THREE.Group();
@@ -150,7 +163,7 @@ function ensureView(renderer) {
   group.add(cards);
   renderer.scene.add(group);
   renderer.scene.add(lightGroup);
-  noteShadowCensusLightMutation();
+  if (!nocturne) noteShadowCensusLightMutation();
   renderer._bolusView = { group, lightGroup, ribs, cilia, baleen, iris, acid, lights, cards, cough, seed };
   return renderer._bolusView;
 }
@@ -158,7 +171,8 @@ function ensureView(renderer) {
 export function disposeBolusView(renderer, { disposeGpu = true } = {}) {
   const view = renderer?._bolusView;
   if (!view) return;
-  const hadMountedLights = view.lightGroup?.parent != null;
+  const hadMountedLights = view.lightGroup?.children.length > 0 && view.lightGroup?.parent != null;
+  for (const light of view.lights) if (light._nocturneSource) light.dispose();
   view.group.removeFromParent();
   view.lightGroup?.removeFromParent();
   if (hadMountedLights) noteShadowCensusLightMutation();
