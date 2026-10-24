@@ -76,6 +76,19 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${GO} { --sv:1.1; }
 }
+/* short desktop windows (1101w+, <=640h): the 66px headline and 210px ring outgrow the height and push
+   the foot and the black box below the frame, so tighten the headline, ring, gaps and tape to fit */
+@media (min-width:1101px) and (max-height:640px) {
+  ${GO} { --r:calc(124px * var(--sv)); row-gap:calc(10px * var(--sv)) !important;
+    padding:20px clamp(40px, 5vw, 128px) 14px !important; grid-template-rows:minmax(0, 1fr) auto auto auto minmax(0, .2fr) auto !important; }
+  ${GO} > .k-title .k-caps { margin-bottom:calc(8px * var(--sv)) !important; }
+  ${GO} > .k-title .k-t-title { font-size:calc(40px * var(--sv)) !important; max-width:24ch; }
+  ${GO} > .k-title .k-sentence { margin-top:calc(8px * var(--sv)) !important; }
+  ${GO} .sf-go-grid { gap:calc(8px * var(--sv)) calc(40px * var(--sv)) !important; margin-bottom:calc(8px * var(--sv)) !important; }
+  ${GO} .sf-go-st--hub .sf-go-recap__v, ${GO} .sf-go-hubscrub__t { font-size:calc(34px * var(--sv)) !important; }
+  ${GO} > .sf-go-recap { height:calc(var(--r) * 2 + 110px * var(--sv)); }
+  ${GO} > .sf-go-tape { height:112px; }
+}
 /* stacked (<=1100): the screen scrolls, so the rays and the scrim hold to the window instead of
    stretching the scroll sideways and past the tape into bare backdrop */
 @media (max-width:1100px) {
