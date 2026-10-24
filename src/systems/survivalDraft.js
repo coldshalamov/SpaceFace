@@ -50,6 +50,13 @@ import {
   EVOLUTION_OFFER_KIND,
   evolutionOffersFor,
 } from '../data/survivalEvolutions.js';
+import {
+  SWARM_WEAPON_LEVEL_KIND,
+  SWARM_WEAPON_LEVEL_MAX,
+  applySwarmWeaponLevels,
+  swarmWeaponLevelPrice,
+  weaponLevelOf,
+} from '../data/swarmWeaponLevels.js';
 import { CIRCUIT_EVENT, CIRCUIT_MYSTERY, CIRCUIT_SERVICES, CIRCUIT_STAGE_COUNT, circuitChoicesFor, circuitFor, circuitMysteryOffer, circuitStateError, parseCircuitChoiceId } from './survivalCircuit.js';
 import {
   runModifierRecord,
@@ -446,6 +453,9 @@ export const survivalDraft = {
   },
 
   _onTransitioned(payload) {
+    // SEED-SW-13 — leaving the armory (and coming back) keeps the purchased rate on the
+    // gun the player is flying. The receipt lives on the run; this puts it back on the hull.
+    this._reapplyWeaponLevels();
     const phase = payload && payload.phase;
     if (phase === 'draft') {
       this._openDraft();
@@ -553,12 +563,23 @@ export const survivalDraft = {
     const player = this.state && this.state.player;
     const shipDef = loadout && loadout.hullId ? SHIP_DEF_BY_ID.get(loadout.hullId) : null;
     if (!shipDef) return [];
+    const run = liveSurvivalRun(this.state);
     return evolutionOffersFor({
       hullId: loadout.hullId,
       slots: buildSlotList(shipDef),
       fittings: loadout.fittings,
       moduleInventory: (player && player.moduleInventory) || [],
+      modifiers: run && run.modifiers,
     });
+  },
+
+  /** Put purchased weapon levels back onto the player's live guns. */
+  _reapplyWeaponLevels() {
+    const run = liveSurvivalRun(this.state);
+    const entity = this._playerEntity();
+    const weapons = entity && entity.data && entity.data.weapons;
+    if (!run || !Array.isArray(weapons)) return;
+    applySwarmWeaponLevels(weapons, run.modifiers);
   },
 
   _openRefit() {
@@ -1240,6 +1261,35 @@ export const survivalDraft = {
         _passiveHeld: held,
       });
     }
+    // SEED-SW-13 — one next-level row per gun that is actually bolted on. Shelf stock
+    // that is only in the hold gets nothing, and a gun already at five is not offered a sixth.
+    const fittedIds = Array.isArray(loadout && loadout.fittings) ? loadout.fittings : [];
+    const seenGuns = new Set();
+    for (const defId of fittedIds) {
+      if (typeof defId !== 'string' || defId.length === 0 || seenGuns.has(defId)) continue;
+      const def = WEAPONS.find((row) => row && row.id === defId);
+      if (!def || def.slotType !== 'weapon') continue;
+      seenGuns.add(defId);
+      const heldLevel = weaponLevelOf(run && run.modifiers, defId);
+      if (heldLevel >= SWARM_WEAPON_LEVEL_MAX) continue;
+      const nextLevel = heldLevel + 1;
+      const basePrice = swarmWeaponLevelPrice(nextLevel);
+      if (basePrice == null) continue;
+      extras.push({
+        id: `svc_wpn_level_${defId}_${nextLevel}`,
+        kind: SWARM_SERVICE_OFFER_KIND,
+        service: 'weapon_level',
+        defId,
+        weaponLevel: nextLevel,
+        verb: 'Cadence',
+        name: `${def.name} · Level ${nextLevel}`,
+        blurb: 'The mount cycles faster. Less time between shots, and the gun stays the gun.',
+        price: ask(basePrice),
+        category: 'Service',
+        slotLabel: `Fitted gun · level ${heldLevel}/${SWARM_WEAPON_LEVEL_MAX}`,
+        _weaponLevelHeld: heldLevel,
+      });
+    }
     // SEED-SW-34 — the mystery box's sealed card rides the service counter for the armory the
     // node was picked in. The wave key keeps the crate from trailing the stage: a later armory
     // stocks only its own rows. The pull itself stays sealed until the wallet answers.
@@ -1612,6 +1662,43 @@ export const survivalDraft = {
         return;
       }
       this._notice = `${entry.name} stacked (${swarmPassiveCount(committed, entry.id)}/${SWARM_PASSIVE_STACK_MAX}).`;
+      this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+      return;
+    }
+    if (pending.service === 'weapon_level') {
+      // SEED-SW-13 — the wallet has taken the credits. The receipt is the next level of a
+      // gun that is fitted right now. A level that does not stick is refunded, and the
+      // faster cycle is written onto the gun the weapons system already fires.
+      const run = liveSurvivalRun(this.state);
+      const defId = typeof pending.defId === 'string' ? pending.defId : '';
+      const nextLevel = pending.weaponLevel;
+      const heldLevel = weaponLevelOf(run && run.modifiers, defId);
+      const fitted = this._activeLoadout().fittings.includes(defId);
+      if (!run || run.phase !== 'draft' || !fitted || !Number.isInteger(nextLevel)
+        || nextLevel !== heldLevel + 1 || nextLevel > SWARM_WEAPON_LEVEL_MAX) {
+        refund(`That weapon level is no longer on the shelf. ${pending.price} cr refunded.`);
+        return;
+      }
+      this._purchased.add(pending.id);
+      this._emit('run:modifierRecordRequested', {
+        record: {
+          kind: SWARM_WEAPON_LEVEL_KIND, offerId: pending.id, defId,
+          verb: 'Cadence', level: nextLevel, name: pending.name,
+          wave: Math.max(1, this._wave),
+        },
+        draft: {
+          wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id,
+        },
+        wave: this._wave,
+      });
+      const committed = liveSurvivalRun(this.state);
+      if (!committed || weaponLevelOf(committed.modifiers, defId) !== nextLevel) {
+        this._purchased.delete(pending.id);
+        refund(`The weapon level would not stay on the manifest. ${pending.price} cr refunded.`);
+        return;
+      }
+      this._reapplyWeaponLevels();
+      this._notice = `${pending.name} — the gun cycles faster.`;
       this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
       return;
     }
