@@ -601,7 +601,7 @@ const REGION_ORCUS = freezeRegion({
       {
         id: 'poi_orcus_plinth',
         pos: { x: 980, z: -540 },
-        landmarkGlb: 'place_nav_buoy',
+        landmarkGlb: 'place_memorial_array',
       },
     ],
   },
