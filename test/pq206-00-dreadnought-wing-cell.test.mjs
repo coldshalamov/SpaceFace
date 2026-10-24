@@ -118,7 +118,15 @@ async function runDreadnoughtWingCell(seed) {
   let stateRef = null;
   const bus = Object.create(raw);
   bus.emit = (ev, payload) => {
-    events.push({ tick: stateRef ? (stateRef.tick | 0) : -1, ev, payload });
+    // The damage kernel refills one pooled combat:damage payload per emit (a3b359bf0f), so the
+    // attribution ledger snapshots the fields it reads instead of storing the live object.
+    events.push({
+      tick: stateRef ? (stateRef.tick | 0) : -1,
+      ev,
+      payload: ev === 'combat:damage' || ev === 'entity:killed'
+        ? { ...payload, origin: payload.origin ? { ...payload.origin } : payload.origin }
+        : payload,
+    });
     return raw.emit(ev, payload);
   };
   const aim = { x: 0, z: 0 };
