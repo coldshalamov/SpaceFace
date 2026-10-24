@@ -48,10 +48,19 @@ export function createCinematicInputFence({
     if (!closed) state = isSuspended() ? 'suspended' : 'visible-idle';
   };
 
+  // focusOwner() runs a synchronous focus() that fires focus/focusin inside this call. Any other
+  // focus trap on the document (e.g. a modal's focusin tether) can answer with its own focus(),
+  // which arrives back here — without the re-entry guard that ping-pong is unbounded recursion.
+  let restoringFocus = false;
   const restoreFocusIfInteractive = () => {
-    if (closed || isSuspended()) return;
-    state = 'visible-idle';
-    focusOwner();
+    if (closed || isSuspended() || restoringFocus) return;
+    restoringFocus = true;
+    try {
+      state = 'visible-idle';
+      focusOwner();
+    } finally {
+      restoringFocus = false;
+    }
   };
 
   const removeListeners = () => {

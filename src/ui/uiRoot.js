@@ -1290,7 +1290,12 @@ export const ui = {
           keyboardTarget: window,
           visibilityTarget: document,
           focusOwner: () => {
-            if (!dismissed && cinematic.isConnected && document.activeElement !== cinematic) {
+            // A live modal owns focus outright (its focusin trap answers any steal with its own
+            // focus() — a synchronous ping-pong, seen as RangeError stacks on the live title).
+            if (
+              !dismissed && cinematic.isConnected && document.activeElement !== cinematic
+              && !(document.body && document.body.classList.contains('ui-modal-open'))
+            ) {
               try { cinematic.focus({ preventScroll: true }); } catch (_) { cinematic.focus(); }
             }
           },

@@ -130,6 +130,38 @@ function testInitialSuspension() {
   assert.equal(unfocused.fence.requestDismiss('pointer'), true, 'fresh input works after initial focus arrives');
 }
 
+function testFocusRestoreReentryIsBounded() {
+  // The live-title RangeError: a modal's focusin trap answered the splash's focus() with its
+  // own synchronous focus(), whose focus event arrived back at onFocus — a ping-pong the fence
+  // let recurse until the stack blew. A focusOwner that synchronously re-fires focus events
+  // models that trap; the restore must nest at most one level deep.
+  const keyboard = new FakeTarget();
+  const visibility = new FakeTarget();
+  visibility.hidden = false;
+  visibility.hasFocus = () => true;
+  let focusCalls = 0;
+  let depth = 0;
+  let maxDepth = 0;
+  const fence = createCinematicInputFence({
+    keyboardTarget: keyboard,
+    visibilityTarget: visibility,
+    focusOwner: () => {
+      focusCalls += 1;
+      if (focusCalls > 50) return; // bounds the unguarded runaway so the assert reports cleanly
+      depth += 1;
+      if (depth > maxDepth) maxDepth = depth;
+      try { keyboard.dispatch('focus', event()); } finally { depth -= 1; }
+    },
+    onFinalize: () => {},
+  });
+  assert.equal(maxDepth, 1, 'a nested focus event during restore must not re-enter focusOwner');
+  assert.equal(focusCalls, 1, 'the nested burst collapses to the single in-flight restore');
+  keyboard.dispatch('focus', event());
+  assert.equal(maxDepth, 1, 'a fresh focus event still restores without re-entering');
+  assert.equal(focusCalls, 2, 'a fresh focus event still restores the splash exactly once');
+  fence.teardown();
+}
+
 function testTeardownDoesNotFinalize() {
   const fixture = createFixture();
   fixture.key('keydown', { code: 'Space', key: ' ' });
@@ -204,6 +236,7 @@ testRepeatAndMismatchedKeyup();
 testDeferredPointerAndTimerDismissal();
 testBlurAndVisibilityReset();
 testInitialSuspension();
+testFocusRestoreReentryIsBounded();
 testTeardownDoesNotFinalize();
 
 console.log('PASS cinematic input release fence');
