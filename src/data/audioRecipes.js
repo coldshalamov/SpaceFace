@@ -16,11 +16,14 @@ import { SOLSTICE_AUDIO_RECIPES } from './solstice.js';
 import { RUBRIC_AUDIO_RECIPES } from './rubric.js';
 import { RUCKUS_AUDIO_RECIPES } from './ruckus.js';
 import { RUUD_AUDIO_RECIPES } from './ruud.js';
+import { DOCKET_AUDIO_RECIPES } from './docket.js';
 import { BOLUS_AUDIO_RECIPES } from './bolusAudio.js';
 import { SECOND_RINSE_AUDIO_RECIPES } from './secondRinseAudio.js';
 import { DISCOVERY_AUDIO_RECIPES } from './discoveryAudio.js';
+import { STATION_LIFE_AUDIO_RECIPES } from './stationLifeAudio.js';
 
 export const RECIPES = [
+  ...STATION_LIFE_AUDIO_RECIPES,
   ...DISCOVERY_AUDIO_RECIPES,
   ...MORROW_AUDIO_RECIPES,
   ...VESPER_AUDIO_RECIPES,
@@ -30,6 +33,7 @@ export const RECIPES = [
   ...RUBRIC_AUDIO_RECIPES,
   ...RUCKUS_AUDIO_RECIPES,
   ...RUUD_AUDIO_RECIPES,
+  ...DOCKET_AUDIO_RECIPES,
   ...BOLUS_AUDIO_RECIPES,
   ...SECOND_RINSE_AUDIO_RECIPES,
   // --- Engine SFX ---

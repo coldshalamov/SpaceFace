@@ -9,6 +9,7 @@ import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER, TABLE_CLOCK_IDS } from '../src/runtime/authoritativeSystemManifest.js';
 import { isHostileToPlayer } from '../src/systems/scanner.js';
 import { save } from '../src/save/saveSystem.js';
+import { RECIPES } from '../src/data/audioRecipes.js';
 
 function fixture(memory) {
   const bus=createBus(), events=[];
@@ -84,6 +85,14 @@ test('parking the parcel inside the cradle delivers it: latch, payoff, news, per
  assert.ok(f.events.some(x=>x[0]==='comms:log'&&x[1].text===DOCKET_LINES.news));
  const saved=f.system.serialize();assert.equal(saved.delivered,true);
 });
+test('crossing into the cradle the trim announces itself once ever, floor or no floor',()=>{
+ const f=fixture();f.scan();f.state.simTime+=10;const e=f.system._entity();
+ // A fast entry holds the floor with 'in transit': the close line waits rather than being dropped.
+ e.pos.x=C.depot.x;e.pos.z=C.depot.z;e.vel={x:120,z:0};f.step();
+ assert.ok(voices(f).includes('inTransit'));assert.ok(!voices(f).includes('close'));
+ f.state.simTime+=7;f.step();assert.ok(voices(f).includes('close'));assert.ok(f.state.docket.told.includes('close'));
+ f.state.simTime+=7;f.step();assert.equal(voices(f).filter(k=>k==='close').length,1);
+});
 test('a fast pass through the cradle is called as an overshoot and does not latch',()=>{
  const f=fixture();f.scan();f.state.simTime+=10;const e=f.system._entity();
  e.pos.x=C.depot.x;e.pos.z=C.depot.z;e.vel={x:120,z:0};f.step();
@@ -145,10 +154,53 @@ test('save whitelist is bounded and both save capture paths include memory',()=>
 test('every line passes the shipping-paperwork register lint',()=>{
  for(const [k,text] of Object.entries(DOCKET_LINES)) assert.deepEqual(violatesRegister(text),[],`${k}: ${text}`);
 });
-test('audio recipes are unique and cues use the live spatial mixer contract',()=>{
+test('audio recipes are unique, registered in RECIPES, and cues use the live spatial mixer contract',()=>{
  assert.equal(new Set(DOCKET_AUDIO_RECIPES.map(r=>r.id)).size,DOCKET_AUDIO_RECIPES.length);
+ for(const r of DOCKET_AUDIO_RECIPES) assert.ok(RECIPES.some(x=>x.id===r.id),r.id);
  const f=fixture();const e=f.system._entity();
  e.pos.x=C.depot.x;e.pos.z=C.depot.z;e.vel={x:0,z:0};f.scan();f.step();
  const cue=f.events.find(x=>x[0]==='audio:cue')[1];
  assert.equal(cue.position.x,C.depot.x);assert.equal(cue.position.z,C.depot.z);assert.equal(cue.gain,.7);
+});
+test('destroyed after delivery files the receipt memorial, not the undelivered one',()=>{
+ const f=fixture();f.scan();const e=f.system._entity();
+ e.pos.x=C.depot.x;e.pos.z=C.depot.z;e.vel={x:0,z:0};f.step();assert.equal(f.state.docket.delivered,true);
+ e.alive=false;f.bus.emit('entity:killed',{id:e.id});
+ assert.ok(f.events.some(x=>x[0]==='comms:log'&&x[1].text===DOCKET_LINES.memorialDelivered));
+ assert.ok(!f.events.some(x=>x[0]==='comms:log'&&x[1].text===DOCKET_LINES.memorial));
+ assert.equal(f.system.serialize().destroyed,true);assert.equal(f.system.serialize().delivered,true);
+});
+test('after destruction, scanning the berth or the address finds the dark manifest',()=>{
+ for(const site of [C.depot,C.anchor]){
+  const f=fixture();f.scan();const e=f.system._entity();
+  e.alive=false;f.bus.emit('entity:killed',{id:e.id});
+  f.player.pos.x=site.x+20;f.player.pos.z=site.z;f.state.simTime+=10;f.scan();
+  assert.ok(voices(f).includes('memorialScan'),`site ${site.x},${site.z}`);
+ }
+ // An intact parcel never answers with the memorial; a live scan says something alive.
+ const f=fixture();f.scan();assert.ok(!voices(f).includes('memorialScan'));
+});
+test('delivering before first contact: the scan reads the closed manifest, not the intro',()=>{
+ const f=fixture();const e=f.system._entity();
+ e.pos.x=C.depot.x;e.pos.z=C.depot.z;e.vel={x:0,z:0};f.step();assert.equal(f.state.docket.delivered,true);
+ f.player.pos.x=C.depot.x+30;f.player.pos.z=C.depot.z;
+ f.state.simTime+=10; // let the arrival line's floor lapse; deliveredHello is a courtesy stamp
+ f.scan();
+ assert.equal(f.state.docket.met,true);assert.ok(voices(f).includes('deliveredHello'));
+ assert.ok(!voices(f).includes('hello'));
+ assert.equal(f.events.filter(x=>x[0]==='docket:met').length,1);
+});
+test('the wrong-leg call needs an opened manifest and a listener in earshot',()=>{
+ const f=fixture();const e=f.system._entity();
+ e.pos.x=C.depot.x+3*Math.hypot(C.anchor.x-C.depot.x,C.anchor.z-C.depot.z);e.pos.z=C.depot.z;e.vel={x:0,z:0};
+ f.player.pos.x=e.pos.x-200;f.player.pos.z=e.pos.z;f.step(); // in earshot but never met: silent
+ assert.ok(!voices(f).includes('wrongway'));
+ f.scan(); // met — but the scan pulse had to happen next to the parcel, so move there first
+ f.state.simTime+=10;f.step();assert.ok(voices(f).includes('wrongway'));
+ f.player.pos.x=e.pos.x+10000;f.state.simTime+=10;f.step();
+ assert.equal(voices(f).filter(k=>k==='wrongway').length,1,'out of earshot it does not nag');
+});
+test('destroy unregisters the census cook provider',()=>{
+ const f=fixture();const providers=f.helpers.sectorCookProviders;
+ assert.equal(providers.length,1);f.system.destroy();assert.equal(providers.length,0);
 });

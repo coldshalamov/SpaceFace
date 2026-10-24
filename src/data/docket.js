@@ -64,11 +64,12 @@ export const DOCKET_LINES = Object.freeze({
   quiet5: 'DOCKET: Undelivered is a status, not a verdict.',
   news: 'IO REACH — A Fulfillment parcel drone completed delivery to the dead Shepherd\'s Ring relay, nine years after its fleet dissolved. The relay has not acknowledged receipt.',
   memorial: 'PX-14 — undelivered. The manifest stays open. Nothing closes it now.',
+  memorialDelivered: 'PX-14 — delivered, then destroyed. The receipt stands. The relay never acknowledged it.',
   memorialScan: 'PX-14 — the parcel drone is dark. Its address is still on the chart.',
 });
 
 // One-time lines. Normalization keeps only these keys.
-export const DOCKET_TOLD = Object.freeze(['hello', 'brief', 'lineOn', 'inTransit', 'arrived', 'wronged']);
+export const DOCKET_TOLD = Object.freeze(['hello', 'brief', 'lineOn', 'inTransit', 'arrived', 'wronged', 'close']);
 
 const finite = (v, fallback, min, max) => Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;
 

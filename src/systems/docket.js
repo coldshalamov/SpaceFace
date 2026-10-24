@@ -84,6 +84,17 @@ export function createDocket() {
     destroy() {
       for (const off of this._unsubs || []) off();
       this._unsubs = [];
+      // Unregister the census arm like rubric/ruud: a re-init must not stack a second
+      // provider that drains the same sync twice, and a queued deferred entry must not
+      // call back into a system whose entity was just retired.
+      const providers = this.helpers?.sectorCookProviders;
+      if (providers && this._cookProvider) {
+        const i = providers.indexOf(this._cookProvider);
+        if (i >= 0) providers.splice(i, 1);
+      }
+      const q = this.state?.render?.deferredEnterMaterializers;
+      if (q) for (let i = q.length - 1; i >= 0; i--) if (q[i].provider === this._cookProvider) q.splice(i, 1);
+      this._cookProvider = null;
       this._removeOwned();
     },
     _entity() {
@@ -123,7 +134,11 @@ export function createDocket() {
       // shipped with the character, so no save old enough to carry markerless shells exists.
       if (!found) found = this._entity();
       if (!found && this.helpers.spawnEntity) found = this.helpers.spawnEntity(docketEntitySpec(this.state.docket));
-      if (found?.data?.docket === true) found.data.authoredCharacter = 'docket';
+      if (found?.data?.docket === true) {
+        found.data.authoredCharacter = 'docket';
+        // A stale/imported marked body may lack the pose block update() writes every tick.
+        if (!found.data.docketPose) found.data.docketPose = docketEntitySpec(this.state.docket).data.docketPose;
+      }
       this._id = found?.id ?? null;
     },
     _say(key, important = false) {
@@ -146,21 +161,32 @@ export function createDocket() {
     _scan(p) {
       if (this.state.mode !== 'flight' || !(this.state.timeScale > 0) || !this._adventure()) return;
       const player = this._player(), e = this._entity();
-      if (!player?.alive || player.flags?.docked || !e || !finiteXZ(player.pos)) return;
+      if (!player?.alive || player.flags?.docked || !finiteXZ(player.pos)) return;
       // Scanner-issued pulse only. Duplicate deliveries cannot arm/cancel twice.
       if (!p || p.source !== 'player-scanner' || p.scannerId !== player.id
         || !Number.isSafeInteger(p.seq) || p.seq < 1 || !finiteXZ(p.pos)
         || distanceXZ(p.pos, player.pos) > 2 || !Number.isFinite(p.radius) || p.radius <= 0) return;
       if (this._scanSource === player && p.seq <= this._scanSeq) return;
       this._scanSource = player; this._scanSeq = p.seq;
-      if (distanceXZ(e.pos, player.pos) > Math.min(p.radius, DOCKET.scanRadius)) return;
-      const m = this.state.docket;
+      const m = this.state.docket, reach = Math.min(p.radius, DOCKET.scanRadius);
+      if (!e) {
+        // The drone is gone; the paperwork is not. Scanning the berth it drifted at — or the
+        // address that is still on the chart — finds the dark manifest instead of a body.
+        if (m?.destroyed && (distanceXZ(player.pos, DOCKET.anchor) <= reach
+            || distanceXZ(player.pos, DOCKET.depot) <= reach)) this._say('memorialScan', true);
+        return;
+      }
+      if (distanceXZ(e.pos, player.pos) > reach) return;
+      if (m.delivered) {
+        // Delivered before first contact: the scan reads the closed manifest, not the intro.
+        if (!m.met) { m.met = true; this._sound('sfx_docket_stamp'); this.bus?.emit('docket:met', { id: e.id }); }
+        this._say('deliveredHello'); return;
+      }
       if (!m.met) {
-        m.met = true; this._say('hello', true);
+        m.met = true; this._sound('sfx_docket_stamp'); this._say('hello', true);
         this.bus?.emit('docket:met', { id: e.id });
         return;
       }
-      if (m.delivered) { this._say('deliveredHello'); return; }
       this._say(m.told.includes('brief') ? 'inTransit' : 'brief');
     },
     _damage(p) {
@@ -179,7 +205,9 @@ export function createDocket() {
       const m = this.state.docket;
       m.destroyed = true; m.hull = 0;
       this._id = null;
-      this.bus?.emit('comms:log', { from: DOCKET.callsign, text: DOCKET_LINES.memorial, kind: 'character' });
+      // A delivered parcel was not undelivered — the memorial files the receipt, not the miss.
+      const text = m.delivered ? DOCKET_LINES.memorialDelivered : DOCKET_LINES.memorial;
+      this.bus?.emit('comms:log', { from: DOCKET.callsign, text, kind: 'character' });
     },
     _deliver(e) {
       const m = this.state.docket;
@@ -232,14 +260,19 @@ export function createDocket() {
           // It trims its own final approach inside the shelf — weak, capped, address-ward only.
           if (inApproachShelf(e)) {
             this._servoToward(e, DOCKET.depot, DOCKET.approachAccel, DOCKET.approachSpeed, dt);
-            if (check.inZone && !this._insideDepot && !m.told.includes('close')) this._say('close');
+            // Once ever, while the trim is actually working the cradle. _insideDepot is already
+            // set by the time we get here, so the gate is the told record, not the transition.
+            if (check.inZone && !m.told.includes('close')) this._say('close');
           } else if (now - this._touchedAt > DOCKET.touchedQuietSeconds
               && distanceXZ(e.pos, DOCKET.anchor) < DOCKET.anchorLeash) {
             // Undelivered and untouched: drift home so the encounter stays findable.
             this._servoToward(e, DOCKET.anchor, DOCKET.anchorAccel, DOCKET.maxSpeed, dt);
           }
-          // Wrong manifest leg: so far off the route the parcel itself calls it.
-          if (!held && distanceXZ(e.pos, DOCKET.depot) > 2.4 * distanceXZ(DOCKET.anchor, DOCKET.depot)) {
+          // Wrong manifest leg: so far off the route the parcel itself calls it — but only to
+          // a manifest the pilot opened, and only within earshot; a flung parcel 5000 WU off
+          // route does not fill the comms feed forever.
+          if (!held && m.met && r < DOCKET.discoverRadius
+              && distanceXZ(e.pos, DOCKET.depot) > 2.4 * distanceXZ(DOCKET.anchor, DOCKET.depot)) {
             this._say('wrongway');
           }
         }
