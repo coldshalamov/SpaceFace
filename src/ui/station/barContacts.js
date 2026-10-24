@@ -6,6 +6,7 @@
 // with role-specific dialog that pulls real game data (economy events, market
 // intel, mission boards, sector danger, asteroid fields). Read-only except for
 // the mission-accept button which emits ui:acceptMission.
+import { SORI_COMPARISON_CONTACT_ID, soriComparisonContact, soriComparisonReply } from '../../data/soriComparisonReturn.js';
 import { FACTION_META } from '../../data/factions.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS, surveyDataPrice } from '../../data/sectors.js';
@@ -620,8 +621,9 @@ export function generateContacts(stationId, state = {}, opts = {}) {
     : [];
   // U-B: this berth's fence shows their face when the pilot is WANTED or trusted by them.
   const fence = fenceBarContact(stationId, state);
+  const sori = soriComparisonContact(state, stationId);
   const listed = [
-    ...endingCourier, ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
+    ...endingCourier, ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
   stampUnheardBarRumor(listed, stationId, state);
   stampHeliosBay7Rumor(listed, stationId, state);
@@ -1142,6 +1144,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: "It stays open. The courier doesn't repeat the offer." };
   }
   const state = ctx.state || {};
+  if (contact && contact.id === SORI_COMPARISON_CONTACT_ID) return soriComparisonReply(state, stationId, choiceId);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
   if (contact && contact.id === VONN_FREIGHT_CONTACT_ID && choiceId === 'wrecks') {
     const reply = buildVonnFreightLossReply(state);
