@@ -107,7 +107,7 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     for(const key of ['drill','jump','cruise','combat','traffic','meta'])privateState[key]=state[key];
     owner._syncFrameMembrane();
     accessibility = resolveVfxAccessibilityProfile(privateState.settings);
-    owner._gas.setAccessibility(accessibility);
+    owner._gas?.setAccessibility(accessibility);
     return accessibility;
   }
   function publish(dt) {
@@ -129,8 +129,8 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     owner._integrateSprites(dt);
     owner._integrateTrailStreaks(dt);
     owner._decayEventLights(dt);
-    owner._arcadeStructural.update(dt, camera, viewportHeight);
-    owner._gas.update(privateState.simTime, camera);
+    owner._arcadeStructural?.update(dt, camera, viewportHeight);
+    owner._gas?.update(privateState.simTime, camera);
     owner._actionVfx?.update(privateState);
     owner._bombDetonationVfx?.update(privateState);
     owner._combatContactVfx?.update(privateState);
@@ -151,9 +151,9 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
       streaks: owner._liveTrailStreakCount, eventLights: owner._activeLightCount,
       buckets: Object.fromEntries(['glow', 'ring', 'combustion', 'smoke']
         .map(kind => [kind, owner._spriteBatches[kind].mesh.count])),
-      gasBodies: owner._gas.mesh.count,
+      gasBodies: owner._gas?.mesh?.count ?? 0,
       quarksBatches: quarks.renderer.batches.length,
-      structured: owner._arcadeStructural.stats(),
+      structured: owner._arcadeStructural?.stats?.() ?? null,
       action: owner._actionVfx?.inspect?.() || null,
       stationOperations: owner._stationOperationVfx?.inspect?.() || null,
       statusMatter: owner._statusMatterVfx?.stats || null,
@@ -190,10 +190,14 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     while (owner._liveCount) owner._retireParticle(owner._activeParticles[owner._liveCount - 1]);
     while (owner._liveSpriteCount) owner._retireSprite(owner._activeSprites[owner._liveSpriteCount - 1]);
     owner._clearTrailStreaks();
-    for (const light of owner._lights) owner._retireEventLightSlot(light);
+    // The event-light pool is created lazily by the live vfx owner; a fresh lab adapter has none.
+    for (const light of owner._lights || []) owner._retireEventLightSlot(light);
     owner._initArcadeStructural();
-    owner._arcadeStructural.clear();
-    owner._gas.clear();
+    // Arcade-structural is another lazily-built owner member on a fresh lab adapter.
+    owner._arcadeStructural?.clear();
+    // Same lazy-init contract as the light pool: the gas system exists only after the live
+    // owner's first decode window, which a fresh lab adapter has not reached.
+    owner._gas?.clear();
     owner._actionVfx?.clear();
     owner._bombDetonationVfx?.clear();
     owner._combatContactVfx?.clear();
@@ -203,7 +207,11 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     quarks.reset();
     quarks._flowSequence = seed;
     syncContext();
-    seeded(() => publish(0));
+    // Production's first publish runs a frame after init, so the payload-gated pool build
+    // (wave-143) has always landed by then. This adapter's construction-time publish is
+    // synchronous, so while the owner still reports pools pending, skip it — the page loop
+    // publishes the same zero-state frame once the pools resolve.
+    if (owner._volumePoolsPending !== true) seeded(() => publish(0));
   }
   function fire(receipt = {}) {
     if (disposed) throw new Error('Explosion adapter is disposed');

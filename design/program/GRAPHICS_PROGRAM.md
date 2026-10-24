@@ -131,6 +131,58 @@ are `tools/blender/forge/mcp_design_kit.py`.
 the thruster plume. Plan and slice order: the retired GFX16 plan (git history; carried-open decisions appended below). Status 2026-10-02: slices 1 (thrusters), 2 (nav lamps), 3 (motion judge + smoothing) and 5 (pickup
 shapes) landed; see the plan's §6 for what is next. GFX-15 status: Workflow A and B tiers 1-3 landed; C and tier 4 partly built, see the HANDOFF in `tools/blender/forge/briefs/`.
 
+**GFX-17 (2026-10-24 audit): Wreck Cathedral Forge rebuild.** The heaviest body in the game
+(`place_landmark_wreck_cathedral`: 258,746 tris, 19.6 MB, 512px textures) is still the old
+Blender pipeline, and it is a named world site on the Ceres default route
+(`world_site_wreck_cathedral`, `src/data/worldSiteManifests.js`) — a story landmark off-kit.
+Outcome: one Forge place (`layout: 'place'`, landmark scale 40–100k tris, shared tile set,
+`deadmetal` derelict finish) carrying EVERY existing gameplay contract — anchors
+`INTERACTION_HangarCavity`, `ZONE_Bridge`, `ZONE_Service_Port/Starboard`, `SOCKET_TheMarker`,
+`SALVAGE_ConduitBank`, `SALVAGE_ServiceRack`, all collision proxies and the mining-beam request
+stream at their live positions (`export_place` from the current file first). Done when:
+`fleet-look --file … --views=inspect,top,place` passes the look bar beside the other landmarks,
+`node scripts/check-parts-manifest.mjs` and the world-site probes stay green, and the released
+bytes land under 8 MB.
+
+**GFX-18 (2026-10-24 audit): provisional-house visual language.** The six R10 houses
+(Understory, Fulfillment, Archive, Pitborn, Frontier, Verge — `docs/worldbuilding/orgs/factions-CANONICAL.md`)
+fly with doctrines but no hull identity: a contact cannot read the house by outline or paint.
+Outcome: paint-only Forge variants (`tools/blender/forge/variant.py`) on the hulls their
+presence nodes already fly, one house language per row of the canon sheet — Understory
+moss/compost tones on salvage hulls, Fulfillment worn company livery with dead schedule marks,
+Archive lantern-lit reading-room glow, Pitborn scrapyard hazard + tally stencils,
+Verge measure-mark bands that never blink. Done when: each house's NPC reads at chase zoom in
+`fleet-look --fleet --only=…` under its home sector's rig, and the variant publish passes
+`check-render-package-pilots`. Helix stays deliberately unvarianted: the canon says it flies
+other houses' transponders and hulls — mimicry IS its identity.
+
+**GFX-19 (2026-10-24 audit): house graffiti as authored decals.** Every canon house carries one
+graffiti line ("Every name logged…", "Heavy is honest.", "PRESENT. WITNESS. APPEAL."…) that
+exists in text (`src/data/flavor/030-graffiti.js`) but not on any surface. The owner's
+2026-10-03 authored-decals ruling allows decal quads; `stencil.stamp` already cuts real
+lettering geometry. Outcome: each house's line stamped where its encounters stage them
+(Pitborn yards, Verge gates, Concord beacons, MTS boards), one shared authored alphabet,
+tinted by paint colours. Done when: the marks read at the close zoom in `flight-look` at their
+encounter sites, and no lettering is generated text over a texture.
+
+**GFX-20 (2026-10-24 audit): ship-budget triage.** Census of `parts_manifest.json` (2026-10-24):
+21 wholeships exceed the 10–45k LOD0 guideline — tanker 70.9k, cradle 68.9k, rescue lifter
+68.5k, yard tug 65.5k, arclight 64.3k, saucer 60.6k, colossus 59.2k … — none carries an explicit
+`budgetClass`. Most are large-class hulls where the count is defensible; the manifest's own
+byte guards hold. Outcome: for each of the 21, either record the explicit `budgetClass` in the
+Forge source/fleet entry, or trim LOD0 to the guideline via `s.detail` drops (never authored
+visual removal). Done when: `check-parts-manifest` shows zero silent over-guideline hulls.
+
+**Audit sitting note (2026-10-24).** Full-fleet live renders re-shot (451 shots, three contact
+sheets, `.devshots/fleet-look/`), VFX lab repaired to boot against the payload-gated pool
+init (`scripts/vfx-gameplay-demo.html` + `scripts/lib/vfxGameplayExplosion.mjs`), and the
+fleet-wide vision pass against the look bar is BLOCKED host-side: the `analyze_image`
+vision service 400s on every URL (including canonical public images), the `glm-flash-vision`
+agent type fails to spawn (`reasoning-level-missing`), and subagent `Read` returns no image
+content. When any one of those recovers, the standing work is: judge `_sheet_chase/close/inspect`
+against §3's bar, and close `vfx-sprite-puffs`'s pending-visual-acceptance against the
+`.devshots/vfx-gameplay-review/` captures.
+
 ## 5. Directions beyond the backlog (where the picture goes next)
 
 These are bigger bets, in rough value order. Each needs a short packet (outcome, done-when, files)

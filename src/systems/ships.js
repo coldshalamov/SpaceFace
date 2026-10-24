@@ -56,6 +56,7 @@ import { cleanShipName } from '../data/hullIdentity.js';
 import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCrossover.js';
 import { FACTION_META } from '../data/factions.js';
 import { hash32 } from '../core/rng.js';
+import { applySwarmWeaponLevels } from '../data/swarmWeaponLevels.js';
 import { captureAndTransfer, admitCapturedVessel } from './shipControlTransfer.js';
 import { settleOwnedVesselYardOperation } from '../shipjack/ownedOperations.js';
 import { componentAfterRemoval, quoteModuleSale, validateModuleSaleQuote } from '../shipjack/componentProvenance.js';
@@ -2125,6 +2126,12 @@ export const ships = {
       if (instance?.defId === weapon.defId && typeof instance.condition === 'number' && Number.isFinite(instance.condition)) {
         weapon.dmg = scaleWeaponRuntimeStat(weapon.dmg, 0.35 + 0.65 * clamp01(instance.condition));
       }
+    }
+    // SEED-SW-13 — a rebuilt gun list comes from the catalog rate. The run's purchased
+    // levels go back on after that, or a wave-boundary recompute would wipe the feel.
+    // Only the player's guns. Another hull in the room does not inherit the receipt.
+    if (isPlayer) {
+      applySwarmWeaponLevels(newWeapons, this.state && this.state.run && this.state.run.modifiers);
     }
     const newViewFittings = fittingsForView(shipDef, fit, newWeapons);
     const newAppearance = defId + '|' + newViewFittings.join(',') + '|'

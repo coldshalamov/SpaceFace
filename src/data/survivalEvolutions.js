@@ -26,6 +26,7 @@
 // fittings, which are already run-deterministic.
 
 import { MODULES } from './modules.js';
+import { weaponLevelOf } from './swarmWeaponLevels.js';
 import { fits, outfitBudgetForFittings } from '../systems/ships.js';
 
 export const SURVIVAL_EVOLUTION_SCHEMA_VERSION = 1;
@@ -141,6 +142,17 @@ export const SURVIVAL_EVOLUTIONS = freezeDeep([
     price: 32,
     blurb: 'The heat lure and the sink become one point-defense servo. The two loose fittings are spent.',
   },
+  {
+    // SEED-SW-13 — a maxed pulse laser plus its named rigs. The gun is not spent.
+    id: 'pulse_cadence',
+    defId: 'mod_herald_fan',
+    name: 'Herald Fan',
+    verb: 'Evolve',
+    consumes: ['mod_twin_mount', 'mod_piercing_core'],
+    requiresWeaponLevel: { defId: 'wpn_pulse_laser_s', level: 5 },
+    price: 54,
+    blurb: 'A maxed pulse laser, the twin mount, and the piercing core become one herald fan. The gun stays bolted. The two rigs are spent.',
+  },
 ]);
 
 const EVOLUTION_BY_ID = new Map(SURVIVAL_EVOLUTIONS.map((evo) => [evo.id, evo]));
@@ -161,7 +173,7 @@ export const SURVIVAL_EVOLUTION_DEF_IDS = Object.freeze(
  * the first empty compatible slot, else a slot a fitted part is about to vacate. Returns [] when
  * nothing qualifies — the absence IS the offer state, not an error.
  */
-export function evolutionOffersFor({ hullId, slots, fittings, moduleInventory } = {}) {
+export function evolutionOffersFor({ hullId, slots, fittings, moduleInventory, modifiers } = {}) {
   const held = new Set();
   for (const defId of Array.isArray(fittings) ? fittings : []) {
     if (typeof defId === 'string' && defId) held.add(defId);
@@ -175,6 +187,13 @@ export function evolutionOffersFor({ hullId, slots, fittings, moduleInventory } 
   for (const evo of SURVIVAL_EVOLUTIONS) {
     if (held.has(evo.defId)) continue; // already synthesized — the parts are gone with it
     if (evo.consumes.some((defId) => !held.has(defId))) continue;
+    if (evo.requiresWeaponLevel) {
+      const need = evo.requiresWeaponLevel;
+      const needId = need && typeof need.defId === 'string' ? need.defId : '';
+      const needLevel = need && Number.isInteger(need.level) ? need.level : Number.POSITIVE_INFINITY;
+      const gunFitted = needId.length > 0 && fitted.includes(needId);
+      if (!gunFitted || weaponLevelOf(modifiers, needId) < needLevel) continue;
+    }
     const resultDef = MODULE_DEF_BY_ID.get(evo.defId);
     if (!resultDef) continue;
     let slotIndex = -1;
