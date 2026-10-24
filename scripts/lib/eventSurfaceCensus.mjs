@@ -329,6 +329,12 @@ if (!process.argv.includes('--forward-set') && !process.argv.includes('--markdow
 // why a literal scan missed it. Sim-side subscription was verified at the same
 // sites the literal census lists.
 const DYNAMIC_FORWARD = [
+  ...['ilexArk:accept', 'ilexArk:deliver', 'ilexArk:finish', 'ilexArk:course'].map(type => ({
+    type, emitters: ['src/ui/ilexArkPrompt.js'], note: 'finite Ilex voyage decision adapter dynamic dispatch; subscribed by ilexArk',
+  })),
+  ...['towlineTable:take', 'towlineTable:deliver', 'towlineTable:assist', 'towlineTable:release', 'towlineTable:course'].map(type => ({
+    type, emitters: ['src/ui/towlineTablePrompt.js'], note: 'finite Towline decision adapter dynamic dispatch; subscribed by towlineTable',
+  })),
   ...['orbital-gallery:retry', 'orbital-gallery:next', 'orbital-gallery:leave',
     'kinetic-league:retry', 'kinetic-league:next', 'kinetic-league:leave'].map(type => ({
     type, emitters: ['src/ui/physicsVenues.js'], note: 'public venue instrument dynamic dispatch',
@@ -359,6 +365,13 @@ const DYNAMIC_FORWARD = [
 // kept for symmetric coverage. Unioned in so closing the hand-maintained list
 // does not regress them.
 const LEGACY_FORWARD = [
+  // Preserve these existing public bridge contracts while current literal scanning
+  // does not rediscover their dynamic or symmetric call sites. No new actions.
+  'encounter:resolved', 'industrialDisasters:command',
+  'industrialDisasters:presentationReady', 'industrialDisasters:requirePresentation',
+  'ledger:evidenceLinked', 'race:restart', 'rigWorkshop:choose',
+  'salvageOutfits:choose', 'salvageTender:action', 'salvageTender:inspect',
+  'shipbreakingYard:action',
   'world:playerRelocated', 'ship:appearanceChanged', 'entity:kill',
   'entity:spawnRequest', 'save:restoring', 'save:loaded', 'scenario:branchChoice',
 ];
@@ -398,6 +411,9 @@ const FORWARD_EXCLUDE = {
   'ui:heliosBay7Scan': 'dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship',
 };
 
+// Existing committed main-only contracts, retained without enabling forwarding.
+const COMPAT_KNOWN_UNFORWARDED = ['comms:log', 'encounter:choiceOffered'];
+
 function computeForwardSet() {
   const censusTypes = new Set();
   for (const r of rows) if (r.needsForward) censusTypes.add(r.type);
@@ -413,7 +429,7 @@ function computeForwardSet() {
   // counts emits absent from BOTH sets as genuinely uncovered — stage-9's
   // `unforwardedEmitCount === 0` gate then fails loudly when a new emit type
   // escapes the census instead of dead-ending silently.
-  const knownUnforwarded = new Set(excluded);
+  const knownUnforwarded = new Set([...excluded, ...COMPAT_KNOWN_UNFORWARDED]);
   // game:started stays OUT: on the worker lane any main-side emit of it is the
   // stage-9 double-fire bug class — the LANE-FWD gate must count it loudly,
   // not file it under "known". Dead-subscription excludes (ui:restockBombRack
