@@ -36,7 +36,24 @@ export function bouncerEjectImpulse(pos, mass, center = BOUNCER.center, dv = BOU
   return { x: ux * mass * dv, z: uz * mass * dv };
 }
 
-/** A dead or docked hull cannot be rowdy — the door only throws the living and flying. */
+/** A dead or docked hull cannot be rowdy — the door only counts the living and flying. A
+ *  corpse that still has a firing receipt on the wire (a detonator dart's death commit
+ *  reports itself through combat:fire) earns no strike and hears no warning. */
 export function bouncerCanEject(entity) {
   return !!entity && entity.alive !== false && finiteXZ(entity.pos);
+}
+
+/** Drift-home: the door robot walks back to its post through the impulse membrane — a
+ *  velocity correction, never a vel write (Rapier owns linvel on a live dynamic body; a
+ *  direct write dies in the next readback). Returns the delta-v for the caller to queue as
+ *  mass·dv, or null while the robot holds station inside the leash deadband. */
+export function bouncerDriftHome(entity, post = BOUNCER.post, leash = BOUNCER.leashRadius, speed = BOUNCER.driftSpeed) {
+  if (!finiteXZ(entity?.pos) || !finiteXZ(post)) return null;
+  const vx = finiteXZ(entity.vel) ? entity.vel.x : 0;
+  const vz = finiteXZ(entity.vel) ? entity.vel.z : 0;
+  const dx = post.x - entity.pos.x, dz = post.z - entity.pos.z;
+  const d = Math.hypot(dx, dz);
+  if (d > leash) return { x: (dx / d) * speed - vx, z: (dz / d) * speed - vz };
+  if (d < leash * 0.5 && (vx !== 0 || vz !== 0)) return { x: -vx, z: -vz };
+  return null;
 }

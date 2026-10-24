@@ -12,7 +12,7 @@
 // ejection impulses, and a calendar drift-home pass. Door law lives in story flags:
 // ejection count, the once-ever announce, and the receipt when it throws YOU.
 import { BOUNCER } from '../data/bouncer.js';
-import { bouncerInRing, bouncerStrikeDecision, bouncerEjectImpulse, bouncerCanEject } from '../characters/bouncerRules.js';
+import { bouncerInRing, bouncerStrikeDecision, bouncerEjectImpulse, bouncerCanEject, bouncerDriftHome } from '../characters/bouncerRules.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 
@@ -39,8 +39,11 @@ export function createBouncer() {
       this.destroy();
       this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
       this._unsubs = [];
-      this._strikes = new Map(); // entityId -> {count, lastAt} — a per-visit door ledger
-      this._ejectAt = new Map(); // entityId -> simTime of its last throw (cooldown)
+      // Per-visit door ledgers keyed on the entity OBJECT, not its id — a hull that dies
+      // inside the window frees its id for a fresh occupant, and the recycled id must not
+      // inherit a dead rowdy's strikes.
+      this._strikes = new Map(); // entity -> {count, lastAt}
+      this._ejectAt = new Map(); // entity -> simTime of its last throw (cooldown)
       const on = (event, fn) => {
         const off = this.bus?.on(event, fn); if (typeof off === 'function') this._unsubs.push(off);
       };
@@ -52,7 +55,10 @@ export function createBouncer() {
       this._cookProvider = () => { this._sync(); };
       (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
         .push(this._cookProvider);
-      on('save:loaded', () => this._sync());
+      // A restored visit is a fresh visit: the door ledger is in-memory only, so a save
+      // carried mid-offense must not reload straight into the throw (docket/gateThreeWeir
+      // drop their transient state on the same seam).
+      on('save:loaded', () => { this._strikes.clear(); this._ejectAt.clear(); this._sync(); });
       on('game:newGame', () => { this._strikes.clear(); this._ejectAt.clear(); this._sync(); });
       on('combat:fire', (p) => this._onFire(p));
       this._sync();
@@ -118,10 +124,11 @@ export function createBouncer() {
       const owner = this._entity(p.ownerId);
       if (!owner || !bouncerInRing(owner.pos)) return;
       if (owner.data?.bouncer === true) return; // the door robot does not eject itself
+      if (!bouncerCanEject(owner)) return; // a corpse's firing receipt is no strike
       const now = Number(this.state?.simTime) || 0;
-      const prev = this._strikes.get(owner.id) || {};
+      const prev = this._strikes.get(owner) || {};
       const dec = bouncerStrikeDecision(prev.count, prev.lastAt, now);
-      this._strikes.set(owner.id, { count: dec.count, lastAt: now });
+      this._strikes.set(owner, { count: dec.count, lastAt: now });
       if (!dec.eject) {
         this.bus?.emit('comms:popup', {
           id: `bouncer_warn_${owner.id}`, sender: BOUNCER.sender, category: 'warning',
@@ -130,10 +137,9 @@ export function createBouncer() {
         this.bus?.emit('bouncer:warned', { entityId: owner.id, isPlayer: owner.id === this.state?.playerId || owner.isPlayer === true });
         return;
       }
-      const lastThrow = this._ejectAt.get(owner.id);
+      const lastThrow = this._ejectAt.get(owner);
       if (Number.isFinite(lastThrow) && (now - lastThrow) < BOUNCER.ejectCooldownS) return;
-      if (!bouncerCanEject(owner)) return;
-      this._ejectAt.set(owner.id, now);
+      this._ejectAt.set(owner, now);
       const isPlayer = owner.id === this.state?.playerId || owner.isPlayer === true;
       const impulse = bouncerEjectImpulse(owner.pos, owner.mass);
       queuePhysicsImpulse(owner, impulse,
@@ -154,21 +160,17 @@ export function createBouncer() {
       });
     },
     /** Calendar pass: the robot drifts home when pushed off its post — a door robot
-     *  knocked across the ring walks back to the door. */
+     *  knocked across the ring walks back to the door. The walk crosses the impulse
+     *  membrane like docket's servo: the robot is a live dynamic body, so a direct vel
+     *  write would die in the physics readback before it ever moved. */
     update(dt, state) {
       const s = state || this.state;
       if (!s || !this._adventure()) return;
       const robot = this._robot();
       if (!robot || !robot.pos) return;
-      const dx = BOUNCER.post.x - robot.pos.x, dz = BOUNCER.post.z - robot.pos.z;
-      const d = Math.hypot(dx, dz);
-      if (d > BOUNCER.leashRadius) {
-        robot.vel = robot.vel || { x: 0, z: 0 };
-        robot.vel.x = (dx / d) * BOUNCER.driftSpeed;
-        robot.vel.z = (dz / d) * BOUNCER.driftSpeed;
-      } else if (robot.vel && d < BOUNCER.leashRadius * 0.5) {
-        robot.vel.x = 0; robot.vel.z = 0;
-      }
+      const dv = bouncerDriftHome(robot);
+      if (!dv || !(robot.mass > 0)) return;
+      queuePhysicsImpulse(robot, { x: dv.x * robot.mass, z: dv.z * robot.mass }, { tick: s.tick });
     },
   };
 }

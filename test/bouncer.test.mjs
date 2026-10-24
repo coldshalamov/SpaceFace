@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createBouncer, bouncerSpec } from '../src/systems/bouncer.js';
 import { BOUNCER } from '../src/data/bouncer.js';
-import { bouncerInRing, bouncerStrikeDecision, bouncerEjectImpulse, bouncerCanEject } from '../src/characters/bouncerRules.js';
+import { bouncerInRing, bouncerStrikeDecision, bouncerEjectImpulse, bouncerCanEject, bouncerDriftHome } from '../src/characters/bouncerRules.js';
 import { createBus } from '../src/core/eventBus.js';
 import { makeEntity } from '../src/core/entity.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
@@ -111,6 +111,9 @@ test('fire outside the ring, and shots by dead or data-less hulls, are not strik
   f.fire(dead.id); f.fire(dead.id); f.fire(dead.id);
   assert.equal(f.impulses(dead).length, 0);
   assert.equal(f.events.filter(([t]) => t === 'bouncer:ejected').length, 0);
+  assert.equal(f.events.filter(([t]) => t === 'bouncer:warned').length, 0,
+    'a corpse earns no strike and hears no warning — a detonator dart\'s death commit'
+    + ' reports itself through combat:fire and must not shout the door law at a wreck');
 });
 
 test('the throw respects its cooldown — a burst does not stack impulses', () => {
@@ -144,17 +147,58 @@ test('the rules are honest geometry — ring, strikes, radial throw', () => {
   assert.equal(bouncerEjectImpulse({ x: CENTER.x, z: CENTER.z }, 20).x > 0, true, 'dead-center still throws');
   assert.equal(bouncerCanEject({ alive: false, pos: INSIDE }), false);
   assert.equal(bouncerCanEject({ alive: true, pos: { x: NaN } }), false);
+  const home = bouncerDriftHome({ pos: { x: BOUNCER.post.x + 200, z: BOUNCER.post.z }, vel: { x: 0, z: 0 } });
+  assert.ok(home && home.x < 0, 'beyond the leash the drift wants home');
+  assert.ok(Math.abs(Math.hypot(home.x, home.z) - BOUNCER.driftSpeed) < 1e-6, 'at drift speed');
+  assert.equal(bouncerDriftHome({ pos: { x: BOUNCER.post.x + 10, z: BOUNCER.post.z }, vel: { x: 0, z: 0 } }), null, 'at rest inside the leash it holds');
+  const brake = bouncerDriftHome({ pos: { x: BOUNCER.post.x + 10, z: BOUNCER.post.z }, vel: { x: 6, z: 0 } });
+  assert.ok(brake && brake.x === -6 && Math.abs(brake.z) < 1e-9, 'still moving inside the leash it brakes');
+  assert.equal(bouncerDriftHome({ pos: { x: BOUNCER.post.x + BOUNCER.leashRadius * 0.75, z: BOUNCER.post.z }, vel: { x: -5, z: 0 } }), null, 'the deadband keeps whatever motion it has');
 });
 
-test('the robot drifts home when pushed and stops inside the leash', () => {
+test('a save restore drops the door ledger — a restored visit starts clean', () => {
+  const f = fixture();
+  const c = f.addCorsair();
+  f.fire(c.id); // strike one: warned
+  f.bus.emit('save:loaded', {});
+  f.fire(c.id); // a restored visit must warn again, not reload straight into the throw
+  assert.equal(f.events.filter(([t]) => t === 'bouncer:warned').length, 2);
+  assert.equal(f.impulses(c).length, 0);
+});
+
+test('the strike ledger keys on the hull, not its recycled id', () => {
+  const f = fixture();
+  const c = f.addCorsair();
+  f.fire(c.id); // warned
+  c.alive = false; // the rowdy dies inside the window
+  const successor = f.helpers.spawnEntity({ type: 'ship', pos: { ...INSIDE }, vel: { x: 0, z: 0 }, radius: 4, mass: 25, hull: 30, hullMax: 30, data: {} });
+  successor.id = c.id; // the allocator hands the corpse's id to a fresh occupant
+  f.state.entities.set(successor.id, successor);
+  f.fire(successor.id);
+  assert.equal(f.events.filter(([t]) => t === 'bouncer:warned').length, 2,
+    'a fresh occupant of a dead rowdy\'s id earns its own first warning');
+  assert.equal(f.impulses(successor).length, 0);
+});
+
+test('the robot drifts home through the impulse membrane and brakes inside the leash', () => {
   const f = fixture();
   const r = f.robot();
   r.pos.x = BOUNCER.post.x + 200; r.pos.z = BOUNCER.post.z;
   f.system.update(0.5, f.state);
-  assert.ok(r.vel.x < 0, 'it walks back to the door');
+  const imp = f.impulses(r);
+  assert.equal(imp.length, 1, 'the walk home is a queued impulse, not a vel write (a live Rapier body owns linvel)');
+  assert.ok(imp[0].x < 0, 'the impulse points back to the post');
+  const walkDv = Math.hypot(imp[0].x, imp[0].z) / r.mass;
+  assert.ok(Math.abs(walkDv - BOUNCER.driftSpeed) < 1e-6, 'the walk homes at drift speed');
   r.pos.x = BOUNCER.post.x + 10; r.pos.z = BOUNCER.post.z;
+  r.vel.x = 0; r.vel.z = 0;
   f.system.update(0.5, f.state);
-  assert.equal(r.vel.x, 0, 'inside the leash it stands');
+  assert.equal(f.impulses(r).length, 0, 'inside the leash at rest it stands');
+  r.vel.x = 6;
+  f.system.update(0.5, f.state);
+  const stop = f.impulses(r);
+  assert.equal(stop.length, 1, 'inside the leash it brakes to a stop');
+  assert.ok(Math.abs(stop[0].x - -6 * r.mass) < 1e-6, 'the brake cancels its drift exactly');
 });
 
 test('destroy clears listeners, providers, and the robot; re-init is clean', () => {
