@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { wholeShipVisualForEntity } from '../src/render/partsLibrary.js';
 import assert from 'node:assert/strict';
 import { createSimulation } from '../src/core/sim.js';
 import { physics } from '../src/core/physics.js';
@@ -101,6 +102,9 @@ test('ordinary world ticks promote both Anvil workers with native hardware and f
         const native = local[0] && facade._sg02.records.get(local[0].id);
         if (!native) { e.stable = 0; e.generation = null; continue; }
         const entity = local[0];
+        assert.equal(wholeShipVisualForEntity(entity, { requiredWholeShip: true }).file,
+          role === 'collector' ? 'wholeships/ship_stormshift_collector_v01.glb' : 'wholeships/helios_span_mts.glb',
+          'ordinary residency promotion retains the dedicated visual identity');
         assert.ok(promoted.has(role), 'ordinary promotion must precede native observation');
         assert.equal(entity.id, e.id);
         assert.equal(native.entity, entity);

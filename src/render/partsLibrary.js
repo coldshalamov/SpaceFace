@@ -1920,6 +1920,7 @@ const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   courier: 'wholeships/helios_lark.glb',
   miner: 'wholeships/helios_cradle.glb',
   hauler: 'wholeships/helios_span.glb',
+  stormshift_collector: 'wholeships/ship_stormshift_collector_v01.glb',
   // PQ-193.07: rare Helios heavy. Additive key — do not remap hauler/Span or Atlas.
   arclight: 'wholeships/helios_arclight.glb',
   ore_carrier: 'wholeships/ore_barge.glb',
@@ -1951,6 +1952,7 @@ const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   courier: 'SF_WHOLESHIP_HELIOS_LARK',
   miner: 'SF_WHOLESHIP_HELIOS_CRADLE',
   hauler: 'SF_WHOLESHIP_HELIOS_SPAN',
+  stormshift_collector: 'SF_STORMSHIFT_COLLECTOR_V01',
   arclight: 'SF_WHOLESHIP_HELIOS_ARCLIGHT',
   ore_carrier: 'SF_WHOLESHIP_ORE_BARGE',
   tender: 'SF_WHOLESHIP_REPAIR_TENDER',
