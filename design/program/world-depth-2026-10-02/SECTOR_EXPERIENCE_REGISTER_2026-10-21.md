@@ -1,5 +1,13 @@
 <!-- LIFETIME: DURABLE -->
 
+## Pilgrim native-pose visual preserved: 2026-10-24 03:38 UTC
+
+The [Pilgrim native-pose review](../world-experience-2026-10-24/PILGRIM_NATIVE_POSE_REVIEW.md) now preserves the completed offline comparison of actual acceptance at 20 seconds and settlement at 33.0833 seconds from PR569's successful route. All seven shipping hashes remained unchanged; the three original Choir actors and player were alive with zero captured impacts. Recorded poses are reconstructed using the actual released Wasp and Choir Dart, with constructor-derived selectors and radii.
+
+This is CPU material-factor geometry, not live capture, texture/PBR/runtime-palette/fittings/rig/VFX rendering, natural admission or visual acceptance. The report distinguishes recorded state from constructor-derived rendering inputs. PR569's source/head and publisher-owned CI monitoring remain untouched.
+
+Io Love Letter Buoy work is allocated to its existing source owner for H4 service on the original buoy only. No implemented behavior or source completion is claimed yet. All twelve goals remain OPEN; Archive's publication block, browser hold, existing ownership and acceptance limits remain unchanged.
+
 ## Pilgrim cadence resolution and draft delivery: 2026-10-24 03:32 UTC
 
 This supersedes the previous ordinary-director publication blocker without discarding its failed-test history. Draft [PR569](https://github.com/coldshalamov/SpaceFace/pull/569) is verified open at `52edcfd90e775411285af384ee01b761132fc0bd`, with nine changed paths, tree `1298b8cc08678d8363caa14399efe297a05e1e55` and sole public parent `316eed66`. The publisher verified all complete remote file bytes and owns exact-head CI monitoring.
