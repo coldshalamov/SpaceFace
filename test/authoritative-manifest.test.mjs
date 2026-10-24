@@ -126,10 +126,10 @@ test('production init + update order lengths match the live browser baseline', (
   // perk writes, banter, loyalty, and injury recovery tick on the calendar clock.
   // 231 -> 238 init / 179 -> 184 update: five playable industrial experience owners,
   // plus event-only yard browser and salvage outfit prompt adapters.
-  // 238 -> 239 init / 184 -> 185 update: W-SHIFT (row 506) registers docket — the parcel
+  // 231 -> 232 init / 179 -> 180 update: W-SHIFT (row 506) registers docket — the parcel
   // drone at Shepherd's Ring queues station-keeping impulses on the table clock.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 239);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 185);
+  assert.equal(PRODUCTION_INIT_ORDER.length, 232);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 180);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));
