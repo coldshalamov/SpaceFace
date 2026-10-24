@@ -34,4 +34,19 @@ for (const card of CONTACT_CARDS) {
 assert.ok(CONTACT_CARDS.some((card) => card.id === 'contact_elroy'));
 assert.ok(CONTACT_CARDS.some((card) => card.namedCaptainId === 'cap_sable_iask'));
 assert.ok(CONTACT_CARDS.every((card) => card.portrait === false && card.hudPortrait === false && card.visorMotif === false));
+// Presentation corrections must not relocate the encounter or break saved contact linkage.
+const rook = CONTACT_CARDS.find((entry) => entry.id === 'contact_rook');
+assert.equal(rook.roleLabel, 'Bounty Broker');
+assert.equal(rook.blurb, 'One name. Two payers.');
+assert.equal(rook.stationHint, 'station_tethys');
+const witness = CONTACT_CARDS.find((entry) => entry.id === 'contact_kurtz');
+assert.equal(witness.name, 'the Ashfall Witness');
+assert.equal(witness.callsign, 'THE ASHFALL WITNESS');
+assert.equal(witness.roleLabel, 'Ashfall Witness');
+assert.equal(witness.stationHint, 'station_ashcache');
+assert.equal(primaryCommsForBeat(7).contactId, witness.id);
+assert.equal(recoveryCommsForBeat(7).contactId, witness.id);
+for (const choice of ['C', 'D']) assert.equal(commsForChoice(choice)[0].contactId, witness.id);
+assert.equal(CONTACT_CARDS.filter((entry) => entry.id === 'contact_kurtz').length, 1);
+assert.ok(!CONTACT_CARDS.some((entry) => /kurtz/i.test(entry.name)));
 console.log('story-campaign47a-embodied-dialogue: all checks passed');
