@@ -252,6 +252,43 @@ function finitePos(value) {
     : null;
 }
 
+// Proteus's existing Den work gets a small western service margin instead of
+// random kit scatter. This is dressing, not a berth, cache clue or safe zone.
+// The runner/picket keep their real routes clear of this margin; the seam crew
+// and hauler remain at the distant field, not invented visitors to the Den.
+export const PROTEUS_DEN_WORKING_MARGIN = Object.freeze({
+  stationId: 'station_proteus',
+  stationPos: Object.freeze({ x: -640, z: 520 }),
+  // Outer authoring references only, not a promise of shared camera visibility.
+  // No navigation target, trigger or sanctuary.
+  stop: Object.freeze({ x: -850, z: 600, clearRadius: 36 }),
+  pass: Object.freeze([
+    Object.freeze({ x: -1025, z: 470 }), Object.freeze({ x: -850, z: 470 }),
+    Object.freeze({ x: -850, z: 600 }), Object.freeze({ x: -850, z: 730 }),
+    Object.freeze({ x: -1025, z: 730 }),
+  ]),
+  props: Object.freeze([
+    Object.freeze({ placeId: 'place_illicit_transfer_frame', x: -750, z: 460, rot: 0 }),
+    Object.freeze({ placeId: 'place_parts_rack', x: -770, z: 476, rot: Math.PI / 2 }),
+    Object.freeze({ placeId: 'place_power_skid_patched', x: -770, z: 444, rot: 0 }),
+  ]),
+});
+
+function proteusDenWorkingMargin(sectorId, anchors, models) {
+  if (sectorId !== 'sector_proteus_well') return null;
+  const spec = PROTEUS_DEN_WORKING_MARGIN;
+  const matches = (anchors.stations || []).filter((row) => row?.stationId === spec.stationId);
+  if (matches.length !== 1) return null;
+  const origin = matches[0].pos;
+  if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return null;
+  const chosen = spec.props.map((prop) => models.find((model) => model.id === prop.placeId));
+  if (chosen.some((model) => !model)) return null;
+  const dx = origin.x - spec.stationPos.x;
+  const dz = origin.z - spec.stationPos.z;
+  return Object.freeze(spec.props.map((prop, i) =>
+    asRow(chosen[i], { x: prop.x + dx, z: prop.z + dz }, prop.rot, 'station', origin)));
+}
+
 /**
  * Deterministic kit dressing for one sector. `rng` must be the dedicated
  * everydaySpaceKit stream — never the world dressing/combat stream.
@@ -262,6 +299,8 @@ export function everydaySpaceKitDressingForSector(sectorId, paletteClass, rng, a
     ? EVERYDAY_SPACE_KIT_MAX_CORE_PER_SECTOR
     : EVERYDAY_SPACE_KIT_MAX_PER_SECTOR;
   const models = allowedModels(sectorId, klass);
+  const denMargin = proteusDenWorkingMargin(sectorId, anchors, models);
+  if (denMargin) return denMargin;
   const stations = (anchors.stations || []).map((row) => finitePos(row && (row.pos || row))).filter(Boolean);
   const gates = (anchors.gates || []).map((row) => finitePos(row && (row.pos || row))).filter(Boolean);
   const fields = (anchors.fields || []).map((row) => finitePos(row && (row.center || row.pos || row))).filter(Boolean);

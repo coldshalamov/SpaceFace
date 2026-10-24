@@ -154,7 +154,16 @@ export function dockDenyReason(station, factionMeta) {
     if (factionMeta && typeof factionMeta === 'object' && Number.isFinite(factionMeta.rep)) rep = factionMeta.rep;
     else if (Number.isFinite(station.playerRep)) rep = station.playerRep;
     const floor = stationMinRepFor(station);
-    if (rep != null && Number.isFinite(floor) && rep < floor) return deny('hostile_rep');
+    if (rep != null && Number.isFinite(floor) && rep < floor) {
+      // The Den's first-visit refusal names its existing positive-standing gate.
+      // Explicit hostility and structural denials above keep their own voice.
+      if ((station.stationId || station.id) === 'station_proteus'
+        && factionId === 'faction_quiet' && floor === 1) {
+        return { reason: 'hostile_rep',
+          text: 'You. No. Earn positive Quiet standing before requesting a berth.' };
+      }
+      return deny('hostile_rep');
+    }
   }
 
   // 4. Access restrictions.
