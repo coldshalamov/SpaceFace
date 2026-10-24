@@ -198,6 +198,41 @@ test('next-leg distance is global and points at the leg terminal, not the final 
   assert.equal(ctx.nextLeg.globalPos.x, -ctx.destination.globalPos.x);
 });
 
+test('a replot leaves a diverged executor: the strip still names the NEW route terminal', () => {
+  // Mid-route replot — nav.route was rewritten but nav.executor kept the abandoned itinerary's
+  // destination stamp (the route-changed interrupt clears engagement, not the stamp). The strip
+  // must answer with the live route, not the leftover.
+  const ctx = resolveMapNavContext({
+    playerGlobal: HELIOS_ORIGIN,
+    route: { legs: [{ from: 'sector_ceres_belt', to: TETHYS }] },
+    executor: {
+      engaged: false, status: 'interrupted', legIndex: 0, legCount: 2,
+      destinationSectorId: 'sector_ceres_belt',
+      legs: [{ fromSectorId: HELIOS, toSectorId: 'sector_ceres_belt' }, { fromSectorId: 'sector_ceres_belt', toSectorId: TETHYS }],
+    },
+    sectorNames: { [TETHYS]: 'Tethys Junction' },
+  });
+  assert.equal(ctx.destination.sectorId, TETHYS);
+  assert.equal(ctx.destination.legsRemaining, 1, 'the stale executor leg count cannot index the new itinerary');
+  assert.equal(ctx.destination.status, null, 'the abandoned trip status does not dress up the fresh plot');
+  assert.equal(ctx.nextLeg.toSectorId, TETHYS);
+});
+
+test('a completed-trip leftover cannot shadow the next plot', () => {
+  const ctx = resolveMapNavContext({
+    playerGlobal: HELIOS_ORIGIN,
+    route: { legs: [{ from: 'sector_ceres_belt', to: TETHYS }] },
+    executor: {
+      engaged: false, status: 'arrived', legIndex: 1, legCount: 1,
+      destinationSectorId: 'sector_ceres_belt',
+      legs: [{ fromSectorId: HELIOS, toSectorId: 'sector_ceres_belt' }],
+    },
+    sectorNames: { [TETHYS]: 'Tethys Junction' },
+  });
+  assert.equal(ctx.destination.sectorId, TETHYS);
+  assert.equal(ctx.destination.status, null);
+});
+
 test('an executor legLabel wins over the derived one so chart and follower agree', () => {
   const ctx = resolveMapNavContext({
     playerGlobal: HELIOS_ORIGIN,

@@ -559,3 +559,33 @@ test('load_failed during the active loading shell becomes a startup failure; ord
     ordinaryPresenter.destroy(); globalThis.document = ordinary.priorDocument;
   }
 });
+
+test('a restore that never rode game:load arms the slate honestly and names it once the world lands', async () => {
+  const f = fixture();
+  const presenter = await makePresenter(f);
+  try {
+    // The ordinary Continue path names the slate from the prepared envelope.
+    f.bus.emit('game:load', { slot: 1 });
+    f.bus.emit('save:envelopePrepared', {
+      slot: 1,
+      data: { world: { currentSectorId: 'sector_pallas', sectors: { sector_pallas: { name: 'Pallas Drift' } } } },
+    });
+    f.bus.emit('save:loaded', { slot: 1 });
+    const slate = f.lockup.querySelector('[data-loading-destination]');
+    assert.ok(slate);
+    assert.equal(slate.textContent, 'Continue · Pallas Drift');
+
+    // An import / rollback / lane-sync restore emits no game:load and no envelopePrepared —
+    // the slate must not keep showing the last trip's name while it works.
+    f.bus.emit('save:restoring', { slot: 2, source: 'import' });
+    assert.equal(slate.textContent, 'Restoring destination');
+    f.state.world = {
+      currentSectorId: 'sector_tethys_junction',
+      sectors: { sector_tethys_junction: { name: 'Tethys Junction' } },
+    };
+    f.bus.emit('save:loaded', { slot: 2 });
+    assert.equal(slate.textContent, 'Continue · Tethys Junction');
+  } finally {
+    presenter.destroy(); globalThis.document = f.priorDocument;
+  }
+});

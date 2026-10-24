@@ -104,7 +104,9 @@ export function confirm(opts) {
   // Capture pre-supersession so a second confirm inherits modal-open ownership from the first
   // when the first still holds ui-modal-open during its delayed close cleanup.
   const wasConfirmOpen = !!_openResolver;
-  if (_openResolver) { const r = _openResolver; _openResolver = null; r(false); }
+  // A superseded dialog is an away-dismiss: it resolves its own dismissValue, not a fabricated
+  // false — a dialog whose calm path is the cancel key must not read the boot as a refusal.
+  if (_openResolver) { const r = _openResolver; _openResolver = null; r(_openDismissValue); }
   // A call site may flip which verb is "the offer": First Light's safe path is Play, so the calm
   // preset rides the cancel key and an away-dismiss means "keep my settings", not "calm me down".
   const cancelValue = opts.cancelValue === undefined ? false : opts.cancelValue;

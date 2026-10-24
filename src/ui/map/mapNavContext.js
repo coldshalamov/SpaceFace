@@ -103,6 +103,20 @@ function sectorDisplayName(sectorId, sectorNames) {
   return String(sectorId);
 }
 
+/** True while the executor's decomposed legs describe this exact plotted itinerary — the same
+ *  from/to contract routeFollower's legsMatchRoute enforces on the sim side. When it fails, the
+ *  executor is a leftover from an abandoned or completed trip and must not shadow the live route. */
+function executorLegsMatchRoute(executor, plottedLegs) {
+  const stored = executor && Array.isArray(executor.legs) ? executor.legs : null;
+  if (!stored || stored.length !== plottedLegs.length) return false;
+  for (let i = 0; i < stored.length; i++) {
+    const plan = plottedLegs[i], leg = stored[i];
+    if (!plan || !leg) return false;
+    if (plan.from !== leg.fromSectorId || plan.to !== leg.toSectorId) return false;
+  }
+  return true;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Row copy
 // ---------------------------------------------------------------------------------------------
@@ -248,8 +262,20 @@ export function resolveMapNavContext(input = {}) {
     : null;
   const missionDestSectorId = missionDest && missionDest.sectorId ? String(missionDest.sectorId) : null;
 
-  const plottedDestSectorId = (executor && executor.destinationSectorId)
-    || (plottedLegs.length ? plottedLegs[plottedLegs.length - 1].to : null)
+  // A replot rewrites nav.route while nav.executor still names the abandoned (or already-flown)
+  // itinerary — the follower's route-changed interrupt clears engagement but keeps the old
+  // destination stamped. When both exist and disagree, the plotted route is the committed answer:
+  // the executor may speak for progress only while its legs still describe this itinerary. A
+  // routeless executor (arrival already consumed the route) keeps its own stamped answers.
+  const routeTerminal = plottedLegs.length ? plottedLegs[plottedLegs.length - 1].to : null;
+  const executorForRoute = executor
+    && (!routeTerminal
+      || (executor.destinationSectorId === routeTerminal
+        && (!Array.isArray(executor.legs) || executorLegsMatchRoute(executor, plottedLegs))))
+    ? executor
+    : null;
+  const plottedDestSectorId = routeTerminal
+    || (executor && executor.destinationSectorId)
     || null;
   const destSectorId = plottedDestSectorId || missionDestSectorId;
   const planned = !!plottedDestSectorId;
@@ -269,9 +295,9 @@ export function resolveMapNavContext(input = {}) {
     const destGlobal = origin && Number.isFinite(origin.x)
       ? { x: origin.x, z: origin.z }
       : null;
-    const legIndex = planned && executor && Number.isFinite(executor.legIndex) ? executor.legIndex : 0;
-    const legCount = planned && executor && Number.isFinite(executor.legCount) && executor.legCount > 0
-      ? executor.legCount
+    const legIndex = planned && executorForRoute && Number.isFinite(executorForRoute.legIndex) ? executorForRoute.legIndex : 0;
+    const legCount = planned && executorForRoute && Number.isFinite(executorForRoute.legCount) && executorForRoute.legCount > 0
+      ? executorForRoute.legCount
       : legs.length;
     // An unplotted mission destination in the pilot's own sector: there is no jump to find, so it
     // is a LOCAL destination rather than an unreachable one.
@@ -287,8 +313,8 @@ export function resolveMapNavContext(input = {}) {
       // itinerary that reads "0 legs remaining" while the ship is still flying is a lie the pilot
       // notices immediately.
       legsRemaining: Math.max(0, legCount - legIndex),
-      engaged: !!(planned && executor && executor.engaged),
-      status: (planned && executor && executor.status) || null,
+      engaged: !!(planned && executorForRoute && executorForRoute.engaged),
+      status: (planned && executorForRoute && executorForRoute.status) || null,
       /** True only when a real course is laid. False means "this is where the contract sends you". */
       planned,
       source: planned ? 'route' : 'mission',
@@ -304,8 +330,8 @@ export function resolveMapNavContext(input = {}) {
   // ---- 4. WHAT IS THE NEXT REACHABLE LEG -----------------------------------------------------
   let nextLeg = null;
   if (legs.length) {
-    const idx = planned && executor && Number.isFinite(executor.legIndex)
-      ? Math.max(0, Math.min(legs.length - 1, executor.legIndex))
+    const idx = planned && executorForRoute && Number.isFinite(executorForRoute.legIndex)
+      ? Math.max(0, Math.min(legs.length - 1, executorForRoute.legIndex))
       : 0;
     const leg = legs[idx];
     if (leg && leg.to) {

@@ -106,6 +106,20 @@ function sectorName(names, id) {
   return String(id);
 }
 
+/** True while the executor's decomposed legs describe this exact plotted itinerary — the same
+ *  from/to contract routeFollower's legsMatchRoute enforces on the sim side. When it fails, the
+ *  executor is a leftover from an abandoned or completed trip and must not shadow the live route. */
+function executorLegsMatchRoute(executor, planLegs) {
+  const stored = executor && Array.isArray(executor.legs) ? executor.legs : null;
+  if (!stored || stored.length !== planLegs.length) return false;
+  for (let i = 0; i < stored.length; i++) {
+    const plan = planLegs[i], leg = stored[i];
+    if (!plan || !leg) return false;
+    if (plan.from !== leg.fromSectorId || plan.to !== leg.toSectorId) return false;
+  }
+  return true;
+}
+
 export function hazardBandFor(interdict) {
   const p = finite(interdict, 0);
   if (p >= HAZARD_CONTESTED_AT) return RIBBON_HAZARD.CONTESTED;
@@ -194,17 +208,29 @@ export function resolveRouteRibbon(input = {}) {
   const playerGlobal = hasXZ(src.playerGlobal) ? { x: src.playerGlobal.x, z: src.playerGlobal.z } : null;
   const speed = finite(src.playerSpeedWUs, 0);
 
-  const status = executor && executor.status ? String(executor.status) : null;
-  const engaged = !!(executor && executor.engaged);
+  const planLegs = route && Array.isArray(route.legs) ? route.legs : [];
+  // A replot rewrites nav.route while nav.executor still names the abandoned (or already-flown)
+  // itinerary — interrupt clears engagement but keeps the old destination stamped. When both
+  // exist and disagree, the plotted route is the committed answer and the executor is treated
+  // as absent; a routeless executor (arrival already consumed the route) keeps its own answers.
+  const routeTerminal = planLegs.length ? planLegs[planLegs.length - 1].to : null;
+  const exec = executor
+    && (!routeTerminal
+      || (executor.destinationSectorId === routeTerminal
+        && (!Array.isArray(executor.legs) || executorLegsMatchRoute(executor, planLegs))))
+    ? executor
+    : null;
+
+  const status = exec && exec.status ? String(exec.status) : null;
+  const engaged = !!(exec && exec.engaged);
   const live = !!status && status !== 'idle' && status !== 'arrived';
 
   // The PLAN. Prefer the executor's own decomposed legs once it exists — those are the legs
   // actually being flown, and they carry resolved targets — but keep the planned legs as the
   // source of fuel/charge/interdict, which the executor does not copy.
-  const planLegs = route && Array.isArray(route.legs) ? route.legs : [];
-  const execLegs = executor && Array.isArray(executor.legs) ? executor.legs : [];
+  const execLegs = exec && Array.isArray(exec.legs) ? exec.legs : [];
   const legCount = Math.max(planLegs.length, execLegs.length,
-    Number.isFinite(executor && executor.legCount) ? executor.legCount : 0);
+    Number.isFinite(exec && exec.legCount) ? exec.legCount : 0);
 
   const hasRoute = legCount > 0;
   const actions = resolveRibbonActions(hasRoute, status, engaged);
@@ -231,8 +257,8 @@ export function resolveRouteRibbon(input = {}) {
     });
   }
 
-  const activeLegIndex = live && Number.isFinite(executor && executor.legIndex)
-    ? Math.max(0, Math.min(legCount - 1, executor.legIndex))
+  const activeLegIndex = live && Number.isFinite(exec && exec.legIndex)
+    ? Math.max(0, Math.min(legCount - 1, exec.legIndex))
     : -1;
 
   const legs = [];
@@ -287,7 +313,7 @@ export function resolveRouteRibbon(input = {}) {
   }
 
   const finalLeg = legs[legs.length - 1] || null;
-  const destinationSectorId = (executor && executor.destinationSectorId)
+  const destinationSectorId = (exec && exec.destinationSectorId)
     || (finalLeg && finalLeg.toSectorId)
     || null;
 
@@ -297,7 +323,7 @@ export function resolveRouteRibbon(input = {}) {
   let nextWaypoint = null;
   if (activeLeg) {
     const target = activeLeg.target
-      || (hasXZ(executor && executor.legTarget) ? { x: executor.legTarget.x, z: executor.legTarget.z } : null);
+      || (hasXZ(exec && exec.legTarget) ? { x: exec.legTarget.x, z: exec.legTarget.z } : null);
     if (target) {
       const d = distanceWU(playerGlobal, target);
       nextWaypoint = Object.freeze({
@@ -339,9 +365,9 @@ export function resolveRouteRibbon(input = {}) {
   const interruption = status === 'interrupted'
     ? Object.freeze({
       active: true,
-      reason: (executor && executor.interruptReason) ? String(executor.interruptReason) : 'unknown',
-      label: (executor && executor.interruptReason)
-        ? `Interrupted — ${String(executor.interruptReason).replace(/[-_]+/g, ' ')}`
+      reason: (exec && exec.interruptReason) ? String(exec.interruptReason) : 'unknown',
+      label: (exec && exec.interruptReason)
+        ? `Interrupted — ${String(exec.interruptReason).replace(/[-_]+/g, ' ')}`
         : 'Interrupted',
       // Interruption never orphans an itinerary: the executor keeps its legs and its legIndex.
       resumable: true,

@@ -83,6 +83,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   let ordinarySectorName = '';
   let ordinarySectorUnnamed = false;
   let loadPending = false;
+  let restoredNamed = false;
   let loadingSlot = null;
   const visible = () => overlay.style.display !== 'none' && !overlay.classList.contains('hidden');
 
@@ -154,6 +155,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     ordinarySectorName = '';
     ordinarySectorUnnamed = false;
     loadPending = false;
+    restoredNamed = false;
     loadingSlot = null;
     paintDestination();
   }
@@ -167,6 +169,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     ordinarySectorName = '';
     ordinarySectorUnnamed = false;
     loadPending = false;
+    restoredNamed = false;
     loadingSlot = null;
     destinationRoute = null;
     const mark = Object.keys(SPECIALIZED_ROUTES).find((key) => opts[key] === true);
@@ -193,6 +196,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     loadPending = false;
     const name = sectorNameFromEnvelope(payload);
     setDestination('restore', name ? `Continue · ${name}` : 'Restoring destination');
+    restoredNamed = true;
   }
   /** game:scenePrepared and loading-time sector:enter refresh ONLY the ordinary Adventure slate. */
   function refreshSceneDestination(payload = {}) {
@@ -608,6 +612,20 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     bus.on('game:new', (opts = {}) => { beginNewGame(opts && typeof opts === 'object' ? opts : {}); }),
     bus.on('game:load', (payload = {}) => { beginRestore(payload && typeof payload === 'object' ? payload : {}); }),
     bus.on('save:envelopePrepared', (payload = {}) => { nameRestore(payload && typeof payload === 'object' ? payload : {}); }),
+    // A restore that never rode game:load — an envelope import, an in-flight rollback, a lane
+    // sync — emits no envelopePrepared, so without these two the slate kept whatever a previous
+    // session latched while mode:changed re-showed the overlay. Re-arm the generic words at
+    // restore start and, once the world has applied, name the sector it actually resumed at.
+    bus.on('save:restoring', () => {
+      if (!restoredNamed) setDestination('restore', 'Restoring destination');
+    }),
+    bus.on('save:loaded', () => {
+      if (destinationRoute === 'restore' && !restoredNamed) {
+        const name = sectorNameFromWorld(state && state.world && state.world.currentSectorId);
+        if (name) setDestination('restore', `Continue · ${name}`);
+      }
+      restoredNamed = false;
+    }),
     bus.on('game:scenePrepared', (payload = {}) => { refreshSceneDestination(payload && typeof payload === 'object' ? payload : {}); }),
     bus.on('sector:enter', (payload = {}) => { nameSectorFromEnter(payload && typeof payload === 'object' ? payload : {}); }),
   ];
