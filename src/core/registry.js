@@ -206,6 +206,7 @@ import { wexTicket } from '../systems/wexTicket.js';
 import { moistureLoss } from '../systems/moistureLoss.js';
 import { rookBooth } from '../systems/rookBooth.js';
 import { kesslerScale } from '../systems/kesslerScale.js';
+import { gateThreeWeir } from '../systems/gateThreeWeir.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only

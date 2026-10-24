@@ -136,7 +136,9 @@ test('production init + update order lengths match the live browser baseline', (
   // wreck census is a seconds-scale read of settled bodies; same calendar clock.
   // 235 -> 236 init / 182 -> 183 update: W-CAST-HANDS registers kesslerScale — the
   // weigh-slip plate census joins the post-physics salvage cluster on the calendar clock.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 236);
+  // 236 -> 237 init / 183 -> 184 update: W-CAST-HANDS registers gateThreeWeir — Hale and
+  // Dree's cordon census sweeps for entries on the same clock.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 237);
 183);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
