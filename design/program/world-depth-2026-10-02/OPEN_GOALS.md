@@ -1,5 +1,12 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current unmatched CI observation: 2026-10-24 17:17 UTC
+
+PR583's27/27 component gate does not make broader CI green. Against actual base2d02f8bb, the publisher found an unmatched `check-bar-mission-readiness` failure:90-second timeout in fresh NewGame's opening render gate, tick0/simTime0, flightVeilHoldsSim=true, GPU admission=false and eight missing material bindings. Artifact12566999120 was verified SHA256 `f4aaacc58d49487576430583c24dce26aaa30a0d78fb5f8485cf9ba6f55567a1`.
+
+Renderer a4be81ca, fixture35a2fa30 and every path outside the thirteen owned custody paths match that actual base. There is no evidence capture/custody executed at this stalled startup point, but matching unchanged renderer files do not establish the cause. Causal status is **UNATTRIBUTED**, not baseline-equivalent and not proven harmless. No unrelated renderer fix, assertion weakening or unchanged-head rerun is authorized by this observation. Publisher retains exact-head CI ownership; all twelve goals and broader acceptance remain open.
+
+
 ## Press Camp guard delivery and active capture qualification: 2026-10-24 17:14 UTC
 
 All twelve goals remain OPEN. [PR590](https://github.com/coldshalamov/SpaceFace/pull/590) publishes scene-local truthful consequences at `1bf564454881810647e54d766857e2eb6c2d4cbc`, sole public-master parent `dda5189bbefcc878dd4dcf61f42973a369530ae9`, tree `1a08d3be9a868432e711e2fd61d825fc169aad46`. Five exact paths are verified: scene358, focused/native tests, package gate and [report](https://github.com/coldshalamov/SpaceFace/blob/1bf564454881810647e54d766857e2eb6c2d4cbc/design/program/world-experience-2026-10-24/PRESS_CAMP_TRUTHFUL_CONSEQUENCES.md). [Run40115047781](https://github.com/coldshalamov/SpaceFace/actions/runs/40115047781) expects29 TAP tests and is pending; synthetic `8aef94f8f2bd80bc9e0830c234ddc4927a5d9775` has the candidate tree. No PR583 dependency or shared-runtime change is in this guard-only head.
