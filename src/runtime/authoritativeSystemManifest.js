@@ -56,8 +56,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // §34 faction-signature rows: mass/heat sensor model (513), Concord formation lock (515),
   // Meridian cargo spines (516), Helix false-flag packs + lien drones (526), Drift claim pylons (530).
   'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
-  'sectorSim', 'towlineTable', 'towlineTablePrompt', ...SHIPBREAKING_YARD_INIT_IDS, 'salvageTender',
-  'borrowedVoice', 'borrowedVoicePrompt', 'salvageOutfits', 'salvageOutfitsPrompt', 'npcJobsRuntime', 'careerOrigins',
+  'sectorSim', 'towlineTable', 'towlineTablePrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'npcJobsRuntime', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
@@ -116,7 +115,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
-  'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'salvageTender', 'industrialDisasters', 'rigWorkshop', 'physics', 'reactiveMatter', 'latchNine', 'combat',
+  'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'physics', 'reactiveMatter', 'latchNine', 'combat',
   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'shipjack', 'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
