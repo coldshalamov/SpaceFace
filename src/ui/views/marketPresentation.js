@@ -240,7 +240,7 @@ export function buildChart(history, average, gradientId, label, extras = {}) {
       ${coneMarkup}
     </svg>
     ${rangeLabels}
-    <span class="sx-mkt-instrument__avg" style="top:${py(avg)}%" aria-hidden="true">avg ${fmt(avg)}</span>
+    <span class="sx-mkt-instrument__avg${Number(py(avg)) < 62 ? ' sx-mkt-instrument__avg--upper' : ''}" style="top:${py(avg)}%" aria-hidden="true">avg ${fmt(avg)}</span>
     ${tick('buy', buyQ, 'buy')}${tick('sell', sellQ, 'sell')}
     <span class="sx-mkt-instrument__dot" style="left:${px(end.x)}%;top:${((end.y / H) * 100).toFixed(2)}%" aria-hidden="true"></span>
     <span class="sx-mkt-instrument__cursor" data-chart-cursor hidden aria-hidden="true"><i></i><b></b></span>
