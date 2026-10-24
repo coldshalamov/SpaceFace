@@ -39,6 +39,32 @@ export const SWARM_BROOD_LATE_FAMILIES = Object.freeze([
     burstRange: 64,
     windupS: 0.5,
   },
+  {
+    id: 'splitter',
+    name: 'Splitter',
+    role: 'brood',
+    fromWave: 21,
+    weight: 2,
+    cohort: 8,
+    radius: 5.4,
+    mass: 28,
+    hull: 20,
+    speed: 34,
+    turn: 2.4,
+    credits: 4,
+    score: 36,
+    telegraph: {
+      bark: 'warn',
+      line: 'The splitter cracks — three smaller bodies take its place.',
+      cue: 'weapon_charge',
+    },
+    counter: 'Kill it and three mites step out of the same budget. Sweep the pieces.',
+    deathLeaves: 'three mites',
+    bodyColor: [0.45, 0.18, 0.32],
+    bodyEmissive: [0.40, 0.08, 0.22],
+    stretch: Object.freeze([1.15, 1.05, 1.15]),
+    splits: true,
+  },
 ]);
 
 /** The late family def for an id, or null. Pure. */

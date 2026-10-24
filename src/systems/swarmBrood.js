@@ -352,6 +352,7 @@ export function createBroodEngine(deps = {}) {
   // share, which is the tide the player cut.
   let hiveMode = false;
   let sacBudget = 0;
+  let splitterReserve = 0;
   let immediateQuota = Infinity;
 
   const view = {
@@ -454,6 +455,7 @@ export function createBroodEngine(deps = {}) {
     headFound = false;
     hiveMode = false;
     sacBudget = 0;
+    splitterReserve = 0;
     immediateQuota = Infinity;
     // The Domino ledger dies with the room: an unflushed death must never shove in the next one.
     deathScratchCount = 0;
@@ -486,6 +488,18 @@ export function createBroodEngine(deps = {}) {
       immediateLeft -= count;
       return { ...part, count };
     }).filter(part => part.count > 0);
+    // A splitter's death becomes three mites. Two of those bodies are held back from the
+    // mite share now, so the split spends the wave's own budget and the total never grows.
+    splitterReserve = 0;
+    const splitterRow = pendingPlan.find((part) => part.id === 'splitter');
+    if (splitterRow && splitterRow.count > 0) {
+      const miteRow = pendingPlan.find((part) => part.id === 'mite');
+      const room = miteRow ? Math.max(0, miteRow.count - 1) : 0;
+      const take = Math.min(splitterRow.count * 2, room);
+      if (miteRow && take > 0) miteRow.count -= take;
+      splitterReserve = take;
+      pendingPlan = pendingPlan.filter((part) => part.count > 0);
+    }
     liveWave = w;
     view.wave = liveWave;
     view.tendril = tendrilMode;
@@ -1660,6 +1674,7 @@ export function createBroodEngine(deps = {}) {
       killPosZ[c] = finite(sampleZ);
     }
     if (def && (def.burstRadius > 0 || def.shardRadius > 0)) broodDeathBurst(i, def, credited);
+    if (def && def.splits) releaseSplit(i, def);
     if (!credited) return;
     creditedCount[c]++;
     const pay = killPayFor(liveFamilyId[family[i]]);
@@ -1668,6 +1683,39 @@ export function createBroodEngine(deps = {}) {
     // Same Domino receipt as the chain: the cell's own last position, keyed by its spawn serial
     // so a slot reused inside the wave still counts as a new death.
     noteCreditedDeath(`cell:${serial[i]}`, px[i], pz[i]);
+  }
+
+  function familyIndexOf(id) {
+    for (let n = 0; n < liveFamilyCount; n++) if (liveFamilyId[n] === id) return n;
+    return -1;
+  }
+
+  function releaseSplit(i, def) {
+    const tele = def.telegraph || {};
+    if (bus) {
+      bus.emit('swarm:broodTelegraph', {
+        familyId: def.id,
+        bark: tele.bark,
+        line: tele.line,
+        cue: tele.cue,
+        pos: { x: px[i], z: pz[i] },
+      });
+    }
+    const miteIdx = familyIndexOf('mite');
+    if (miteIdx < 0) return;
+    const ox = px[i];
+    const oz = pz[i];
+    for (let n = 0; n < 3; n++) {
+      if (n > 0) {
+        if (splitterReserve <= 0) break;
+        splitterReserve -= 1;
+      }
+      if (aliveCount >= CAP) break;
+      const slot = findFreeSlot();
+      if (slot < 0) break;
+      const ang = n * (Math.PI * 2 / 3);
+      spawnAt(slot, miteIdx, ox + Math.cos(ang) * 8, oz + Math.sin(ang) * 8);
+    }
   }
 
   function flushKills(state) {
@@ -1839,6 +1887,9 @@ export function createBroodEngine(deps = {}) {
     },
     _hive() {
       return { mode: hiveMode, sacBudget, immediateQuota };
+    },
+    _splitter() {
+      return { reserve: splitterReserve };
     },
     _setFamilyMirrorForTest: setFamilyMirror,
     _killDirectForTest(i, cause) {

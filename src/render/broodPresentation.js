@@ -222,6 +222,7 @@ export function createBroodPresentation(scene, capacity = 400) {
   const pos = new THREE.Vector3();
   const scl = new THREE.Vector3();
   const color = new THREE.Color();
+  const splitTint = new THREE.Color();
 
   const FAMILY_COLORS = DRAW_FAMILIES.map((def) => color.clone().setRGB(
     def.bodyColor[0], def.bodyColor[1], def.bodyColor[2],
@@ -281,6 +282,10 @@ export function createBroodPresentation(scene, capacity = 400) {
         mesh.setMatrixAt(written, matrix);
         const c = drawn ? FAMILY_COLORS[fam] : FAMILY_COLORS[0];
         color.copy(c);
+        if (drawn && drawn.splits && Array.isArray(drawn.bodyEmissive)) {
+          splitTint.setRGB(drawn.bodyEmissive[0], drawn.bodyEmissive[1], drawn.bodyEmissive[2]);
+          color.lerp(splitTint, 0.45);
+        }
         mesh.setColorAt(written, color);
         // The charger's line telegraph: one stretched marker per winding pass.
         if (phase[i] === 1 && chargersWinding < LINE_CAP && drawn && drawn.id === 'charger') {
