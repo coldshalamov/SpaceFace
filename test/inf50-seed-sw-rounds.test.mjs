@@ -83,9 +83,12 @@ test('seed 4242: elite and challenge raise pressure and purse, and the ordinary 
     },
   };
   const choices = circuitChoicesFor(routeRun);
-  const plain = choices.filter((choice) => choice.kind === 'route' && !choice.fight);
+  const plain = choices.filter((choice) => choice.kind === 'route' && !choice.fight && !choice.node);
   assert.equal(plain.length, 2);
   assert.equal(choices.filter((choice) => choice.kind === 'event').length, 1);
+  assert.equal(choices.filter((choice) => choice.kind === 'service').length, 3);
+  assert.equal(choices.filter((choice) => choice.node === 'mystery').length, 1);
+  assert.equal(choices.length, 11);
   assert.equal(choices.filter((choice) => choice.fight === 'elite').length, 2);
   assert.equal(choices.filter((choice) => choice.fight === 'challenge').length, 2);
   const base = planWave({ seed: SEED, arenaId: 'lagrange_crucible', wave: 5, mode: 'swarm', circuitRound: circuitRoundFor(runAt(5), 5) });

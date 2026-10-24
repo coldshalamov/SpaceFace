@@ -16,6 +16,7 @@ import {
   CIRCUIT_DESTINATIONS,
   CIRCUIT_EVENT,
   CIRCUIT_ROUNDS_PER_STAGE,
+  CIRCUIT_SERVICES,
   CIRCUIT_STAGE_COUNT,
   CIRCUIT_TOTAL_ROUNDS,
   circuitChoicesFor,
@@ -24,6 +25,7 @@ import {
   circuitRoundFor,
   circuitSalvageOffer,
   circuitStateError,
+  circuitTreasurePick,
   createCircuitState,
   isBossCircuitRuleset,
   SURVIVAL_BOSS_CIRCUIT_LENGTH,
@@ -55,6 +57,7 @@ import {
   sampleGhostPoseFromState,
 } from './survivalRecords.js';
 import { applyHangarToPlayer } from './swarmHangar.js';
+import { ownedSwarmLegendaryIds, SWARM_LEGENDARY_RECORD_KIND } from '../data/swarmDraft.js';
 import { swarmThreatMutatorIds } from '../data/swarmThreats.js';
 import { POWERED_CONVEYOR_RULESET, POWERED_CONVEYOR_DEMO_TICKS } from '../data/survivalMutators.js';
 
@@ -568,6 +571,156 @@ export const survivalRun = {
       });
       return;
     }
+    if (choice.kind === 'service') {
+      if (circuit.status !== 'route' || circuit.card || circuit.service
+        || choice.stage !== circuit.clearedStages + 1) {
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: false, kind: 'service', reason: 'That service is not on offer.',
+        });
+        return;
+      }
+      const svc = CIRCUIT_SERVICES.find((entry) => entry.id === choice.serviceId);
+      if (!svc) {
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: false, kind: 'service', reason: 'That service is not on offer.',
+        });
+        return;
+      }
+      if (svc.id === 'armory') {
+        circuit.service = { id: 'armory', stage: choice.stage };
+        circuit.revision += 1;
+        run.telemetry.circuit = circuit;
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: true, kind: 'service', serviceId: 'armory', circuit: circuitFor(run),
+        });
+        return;
+      }
+      if (svc.id === 'repair') {
+        const player = this._playerEntity();
+        const hullMax = Number(player && player.hullMax);
+        const hull = Number(player && player.hull);
+        if (!player || !(hullMax > 0) || !(hull < hullMax)) {
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'service', serviceId: 'repair',
+            reason: 'The hull is already sound.',
+          });
+          return;
+        }
+        const cost = svc.cost;
+        const before = Number.isFinite(run.credits) ? run.credits : 0;
+        if (!(before >= cost)) {
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'service', serviceId: 'repair',
+            reason: 'Not enough run credits to repair.',
+          });
+          return;
+        }
+        this._emit('run:spendRequested', { credits: cost, reason: 'circuit_repair' });
+        const paid = liveSurvivalRun(this.state);
+        if (!paid || paid.credits !== before - cost) {
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'service', serviceId: 'repair',
+            reason: 'The purse refused the repair.',
+          });
+          return;
+        }
+        const livePlayer = this._playerEntity();
+        if (livePlayer) livePlayer.hull = livePlayer.hullMax;
+        const paidCircuit = circuitFor(paid);
+        if (!paidCircuit || !this._advanceCircuitService(paid, paidCircuit, choice.stage, 'repair')) {
+          this._emit('run:awardRequested', { credits: cost, reason: 'circuit_repair_refund' });
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'service', serviceId: 'repair',
+            reason: 'The route is no longer on the table.',
+          });
+          return;
+        }
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: true, kind: 'service', serviceId: 'repair', circuit: circuitFor(paid),
+        });
+        return;
+      }
+      if (svc.id === 'treasure') {
+        const pick = circuitTreasurePick(run.seed, choice.stage, run.wave, ownedSwarmLegendaryIds(run));
+        if (!pick) {
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'service', serviceId: 'treasure',
+            reason: 'Nothing in the box is still for sale.',
+          });
+          return;
+        }
+        const before = Number.isFinite(run.credits) ? run.credits : 0;
+        if (!(before >= pick.price)) {
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'service', serviceId: 'treasure',
+            reason: 'Not enough run credits for that legendary.',
+          });
+          return;
+        }
+        this._emit('run:spendRequested', { credits: pick.price, reason: 'circuit_treasure' });
+        const paid = liveSurvivalRun(this.state);
+        if (!paid || paid.credits !== before - pick.price) {
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'service', serviceId: 'treasure',
+            reason: 'The purse refused the treasure.',
+          });
+          return;
+        }
+        this._emit('run:modifierRecordRequested', {
+          record: {
+            kind: SWARM_LEGENDARY_RECORD_KIND,
+            offerId: pick.offerId,
+            legendaryId: pick.id,
+            name: pick.name,
+            wave: Math.max(1, paid.wave),
+          },
+          draft: { wave: paid.wave, offered: [pick.offerId], picked: pick.offerId },
+          wave: paid.wave,
+        });
+        const recorded = liveSurvivalRun(this.state);
+        if (!recorded || !ownedSwarmLegendaryIds(recorded).includes(pick.id)) {
+          this._emit('run:awardRequested', { credits: pick.price, reason: 'circuit_treasure_refund' });
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'service', serviceId: 'treasure',
+            reason: 'That legendary would not stay on the manifest.',
+          });
+          return;
+        }
+        const recordedCircuit = circuitFor(recorded);
+        if (!recordedCircuit || !this._advanceCircuitService(recorded, recordedCircuit, choice.stage, 'treasure')) {
+          this._emit('run:awardRequested', { credits: pick.price, reason: 'circuit_treasure_refund' });
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'service', serviceId: 'treasure',
+            reason: 'The route is no longer on the table.',
+          });
+          return;
+        }
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: true, kind: 'service', serviceId: 'treasure',
+          treasure: pick, circuit: circuitFor(recorded),
+        });
+        return;
+      }
+    }
+    if (choice.kind === 'service_done') {
+      if (circuit.status !== 'route' || !circuit.service || circuit.service.id !== 'armory'
+        || circuit.service.stage !== choice.stage) {
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: false, kind: 'service_done', reason: 'The bench is not open.',
+        });
+        return;
+      }
+      if (!this._advanceCircuitService(run, circuit, choice.stage, 'armory')) {
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: false, kind: 'service_done', reason: 'The route is no longer on the table.',
+        });
+        return;
+      }
+      this._emit('run:circuitChoiceApplied', {
+        offerId, accepted: true, kind: 'service_done', serviceId: 'armory', circuit: circuitFor(run),
+      });
+      return;
+    }
     if (choice.kind === 'finish') {
       if (circuit.status !== 'finale') {
         this._emit('run:circuitChoiceApplied', {
@@ -616,6 +769,41 @@ export const survivalRun = {
     run.arenaId = dest.arenaId;
     run.telemetry.circuit = circuit;
     return dest;
+  },
+
+  /** The player ship, when the sim has one. Hull writes stay on that entity. */
+  _playerEntity() {
+    const state = this.state;
+    if (!state || state.playerId == null || !state.entities) return null;
+    return typeof state.entities.get === 'function' ? state.entities.get(state.playerId) : null;
+  },
+
+  /**
+   * Record a service stop and skip its stage. The route grows by one service entry and the
+   * next fight, if any, is the following stage. No arena is installed and no wave is planned.
+   */
+  _advanceCircuitService(run, circuit, stage, serviceId) {
+    if (!run || !circuit || !Array.isArray(circuit.route) || !Number.isInteger(stage)) return false;
+    const routeEntry = { stage, arenaId: serviceId, nodeId: serviceId, nodeKind: 'service' };
+    circuit.route = circuit.route
+      .filter((entry) => entry.stage !== stage)
+      .concat([routeEntry])
+      .sort((a, b) => a.stage - b.stage);
+    delete circuit.card;
+    delete circuit.service;
+    circuit.clearedStages = stage;
+    circuit.revision += 1;
+    if (circuit.clearedStages >= CIRCUIT_STAGE_COUNT) {
+      circuit.status = 'finale';
+      circuit.wonAtWave = CIRCUIT_TOTAL_ROUNDS;
+    } else {
+      circuit.status = 'route';
+      circuit.wonAtWave = null;
+    }
+    run.wave = circuit.clearedStages * CIRCUIT_ROUNDS_PER_STAGE;
+    if (!run.telemetry || typeof run.telemetry !== 'object') run.telemetry = {};
+    run.telemetry.circuit = circuit;
+    return circuitFor(run) != null;
   },
 
   _onDraftResolved() {

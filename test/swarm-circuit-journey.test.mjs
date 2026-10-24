@@ -632,10 +632,11 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.equal(after.status, 'route');
       assert.equal(after.clearedStages, wave / 4);
       const choices = circuitChoicesFor(h.state.run);
-      const rooms = choices.filter((entry) => entry.kind === 'route' && !entry.fight);
+      const rooms = choices.filter((entry) => entry.kind === 'route' && !entry.fight && !entry.node);
       assert.equal(rooms.length, 2, 'each stage offers two ordinary destinations');
-      assert.equal(choices.filter((entry) => entry.kind === 'route').length, 6, 'elite and challenge sit beside them and can be refused');
+      assert.equal(choices.filter((entry) => entry.kind === 'route').length, 7, 'elite, challenge and the box sit beside them and can be refused');
       assert.equal(choices.filter((entry) => entry.kind === 'event').length, 1, 'one event card sits beside the rooms');
+      assert.equal(choices.filter((entry) => entry.kind === 'service').length, 3, 'armory, repair and treasure sit beside the rooms');
       const choice = rooms[0];
       const applied = choose(h, choice.id);
       assert.equal(applied.accepted, true, applied.reason);
@@ -949,8 +950,9 @@ test('presentation names survive rounds, stages, route progress and the finale',
   const panel = circuitPanelLines(run);
   assert.equal(panel.heading, 'The Circuit');
   assert.match(panel.status, /Choose where stage 2 fights/);
-  assert.deepEqual(panel.choices.filter((c) => c.kind === 'route' && !c.fight).map((c) => c.kind), ['route', 'route']);
+  assert.deepEqual(panel.choices.filter((c) => c.kind === 'route' && !c.fight && !c.node).map((c) => c.kind), ['route', 'route']);
   assert.equal(panel.choices.filter((c) => c.kind === 'event').length, 1);
+  assert.equal(panel.choices.filter((c) => c.kind === 'service').length, 3);
   assert.equal(panel.choices.filter((c) => c.fight === 'elite').length, 2);
   assert.equal(panel.choices.filter((c) => c.fight === 'challenge').length, 2);
   const names = panel.choices.map((c) => c.label);
@@ -1143,11 +1145,14 @@ test('both destinations at every boundary are authored arenas with their own law
       const first = circuitChoicesFor(run);
       const second = circuitChoicesFor(run);
       assert.deepEqual(first, second, 'identical state yields identical descriptors');
-      const rooms = first.filter((entry) => entry.kind === 'route' && !entry.fight);
+      const rooms = first.filter((entry) => entry.kind === 'route' && !entry.fight && !entry.node);
       assert.equal(rooms.length, 2);
-      assert.equal(first.filter((entry) => entry.kind === 'route').length, 6);
-      assert.equal(first.length, 7);
-      const choice = first.find((entry) => entry.kind === 'route' && entry.arenaId === dest.arenaId && !entry.fight);
+      assert.equal(first.filter((entry) => entry.kind === 'route').length, 7);
+      assert.equal(first.filter((entry) => entry.kind === 'route' && entry.node === 'mystery').length, 1);
+      assert.equal(first.filter((entry) => entry.kind === 'event').length, 1);
+      assert.equal(first.filter((entry) => entry.kind === 'service').length, 3);
+      assert.equal(first.length, 11);
+      const choice = first.find((entry) => entry.kind === 'route' && entry.arenaId === dest.arenaId && !entry.fight && !entry.node);
       assert.ok(choice, `${dest.arenaId} is offered at stage ${stage}`);
       assert.equal(choice.line, dest.line);
       const wave = run.wave + 1;
@@ -1308,7 +1313,7 @@ test('Circuit choice controls are native buttons and activate through the draft-
       bus: { emit: (event, payload) => emitted.push({ event, payload }) },
     }, choices);
     assert.equal(list.children.length, choices.length);
-    assert.equal(choices.filter((choice) => choice.kind === 'route' && !choice.fight).length, 2);
+    assert.equal(choices.filter((choice) => choice.kind === 'route' && !choice.fight && !choice.node).length, 2);
     for (const [index, item] of list.children.entries()) {
       const button = item.children[0];
       assert.equal(button.tag, 'button');
