@@ -1,5 +1,13 @@
 <!-- LIFETIME: DURABLE -->
 
+## Handoff remaining trade delivered: 2026-10-24 06:34 UTC
+
+PR568 is verified open draft at `60c654268b4c5b05f5d2833062de0a937380599e`, following `8ee99a3`, with nine changed paths. See its `HANDOFF_REMAINING_TRADE.md`, published native evidence and follow-through diagram for the detailed record. Immediate original bond/reward remains once-only while NPC trade continues to physical receipt: 10.0833 seconds after a 7.0833-second bond. Recycled identities, re-entry and paid-cap cleanup are guarded. Independent checks passed 55/55 plus native 2/2; the inherited unexplained missing-cargo-minus-two limit remains documented.
+
+The connected trade now records the original NPC physical receipt after the player's once-only bond, with a published measured-result diagram. This is not full-scene, production-MTS, Save or ordinary-admission acceptance. The next production-hull feasibility investigation retains the original owner and has no reported result yet.
+
+PR569 at `8d296338` now has hosted Node 6/6 and actual confirm-browser PASS (exit 0, 6,457 ms). Its overall run 40069473633 remains active with other failures, under its publisher. Archive's block, existing ownership, browser/integration approval holds and both continuation schedules are unchanged. No merge or deployment is implied.
+
 ## Current qualification correction: 2026-10-24 06:16 UTC
 
 PR569 is now open draft at `8d2963383b45eea242b8182e9f01ce19137534d6`, following `541d43b5`, tree `3a6c8eb8669925a446cd2788f620dd11fe011503`. The four-path follow-up repairs probe identity/settlement observation, not production UI. Tests pass 6/6 versus baseline 1/6; independent in-memory actual confirm/motion supersession and Tab/Enter/replacement checks pass. Hosted modal behavior remains unknown; publisher-owned run 40069473633 is still active.
