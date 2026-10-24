@@ -657,6 +657,14 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${MD} .so-trade-total > strong { line-height:16px !important; }
   ${MD} .so-trade-breakdown > summary { line-height:15px !important; padding:0 !important; margin:0 !important; }
   ${MD} .sx-trade__go.orr-lampkey { min-height:24px !important; }
+  /* the trace here is ~119px wide and 48–56px tall, so SPREAD (over its bracket, whose top is at
+     most h−40px down) and AVG (over its line) shared the band over the plot: "AVG 215" printed
+     across "14 SPREAD" on Machine Control Unit, and SPREAD rode into the "Last move" line. SPREAD
+     sets on one 13px line, and an average in the upper ~62% of the plot reads just under its line
+     instead, clear of the SPREAD band; lower down it stays above its line, still under that band. */
+  ${MD} .orr-mkt-spread__v { line-height:13px !important; padding-bottom:1px !important; }
+  ${MD} .sx-mkt-instrument__avg { line-height:14px !important; transform:translateY(calc(-100% - 3px)) !important; }
+  ${MD} .sx-mkt-instrument__avg--upper { transform:translateY(3px) !important; }
 }
 /* ---- 651–1100 × ≤460 desktop (e.g. 844×390): the panel's rows sized to the 345px list, so the
    index and the stage ran ~110px past the berth's tab cell and a pending decision (REPAIR NOW / FLY
