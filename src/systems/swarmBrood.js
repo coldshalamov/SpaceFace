@@ -118,6 +118,11 @@ import {
   swarmBroodPlan,
   swarmBroodSacReserve,
 } from '../data/swarmBrood.js';
+import {
+  SWARM_BROOD_LATE_FAMILIES,
+  foldBroodLatePlan,
+  swarmBroodLateFamily,
+} from '../data/swarmBroodLate.js';
 
 const DT = 1 / 60;
 const CAP = SWARM_BROOD_MAX;
@@ -135,6 +140,7 @@ export const BROOD_PHASE_WINDUP = 1;
 export const BROOD_PHASE_DASH = 2;
 export const BROOD_PHASE_RECOVER = 3;
 export const BROOD_PHASE_LATCHED = 4;
+export const BROOD_PHASE_BURIED = 5;
 
 // --- spatial hash: open hashing over 16wu cells, chained lists in retained arrays -----------
 const CELL = 16;
@@ -378,7 +384,8 @@ export function createBroodEngine(deps = {}) {
 
   // Sized from the authored roster, not a fixed capacity: every family the catalog can
   // field must fit the mirror, or spawnWave silently drops its planned allocation.
-  const FAMILY_SLOT_MAX = Math.max(8, SWARM_BROOD_FAMILIES.length);
+  const BROOD_FAMILY_DEFS = SWARM_BROOD_FAMILIES.concat(SWARM_BROOD_LATE_FAMILIES);
+  const FAMILY_SLOT_MAX = Math.max(8, BROOD_FAMILY_DEFS.length);
   const liveFamilyId = new Array(FAMILY_SLOT_MAX).fill(null);
   const liveFamilyDef = new Array(FAMILY_SLOT_MAX).fill(null);
   const liveFamilyRadius = new Float32Array(FAMILY_SLOT_MAX);
@@ -410,10 +417,14 @@ export function createBroodEngine(deps = {}) {
   const killPayCache = new Map();
   function killPayFor(familyIdStr) {
     let pay = killPayCache.get(familyIdStr);
-    if (!pay) {
-      pay = swarmBroodKillPay(familyIdStr);
-      killPayCache.set(familyIdStr, pay);
+    if (pay) return pay;
+    pay = swarmBroodKillPay(familyIdStr);
+    // The base table pays {0,0} for an id it does not know. Late families carry their own pay.
+    if (!pay || (pay.credits === 0 && pay.score === 0)) {
+      const late = swarmBroodLateFamily(familyIdStr);
+      if (late) pay = { credits: late.credits, score: late.score };
     }
+    killPayCache.set(familyIdStr, pay);
     return pay;
   }
 
@@ -456,7 +467,8 @@ export function createBroodEngine(deps = {}) {
     const w = Math.max(1, Math.trunc(Number(wave) || 1));
     clear('wave_planned');
     rng = mulberry32(broodStreamSeed(seed, w));
-    pendingPlan = swarmBroodPlan(w, rng);
+    // Late families replace mites. They do not add a second population on top of the plan.
+    pendingPlan = foldBroodLatePlan(swarmBroodPlan(w, rng), w);
     // The Tendril's wave arms the body: the engine waits for the champion hull to materialize
     // (a real entity, stamped by its catalog id) and trails the chain behind it.
     tendrilMode = swarmBroodBossFor(w) === SWARM_BROOD_TENDRIL_ID;
@@ -483,6 +495,7 @@ export function createBroodEngine(deps = {}) {
   /** Fill the planned cohort around the player anchor, in clumps on the wave's gate ring. */
   function spawnWave(state) {
     if (!pendingPlan || pendingPlan.length === 0) return 0;
+    cacheRocks(state);
     spawnRequested = true; // the arena owns the initial lesson release; retries cannot bypass it
     const now = finite(state?.simTime);
     nextSpawnAttemptAt = now + 0.5;
@@ -507,6 +520,7 @@ export function createBroodEngine(deps = {}) {
             liveFamilyRadius[famIdx], { clearance: BROOD_SPAWN_ROCK_CLEARANCE });
           if (!open) { owed++; continue; }
           spawnAt(slot, famIdx, open.x, open.z);
+          if (liveFamilyDef[famIdx] && liveFamilyDef[famIdx].burrows) parkBurrower(slot);
           spawned++;
         }
       }
@@ -536,6 +550,28 @@ export function createBroodEngine(deps = {}) {
     swellUntil[slot] = 0;
     primeUntil[slot] = 0;
     aliveCount += 1;
+  }
+
+  function parkBurrower(slot) {
+    if (rockCount <= 0) return;
+    let best = 0;
+    let bestD = Infinity;
+    const x = px[slot];
+    const z = pz[slot];
+    for (let r = 0; r < rockCount; r++) {
+      const dx = x - rockX[r];
+      const dz = z - rockZ[r];
+      const d = dx * dx + dz * dz;
+      if (d < bestD) { best = r; bestD = d; }
+    }
+    px[slot] = rockX[best];
+    pz[slot] = rockZ[best];
+    vx[slot] = 0;
+    vz[slot] = 0;
+    phase[slot] = BROOD_PHASE_BURIED;
+    teleX[slot] = rockX[best];
+    teleZ[slot] = rockZ[best];
+    timer[slot] = 0;
   }
 
   function findFreeSlot() {
@@ -695,6 +731,16 @@ export function createBroodEngine(deps = {}) {
       // -- latched leechers ride the host: glue position, brake, shed by wall scrape
       if (phase[i] === BROOD_PHASE_LATCHED) {
         stepLatched(i, fam, dt, state);
+        continue;
+      }
+
+      // A buried burrower stays inside its rock. Windup holds that same point so the
+      // telegraph finishes before the body leaves the silhouette. Rock contact would
+      // shove or kill a body parked in the stone, so this path skips it.
+      const buriedDef = liveFamilyDef[fam];
+      if (buriedDef && buriedDef.burrows
+          && (phase[i] === BROOD_PHASE_BURIED || phase[i] === BROOD_PHASE_WINDUP)) {
+        stepBurrower(i, buriedDef, dt);
         continue;
       }
 
@@ -930,6 +976,53 @@ export function createBroodEngine(deps = {}) {
   }
 
   // --- the spitter: a marked arc, then a splash that stays a beat ---------------------------
+
+  function stepBurrower(i, def, dt) {
+    px[i] = teleX[i];
+    pz[i] = teleZ[i];
+    vx[i] = 0;
+    vz[i] = 0;
+    if (phase[i] === BROOD_PHASE_BURIED) {
+      const dx = playerX - px[i];
+      const dz = playerZ - pz[i];
+      const range = def.burstRange > 0 ? def.burstRange : 64;
+      if (dx * dx + dz * dz > range * range) return;
+      const tele = def.telegraph || {};
+      if (bus) {
+        bus.emit('swarm:broodTelegraph', {
+          familyId: def.id,
+          bark: tele.bark,
+          line: tele.line,
+          cue: tele.cue,
+          pos: { x: px[i], z: pz[i] },
+        });
+      }
+      phase[i] = BROOD_PHASE_WINDUP;
+      timer[i] = def.windupS > 0 ? def.windupS : 0.5;
+      return;
+    }
+    timer[i] -= dt;
+    if (timer[i] > 0) return;
+    const dx = playerX - px[i];
+    const dz = playerZ - pz[i];
+    const d = Math.sqrt(dx * dx + dz * dz) || 1;
+    let exit = liveFamilyRadius[family[i]] + 4;
+    for (let r = 0; r < rockCount; r++) {
+      const rdx = rockX[r] - teleX[i];
+      const rdz = rockZ[r] - teleZ[i];
+      if (rdx * rdx + rdz * rdz < 1) {
+        exit = rockR[r] + liveFamilyRadius[family[i]] + 2;
+        break;
+      }
+    }
+    const speed = liveFamilySpeed[family[i]];
+    vx[i] = (dx / d) * speed;
+    vz[i] = (dz / d) * speed;
+    px[i] += (dx / d) * exit;
+    pz[i] += (dz / d) * exit;
+    phase[i] = BROOD_PHASE_FLOCK;
+    timer[i] = 0;
+  }
 
   function takeAttackSlot() {
     if (attackSlots <= 0 || attackClock + 1e-9 < nextAttackAt) return false;
@@ -1715,7 +1808,7 @@ export function createBroodEngine(deps = {}) {
     }
   }
 
-  setFamilyMirror(SWARM_BROOD_FAMILIES);
+  setFamilyMirror(BROOD_FAMILY_DEFS);
   publish();
 
   return {
