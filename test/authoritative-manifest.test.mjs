@@ -138,7 +138,9 @@ test('production init + update order lengths match the live browser baseline', (
   // weigh-slip plate census joins the post-physics salvage cluster on the calendar clock.
   // 236 -> 237 init / 183 -> 184 update: W-CAST-HANDS registers gateThreeWeir — Hale and
   // Dree's cordon census sweeps for entries on the same clock.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 237);
+  // 237 -> 238 init / 184 -> 185 update: W-CAST-HANDS registers slateColumn — the
+  // weld-spike ledger's proximity read joins the same clock (row 542 complete).
+  assert.equal(PRODUCTION_INIT_ORDER.length, 238);
 183);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
