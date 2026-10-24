@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Hawser attended repair delivered: 2026-10-24 11:12 UTC
+
+Hawser's existing salvage-watch repair now depends on the original tug physically attending the original casualty. Real propulsion closes the gap; work accrues only within a 15–70-WU surface gap and relative speed at most 5 for 55 observed seconds. Threat pressure and separation pause work rather than granting remote repairs, while ownership and cleanup guards prevent foreign actors from being mistaken for the original cast.
+
+[PR580](https://github.com/coldshalamov/SpaceFace/pull/580), head `ad9b52dd`, publishes five paths with final eleven focused/two native passes. See the [report](https://github.com/coldshalamov/SpaceFace/blob/ad9b52dd00bf8cf78e64ba3ff70f7cb12390f3c5/design/program/world-experience-2026-10-24/HAWSER_ATTENDED_REPAIR.md) for actual stock-equipment, collision and Save qualifications. Historical native candidates are retained separately; the final source was replayed after review fixes. Natural scheduler admission, return-home/docking, full-graph, live visuals and performance remain unaccepted. No assets or actor counts were expanded. All twelve goals remain OPEN; the current checkpoint records CI and unchanged approval holds.
+
 ## Grandee causal consequences delivered: 2026-10-24 10:34 UTC
 
 Hosted update: Grandee's gate passed 18/18 (exit 0, 1,180 ms) in run 40086172183, artifact 12556829425. The verified synthetic checkout `f3a6cd53` has the same full tree as corrected head `e7d2d8d3`. All eleven static-2 failed command IDs and the two FEEL failures match the actual public parent; broader CI remains active, not green.

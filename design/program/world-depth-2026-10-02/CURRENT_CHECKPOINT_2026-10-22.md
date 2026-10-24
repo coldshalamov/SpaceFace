@@ -1,5 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
+## Hawser attended repair delivered: 2026-10-24 11:12 UTC
+
+[Draft PR580](https://github.com/coldshalamov/SpaceFace/pull/580) is verified at `ad9b52dd00bf8cf78e64ba3ff70f7cb12390f3c5`, with five paths and sole public parent `a3c49d376fc7734c41ea218ceb63a4c4c9afd262`. Existing SalvageWatch/Hawser scene 362 now requires physical attended repair instead of paying after a timer while the tug is remote. The scene-only controller uses real propulsion and original actor/body/generation/role/control ownership; repair requires a 15–70-WU surface gap, relative speed at most 5 and 55 observed attended seconds. Pressure or separation pauses work and requires a real return. No shared AI, traffic, Save, generator or assets changed, and threats are not suppressed.
+
+The exact final reviewed source passes eleven focused plus two native tests. Earlier native runs remain historical, not substitutes for final qualification; the final replay was repeated after lifecycle and foreign-actor review corrections. The [attended-repair report](https://github.com/coldshalamov/SpaceFace/blob/ad9b52dd00bf8cf78e64ba3ff70f7cb12390f3c5/design/program/world-experience-2026-10-24/HAWSER_ATTENDED_REPAIR.md) records real stock equipment, impacts and actual approach/work/completed Save behavior. This is not natural scheduler, return-home/docking, full-graph, visual or performance acceptance. A model preview is in progress, not yet a completed live-camera result.
+
+Run 40088669919 remains active under the publisher. Its verified synthetic merge has the same full tree as the published head. PR577 run 40085344535 is now terminal FAILURE: eight worker jobs failed and browser 3 was cancelled near its limit, while focused 11/11 passed. Parent/tested-base runs were partly cancelled, so attribution remains partial. PR578 run 40086172183 also ended FAILURE with focused 18/18 passing; inspected completed failure-command sets match the actual parent, but both browser-3 runs were cancelled and the partial PR artifact is uninspected. Neither broad run is green.
+
+All twelve goals remain OPEN. Integration-absorption and browser-document approval holds remain separate and pending; reminders grant neither. Archive recovery/publication limits and both schedules are unchanged. Existing owners retain active work; no competing source queue is created here.
+
 ## Grandee causal consequences delivered: 2026-10-24 10:34 UTC
 
 Hosted update: Grandee's gate passed 18/18 (exit 0, 1,180 ms) in run 40086172183, artifact 12556829425. The verified synthetic checkout `f3a6cd53` has the same full tree as corrected head `e7d2d8d3`. All eleven static-2 failed command IDs and the two FEEL failures match the actual public parent; broader CI remains active, not green.
