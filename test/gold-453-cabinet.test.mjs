@@ -383,6 +383,8 @@ function cabinetDom({svg=false,canvas=true}={}) {
     n.removeChild=function(child){const index=this.children.indexOf(child);if(index>=0)this.children.splice(index,1);child.parentNode=null;return child;};
     n.insertBefore=function(child,anchor){child.parentNode?.removeChild(child);const index=this.children.indexOf(anchor);
       child.parentNode=this;this.children.splice(index<0?this.children.length:index,0,child);return child;};
+    n.replaceChild=function(child,old){const index=this.children.indexOf(old);if(index<0)throw new Error('replaceChild: node not found');
+      child.parentNode?.removeChild(child);child.parentNode=this;this.children.splice(index,1,child);old.parentNode=null;return old;};
     n.replaceChildren=function(...children){for(const c of [...this.children])this.removeChild(c);this.append(...children);};
     n.remove=function(){this.parentNode?.removeChild(this);};
     n.matches=s=>matches(n,s); n.querySelectorAll=s=>descendants(n).filter(c=>matches(c,s));

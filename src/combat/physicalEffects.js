@@ -260,7 +260,10 @@ function drainBlast(state, rt, job, helpers) {
         continue;
       }
     }
-    if (!eligible(body, job.includeAnchored !== false)) continue;
+    // alsoEligible: caller-admitted bodies that fail the physics eligibility (kinematic
+    // fauna are blast-damage targets even though no impulse may move them).
+    if (!eligible(body, job.includeAnchored !== false)
+      && !(typeof job.alsoEligible === 'function' && job.alsoEligible(body))) continue;
     job.delivered.add(id);
     job.onBody(body);
   }

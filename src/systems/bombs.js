@@ -1454,7 +1454,8 @@ export const bombs = {
       }
     };
     schedulePhysicalBlast(state, { center: pos, radius: def.radius, helpers: this.helpers, excludeId: originId,
-      payload: { kind: 'bomb_blast', sourceId: ownerId, weaponId: def.id, baseImpulse: impulse, damage, damageType: def.damageType, heat: def.heat || 0, tangentRatio: def.tangentRatio || 0 }, onBody: applyBody });
+      payload: { kind: 'bomb_blast', sourceId: ownerId, weaponId: def.id, baseImpulse: impulse, damage, damageType: def.damageType, heat: def.heat || 0, tangentRatio: def.tangentRatio || 0 },
+      alsoEligible: faunaBlastEligible, onBody: applyBody });
     shoves.sort((a, b) => b.mag - a.mag || compareBombEntityIds(a, b));
     // SF-042: a blast reaches armed, still-drifting ordnance as a sympathetic primer — the
     // dramatic delayed second consequence, deterministic and bounded. Primes resolve through

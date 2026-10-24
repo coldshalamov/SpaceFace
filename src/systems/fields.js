@@ -1910,7 +1910,14 @@ export const fields = {
     const envelope = (field.kind === FIELD_KINDS.SHEET || field.kind === FIELD_KINDS.LANE)
       ? Math.hypot(finite(field.radius, 0), finite(field.halfWidth, 0)) : finite(field.radius, 0);
     return queryPhysicalBodies(state, field.center, envelope, this.helpers, out, {
-      contains: e => fieldContainsPoint(field, e.pos.x, e.pos.z),
+      contains: e => {
+        const inside = fieldContainsPoint(field, e.pos.x, e.pos.z);
+        // queryPhysicalBodies drops non-dynamic bodies upstream of the force loop, so the
+        // kinematic refusal never reaches the gather below. Noting it here — inside the
+        // pre-eligibility predicate — keeps the pin read's 'kinematic' row honest.
+        if (inside) this._noteFamilyPin(field, e);
+        return inside;
+      },
     });
   },
 

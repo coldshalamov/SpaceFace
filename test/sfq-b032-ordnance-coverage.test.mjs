@@ -56,7 +56,9 @@ test('the class matrix names machine, wreck, pickup, fauna, craft, and station',
   assert.equal(station.damage, true);
   assert.equal(station.status, true);
   assert.equal(station.trigger, false);
-  assert.equal(station.shove, false);
+  // Anchored bodies joined the physics graph (7a2389fe3f): the blast delivers its impulse to
+  // the station's anchor authority, which absorbs or routes it — the station never slides.
+  assert.equal(station.shove, true);
 
   assert.equal(ordnanceClassVerdict(null).reason, 'missing');
 });

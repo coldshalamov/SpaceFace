@@ -69,6 +69,10 @@ const EXPECTED = {
   tool_thruster_hijacker: 'sfx_wpn_disruptor',
   tool_seismic_gong: 'sfx_wpn_concussion',
   tool_quantum_sympathy: 'sfx_wpn_gravitic',
+  // Saucer built-ins ride their baseId families: the death ray is an L heavy beam,
+  // the annihilator an M plasma battery.
+  wpn_saucer_death_ray: 'sfx_wpn_heavy_beam',
+  wpn_saucer_annihilator: 'sfx_wpn_plasma',
 };
 
 test('every catalog weapon resolves to a recipe that exists in the registry', () => {

@@ -286,14 +286,16 @@ test('PQ-026.02 shunt catalog is a ping-only ram plate on graviton drives', () =
   );
 });
 
-test('PQ-026.02 route cruise numbers are the live catalog, not a constructed 105', () => {
-  assert.equal(governedCruise(WASP), 105, 'Wasp governed cruise is 105');
-  assert.equal(governedCruise(HITCH), 95, 'Hitch governed cruise is 95');
-  assert.equal(governedCruise(HORNET), 84, 'Hornet governed cruise is 84');
-  near(SCREEN / governedCruise(WASP), COAST_S, 'B3 screen-crossing time');
+test('PQ-026.02 route cruise numbers are the live catalog', () => {
+  // e8d10fed7e restored fast cruise ceilings: the governed combat speeds doubled.
+  assert.equal(governedCruise(WASP), 210, 'Wasp governed cruise is 210');
+  assert.equal(governedCruise(HITCH), 195, 'Hitch governed cruise is 195');
+  assert.equal(governedCruise(HORNET), 168, 'Hornet governed cruise is 168');
+  // The screen stays a fixed 126 WU of space — the faster cruise crosses it in half the time.
+  near(SCREEN / governedCruise(WASP), COAST_S / 2, 'B3 screen-crossing time at the restored ceiling');
   assert.equal(driveProfile(HITCH).boostSpeedMult, 1.55, 'Hitch boost cap multiplier');
-  assert.equal(preSolveRadialClosingSpeed(95, 0, 0, 0, 1, 0), 95);
-  assert.equal(preSolveRadialClosingSpeed(95, 0, -105, 0, 1, 0), 200);
+  assert.equal(preSolveRadialClosingSpeed(195, 0, 0, 0, 1, 0), 195);
+  assert.equal(preSolveRadialClosingSpeed(195, 0, -210, 0, 1, 0), 405);
 });
 
 test('PQ-026.02 ROUTE seed 26002: Hitch@cruise ram sends a Wasp ≥ 1 screen and stops the player', () => {
@@ -322,9 +324,9 @@ test('PQ-026.02 ROUTE seed 26002: Hitch@cruise ram sends a Wasp ≥ 1 screen and
     + ` hull=Hitch mass=${HITCH.mass}`,
   );
 
-  assert.equal(result.closing, 95);
-  near(result.lightKick.deltaV, 106.875, 'Hitch dumps its own 95 into the Wasp');
-  near(result.lightTravel, 128.25, 'B3 1.2 s coast');
+  assert.equal(result.closing, 195);
+  near(result.lightKick.deltaV, 219.375, 'Hitch dumps its own 195 into the Wasp');
+  near(result.lightTravel, 263.25, 'B3 1.2 s coast');
   near(result.playerTravel, 0, 'player remaining travel');
   assert.ok(result.lightTravel >= SCREEN,
     `light must cover ≥ 1 screen: ${result.lightTravel.toFixed(3)} of ${SCREEN} WU`);
@@ -339,9 +341,9 @@ test('PQ-026.02 ROUTE seed 26002: Hornet@cruise also clears the screen and stops
     + ` lightTravel=${result.lightTravel.toFixed(3)}WU / ${COAST_S}s`
     + ` playerTravel=${result.playerTravel.toFixed(3)}WU`,
   );
-  assert.equal(result.closing, 84);
-  near(result.lightKick.deltaV, 126, 'Hornet mass 24 at 84 dumps exactly one screen/s');
-  near(result.lightTravel, 151.2, 'Hornet 1.2 s coast');
+  assert.equal(result.closing, 168);
+  near(result.lightKick.deltaV, 252, 'Hornet mass 24 at 168 dumps two screens/s');
+  near(result.lightTravel, 302.4, 'Hornet 1.2 s coast');
   assert.ok(result.lightTravel >= SCREEN);
   assert.ok(result.playerTravel <= PLAYER_STOP);
   assert.ok(result.momentumResidual < MOMENTUM_TOLERANCE);
@@ -366,9 +368,9 @@ test('PQ-026.02 head-on dumps YOUR speed, not relative closing — player stops,
     + ` lightVelAfter=${result.lightVelAfterX.toFixed(3)}`
     + ` playerTravel=${result.playerTravel.toFixed(3)}WU`,
   );
-  assert.equal(result.closing, 200, 'engine still publishes relative 200');
+  assert.equal(result.closing, 405, 'engine still publishes relative 405');
   assert.ok(result.receipt, 'the ram still fires');
-  near(result.playerVelAfterX, 0, 'player dumped their own 95, not the 200 relative');
+  near(result.playerVelAfterX, 0, 'player dumped their own 195, not the 405 relative');
   assert.ok(result.playerTravel <= PLAYER_STOP, 'player does not reverse through the contact');
   assert.ok(result.momentumResidual < MOMENTUM_TOLERANCE);
 });
@@ -380,15 +382,17 @@ test('PQ-026.02 parked plate does not invent closing speed', () => {
   assert.equal(result.lightKick.applied, false);
 });
 
-test('PQ-026.02 NPC plate-wearer is a shunter: Wasp ram stops the Wasp and throws the Hitch', () => {
+test('PQ-026.02 NPC plate-wearer is a shunter: Wasp ram stops the Wasp and nudges the player within the external budget', () => {
   const result = ram(HITCH, 0, -governedCruise(WASP), { plateOnTarget: true, causalIsTarget: true });
   assert.ok(result.receipt, 'an NPC with the plate fitted uses the same live hook');
   assert.equal(result.receipt.shunterId, 2, 'the Wasp is the shunter');
   assert.equal(result.receipt.targetId, 1);
   near(result.lightVelAfterX, 0, 'the NPC dumps its own speed and stops');
-  assert.ok(result.playerKick.deltaV > 80, 'the player is the launched body');
-  assert.ok(result.hitstun && result.hitstun.victimId === 1, 'the thrown player loses the helm');
-  assert.ok(result.momentumResidual < MOMENTUM_TOLERANCE);
+  // PLAYER_EXTERNAL_RESPONSE (7a2389fe3f): external tools cannot launch the player — the
+  // transfer is capped at the 5 WU/s budget, so no helm-loss and no free momentum either.
+  assert.ok(result.playerKick.deltaV > 1, 'the player still feels the contact');
+  assert.ok(result.playerKick.deltaV <= 5.01, `the external budget caps the launch (${result.playerKick.deltaV.toFixed(3)})`);
+  assert.equal(result.hitstun, null, 'the player keeps the helm — no hitstun on a player target');
 });
 
 test('PQ-026.02 throw path crosses a rock — the redirect goes somewhere that matters', () => {

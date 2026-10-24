@@ -161,7 +161,7 @@ test('INST-34: the heavy beam is a sustained loop voice, never a per-tick one-sh
 });
 
 test('INST-34: the heavy-beam split is the capital threshold, not a name match', () => {
-  const heavy = ['wpn_heavy_beam_l', 'unique_lighthouse_heavy_beam'];
+  const heavy = ['wpn_heavy_beam_l', 'unique_lighthouse_heavy_beam', 'wpn_saucer_death_ray'];
   const light = ['wpn_beam_laser_m', 'unique_veil_cutter', 'wpn_thermal_cooker'];
   for (const id of heavy) {
     assert.equal(recipeForWeapon(id), 'sfx_wpn_heavy_beam', `${id} is a capital beam`);

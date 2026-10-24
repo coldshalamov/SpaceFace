@@ -98,5 +98,7 @@ test('the shipworks outfitting rows render the shove metric and the sentence', (
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui', 'station', 'screens', 'shipworks.js'), 'utf8');
   assert.match(src, /shoveMetricValue\(def\)/, 'the metric rule must feed the outfitting rows');
   assert.match(src, /SHOVE/, 'the row label must say SHOVE');
-  assert.match(src, /d\.sentence \? escapeHtml\(d\.sentence\)/, 'the chooser row must render the def sentence');
+  // arsenalSentence() prefers the authored identity line and falls back to def.sentence,
+  // so the chooser row still speaks the def's own words.
+  assert.match(src, /escapeHtml\(arsenalSentence\(d\)\)/, 'the chooser row must render the def sentence');
 });

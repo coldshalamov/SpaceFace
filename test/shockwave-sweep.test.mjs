@@ -377,22 +377,22 @@ test('a wreck hitting hard sheds chips; cooldown, lifetime cap and the mass floo
       const emit = (dp) => t.bus.emit('physics:impact', {
         aId: wreck.id, bId: rock.id, dp, impulse: dp, normal: { x: 1, z: 0 }, pos: { x: 30, z: 0 },
       });
-      // 1200 / 40 = 30 WU/s: tumble-class force, one chip.
+      // One generation per body (99a5e6e4f5): the first tumble-class slam spends the
+      // wreck's only tear-off. 1200 / 40 = 30 WU/s — light class, one chip.
       emit(1200);
       assert.equal(wreckChips(t.state).length, 1);
-      // Cooldown: an immediate second slam sheds nothing.
+      // Cooldown: an immediate second slam sheds nothing either way.
       emit(1200);
       assert.equal(wreckChips(t.state).length, 1);
-      // Heavy class: >= 34 WU/s after the cooldown, two chips.
+      // The generation is spent: even a heavy slam after the cooldown sheds nothing more.
       t.state.tick += 70;
       t.state.simTime += 70 * DT;
       emit(1600);
-      assert.equal(wreckChips(t.state).length, 3, 'heavy slam sheds two chips');
-      // Lifetime cap: this wreck is done shedding.
-      t.state.tick += 70;
-      t.state.simTime += 70 * DT;
-      emit(1600);
-      assert.equal(wreckChips(t.state).length, 3);
+      assert.equal(wreckChips(t.state).length, 1, 'one generation per body: no second tear-off');
+      // A fresh wreck still pays the heavy class its two chips on the first slam.
+      const heavy = t.spawn({ type: 'wreck', mass: 40, radius: 7, pos: { x: -80, z: 0 }, data: { kind: 'wreck' } });
+      t.bus.emit('physics:impact', { aId: heavy.id, bId: rock.id, dp: 1600, impulse: 1600, normal: { x: -1, z: 0 }, pos: { x: -55, z: 0 } });
+      assert.equal(wreckChips(t.state).length, 3, 'heavy first slam sheds two chips');
       // Sub-threshold force never sheds, and a feather-mass wreck never sheds at all.
       emit(120);
       assert.equal(wreckChips(t.state).length, 3);

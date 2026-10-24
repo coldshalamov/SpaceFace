@@ -253,9 +253,11 @@ test('loot magnet: outside the ring nothing is pulled', () => {
 function wellRig() {
   const bus = recordingBus();
   const spawned = [];
-  const pulls = [];
   const ship = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: { fittings: [] } };
-  const victim = { id: 20, type: 'ship', alive: true, pos: { x: 150, z: 0 }, mass: 80, data: {} };
+  // The pull rides physics authority now (deliverPhysicalAcceleration → the entity's
+  // command queue), so the harness reads the victim's queued command, not a port spy.
+  const victim = { id: 20, type: 'ship', alive: true, pos: { x: 150, z: 0 }, data: {},
+    physicsBody: { schemaVersion: 1, shape: 'capsule', mass: 80, radius: 6, dynamic: true } };
   const state = {
     mode: 'flight',
     tick: 10,
@@ -270,14 +272,13 @@ function wellRig() {
   system.bus = bus;
   system.helpers = {
     spawnEntity(spec) { spawned.push(spec); return { id: 5, type: 'vectormine', alive: true, pos: spec.pos, data: spec.data }; },
-    combatPhysics: { applyImpulse(record) { pulls.push(record); return true; } },
     getEntity() { return null; },
   };
-  return { system, state, spawned, pulls, victim, bus };
+  return { system, state, spawned, victim, bus };
 }
 
 test('gravity wellhead: the deploy arms a well whose armed life drags ships inward', () => {
-  const { system, state, spawned, pulls, victim } = wellRig();
+  const { system, state, spawned, victim } = wellRig();
   const def = WEAPONS.find((row) => row.id === 'wpn_gravity_well_m');
   assert.ok(def, 'the wellhead is catalog gear');
   const w = { defId: 'wpn_gravity_well_m', slotIndex: 0 };
@@ -289,19 +290,21 @@ test('gravity wellhead: the deploy arms a well whose armed life drags ships inwa
   state.entityList.push(mine);
   // Not armed yet: no pull.
   system._tickVectorMines(DT, state);
-  assert.equal(pulls.length, 0, 'no pull while arming');
+  assert.equal(consumePhysicsCommand(victim), null, 'no pull while arming');
   // Arm it, then feel the pull. The arming tick itself continues (no pull), the next tick drags.
   state.simTime += 2;
   system._tickVectorMines(DT, state);
   assert.equal(mine.data.armed, true);
   system._tickVectorMines(DT, state);
-  assert.ok(pulls.length >= 1, 'the armed well pulls');
-  const record = pulls[0];
-  assert.equal(record.reason, 'gravity_well');
+  const command = consumePhysicsCommand(victim);
+  assert.ok(command && command.impulses.length >= 1, 'the armed well pulls');
+  const record = command.impulses[0];
+  assert.equal(record.provenance.tag, 'gravity_well_pull');
+  assert.equal(record.provenance.weaponId, 'wpn_gravity_well_m');
   // The victim sits at +x of the well: the pull points toward the well (negative x).
-  assert.ok(record.impulse.x < 0, `the pull drags the ship toward the well (${record.impulse.x})`);
+  assert.ok(record.x < 0, `the pull drags the ship toward the well (${record.x})`);
   // Uniform acceleration: impulse ∝ body mass at the same distance.
-  assert.ok(Math.abs(record.impulse.x) > 0);
+  assert.ok(Math.abs(record.x) > 0);
   // It expires on schedule (no detonation, no proximity trigger).
   mine.data.dieAt = state.simTime;
   const detonated = [];

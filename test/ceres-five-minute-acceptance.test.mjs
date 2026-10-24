@@ -1687,7 +1687,7 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
     new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
     'utf8',
   );
-  const seedIndex = librarySource.indexOf("key: 'Digit4'", librarySource.indexOf(
+  const seedIndex = librarySource.indexOf("key: 'Digit3'", librarySource.indexOf(
     'async function exercisePublicPhysicsToolkit',
   ));
   const combatRelatchIndex = librarySource.indexOf('const combatAttachedAction', seedIndex);
@@ -1695,7 +1695,7 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
   const fixedVolleyIndex = librarySource.indexOf(
     'fireCeresPublicCombatVolley(page, fireControlTarget, box, {', combatIndex,
   );
-  const repulsorIndex = librarySource.indexOf("key: 'Digit6'", combatIndex);
+  const repulsorIndex = librarySource.indexOf("key: 'Digit2'", combatIndex);
   assert.ok(seedIndex >= 0 && combatRelatchIndex > seedIndex && combatIndex > combatRelatchIndex
     && fixedVolleyIndex > combatIndex
     && repulsorIndex > fixedVolleyIndex,
@@ -2006,7 +2006,7 @@ test('public route orders fixed-tick transit after Repulsor and before the Cathe
   const toolkitStart = source.indexOf('async function exercisePublicPhysicsToolkit');
   const toolkitEnd = source.indexOf('async function waitForCeresBusEvent', toolkitStart);
   const toolkitSource = source.slice(toolkitStart, toolkitEnd);
-  const repulsorIndex = toolkitSource.indexOf("key: 'Digit6'");
+  const repulsorIndex = toolkitSource.indexOf("key: 'Digit2'");
   const finalReceiptIndex = toolkitSource.indexOf('const receipt = await readCeresToolkitReceipt', repulsorIndex);
   const returnIndex = toolkitSource.indexOf('return receipt;', finalReceiptIndex);
   assert.ok(repulsorIndex >= 0 && finalReceiptIndex > repulsorIndex && returnIndex > finalReceiptIndex,
@@ -4889,7 +4889,7 @@ test('public pilot source uses menu/card and Playwright input while private shor
   assert.ok(toolkitStart > routeStart && toolkitEnd > toolkitStart,
     'source audit must isolate the public physics toolkit route');
   assert.doesNotMatch(toolkitSource,
-    /keyboard\.press\((?:'|")(?:Space|Digit4|Digit6)(?:'|")\)/,
+    /keyboard\.press\((?:'|")(?:Space|Digit3|Digit2)(?:'|")\)/,
     'fixed-tick flight actions cannot use zero-duration Playwright presses');
   assert.match(toolkitSource,
     /page\.mouse\.move[\s\S]*waitForCeresHostileMasslineAcquisition\(page, target[\s\S]*triggerCeresPublicFlightAction\(page, \{[\s\S]*key: 'Space'/,
@@ -4900,13 +4900,13 @@ test('public pilot source uses menu/card and Playwright input while private shor
   for (const marker of [
     "key: 'Space'",
     "trigger: 'release'",
-    "key: 'Digit4'",
-    "key: 'Digit6'",
+    "key: 'Digit3'",
+    "key: 'Digit2'",
   ]) {
     assert.ok(toolkitSource.includes(marker), `toolkit source must retain ${marker}`);
   }
   assert.match(validSources.routeSource,
-    /'Space', 'Digit4', 'Digit6'/,
+    /'Space', 'Digit3', 'Digit2'/,
     'global public-input cleanup must release every toolkit flight key');
 
   const forbidden = [
@@ -7852,6 +7852,14 @@ async function runSeed47OffFrustumMasslineCombat() {
     }, 'conflict');
     assert.deepEqual(adopted, [target.id]);
     assert.equal(target.data.ai.moraleImmune, true);
+
+    // The Line-rating gate (rows 482-485, landed after this fixture) charges T1 for an
+    // 18-radius live hull. This is a relatch/lead proof, not a progression proof: hold the
+    // player's line at the T1 an earned rating projects so the Reaver admits — and the T2
+    // workshop payload parked nearby still refuses.
+    const rockCoreSystem = runtime.getSystem('rockCore');
+    if (rockCoreSystem) rockCoreSystem.update = () => {};
+    if (state.rockCore) state.rockCore.tier = 1;
 
     const physicsSystem = runtime.getSystem('physics');
     const ready = await physicsSystem.prepareBackend(state, { reset: true });
