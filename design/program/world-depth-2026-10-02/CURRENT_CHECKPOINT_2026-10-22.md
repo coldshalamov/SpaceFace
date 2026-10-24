@@ -10,6 +10,8 @@ All twelve goals remain OPEN. This section supersedes dated current-state/next-o
 
 The [Wasp textured studio review](../world-experience-2026-10-24/wasp-material-preview/README.md) preserves an actual exported-package image and reproducible source. All six embedded maps were decoded; albedo, normal, roughness and metallic maps were applied, while authored AO red was not. Dark paneling and highlights remain readable. No asset change or new model count is justified by this review; live-camera lighting, performance and visual acceptance remain open.
 
+All four original Wasp review artifacts now have full-byte, SHA256 and identity/version readback verification. The seven departure recovery packets retain final and meaningful failed attempts; restore the attended-repair base before the final departure recipe. This recovery evidence does not substitute for the published source or acceptance.
+
 The next allocated unit is a bounded repair-work pulse tied to actual qualifying Hawser work, owned by the existing scene author in scene 362 and actionVfx only. Production event transport was inspected; generation/sector/freshness admission, pause expiry and reduced-motion checks remain implementation work, not delivered behavior. Shared VFX/lighting and other owners stay untouched.
 
 Both specific approval holds remain pending: browser API documentation refresh and absorption of PR558/471/570/571 for integration. The 12:22:41 UTC Archive object read still returned 404 with unchanged staging ref; no large write or credential retry occurred. Small GitHub delivery works. Both continuation schedules remain unchanged. No merge, deployment, ordinary-play or whole-game acceptance is implied.
