@@ -130,7 +130,15 @@ test('forty-six legal kit identities route through the release place family', ()
     Object.keys(EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID)
       .filter((id) => !EVERYDAY_SPACE_KIT_LEGAL_IDS.includes(id))
       .sort(),
-    ['place_hush_gap', 'place_sedna_ringworld_arc'],
+    [
+      'place_hush_gap',
+      'place_hyperion_caved_shaft',
+      'place_io_reach_wreck',
+      'place_nyx_false_gate',
+      'place_orcus_signal_plinth',
+      'place_sedna_ringworld_arc',
+      'place_triton_aperture_monolith',
+    ],
   );
   for (const model of EVERYDAY_SPACE_KIT_LEGAL_MODELS) {
     assert.equal(everydaySpaceKitFileForPlaceId(model.id), model.file);

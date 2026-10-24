@@ -3551,6 +3551,56 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "52ee63acb8ae9b9db65c106f5c2d17743315bed069ab160da09f383ff42a83b6",
     "sourceUrl": "assets/ships/release/parts/places/place_sedna_ringworld_arc.glb"
+  },
+  {
+    "assetId": "sf.render.hyperion-caved-shaft",
+    "expectedContentHash": "27a182dd41cf77b19b7348270636303b28c8c00bc71999748b1e62db67fc503b",
+    "key": "hyperion-caved-shaft",
+    "metadataUrl": "assets/ships/release/render-packages/hyperion-caved-shaft/render-package.json",
+    "runtimeAssetId": "place_hyperion_caved_shaft",
+    "slot": "place",
+    "sourceSha256": "2f9a9fcacb2606e92cf0b5d6a8c726e95f77ab40aa93a5ab9c22bc149e9d82b7",
+    "sourceUrl": "assets/ships/release/parts/places/place_hyperion_caved_shaft.glb"
+  },
+  {
+    "assetId": "sf.render.nyx-false-gate",
+    "expectedContentHash": "9fa42ec110048842d2469afbed982de609980aeee2f5d411e87fbdacb5ef96a4",
+    "key": "nyx-false-gate",
+    "metadataUrl": "assets/ships/release/render-packages/nyx-false-gate/render-package.json",
+    "runtimeAssetId": "place_nyx_false_gate",
+    "slot": "place",
+    "sourceSha256": "7313f71da6460c401fbb945e185f6bc82d3d082a2544942768769d02386b002d",
+    "sourceUrl": "assets/ships/release/parts/places/place_nyx_false_gate.glb"
+  },
+  {
+    "assetId": "sf.render.triton-aperture-monolith",
+    "expectedContentHash": "a045d3c9546d9d2653416c7fb64bf4caf30927a7a0df6c286e676d2fb205bf63",
+    "key": "triton-aperture-monolith",
+    "metadataUrl": "assets/ships/release/render-packages/triton-aperture-monolith/render-package.json",
+    "runtimeAssetId": "place_triton_aperture_monolith",
+    "slot": "place",
+    "sourceSha256": "16472ab1d5cbc73e6c4c373ecaf2bb2f566592b6707ddf34d6e0e475b7c8f57f",
+    "sourceUrl": "assets/ships/release/parts/places/place_triton_aperture_monolith.glb"
+  },
+  {
+    "assetId": "sf.render.io-reach-wreck",
+    "expectedContentHash": "22748f50638449d0b9fa91a6b522fe397c2ed012c51969bb83af2c41fe19b7de",
+    "key": "io-reach-wreck",
+    "metadataUrl": "assets/ships/release/render-packages/io-reach-wreck/render-package.json",
+    "runtimeAssetId": "place_io_reach_wreck",
+    "slot": "place",
+    "sourceSha256": "125b29b8e68ed16edc94f4c752200d34cd6b8d1ac5d0a49737aba9f9600b19e7",
+    "sourceUrl": "assets/ships/release/parts/places/place_io_reach_wreck.glb"
+  },
+  {
+    "assetId": "sf.render.orcus-signal-plinth",
+    "expectedContentHash": "56e240c1274cbf85d0e782d6be3b25b4e7a7563401548726ad191fd5b1f74bd9",
+    "key": "orcus-signal-plinth",
+    "metadataUrl": "assets/ships/release/render-packages/orcus-signal-plinth/render-package.json",
+    "runtimeAssetId": "place_orcus_signal_plinth",
+    "slot": "place",
+    "sourceSha256": "f364d4d2455f6d78bae25b7c3f3984f441ac9e397396e4fc65bfe3e46cdf8654",
+    "sourceUrl": "assets/ships/release/parts/places/place_orcus_signal_plinth.glb"
   }
 ];
 

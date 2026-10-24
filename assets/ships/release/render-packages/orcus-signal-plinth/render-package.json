@@ -1,0 +1,375 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.orcus-signal-plinth",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "56e240c1274cbf85d0e782d6be3b25b4e7a7563401548726ad191fd5b1f74bd9",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.20000000298023224,
+          1.1799999475479126,
+          0.07999999821186066
+        ],
+        "min": [
+          0.11999999731779099,
+          0.9200000166893005,
+          -0.07999999821186066
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "127eea11efd5f3ed8463f191585793c71f1b70c7a08b5533d9f371a45eeafaf2",
+      "id": "sf.render.orcus-signal-plinth.mesh.signalfacelamp.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "da66c130f9442717a78012d7441dddbc7972a17c552c1f7d4a97a9d7bc43c83b",
+      "materialPipelineKey": "opaque",
+      "meshName": "SignalFaceLamp",
+      "nodeId": "sf.render.orcus-signal-plinth.mesh.signalfacelamp",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.41999998688697815,
+          1.399999976158142,
+          0.3199999928474426
+        ],
+        "min": [
+          -0.41999998688697815,
+          0,
+          -0.3199999928474426
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a344c9fd971791c3e6da88a11a1b649865061caaca8924797831d0e03976762d",
+      "id": "sf.render.orcus-signal-plinth.mesh.signalplinthstone.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "b9c7eb4ca3be798d6d6893d3ddc618f21285ec0515e753cd39dc45fd5430f10a",
+      "materialPipelineKey": "opaque",
+      "meshName": "SignalPlinthStone",
+      "nodeId": "sf.render.orcus-signal-plinth.mesh.signalplinthstone",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "b9c7eb4ca3be798d6d6893d3ddc618f21285ec0515e753cd39dc45fd5430f10a",
+      "id": "material:b9c7eb4ca3be798d6d6893d3",
+      "name": "PlinthStone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "da66c130f9442717a78012d7441dddbc7972a17c552c1f7d4a97a9d7bc43c83b",
+      "id": "material:da66c130f9442717a78012d7",
+      "name": "SignalLamp",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.orcus-signal-plinth.mesh.signalfacelamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "SignalFaceLamp",
+      "nodeName": "SignalFaceLamp",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.orcus-signal-plinth.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.orcus-signal-plinth.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.orcus-signal-plinth.mesh.signalplinthstone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "SignalPlinthStone",
+      "nodeName": "SignalPlinthStone",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.orcus-signal-plinth.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.orcus-signal-plinth.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.orcus-signal-plinth.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_orcus_signal_plinth",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.orcus-signal-plinth.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "de1ee55055be5f56186aa5d7b4645f2f0c4e332eebcb17b0964c76411814db2a"
+    },
+    "sourceGlb": {
+      "bytes": 4356,
+      "sha256": "f364d4d2455f6d78bae25b7c3f3984f441ac9e397396e4fc65bfe3e46cdf8654",
+      "uri": "place_orcus_signal_plinth.glb"
+    },
+    "sourceManifest": {
+      "bytes": 277460,
+      "sha256": "ce15084f86543f45fe3d9ea42091d72e1af70bb0217db59e60b40d397a240e07",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 4452,
+    "sha256": "ddcb60966165bb4510cd5260b94eb8873178d19e6c9b9a847e044d728d343bb1",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0.699999988079071,
+        0
+      ],
+      "max": [
+        0.41999998688697815,
+        1.399999976158142,
+        0.3199999928474426
+      ],
+      "min": [
+        -0.41999998688697815,
+        0,
+        -0.3199999928474426
+      ],
+      "size": [
+        0.8399999737739563,
+        1.399999976158142,
+        0.6399999856948853
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 1,
+      "signal": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "signal"
+      }
+    ],
+    "nodeCount": 4,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SignalPlinthStone",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SignalFaceLamp",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_orcus_signal_plinth.glb"
+  },
+  "runtimeHash": "0a38670f0ab4647ed9bbaa80285e840623fb742d9ca7e348245e0ac187d9befb",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          0.41999998688697815,
+          1.399999976158142,
+          0.3199999928474426
+        ],
+        "min": [
+          -0.41999998688697815,
+          0,
+          -0.3199999928474426
+        ]
+      },
+      "id": "sf.render.orcus-signal-plinth.body",
+      "nodeIds": [
+        "sf.render.orcus-signal-plinth.mesh.signalfacelamp",
+        "sf.render.orcus-signal-plinth.mesh.signalplinthstone",
+        "sf.render.orcus-signal-plinth.root"
+      ]
+    }
+  ]
+}

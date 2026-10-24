@@ -1,0 +1,374 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.triton-aperture-monolith",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "a045d3c9546d9d2653416c7fb64bf4caf30927a7a0df6c286e676d2fb205bf63",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.14000000059604645,
+          1.9299999475479126,
+          0.5099999904632568
+        ],
+        "min": [
+          -0.14000000059604645,
+          0,
+          -0.5099999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "50795602e6a11213e365413310ac6bd40d2b3f7797ca2bb60968963892f34664",
+      "id": "sf.render.triton-aperture-monolith.mesh.apertureframe.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "4c7993b1b0bd719820c785c2992543c9dd6b4599420ac9e6b17781afb4ca11a0",
+      "materialPipelineKey": "opaque",
+      "meshName": "ApertureFrame",
+      "nodeId": "sf.render.triton-aperture-monolith.mesh.apertureframe",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          0.23999999463558197,
+          1.8799999952316284,
+          0.10000000149011612
+        ],
+        "min": [
+          0.1599999964237213,
+          1.7599999904632568,
+          -0.10000000149011612
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1004ee65d42800d128a3548d5461fc1ba7dcac8bb976295d3b5e56746489b17d",
+      "id": "sf.render.triton-aperture-monolith.mesh.aperturelamp.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "382160b8833b83df5f89905128f9e029e972e42277eb81ab84fda971c94a7f6a",
+      "materialPipelineKey": "opaque",
+      "meshName": "ApertureLamp",
+      "nodeId": "sf.render.triton-aperture-monolith.mesh.aperturelamp",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "382160b8833b83df5f89905128f9e029e972e42277eb81ab84fda971c94a7f6a",
+      "id": "material:382160b8833b83df5f899051",
+      "name": "ApertureLamp",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "4c7993b1b0bd719820c785c2992543c9dd6b4599420ac9e6b17781afb4ca11a0",
+      "id": "material:4c7993b1b0bd719820c785c2",
+      "name": "MonolithStone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.triton-aperture-monolith.mesh.apertureframe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ApertureFrame",
+      "nodeName": "ApertureFrame",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.triton-aperture-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.triton-aperture-monolith.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.triton-aperture-monolith.mesh.aperturelamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ApertureLamp",
+      "nodeName": "ApertureLamp",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.triton-aperture-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.triton-aperture-monolith.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.triton-aperture-monolith.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_triton_aperture_monolith",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.triton-aperture-monolith.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "39c7787f9665541786e6529a28772f0709cd2a6521fec621f3c8726b5c9ab64c"
+    },
+    "sourceGlb": {
+      "bytes": 6092,
+      "sha256": "16472ab1d5cbc73e6c4c373ecaf2bb2f566592b6707ddf34d6e0e475b7c8f57f",
+      "uri": "place_triton_aperture_monolith.glb"
+    },
+    "sourceManifest": {
+      "bytes": 277460,
+      "sha256": "ce15084f86543f45fe3d9ea42091d72e1af70bb0217db59e60b40d397a240e07",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 5476,
+    "sha256": "58b5de03916a6b6a6d175c0e366ac3595c6d0c4d681dd0e325c7c47f827e2428",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.04999999701976776,
+        0.9649999737739563,
+        0
+      ],
+      "max": [
+        0.23999999463558197,
+        1.9299999475479126,
+        0.5099999904632568
+      ],
+      "min": [
+        -0.14000000059604645,
+        0,
+        -0.5099999904632568
+      ],
+      "size": [
+        0.3799999952316284,
+        1.9299999475479126,
+        1.0199999809265137
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 4,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ApertureFrame",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ApertureLamp",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_triton_aperture_monolith.glb"
+  },
+  "runtimeHash": "1554e8a018a0c996b51243d2b73488dfade393761d66135462c6b3f01a48579b",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          0.23999999463558197,
+          1.9299999475479126,
+          0.5099999904632568
+        ],
+        "min": [
+          -0.14000000059604645,
+          0,
+          -0.5099999904632568
+        ]
+      },
+      "id": "sf.render.triton-aperture-monolith.body",
+      "nodeIds": [
+        "sf.render.triton-aperture-monolith.mesh.apertureframe",
+        "sf.render.triton-aperture-monolith.mesh.aperturelamp",
+        "sf.render.triton-aperture-monolith.root"
+      ]
+    }
+  ]
+}

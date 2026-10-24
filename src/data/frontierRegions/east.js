@@ -501,8 +501,12 @@ export const EAST_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_triton_watcher',
         pos: Object.freeze({ x: -1700, z: 1500 }),
-        landmarkGlb: 'place_observation_blister',
+        landmarkGlb: 'place_triton_aperture_monolith',
         landmark: true,
+        // The aperture's local +X face looks at the wake anomaly.
+        rot: Math.atan2(120 - 1500, 40 - (-1700)),
+        placeTargetRadius: 36,
+        visualRadius: 36,
       }),
       // The Archive's field lab (sector row above): the scannable research platform needs a body
       // to stand on, or its discovery plate points at empty space.

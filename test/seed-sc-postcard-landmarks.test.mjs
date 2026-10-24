@@ -187,8 +187,9 @@ test('SEED-SC-20 the Ringworld Arc is a megastructure curve at the same world si
 });
 
 test('postcard landmarks stay out of ordinary yard dressing', () => {
-  assert.ok(!EVERYDAY_SPACE_KIT_LEGAL_IDS.includes('place_hush_gap'));
-  assert.ok(!EVERYDAY_SPACE_KIT_LEGAL_IDS.includes('place_sedna_ringworld_arc'));
+  for (const id of Object.keys(POSTCARD_LANDMARK_PLACE_FILE_BY_ID)) {
+    assert.ok(!EVERYDAY_SPACE_KIT_LEGAL_IDS.includes(id), id);
+  }
   let n = 0;
   const rng = () => {
     n += 1;
@@ -201,7 +202,7 @@ test('postcard landmarks stay out of ordinary yard dressing', () => {
     wrecks: [{ id: 'wreck_sample', pos: { x: 120, z: 40 } }],
   });
   assert.ok(rows.length >= 1);
-  assert.ok(rows.every((row) => row.placeId !== 'place_hush_gap' && row.placeId !== 'place_sedna_ringworld_arc'));
+  assert.ok(rows.every((row) => !Object.hasOwn(POSTCARD_LANDMARK_PLACE_FILE_BY_ID, row.placeId)));
 });
 
 test('SEED-SC-18 and SEED-SC-20 release landmarks resolve a render-package pilot', () => {

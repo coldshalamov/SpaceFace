@@ -5831,6 +5831,56 @@
       "releaseSha256": "52ee63acb8ae9b9db65c106f5c2d17743315bed069ab160da09f383ff42a83b6",
       "sourceBytes": 66132,
       "releaseBytes": 66132
+    },
+    {
+      "id": "place_hyperion_caved_shaft",
+      "kind": "part:places",
+      "source": "assets/ships/release/parts/places/place_hyperion_caved_shaft.glb",
+      "release": "assets/ships/release/parts/places/place_hyperion_caved_shaft.glb",
+      "sourceSha256": "2f9a9fcacb2606e92cf0b5d6a8c726e95f77ab40aa93a5ab9c22bc149e9d82b7",
+      "releaseSha256": "2f9a9fcacb2606e92cf0b5d6a8c726e95f77ab40aa93a5ab9c22bc149e9d82b7",
+      "sourceBytes": 20440,
+      "releaseBytes": 20440
+    },
+    {
+      "id": "place_nyx_false_gate",
+      "kind": "part:places",
+      "source": "assets/ships/release/parts/places/place_nyx_false_gate.glb",
+      "release": "assets/ships/release/parts/places/place_nyx_false_gate.glb",
+      "sourceSha256": "7313f71da6460c401fbb945e185f6bc82d3d082a2544942768769d02386b002d",
+      "releaseSha256": "7313f71da6460c401fbb945e185f6bc82d3d082a2544942768769d02386b002d",
+      "sourceBytes": 22796,
+      "releaseBytes": 22796
+    },
+    {
+      "id": "place_triton_aperture_monolith",
+      "kind": "part:places",
+      "source": "assets/ships/release/parts/places/place_triton_aperture_monolith.glb",
+      "release": "assets/ships/release/parts/places/place_triton_aperture_monolith.glb",
+      "sourceSha256": "16472ab1d5cbc73e6c4c373ecaf2bb2f566592b6707ddf34d6e0e475b7c8f57f",
+      "releaseSha256": "16472ab1d5cbc73e6c4c373ecaf2bb2f566592b6707ddf34d6e0e475b7c8f57f",
+      "sourceBytes": 6092,
+      "releaseBytes": 6092
+    },
+    {
+      "id": "place_io_reach_wreck",
+      "kind": "part:places",
+      "source": "assets/ships/release/parts/places/place_io_reach_wreck.glb",
+      "release": "assets/ships/release/parts/places/place_io_reach_wreck.glb",
+      "sourceSha256": "125b29b8e68ed16edc94f4c752200d34cd6b8d1ac5d0a49737aba9f9600b19e7",
+      "releaseSha256": "125b29b8e68ed16edc94f4c752200d34cd6b8d1ac5d0a49737aba9f9600b19e7",
+      "sourceBytes": 6880,
+      "releaseBytes": 6880
+    },
+    {
+      "id": "place_orcus_signal_plinth",
+      "kind": "part:places",
+      "source": "assets/ships/release/parts/places/place_orcus_signal_plinth.glb",
+      "release": "assets/ships/release/parts/places/place_orcus_signal_plinth.glb",
+      "sourceSha256": "f364d4d2455f6d78bae25b7c3f3984f441ac9e397396e4fc65bfe3e46cdf8654",
+      "releaseSha256": "f364d4d2455f6d78bae25b7c3f3984f441ac9e397396e4fc65bfe3e46cdf8654",
+      "sourceBytes": 4356,
+      "releaseBytes": 4356
     }
   ]
 }

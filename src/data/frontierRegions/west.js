@@ -180,7 +180,7 @@ const REGION_NYX = freezeRegion({
       {
         id: 'station_nyx_march',
         pos: { x: -880, z: 540 },
-        archetypeGlb: 'place_claim_outpost_fence',
+        archetypeGlb: 'place_nyx_false_gate',
         landmark: true,
       },
     ],
@@ -339,8 +339,10 @@ const REGION_HYPERION = freezeRegion({
       {
         id: 'poi_hyperion_driller',
         pos: { x: 240, z: -1180 },
-        landmarkGlb: 'place_drill_platform_cold',
+        landmarkGlb: 'place_hyperion_caved_shaft',
         landmark: true,
+        placeTargetRadius: 36,
+        visualRadius: 36,
       },
       {
         id: 'poi_hyperion_beacon',
@@ -601,7 +603,12 @@ const REGION_ORCUS = freezeRegion({
       {
         id: 'poi_orcus_plinth',
         pos: { x: 980, z: -540 },
-        landmarkGlb: 'place_memorial_array',
+        landmarkGlb: 'place_orcus_signal_plinth',
+        landmark: true,
+        // Local +X is the lamp. Renderer yaw is -rot, so rot is the bearing toward the signal.
+        rot: Math.atan2(540, -980),
+        placeTargetRadius: 36,
+        visualRadius: 36,
       },
     ],
   },

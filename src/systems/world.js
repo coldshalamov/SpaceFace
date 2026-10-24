@@ -138,6 +138,7 @@ import {
 } from '../data/environmentalMachinery.js';
 import {
   EVERYDAY_SPACE_KIT_SALT,
+  POSTCARD_LANDMARK_PLACE_FILE_BY_ID,
   everydaySpaceKitDressingForSector,
 } from '../data/everydaySpaceKitDressing.js';
 import {
@@ -2568,6 +2569,11 @@ export const world = {
           archetypeGlb: st.archetypeGlb || null,
           landmark: !!st.landmark,
           landmarkGlb: st.landmarkGlb || null,
+          // Stations are not authored set pieces, so a postcard body resolves only
+          // when the live station is marked as kit dressing. Other station types stay unmarked.
+          ...(st.archetypeGlb && POSTCARD_LANDMARK_PLACE_FILE_BY_ID[st.archetypeGlb]
+            ? { everydaySpaceKit: true }
+            : {}),
         },
       });
       this._stampHomeSector(ent, sector.id);
@@ -3112,9 +3118,14 @@ export const world = {
       const keepLive = fullPresence
         ? poiMustStayLiveActor(poi, activityObjectSlotId)
         : (!!activityObjectSlotId || poi.collides === true);
+      // Local +X is the face the mesh draws. The renderer yaws by -rot, so an
+      // authored rot is the XZ bearing of that face (atan2(dz, dx)).
+      const poiRot = Number(poi.rot);
+      const authoredRot = Number.isFinite(poiRot) ? { rot: poiRot } : {};
       const ent = keepLive
         ? this.helpers.spawnEntity({
           type: 'fx', factionId: poi.factionId || null, pos,
+          ...authoredRot,
           radius: spawnRadius, mass: 0,
           collides: solidPlan ? true : !!poi.collides,
           ...(solidPlan ? {
@@ -3126,6 +3137,7 @@ export const world = {
         })
         : insertDressingRow(this.state, {
           pos,
+          ...authoredRot,
           radius: spawnRadius,
           ...(solidPlan ? {
             collides: true,
