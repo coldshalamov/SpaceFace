@@ -15,6 +15,9 @@ export const RECEIPT = Object.freeze({
   serialFlag: 'receipt_serial',
   serialStart: 4409,
   announceFlag: 'receipt_announced',
+  // Set when the printer files its own death — durable, so the feed stays dark
+  // across sector re-entry and save/load. Killing it is the permanent choice.
+  finalFlag: 'receipt_final',
   sender: 'RECEIPT / PR-8',
   callsign: 'PR-8',
   announce: 'PR-8 print head warm. Every hull you retire gets a receipt. Keep the stubs.',

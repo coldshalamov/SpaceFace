@@ -4,10 +4,11 @@ import assert from 'node:assert/strict';
 import { RECEIPT } from '../src/data/receipt.js';
 import {
   receiptPrintableKill, receiptLine, receiptBatchLine, receiptSerialText,
-  receiptFollowVelocity,
+  receiptFollowVelocity, receiptFollowDeltaV,
 } from '../src/characters/receiptRules.js';
 import { createReceipt, receiptSpec } from '../src/systems/receipt.js';
 import { createBus } from '../src/core/eventBus.js';
+import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 
 function fixture({ sector = 'sector_kepler_scar', runKind = 'adventure' } = {}) {
   const bus = createBus();
@@ -93,13 +94,40 @@ test('innocent kills file under final notice; bulk batch prints a range', () => 
 test('killing the printer files the final receipt once, then the feed dies', () => {
   const { bus, popups, sys, state } = fixture();
   const drone = state.entityList.find((e) => e.data?.receipt);
-  bus.emit('entity:killed', { id: drone.id, killerId: 7, type: 'drone' });
-  assert.equal(popups.filter((p) => p.id === 'receipt_final').length, 1);
+  // Real ordering: every entity:killed emitter marks the victim dead BEFORE the
+  // report reaches the bus — the printer's own body is alive:false at emit time.
   drone.alive = false;
   bus.emit('entity:killed', { id: drone.id, killerId: 7, type: 'drone' });
+  assert.equal(popups.filter((p) => p.id === 'receipt_final').length, 1);
+  bus.emit('entity:killed', { id: drone.id, killerId: 99, type: 'drone' });
   bus.emit('entity:killed', kill(77));
   sys.update();
   assert.equal(popups.filter((p) => p.id === 'receipt_final').length, 1);
+  assert.equal(receipts(popups).length, 0);
+});
+
+test('a filed final receipt stays filed: no respawn on sector re-enter or resync', () => {
+  const { bus, popups, sys, state } = fixture();
+  const drone = state.entityList.find((e) => e.data?.receipt);
+  drone.alive = false;
+  bus.emit('entity:killed', { id: drone.id, killerId: 7, type: 'drone' });
+  assert.equal(state.story.flags.receipt_final, true);
+  state.entityList.splice(state.entityList.indexOf(drone), 1); // corpse swept
+  state.world.currentSectorId = 'sector_io_reach';
+  bus.emit('sector:enter', { sectorId: 'sector_io_reach' });
+  state.world.currentSectorId = 'sector_kepler_scar';
+  bus.emit('sector:enter', { sectorId: 'sector_kepler_scar' });
+  assert.equal(state.entityList.filter((e) => e.alive && e.data?.receipt).length, 0);
+  bus.emit('entity:killed', kill(55));
+  sys.update();
+  assert.equal(receipts(popups).length, 0); // the feed stays dark
+});
+
+test('save:loaded flushes nothing: pending kills belong to the abandoned timeline', () => {
+  const { bus, popups, sys } = fixture();
+  bus.emit('entity:killed', kill(55));
+  bus.emit('save:loaded', {});
+  sys.update();
   assert.equal(receipts(popups).length, 0);
 });
 
@@ -132,14 +160,27 @@ test('pure rules: printable gate, serial text, batch line, follow steering', () 
   // moving player → trails behind the flight vector
   const trail = receiptFollowVelocity({ x: 0, z: 0 }, { x: 0, z: 0 }, { x: 0, z: 100 });
   assert.ok(trail.z < 0); // behind means negative z when flying +z
+  // delta-v form: inside the ring a moving printer brakes to rest; at rest it holds
+  const brake = receiptFollowDeltaV(
+    { pos: { x: 0, z: 400 + RECEIPT.followOffset }, vel: { x: 0, z: 30 } },
+    { x: 0, z: 400 }, { x: 0, z: 0 });
+  assert.deepEqual(brake, { x: 0, z: -30 });
+  assert.equal(receiptFollowDeltaV(
+    { pos: { x: 0, z: 400 + RECEIPT.followOffset }, vel: { x: 0, z: 0 } },
+    { x: 0, z: 400 }, { x: 0, z: 0 }), null);
 });
 
-test('follow steering applies on the calendar pass', () => {
+test('follow steering crosses the impulse membrane on the calendar pass', () => {
   const { state, sys } = fixture();
   const drone = state.entityList.find((e) => e.data?.receipt);
   state.player.pos = { x: -500, z: 2000 }; state.player.vel = { x: 0, z: 0 };
   sys.update();
-  assert.ok(Math.hypot(drone.vel.x, drone.vel.z) > 0);
+  // A live Rapier body owns linvel — the pass queues a mass·dv impulse, never a vel write.
+  const cmds = consumePhysicsCommand(drone);
+  const imp = cmds && cmds.impulses ? cmds.impulses : [];
+  assert.equal(imp.length, 1, 'follow steering is a queued impulse, not a vel write');
+  assert.ok(Math.hypot(imp[0].x, imp[0].z) > 0);
+  assert.ok(imp[0].z > 0, 'the impulse points at the trailing follow point');
 });
 
 test('destroy + re-init: listeners, provider, and owned hull all clean', () => {

@@ -62,3 +62,17 @@ export function receiptFollowVelocity(dronePos, playerPos, playerVel) {
   const s = Math.min(RECEIPT.followSpeed, d); // don't overshoot a short gap
   return { x: (dx / d) * s, z: (dz / d) * s };
 }
+
+/** Follow steering as a physics delta-v: the printer is a live dynamic Rapier body, so a
+ *  direct vel write dies in the physics readback before it ever moves (the same membrane
+ *  bouncer's drift-home crosses). Returns the dv for the caller to queue as mass·dv —
+ *  inside the ring the desired velocity is zero, so the dv brakes the printer to rest. */
+export function receiptFollowDeltaV(entity, playerPos, playerVel) {
+  if (!finiteXZ(entity && entity.pos)) return null;
+  const want = receiptFollowVelocity(entity.pos, playerPos, playerVel);
+  const vx = finiteXZ(entity.vel) ? entity.vel.x : 0;
+  const vz = finiteXZ(entity.vel) ? entity.vel.z : 0;
+  const dvx = want.x - vx, dvz = want.z - vz;
+  if (dvx === 0 && dvz === 0) return null;
+  return { x: dvx, z: dvz };
+}
