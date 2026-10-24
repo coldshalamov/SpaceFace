@@ -1,5 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
+## Active normal-runtime narrative bridge: 2026-10-24 22:49 UTC
+
+All twelve goals remain OPEN. The [bridge WIP recovery](../world-experience-2026-10-24/narrative-bridge-wip/README.md) is an explicitly **WIP_UNQUALIFIED / INCOMPLETE** checkpoint, not production integration. It preserves seven scoped current-public source replacements, two published tests, partial baseline assertions and an actual exit137 execution gap. The cause of that termination is unproven; no terminal candidate result is invented. Exact public base is3bf67c9617e285561330a413472bd11a94bf2f7b.
+
+Owner: current bridge implementation/review owners and publisher; preserver owns this evidence-only handoff. Scope is the small normal-runtime narrative bridge port from root-owned PR480 ancestry. No P08/PR485 overlays, broad PR480 import, foreign ownership absorption or held assets are included.
+
+The immutable snapshot's census is pending and records its actual earlier discrepancies. Later generator compatibility correction is active and **not included** in the WIP: retain179 existing forwards plus9 new, known84 unchanged, with measured148/31/18/6/188 counts. A narrow LastShift test is prepared but not run. Do not relabel this preserved failed/incomplete attempt as the later candidate or a passing gate.
+
+Next: finish the bounded generator correction, run the narrow LastShift and affected owner checks, review exact current-public hunks and preserve final raw outcomes before runtime publication. PR598 remains recovery-only, while the19-case prerequisite-guidance archive remains a separate uninstalled successor. Complete Save, earned traversal, browser/visual and whole-game acceptance remain open. Existing holds and parked work are unchanged.
+
 ## Current P08 recovery delivery checkpoint: 2026-10-24 22:28 UTC
 
 All twelve goals remain OPEN. Draft [PR598](https://github.com/coldshalamov/SpaceFace/pull/598) now publishes the complete candidate recovery at `8ecf700ff7100e1f65d182bae32e746eb3bdb29d`, sole public parent `3bf67c9617e285561330a413472bd11a94bf2f7b`, tree `4b33a9c207f2860dbb1040e65001209eb5c2591c`. All59 recovery-only paths and exact blobs were verified. The package reconstructs67 intended text paths and44 original asset paths using six gzip/two XZ unique objects and35 raw entries. Full source/model Git persistence for this candidate is established. This is **not production installation, runtime integration, or campaign acceptance**.

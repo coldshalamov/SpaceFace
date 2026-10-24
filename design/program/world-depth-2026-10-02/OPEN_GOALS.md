@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 24 October 2026, 22:28 UTC.
+Updated: 24 October 2026, 22:49 UTC.
 
 All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
 
@@ -13,7 +13,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 - State: OPEN; tested increments are delivered, not whole-game acceptance.
 - Owner: root integration and exact feature owners.
 - Evidence: scope links; current checkpoint and PR590.
-- Next: qualify P08 integration, full Save/traversal and connected-world play.
+- Next: finish the scoped normal-runtime narrative bridge, then P08 integration and ordinary-play qualification.
 - Awaiting user: final acceptance when demonstrated; no routine engineering decision.
 
 ## SF-ORCHARD
@@ -29,7 +29,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 - State: OPEN; PR597 passes20 hosted cases but full CI failed. PR598 preserves the full P08 candidate source/model recovery; runtime integration and acceptance remain pending. Publication is not integration/acceptance.
 - Owner: publisher, root and exact feature owners.
 - Evidence: [PR590](https://github.com/coldshalamov/SpaceFace/pull/590); current checkpoint separates exact heads, passes and failures.
-- Next: follow PR598 recovery CI; qualify the separately archived19-case guidance successor before integration.
+- Next: preserve and qualify the active bridge WIP; follow PR598 recovery CI and separate guidance integration.
 - Awaiting user: existing publication holds; no repeated approval cards.
 
 ## SF-RECOVER
