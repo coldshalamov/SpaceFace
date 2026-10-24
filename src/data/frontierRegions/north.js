@@ -487,7 +487,7 @@ export const NORTH_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_eris_metronome',
         pos: Object.freeze({ x: -60, z: 1700 }),
-        landmarkGlb: 'place_asteroid_seamed',
+        landmarkGlb: 'place_comms_array',
         landmark: true,
       }),
     ]),
