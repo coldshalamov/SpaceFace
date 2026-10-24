@@ -1,5 +1,13 @@
 <!-- LIFETIME: DURABLE -->
 
+## Accompanied formation delivered: 2026-10-24 10:10 UTC
+
+[Draft PR577](https://github.com/coldshalamov/SpaceFace/pull/577) is verified at `d98ea998bf93dfcd2e36dff401c3432bee1418a1`, with four paths and sole latest public parent `8810e2255aabbc7c01d8eeaf65d22f3f23cc3ee4`. Six unrelated newer swarm/program commits are preserved. The reproduced late-join progress exploit is corrected: accompanying formation now requires 100 WU of progress during one uninterrupted 60–180-WU range interval lasting at least eight seconds. Distance and time accrue concurrently, not as an extra eight-second wait after distance. Focused checks pass 11/11 versus baseline 4/11, and eight existing RC checks pass. See the [formation-progress report](https://github.com/coldshalamov/SpaceFace/blob/d98ea998bf93dfcd2e36dff401c3432bee1418a1/design/program/world-experience-2026-10-24/ACCOMPANIED_FORMATION_PROGRESS.md).
+
+Independent native replay used ordinary seed-1 Ceres refinery selection at time 3600 and a 720-WU input-only approach. Formation held from 3611.083 to 3619.083; the leader advanced 319.328742 WU, final range was 110.068644 WU, and one receipt awarded 48 credits/+2 reputation with zero impacts and hull 150. The earlier pilot failure with 36 impacts and timeout remains preserved. An actual Save-owner probe at three seconds/55.981923 WU returned true, cleared live/transient state and retained the consumed encounter-423 stamp without payout or forced readmission.
+
+These tests use selected public key owners with archived fallback dependencies, not human flight, visual or performance acceptance. The publisher owns active CI and recovery; no aggregate-green claim is made. The next selection is read-only, with no new source queue yet. All twelve goals remain OPEN; integration-absorption permission, browser hold, Archive recovery/publication limits and both schedules are unchanged.
+
 ## Sori saved return qualified: 2026-10-24 09:57 UTC
 
 PR576 `e8eb8ea9` remains draft with its five published paths unchanged. Run 40081484940 is terminal FAILURE, updated 09:49:44 UTC and observed at 09:52:58. The hosted profession gate passed 15/15. Inspected paired groups have the same failed-command rows as parent run 40062772438, including the two FEEL failures and static-1 prerequisite/matrix skip; browser 3 is cancelled in both, with cause unspecified. Mobile remains 116/122 per engine without an exact-parent mobile run. No attributable new failure was found in inspected evidence, not a universal absence-of-regressions or broad-green claim.

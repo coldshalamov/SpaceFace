@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Accompanied formation delivered: 2026-10-24 10:10 UTC
+
+All twelve goals remain OPEN. [PR577](https://github.com/coldshalamov/SpaceFace/pull/577) publishes the accompanied-formation progress correction at `d98ea998`, preserving newer public ancestry. The [report](https://github.com/coldshalamov/SpaceFace/blob/d98ea998bf93dfcd2e36dff401c3432bee1418a1/design/program/world-experience-2026-10-24/ACCOMPANIED_FORMATION_PROGRESS.md) records focused 11/11, eight existing RC passes, ordinary-selection native success and a midpoint Save abort with no payout/readmission.
+
+This establishes bounded progress/custody behavior, not full human-flight, visual, performance or whole-game acceptance. CI remains publisher-owned and active; the next world-unit selection is read-only, not an allocated source queue. Both approval holds, Archive's recoverable publication block and continuation schedules remain unchanged.
+
 ## Sori saved return qualified: 2026-10-24 09:57 UTC
 
 All twelve goals remain OPEN. PR576's hosted profession gate passes 15/15, but broad CI is terminal failure; the current checkpoint records exact-parent comparison limits and the unpaired mobile result.

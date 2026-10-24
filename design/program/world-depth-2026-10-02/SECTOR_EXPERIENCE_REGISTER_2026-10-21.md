@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Accompanied formation delivered: 2026-10-24 10:10 UTC
+
+Ceres's accompanied formation now rewards actual continuous accompaniment rather than a late join after earlier progress. [PR577](https://github.com/coldshalamov/SpaceFace/pull/577) requires 100 WU while staying within 60–180 WU for at least eight uninterrupted seconds, with time and distance counted concurrently.
+
+The ordinary seed-1 refinery selection was replayed natively through input-only approach and a successful eight-second formation interval, yielding one 48-credit/+2-reputation receipt with no impacts. A real midpoint Save-owner probe instead clears the unfinished encounter, keeps its consumed stamp and pays nothing, without forced readmission. See the [full report](https://github.com/coldshalamov/SpaceFace/blob/d98ea998bf93dfcd2e36dff401c3432bee1418a1/design/program/world-experience-2026-10-24/ACCOMPANIED_FORMATION_PROGRESS.md) for exact measurements and the retained failed pilot run. Selected public owners plus archived fallback dependencies are not human-flight, browser/visual or full-sector acceptance. All twelve goals remain OPEN; the next connected-unit selection is read-only.
+
 ## Sori saved return qualified: 2026-10-24 09:57 UTC
 
 Sori's existing return now connects a genuine Ceres origin and four-scan calibration to eight He3 mined from an original compact gas row, a real Triton sale for 1,087 credits, and a completed delivery receipt. Actual Save JSON/load preserves career state. Exact PR561 contacts recognize “Triton accepted the envelope”; comparison/work/leave produce no extra observed trade, mining, settlement or player/mission/career mutation, and no extra delivery order.
