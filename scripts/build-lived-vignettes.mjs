@@ -580,8 +580,8 @@ const AMBIENT = [
     [['quiet_ghost', 'faction_quiet', 'RECORD RUNNER'], ['choir_zealot', 'faction_archive', 'ARCHIVE WARDEN']],
     'ARCHIVIST: A stolen record is running. Its last byte names Orcus.',
     'The record skips the same second each time it turns.',
-    [['Recover the record', 'I will help the archive bring the record back.'], ['Cover the runner', 'I will keep the quiet hull ahead of the archive.'], ['Leave the file', 'I will not take custody of a moving record.']],
-    ['The archive has a bearing. The record is still incomplete.', 'The ghost kept the file and its last missing second.', 'You left the record running into the dark.']),
+    [['Scan the runner’s bearing', 'I will pulse the runner for a bearing, not take the file.'], ['Decline the scan and withdraw', 'I will leave this file unread and withdraw from both hulls.'], ['Leave the file', 'I will not take custody of a moving record.']],
+    ['Your scanner obtained the runner’s bearing. The file remains aboard, still incomplete.', 'You withdrew without scanning the runner. The file and pursuit remain unresolved.', 'You left the record running into the dark.']),
   ambient('fissure_haul_out', 'salvage|anomaly_deep|k1|faction_free', ['sector_haumea_rift'], 'tow', 'faction_free', 'none', 'MOSS',
     [['mule_trader', 'faction_free', 'FISSURE TUG'], ['mule_trader', 'faction_free', 'DEAD HAULER']],
     'MOSS: Fissure haul is moving. Keep the second hull clear of the seam.',
@@ -1296,6 +1296,113 @@ function emit(row) {
 const LEVIED_SCENES = new Set(['fare_dodger_chase']);
 const UNPAID_ASSIST_SCENES = new Set(['manifest_stop_and_search', 'fog_edge_wait']);
 
+function archiveRecordRuntimeText() {
+  return `
+// Only this scene observes evidence. Shared choreography and consequence writers stay unchanged.
+const archiveBase = compileVignette(spec);
+const archiveSessions = new WeakMap();
+const archiveFinitePos = e => e && e.alive === true && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z);
+const archiveDistance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+function archiveValid(d, live, state, session) {
+  return session && state.world?.currentSectorId === session.sector
+    && d.player() === session.player
+    && [session.player, session.runner, session.warden].every(e =>
+      archiveFinitePos(e) && state.entities.get(e.id) === e);
+}
+function archiveAbort(d, live, reason, line) {
+  archiveSessions.delete(live);
+  if (line) d.say(live, 'info', line, null, { literal: true });
+  d.abort(live, reason);
+}
+function archiveSettle(d, live, state, session) {
+  session.settling = true;
+  try { archiveBase.choose(d, live, state, session.choice); }
+  finally { archiveSessions.delete(live); }
+}
+export const runtime = Object.freeze({
+  fire(d, live, state) {
+    archiveBase.fire(d, live, state);
+    if (live.phase === 'done') return;
+    const role = name => state.entities.get(live.ids.find(id => live.roles[id] === name));
+    const scanner = d.registry?.get?.('scanner');
+    archiveSessions.set(live, {
+      player: d.player(), runner: role('runner'), warden: role('ship_1'),
+      sector: state.world?.currentSectorId,
+      lastSeq: Number.isSafeInteger(scanner?._pulseSeq) ? scanner._pulseSeq : 0,
+      choice: null,
+    });
+  },
+  choose(d, live, state, choice) {
+    const session = archiveSessions.get(live);
+    if (!session || session.choice || live.phase !== 'offer' || d.now() >= live.deadlineAt) return;
+    if (!archiveValid(d, live, state, session)) return archiveAbort(d, live, 'record_subject_gone');
+    if (choice === 'c') {
+      session.choice = choice;
+      return archiveSettle(d, live, state, session);
+    }
+    if (choice !== 'a' && choice !== 'b') return;
+    if (choice === 'b' && session.readBeforeChoice) return archiveAbort(d, live, 'record_already_read',
+      'Your earlier pulse already read this runner. An unread withdrawal is no longer yours to offer.');
+    session.choice = choice;
+    session.chosenAt = d.now();
+    session.start = { x: session.player.pos.x, z: session.player.pos.z };
+    session.anchor = { x: live.anchor.x, z: live.anchor.z };
+    live.deadlineAt = d.now() + 90;
+    live.phase = choice === 'a' ? 'await_bearing' : 'await_discretion';
+    d.say(live, 'info', choice === 'a'
+      ? 'ARCHIVIST: Use your scanner pulse on RECORD RUNNER. A bearing is enough; the file stays aboard.'
+      : 'Keep your scanner off RECORD RUNNER. Withdraw 600 from this scene, 400 clear of both hulls, and at least 400 from where you answered. Their pursuit is not yours to settle.',
+    null, { literal: true });
+  },
+  tick(d, live, state, now) {
+    if (live.phase === 'done') return;
+    const session = archiveSessions.get(live);
+    if (session?.settling) return;
+    if (!archiveValid(d, live, state, session)) return archiveAbort(d, live, 'record_subject_gone');
+    if (!session.choice) return archiveBase.tick(d, live, state, now);
+    if (!Number.isFinite(now) || now < session.chosenAt || now >= live.deadlineAt) {
+      return archiveAbort(d, live, 'record_evidence_timeout', 'No fresh bearing or witnessed withdrawal. The file remains unresolved.');
+    }
+    applyMotion(d, live, 'chase', now);
+    if (session.choice === 'b'
+      && archiveDistance(session.player.pos, session.start) >= 400
+      && archiveDistance(session.player.pos, session.anchor) >= 600
+      && archiveDistance(session.player.pos, session.runner.pos) >= 400
+      && archiveDistance(session.player.pos, session.warden.pos) >= 400) {
+      archiveSettle(d, live, state, session);
+    }
+  },
+  event(d, live, state, name, payload) {
+    const session = archiveSessions.get(live);
+    if (!session || session.settling || live.phase === 'done' || name !== 'scanPulse') return;
+    if (!archiveValid(d, live, state, session)) return archiveAbort(d, live, 'record_subject_gone');
+    const scanner = d.registry?.get?.('scanner');
+    const now = d.now();
+    // The scanner owner stamps this synchronous event. Reject foreign owners, stale/replayed
+    // sequences, wrong origins and invalid ranges rather than inventing a fallback pulse.
+    if (!payload || payload.source !== 'player-scanner' || payload.scannerId !== session.player.id
+      || !scanner || scanner.state !== state || scanner._pulseSeq !== payload.seq
+      || !Number.isSafeInteger(payload.seq) || payload.seq <= session.lastSeq
+      || !Number.isFinite(payload.simTime) || payload.simTime !== now
+      || !Number.isFinite(payload.pos?.x) || !Number.isFinite(payload.pos?.z)
+      || archiveDistance(payload.pos, session.player.pos) > 1e-6
+      || !Number.isFinite(payload.radius) || payload.radius <= 0) return;
+    session.lastSeq = payload.seq;
+    if (!session.choice) {
+      if (archiveDistance(payload.pos, session.runner.pos) <= payload.radius) session.readBeforeChoice = true;
+      return;
+    }
+    if (now < session.chosenAt) return;
+    if (now >= live.deadlineAt) return archiveAbort(d, live, 'record_evidence_timeout');
+    if (archiveDistance(payload.pos, session.runner.pos) > payload.radius) return;
+    if (session.choice === 'b') return archiveAbort(d, live, 'record_discretion_broken',
+      'Your pulse read the runner. No discretion was witnessed; the file remains aboard.');
+    archiveSettle(d, live, state, session);
+  },
+});
+`;
+}
+
 function emitAmbient(row) {
   const title = row.id.split('_').map((part) => part[0].toUpperCase() + part.slice(1)).join(' ');
   const encounterId = `scene_${row.id}`;
@@ -1366,6 +1473,7 @@ function emitAmbient(row) {
   const body = {
     shape: { situation: row.situation, place: row.place, twist: row.twist, actor: row.actor },
     livedVignette: true,
+    ...(row.id === 'archive_record_tail' ? { livedRotation: true } : {}),
     ambientScene: true,
     sectorIds: row.sectors,
     noCombat: true,
@@ -1420,11 +1528,11 @@ function emitAmbient(row) {
   }
   const text = `// ${title} — lived vignette. External-only: ambient world scene.\n`
     + `import { deepFreeze, defineEncounter } from './catalog.js';\n`
-    + `import { compileVignette } from '../../systems/vignetteInterpreter.js';\n\n`
+    + `import { compileVignette${row.id === 'archive_record_tail' ? ', applyMotion' : ''} } from '../../systems/vignetteInterpreter.js';\n\n`
     + `export const spec = ${JSON.stringify(spec, null, 2)};\n\n`
     + `export const encounterOrder = ${row.order};\n`
     + `export const trigger = deepFreeze(${JSON.stringify(trigger, null, 2)});\n`
-    + `export const runtime = compileVignette(spec);\n`
+    + (row.id === 'archive_record_tail' ? archiveRecordRuntimeText() : `export const runtime = compileVignette(spec);\n`)
     + `export default defineEncounter(trigger, ${JSON.stringify(body, null, 2)});\n`;
   // Pilgrim-only initial placement follows the scheduler's actual bearing.
   if (row.id === 'pilgrim_lamp_walk') {
