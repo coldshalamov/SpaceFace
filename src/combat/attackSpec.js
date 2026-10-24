@@ -330,6 +330,11 @@ function baseDraft(weapon) {
         action: 'apply_payload',
         inherit: { rootSiblings: true, splitChildren: true, chainChildren: true },
       },
+      ...(chainFromWeapon(weapon) ? [{
+        event: 'entity_contact',
+        action: 'chain_if_eligible',
+        inherit: { rootSiblings: true, splitChildren: true, chainChildren: true },
+      }] : []),
     ],
     constraints: {
       lineageProcBudget: DEFAULT_CONSTRAINTS.lineageProcBudget,
