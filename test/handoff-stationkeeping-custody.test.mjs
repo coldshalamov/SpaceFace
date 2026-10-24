@@ -351,3 +351,8 @@ for (const bearing of [0,.125,.25,.375,.5,.625,.75,.875]) test(`initial freight 
  }
  assert.equal(h.pods.length,4);
 });
+
+test('authored Handoff copy describes holding hulls without promising nose alignment', () => {
+  assert.match(encounter.primaryLine, /two hulls holding off the lane/);
+  assert.doesNotMatch(encounter.primaryLine, /nose-to-nose/);
+});

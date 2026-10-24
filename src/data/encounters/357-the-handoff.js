@@ -395,7 +395,7 @@ export default defineEncounter(trigger, {
   factionId: 'faction_mts',
   context: 'civilian',
   title: 'THE HANDOFF',
-  primaryLine: 'LANE WATCH: two hulls parked nose-to-nose off the lane — cargo crawling the gap.',
+  primaryLine: 'LANE WATCH: two hulls holding off the lane — cargo crawling the gap.',
   squad: {
     // The buyer: an MTS mule where an MTS mule should not be — passive, parked, on the
     // civilian team; the squad block is only the second-half casting slot.

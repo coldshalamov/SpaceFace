@@ -1,3 +1,7 @@
+import { save } from '../src/save/saveSystem.js';
+import { cargo } from '../src/systems/cargo.js';
+import { economy } from '../src/systems/economy.js';
+import { mining } from '../src/systems/mining.js';
 // Focused native-physics proof, not production-manifest or player-journey evidence.
 // Only initial spawn assigns poses/velocities; subsequent movement belongs to Rapier.
 // Radius-2 synthetic carriers isolate authority, not actual MTS hull clearance.
@@ -162,10 +166,11 @@ for (const passing of [true, false]) test(`native ${passing ? 'fly-through rejec
 
 // Actual production archetypes/native geometry, separate from the radius-2 authority
 // fixture above. Forced authored admission is not natural ambient-frequency evidence.
-async function bootActual({ bearing = null, passing = false } = {}) {
+async function bootActual({ bearing = null, passing = false, persistence = false } = {}) {
  const ai=createTacticalAISystem({config:{enemyMind:PRODUCTION_ENEMY_MIND_CONFIG}});
  const systems=[spawnBudget,aiPorts,ai,flightV3,physics];
  if(bearing===null)systems.push(encounterDirector);
+ if(persistence)systems.push(cargo,economy,mining,save);
  const sim=createSimulation({seed:357,systems}),{state}=sim;
  state.mode='flight';state.world.currentSectorId='sector_pallas_drift';
  Object.assign(state.input,{moveX:0,moveZ:0,turnIntent:0,brake:!passing,boost:false,fire:false,assistMode:'drift'});
@@ -256,4 +261,62 @@ for(const passing of [false,true])test(`actual director/native ${passing?'pass':
   assert.equal(h.events.filter(e=>e.name==='economy:grantCredits'&&e.reason==='handoff:quiet_lay').length,passing?0:1);
 
  }finally{h.close();}
+});
+
+test('actual Save Continue preserves bonded original custody and ordinary pickup exactly once', {timeout:45000}, async t => {
+ const previousStorage=globalThis.localStorage,slots=new Map();
+ globalThis.localStorage={getItem:k=>slots.get(k)??null,setItem:(k,v)=>slots.set(k,String(v)),
+  removeItem:k=>slots.delete(k),key:i=>[...slots.keys()][i]??null,get length(){return slots.size;}};
+ let h;
+ try{
+  h=await bootActual({persistence:true});
+  const {state,sim,live}=h,sv=sim.registry.get('save'),beforeCredits=state.player.credits;
+  const collected=[];sim.bus.on('pickup:collected',p=>collected.push({t:state.simTime,...p}));
+  for(let i=0;i<600&&!live.data.custodyCommit;i++)sim.step(1/60);
+  const podId=live.data.custodyCommit?.podId,original=state.entities.get(podId);
+  assert.ok(original);assert.notEqual(live.phase,'done');
+  assert.equal(original.data.amount,2);assert.equal(original.data.ownerId,state.playerId);
+  assert.equal(state.player.credits,beforeCredits+60);
+  const snapshot=()=>({t:state.simTime,playerId:state.playerId,credits:state.player.credits,
+   cargo:structuredClone(state.player.cargo),liveIds:Object.keys(state.encounterDirector.live||{}),
+   receipts:structuredClone(state.encounterDirector.receipts),pod:state.entities.has(podId)?
+    {id:podId,data:structuredClone(state.entities.get(podId).data)}:null});
+  const accepted=snapshot();
+  const envelope=sv.serialize('quick');
+  assert.ok(envelope.data.entities.persistent.some(e=>e.id===podId&&e.data.amount===2));
+  slots.set('sf.save.quick',JSON.stringify(envelope));
+  assert.equal(await sv.load('quick'),true);
+  const restored=state.entities.get(podId),continued=snapshot();
+  assert.notEqual(restored,original,'actual deserialization reconstructs the saved body');
+  assert.equal(restored.id,podId);assert.equal(restored.data.ownerId,state.playerId);
+  assert.equal(restored.data.amount,2);assert.equal(restored.data.bondedBy,live.id);
+  assert.equal(restored.data.committedTo,state.playerId);
+  assert.equal(state.player.credits,beforeCredits+60);
+  assert.deepEqual(Object.keys(state.encounterDirector.live),[]);
+  assert.ok(!state.encounterDirector.receipts.some(r=>r.outcome==='contact_made'));
+  for(let i=0;i<3600&&state.entities.has(podId);i++)sim.step(1/60);
+  for(let i=0;i<120;i++)sim.step(1/60);
+  const pickup=collected.filter(p=>p.pickupId===podId);
+  assert.equal(pickup.length,1);assert.equal(pickup[0].collectorId,state.playerId);
+  assert.equal(pickup[0].acceptedAmount,2);assert.equal(pickup[0].rejectedAmount,0);
+  assert.equal(state.entities.has(podId),false);
+  assert.equal(state.player.cargo.items[original.data.commodityId],2);
+  assert.equal(state.player.credits,beforeCredits+60);
+  assert.equal(h.events.filter(e=>e.name==='economy:grantCredits'&&e.reason==='handoff:quiet_lay').length,1);
+  const afterPickup=snapshot(),afterEnvelope=sv.serialize('quick');
+  assert.ok(!afterEnvelope.data.entities.persistent.some(e=>e.id===podId));
+  slots.set('sf.save.quick',JSON.stringify(afterEnvelope));
+  assert.equal(await sv.load('quick'),true);
+  assert.equal(state.entities.has(podId),false);
+  assert.deepEqual(state.player.cargo,afterPickup.cargo);
+  assert.equal(state.player.credits,beforeCredits+60);
+  for(let i=0;i<120;i++)sim.step(1/60);
+  assert.equal(collected.filter(p=>p.pickupId===podId).length,1);
+  assert.equal(state.player.cargo.items[original.data.commodityId],2);
+  assert.equal(state.player.credits,beforeCredits+60);
+  assert.equal(h.events.filter(e=>e.name==='economy:grantCredits'&&e.reason==='handoff:quiet_lay').length,1);
+  assert.ok(!state.encounterDirector.receipts.some(r=>r.outcome==='contact_made'));
+  t.diagnostic(JSON.stringify({saveBoundary:true,accepted,continued,pickup,afterPickup,
+   afterPickupContinue:snapshot(),allPickupIds:collected.map(p=>p.pickupId)}));
+ }finally{h?.close();if(previousStorage===undefined)delete globalThis.localStorage;else globalThis.localStorage=previousStorage;}
 });
