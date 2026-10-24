@@ -162,3 +162,5 @@ export function createReceipt() {
     },
   };
 }
+
+export const receipt = createReceipt();
