@@ -159,6 +159,13 @@ function withClockCaption(text, clock) {
   return `${base}, ${clock} o'clock.`;
 }
 
+/** Caption text for the presentation channel: optionally translate the base line, then add the clock. */
+export function formatCaptionText(text, clock, translate) {
+  if (!text) return text;
+  const base = typeof translate === 'function' ? translate(String(text)) : text;
+  return clock ? withClockCaption(base, clock) : base;
+}
+
 export function audioCueCaption(kind, audioCuesFlag, place) {
   const cue = resolveAccessibilityCue(kind, audioCuesFlag);
   if (!cue) return null;
@@ -269,6 +276,8 @@ export function captionForGameplayRecipe(recipeId, recipe, place) {
   return Object.freeze({
     recipeId,
     text: clock ? withClockCaption(family.text, clock) : family.text,
+    baseText: family.text,
+    authored: !!explicit,
     urgency: family.urgency,
     event: family.event,
     ...(clock ? { clock } : {}),
