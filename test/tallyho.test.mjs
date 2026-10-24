@@ -97,6 +97,44 @@ test('player killing the board or a spectator does not rate', () => {
   assert.equal(rates(popups).length, 0);
 });
 
+test('a spectator corpse killed inside the ring still does not rate', () => {
+  // Combat marks the victim dead BEFORE entity:killed emits — a live-only crowd
+  // scan would miss the just-killed spectator and let shooting the audience score.
+  const { bus, popups, state } = fixture();
+  for (let i = 0; i < 3; i++) {
+    state.simTime = 100 + i * 10;
+    bus.emit('entity:killed', kill(200 + i));
+  }
+  const spec = state.entityList.find((e) => e.data?.tallyhoSpectator);
+  assert.ok(spec, 'a spectator parked after three rated kills');
+  spec.alive = false; // the corpse is still listed when the kill event fires
+  bus.emit('entity:killed', kill(spec.id, { x: 360, z: -590 })); // pos inside the ring
+  assert.equal(rates(popups).length, 3, 'the rail death itself never rates');
+});
+
+test('a replacement spectator takes an empty seat, never an occupied one', () => {
+  const { bus, state } = fixture();
+  for (let i = 0; i < 6; i++) {
+    state.simTime = 100 + i * 10;
+    bus.emit('entity:killed', kill(300 + i));
+  }
+  const parked = state.entityList.filter((e) => e.data?.tallyhoSpectator);
+  assert.equal(parked.length, 2);
+  assert.deepEqual(parked.map((e) => e.data.tallyhoSeat), [0, 1]);
+  parked[0].alive = false; // seat 0's sitter dies — the chair stays empty
+  for (let i = 0; i < 3; i++) {
+    state.simTime = 300 + i * 10;
+    bus.emit('entity:killed', kill(400 + i));
+  }
+  const live = state.entityList.filter((e) => e.alive && e.data?.tallyhoSpectator);
+  assert.equal(live.length, 2, 'the rail refills toward the cap, not past it');
+  const seats = live.map((e) => e.data.tallyhoSeat).sort();
+  assert.deepEqual(seats, [1, 2], 'the new arrival takes seat 2 — seat 0 stays empty');
+  const survivor = live.find((e) => e.data.tallyhoSeat === 1);
+  const arrived = live.find((e) => e.data.tallyhoSeat === 2);
+  assert.notDeepEqual(arrived.pos, survivor.pos, 'no two live spectators share a seat');
+});
+
 test('pure rules: sight, rateable gate, streak, lines, score, seat', () => {
   assert.equal(tallyhoInSight({ x: 350, z: -600 }), true);
   assert.equal(tallyhoInSight({ x: 350 + 901, z: -600 }), false);

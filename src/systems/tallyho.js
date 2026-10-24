@@ -118,7 +118,15 @@ export function createTallyho() {
       if (!this._adventure() || !p) return;
       const board = this._board();
       if (!board) return;
-      const selfIds = new Set([board.id, ...this._spectators().map((e) => e.id)]);
+      // Own crowd by DATA FLAG, not aliveness: combat marks the victim dead before
+      // entity:killed emits, so a live-only spectator scan would let a player kill
+      // parked INSIDE the ring rate — shooting the audience must never score.
+      // A flagged corpse still in the list holds its id until the sweep frees it,
+      // and a recycled id only re-enters selfIds if the new occupant is also ours.
+      const selfIds = new Set([board.id]);
+      for (const e of this.state?.entityList || []) {
+        if (e && e.data && (e.data.tallyho === true || e.data.tallyhoSpectator === true)) selfIds.add(e.id);
+      }
       const playerId = this.state?.playerId ?? this.state?.player?.id;
       if (!tallyhoRateableKill(p, playerId, selfIds)) return;
       const now = Number(this.state?.simTime) || 0;
@@ -137,14 +145,23 @@ export function createTallyho() {
       if (this._ratedSinceSpectator >= TALLYHO.ratedKillsPerSpectator
           && this._spectators().length < TALLYHO.spectatorCap && this.helpers.spawnEntity) {
         this._ratedSinceSpectator = 0;
-        const seat = tallyhoSpectatorSeat(this._spectators().length);
+        // Next seat = one past the highest LIVE seat, never the live count: a dead
+        // rail-sitter's chair stays empty and the new arrival does not spawn
+        // coincident with the survivor. The stamped seat rides data.*, so a
+        // save:loaded restore keeps the rail's occupancy honest too.
+        let nextSeat = 0;
+        for (const e of this._spectators()) {
+          const s = Number(e.data && e.data.tallyhoSeat);
+          if (Number.isInteger(s) && s >= nextSeat) nextSeat = s + 1;
+        }
+        const seat = tallyhoSpectatorSeat(nextSeat);
         this.helpers.spawnEntity({
           type: 'drone',
           pos: seat, vel: { x: 0, z: 0 },
           radius: 8, mass: 20, hull: 100, hullMax: 100,
           homeSectorId: TALLYHO.sectorId,
           data: {
-            tallyhoSpectator: true, parentType: 'story_prop',
+            tallyhoSpectator: true, tallyhoSeat: nextSeat, parentType: 'story_prop',
             callsign: 'PITBORN RAIL',
             scanLabel: 'Pitborn spectator — came for the score',
             scannerSignalKind: 'salvage',
