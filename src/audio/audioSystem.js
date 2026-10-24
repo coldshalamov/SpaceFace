@@ -756,7 +756,7 @@ export function relayPulseCue(payload) {
 export function playRelayPulse(host, payload) {
   const cue = relayPulseCue(payload);
   if (!cue || !host || typeof host.play !== 'function') return null;
-  const played = host.play(cue.recipeId, { id: cue.recipeId, gain: cue.gain });
+  const played = host.play(cue.recipeId, { id: cue.recipeId, gain: cue.gain, captionOwned: typeof host._emitPresentationCaption === 'function' });
   if (played && typeof host._emitPresentationCaption === 'function') {
     host._emitPresentationCaption(cue.caption, { channel: 'cue' });
   }
@@ -2859,12 +2859,12 @@ export const audio = {
     // bright rising stinger; complete gets a triumphant two-note chord + a brief music duck so the
     // payoff lands above the bed.
     bus.on('mission:accepted', () => {
-      this.play('sfx_mission_accept', { gain: 0.7 });
+      this.play('sfx_mission_accept', { gain: 0.7, captionOwned: true });
       this._emitNamedCaption(missionMomentCaption('mission:accepted'));
     });
     bus.on('mission:completed', () => {
       this._duckMusic();
-      this.play('sfx_mission_complete', { gain: 0.8 });
+      this.play('sfx_mission_complete', { gain: 0.8, captionOwned: true });
       this._emitNamedCaption(missionMomentCaption('mission:completed'));
     });
     // Mission failure/expiry: previously silent on the negative outcome (only accept/complete had
@@ -2925,23 +2925,23 @@ export const audio = {
     // been reusing the mission-complete jingle). The ship buy ducks the bed briefly so the low
     // hull swell reads over whatever was playing.
     bus.on('tech:researched', (p) => {
-      this.play('sfx_tech_researched', { gain: 0.6 });
+      this.play('sfx_tech_researched', { gain: 0.6, captionOwned: true });
       this._emitNamedCaption(payoffCaption('tech:researched', p));
     });
     bus.on('ship:purchased', (p) => {
       this._duckMusic();
-      this.play('sfx_ship_purchased', { gain: 0.7 });
+      this.play('sfx_ship_purchased', { gain: 0.7, captionOwned: true });
       this._emitNamedCaption(payoffCaption('ship:purchased', p));
     });
     // Achievements and career promotions: previously silent or text-only. An unlocked deed gets
     // the fanfare (and ducks the bed, like a mission resolve); a rank-up gets the warm chord.
     bus.on('achievement:unlocked', (p) => {
       this._duckMusic();
-      this.play('sfx_achievement_fanfare', { gain: 0.75 });
+      this.play('sfx_achievement_fanfare', { gain: 0.75, captionOwned: true });
       this._emitNamedCaption(payoffCaption('achievement:unlocked', p));
     });
     bus.on('career:ladder:completed', (p) => {
-      this.play('sfx_promotion_chord', { gain: 0.7 });
+      this.play('sfx_promotion_chord', { gain: 0.7, captionOwned: true });
       this._emitNamedCaption(payoffCaption('career:ladder:completed', p));
     });
     // A faction naming you a new rank (or taking one back) — the comms log and news already say it.
@@ -2951,7 +2951,7 @@ export const audio = {
     bus.on('economy:tradeCompleted', (p) => {
       const voice = sellRegisterVoice(p);
       if (!voice) return;
-      this.play(voice.id, { gain: voice.gain, rate: voice.rate });
+      this.play(voice.id, { gain: voice.gain, rate: voice.rate, captionOwned: true });
       this._emitNamedCaption(saleCaption(p));
     });
     bus.on('sector:enter', (p) => {
@@ -3150,15 +3150,16 @@ export const audio = {
       // (_playAccessibilityCue('well') legacy audit anchor)
       const kind = p && p.kind;
       if (!kind) return;
+      const settings = this.state && this.state.settings;
+      const cap = fieldDeployCaption(kind, settings);
       const recipeId = fieldDeployRecipe(kind);
       if (recipeId) {
         this.play(recipeId, {
           gain: 0.55,
+          captionOwned: !!(cap && cap.text),
           position: p && p.center,
         });
       }
-      const settings = this.state && this.state.settings;
-      const cap = fieldDeployCaption(kind, settings);
       if (cap && cap.text) {
         this._emitPresentationCaption(cap.text, {
           channel: 'cue',
@@ -6378,7 +6379,7 @@ export const audio = {
   },
 
   _onMineCapReached(payload) {
-    this.play(MINE_CAP_REFUSAL_RECIPE, { gain: 0.65 });
+    this.play(MINE_CAP_REFUSAL_RECIPE, { gain: 0.65, captionOwned: true });
     const cap = payload && Number.isFinite(payload.cap) ? payload.cap : 6;
     this._emitPresentationCaption(`Mine Cap Reached (${cap})`, {
       assertive: true,
@@ -6557,7 +6558,7 @@ export const audio = {
     if (!rt || rt._fuelEmptyStung) return;
     rt._fuelEmptyStung = true;
     rt._fuelThin = FUEL_THIN_GAIN;
-    const voice = this.play('sfx_fuel_empty', { gain: 0.8, critical: true, warning: true });
+    const voice = this.play('sfx_fuel_empty', { gain: 0.8, critical: true, warning: true, captionOwned: true });
     if (voice) this._emitPresentationCaption('Fuel empty.', { assertive: true, channel: 'fuel' });
   },
 
@@ -6663,7 +6664,7 @@ export const audio = {
       const last = Number(book[id]) || 0;
       if (simTime - last < 12) continue;
       book[id] = simTime;
-      const voice = this.play(cue.recipeId, { gain: cue.gain, position: ent.pos || null });
+      const voice = this.play(cue.recipeId, { gain: cue.gain, position: ent.pos || null, captionOwned: true });
       if (voice) this._emitPresentationCaption(cue.caption, { channel: 'cue' });
       played = true;
     }
@@ -6714,6 +6715,7 @@ export const audio = {
       }
       const started = this.play(voice.recipeId, {
         gain: voice.gain,
+        captionOwned: !!voice.caption,
         rate: voice.rate,
         critical: voice.critical,
         position: payload && payload.pos,
@@ -6774,8 +6776,9 @@ export const audio = {
       ? resolved.speech.durationS : 0.9;
     // Industrial punctuation: the mic solenoid keys open, the voice rides the carrier, then the
     // squelch tail collapses it. Scheduled starts keep the gap tight and sample-accurate.
-    this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain, startTime: t0 });
+    this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain, startTime: t0, captionOwned: true });
     const body = this.play(resolved.recipeId, {
+      captionOwned: true,
       gain: resolved.gain,
       rate: barkPlaybackRate(resolved),
       barkPcmBuffer: ctx && ctx.state === 'running' && !this._isMuted()
@@ -6786,6 +6789,7 @@ export const audio = {
       startTime: t0 + BARK_PUNCT.keyLeadS,
     });
     this.play('sfx_comms_squelch_tail', {
+      captionOwned: true,
       gain: BARK_PUNCT.tailGain,
       startTime: t0 + BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS,
     });
@@ -6842,8 +6846,9 @@ export const audio = {
     this._instructorLastText = text;
     this._instructorLastAtS = now;
     this._instructorClearAt = t0 + span;
-    this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain * 0.8, startTime: t0 });
+    this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain * 0.8, startTime: t0, captionOwned: true });
     this.play(resolved.recipeId, {
+      captionOwned: true,
       gain: resolved.gain,
       rate: barkPlaybackRate(resolved),
       barkPcmBuffer: ctx && ctx.state === 'running' && !this._isMuted()
@@ -6854,6 +6859,7 @@ export const audio = {
       startTime: t0 + BARK_PUNCT.keyLeadS,
     });
     this.play('sfx_comms_squelch_tail', {
+      captionOwned: true,
       gain: BARK_PUNCT.tailGain * 0.8,
       startTime: t0 + BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS,
     });
@@ -6873,6 +6879,7 @@ export const audio = {
       this.play(cue.recipeId, {
         gain: 0.55 + cue.importance * 0.3,
         critical: cue.importance >= 0.8,
+        captionOwned: captionsOn && !!cue.caption,
         position: (payload && (payload.position || payload.pos)) || null,
       });
     }
@@ -7074,6 +7081,7 @@ export const audio = {
       startTime: onGrid ? this._stuntGridTime(nowS) : undefined,
       lockRate: onGrid,
       critical: isCritical,
+      captionOwned: opts.captionOwned === true,
     });
     if (clearCadence) this.play('sfx_stunt_link', {
       gain: 0.3, rate: this._noteFreq('E', 5) / 880, lockRate: true,
@@ -9231,6 +9239,8 @@ export const audio = {
     
     const docked = !!(rt._docked || (this.state.ui && this.state.ui.docked));
 
+    // Sound-only place accents opt out of generic captions; semantic anomaly evidence below
+    // keeps its authored caption. The same policy applies to machinery/traffic in _updatePlaceContext.
     // Sector identity keeps its sparse bells/ticks/swells. The old always-on four-oscillator pad
     // duplicated the adaptive music graph and was the audible startup drone, so it has no runtime
     // route here.
@@ -9238,13 +9248,13 @@ export const audio = {
       if (targetClass === 'core') {
         if (ctx.currentTime - (rt._lastBellTime || 0) >= 45) {
           rt._lastBellTime = ctx.currentTime;
-          this.play('sfx_core_bell', { gain: 0.25 });
+          this.play('sfx_core_bell', { gain: 0.25, captionOwned: true });
         }
       } else if (targetClass === 'fringe') {
         const nextTickDelay = rt._nextRadioTickTime || 0;
         if (ctx.currentTime >= nextTickDelay) {
           rt._nextRadioTickTime = ctx.currentTime + 2.0 + Math.random() * 4.0;
-          this.play('sfx_fringe_tick', { gain: 0.15 });
+          this.play('sfx_fringe_tick', { gain: 0.15, captionOwned: true });
         }
       }
       this._updateAnomalyEvidence();
@@ -9274,7 +9284,7 @@ export const audio = {
     if (rt._docked) {
       if (now - (rt._lastMachineryAt || 0) >= 6 + Math.random() * 8) {
         rt._lastMachineryAt = now;
-        this.play('sfx_station_machinery', { gain: 0.12 });
+        this.play('sfx_station_machinery', { gain: 0.12, captionOwned: true });
       }
       return;
     }
@@ -9286,7 +9296,7 @@ export const audio = {
 
     if (now - (rt._lastTrafficBlipAt || 0) >= 14 + Math.random() * 18) {
       rt._lastTrafficBlipAt = now;
-      this.play('sfx_traffic_blip', { gain: 0.08, rate: 0.9 + Math.random() * 0.25 });
+      this.play('sfx_traffic_blip', { gain: 0.08, rate: 0.9 + Math.random() * 0.25, captionOwned: true });
     }
   },
 

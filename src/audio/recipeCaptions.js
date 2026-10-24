@@ -1,12 +1,33 @@
-// src/audio/recipeCaptions.js — PLACEHOLDER for Robin's uncommitted recipe-caption module.
-// 6a9eec796e ("Polish the small tells a player can hear and see") imports these two names in
-// audioSystem.js but the module was never committed, so audioSystem.js failed to load. This inert
-// stub keeps the imports resolvable with the pre-6a9eec796e behaviour: no extra recipe captions,
-// and caption text passes through unchanged. Replace it whole with the real module when it lands.
+// Caption only a voice admitted by audio.play. The caller owns audibility and voice budgets;
+// this adapter owns no timers, audio nodes, simulation state, or second event subscription.
+import { captionForGameplayRecipe } from '../ui/captions.js';
+import { localizeText } from '../localization/gameLocalization.js';
 
-export function emitAdmittedRecipeCaption(_audio, _recipeId, _recipe, _opts, _busName) {}
+export function localizedCaptionText(text, clock) {
+  if (!text) return '';
+  if (!Number.isInteger(clock) || clock < 1 || clock > 12) return localizeText(text);
+  const caption = localizeText(text).replace(/[.\s]+$/, '');
+  return localizeText("{caption}, {clock} o'clock.", { caption, clock });
+}
 
-/** @returns {string} the caption text, unchanged */
-export function localizedCaptionText(text, _clock) {
-  return text;
+export function emitAdmittedRecipeCaption(owner, recipeId, recipe, opts = {}, busName) {
+  // Named event captions and deliberately wordless cues already own this moment. In
+  // particular, a mining-danger siren must never inherit the wanted-alert sentence.
+  if (!owner || typeof owner._emitPresentationCaption !== 'function'
+    || opts.captionOwned === true
+    || owner.state?.settings?.accessibility?.captions === false) return null;
+  // Resolve the authored base text without a position. _emitPresentationCaption owns
+  // the ship-relative clock and localization, so neither can be appended twice.
+  const caption = captionForGameplayRecipe(recipeId, recipe);
+  if (!caption) return null; // The canonical resolver excludes UI blips.
+  owner._emitPresentationCaption(caption.text, {
+    channel: 'cue',
+    recipeId: caption.recipeId,
+    urgency: caption.urgency,
+    event: caption.event,
+    assertive: caption.urgency === 'high' || caption.urgency === 'warn',
+    position: opts.position || null,
+    ...(opts.clock ? { clock: opts.clock } : {}),
+  });
+  return caption;
 }
