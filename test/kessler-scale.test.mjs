@@ -3,9 +3,14 @@ import assert from 'node:assert/strict';
 import { createKesslerScale, kesslerScaleSpec } from '../src/systems/kesslerScale.js';
 import { KESSLER_SCALE } from '../src/data/kessler.js';
 import { kesslerPodEligible, kesslerReadCheck, kesslerPlateRead, kesslerTrueRead, kesslerVarianceSeen } from '../src/characters/kesslerRules.js';
+import { spawnJettisonedCargoPod } from '../src/systems/lootShards.js';
 import { createBus } from '../src/core/eventBus.js';
 import { makeEntity } from '../src/core/entity.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER, getDeclaredSystemClock } from '../src/runtime/authoritativeSystemManifest.js';
+import { getNodeSystemFactoryTable } from '../src/runtime/nodeSystemFactoryTable.js';
+import { resolveRuntimeManifest } from '../src/runtime/resolveRuntimeManifest.js';
+import { createGameState } from '../src/core/gameState.js';
+import { createRegistry } from '../src/core/registry.js';
 
 const PAD = KESSLER_SCALE.pad;
 
@@ -38,6 +43,19 @@ test('registered in both orders on the calendar clock — a seconds-scale plate 
   assert.equal(PRODUCTION_INIT_ORDER.filter((x) => x === 'kesslerScale').length, 1);
   assert.equal(PRODUCTION_UPDATE_ORDER.filter((x) => x === 'kesslerScale').length, 1);
   assert.equal(getDeclaredSystemClock('kesslerScale'), 'calendar');
+});
+
+test('both lookup tables resolve the id — a manifest id without a map entry throws at materialization', () => {
+  // Regression pin for the e4d6921 index-staging drop: the commit landed the manifest
+  // rows but no ['kesslerScale', kesslerScale] line in either lookup, so resolveRuntimeManifest
+  // threw 'missing system "kesslerScale"' on every production boot path.
+  const nodeLookup = getNodeSystemFactoryTable();
+  assert.equal(nodeLookup.get('kesslerScale')?.name, 'kesslerScale', 'Node factory table resolves it');
+  const resolved = resolveRuntimeManifest({ profileId: 'production', systemLookup: nodeLookup, nodeSafeOnly: true });
+  assert.ok(resolved.authoritativeSystems.some((s) => s && s.name === 'kesslerScale'),
+    'the materialized init cohort carries the plate');
+  const registry = createRegistry({ state: createGameState(11), bus: createBus(), helpers: {}, applyRuntimeFeatures: false });
+  assert.equal(registry.get('kesslerScale')?.name, 'kesslerScale', 'browser registry lookup resolves it');
 });
 
 test('the weigh-slip deck waits at Tethys adventure and announces itself once ever', () => {
@@ -136,6 +154,27 @@ test('destroy clears listeners, providers, and the beacon; re-init is clean', ()
   f.system.update(0.5, f.state);
   const announces = f.events.filter(([t, p]) => t === 'comms:popup' && p.id === 'kessler_scale_announce');
   assert.equal(announces.length, 1, 'the once-ever flag survives re-init');
+});
+
+test('the plate reads the real spawned pod shape, not just the fixture double', () => {
+  const f = fixture();
+  const pod = spawnJettisonedCargoPod(f.state, {
+    pos: { x: PAD.x, z: PAD.z }, vel: { x: 0, z: 0 },
+    commodityId: 'cmdty_ore_iron', amount: 3, unitMass: 12,
+  }, f.helpers);
+  assert.ok(pod, 'the production cargo spawner mints a body');
+  assert.equal(pod.type, 'payload');
+  assert.equal(pod.data.payloadType, 'jettisoned_cargo');
+  assert.equal(pod.data.jettisonedCargo, true);
+  assert.ok(kesslerPodEligible(pod), 'the desk predicate matches the real marker pair');
+  f.system.update(0.5, f.state);
+  assert.equal(pod.data.kesslerRead, true);
+  const weighs = f.events.filter(([t]) => t === 'kesslerPod:weighed');
+  assert.equal(weighs.length, 1);
+  assert.equal(weighs[0][1].entityId, pod.id);
+  assert.equal(weighs[0][1].trueRead, kesslerTrueRead(pod.mass));
+  assert.equal(weighs[0][1].plateRead, kesslerPlateRead(pod.mass));
+  assert.ok(weighs[0][1].variance, 'a real 36t pod reads a thumb-width short');
 });
 
 test('leaving and re-entering re-reads a fresh pod but never re-announces', () => {
