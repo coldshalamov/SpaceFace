@@ -134,7 +134,10 @@ ${SL} .orr-film__list > .k-row.sf-slot { display:grid !important; grid-template-
   column-gap:10px; row-gap:0; align-items:start; padding:0 !important; min-height:0 !important; height:auto !important; ${PLAIN}
   cursor:pointer; text-align:center; color:rgb(${BONE}); outline:none !important; }
 ${SL} .orr-film__list > .k-row.sf-slot::before, ${SL} .orr-film__list > .k-row.sf-slot::after { display:none !important; content:none !important; translate:none !important; scale:none !important; }
-${SL} .orr-film__list > .k-row.sf-slot > div { grid-area:label; min-width:0; }
+  /* the name and its badges ride one inline run with no whitespace between them — without an
+     anywhere-wrap a long word + "· CURRENT" is a single unbreakable chunk that overflow:visible
+     prints over the neighbouring station's words (D249). The wrap is inherited by both. */
+${SL} .orr-film__list > .k-row.sf-slot > div { grid-area:label; min-width:0; overflow-wrap:anywhere; }
 ${SL} .orr-film__list > .k-row.sf-slot > .k-row__num { grid-area:num; justify-self:center; margin-top:calc(4px * var(--sv)); }
 ${SL} .sf-slot-frame { grid-area:frame; position:relative; display:block; height:calc(92px * var(--sv)); margin:0 0 calc(22px * var(--sv));
   transform-origin:50% 100%; opacity:.88; transition:transform .32s cubic-bezier(.2, 1.3, .4, 1), opacity .2s linear; }
@@ -293,6 +296,11 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
      carries the whole line for the selected save); an empty berth keeps "Empty slot". */
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { font-size:12px !important; letter-spacing:.04em !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { font-size:12px; letter-spacing:.04em; }
+  /* D249: a long pilot name now wraps anywhere inside its column, so a filed berth's words run
+     longer at this height — the etched badges go the way of the sub line (the ledger's context
+     already reads CURRENT / LATEST / RECOVERY for the selected save) or they pushed the credits
+     numeral over the foot verbs. */
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .sf-slot-badges { display:none !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__sub.sf-slot-sub { font-size:12px !important; line-height:1.25; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { font-size:12px; letter-spacing:.03em; }

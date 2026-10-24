@@ -81,6 +81,8 @@ export function createBenchSaveSystem() {
   const index = {
     quick: {
       slot: 'quick', savedAt: envelopes.quick.savedAt, playtimeS: envelopes.quick.playtimeS, credits: 18400,
+      // A pilot-authored long name (D249): the filmstrip label must wrap inside its own column.
+      label: 'Black Flag public recovery',
       sectorName: 'Helios Prime', shipName: 'ship_kestrel',
       missionSummary: 'Mission: Contract 47-A: Mass Variance Sample',
       objectiveSummary: 'Mission: Contract 47-A: Mass Variance Sample',
