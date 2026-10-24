@@ -30,6 +30,7 @@ export const trigger = deepFreeze({
 // from the live record so the released ships keep flying as ordinary world entities.
 function releaseSquadToWorld(live) {
   if (!live) return;
+  stopWatch(live);
   if (Array.isArray(live.ids)) live.ids.length = 0;
   if (live.roles && typeof live.roles === 'object') {
     for (const id of Object.keys(live.roles)) delete live.roles[id];
@@ -37,9 +38,149 @@ function releaseSquadToWorld(live) {
 }
 
 const REPAIR_NEED_S = 55;      // open work the player is defending
-const ARRIVE_BURN_S = 8;       // the tug closes the last stretch before work opens
 const ESCALATE_AT_S = 22;      // probe → commit on the tug itself
 const TUG_PRESS_WU = 240;      // raiders this close stall the work: patching under fire is a lie
+
+
+// The watch's helm lease and actor identities are transient, just like the live scene.
+const watches = new WeakMap();
+const HOLD_GAP = 35;
+const WORK_GAP_MIN = 15;
+const WORK_GAP_MAX = 70;
+const WORK_SPEED_MAX = 5;
+
+function stopWatch(live) {
+  const own = watches.get(live);
+  if (!own || own.stopped) return;
+  own.stopped = true;
+  own.qualified = false;
+  if (own.tug.data?.intent === own.intent) {
+    own.intent.moveX = own.intent.moveZ = own.intent.turnIntent = 0;
+    if (own.previousIntent === undefined) delete own.tug.data.intent;
+    else own.tug.data.intent = own.previousIntent;
+  }
+  for (const off of own.off) if (typeof off === 'function') off();
+  own.off.length = 0;
+}
+
+function beginWatch(d, live, tug, freighter) {
+  const dx = tug.pos.x - freighter.pos.x, dz = tug.pos.z - freighter.pos.z;
+  const distance = Math.hypot(dx, dz);
+  const own = {
+    tug, freighter, tugGeneration: tug.occupantGeneration,
+    freighterGeneration: freighter.occupantGeneration,
+    tugBody: tug.physicsBody, freighterBody: freighter.physicsBody,
+    previousIntent: tug.data.intent, intent: { moveX: 0, moveZ: 0, turnIntent: 0 },
+    nx: distance > 0 ? dx / distance : 1, nz: distance > 0 ? dz / distance : 0,
+    stopped: false, qualified: false, off: [],
+  };
+  watches.set(live, own);
+  tug.data.intent = own.intent;
+  if (d.bus?.on) {
+    own.off.push(d.bus.on('encounter:resolved', p => {
+      if (p?.encounterId === live.id) stopWatch(live);
+    }));
+    for (const event of ['save:restoring', 'sector:exit', 'game:exitToMenu', 'game:new']) {
+      own.off.push(d.bus.on(event, () => stopWatch(live)));
+    }
+  }
+}
+
+function originalActor(state, live, own, actor, role, bodyKey, generationKey) {
+  const dead = actor && (actor.alive === false || actor.hull <= 0);
+  const present = actor && state.entities.get(actor.id);
+  // A removed original with an observed death still owns its loss. Missing live actors,
+  // replacement bodies and new owners are interruptions, not evidence of destruction.
+  if (!actor || (present !== actor && !(present == null && dead))
+    || (!dead && actor.data?.despawnAt != null)
+    || actor.occupantGeneration !== own[generationKey]
+    || (live.roles[actor.id] != null && live.roles[actor.id] !== role)
+    || actor.data?.ai?.encounterRole !== role
+    || actor.data?.ai?.encounterId !== live.id
+    || actor.data.ai.sectorId !== live.sectorId) return false;
+  if (dead) return true; // destruction may already have retired the body and roster entry
+  if (!live.ids.includes(actor.id) || live.roles[actor.id] !== role) return false;
+  // Physics can materialize after spawn, but an established body cannot be substituted.
+  if (own[bodyKey] == null && actor.physicsBody != null) own[bodyKey] = actor.physicsBody;
+  return actor.physicsBody === own[bodyKey];
+}
+
+function attendWatch(own) {
+  own.intent.moveX = own.intent.moveZ = 0;
+  const tug = own.tug, mule = own.freighter;
+  const values = [tug.pos?.x, tug.pos?.z, mule.pos?.x, mule.pos?.z,
+    tug.vel?.x, tug.vel?.z, mule.vel?.x, mule.vel?.z, tug.radius, mule.radius, tug.rot];
+  if (!values.every(Number.isFinite) || tug.radius <= 0 || mule.radius <= 0) return false;
+  // Hold outside BOTH real hull envelopes, not at the casualty's centre.
+  const berth = tug.radius + mule.radius + HOLD_GAP;
+  const dx = mule.pos.x + own.nx * berth - tug.pos.x;
+  const dz = mule.pos.z + own.nz * berth - tug.pos.z;
+  const range = Math.hypot(dx, dz);
+  const scale = range > 0 ? Math.min(45, range * 0.3) / range : 0;
+  const ax = (mule.vel.x + dx * scale - tug.vel.x) * 0.04;
+  const az = (mule.vel.z + dz * scale - tug.vel.z) * 0.04;
+  const c = Math.cos(tug.rot), s = Math.sin(tug.rot);
+  own.intent.moveZ = Math.max(-1, Math.min(1, ax * c + az * s));
+  own.intent.moveX = Math.max(-1, Math.min(1, -ax * s + az * c));
+  const gap = Math.hypot(tug.pos.x - mule.pos.x, tug.pos.z - mule.pos.z)
+    - tug.radius - mule.radius;
+  return gap >= WORK_GAP_MIN && gap <= WORK_GAP_MAX
+    && Math.hypot(tug.vel.x - mule.vel.x, tug.vel.z - mule.vel.z) <= WORK_SPEED_MAX;
+}
+
+
+// A completed rescue keeps its receipt immediately; only this short civilian burn remains.
+// The closure owns two exact packets, never a new world job or a persistent controller.
+function departWatch(d, state, tug, mule, now) {
+  if (!d.bus?.on) return;
+  const dx = tug.pos.x - mule.pos.x, dz = tug.pos.z - mule.pos.z;
+  const distance = Math.hypot(dx, dz);
+  const nx = distance > 0 ? dx / distance : 1, nz = distance > 0 ? dz / distance : 0;
+  const off = [];
+  const leases = [tug, mule].map((actor, index) => {
+    const sign = index === 0 ? 1 : -1, c = Math.cos(actor.rot), s = Math.sin(actor.rot);
+    const intent = { moveX: sign * (-nx * s + nz * c) * 0.65,
+      moveZ: sign * (nx * c + nz * s) * 0.65, turnIntent: 0, assistMode: 'assisted' };
+    const lease = { actor, generation: actor.occupantGeneration, intent,
+      previous: actor.data.intent, expiry: now + 20, active: true };
+    actor.data.intent = intent;
+    actor.data.despawnAt = lease.expiry;
+    return lease;
+  });
+  const current = lease => state.entities.get(lease.actor.id) === lease.actor
+    && lease.actor.occupantGeneration === lease.generation;
+  function release(lease, custody = false) {
+    if (!lease.active) return;
+    lease.active = false;
+    const actor = lease.actor;
+    if (actor.data?.intent === lease.intent) {
+      lease.intent.moveX = lease.intent.moveZ = lease.intent.turnIntent = 0;
+      if (custody || lease.previous === undefined) delete actor.data.intent;
+      else actor.data.intent = lease.previous;
+    }
+    // Only a committed change of custody cancels our retirement, never an attempted one.
+    if (custody && current(lease) && actor.data?.despawnAt === lease.expiry) delete actor.data.despawnAt;
+    if (leases.every(item => !item.active)) {
+      for (const unsubscribe of off) if (typeof unsubscribe === 'function') unsubscribe();
+      off.length = 0;
+    }
+  }
+  off.push(d.bus.on('ship:captured', event => {
+    for (const lease of leases) if (current(lease) && event?.targetId === lease.actor.id
+      && lease.actor.flags?.persistent && event.vesselId === lease.actor.data?.vesselId) release(lease, true);
+  }));
+  // This event is emitted after every fallible handoff guard, at the synchronous commit.
+  off.push(d.bus.on('ship:controlChanging', event => {
+    for (const lease of leases) if (current(lease)
+      && (event?.toId === lease.actor.id || event?.fromId === lease.actor.id)) release(lease, true);
+  }));
+  off.push(d.bus.on('entity:destroyed', event => {
+    for (const lease of leases) if (event?.entity === lease.actor) release(lease);
+  }));
+  for (const event of ['save:restoring', 'sector:exit', 'game:exitToMenu', 'game:new']) {
+    off.push(d.bus.on(event, () => { for (const lease of leases) release(lease); }));
+  }
+}
 
 function nearestEnemyDistTo(d, live, body) {
   if (!body || !body.pos) return Infinity;
@@ -122,16 +263,16 @@ export const runtime = Object.freeze({
       (data.combat || (data.combat = {})).targetId = freighter.id;
     }
 
-    // The tug wants to be where the work is. If its AI runs it burns in; if the passive flag
-    // holds it, it spawned close enough that the scene still reads.
+    // Passive forbids combat AI; the scene supplies a temporary civilian helm packet.
+    // Ordinary flight and physics still supply every metre of approach.
     if (tug && freighter) {
       const tdata = tug.data || (tug.data = {});
       tdata.jobKind = 'tender';
       tdata.bountyCr = 0;
       tdata.loot = null;
       tdata.ai = tdata.ai || {};
-      tdata.ai.targetId = freighter.id;
       tdata.watchTugFor = freighter.id;
+      beginWatch(d, live, tug, freighter);
     }
 
     live.phase = 'conflict';
@@ -144,15 +285,26 @@ export const runtime = Object.freeze({
   },
 
   tick(d, live, state, now) {
-    if (live.phase === 'done') return;
+    if (live.phase === 'done' || live.data.watch?.completed) { stopWatch(live); return; }
     const w = live.data.watch || (live.data.watch = { phase: 'arrive', t: 0, escalated: false, halfSaid: false, stallSaid: false, tenderLost: false });
     const step = Math.max(0, now - (w.lastNow == null ? now : w.lastNow));
     w.lastNow = now;
 
-    const freighter = d.entsOf(live, 'hauler')[0];
-    const tug = d.entsOf(live, 'escort')[0];
-    const freighterAlive = d.aliveCount(live, 'hauler') > 0;
-    const tugAlive = !!tug && tug.hull > 0 && !(tug.data && tug.data.despawnAt != null);
+    const own = watches.get(live);
+    if (!own || (own.stopped && !w.tenderLost && !w.casualtyLost)
+      || state.world.currentSectorId !== live.sectorId
+      || (!own.stopped && own.tug.data?.intent !== own.intent)) {
+      releaseSquadToWorld(live);
+      return d.resolve(live, 'watch_over', { speak: true });
+    }
+    const freighter = own.freighter, tug = own.tug;
+    if (!originalActor(state, live, own, freighter, 'hauler', 'freighterBody', 'freighterGeneration')
+      || !originalActor(state, live, own, tug, 'escort', 'tugBody', 'tugGeneration')) {
+      releaseSquadToWorld(live);
+      return d.resolve(live, 'watch_over', { speak: true });
+    }
+    const freighterAlive = !w.casualtyLost && freighter.alive !== false && freighter.hull > 0;
+    const tugAlive = !w.tenderLost && tug.alive !== false && tug.hull > 0;
     const raidersAlive = d.aliveCount(live, 'raider') > 0;
 
     // Custody in play outranks the watch: spilled pods mean somebody is still flying.
@@ -161,6 +313,8 @@ export const runtime = Object.freeze({
 
     // ── resolution ladder ──────────────────────────────────────────────────────────────
     if (!freighterAlive) {
+      w.casualtyLost = true;
+      stopWatch(live);
       if (custodyOpen) return;
       // Casualty broke up — the watch becomes a disputed salvage field. Raiders take what
       // they can reach and leave; the tug marks the spot and goes home.
@@ -179,6 +333,7 @@ export const runtime = Object.freeze({
     }
 
     if (!tugAlive && !w.tenderLost) {
+      stopWatch(live);
       // The tug is the watch. Saying it once: the rep hit and the headline are the station's
       // memory of losing a hull on a mayday answer — never a per-tick drumbeat.
       w.tenderLost = true;
@@ -207,25 +362,17 @@ export const runtime = Object.freeze({
       return; // the stripping continues on-glass; the player can still answer it
     }
 
-    if (!raidersAlive && w.phase !== 'work') {
-      // Threat answered early — the tug gets its window and the scene becomes what it was
-      // always supposed to be: work, watched.
-      w.phase = 'work';
-      d.say(live, 'bark',
-        'TUG: Lane is quiet. Opening the coupling — give me a minute and she breathes again.',
-        null, { literal: true });
+    if (now >= live.deadlineAt) {
+      releaseSquadToWorld(live);
+      return d.resolve(live, 'watch_over', { speak: true });
     }
 
-    // ── the watch itself ───────────────────────────────────────────────────────────────
-    if (w.phase !== 'work') {
-      w.t += step;
-      if (w.t >= ARRIVE_BURN_S) {
-        w.phase = 'work';
-        w.t = 0;
-        d.say(live, 'bark',
-          'TUG: On scene. Patch job, not a miracle — keep the lane clear while I cut.',
-          null, { literal: true });
-      }
+    const attended = attendWatch(own);
+    if (attended && w.phase === 'arrive') {
+      w.phase = 'work';
+      d.say(live, 'bark',
+        'TUG: On scene and holding beside the coupling. Keep the lane clear while I cut.',
+        null, { literal: true });
     }
 
     // The complication the whole beat exists for: raiders stop nibbling at a dead ship and
@@ -242,34 +389,39 @@ export const runtime = Object.freeze({
         null, { literal: true });
     }
 
+    // Credit only a continuous observed interval. Ordinary director cadence is up to
+    // 1.5 s; longer gaps cannot buy work offscreen. Separation pauses, never erases a patch.
+    const pressed = nearestEnemyDistTo(d, live, tug) < TUG_PRESS_WU;
+    const qualified = attended && !pressed;
+    const worked = qualified && own.qualified && step > 0 && step <= 1.6;
+    if (worked) w.t += step;
+    own.qualified = qualified;
     if (w.phase === 'work') {
-      // Work advances unless raiders are pressed onto the tug — that interruption is the
-      // defend beat, and it is honest: you cannot patch under fire.
-      const pressed = nearestEnemyDistTo(d, live, tug) < TUG_PRESS_WU;
-      if (!pressed) {
-        w.t += step;
-        w.stalled = false;
-        if (!w.halfSaid && w.t >= REPAIR_NEED_S * 0.5) {
-          w.halfSaid = true;
-          d.say(live, 'bark',
-            'TUG: Half patched. Whatever you are doing, keep doing it.',
-            null, { literal: true });
-        }
-      } else if (!w.stallSaid) {
-        w.stallSaid = true;
-        d.say(live, 'danger',
-          'TUG: I cannot work with them on me! Peel them off or we are both cargo!',
-          null, { literal: true });
+      const reason = pressed ? 'pressure' : !attended ? 'separation' : null;
+      if (reason && w.stalled !== reason) {
+        d.say(live, 'danger', reason === 'pressure'
+          ? 'TUG: I cannot work with them on me! Peel them off or we are both cargo!'
+          : 'TUG: Lost the service berth. Patch paused until I am alongside and steady again.',
+        null, { literal: true });
+      } else if (!reason && w.stalled) {
+        d.say(live, 'bark', 'TUG: Alongside and steady. Resuming the patch.', null, { literal: true });
+      }
+      w.stalled = reason;
+      if (!w.halfSaid && w.t >= REPAIR_NEED_S * 0.5) {
+        w.halfSaid = true;
+        d.say(live, 'bark', 'TUG: Half patched. Whatever you are doing, keep doing it.', null, { literal: true });
       }
     }
 
-    if (w.t >= REPAIR_NEED_S) {
+    if (w.t >= REPAIR_NEED_S && qualified) {
+      w.completed = true; // latch before synchronous reward/news callbacks can re-enter
+      stopWatch(live);
       // The payoff: the freighter leaves under its own power, paid and named on the wire.
       if (freighter && freighter.data) {
         freighter.hull = freighter.hullMax;
-        freighter.data.despawnAt = now + 20;
+
       }
-      if (tug && tug.data) tug.data.despawnAt = now + 20;
+      departWatch(d, state, tug, freighter, now);
       d.grant(300, 'salvage_watch:repaired');
       d.rep('faction_mts', 6, 'salvage_watch_repaired');
       d.emit('comms:log', {
@@ -278,7 +430,7 @@ export const runtime = Object.freeze({
         kind: 'encounter',
       });
       d.emit('news:publish', {
-        text: 'SALVAGE WATCH CLOSED CLEAN: lane casualty repaired under escort and hauling again. The watch channel names its escort.',
+        text: 'SALVAGE WATCH CLOSED CLEAN: lane casualty drive restored under escort; rescue pair clearing the service berth. The watch channel names its escort.',
         kind: 'incidents', source: 'watch-relay', sourceRef: `salvage_watch:${live.id}`,
         eventId: `salvage_watch:${live.id}`,
       });
@@ -291,6 +443,17 @@ export const runtime = Object.freeze({
       // alive — released to the world, not deleted.
       releaseSquadToWorld(live);
       return d.resolve(live, w.tenderLost ? 'tender_lost' : 'watch_over', { speak: true });
+    }
+    // Presentation follows earned work, never the tender label or elapsed offscreen time.
+    // Latch before emit: synchronous listeners may revisit this same scene tick.
+    if (worked && !own.stopped && !w.completed
+      && (own.lastWorkCueAt == null || now - own.lastWorkCueAt >= 0.3)) {
+      own.lastWorkCueAt = now;
+      d.emit('salvageWatch:repairWork', {
+        encounterId: live.id, sectorId: live.sectorId, simTime: now,
+        sourceId: tug.id, sourceGeneration: tug.occupantGeneration,
+        targetId: freighter.id, targetGeneration: freighter.occupantGeneration,
+      });
     }
   },
 
@@ -337,7 +500,7 @@ export default defineEncounter(trigger, {
     passive: true,
   },
   receipts: {
-    repaired: 'WATCH CLOSED — the mule burned home under its own power. The station pays for hulls it keeps, and it heard your name on the channel.',
+    repaired: 'WATCH CLOSED — the mule’s drive is restored; both ships are clearing the service berth. The station pays for hulls it keeps, and it heard your name on the channel.',
     tender_lost: 'THE TUG IS GONE — the station answers maydays with hulls, and this lane kept one. No rescue is coming for the mule.',
     casualty_lost: 'THE CASUALTY BROKE UP — spilled fuel cells are floating free on the lane. The tug marked the field and went home quiet.',
     watch_over: 'THE WATCH CLOSED — the tug had to break off. Whatever the lane kept, it kept.',
