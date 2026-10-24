@@ -1,0 +1,36 @@
+{
+  "schema": "spaceface-p08-contents-transport-status-v1",
+  "status": "PARTIAL_STAGING_NOT_RUNTIME_INTEGRATION",
+  "repository": "coldshalamov/SpaceFace",
+  "branch": "staging/hundred-hand-contents-trial-20261024",
+  "parent": "786ae6eb04bb70b943b6b8e2bd90883495c62469",
+  "verifiedSuccess": {
+    "path": "src/save/saveSystem.js",
+    "commit": "86933cacb78061d75de0968d55f3beb96abf8381",
+    "tree": "4ea7447fb59188c87beaa73a632350bae7971cdc",
+    "bytes": 497130,
+    "sha256": "1d447ee15ec635b1bb96255e3be010d7b3ebafd70cc0f7fe60df248ff3e3114d",
+    "git": "6bdfaac4cb4be9cff3fbd5b1ef6f3272bb4053c6",
+    "verification": "Complete remote UTF-8 readback byte/hash equality, one-path diff59 additions/3 deletions."
+  },
+  "uncertainOperation": {
+    "path": "src/render/partsLibrary.js",
+    "startedAt": "2026-10-24T23:31:37Z",
+    "operation": "GitHub Contents API update_file",
+    "bytes": 847433,
+    "sha256": "22273d997c8dd10edeaee1674d621e393a54489a363bda521dc0b1d0ff4c328c",
+    "git": "61fbd9a8a4d731b08ab92a6a3ae1e532f6a920b8",
+    "result": "No returned tool result; bounded wait request itself remained blocked373.5 seconds until interruption. No denial received.",
+    "inspectionAt": "2026-10-24T23:38:30Z",
+    "expectedBlobRead": "404",
+    "branchHead": "86933cacb78061d75de0968d55f3beb96abf8381",
+    "currentFileBlob": "69e3de815fba57fb8b8d625b5728642aab061d68",
+    "assessment": "No success observed; not definitive proof of nonexecution or a hard size limit. No identical retry."
+  },
+  "unattempted": [
+    "src/render/renderer.js",
+    "src/data/modelTruthCensus.json",
+    "src/data/modelTruthCensus.generated.js"
+  ],
+  "next": "Larger Contents writes stopped. Exact source recovery remains available in PR598; no incomplete runtime PR, credential/workflow changes or architecture substitution."
+}
