@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 24 October 2026, 20:21 UTC.
+Updated: 24 October 2026, 20:29 UTC.
 
 All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
 
@@ -26,7 +26,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; PR597 P19 receipt draft verified;20 local passes, hosted pending. Nursery32/captions8/diagnostics9 pass with full CI red. Publication is not integration/acceptance.
+- State: OPEN; PR597 P19 passes20 hosted cases; broad CI active/red. Hundred-Hand recovery is archived, not runtime integration. Publication is not integration/acceptance.
 - Owner: publisher, root and exact feature owners.
 - Evidence: [PR590](https://github.com/coldshalamov/SpaceFace/pull/590); current checkpoint separates exact heads, passes and failures.
 - Next: follow P19 hosted/full CI; preserve dependency review and exact publication ownership.

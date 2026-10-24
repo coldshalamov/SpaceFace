@@ -1,0 +1,162 @@
+{
+  "schema": "spaceface.ciCommandDiagnostic.v1",
+  "id": "check-pip-spanner-receipts",
+  "command": "npm run check:pip-spanner-receipts",
+  "ok": true,
+  "code": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 1456,
+  "reason": "passed",
+  "classification": {
+    "category": "passed",
+    "confidence": "high",
+    "evidence": "command exited with code 0",
+    "flake": {
+      "status": "unknown",
+      "attemptsObserved": 1,
+      "passedAttempts": 0,
+      "failedAttempts": 0
+    }
+  },
+  "artifactPath": "scratch/check-ci-report/2026-10-24T20-22-41-425Z/check-pip-spanner-receipts.log",
+  "structured": null
+}
+--- stdout ---
+
+> spaceface@0.2.0-beta.1 check:pip-spanner-receipts
+> node --test test/pip-spanner-ui.test.mjs test/pip-spanner-purchase-receipts.test.mjs test/pip-spanner-preview-lifecycle.test.mjs
+
+TAP version 13
+# Subtest: independent rigid groups preserve flattened world transforms, including the nested pointer
+ok 1 - independent rigid groups preserve flattened world transforms, including the nested pointer
+  ---
+  duration_ms: 7.472468
+  type: 'test'
+  ...
+# Subtest: crew pose stays bounded and reduced motion stops immediately without an idle frame loop
+ok 2 - crew pose stays bounded and reduced motion stops immediately without an idle frame loop
+  ---
+  duration_ms: 2.711096
+  type: 'test'
+  ...
+# Subtest: retiring a pending asset never publishes or draws into a replacement screen
+ok 3 - retiring a pending asset never publishes or draws into a replacement screen
+  ---
+  duration_ms: 2.252403
+  type: 'test'
+  ...
+# Subtest: closing during safe pipeline compilation withholds late readiness and releases the exact preview once
+ok 4 - closing during safe pipeline compilation withholds late readiness and releases the exact preview once
+  ---
+  duration_ms: 1.198451
+  type: 'test'
+  ...
+# Subtest: an admitted preview draws once at rest and owns neither shared geometry nor transaction state
+ok 5 - an admitted preview draws once at rest and owns neither shared geometry nor transaction state
+  ---
+  duration_ms: 2.007346
+  type: 'test'
+  ...
+# Subtest: Pip receipt reports one actual fit and charge while paused, and survives owner wallet clones
+ok 6 - Pip receipt reports one actual fit and charge while paused, and survives owner wallet clones
+  ---
+  duration_ms: 53.951406
+  type: 'test'
+  ...
+# Subtest: refused post-charge fit yields a denied, refunded receipt
+ok 7 - refused post-charge fit yields a denied, refunded receipt
+  ---
+  duration_ms: 22.483093
+  type: 'test'
+  ...
+# Subtest: Spanner milestone weld reports the real hull and armor restored, with one debit
+ok 8 - Spanner milestone weld reports the real hull and armor restored, with one debit
+  ---
+  duration_ms: 21.901736
+  type: 'test'
+  ...
+# Subtest: recursive fitting callback cannot purchase a second item or launch during the transaction
+ok 9 - recursive fitting callback cannot purchase a second item or launch during the transaction
+  ---
+  duration_ms: 14.542432
+  type: 'test'
+  ...
+# Subtest: wallet callback replacing the run with the same seed never fits or refunds into its successor
+ok 10 - wallet callback replacing the run with the same seed never fits or refunds into its successor
+  ---
+  duration_ms: 10.517667
+  type: 'test'
+  ...
+# Subtest: changed repair entity after payment receives no old weld and refunds this same run
+ok 11 - changed repair entity after payment receives no old weld and refunds this same run
+  ---
+  duration_ms: 11.271731
+  type: 'test'
+  ...
+# Subtest: crew inspect and pending never claim a fit; only the owner receipt closes the jaws
+ok 12 - crew inspect and pending never claim a fit; only the owner receipt closes the jaws
+  ---
+  duration_ms: 1.672293
+  type: 'test'
+  ...
+# Subtest: hide during pending rereads the receipt without motion, and reopen cannot replay it
+ok 13 - hide during pending rereads the receipt without motion, and reopen cannot replay it
+  ---
+  duration_ms: 0.329192
+  type: 'test'
+  ...
+# Subtest: a completed receipt cannot seat the new automatically selected item, or leak into another armory
+ok 14 - a completed receipt cannot seat the new automatically selected item, or leak into another armory
+  ---
+  duration_ms: 0.226081
+  type: 'test'
+  ...
+# Subtest: double confirmation cannot buy the refreshed next selection until explicit inspection re-arms it
+ok 15 - double confirmation cannot buy the refreshed next selection until explicit inspection re-arms it
+  ---
+  duration_ms: 0.437505
+  type: 'test'
+  ...
+# Subtest: receipt-driven cosmetic motion uses no simulation time and does not schedule delayed gameplay
+ok 16 - receipt-driven cosmetic motion uses no simulation time and does not schedule delayed gameplay
+  ---
+  duration_ms: 0.257139
+  type: 'test'
+  ...
+# Subtest: accepted repair receipt states exact committed deltas, including zero and fractional components
+ok 17 - accepted repair receipt states exact committed deltas, including zero and fractional components
+  ---
+  duration_ms: 0.384085
+  type: 'test'
+  ...
+# Subtest: legacy, invalid, non-repair and uncommitted receipts never invent restoration
+ok 18 - legacy, invalid, non-repair and uncommitted receipts never invent restoration
+  ---
+  duration_ms: 0.749625
+  type: 'test'
+  ...
+# Subtest: real milestone weld (40 hull, 20 armor) reaches the presenter once and survives reopen
+ok 19 - real milestone weld (40 hull, 20 armor) reaches the presenter once and survives reopen
+  ---
+  duration_ms: 31.53694
+  type: 'test'
+  ...
+# Subtest: real milestone weld (0.125 hull, 2.75 armor) reaches the presenter once and survives reopen
+ok 20 - real milestone weld (0.125 hull, 2.75 armor) reaches the presenter once and survives reopen
+  ---
+  duration_ms: 14.150618
+  type: 'test'
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 20
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1321.071488
+
+--- stderr ---
+(empty)
