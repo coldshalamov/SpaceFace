@@ -142,8 +142,8 @@ test('production init + update order lengths match the live browser baseline', (
   // weld-spike ledger's proximity read joins the same clock (row 542 complete).
   // 238 -> 239 init / 185 -> 186 update: W-SHIFT registers bouncer — the door robot's
   // firing-report enforcement plus a calendar drift-home pass (row 506 member 2).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 239);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 186);
+  assert.equal(PRODUCTION_INIT_ORDER.length, 240);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 187);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

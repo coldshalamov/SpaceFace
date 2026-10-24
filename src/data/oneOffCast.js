@@ -314,8 +314,8 @@ export const ONE_OFF_CAST = Object.freeze([
     id: 'receipt', name: 'RECEIPT / PR-8 — the printer filing every kill',
     sectorIds: ['sector_kepler_scar'],
     books: { from: 3, to: 7 },
-    chart: { kind: 'planned', ref: null },
-    implemented: false,
+    chart: { kind: 'contact', ref: 'receipt', presentVia: 'receipt' },
+    implemented: true,
   }),
   entry({
     id: 'mop', name: 'MOP / CL-5 — the clean-up drone that erases evidence',

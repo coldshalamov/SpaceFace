@@ -197,6 +197,7 @@ import { kesslerScale } from '../systems/kesslerScale.js';
 import { gateThreeWeir } from '../systems/gateThreeWeir.js';
 import { slateColumn } from '../systems/slateColumn.js';
 import { bouncer } from '../systems/bouncer.js';
+import { receipt } from '../systems/receipt.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -439,6 +440,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['gateThreeWeir', gateThreeWeir],
     ['slateColumn', slateColumn],
     ['bouncer', bouncer],
+    ['receipt', receipt],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],
