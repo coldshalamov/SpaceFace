@@ -21,3 +21,13 @@ The two published player-path suites are preserved without weakened assertions. 
 The appended check:narrative-worker-entry leaf runs four explicit files sequentially with --test-concurrency=1: Towline11, Ilex11, LastShift8 and existing optional-chain1, expected31 TAP cases. This is source enumeration, not31 local passes. Existing graph selection places the leaf in static2/3, preserving prior command order/classification and workflows.
 
 No native stepping, ordinary played flight, full campaign, browser or visual acceptance is claimed. Hosted results must identify their actual synthetic checkout and actual parent, not a nominal green baseline.
+
+## Adjacent manifest contract correction
+
+The original head `f49bf188160938ed215c5919138327bba087353a` passed the full public-checkout `check:narrative-worker-entry` leaf: 31/31, exit 0. Its RUCKUS workflow exposed an attributable adjacent test-contract omission: the old manifest completeness assertion allowed only Node factories or five generic platform systems, rejecting the three deliberately main-only prompt adapters.
+
+This successor changes no production source, capability list, package command or workflow. The manifest test now requires actual browser materialization for every manifest ID and Node factories for every Node-safe ID. It checks each real imported prompt adapter's identity, exact capability, init-only membership and Node exclusion. Removing `actions` or any of the three prompt factories must still fail materialization. Public source review confirms the Node factory returns a fresh Map and registry systems preserve authoritative-ID order.
+
+The manifest file expands from 12 to 16 cases. Local qualification is limited to syntax and five extracted-source checks with injected module objects/context, including the reproduced original failure and negative missing-factory checks. Full hosted execution of this successor remains pending; the earlier 31-case hosted pass belongs to the original head, not this successor.
+
+Evidence: `evidence/narrative-manifest-contract-fix.json` preserves the exact candidate and local scope; `evidence/narrative-manifest-original-failure.json` preserves the original hosted TAP failure with explicitly labeled timestamp/path normalization. The original hosted 31-case log and receipt are committed in the separate handoff at `3e634b74d92676f624290cdf4a241878b7b1c127` under `design/program/world-experience-2026-10-24/narrative-bridge-hosted/`. Broader CI is not green; matching failed check names in completed actual-parent comparisons do not establish whole-run equivalence.

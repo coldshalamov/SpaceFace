@@ -1,0 +1,11 @@
+{
+  "schema": "spaceface-pr599-adjacent-manifest-failure-v1",
+  "head": "f49bf188160938ed215c5919138327bba087353a",
+  "run": 40141306855,
+  "job": 121013444416,
+  "testBlob": "9ecf2e3f847a10234381e5247de375c99612207e",
+  "source": "GitHub Actions job log",
+  "extraction": "Exact TAP failure block with timestamp prefixes removed; hosted workspace prefix replaced by <repository>/.",
+  "output": "# Subtest: every manifest id resolves to a real node factory or presentation platform system\nnot ok 12 - every manifest id resolves to a real node factory or presentation platform system\n  ---\n  duration_ms: 3.244231\n  type: 'test'\n  location: '<repository>/test/authoritative-manifest.test.mjs:414:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly deep-equal:\n    + actual - expected\n    \n    + [\n    +   'lastShiftPrompt',\n    +   'ilexArkPrompt',\n    +   'towlineTablePrompt'\n    + ]\n    - []\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected:\n  actual:\n    0: 'lastShiftPrompt'\n    1: 'ilexArkPrompt'\n    2: 'towlineTablePrompt'\n  operator: 'deepStrictEqual'\n  stack: |-\n    TestContext.<anonymous> (file://<repository>/test/authoritative-manifest.test.mjs:421:10)\n    async Test.run (node:internal/test_runner/test:1054:7)\n    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)\n  ...\n",
+  "scope": "Attributable adjacent contract regression after three actual browser prompt adapters became main-only; new focused31 gate passes. No runtime guard weakening approved."
+}
