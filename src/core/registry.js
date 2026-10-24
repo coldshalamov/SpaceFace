@@ -201,6 +201,7 @@ import { solstice } from '../systems/solstice.js';
 import { rubric } from '../systems/rubric.js';
 import { ruckus } from '../systems/ruckus.js';
 import { ruud } from '../systems/ruud.js';
+import { docket } from '../systems/docket.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -676,6 +677,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['rubric', rubric],
     ['ruckus', ruckus],
     ['ruud', ruud],
+    ['docket', docket],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

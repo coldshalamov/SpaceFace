@@ -272,8 +272,8 @@ export const ONE_OFF_CAST = Object.freeze([
     id: 'docket', name: 'DOCKET / PX-14 — the parcel drone that wants to be delivered',
     sectorIds: ['sector_io_reach'],
     books: { from: 4, to: 7 },
-    chart: { kind: 'planned', ref: null },
-    implemented: false,
+    chart: { kind: 'contact', ref: 'docket', presentVia: 'docket' },
+    implemented: true,
   }),
   entry({
     id: 'lamplighter', name: 'LAMPLIGHTER / LL-6 — who relights the dead rim buoys',
