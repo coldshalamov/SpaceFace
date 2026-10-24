@@ -113,7 +113,7 @@ function runVignetteChoice(runtime, encounter, spec, choiceId) {
   } else {
     runtime.choose(d, live, state, choiceId);
   }
-  assert.equal(live.phase, 'done', `${id} choice ${choiceId} did not finish`);
+  assert.equal(live.phase, id === 'scene_pilgrim_lamp_walk' && choiceId === 'a' ? 'escort_launch' : 'done', `${id} choice ${choiceId} phase`);
   return { calls, spawned: live.plan.ships };
 }
 
@@ -193,14 +193,14 @@ test('ambient scenes compile, use the lived trigger contract, and cover every no
     assert.equal(phases.get('spawn').next, prop ? 'prop' : 'hail');
     if (prop) assert.equal(prop.next, 'hail');
     assert.ok(run && validMotions.has(run.motion), `${enc.id} uses a valid run motion`);
-    assert.equal(run.verb, 'motion');
+    assert.equal(run.verb, enc.id === 'scene_pilgrim_lamp_walk' ? 'noop' : 'motion');
     assert.equal(run.seconds, 6);
     assert.equal(phases.get('hail').primary, true);
     assert.equal(phases.get('hail').next, 'run');
     assert.equal(phases.get('a0').next, 'offer');
     assert.equal(offer.windowS, 22);
-    assert.equal(offer.motion, run.motion);
-    assert.deepEqual(offer.onChoice, { a: 'say_a', b: 'say_b', c: 'say_c' });
+    assert.equal(offer.motion, enc.id === 'scene_pilgrim_lamp_walk' ? null : run.motion);
+    assert.deepEqual(offer.onChoice, { a: enc.id === 'scene_pilgrim_lamp_walk' ? 'escort_instruction' : 'say_a', b: 'say_b', c: 'say_c' });
     assert.equal(spec.timeoutChoice, 'c');
     assert.equal(phases.get('say_c').next, 'resolve_c');
     assert.equal(phases.get('resolve_c').verb, 'resolve');
@@ -242,13 +242,20 @@ test('every ambient vignette executes a/b choices and times out through c', () =
       assert.deepEqual(result.calls.aborts, [], encounter.id);
       assert.deepEqual(result.calls.offers[0].ids, ['a', 'b', 'c'], encounter.id);
       assert.equal(result.calls.offers[0].timeout, 'c', encounter.id);
-      assert.deepEqual(result.calls.resolved, [choiceId], encounter.id);
+      assert.deepEqual(result.calls.resolved, encounter.id === 'scene_pilgrim_lamp_walk' && choiceId === 'a' ? [] : [choiceId], encounter.id);
       assert.deepEqual(
         result.spawned.map((ship) => ship.scanLabel),
         spec.cast.map((member) => member.scanLabel),
         encounter.id,
       );
 
+      if (encounter.id === 'scene_pilgrim_lamp_walk' && choiceId === 'a') {
+        // Accepting an escort starts physical work; focused Pilgrim tests own its completion.
+        assert.deepEqual(result.calls.grants, [], encounter.id);
+        assert.deepEqual(result.calls.charges, [], encounter.id);
+        assert.deepEqual(result.calls.reps, [], encounter.id);
+        continue;
+      }
       if (choiceId === 'a') {
         const expectedGrants = UNPAID_CHOICE_A.has(encounter.id) ? [] : [{ amount: 30, reason: spec.id }];
         const expectedCharges = CHARGED_CHOICE_A.has(encounter.id) ? [{ amount: 30, reason: spec.id }] : [];
@@ -307,7 +314,7 @@ test('a sample of generated lived and HAND scenes still resolves through every c
         result = runVignetteChoice(module.runtime, encounter, null, choiceId);
       }, `${encounter.id} choice ${choiceId}`);
       assert.deepEqual(result.calls.aborts, [], encounter.id);
-      assert.deepEqual(result.calls.resolved, [choiceId], encounter.id);
+      assert.deepEqual(result.calls.resolved, encounter.id === 'scene_pilgrim_lamp_walk' && choiceId === 'a' ? [] : [choiceId], encounter.id);
     }
   }
 });
