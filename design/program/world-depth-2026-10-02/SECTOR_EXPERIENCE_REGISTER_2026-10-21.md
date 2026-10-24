@@ -1,5 +1,18 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current hosted component gates: 2026-10-24 16:57 UTC
+
+All twelve goals remain OPEN. Current hosted checks now pass: [PR582 a683e630](https://github.com/coldshalamov/SpaceFace/pull/582) **25/25**, [PR58390f59e71](https://github.com/coldshalamov/SpaceFace/pull/583) **27/27**, and [PR5846db87ee7](https://github.com/coldshalamov/SpaceFace/pull/584) **3/3**, including the actual Node factory import. Broader CI is still active/red; these results are not whole-repository, ordinary gameplay, visual or performance acceptance.
+
+The [preserved hosted diagnostic/output bundle](../world-experience-2026-10-24/hosted-custody-evidence/README.md) contains complete relevant command diagnostics, TAP and native output with immutable artifact and checkout pins. PR583 now has actual hosted measurements for intact Mule, physical thief, restored recovery and restored escape, plus all seven original native choice scenarios. This supersedes the earlier absence of retained final local measurements only through new hosted evidence; the old independent FAIL rows remain historical, never relabeled passing. Forced admission, injected disable/lethal setup and capture-API adapters remain explicit limitations.
+
+- PR582 [run40112157007](https://github.com/coldshalamov/SpaceFace/actions/runs/40112157007), artifact12566389559 SHA256 `c76b6a6f1b97865e176a995d2f0a76d829db6b289313ef37bf36bdebf3ba768a`:25/25, exit0, command7844ms. Synthetic `5c3bbc0bdbca689587626324ca936ae514a324da` includes newer base80a21733; all nine owned blobs match, not an asserted whole-tree match to branch head.
+- PR583 [run40112700622](https://github.com/coldshalamov/SpaceFace/actions/runs/40112700622), artifact12568055074 SHA256 `775d62fa9eb44d315eb5c9cd50a42d9ffa622559092b148dd29db77286439a2a`:27/27, exit0, command11620ms. Synthetic `920bfab97ca6e2c2a5022de26d9e5ac146e50127`, parents2d02f8bb+90f59e71, tree `fe07697a116eabe82634b0e8189199c195b3e4e6`; all thirteen scoped blobs match while newer base work is retained.
+- PR584 [run40112425563](https://github.com/coldshalamov/SpaceFace/actions/runs/40112425563), artifact12567940738 SHA256 `b28d8ef63d3b26492bd3a053e4c5aed02a7f7dd473e1c55d0233e8fb68d781c1`:3/3, exit0, command1822ms; factory-import case1587.047ms. Synthetic `56fdb76decbc44eeb4997f2039d4ec40ac4329f8`, tree `aec53d4c5ad71669e6114a8b76eed2df5ceef0ea` equals candidate; all three owned files match.
+
+The next connected sector increment is Press Camp under its existing owner: initial baseline6/21 versus candidate21/21 focused checks are preserved, but native physical departure initially failed. A guarded passive-maneuver release correction is under qualification, not published or accepted. Do not duplicate that writer or claim a final native pass. Continue exact current CI follow-through and the active experience implementation, then ordinary route/Save and visual review. No goal closure, merge/deploy or schedule change.
+
+
 ## Current custody publication and qualification: 2026-10-24 16:42 UTC
 
 All twelve goals remain OPEN. These are open, unmerged drafts, not whole-game or sector acceptance.

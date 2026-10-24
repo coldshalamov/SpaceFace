@@ -1,0 +1,195 @@
+{
+  "schema": "spaceface.ciCommandDiagnostic.v1",
+  "id": "check-salvage-dispute-recovery",
+  "command": "npm run check:salvage-dispute-recovery",
+  "ok": true,
+  "code": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 7844,
+  "reason": "passed",
+  "classification": {
+    "category": "passed",
+    "confidence": "high",
+    "evidence": "command exited with code 0",
+    "flake": {
+      "status": "unknown",
+      "attemptsObserved": 1,
+      "passedAttempts": 0,
+      "failedAttempts": 0
+    }
+  },
+  "artifactPath": "scratch/check-ci-report/2026-10-24T16-42-53-764Z/check-salvage-dispute-recovery.log",
+  "structured": null
+}
+--- stdout ---
+
+> spaceface@0.2.0-beta.1 check:salvage-dispute-recovery
+> node --test test/sfq-m-salvage-dispute.test.mjs test/salvage-dispute-recovery-native.test.mjs
+
+TAP version 13
+# PITBORN_TOW {"time":190.08333333337674,"outcome":"rescued","terminal":{"time":190.08333333337674,"poses":{"tender":{"x":-533.0285034179688,"y":0,"z":-590.7479248046875},"pod":{"x":-583.7385864257812,"y":0,"z":-570.9249877929688},"wreck":{"x":0,"y":0,"z":0}},"actualGap":34.17262649536133,"radiusGap":31.446867223282943,"relativeSpeed":2.7460309174354394,"podDisplacement":1477.2333461418434,"bodies":{"tender":{"schemaVersion":1,"mass":55,"inertiaY":131.64893617021278,"centerOfMass":{"x":0,"y":0,"z":0},"radius":18,"shape":"capsule","dynamic":true,"ccd":true,"material":"ship","attachmentPoints":{"massline":{"x":0,"y":0,"z":0}},"thrusters":[{"id":"drive-port","forward":1,"reverse":0.8,"strafe":0.45,"yaw":0.8,"health":1},{"id":"drive-starboard","forward":1,"reverse":0.8,"strafe":0.45,"yaw":0.8,"health":1},{"id":"rcs-port","forward":0.35,"reverse":0.55,"strafe":1,"yaw":1,"health":1},{"id":"rcs-starboard","forward":0.35,"reverse":0.55,"strafe":1,"yaw":1,"health":1}],"revision":0},"pod":{"shape":"ball","mass":10,"dynamic":true,"schemaVersion":1,"inertiaY":125,"centerOfMass":{"x":0,"y":0,"z":0},"radius":5,"ccd":true,"material":"payload","attachmentPoints":{"massline":{"x":0,"y":0,"z":0}},"thrusters":[],"revision":0},"wreck":{"shape":"capsule","mass":1000000,"schemaVersion":1,"inertiaY":40500000,"centerOfMass":{"x":0,"y":0,"z":0},"radius":9,"dynamic":true,"ccd":true,"material":"debris","attachmentPoints":{"massline":{"x":0,"y":0,"z":0}},"thrusters":[],"revision":0}},"activeLine":"active"},"minWreckContact":581.9710693359375,"pool":{"cmdty_electronics":4,"cmdty_alloys":3,"cmdty_scrap_metal":6},"events":[{"n":"encounter:voice","t":19.233333333333523,"p":{"encounterId":"pitborn-native:1","kind":"salvage_dispute","channel":"alert","text":"POD: ...someone's on the line. Please don't swing me hard.","primary":false,"t":19.233333333333523}},{"n":"tether:attached","t":19.233333333333523,"p":{"actorId":1,"targetId":4,"attachmentId":"att_000001","attachmentDefId":"tether_standard","sourceSocketId":"socket_tether_spool","targetSocketId":"socket_tether_payload","restLength":87.97981676589683,"cueId":"combat.attachment.created"}},{"n":"encounter:voice","t":56.5833333333314,"p":{"encounterId":"cadence:0:1","kind":"patrol_scan","channel":"bark","text":"CONCORD: hold vector for customs sweep.","primary":true,"t":56.5833333333314}},{"n":"faction:repDelta","t":67.08333333333081,"p":{"factionId":"faction_scn","delta":1,"reason":"scan_clean"}},{"n":"encounter:voice","t":67.08333333333081,"p":{"encounterId":"cadence:0:1","kind":"patrol_scan","channel":"bark","text":"Clear. Fly safe.","primary":false,"t":67.08333333333081}},{"n":"encounter:resolved","t":67.08333333333081,"p":{"encounterId":"cadence:0:1","shape":"patrol_scan","kind":"patrol_scan","outcome":"clean","sectorId":"sector_ceres_belt","tier":"minor","deck":"combat","t":67.08333333333081,"causality":{"schemaVersion":1,"fingerprint":"efp_qg8qt1","encounterId":"cadence:0:1","shapeId":"patrol_scan","variantKind":"patrol_scan","sectorId":"sector_ceres_belt","zoneId":"unknown-zone","zoneName":"unknown zone","factionId":"faction_scn","motiveId":"lawful_screening","actor":"Concord patrol","evidence":"Patrol records show a scheduled security inspection.","objective":"patrol_scan","doctrine":"interceptor_flyby","topology":"open_space","complication":"patrol_scan","varietyKey":"patrol_scan|interceptor_flyby|open_space|patrol_scan","resolvedFingerprint":"efx_1o4t60s","resolvedTuple":["patrol_scan","interceptor_flyby","open_space","patrol_scan","clean","none"]}}},{"n":"encounter:voice","t":180.08333333336878,"p":{"encounterId":"pitborn-native:1","kind":"salvage_dispute","channel":"alert","text":"PITBORN TENDER: We are breaking station for the pod. Bring it alongside before we recover it and the offer still stands.","primary":false,"t":180.08333333336878}},{"n":"economy:grantCredits","t":190.08333333337674,"p":{"amount":260,"reason":"salvage_dispute:rescued"}},{"n":"faction:repDelta","t":190.08333333337674,"p":{"factionId":"faction_pitborn","delta":4,"reason":"salvage_dispute_rescued"}},{"n":"encounter:resolved","t":190.08333333337674,"p":{"encounterId":"pitborn-native:1","shape":"salvage_dispute","kind":"salvage_dispute","outcome":"rescued","sectorId":"sector_ceres_belt","zoneId":"authored:salvage_dispute","tier":"minor","deck":"civilian","t":190.08333333337674,"causality":{"schemaVersion":1,"fingerprint":"efp_dq707","encounterId":"pitborn-native:1","shapeId":"salvage_dispute","variantKind":"salvage_dispute","sectorId":"sector_ceres_belt","zoneId":"authored:salvage_dispute","zoneName":"THE SALVAGE DISPUTE","factionId":"faction_pitborn","motiveId":"unknown","actor":"unknown contact","evidence":"The contact has no verified causal signature.","objective":"salvage_dispute","doctrine":"civilian","topology":"derelict_field","complication":"salvage_dispute","varietyKey":"salvage_dispute|civilian|derelict_field|salvage_dispute","resolvedFingerprint":"efx_yvyo99","resolvedTuple":["salvage_dispute","civilian","derelict_field","salvage_dispute","rescued","credits_rep"]}}}],"impacts":{"observations":87,"unique":[{"n":"physics:impact","t":140.31666666667047,"p":{"consequenceKernelVersion":1,"backend":"rapier-dynamic","tick":8419,"aId":1,"bId":4,"pairKey":"1\\u00004","dp":0.535746701558431,"trauma":0,"impulse":1.071493403116862,"playerInvolved":true,"playerDeltaV":0.033484168847401935,"causalActorId":1,"pos":{"x":-561.3650512695312,"z":630.858154296875},"normal":{"x":0.7993606872418892,"z":-0.6008514722393336},"aGeneration":1,"bGeneration":4,"preSolveClosingSpeed":0.26463405616822966,"appliedPlayerDeltaV":0.09032167132226605,"solverPlayerHeadingRad":0.026089447413415717,"solverPlayerYawRateKick":0.4545501172542572,"solverPlayerCourseRad":-0.0026810277454525355,"appliedPlayerHeadingRad":0,"appliedPlayerCourseRad":-0.0026810277454525355}}]},"samples":[{"time":0.016666666666666666,"stage":"seek","waypoint":0,"player":{"x":0.04002934321761131,"y":0,"z":200.013916015625},"pod":{"x":490.0073547363281,"y":0,"z":443.61334228515625},"line":null},{"time":10.016666666666744,"stage":"seek","waypoint":0,"player":{"x":217.20596313476562,"y":0,"z":327.12017822265625},"pod":{"x":490.0073547363281,"y":0,"z":443.61334228515625},"line":null},{"time":20.01666666666681,"stage":"tow","waypoint":0,"player":{"x":399.1694641113281,"y":0,"z":429.261474609375},"pod":{"x":490.0073547363281,"y":0,"z":443.61334228515625},"line":"active"},{"time":30.016666666666243,"stage":"tow","waypoint":0,"player":{"x":399.50146484375,"y":0,"z":429.4379577636719},"pod":{"x":490.0073547363281,"y":0,"z":443.61334228515625},"line":"active"},{"time":40.01666666666568,"stage":"tow","waypoint":0,"player":{"x":399.50146484375,"y":0,"z":429.4379577636719},"pod":{"x":490.0073547363281,"y":0,"z":443.61334228515625},"line":"active"},{"time":50.01666666666511,"stage":"tow","waypoint":0,"player":{"x":399.50146484375,"y":0,"z":429.4379577636719},"pod":{"x":490.0073547363281,"y":0,"z":443.61334228515625},"line":"active"},{"time":60.01666666666454,"stage":"tow","waypoint":0,"player":{"x":399.50146484375,"y":0,"z":429.4379577636719},"pod":{"x":490.0073547363281,"y":0,"z":443.61334228515625},"line":"active"},{"time":70.01666666666398,"stage":"tow","waypoint":0,"player":{"x":402.21319580078125,"y":0,"z":429.380615234375},"pod":{"x":490.0073547363281,"y":0,"z":443.61334228515625},"line":"active"},{"time":80.01666666666341,"stage":"tow","waypoint":0,"player":{"x":402.21319580078125,"y":0,"z":429.380615234375},"pod":{"x":490.0073547363281,"y":0,"z":443.61334228515625},"line":"active"},{"time":90.01666666666284,"stage":"tow","waypoint":0,"player":{"x":402.21319580078125,"y":0,"z":429.380615234375},"pod":{"x":490.0073547363281,"y":0,"z":443.61334228515625},"line":"active"},{"time":100.01666666666227,"stage":"tow","waypoint":0,"player":{"x":402.21319580078125,"y":0,"z":429.380615234375},"pod":{"x":490.0073547363281,"y":0,"z":443.61334228515625},"line":"active"},{"time":110.0166666666617,"stage":"tow","waypoint":0,"player":{"x":210.67892456054688,"y":0,"z":472.8384094238281},"pod":{"x":274.1296691894531,"y":0,"z":496.2572326660156},"line":"active"},{"time":120.01666666666114,"stage":"tow","waypoint":0,"player":{"x":-59.00354766845703,"y":0,"z":529.5626220703125},"pod":{"x":-38.87980270385742,"y":0,"z":534.4896240234375},"line":"active"},{"time":130.01666666666227,"stage":"tow","waypoint":0,"player":{"x":-328.9550476074219,"y":0,"z":587.5481567382812},"pod":{"x":-311.6708068847656,"y":0,"z":588.2647094726562},"line":"active"},{"time":140.01666666667023,"stage":"tow","waypoint":1,"player":{"x":-567.2046508789062,"y":0,"z":641.0840454101562},"pod":{"x":-557.4297485351562,"y":0,"z":632.5580444335938},"line":"active"},{"time":150.0166666666782,"stage":"tow","waypoint":1,"player":{"x":-574.8781127929688,"y":0,"z":392.3735046386719},"pod":{"x":-525.586669921875,"y":0,"z":432.741943359375},"line":"active"},{"time":160.01666666668615,"stage":"tow","waypoint":1,"player":{"x":-581.053955078125,"y":0,"z":141.45616149902344},"pod":{"x":-520.3167114257812,"y":0,"z":203.340087890625},"line":"active"},{"time":170.0166666666941,"stage":"tow","waypoint":1,"player":{"x":-587.320556640625,"y":0,"z":-109.62580108642578},"pod":{"x":-541.4104614257812,"y":0,"z":-54.17020797729492},"line":"active"},{"time":180.01666666670206,"stage":"tow","waypoint":1,"player":{"x":-593.472900390625,"y":0,"z":-360.6954040527344},"pod":{"x":-562.5042114257812,"y":0,"z":-311.6886901855469},"line":"active"},{"time":190.01666666671002,"stage":"tow","waypoint":1,"player":{"x":-598.7205810546875,"y":0,"z":-601.667236328125},"pod":{"x":-583.5979614257812,"y":0,"z":-569.2081909179688},"line":"active"}],"proof":{"backend":"rapier-dynamic","sg02Ready":true,"sg02Bodies":4,"sg02DynamicBodies":4,"rapierContacts":0,"contactCaptureEnabled":true,"featuresOutsideStep":{"tumble":false,"weaponImpulseConsequences":false},"physicsBackend":"rapier-dynamic","flightBackend":"v3","aiBackend":"sg06-tactical","profileId":"production"}}
+# PITBORN_COMPLETED_SAVE {"credits":260,"receipts":[{"t":67.08333333333081,"shape":"patrol_scan","outcome":"clean","text":"SCAN CLEAR — Concord logged you clean.","fingerprint":"efp_qg8qt1","motiveId":"lawful_screening"},{"t":190.08333333337674,"shape":"salvage_dispute","outcome":"rescued","text":"SURVIVOR DELIVERED — the Pitborn pay for the life and sign the wreck over to you.","fingerprint":"efp_dq707","motiveId":"unknown"}],"live":{}}
+# Subtest: test/salvage-dispute-recovery-native.test.mjs
+ok 1 - test/salvage-dispute-recovery-native.test.mjs
+  ---
+  duration_ms: 7691.671245
+  type: 'test'
+  ...
+# Subtest: salvage_dispute is a registered derelict-field claim minor off the Helios corridor
+ok 2 - salvage_dispute is a registered derelict-field claim minor off the Helios corridor
+  ---
+  duration_ms: 2.506409
+  type: 'test'
+  ...
+# Subtest: fire stakes a real claim: wreck stamped to the tender, pod and tender on opposite sides
+ok 3 - fire stakes a real claim: wreck stamped to the tender, pod and tender on opposite sides
+  ---
+  duration_ms: 19.982495
+  type: 'test'
+  ...
+# Subtest: lawful: towing the pod to the tender pays, earns standing and releases the claim for honest salvage
+ok 4 - lawful: towing the pod to the tender pays, earns standing and releases the claim for honest salvage
+  ---
+  duration_ms: 13.745952
+  type: 'test'
+  ...
+# Subtest: extraction: working the claimed wreck past half settles stripped and costs Pitborn standing, no pay
+ok 5 - extraction: working the claimed wreck past half settles stripped and costs Pitborn standing, no pay
+  ---
+  duration_ms: 4.365791
+  type: 'test'
+  ...
+# Subtest: the claim stamp drives the existing mining protest: the tender is named as the witnessed victim
+ok 6 - the claim stamp drives the existing mining protest: the tender is named as the witnessed victim
+  ---
+  duration_ms: 1.652285
+  type: 'test'
+  ...
+# Subtest: late: the tender begins physical recovery, leaving the original pod available and full wreck claimed
+ok 7 - late: the tender begins physical recovery, leaving the original pod available and full wreck claimed
+  ---
+  duration_ms: 5.331503
+  type: 'test'
+  ...
+# Subtest: destroying the pod is the worst outcome and costs the most standing
+ok 8 - destroying the pod is the worst outcome and costs the most standing
+  ---
+  duration_ms: 5.304843
+  type: 'test'
+  ...
+# Subtest: same seed, same field
+ok 9 - same seed, same field
+  ---
+  duration_ms: 2.831716
+  type: 'test'
+  ...
+# Subtest: the ordinary sector-day roll (seed 4242) draws it off the starter corridor and it fires there without force
+ok 10 - the ordinary sector-day roll (seed 4242) draws it off the starter corridor and it fires there without force
+  ---
+  duration_ms: 98.804316
+  type: 'test'
+  ...
+# Subtest: fallback requires original pod attendance, then consumes it once without working the wreck
+ok 11 - fallback requires original pod attendance, then consumes it once without working the wreck
+  ---
+  duration_ms: 8.381517
+  type: 'test'
+  ...
+# Subtest: player can still win the recovery race with an active tow
+ok 12 - player can still win the recovery race with an active tow
+  ---
+  duration_ms: 8.466969
+  type: 'test'
+  ...
+# Subtest: missing original pod is interruption, not death or a replacement rescue
+ok 13 - missing original pod is interruption, not death or a replacement rescue
+  ---
+  duration_ms: 2.956569
+  type: 'test'
+  ...
+# Subtest: foreign helm ownership interrupts without erasing the successor or disabling pod
+ok 14 - foreign helm ownership interrupts without erasing the successor or disabling pod
+  ---
+  duration_ms: 4.322129
+  type: 'test'
+  ...
+# Subtest: physical pickup admits only one terminal result through synchronous reentry
+ok 15 - physical pickup admits only one terminal result through synchronous reentry
+  ---
+  duration_ms: 2.252897
+  type: 'test'
+  ...
+# Subtest: known removal failure and throw leave an available pod and permit a later real handoff
+ok 16 - known removal failure and throw leave an available pod and permit a later real handoff
+  ---
+  duration_ms: 10.608735
+  type: 'test'
+  ...
+# Subtest: a callback throw after authoritative removal does not resurrect or double-pay the survivor
+ok 17 - a callback throw after authoritative removal does not resurrect or double-pay the survivor
+  ---
+  duration_ms: 6.926982
+  type: 'test'
+  ...
+# Subtest: committed capture releases only the current original claimant helm, leaving the pod available
+ok 18 - committed capture releases only the current original claimant helm, leaving the pod available
+  ---
+  duration_ms: 8.59583
+  type: 'test'
+  ...
+# Subtest: pre-burn foreign controller and role reassignment keep their hull out of scene retirement
+ok 19 - pre-burn foreign controller and role reassignment keep their hull out of scene retirement
+  ---
+  duration_ms: 5.797693
+  type: 'test'
+  ...
+# Subtest: synchronous custody change during pod removal finalizes current scene neutrally
+ok 20 - synchronous custody change during pod removal finalizes current scene neutrally
+  ---
+  duration_ms: 3.582708
+  type: 'test'
+  ...
+# Subtest: synchronous restore supersedes old removal without touching replacement-world pod or receipt
+ok 21 - synchronous restore supersedes old removal without touching replacement-world pod or receipt
+  ---
+  duration_ms: 3.234719
+  type: 'test'
+  ...
+# Subtest: stationary player hook does not earn NPC-work pay or permit NPC theft; meaningful transport wins
+ok 22 - stationary player hook does not earn NPC-work pay or permit NPC theft; meaningful transport wins
+  ---
+  duration_ms: 9.591996
+  type: 'test'
+  ...
+# Subtest: releasing an unmoved hooked pod permits attended NPC recovery without player pay
+ok 23 - releasing an unmoved hooked pod permits attended NPC recovery without player pay
+  ---
+  duration_ms: 7.691229
+  type: 'test'
+  ...
+# Subtest: stale owner, pod and controller generations cannot turn an old active line into a rescue
+ok 24 - stale owner, pod and controller generations cannot turn an old active line into a rescue
+  ---
+  duration_ms: 9.207087
+  type: 'test'
+  ...
+# Subtest: survivor capsule is bound before spawn publication and survives worker presentation
+ok 25 - survivor capsule is bound before spawn publication and survives worker presentation
+  ---
+  duration_ms: 1447.306101
+  type: 'test'
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 7700.522089
+
+--- stderr ---
+(empty)
+
