@@ -1,0 +1,406 @@
+{
+  "schema": "spaceface.p08.runtime-source-reconciliation-v1",
+  "base": "c4e82b04adb615711de31e468652a56c963122b1",
+  "currentPublic": "786ae6eb04bb70b943b6b8e2bd90883495c62469",
+  "sources": {
+    "src/core/presentationAdmission.js": {
+      "sha": "0cbb64d1b2fa00ad472612cb81633adc8e6f3574",
+      "bytes": 9903,
+      "exactReadback": true
+    },
+    "src/core/runReset.js": {
+      "sha": "77aa078edfa6923173b0c02add9d5f49d08ee416",
+      "bytes": 3897,
+      "exactReadback": true
+    },
+    "src/core/registry.js": {
+      "sha": "9a632ee4cb1487d9e9acb3b600ede60e807d0023",
+      "bytes": 94959,
+      "exactReadback": true
+    },
+    "src/core/sg02DynamicBodyOwner.js": {
+      "sha": "291c434b4a436a3778e2f5a1b80ff50b4f24fbad",
+      "bytes": 292494,
+      "exactReadback": true
+    },
+    "src/runtime/nodeSystemFactoryTable.js": {
+      "sha": "2d7c3efd50b7ebde33d8ca47eb9142d35b6c799c",
+      "bytes": 26580,
+      "exactReadback": true
+    },
+    "src/runtime/authoritativeSystemManifest.js": {
+      "sha": "45946b1a88fb248053ac3aa67a6418ff3f4082d0",
+      "bytes": 37050,
+      "exactReadback": true
+    },
+    "src/systems/cargo.js": {
+      "sha": "ffb89153fa679621a4a2b8d364efdd6afa501e02",
+      "bytes": 78820,
+      "exactReadback": true
+    },
+    "src/systems/economy.js": {
+      "sha": "8a12409a4b25fbf51ea1740322b932bf0fd69e3a",
+      "bytes": 322708,
+      "exactReadback": true
+    },
+    "src/systems/salvage.js": {
+      "sha": "3f34125a767347a2582e4d7d2ca870bcd23bbda4",
+      "bytes": 82865,
+      "exactReadback": true
+    },
+    "src/world/farActorTable.js": {
+      "sha": "713bc0dfe5bb67cf8d16788cd291211d19c29750",
+      "bytes": 53213,
+      "exactReadback": true
+    },
+    "src/systems/npcJobsRuntime.js": {
+      "sha": "80a1ac62a2bfc1371c5470da900def592ac3ff4c",
+      "bytes": 343020,
+      "exactReadback": true
+    },
+    "src/systems/salvageActions.js": {
+      "sha": "49a27baabfc36b489d2b8f97e4200afa6d90ebc4",
+      "bytes": 33698,
+      "exactReadback": true
+    },
+    "src/render/visualOverrides.js": {
+      "sha": "d00d1985e6efaee2871a7820d4defcd1de732d80",
+      "bytes": 79700,
+      "exactReadback": true
+    },
+    "scripts/lib/simReadModel.mjs": {
+      "sha": "a252ff1ea13e31e1530a7aba03902851bc05be69",
+      "bytes": 87901,
+      "exactReadback": true
+    },
+    "scripts/lib/simWorkerHost.mjs": {
+      "sha": "194db61cb768189ecf95c55d9ebed65b41c5d10c",
+      "bytes": 117437,
+      "exactReadback": true
+    },
+    "scripts/lib/modelTruthAuthoredCompound.mjs": {
+      "sha": "ef1fa1bc2ecb1bd4fc2b4a06f41c0e640436bdf8",
+      "bytes": 13869,
+      "exactReadback": true
+    },
+    "scripts/model-truth-census.mjs": {
+      "sha": "99b9227d19e2ff9e7ca84846353a5ce319545dfd",
+      "bytes": 35167,
+      "exactReadback": true
+    },
+    "assets/ships/parts/parts_manifest.json": {
+      "sha": "249e8b66efcfba072acef6e5888ed44ffe60e1d9",
+      "bytes": 287988,
+      "exactReadback": true
+    },
+    "assets/ships/release/release_manifest.json": {
+      "sha": "7ec87b52136cd24ff15af482b67486c343c24ce7",
+      "bytes": 271344,
+      "exactReadback": true
+    },
+    "assets/ships/render-packages/pilots.json": {
+      "sha": "ccd521ac3f3bbc0708ecb5a375b565937f984618",
+      "bytes": 280403,
+      "exactReadback": true
+    },
+    "src/render/renderPackageManifest.js": {
+      "sha": "feb46719d7e9af7d94a9d7c918a51f3ab9a59b06",
+      "bytes": 192244,
+      "exactReadback": true
+    },
+    "src/data/hundredHandMile.js": {
+      "sha": "443818f33cb798eae554fa6550363803dc0e2581",
+      "bytes": 19249,
+      "exactReadback": true
+    },
+    "src/data/hundredHandMileGeometry.json": {
+      "sha": "9c38f19c5a590ce5b01bb47d0ebc34059041eb95",
+      "bytes": 37625,
+      "exactReadback": true
+    },
+    "src/data/hundredHandMileSourceV3Bodies.json": {
+      "sha": "2a37d88d9910e6ab143b4f57978b8c51784563d6",
+      "bytes": 26610,
+      "exactReadback": true
+    },
+    "src/systems/hundredHandMile.js": {
+      "sha": "42e8d565a867d552185628b24994b8be6f830bc9",
+      "bytes": 19026,
+      "exactReadback": true
+    },
+    "src/systems/hundredHandMileWorld.js": {
+      "sha": "b9f8dbd547603f633c24c1d334976022a5255b05",
+      "bytes": 30197,
+      "exactReadback": true
+    },
+    "src/systems/hundredHandMileTraffic.js": {
+      "sha": "82845fc63cdf0cf72148b07814b52e05ceef9dc9",
+      "bytes": 14276,
+      "exactReadback": true
+    },
+    "src/systems/hundredHandMileCrew.js": {
+      "sha": "f4d1af5d7f76bc2e79938d798ba0f75e401838fb",
+      "bytes": 16520,
+      "exactReadback": true
+    },
+    "src/systems/hundredHandMileIntegration.js": {
+      "sha": "9f45850a6cbed0d1ca26745190de4e3ddf77f00d",
+      "bytes": 3598,
+      "exactReadback": true
+    },
+    "src/systems/hundredHandMileNarrative.js": {
+      "sha": "001fbda1dca6b8587f8561526868c2d0b63c70bc",
+      "bytes": 5419,
+      "exactReadback": true
+    },
+    "src/ui/hundredHandMilePrompt.js": {
+      "sha": "c2193781045b2ee3b98e407409061429773bc856",
+      "bytes": 8856,
+      "exactReadback": true
+    },
+    "src/ui/hundredHandMileReceiverFeedback.js": {
+      "sha": "871430082ef86b87d8a8b299ac5d6e279c04606c",
+      "bytes": 2419,
+      "exactReadback": true
+    },
+    "src/world/hundredHandMileGeometry.js": {
+      "sha": "c70442afcb84827a5e0dae5091b57407bc5afb61",
+      "bytes": 5453,
+      "exactReadback": true
+    },
+    "src/world/hundredHandMileSourceContinuity.js": {
+      "sha": "3544bb6edbf4e0584909075c7551398224779d3b",
+      "bytes": 1812,
+      "exactReadback": true
+    },
+    "src/world/hundredHandMilePresentationWire.js": {
+      "sha": "b54f8b92df3b6a3f50901881400ace9ff12b9fb5",
+      "bytes": 7691,
+      "exactReadback": true
+    },
+    "src/render/hundredHandMilePresentation.js": {
+      "sha": "422a84b818ba66d0adcbf072c17fec77c64a0520",
+      "bytes": 7485,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-terminal-outcome.test.mjs": {
+      "sha": "082885a53fdeda422f671207f61e86fb877daa62",
+      "bytes": 16231,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-current-optional-validation.test.mjs": {
+      "sha": "f6b6652a7125c5dc6fd0f76fc6a3db1191f61d15",
+      "bytes": 2458,
+      "exactReadback": true
+    },
+    "test/hundred-hand-current-entry-diagnostic.test.mjs": {
+      "sha": "68830dc534f3798938710e88ee743e42fdbbc56b",
+      "bytes": 759,
+      "exactReadback": true
+    },
+    "test/hundred-hand-current-disabled-save-diagnostic.test.mjs": {
+      "sha": "7865413d30120bed0439089016fe909a72815240",
+      "bytes": 576,
+      "exactReadback": true
+    },
+    "test/hundred-hand-current-public-native-baseline.test.mjs": {
+      "sha": "2ad492f5d6ccac10c232181161d0a631cfe9b620",
+      "bytes": 1745,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile.test.mjs": {
+      "sha": "1883d9cda1fe56e97751378a1abc88e1d2c42918",
+      "bytes": 16203,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-traffic.test.mjs": {
+      "sha": "886ae1dbbef4923bd2088a343b741f59117d480c",
+      "bytes": 7393,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-command-flow.test.mjs": {
+      "sha": "0bd04860f14a3ad5d1c6ea2daa0e26538ae19f75",
+      "bytes": 3375,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-narrative.test.mjs": {
+      "sha": "06a9c8931cd06923d9b28dc170dbe53bb1b92a14",
+      "bytes": 9316,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-custody.test.mjs": {
+      "sha": "6a2dfe87275358d91d873dde2fbb68dd3f918683",
+      "bytes": 10687,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-presentation-admission.test.mjs": {
+      "sha": "c0f5eef18529e762169ff4a5df36680f067c906b",
+      "bytes": 2091,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-finite-fixture.mjs": {
+      "sha": "875400bee2cdede33e59fd861baba9f52950082a",
+      "bytes": 3064,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-dom-adapter.mjs": {
+      "sha": "0f7c5934f881b75648e658843589db173daa351d",
+      "bytes": 1938,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-native-world.test.mjs": {
+      "sha": "6c501aaddb4b5c9668a699fdee58ac2fdf6e6a73",
+      "bytes": 20764,
+      "exactReadback": true
+    },
+    "test/hundred-hand-current-native-contract.test.mjs": {
+      "sha": "dd02a233756df6c49da3e5be07952008ff22d895",
+      "bytes": 1952,
+      "exactReadback": true
+    },
+    "test/hundred-hand-current-far-lifecycle.test.mjs": {
+      "sha": "71acf5057a707df986d52c9bc3aa4fb2840a4ff3",
+      "bytes": 7334,
+      "exactReadback": true
+    },
+    "test/hundred-hand-current-public-entry.test.mjs": {
+      "sha": "75ea78d75d34fca858efacf01f7120d004fe83a5",
+      "bytes": 2231,
+      "exactReadback": true
+    },
+    "test/hundred-hand-current-public-worker.test.mjs": {
+      "sha": "b15231b378dfec290518064a700f52682eefe3dd",
+      "bytes": 3501,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-source-certificate.test.mjs": {
+      "sha": "4c6b14cf2e56ffb07c44fff91f0fc74df2964837",
+      "bytes": 5746,
+      "exactReadback": true
+    },
+    "test/hundred-hand-current-public-assets.test.mjs": {
+      "sha": "3e4a9fb09d2336a69dc2cabb1574d3d2a3305c77",
+      "bytes": 2822,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-source-loss.test.mjs": {
+      "sha": "046a61f3954fbe56aa8b9c58396da3f197c5d8ad",
+      "bytes": 9744,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-save-loss-boundary.test.mjs": {
+      "sha": "9a3baf51d22da36034da7ed82a7fc5ca6ce066b4",
+      "bytes": 3275,
+      "exactReadback": true
+    },
+    "test/hundred-hand-current-native-convoy.test.mjs": {
+      "sha": "0bbdbf1efbbac5036d7fbf2d1824c0f8349631a9",
+      "bytes": 1890,
+      "exactReadback": true
+    },
+    "scripts/check-hundred-hand-mile-player-route.mjs": {
+      "sha": "9c2e67b230298c43de7ec9e4b838a4b5b13ea1ee",
+      "bytes": 19801,
+      "exactReadback": true
+    },
+    "tools/blender/forge/ships/hundred_hand_mile.py": {
+      "sha": "2e628720f0a2f98583dae401fc9252048f2269bf",
+      "bytes": 13421,
+      "exactReadback": true
+    },
+    "test/hundred-hand-mile-prerequisite-prompt.test.mjs": {
+      "sha": "ce3355ffd18ef1d81ca62d0f2a23ff888ef547c1",
+      "bytes": 13941,
+      "exactReadback": true
+    },
+    "package.json": {
+      "sha": "86df5d30f84b35c58dec0cf51a5ac383ce1c7a2b",
+      "bytes": 83693,
+      "exactReadback": true
+    },
+    "test/authoritative-manifest.test.mjs": {
+      "sha": "ca9a80341534f4dcc3818a2a87eaad3cf6face2a",
+      "bytes": 28827,
+      "exactReadback": true
+    }
+  },
+  "largeRecipe": "748a7153aa136baeb714ffe565dd2b7abd00c1d6",
+  "largePaths": [
+    "src/save/saveSystem.js",
+    "src/render/renderer.js",
+    "src/render/partsLibrary.js",
+    "src/data/modelTruthCensus.json",
+    "src/data/modelTruthCensus.generated.js"
+  ],
+  "manifestSemanticEdits": [
+    {
+      "before": [
+        "  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'wexTicket', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tallyho',"
+      ],
+      "after": [
+        "  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'wexTicket', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'hundredHandMileWorld', 'hundredHandMileTraffic', 'hundredHandMileCrew', 'hundredHandMile', 'hundredHandMileIntegration', 'hundredHandMileNarrative', 'hundredHandMilePrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tallyho',"
+      ],
+      "prior": "  'stationServices', 'difficultyDirector',",
+      "next": "  // (the eight faction-signature owners above already init at line 41 — the earlier"
+    },
+    {
+      "before": [
+        "  'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'physics', 'reactiveMatter', 'latchNine', 'combat',"
+      ],
+      "after": [
+        "  'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'physics', 'hundredHandMileWorld', 'hundredHandMileTraffic', 'hundredHandMileCrew', 'hundredHandMile', 'reactiveMatter', 'latchNine', 'combat',"
+      ],
+      "prior": "  // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).",
+      "next": "  'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',"
+    },
+    {
+      "before": [],
+      "after": [
+        "  'hundredHandMileNarrative',"
+      ],
+      "prior": "  'moralTrapSystem',",
+      "next": "  'voiceArbiter',"
+    },
+    {
+      "before": [],
+      "after": [
+        "  hundredHandMilePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),",
+        "  hundredHandMileNarrative: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'voice' }),"
+      ],
+      "prior": "export const SYSTEM_CAPABILITIES = Object.freeze({",
+      "next": "  // Event-only deck adapters. newGame only resolves a card, and promptDeck stays"
+    },
+    {
+      "before": [
+        "  'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack', 'secondRinse',"
+      ],
+      "after": [
+        "  'flightSlot', 'cruise', 'tumbleStates', 'physics', 'hundredHandMileWorld', 'hundredHandMileTraffic', 'hundredHandMileCrew', 'hundredHandMile', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack', 'secondRinse',"
+      ],
+      "prior": "  // Flight + physics authorities: single writers of position/velocity.",
+      "next": "  // Nemesis: arc engine cadence + per-fixed-step spawn-request drain."
+    }
+  ],
+  "promptSuccessor": "90497a77d457052d26ea18d8a7ba556bc3f5e4d8",
+  "optional485": {
+    "sourceBlob": "094723aa3bc01949b77b683d07bfe81bbaa947b1",
+    "testBlob": "f933a6566729d27b183b0e8d6cc5631f35c75322",
+    "testPath": "test/orchard-dormant-frame-continue.test.mjs",
+    "defaultApplied": false
+  },
+  "extras": {
+    ".gitignore": {
+      "sha": "59d4b394c9ff1c474788bcd39cfccafe638b6d57",
+      "bytes": 3347
+    },
+    "docs/hundred-hand-mile-runtime.md": {
+      "sha": "fad1f090514de67cd143e7ffca93cb7357bb4f5b",
+      "bytes": 2912
+    }
+  },
+  "limits": [
+    "Package86df superseded pending serial/semantic-leaf review; do not freeze it.",
+    "Full feature gate and full44 filesystem prepare not executed.",
+    "Isolated manifest probe passed production counts/clocks/599flags; legacy profile arrays stubbed empty."
+  ]
+}
