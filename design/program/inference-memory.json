@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-corrosive-sample",
-      "date": "2026-10-22",
-      "wf": "WF-16",
-      "mode": "opportunity",
-      "verdict": "cut",
-      "reason": "Dumping spore catalyst, a live specimen, or filament leaves a green pod that eats hull on contact, and ore stays inert.",
-      "fingerprint": "verb=dump,subject=corrosive-sample,sector=belt,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "794f8719f045481ca76047b579cb6bf2466429a5",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-machine-corridor",
       "date": "2026-10-22",
       "wf": "WF-03",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "e6d2a94e79",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-17",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A fitted arc caster jumps to exactly two more hulls and then stops.",
+      "fingerprint": "verb=chain,subject=arc-caster,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "b2be8191ce",
       "verification": "focused_green"
     }
   ],
