@@ -9,6 +9,8 @@
 // a physical thing on the field until somebody breaks it.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { setEntityDoctrine } from '../../ai/doctrine.js';
+import { occupantGenerationOf } from '../../core/entity.js';
+import { ensurePhysicsBodySpec } from '../../core/physicsAuthority.js';
 
 export const encounterOrder = 358;
 export const trigger = deepFreeze({
@@ -45,9 +47,40 @@ function releaseCast(live) {
   }
 }
 
-function freeCaptive(live, state, d) {
-  const captive = state.entities.get(live.data.captiveId);
-  if (!captive || captive.alive === false) return false;
+// Live encounters are transient across Continue. References protect their original cast;
+// the existing director owns save cleanup, receipts, and all durable consequences.
+const campWitnesses = new WeakMap();
+
+function witness(entity) {
+  return { entity, generation: occupantGenerationOf(entity), ai: entity?.data?.ai,
+    activity: entity?.data?.ai?.activity, body: entity?.physicsBody,
+    intent: entity?.data?.intent, dead: false };
+}
+
+function original(state, record) {
+  const entity = record?.entity;
+  return entity && record.generation != null
+    && state.entities.get(entity.id) === entity
+    && occupantGenerationOf(entity) === record.generation ? entity : null;
+}
+
+function confirmedDead(state, record) {
+  return record?.dead === true || original(state, record)?.alive === false;
+}
+
+function foreignCaptive(state, record, captive) {
+  const ai = captive.data?.ai;
+  const vesselId = captive.data?.vesselId;
+  return captive.id === state.playerId || captive.id === state.player?.entityId
+    || captive.isPlayer === true || captive.data?.shipjackParked === true
+    || (vesselId != null && state.player?.ownedShips?.some(row => row?.vesselId === vesselId))
+    || ai !== record.ai || ai?.activity !== record.activity
+    || captive.physicsBody !== record.body || captive.data?.intent !== record.intent;
+}
+
+function freeCaptive(live, state, d, record) {
+  const captive = original(state, record);
+  if (!captive || captive.alive === false || foreignCaptive(state, record, captive)) return false;
   const cd = captive.data || (captive.data = {});
   const ai = cd.ai || (cd.ai = {});
   ai.forceFlee = true;
@@ -181,20 +214,46 @@ export const runtime = Object.freeze({
     live.data.baseId = base.id;
     live.data.captiveId = captive.id;
     live.data.camp = { x: anchor.x, z: anchor.z };
+    ensurePhysicsBodySpec(captive); // normalize once before retaining the original body identity
+    campWitnesses.set(live, { base: witness(base), captive: witness(captive),
+      guards: d.entsOf(live, 'raider').map(witness), settling: false });
     live.phase = 'conflict';
     d.say(live, 'alert',
       'LANE WATCH: a press camp is standing off the lane — a real base, guarded, with the take on the hardstand.',
       null, { primary: true, literal: true });
   },
 
-  tick(d, live, state, now) {
-    if (live.phase === 'done') return;
-    const base = state.entities.get(live.data.baseId) || null;
-    const baseAlive = base && base.alive !== false;
-    const guardsAlive = d.aliveCount(live, 'raider') > 0;
+  event(d, live, state, name, payload) {
+    const proof = campWitnesses.get(live);
+    if (!proof || proof.settling || live.phase === 'done' || name !== 'squadKill'
+      || d._saveRestoring || state.encounterDirector?.live?.[live.id] !== live) return;
+    for (const record of [proof.base, ...proof.guards]) {
+      const entity = original(state, record);
+      if (entity && entity.id === payload?.id && entity.alive === false) record.dead = true;
+    }
+  },
 
-    if (!baseAlive) {
-      const freed = freeCaptive(live, state, d);
+  tick(d, live, state, now) {
+    if (live.phase === 'done' || d._saveRestoring
+      || state.encounterDirector?.live?.[live.id] !== live) return;
+    const proof = campWitnesses.get(live);
+    if (proof?.settling) return;
+    // Absence, storage, a recycled id, or an unprovable legacy live row is not a kill.
+    const baseDead = confirmedDead(state, proof?.base);
+    const base = original(state, proof?.base);
+    const guardsKnown = proof?.guards?.length > 0 && proof.guards.every(record =>
+      confirmedDead(state, record) || original(state, record));
+    const guardsDead = guardsKnown && proof.guards.every(record => confirmedDead(state, record));
+    if (!baseDead && (!base || !guardsKnown)) {
+      if (proof) proof.settling = true;
+      else campWitnesses.set(live, { settling: true });
+      releaseCast(live);
+      return d.resolve(live, 'contact_lost', { speak: true });
+    }
+
+    if (baseDead) {
+      proof.settling = true;
+      const freed = freeCaptive(live, state, d, proof.captive);
       d.grant(120, 'press_camp:base_burned');
       d.rep('faction_reach', -3, 'press_camp_burned');
       if (freed) d.rep('faction_free', 2, 'press_camp_captive_freed');
@@ -209,8 +268,9 @@ export const runtime = Object.freeze({
 
     // Garrison broken but the hardstand still stands: the camp stays a physical,
     // killable world body — released, not stamped. It can be finished off later.
-    if (!guardsAlive) {
-      freeCaptive(live, state, d);
+    if (guardsDead) {
+      proof.settling = true;
+      freeCaptive(live, state, d, proof.captive);
       d.emit('comms:log', {
         from: 'LANE WATCH',
         text: 'Garrison\u2019s gone but the camp still stands \u2014 it only burns if somebody burns it.',
@@ -221,6 +281,7 @@ export const runtime = Object.freeze({
     }
 
     if (now >= live.deadlineAt) {
+      proof.settling = true;
       releaseCast(live);
       return d.resolve(live, 'raid_over', { speak: false });
     }
@@ -269,5 +330,6 @@ export default defineEncounter(trigger, {
     base_destroyed: 'BASE DESTROYED — the first press camp to burn; the take is salvage now.',
     garrison_broken: 'GARRISON BROKEN — the camp still stands, unguarded and very flammable.',
     raid_over: 'The raid never came. The camp works its pocket another night.',
+    contact_lost: 'CONTACT LOST — no camp destruction or captive release was confirmed.',
   },
 });
