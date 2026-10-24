@@ -290,3 +290,21 @@ test('a parked on-glass poll rejects when the native renderer is replaced', asyn
     globalThis.requestAnimationFrame = realRaf;
   }
 });
+
+test('a mesh-less runway contact cannot pin loading readiness (AUTHORED_VISUALS_UNAVAILABLE hang)', () => {
+  // sh1 repro (master 3095a835eb): a runway wreck with no mesh stayed the only blocker for 150 s
+  // after every admission had settled, until the 180 s initial-visuals timeout.
+  const bare = { id: 485, type: 'wreck', alive: true, pos: { x: 300, z: 0 }, radius: 14, data: {} };
+  const latched = { id: 486, type: 'drone', alive: true, pos: { x: 0, z: 300 }, radius: 4, data: {}, _noMesh: true };
+  const readiness = authoredCriticalVisualReadiness(makeLoadingState([bare, latched]));
+  assert.equal(readiness.flightReadyBlockers.some((entry) => entry.metadata
+    && (entry.metadata.id === bare.id || entry.metadata.id === latched.id)), false,
+  'a contact with no mesh (or a _noMesh latch) has no body to wait on');
+  assert.equal(readiness.pipelineReady, true);
+
+  // Once the composition gives it a mesh, the same contact pins until authored.
+  authoredEntity(bare, 'compiling-pipelines');
+  const pinned = authoredCriticalVisualReadiness(makeLoadingState([bare]));
+  assert.ok(pinned.flightReadyBlockers.some((entry) => entry.metadata && entry.metadata.id === bare.id
+    && entry.role === FLIGHT_READY_ROLE.GLASS_ACTORS));
+});
