@@ -1,6 +1,10 @@
-# Press Camp: truthful destruction and captive consequences
+# Press Camp: truthful consequences, powered escape and capture cleanup
 
-## Scope
+## Historical guard-only increment (1bf56445)
+
+The following sections describe the independent guard-only head, not the powered successor below.
+
+## Guard-only scope
 Scene358 now retains witnesses for its original camp, garrison and captive. Missing, stored or recycled actors do not count as destroyed originals. Actual combat death observed while the original occupant is still present is retained across reap-before-tick, so a genuine destroyed camp still settles once. Missing unproven cast resolves neutral contact_lost without invented pay or liberation.
 
 Captive release requires the original actor/generation and retained AI/activity, normalized body and intent identity. Player-owned/captured, absent, dead or foreign-controlled captives are left untouched. A settlement latch is set before comms, grant, reputation or resolution callbacks, preventing synchronous reentry from paying twice. Save/loaded/sector lifecycle and stale-live guards remain within the existing transient encounter policy; continuous crossing retains the real current encounter.
@@ -22,12 +26,46 @@ Final native raw summary (exit0, stderr empty):
 - base_destroyed, grants[[120,press_camp:base_burned]], credits640→640;
 - tests2, pass2, fail0, skip0, cancelled0, duration1568.623355ms.
 
-The local dependency graph is explicitly selected/read-only and mixed, not the whole current public graph. Component admission is forced and deaths are injected through the real combat owner, not personally flown combat or an ordinary scheduler route. The player is a qualification entity; no full populated-world/browser/GPU/performance acceptance follows. Hosted current-checkout validation is pending.
+The local dependency graph is explicitly selected/read-only and mixed, not the whole current public graph. Component admission is forced and deaths are injected through the real combat owner, not personally flown combat or an ordinary scheduler route. The player is a qualification entity; no full populated-world/browser/GPU/performance acceptance follows. Hosted guard-only validation subsequently passed 29/29 on run40115047781, synthetic8aef94f8f2bd80bc9e0830c234ddc4927a5d9775 (public parent dda5189b plus guard head1bf56445).
 
-## Important remaining boundary
+## Historical guard-only motion boundary
 The passive captive still moves **0WU** during the observed10-second native tail, retaining its existing held activity even though the old release flags/label change. This guard-only increment does not implement or claim physical escape, home arrival or a played rescue. A separate motion/capture-commit experiment is unfinished and excluded from these source files. Existing loose release copy is not evidence of travel.
 
 ## Publication and gate
 Five files: scene358, two new focused/native test files, package alias/check-chain addition and this report. The reachable check:press-camp-consequences leaf runs27 focused +2 native tests, expected29 TAP tests. Current graph classification is static shard2/3, no unclassified commands; all prior command relative order and workflows remain unchanged. No local aggregate was executed.
 
-Source, both portable tests and this handoff are preserved in Git on a sole fresh public-master parent. Fresh open-PR census found no scene/test overlap. No merge or deployment. The next hosted artifact is required before claiming a current-public-graph pass.
+Source, both portable tests and this handoff are preserved in Git on a sole fresh public-master parent. Fresh open-PR census found no scene/test overlap. No merge or deployment. The guard-only hosted artifact12568346640 verified29/29, command2322ms, TAP2176.889184ms. ZIP SHA256 b1248bc87c33c58cc3f4a924833ec5481677a01ef818a324063f1296349f1821. Broader CI is not claimed green.
+
+## Powered successor and explicit dependency
+
+This successor depends on PR583 at90f59e716b3726387036b0d8fa1be8888572fde2. Do not merge before that dependency is reviewed/landed. Public ancestry preserves the guard head and PR583 plus newer public master work. The inherited Tail custody implementation remains a separate review boundary; it is not presented as newly authored Camp code.
+
+The Camp delta changes scene358, aiPorts and shipControlTransfer, its two tests, adds activity-capture-control-native.test.mjs, and updates the package gate and this report/evidence. It does not change shared director, Save, schema, physics, model or geometry. Existing Tail runtime/tests/report are inherited unchanged except the two explicitly extended shared owners.
+
+The original captive now receives a scene-owned outward flee activity with passive maneuver permission and hold-fire doctrine. Ordinary AI/flight/aiPorts/native physics performs propulsion. No teleport, immunity, enemy removal, home-arrival claim or player-input override is added. The existing guard checks, single settlement, awards and loot are preserved.
+
+aiPorts exposes an optional capture snapshot for an exact opaque activity lease. Canonical successful capture/helm transfer invokes that snapshot after ownership commit and before synchronous capture/control-changing subscribers. Only the captured lease's pending/held maneuver and owned physics receipt are cancelled. The optional scene callback clears its own activity/flee/permission state only while original actor, generation, body, AI and activity still match. Foreign successor control/impulses survive. Callback exceptions cannot break the committed transfer or prevent the other hull/existing freight cleanup. Failed admission does not call cleanup. Existing freight cleanup runs first, then generic activity cleanup, with both snapshots retained before the transition. The existing freight hook remains intact; no fleet-wide AI shutdown or new serialization owner is introduced.
+
+### Evidence and limits
+Exact final source blobs:
+- scene358:4897f72da8ecda5c3cb8f795d13407789f9f013e
+- aiPorts:7dd04ce5e000c5b1ae82e4107f77241e4675a97d
+- shipControlTransfer:4e415403faa18c2509a6a7b02400f14a08e900c3
+
+Local final runs passed27 focused,3 native and10 capture-control cases, separately executed,40 total. Complete raw stdout, byte hashes, dependency pins and failure history are in [PRESS_CAMP_PHYSICAL_ESCAPE_PROOF.json](PRESS_CAMP_PHYSICAL_ESCAPE_PROOF.json).
+- Genuine garrison defeat followed by ordinary propulsion moved the original captive313.706646WU over the10-second observed tail, versus0WU in the guard head. Both camp and captive remained alive; no scene grant;2341 combat credits survived unchanged-envelope Continue.
+- Original base death still yields520 pre-existing combat bounty plus exactly120 scene grant,640 total; Continue does not replay.
+- An intermediate motion-only experiment exposed a real early-subscriber defect: capture succeeded but a queued maneuver applied5371.048353 force and an early Save restored owned flee. Final pending and held cases both observe0 early force, null activity, false flee/permission, including real unchanged-envelope Save/load before later subscribers.
+- Actual canonical full-control transfer covers normal success, throwing source cleanup (destination and both freight hooks still run, one event), and failed admission (zero cleanup). Foreign AI/activity/lease/body/occupant and foreign control/impulse preservation are covered.
+
+These local runs use selected canonical systems plus exact public dependency overlays, not the whole current public checkout. Admission is forced; deaths use the actual combat owner injection; capture uses real API adapters rather than a player gesture. No naturally scheduled route, personally played rescue, browser/GPU visual or performance acceptance is claimed. Unowned transient encounter actors follow existing Save policy; this is not a promise that an unowned escape voyage survives Continue. Captured owned-hull cleanup and scalar rewards are specifically tested.
+
+### Reachable hosted gates
+The existing Tail leaf remains reachable with its six files and27 expected TAP tests. The Camp leaf now runs three files and40 expected TAP tests. With the preserved current check-chain order, Tail is static2/3 and Camp is static3/3; no classification/workflow/prerequisite changes or duplicate action suites. Current successor hosted validation is pending and must be read from its actual synthetic checkout, not borrowed from the passing historical guard or Tail heads.
+
+### Compatibility correction and public ancestry
+The first generic-before-freight candidate failed the unchanged inherited full-transfer assertion: freight cancelActivity returned false because generic cancellation had already consumed its receipt. No assertion was weakened. Final transfer4e415403 reverses only cleanup order to freight-first/generic-second. The affected old14 scene +9 custody cases, four-mode native freight/Continue,10-scenario lease API and full-transfer fixture all passed after the correction. New27+3+10 Camp cases were also rerun and passed. The old seven-scenario choice-native was not rerun locally; its unchanged file remains in the full inherited hosted27-test leaf.
+
+Final raw results and the actual initial failure are preserved in PRESS_CAMP_PHYSICAL_ESCAPE_PROOF.json. The independently observed early-subscriber before/after is preserved separately in PRESS_CAMP_CAPTURE_BOUNDARY_PROOF.json, with private environment references removed and that sanitization declared.
+
+Public commit parents are guard590 at1bf564454881810647e54d766857e2eb6c2d4cbc, dependency583 at90f59e716b3726387036b0d8fa1be8888572fde2, and refreshed master74025c32fac6c9499ae7f5c102074b87411dabf2. All newer master paths are preserved. Inherited Tail paths are its scene367, encounterScripts, encounterDirector, six Tail/custody test files and Tail report. aiPorts/shipControlTransfer are inherited owners with this explicitly reviewed extension. Camp owns scene358, its two test files, new activity-capture-control-native test, Camp report/evidence; package combines the two reachable leaves without changing any prior command order. PR589's new station-layout documentation/UI hunks are disjoint and are not absorbed from its open branch.

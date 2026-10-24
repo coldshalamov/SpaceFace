@@ -81,10 +81,33 @@ function foreignCaptive(state, record, captive) {
 function freeCaptive(live, state, d, record) {
   const captive = original(state, record);
   if (!captive || captive.alive === false || foreignCaptive(state, record, captive)) return false;
+  if (typeof d.helpers?.aiManeuver?.claimActivity !== 'function'
+    || typeof d.helpers.aiManeuver.captureActivity !== 'function') return false;
   const cd = captive.data || (captive.data = {});
   const ai = cd.ai || (cd.ai = {});
   ai.forceFlee = true;
+  ai.allowPassiveManeuver = true; // released civilians use the existing tactical helm, never offense
   ai.moraleImmune = false;
+  // With the guards gone, retreat has no hostile contact to flee from. Its fallback
+  // must be an exit bearing, not the obsolete held hardstand anchor.
+  const camp = live.data.camp;
+  const dx = captive.pos.x - camp.x, dz = captive.pos.z - camp.z;
+  const length = Math.hypot(dx, dz);
+  const ux = length > 0.001 ? dx / length : Math.cos(captive.rot || 0);
+  const uz = length > 0.001 ? dz / length : Math.sin(captive.rot || 0);
+  setEntityDoctrine(captive, {
+    activity: { kind: 'flee', reason: 'press_camp:released', targetId: null,
+      anchor: { x: captive.pos.x + ux * 960, z: captive.pos.z + uz * 960 },
+      preferredRange: 0, leashRadius: 1440, encounterId: live.id },
+    roe: 'hold_fire',
+  });
+  // The capture authority releases this exact activity before any subscriber can
+  // flush its held thrust or serialize the newly owned hull. No durable listener.
+  d.helpers.aiManeuver.claimActivity(captive, ai.activity, { onCapture: () => {
+    ai.activity = null;
+    if (ai.forceFlee === true) ai.forceFlee = false;
+    if (ai.allowPassiveManeuver === true) ai.allowPassiveManeuver = false;
+  } });
   cd.scanLabel = 'PRESSED CAPTIVE — RUNNING';
   d.emit('comms:log', {
     from: 'PRESSED MULE',

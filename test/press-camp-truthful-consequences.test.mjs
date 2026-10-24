@@ -4,11 +4,12 @@ import { createSimulation } from '../src/core/sim.js';
 import { combat } from '../src/systems/combat.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
+import { aiPorts } from '../src/systems/aiPorts.js';
 import { runtime } from '../src/data/encounters/358-the-press-camp.js';
 function setup() {
   const sim = createSimulation({
     seed: 47,
-    systems: [spawnBudget, encounterDirector, combat]
+    systems: [spawnBudget, encounterDirector, combat, aiPorts]
   });
   const s = sim.state;
   s.mode = 'flight';
@@ -145,8 +146,13 @@ for (const kind of ['absent', 'dead', 'replaced', 'captured', 'player', 'foreign
       ...subject.data.ai.activity,
       reason: 'foreign_owner'
     };
-    if (kind === 'foreign_intent') subject.data.intent = { thrust: 0.7, owner: 'foreign' };
-    if (kind === 'foreign_body') subject.physicsBody = { ...subject.physicsBody };
+    if (kind === 'foreign_intent') subject.data.intent = {
+      thrust: 0.7,
+      owner: 'foreign'
+    };
+    if (kind === 'foreign_body') subject.physicsBody = {
+      ...subject.physicsBody
+    };
     const before = JSON.stringify(subject.data);
     h.sim.registry.get('combat').kill(h.base, h.s.playerId);
     h.tick();

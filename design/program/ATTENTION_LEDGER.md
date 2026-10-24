@@ -65,16 +65,16 @@ Row format: `id | surface | what the player sees | register | sanctioned detail 
 
 | id | surface | what the player sees | register | sanctioned detail | status |
 |----|---------|---------------------|----------|-------------------|--------|
-| V-01 | Comms popups/barks | radio chatter | sector voice | per-sector bark banks, traffic flavor | open |
+| V-01 | Comms popups/barks | radio chatter | sector voice | per-sector bark banks, traffic flavor — joint with §1P X-06 | open |
 | V-02 | Objective/story tracker | guide text | clipped, useful | voice per arc, deadpan flavor | open |
 | V-03 | Help/codex | guides | manual tone | lore sidebars, technician notes | open |
-| V-04 | Death/defeat screens | after-action | insurance corporate | per-cause lessons (exists), condolences, bills | open |
+| V-04 | Death/defeat screens | after-action | insurance corporate | per-cause lessons (exists), condolences, bills — joint with §1P X-09 | open |
 
 ## E. Experience edges
 
 | id | surface | what the player sees | register | sanctioned detail | status |
 |----|---------|---------------------|----------|-------------------|--------|
-| E-01 | Onboarding rail + first hour (minutes 0-60) | tutorial rail then open space | should be alive | rail texture, tier-0 deck, guided beat, ambient traffic — see dossier | open |
+| E-01 | Onboarding rail + first hour (minutes 0-60) | tutorial rail then open space | should be alive | rail texture, tier-0 deck, ambient traffic — see dossier; joint with §1P X-01 (directions 1-3); guided beat joint with §1P X-04; raid beat joint with §1P X-02 | open |
 | E-02 | Save/load & persistence | resume flow | invisible | continuity touches, remembered state flavor | open |
 | E-03 | Economy surfaces | prices, tolls, payouts | market math | margin drama, price-talk, debt culture | open |
 | E-04 | Easter eggs & secrets | rare one-offs | reward the curious | hidden props, coded barks, ritual sights | open |

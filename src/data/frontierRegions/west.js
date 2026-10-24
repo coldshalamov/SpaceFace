@@ -180,7 +180,7 @@ const REGION_NYX = freezeRegion({
       {
         id: 'station_nyx_march',
         pos: { x: -880, z: 540 },
-        archetypeGlb: 'place_station_blackmarket',
+        archetypeGlb: 'place_claim_outpost_fence',
         landmark: true,
       },
     ],
@@ -339,7 +339,7 @@ const REGION_HYPERION = freezeRegion({
       {
         id: 'poi_hyperion_driller',
         pos: { x: 240, z: -1180 },
-        landmarkGlb: 'place_dead_hulk',
+        landmarkGlb: 'place_drill_platform_cold',
         landmark: true,
       },
       {
@@ -465,7 +465,7 @@ const REGION_KEPLER = freezeRegion({
         // The station grew around this hull. Keep the two physical carriers distinct, but close
         // enough that arriving at either reveals one market-under-a-dead-carrier composition.
         pos: { x: 40, z: 720 },
-        landmarkGlb: 'place_dead_hulk',
+        landmarkGlb: 'place_aftermath_wreck_liner_bow_authored_down',
         landmark: true,
       },
       {
@@ -601,7 +601,7 @@ const REGION_ORCUS = freezeRegion({
       {
         id: 'poi_orcus_plinth',
         pos: { x: 980, z: -540 },
-        landmarkGlb: 'place_nav_buoy',
+        landmarkGlb: 'place_memorial_array',
       },
     ],
   },

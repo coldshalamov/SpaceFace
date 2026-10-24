@@ -470,7 +470,7 @@ export const SOUTH_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_dione_relay',
         pos: Object.freeze({ x: 320, z: -420 }),
-        landmarkGlb: 'place_lane_beacon',
+        landmarkGlb: 'place_customs_pylon',
         landmark: true,
       }),
       Object.freeze({

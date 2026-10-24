@@ -1,3 +1,6 @@
+import { admitCapturedVessel } from '../src/systems/shipControlTransfer.js';
+import { AI_CONTRACT_VERSION } from '../src/ai/contracts.js';
+import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createSimulation } from '../src/core/sim.js';
@@ -107,7 +110,7 @@ test('native defeated garrison preserves base; completed save cannot replay scen
         forceFlee: h.captive.data.ai.forceFlee
       }
     }));
-    // Motion is intentionally not accepted here: authored passive captive escape is a separate unfinished increment.
+    assert.ok(moved > 30, 'original captive physically leaves the cleared camp');
     assert.equal(h.captive.alive, true);
     assert.equal(h.base.alive, true);
     const credits = h.s.player.credits;
@@ -164,5 +167,89 @@ test('native original base kill survives body removal and Continue without repla
   } finally {
     phys._sg02?.dispose();
     h.sim.dispose();
+  }
+});
+test('capture subscriber cannot flush or save released captive helm, pending and held', async () => {
+  for (const held of [false, true]) {
+    const h = setup(),
+      phys = h.sim.registry.get('physics');
+    try {
+      await phys.prepareBackend(h.s);
+      h.sim.runTicks(60);
+      const ports = h.sim.registry.get('aiPorts'),
+        saves = h.sim.registry.get('save');
+      let envelope, early;
+      h.sim.bus.on('ship:captured', () => {
+        envelope = JSON.parse(JSON.stringify(saves.serialize('camp-capture')));
+        ports.update(1 / 60, h.s);
+        const c = consumePhysicsCommand(h.captive);
+        early = {
+          force: Math.hypot(c?.control?.force?.x || 0, c?.control?.force?.z || 0),
+          activity: h.captive.data.ai.activity,
+          flee: h.captive.data.ai.forceFlee,
+          permit: h.captive.data.ai.allowPassiveManeuver
+        };
+      });
+      for (const g of h.guards) h.sim.registry.get('combat').kill(g, h.s.playerId);
+      h.sim.runTicks(1);
+      assert.equal(h.captive.data.ai.activity.reason, 'press_camp:released');
+      h.captive.data.vesselId = 'probe:camp:captive';
+      h.captive.data.shipjackGeneration = 1;
+      h.s.run = {
+        kind: 'adventure'
+      };
+      assert.equal(ports.helpers.aiManeuver.request({
+        version: AI_CONTRACT_VERSION,
+        entityId: h.captive.id,
+        tick: h.s.tick,
+        kind: 'transit',
+        forceLocal: {
+          forward: 1,
+          right: 0
+        },
+        torqueYaw: 0,
+        reason: 'press_camp:released'
+      }), true);
+      if (held) ports.update(1 / 60, h.s);
+      const owner = {
+        state: h.s,
+        bus: h.sim.bus,
+        helpers: ports.helpers,
+        validateTransferFittings: () => true,
+        nextInstanceId: () => 'probe:instance'
+      };
+      const result = admitCapturedVessel(owner, {
+        targetId: h.captive.id,
+        targetGeneration: 1,
+        vesselId: h.captive.data.vesselId,
+        operationId: 'probe:capture'
+      });
+      assert.equal(result.ok, true, JSON.stringify(result));
+      assert.deepEqual(early, {
+        force: 0,
+        activity: null,
+        flee: false,
+        permit: false
+      });
+      assert.equal(JSON.stringify(envelope).includes('press_camp:released'), false);
+      assert.equal(saves.loadEnvelope(envelope), true);
+      await phys.prepareBackend(h.s);
+      h.sim.runTicks(2);
+      const restored = [...h.s.entities.values()].find(e => e.data?.vesselId === 'probe:camp:captive');
+      assert.ok(restored);
+      assert.equal(restored.data.ai.activity, null);
+      assert.equal(restored.data.ai.forceFlee, false);
+      assert.equal(restored.data.ai.allowPassiveManeuver, false);
+      assert.ok(h.s.player.ownedShips.some(e => e.vesselId === restored.data.vesselId));
+      console.log(JSON.stringify({
+        kind: 'camp_capture_continue',
+        held,
+        early,
+        restoredId: restored.id
+      }));
+    } finally {
+      phys._sg02?.dispose();
+      h.sim.dispose();
+    }
   }
 });

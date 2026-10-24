@@ -333,7 +333,7 @@ export const EAST_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'station_nereid_claim',
         pos: Object.freeze({ x: -780, z: 920 }),
-        archetypeGlb: 'place_station_mining',
+        archetypeGlb: 'place_claim_outpost_base',
       }),
     ]),
     gates: Object.freeze([
@@ -501,7 +501,7 @@ export const EAST_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_triton_watcher',
         pos: Object.freeze({ x: -1700, z: 1500 }),
-        landmarkGlb: 'place_asteroid_seamed',
+        landmarkGlb: 'place_observation_blister',
         landmark: true,
       }),
       // The Archive's field lab (sector row above): the scannable research platform needs a body

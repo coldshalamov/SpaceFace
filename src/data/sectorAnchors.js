@@ -222,7 +222,7 @@ const CORE_SECTOR_ANCHORS = {
     ],
     pois: [
       { id: 'poi_merc', pos: { x: 1520, z: 780 }, landmarkGlb: 'place_nav_buoy' },
-      { id: 'poi_cruiser', pos: { x: -1420, z: -780 }, landmarkGlb: 'place_dead_hulk', landmark: true },
+      { id: 'poi_cruiser', pos: { x: -1420, z: -780 }, landmarkGlb: 'place_landmark_wreck_cathedral', landmark: true },
       { id: 'poi_claim_pallas', pos: { x: 320, z: 1280 }, landmarkGlb: 'place_asteroid_seamed' },
     ],
   },
