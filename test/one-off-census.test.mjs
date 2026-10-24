@@ -303,7 +303,7 @@ test('every named sector has a resident', () => {
     const oneOff = CAST_BY_ID.get(id);
     assert.ok(oneOff, `the census lost the authored Orphaned Shift resident ${id}`);
     assert.deepEqual(oneOff.sectorIds, [sid], `${id} must live where 03 §4.3 put it: ${sid}`);
-    if (id === 'docket' || id === 'bouncer' || id === 'receipt') {
+    if (id === 'docket' || id === 'bouncer' || id === 'receipt' || id === 'mop') {
       // Row 506's shipped members: implemented, on the contact surface, live in the
       // authoritative manifest — the chart-surface check above resolves them.
       assert.equal(oneOff.implemented, true, `${id} shipped its encounter and is implemented`);

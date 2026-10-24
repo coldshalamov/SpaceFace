@@ -321,8 +321,8 @@ export const ONE_OFF_CAST = Object.freeze([
     id: 'mop', name: 'MOP / CL-5 — the clean-up drone that erases evidence',
     sectorIds: ['sector_nyx_march'],
     books: { from: 4, to: 7 },
-    chart: { kind: 'planned', ref: null },
-    implemented: false,
+    chart: { kind: 'contact', ref: 'mop', presentVia: 'mop' },
+    implemented: true,
   }),
   entry({
     id: 'bellhop', name: 'BELLHOP / CB-9 — the bell-tuning drone',
