@@ -50,6 +50,10 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'game:new',
   'game:save',
   'hud:layoutChanged',
+  'ilexArk:accept',
+  'ilexArk:course',
+  'ilexArk:deliver',
+  'ilexArk:finish',
   'industrialDisasters:command',
   'industrialDisasters:presentationReady',
   'industrialDisasters:requirePresentation',
@@ -130,6 +134,11 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'survivorPod:choose',
   'toast',
   'touch:guide',
+  'towlineTable:assist',
+  'towlineTable:course',
+  'towlineTable:deliver',
+  'towlineTable:release',
+  'towlineTable:take',
   'ui:abandonMission',
   'ui:acceptMission',
   'ui:applyLoadoutPreset',
@@ -296,4 +305,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=154 dynamic=30 legacy=7 excluded=6 total=179 knownUnforwarded=84
+// provenance: census=148 dynamic=31 legacy=18 excluded=6 total=188 knownUnforwarded=84
