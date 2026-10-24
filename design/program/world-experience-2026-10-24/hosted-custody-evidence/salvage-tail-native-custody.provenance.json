@@ -1,0 +1,327 @@
+{
+  "schema": "salvage-tail-native-custody-visual-v1",
+  "kind": "Chart of measured native simulation results; not gameplay image or visual acceptance",
+  "source": {
+    "repository": "coldshalamov/SpaceFace",
+    "testedCommit": "90f59e716b3726387036b0d8fa1be8888572fde2",
+    "runUrl": "https://github.com/coldshalamov/SpaceFace/actions/runs/40112700622",
+    "artifactId": 12568055074,
+    "artifactSha256": "775d62fa9eb44d315eb5c9cd50a42d9ffa622559092b148dd29db77286439a2a",
+    "stdoutBlob": "83e92a5e3aa65ed56b23cf2b676ad948fa766b5b"
+  },
+  "rows": [
+    {
+      "mode": "intact_mule",
+      "initial": 6,
+      "securedBefore": 0,
+      "before": {
+        "activity": {
+          "kind": "loiter",
+          "reason": "salvage_tail:telegraph:hauler",
+          "anchor": {
+            "x": 868.8545073913479,
+            "z": 592.1555374239898
+          },
+          "leashRadius": 2600,
+          "preferredRange": 0,
+          "startedTick": 0,
+          "deadlineTick": 9000,
+          "targetId": null,
+          "routeId": "authored:salvage_tail",
+          "encounterId": "tail-independent:intact_mule"
+        },
+        "roe": "hold_fire",
+        "passive": true,
+        "intent": {
+          "moveX": 0,
+          "moveZ": 0.22,
+          "boost": false,
+          "fire": false,
+          "turnIntent": 0,
+          "aimAngle": 0,
+          "assistMode": "assisted"
+        }
+      },
+      "after": {
+        "activity": {
+          "kind": "loiter",
+          "reason": "salvage_tail:telegraph:hauler",
+          "anchor": {
+            "x": 868.8545073913479,
+            "z": 592.1555374239898
+          },
+          "leashRadius": 2600,
+          "preferredRange": 0,
+          "startedTick": 0,
+          "deadlineTick": 9000,
+          "targetId": null,
+          "routeId": "authored:salvage_tail",
+          "encounterId": "tail-independent:intact_mule"
+        },
+        "roe": "hold_fire",
+        "passive": true
+      },
+      "staleImmediately": false,
+      "open": 0,
+      "ledger": null,
+      "proof": {
+        "backend": "rapier-dynamic",
+        "sg02Ready": true,
+        "sg02Bodies": 2,
+        "sg02DynamicBodies": 2,
+        "rapierContacts": 0,
+        "contactCaptureEnabled": true,
+        "featuresOutsideStep": {
+          "tumble": false,
+          "weaponImpulseConsequences": false
+        },
+        "physicsBackend": "rapier-dynamic",
+        "flightBackend": "v3",
+        "aiBackend": "sg06-tactical",
+        "profileId": "production"
+      }
+    },
+    {
+      "mode": "physical_thief",
+      "initial": 7,
+      "securedBefore": 3,
+      "before": {
+        "activity": {
+          "kind": "transit",
+          "reason": "salvage_tail:freight_pod_recovery",
+          "anchor": {
+            "x": 743.1465454101562,
+            "z": 658.9882202148438
+          },
+          "leashRadius": 2600,
+          "preferredRange": 19.921092720131472,
+          "startedTick": 335,
+          "deadlineTick": null,
+          "targetId": 5,
+          "routeId": null,
+          "encounterId": "tail-independent:physical_thief"
+        },
+        "roe": "hold_fire",
+        "passive": false,
+        "status": "cargo_recovery",
+        "intent": {
+          "fire": false,
+          "fireGroup": null,
+          "fireBlockReason": null,
+          "fireBlockerId": null
+        }
+      },
+      "after": {
+        "activity": null,
+        "roe": "hold_fire",
+        "passive": true,
+        "intent": {
+          "fire": false,
+          "fireGroup": null,
+          "fireBlockReason": null,
+          "fireBlockerId": null
+        }
+      },
+      "staleImmediately": false,
+      "open": 1,
+      "ownedCargo": {
+        "items": {
+          "cmdty_food": 2
+        },
+        "capacity": 50
+      },
+      "ledger": 7,
+      "carrier": 4,
+      "pods": [
+        {
+          "qty": 3,
+          "status": "live",
+          "cause": "raider_player_owned"
+        }
+      ],
+      "proof": {
+        "backend": "rapier-dynamic",
+        "sg02Ready": true,
+        "sg02Bodies": 4,
+        "sg02DynamicBodies": 4,
+        "rapierContacts": 0,
+        "contactCaptureEnabled": true,
+        "featuresOutsideStep": {
+          "tumble": false,
+          "weaponImpulseConsequences": false
+        },
+        "physicsBackend": "rapier-dynamic",
+        "flightBackend": "v3",
+        "aiBackend": "sg06-tactical",
+        "profileId": "production"
+      }
+    },
+    {
+      "mode": "restored_recovery",
+      "initial": 7,
+      "securedBefore": 3,
+      "before": {
+        "activity": {
+          "kind": "transit",
+          "reason": "salvage_tail:freight_pod_recovery",
+          "anchor": {
+            "x": 780.2972883446032,
+            "z": 721.3231696490502
+          },
+          "leashRadius": 2600,
+          "preferredRange": 19.785685676228116,
+          "startedTick": 364,
+          "deadlineTick": null,
+          "targetId": 5,
+          "routeId": null,
+          "encounterId": "tail-independent:restored_recovery"
+        },
+        "roe": "hold_fire",
+        "passive": false,
+        "status": "cargo_recovery",
+        "intent": {
+          "fire": false,
+          "fireGroup": null,
+          "fireBlockReason": null,
+          "fireBlockerId": null
+        }
+      },
+      "after": {
+        "activity": null,
+        "roe": "hold_fire",
+        "passive": true,
+        "intent": {
+          "fire": false,
+          "fireGroup": null,
+          "fireBlockReason": null,
+          "fireBlockerId": null
+        }
+      },
+      "staleImmediately": false,
+      "open": 1,
+      "ownedCargo": {
+        "items": {
+          "cmdty_food": 2
+        },
+        "capacity": 50
+      },
+      "ledger": 7,
+      "carrier": 0,
+      "pods": [
+        {
+          "qty": 3,
+          "status": "live",
+          "cause": "raider_player_owned"
+        },
+        {
+          "qty": 2,
+          "status": "live",
+          "cause": "carrier_destroyed"
+        },
+        {
+          "qty": 2,
+          "status": "live",
+          "cause": "carrier_destroyed"
+        }
+      ],
+      "proof": {
+        "backend": "rapier-dynamic",
+        "sg02Ready": true,
+        "sg02Bodies": 5,
+        "sg02DynamicBodies": 5,
+        "rapierContacts": 0,
+        "contactCaptureEnabled": true,
+        "featuresOutsideStep": {
+          "tumble": false,
+          "weaponImpulseConsequences": false
+        },
+        "physicsBackend": "rapier-dynamic",
+        "flightBackend": "v3",
+        "aiBackend": "sg06-tactical",
+        "profileId": "production"
+      }
+    },
+    {
+      "mode": "restored_escape",
+      "initial": 7,
+      "securedBefore": 3,
+      "before": {
+        "activity": {
+          "kind": "flee",
+          "reason": "salvage_tail:freight_custody_escape",
+          "anchor": {
+            "x": 1474.507879005023,
+            "z": 423.09073376024605
+          },
+          "leashRadius": 900,
+          "preferredRange": 0,
+          "startedTick": 376,
+          "deadlineTick": 1536,
+          "targetId": null,
+          "routeId": null,
+          "encounterId": "tail-independent:restored_escape"
+        },
+        "roe": "hold_fire",
+        "passive": false,
+        "status": "cargo_escape",
+        "intent": {
+          "fire": false,
+          "fireGroup": null,
+          "fireBlockReason": "enemy_mind_hold",
+          "fireBlockerId": null
+        }
+      },
+      "after": {
+        "activity": null,
+        "roe": "hold_fire",
+        "passive": true,
+        "intent": {
+          "fire": false,
+          "fireGroup": null,
+          "fireBlockReason": "enemy_mind_hold",
+          "fireBlockerId": null
+        }
+      },
+      "staleImmediately": false,
+      "open": 1,
+      "ownedCargo": {
+        "items": {
+          "cmdty_food": 2
+        },
+        "capacity": 50
+      },
+      "ledger": 7,
+      "carrier": 4,
+      "pods": [
+        {
+          "qty": 3,
+          "status": "live",
+          "cause": "raider_player_owned"
+        }
+      ],
+      "proof": {
+        "backend": "rapier-dynamic",
+        "sg02Ready": true,
+        "sg02Bodies": 4,
+        "sg02DynamicBodies": 4,
+        "rapierContacts": 0,
+        "contactCaptureEnabled": true,
+        "featuresOutsideStep": {
+          "tumble": false,
+          "weaponImpulseConsequences": false
+        },
+        "physicsBackend": "rapier-dynamic",
+        "flightBackend": "v3",
+        "aiBackend": "sg06-tactical",
+        "profileId": "production"
+      }
+    }
+  ],
+  "renderer": "from PIL import Image,ImageDraw,ImageFont\nimport io,json,base64\nim=Image.new(\"RGB\",(1100,690),\"#101923\"); d=ImageDraw.Draw(im)\ndef text(x,y,s,size=20,color=\"#dfe9ef\",bold=False):\n f=ImageFont.truetype(\"/usr/share/fonts/truetype/dejavu/DejaVuSans\"+(\"-Bold\" if bold else \"\")+\".ttf\",size)\n d.text((x,y),s,font=f,fill=color)\ntext(42,28,\"SALVAGE TAIL\",30,bold=True)\ntext(42,72,\"Native simulation evidence  /  Capture + Save / Continue\",21,\"#8acbd6\")\ntext(42,108,\"Recorded on PR 583 • 90f59e7 • 24 Oct 2026\",15,\"#9babba\")\ntext(42,155,\"7 units in. 7 units accounted for.\",27,bold=True)\ntext(42,195,\"Three independent cases, after capture + Continue + 120 simulation ticks.\",17)\ncolors={\"carrier\":\"#6c91af\",\"return\":\"#68cfba\",\"death\":\"#e3bb75\"}\ndef bar(y,label,parts):\n text(42,y,label,19,bold=True)\n x=345\n for qty,kind in parts:\n  w=qty*80\n  d.rectangle([x,y-2,x+w-3,y+35],fill=colors[kind])\n  text(x+int(w/2)-7,y+2,str(qty),22,\"#101923\",True)\n  x+=w\n text(928,y+2,\"= 7\",23,bold=True)\nbar(249,\"Captured thief\",[(4,\"carrier\"),(3,\"return\")])\nbar(310,\"Restored recovery\",[(3,\"return\"),(2,\"death\"),(2,\"death\")])\nbar(371,\"Restored escape\",[(4,\"carrier\"),(3,\"return\")])\nx=42\nfor label,kind,width in [(\"Still aboard carrier\",\"carrier\",265),(\"Live pod: captured thief\",\"return\",330),(\"Live pod: destroyed carrier\",\"death\",0)]:\n d.rectangle([x,433,x+13,446],fill=colors[kind]);text(x+23,428,label,16);x+=width\ntext(42,476,\"3 secured before capture in each case → returned as a live pod\",18,\"#68cfba\",True)\ntext(42,508,\"Custody activity cleared immediately. Unrelated food cargo preserved: 2.\",18)\ntext(42,546,\"Separate intact-Mule case: 6 initial units; no open custody.\",17,\"#9babba\")\nd.line([42,583,1058,583],fill=\"#334453\")\ntext(42,598,\"Controlled native fixture: forced admission, injected disable and capture; proximity pickup.\",14,\"#9babba\")\ntext(42,621,\"This is a chart of recorded results, not a gameplay image or visual acceptance.\",14,\"#9babba\")\ntext(42,652,\"Source: hosted run 40112700622 / stdout blob 83e92a5e\",13,\"#9babba\")\nim=im.quantize(colors=16).convert(\"RGB\")\nout=io.BytesIO();im.save(out,format=\"WEBP\",lossless=True,method=6)\nb=out.getvalue();print(json.dumps({\"bytes\":len(b),\"base64\":base64.b64encode(b).decode()}))\n",
+  "limits": [
+    "Forced encounter admission; injected disabled/capture operations, not played combat.",
+    "Production proximity pickup, not impact pickup.",
+    "Recorded ledger after capture, Save/Continue, and 120 simulation ticks.",
+    "The separate intact Mule case starts with six; custody cases start with seven."
+  ]
+}

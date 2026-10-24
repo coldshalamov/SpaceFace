@@ -25,3 +25,6 @@ Synthetic56fdb76decbc44eeb4997f2039d4ec40ac4329f8/treeaec53d4c5ad71669e6114a8b76
 
 ## Limits
 Hosted component proof is stronger than selected/hybrid local qualification, but still uses forced encounter admission, injected disable/lethal qualification and capture-API adapters where documented. It is not ordinary player combat/capture gestures, a naturally discovered complete sector route, GPU visuals or performance acceptance. The missing final local measured stdout was not reconstructed; these newly available hosted rows supersede that measurement gap directly. Earlier failing evidence remains historical.
+
+## Measured custody chart
+[New measured result chart](salvage-tail-native-custody.webp) visualizes the four actual hosted capture/Save records, not gameplay pixels. [Provenance, exact rows and RAM reproduction](salvage-tail-native-custody.provenance.json) retain the public source/run/artifact pins. The three seven-unit custody cases conserve their original lot; the separate intact-Mule case starts with six units. Reviewed image:13880bytes, SHA256 `2be80be505c8c7ba2c928af37618eafde261341bd377adfc6bb9f42c9e8f359a`, Gitblob `b6561b312c0e46e4d66365e11bdbd7c4c54ef341`. This chart is neither a new model nor game-camera/visual acceptance.
