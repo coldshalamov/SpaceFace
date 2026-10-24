@@ -25,6 +25,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WIDTH = 1440;
 const HEIGHT = 900;
 const SHOT = process.env.SF_ASSETS_LIVE_SHOT || '.devshots/authored-assets-live.jpg';
+const DEFAULT_SHOT = process.env.SF_ASSETS_LIVE_DEFAULT_SHOT || '.devshots/authored-assets-live-default-view.jpg';
 // The approach leg's own frame. A hub that authored 1347 WU away and one that never loaded are the
 // same empty picture in `SHOT`; this is the one that has Helios in it.
 const APPROACH_SHOT = process.env.SF_ASSETS_LIVE_APPROACH_SHOT || '.devshots/authored-assets-live-helios-approach.jpg';
@@ -137,6 +138,7 @@ let debugPort = null;
 let output = null;
 let runError = null;
 let cleanupProof = null;
+let shipCoverageView = null;
 let stage = 'server readiness';
 let failureStage = null;
 const enterStage = (label, timeoutMs) => {
@@ -204,7 +206,10 @@ try {
   const startTick = playable.tick;
 
   enterStage('authored ship admission');
-  const report = await waitForAuthoredShips(cdp);
+  const report = await waitForAuthoredShips(cdp, { prepareCoverageView: async (budget) => {
+    shipCoverageView = await establishAuthoredShipCoverageView(cdp, budget);
+    return shipCoverageView;
+  } });
   // The starting hub is the only station that blocks flight readiness (`flightReadySet.js`:
   // `selectPlacePackageLayer` -> GAMEPLAY_SHELL, and `isPlaceLayerBlockingFlightReady` blocks on
   // that layer alone). Every other place — Helios among them on this route — streams AFTER control
@@ -245,7 +250,7 @@ try {
   enterStage('advancing gameplay ticks', GAMEPLAY_TICKS_TIMEOUT_MS);
   await waitFor(cdp, () => getTick(cdp, startTick + 2), GAMEPLAY_TICKS_TIMEOUT_MS, 'advancing gameplay ticks');
 
-  enterStage('spawn screenshot and browser identity');
+  enterStage('expanded ship coverage screenshot and browser identity');
   await captureScreenshot(cdp, SHOT);
   const browserIdentity = await collectBrowserIdentity(cdp);
 
@@ -454,10 +459,15 @@ try {
     authoredDeadline: report.authoredDeadline,
     authoredUpgradeDiagnostics: report.authoredUpgradeDiagnostics,
     startupTrace,
+    shipCoverageView,
+    defaultViewScreenshot: artifactFileEvidence(DEFAULT_SHOT),
+    screenshotView: 'expanded-public-wheel-ship-coverage',
     screenshot: artifactFileEvidence(SHOT),
   };
 } catch (error) {
   runError = error;
+  error.authoredShipCoverageView ||= shipCoverageView;
+  if (error.authoredShipCoverageView) console.error(`[authored-assets] retained coverage view ${JSON.stringify(error.authoredShipCoverageView)}`);
   failureStage = cdp?.stage || stage;
   if (error?.authoredShipDiagnostics) {
     console.error(`[authored-assets] retained ship diagnostics ${JSON.stringify(error.authoredShipDiagnostics)}`);
@@ -509,6 +519,7 @@ if (runError || cleanupError || candidateError) {
       name: error && error.name || 'Error',
       message: error && error.message || String(error),
       ...(error?.authoredShipDiagnostics ? { authoredShipDiagnostics: error.authoredShipDiagnostics } : {}),
+      ...(error?.authoredShipCoverageView ? { authoredShipCoverageView: error.authoredShipCoverageView } : {}),
     })),
   };
   const renderedFailure = JSON.stringify(failure, null, 2);
@@ -981,6 +992,54 @@ function isMainModule() {
   return !!process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
 }
 
+// The body/pool proof owes three presented ships, not three arbitrary loaded sector records.
+// Seed 47 does not guarantee that coverage in its default camera. Preserve the default safety
+// observation first, then use five ordinary public wheel notches for a separately labeled view.
+// This remains a fixture probe: New Game events and the later Helios pose leg are disclosed.
+export async function establishAuthoredShipCoverageView(cdp, options = {}) {
+  const now = options.now || (() => performance.now());
+  const pause = options.sleep || sleep;
+  const deadlineMs = options.deadlineMs ?? now() + AUTHORED_SHIP_TIMEOUT_MS;
+  const evidence = { firstDefaultView: null, defaultView: null, requestedCoverageView: null,
+    cameraConvergenceUnmeasured: true,
+    coverage: 'expanded-public-wheel-ship-coverage', defaultViewIsThreeShipAcceptance: false,
+    expectedRequestedZoom: 225, acknowledgedWheelInputs: 0,
+    input: { type: 'mouseWheel', notches: 5, deltaY: 120, x: WIDTH / 2, y: HEIGHT / 2 },
+  };
+  try {
+    while (true) {
+      assert.ok(now() < deadlineMs, 'default startup readiness exhausted the original admission deadline');
+      evidence.defaultView = await collectAuthoredGateSnapshot(cdp);
+      evidence.firstDefaultView ||= evidence.defaultView;
+      const initial = evidence.defaultView;
+      assert.equal(initial.presentationUnknownCount, 0, 'default startup presentation must be measurable');
+      assert.equal(initial.authoredShipCount, initial.presentedShipCount,
+        'default startup must not present unauthored ships before coverage input');
+      assert.equal(initial.view.requestedZoom, 144,
+        'coverage route requires the declared untouched default requested zoom');
+      assert.ok(now() < deadlineMs, 'default startup readiness exhausted the original admission deadline');
+      if (initial.playerState === 'authored') break;
+      // A hidden pending player is not an exposed placeholder. Let the ordinary frame loop
+      // finish readiness without requesting assets, changing the camera, or extending the budget.
+      await pause(Math.min(50, deadlineMs - now()));
+    }
+    const capture = options.captureDefaultView || (() => captureScreenshot(cdp, DEFAULT_SHOT));
+    await capture();
+    for (let i = 0; i < evidence.input.notches; i++) {
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mouseWheel',
+        x: evidence.input.x, y: evidence.input.y, deltaX: 0, deltaY: evidence.input.deltaY });
+      evidence.acknowledgedWheelInputs++;
+    }
+    evidence.requestedCoverageView = await collectAuthoredGateSnapshot(cdp);
+    assert.equal(evidence.requestedCoverageView.view.requestedZoom, evidence.expectedRequestedZoom,
+      'public wheel input must actually establish the declared coverage zoom');
+    return evidence;
+  } catch (error) {
+    error.authoredShipCoverageView = evidence;
+    throw error;
+  }
+}
+
 export async function waitForAuthoredShips(cdp, options = {}) {
   const now = typeof options.now === 'function' ? options.now : () => performance.now();
   const pause = typeof options.sleep === 'function' ? options.sleep : sleep;
@@ -996,8 +1055,16 @@ export async function waitForAuthoredShips(cdp, options = {}) {
   let operation = 'admission', retryAttempts = 0;
   try {
   cdp.setStage('authored ship admission', admissionTimeoutMs);
+  let coverageElapsedMs = 0;
+  if (typeof options.prepareCoverageView === 'function') {
+    operation = 'coverage-view-setup';
+    await options.prepareCoverageView({ now, sleep: pause, deadlineMs: startedAtMs + admissionTimeoutMs });
+    coverageElapsedMs = now() - startedAtMs;
+  }
+  const remainingAdmissionMs = admissionTimeoutMs - (now() - startedAtMs);
+  assert.ok(remainingAdmissionMs > 0, 'authored ship coverage setup exhausted the original admission deadline');
   deadline = await waitForAuthoredAssetDeadline({
-    timeoutMs: admissionTimeoutMs,
+    timeoutMs: remainingAdmissionMs,
     pollIntervalMs: 50,
     now, sleep: pause,
     onPoll: () => { operation = 'admission-render'; return forceShipRender(cdp); },
@@ -1046,7 +1113,8 @@ export async function waitForAuthoredShips(cdp, options = {}) {
   report.authoredDeadline = {
     passed: deadline.passed,
     timeoutMs: admissionTimeoutMs,
-    elapsedMs: Math.round((deadline.passedAtMs ?? deadline.deadlineMs) - deadline.gateStartMs),
+    elapsedMs: Math.round((deadline.passedAtMs ?? deadline.deadlineMs) - startedAtMs),
+    coverageElapsedMs: Math.round(coverageElapsedMs),
     diagnosticsStartedAtMs,
     diagnosticsCompletedAtMs,
   };
@@ -1080,7 +1148,7 @@ export async function waitForAuthoredShips(cdp, options = {}) {
       retryAttempts,
       admission: deadline ? {
         passed: deadline.passed, timeoutMs: admissionTimeoutMs,
-        elapsedMs: Math.round((deadline.passedAtMs ?? deadline.deadlineMs) - deadline.gateStartMs),
+        elapsedMs: Math.round((deadline.passedAtMs ?? deadline.deadlineMs) - startedAtMs),
         lastOnTimeSnapshot: deadline.lastOnTimeSnapshot,
         postDeadlineSnapshot: deadline.postDeadlineSnapshot || null,
       } : null,
@@ -1214,6 +1282,57 @@ function collectCriticalStationSnapshot(cdp) {
   })()`);
 }
 
+// Passive, bounded evidence retained with each already-requested gate reply. Never load assets,
+// update matrices, drain queues or infer that a nonpresented body is necessarily unadmitted.
+export function createAuthoredGateEvidence(scene) {
+  const rows = [], states = Object.create(null);
+  let shipCount = 0, otherStates = 0, textTruncated = false;
+  const text = value => {
+    if (value == null) return null;
+    const result = String(value);
+    if (result.length > 160) textTruncated = true;
+    return result.slice(0, 160);
+  };
+  const number = value => Number.isFinite(value) ? value : null;
+  const pose = value => ({ x: number(value?.x), y: number(value?.y), z: number(value?.z) });
+  return {
+    add(entity, root, assetState, presented) {
+      shipCount++;
+      const key = text(assetState);
+      if (Object.hasOwn(states, key)) states[key]++;
+      else if (Object.keys(states).length < 32) states[key] = 1;
+      else otherStates++;
+      if (rows.length >= 32) return;
+      rows.push({ id: text(entity.id), assetState: key, presented,
+        exclusion: presented ? null : !root ? 'missing-root'
+          : root.visible === false ? 'root-hidden' : 'no-presented-surface',
+        rootVisible: root ? root.visible !== false : null,
+        entityPose: pose(entity.pos), rootPose: pose(root?.position),
+        presentationTier: text(entity.activity?.presentationTier),
+        preparePhase: text(root?.userData?.authoredPreparePhase),
+      });
+    },
+    snapshot() {
+      const cached = scene?.userData?.authoredUpgradeDiagnostics;
+      const jobs = Array.isArray(cached?.jobs) ? cached.jobs : [];
+      // Cached diagnostics describe started/settled jobs, NOT queued/held scheduler state.
+      const recentJobs = jobs.slice(-8).map(job => ({
+        entityId: text(job?.entityId), key: text(job?.key), status: text(job?.status),
+        startedAtMs: number(job?.startedAtMs), endedAtMs: number(job?.endedAtMs),
+        durationMs: number(job?.durationMs),
+      }));
+      return { assetStates: states, otherStateCount: otherStates, ships: rows,
+        shipRowsTruncated: shipCount > rows.length, textTruncated,
+        queue: cached ? { source: 'cached-started-job-diagnostics',
+          pendingAndHoldStateAvailable: false,
+          activeJobs: number(cached.activeJobs), activeAdmissionSlots: number(cached.activeAdmissionSlots),
+          recentJobs, jobRowsTruncated: jobs.length > recentJobs.length,
+        } : null,
+      };
+    },
+  };
+}
+
 function collectAuthoredGateSnapshot(cdp) {
   return evalJson(cdp, `(async () => {
     const state = window.SF && window.SF.state || null;
@@ -1223,6 +1342,7 @@ function collectAuthoredGateSnapshot(cdp) {
     const ships = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
       : [];
+    const evidence = (${createAuthoredGateEvidence.toString()})(state?.render?.scene);
     let authoredShipCount = 0;
     let presentedShipCount = 0;
     let playerState = 'missing';
@@ -1230,6 +1350,7 @@ function collectAuthoredGateSnapshot(cdp) {
       const root = entity.mesh || entity.view && entity.view.root || null;
       const assetState = root && root.userData && root.userData.authoredAssetState || 'missing-mesh';
       const presented = hasPresentedSurface(root);
+      evidence.add(entity, root, assetState, presented);
       if (presented) presentedShipCount++;
       if (presented && assetState === 'authored') authoredShipCount++;
       if (state && entity.id === state.playerId) playerState = assetState;
@@ -1244,6 +1365,14 @@ function collectAuthoredGateSnapshot(cdp) {
       presentedShipCount,
       authoredShipCount,
       playerState,
+      evidence: evidence.snapshot(),
+      view: {
+        requestedZoom: Number.isFinite(state?.camera?.zoom) ? state.camera.zoom : null,
+        fov: state?.render?.camera?.fov ?? null,
+        aspect: state?.render?.camera?.aspect ?? null,
+        projectionMatrix: state?.render?.camera?.projectionMatrix?.elements?.slice(0, 16) || null,
+        matrixWorldInverse: state?.render?.camera?.matrixWorldInverse?.elements?.slice(0, 16) || null,
+      },
     };
   })()`);
 }
