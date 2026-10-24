@@ -400,7 +400,7 @@ if (!missionLogSrc.includes("const activeMissions = active.filter((m) => m && m.
   ok++;
 }
 // Bind labels live in Help / Settings / controlPrompts. The flight windshield does not mount a key laundry.
-if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
+if (!/import\s*{[^}]*\bBINDINGS\b[^}]*}\s*from\s*'\.\/bindings\.js'/.test(hudSrc)
   || !hudSrc.includes('BINDINGS.starmap.label')
   || !hudSrc.includes('BINDINGS.missionLog.label')
   || !alertsSrc.includes("import { BINDINGS, promptLabel } from './bindings.js'")
