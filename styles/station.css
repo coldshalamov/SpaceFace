@@ -1176,6 +1176,13 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
     visibility: visible;
     transition-delay: 0s;
   }
+  /* …but the lane is one strip, so only one caption can stand in it: while a closed tab is
+     hovered, its line is the live one and a different still-focused tab's caption stays out —
+     two glosses would print on the same strip (hovered + keyboard-focused tiles at once). */
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav:has(> li > .sx-tile:not([aria-selected="true"]):hover) .sx-tile:focus-visible:not(:hover) ~ .sx-tile__gloss {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 @media (min-width: 641px) and (max-height: 900px) and (prefers-reduced-motion: reduce) {
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile__gloss { transition: none; }
