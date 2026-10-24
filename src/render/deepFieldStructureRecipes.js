@@ -260,6 +260,20 @@ export const DEEP_FIELD_STRUCTURE_RECIPES = deepFreeze({
       { x: 0.08, z: 0.02, radiusH: 0.85, strength: 1.35 },
     ],
   }),
+
+  // The Bolus throat. No family plate and no constellation ribbons: a close, low star knot.
+  viscera_wet_throat: R({
+    id: 'viscera_wet_throat',
+    kind: 'dust_lanes',
+    anchorNdc: [0.02, -0.22],
+    parallax: 0.041,
+    apparentScale: 0.72,
+    ribbons: [],
+    starAssociations: [
+      { x: 0.02, z: -0.16, radiusH: 0.36, strength: 0.84 },
+      { x: -0.06, z: -0.08, radiusH: 0.28, strength: 0.62 },
+    ],
+  }),
 });
 
 const DEFAULT_RECIPE_BY_KIND = Object.freeze({

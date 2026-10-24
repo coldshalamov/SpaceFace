@@ -1,4 +1,5 @@
 import { SECTOR_PALETTE_CLASSES } from './sectors.js';
+import { BOLUS_PALETTE } from './theBolus.js';
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -319,6 +320,55 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
     },
     post: { exposure: 0.93, bloomStrengthScale: 1.06, bloomThresholdBias: -0.04 },
   }),
+  // The Bolus is a wet interior, not a seventh copy of a family plate. No baked backdrop:
+  // the trade-constellation, tidal-filament, dust-lane, scar and galactic plates stay with
+  // their own regions. The throat's stars are viscera_wet_throat.
+  viscera: freezeProfile({
+    id: 'viscera',
+    skyPalette: 'CRIMSON',
+    lighting: {
+      ambient: 0.16, key: 2.50, rim: 1.15, fill: 0.38,
+      keyColor: BOLUS_PALETTE.key,
+      fillColor: BOLUS_PALETTE.fill,
+      rimColor: BOLUS_PALETTE.rim,
+      ambientColor: BOLUS_PALETTE.ambient,
+    },
+    background: {
+      intensity: 0.22,
+      nebulaOpacity: 0.0,
+      paintedSky: null,
+      sky: null,
+      structure: {
+        ...DEFAULT_STRUCTURE,
+        recipeId: 'viscera_wet_throat',
+        structureKind: 'dust_lanes',
+        starDensity: 0.42,
+        clusterCount: 2,
+        clusterStrength: 0.40,
+        voidFloor: 0.24,
+        flareDensity: 0.30,
+        maxCoverage: 0.06,
+        regionLo: 0.42,
+        regionHi: 0.58,
+        warp: 0.46,
+        dustAmt: 0.72,
+        l1Alpha: 0.08,
+        l2Alpha: 0.02,
+        bandCenter: 0.50,
+        bandWidth: 0.10,
+        bandAngle: 0.04,
+        landmarkBias: 'none',
+      },
+      composition: {
+        planetChance: 0,
+        wormholeChance: 0,
+        ringChance: 0,
+        cometInterval: [80, 150],
+        signatureHero: null,
+      },
+    },
+    post: { exposure: 0.91, bloomStrengthScale: 1.02, bloomThresholdBias: -0.12 },
+  }),
 });
 
 // Way-of-life sectors get their own rig instead of sharing the palette-class fallback: the mood
@@ -396,9 +446,11 @@ const PROFILE_BY_NEBULA_TINT = new Map([
   [SECTOR_PALETTE_CLASSES.belt.nebulaTint, SECTOR_VISUAL_PROFILES.belt],
   [SECTOR_PALETTE_CLASSES.fringe.nebulaTint, SECTOR_VISUAL_PROFILES.fringe],
   [SECTOR_PALETTE_CLASSES.anomaly.nebulaTint, SECTOR_VISUAL_PROFILES.anomaly],
+  [BOLUS_PALETTE.nebulaTint, SECTOR_VISUAL_PROFILES.viscera],
 ]);
 
 export const PROFILE_BY_ID = new Map([
+  ['sector_the_bolus', SECTOR_VISUAL_PROFILES.viscera],
   ['sector_helios_prime', SECTOR_VISUAL_PROFILES.helios_core],
   ['sector_tethys_junction', SECTOR_VISUAL_PROFILES.tethys],
   ['sector_io_reach', SECTOR_VISUAL_PROFILES.fringe],
