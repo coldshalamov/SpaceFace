@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   buildOrdnanceGroups, createCooldownTracker, readOrdnanceModel, readClusterModel, mountOrreryCluster,
+  shipUnderInstrumentBox,
 } from '../src/ui/orrery/hudAdapter.js';
 import { speedPhase } from '../src/ui/orrery/flightCluster.js';
 import { RAIL_SLOTS } from '../src/ui/powerRail.js';
@@ -191,6 +192,40 @@ test('hud.js mounts the Cluster once and feeds it once per frame', () => {
   assert.equal((src.match(/orreryCluster\.update\(/g) || []).length, 1);
   // with ORRERY on, the old left column is not an obstacle and the edge arrow avoids the instrument
   assert.match(src, /objectiveEdgeBoxes\.orrery = orreryCluster/);
+});
+
+test('D240: the under-ship dim zone is the measured cluster box plus the sprite pad', () => {
+  const box = { left: 8, top: 372, right: 464, bottom: 696, width: 456, height: 324 };
+  const pad = 26;
+  assert.equal(shipUnderInstrumentBox({ x: 300, y: 500, onScreen: true }, box, pad), true, 'over the instrument');
+  assert.equal(shipUnderInstrumentBox({ x: 490, y: 500, onScreen: true }, box, pad), true, 'just inside the pad');
+  assert.equal(shipUnderInstrumentBox({ x: 500, y: 500, onScreen: true }, box, pad), false, 'past the pad stays lit');
+  assert.equal(shipUnderInstrumentBox({ x: 300, y: 200, onScreen: true }, box, pad), false, 'above it stays lit');
+  assert.equal(shipUnderInstrumentBox({ x: 300, y: 500, onScreen: false }, box, pad), false, 'off-screen projects never dim');
+  assert.equal(shipUnderInstrumentBox(null, box, pad), false);
+  assert.equal(shipUnderInstrumentBox({ x: 300, y: 500, onScreen: true }, null, pad), false, 'unmeasured box dims nothing');
+});
+
+test('D240: ship-under wiring — helpers feed the probe, the class lands on the Cluster, the CSS ghosts text', () => {
+  const adapterSrc = readFileSync(new URL('../src/ui/orrery/hudAdapter.js', import.meta.url), 'utf8');
+  const clusterSrc = readFileSync(new URL('../src/ui/orrery/flightCluster.js', import.meta.url), 'utf8');
+  const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+  assert.match(adapterSrc, /shipUnderInstrumentBox\(w2s\(_shipWorld, _shipScreen\), clusterBox, SHIP_UNDER_PAD\)/,
+    'the probe reuses the authoritative worldToScreen, never a parallel projection');
+  assert.match(adapterSrc, /classList\.toggle\('is-ship-under', under\)/, 'the marker lands on the Cluster');
+  assert.match(adapterSrc, /resize', markClusterBoxStale\)/, 'the box re-measures only when the layout step can move it');
+  assert.match(clusterSrc, /\.orr-cluster\.is-ship-under .orr-cluster__keytag/, 'the floating key labels ghost back');
+  assert.match(hudSrc, /mountOrreryCluster\(root, state, \{ [^}]*helpers \}\)/, 'hud.js hands the adapter its helpers');
+});
+
+test('D240: the live context strip is a measured obstacle again, for arrows and tells', () => {
+  const src = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+  assert.match(src, /objectiveEdgeBoxes\.left = plateBox\(leftContext\)/,
+    'the mission strip is an edge-arrow obstacle (the retired leftStack was not)');
+  assert.match(src, /ResizeObserver\(invalidateObjectiveEdgeBoxes\)[^}]*observe\(leftContext\)/s,
+    'content-driven strip growth refreshes the box, not only window resizes');
+  assert.match(src, /resolveDoctrineTellPlacement\(w, h, proj, slotIndex, objectiveEdgeObstacles\(\)\.left\)/,
+    'doctrine tells yield to the same measured strip');
 });
 
 test('a settled Cluster frame writes nothing: springs at rest ignore a repeat target', async () => {

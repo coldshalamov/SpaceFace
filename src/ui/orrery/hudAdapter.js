@@ -264,12 +264,21 @@ const HOST_CSS = `
 @media (max-width:1300px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.6; } }
 `;
 
+/** Pure: is a projected point over (or within `pad` px of) a measured instrument box? The
+ *  crescent's floating labels read over open field, so "over the cluster" is what decides the
+ *  under-ship dim (D240) — exported for the focused test. */
+export function shipUnderInstrumentBox(screenPt, box, pad = 0) {
+  if (!screenPt || !box || screenPt.onScreen === false) return false;
+  return screenPt.x >= box.left - pad && screenPt.x <= box.right + pad
+    && screenPt.y >= box.top - pad && screenPt.y <= box.bottom + pad;
+}
+
 /**
  * Mount the ORRERY Cluster into the live HUD root. Returns { update(state, p, slow), dispose }.
  * `slow` gates the ordnance read (it scans charges) to the HUD's slow clock; everything else is
  * guarded by the Cluster's own change detection, so a settled frame writes nothing.
  */
-export function mountOrreryCluster(root, state, { bus = null } = {}) {
+export function mountOrreryCluster(root, state, { bus = null, helpers = null } = {}) {
   if (!root || typeof document === 'undefined') return null;
   injectOrrery();
   if (!document.getElementById('sf-orrery-hud-host')) {
@@ -328,12 +337,47 @@ export function mountOrreryCluster(root, state, { bus = null } = {}) {
       syncLegend();
     });
   }
+  // D240 — the crescent's keytags/payload/next line are floating text over open field: when the
+  // player's hull projects beneath the instrument they ghost back instead of striking the ship.
+  // The zone is the cluster's own scaled box, re-measured only when the layout step can have moved
+  // it (resize); the per-frame cost is the one worldToScreen reuse below plus a class toggle that
+  // only writes on change.
+  const _shipWorld = { x: 0, y: 0, z: 0 };
+  const _shipScreen = { x: 0, y: 0, onScreen: false };
+  const SHIP_UNDER_PAD = 26; // ~half the player sprite plus a small berth
+  let clusterBox = null;
+  let clusterBoxStale = true;
+  let shipUnder = null;
+  const markClusterBoxStale = () => { clusterBoxStale = true; };
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('resize', markClusterBoxStale);
+  }
+  const syncShipUnder = (p) => {
+    const w2s = helpers && helpers.worldToScreen;
+    let under = false;
+    if (w2s && p && p.pos && cluster.el && typeof cluster.el.getBoundingClientRect === 'function') {
+      if (clusterBoxStale) {
+        clusterBoxStale = false;
+        const b = cluster.el.getBoundingClientRect();
+        clusterBox = b && b.width > 0 && b.height > 0 ? b : null;
+      }
+      if (clusterBox) {
+        _shipWorld.x = p.pos.x; _shipWorld.z = p.pos.z;
+        under = shipUnderInstrumentBox(w2s(_shipWorld, _shipScreen), clusterBox, SHIP_UNDER_PAD);
+      }
+    }
+    if (under !== shipUnder) {
+      shipUnder = under;
+      if (cluster.el && cluster.el.classList) cluster.el.classList.toggle('is-ship-under', under);
+    }
+  };
   return {
     host,
     update(liveState, p, slow) {
       if (slow && typeof cluster.setRingLegend === 'function') syncLegend(liveState, p);
       if (slow && typeof cluster.setHull === 'function') syncHull(liveState, p);
-      if (!p) return;
+      if (!p) { syncShipUnder(null); return; }
+      syncShipUnder(p);
       if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker);
       if (slow || ceiling == null) ceiling = readSpeedCeiling(liveState, p);
       const model = readClusterModel(liveState, p, { ordnance, speedMax: ceiling, weaponHeatScratch });
@@ -341,6 +385,9 @@ export function mountOrreryCluster(root, state, { bus = null } = {}) {
     },
     dispose() {
       if (typeof offName === 'function') { try { offName(); } catch (_) {} }
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('resize', markClusterBoxStale);
+      }
       cluster.dispose();
       host.remove();
       removeSkin();

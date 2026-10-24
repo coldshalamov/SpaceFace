@@ -1231,7 +1231,7 @@ function rectsOverlap(a, b) {
  * anchors. `projected` is the authoritative worldToScreen result; the returned direction always
  * follows that original projection even when the chip yields to a reserved HUD rectangle.
  */
-export function resolveDoctrineTellPlacement(width, height, projected, slotIndex = 0) {
+export function resolveDoctrineTellPlacement(width, height, projected, slotIndex = 0, extraReserved = null) {
   const w = Math.max(320, Number(width) || 1280);
   const h = Math.max(240, Number(height) || 720);
   const px = Number(projected && projected.x);
@@ -1278,6 +1278,10 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
   const layout = resolveObjectiveHudLayout(w, h);
   const reserved = [layout.objective, layout.vitals, layout.action, layout.rightDock, layout.commandDeck]
     .filter(Boolean);
+  // Live-measured extras (the top-left context strip — a nominal rect cannot know when it is
+  // populated or how tall content makes it, so the caller passes its measured box). Empty stays
+  // unreserved, so a collapsed strip never deflects chips from open field.
+  if (extraReserved) reserved.push(...[].concat(extraReserved).filter(Boolean));
   const asRect = (cx, cy) => ({
     x: cx - halfW,
     y: cy - halfH,
@@ -1803,6 +1807,7 @@ export function createHud(ctx, alerts) {
     root.style.setProperty('--sf-cluster-h', `${Math.ceil(h)}px`);
   };
   let clusterSizeObserver = null;
+  let leftContextSizeObserver = null;
   if (typeof window !== 'undefined' && window.addEventListener) {
     window.addEventListener('resize', publishClusterReserve);
   }
@@ -2038,7 +2043,7 @@ export function createHud(ctx, alerts) {
   root.appendChild(rightDock);
 
   // ORRERY is the sole owner of the bottom-left vitals, speed and ordnance instruments.
-  const orreryCluster = mountOrreryCluster(root, state, { bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null, bus: ctx.bus });
+  const orreryCluster = mountOrreryCluster(root, state, { bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null, bus: ctx.bus, helpers });
   if (orreryCluster && radar && typeof radar.setOrreryFrame === 'function') radar.setOrreryFrame(true);
   if (orreryCluster) {
     const clusterEl = orreryCluster.host.querySelector('.orr-cluster');
@@ -2047,6 +2052,13 @@ export function createHud(ctx, alerts) {
       clusterSizeObserver.observe(clusterEl);
     }
     publishClusterReserve();
+  }
+  // The context strip's box feeds the edge-arrow obstacle set (D240): its height follows content
+  // (a tracker appearing, the comms tape refilling), not only window resizes, so the box must
+  // re-measure whenever the strip itself does.
+  if (typeof ResizeObserver === 'function') {
+    leftContextSizeObserver = new ResizeObserver(invalidateObjectiveEdgeBoxes);
+    leftContextSizeObserver.observe(leftContext);
   }
   // Sector law is created with comms before the HUD. Moving the same live node avoids a second card
   // competing with toasts in the upper-right corner while preserving all presenter state/listeners.
@@ -2859,7 +2871,7 @@ export function createHud(ctx, alerts) {
       tellProjectionWorld.x = ent.pos.x;
       tellProjectionWorld.z = ent.pos.z;
       const proj = w2s(tellProjectionWorld, tellProjectionScreen);
-      const placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex);
+      const placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex, objectiveEdgeObstacles().left);
       if (!placement) { setDisplay(slot.el, false); continue; }
       setDisplay(slot.el, true, 'inline-flex');
       setClass(slot.el, 'is-offscreen', !placement.onScreen);
@@ -5631,8 +5643,21 @@ export function createHud(ctx, alerts) {
   function objectiveEdgeObstacles() {
     if (!objectiveEdgeBoxes.stale) return objectiveEdgeBoxes;
     objectiveEdgeBoxes.stale = false;
-    objectiveEdgeBoxes.left = null;
+    // The left obstacle is the live context strip (mission tracker + nav readout + comms), not
+    // the retired leftStack — under ORRERY that column stays mounted but hidden, which is why the
+    // box was nulled and edge chevrons landed on the strip's text (D240). An empty strip collapses
+    // to display:none, so plateBox returns null and nothing is reserved.
+    objectiveEdgeBoxes.left = plateBox(leftContext);
     objectiveEdgeBoxes.right = plateBox(rightDock);
+    // The prompt deck anchors its right edge to this var (styles/prompt-deck.css): measured here so
+    // decisions sit left of the dock column instead of growing over the target card. The dock's
+    // left edge only moves with the layout step, which is exactly this box's stale lifecycle.
+    if (objectiveEdgeBoxes.right && typeof document !== 'undefined'
+      && document.documentElement && document.documentElement.style
+      && typeof document.documentElement.style.setProperty === 'function') {
+      document.documentElement.style.setProperty(
+        '--sf-rightdock-left', `${Math.round(objectiveEdgeBoxes.right.left)}px`);
+    }
     const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
     objectiveEdgeBoxes.orreryEl = orreryEl;
     objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
@@ -5820,6 +5845,7 @@ export function createHud(ctx, alerts) {
       travelVectorHud.destroy();
       threatHalo.destroy();
       if (clusterSizeObserver) clusterSizeObserver.disconnect();
+      if (leftContextSizeObserver) leftContextSizeObserver.disconnect();
       if (typeof window !== 'undefined' && window.removeEventListener) {
         window.removeEventListener('resize', publishClusterReserve);
         window.removeEventListener('resize', invalidateObjectiveEdgeBoxes);

@@ -756,9 +756,17 @@ ${printedKey(`${SEL}[data-screen="footprint"] > .k-foot .k-word`)}
 ${SEL}[data-screen="footprint"] > .k-foot .k-word { min-height:40px; font-size:12px; }
 /* tertiary text reads at the muted ink, which clears 4.5:1: a locked entry must still be readable */
 ${SEL} .k-38 { color:var(--dp-ink-mute); }
-/* new game: the hull and difficulty choices are equal words on one rail that shrink before they wrap */
-${SEL} .sf-ng-body .k-words.k-words--row.of-pause { display:flex; flex-wrap:nowrap; width:100%; max-width:100%; box-sizing:border-box; gap:0 12px; }
-${SEL} .sf-ng-body .k-words.k-words--row.of-pause > li { flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:2px; }
+/* new game: the hull and difficulty choices are equal words on one rail that shrink before they wrap —
+   but a k-word never ellipsizes, so equal shares could not shrink "I'VE FLOWN BEFORE" into half the
+   340px hang column: the body clipped it mid-glyph (D240). The rail now sizes items to their words and
+   wraps the last one to its own line instead of cutting the label. */
+${SEL} .sf-ng-body .k-words.k-words--row.of-pause { display:flex; flex-wrap:wrap; width:100%; max-width:100%; box-sizing:border-box; gap:6px 12px; }
+${SEL} .sf-ng-body .k-words.k-words--row.of-pause > li { flex:0 1 auto; min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:2px; }
+/* the seed row is a div whose children are the field and the NEW SEED word, not li: the input keeps
+   the shrinking job so the pair still shares one line in the 340px column. The pause sheet's own
+   width:100% on .k-word would otherwise force every word to a line of its own. */
+${SEL} .sf-ng-body .k-words.k-words--row.of-pause > .k-input { flex:1 1 0; min-width:0; }
+${SEL} .sf-ng-body .k-words.k-words--row.of-pause .k-word { width:auto; }
 ${SEL} .sf-ng-body .k-words.k-words--row.of-pause .fh-key.fh-key--legend {
   width:100%; min-width:0; min-height:38px; border-width:6px 0; justify-content:flex-start; text-align:left;
   letter-spacing:.1em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;

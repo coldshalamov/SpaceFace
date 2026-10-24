@@ -131,6 +131,14 @@ const CSS = `
   .orr-cluster__keytag::before { inset:-2px -5px; }
 }
 .orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
+/* D240: the floating text reads over open field, so a hull parked under the instrument used to take
+   a faceful of labels. When the adapter marks the cluster is-ship-under the text ghosts back —
+   sockets, rings, dial and the Hand keep full strength, so the rail still reads at a glance. */
+.orr-cluster__keytag, .orr-cluster__count, .orr-cluster__next, .orr-cluster__payload { transition:opacity .28s ease; }
+.orr-cluster.is-ship-under .orr-cluster__keytag,
+.orr-cluster.is-ship-under .orr-cluster__count,
+.orr-cluster.is-ship-under .orr-cluster__next,
+.orr-cluster.is-ship-under .orr-cluster__payload { opacity:.16; }
 .orr-cluster__payload { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; }
 .orr-cluster__payload .orr-counter { font-family:var(--dp-face-numeral); font-weight:320; font-size:26px; color:var(--dp-phos, #dfeeff); }
 .orr-cluster__payload small { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px; letter-spacing:.12em; color:var(--dp-ink-dim, #b7b4a6); }

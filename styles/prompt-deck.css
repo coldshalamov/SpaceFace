@@ -8,10 +8,20 @@
 
 #sf-prompt-deck {
   position: absolute;
-  top: 118px;
-  right: 16px;
+  /* Below the first-flight tutorial card's band (top:18% + its few lines ≈96px): once the deck
+     moved left of the dock it reached the centred card's text, so its column starts under it. */
+  top: max(118px, calc(18vh + 96px));
+  /* Right edge keys off the live right-dock boundary (hud.js publishes --sf-rightdock-left from
+     the measured plate box): a tall dock — sector law + target card + radar — used to grow up
+     under this column so a decision card clipped the target's top line (D240). The deck now ends
+     14px left of the dock at any dock height; the fallback keeps it clear before the first
+     measurement lands. */
+  right: calc(100vw - var(--sf-rightdock-left, calc(100vw - 250px)) + 14px);
   width: min(392px, calc(100vw - 32px));
   max-height: min(52vh, 520px);
+  /* A live decision outranks the receipt lane (toasts x480–800, auto-fading) — an over-tall
+     prompt may transiently cover a toast rather than clip its own choices; the deck root is
+     pointer-events:none so it still costs the player nothing but the fading line. */
   z-index: 20;
   display: flex;
   flex-direction: column;
