@@ -76,10 +76,10 @@ export function createRookBooth() {
       const flags = this.state?.story?.flags;
       return flags ? flags : (this.state?.story ? (this.state.story.flags = {}) : null);
     },
-    _adventure() {
-      const run = this.state?.run;
+    _adventure(s = this.state) {
+      const run = s?.run;
       return (!run || !run.kind || run.kind === 'adventure' || run.kind === 'campaign')
-        && this.state?.world?.currentSectorId === ROOK_BOOTH.sectorId;
+        && s?.world?.currentSectorId === ROOK_BOOTH.sectorId;
     },
     _beacon() {
       for (const e of this.state?.entityList || []) {
@@ -109,14 +109,18 @@ export function createRookBooth() {
      *  — towed, shoved or drifted, the book does not ask how it got there. */
     update(dt, state) {
       const s = state || this.state;
-      if (!s || !this._adventure()) return;
+      if (!s || !this._adventure(s)) return;
+      // No take, no pay: without the removal seam the latch would swallow the hull and the
+      // grant would land on a body still sitting in the ring.
+      if (typeof this.helpers?.removeEntity !== 'function') return;
       const flags = this._flags();
       if (!flags) return;
       for (const e of s.entityList || []) {
         if (!rookBoothEligible(e)) continue;
         const check = rookDeliveryCheck(e);
         if (!check.arrived) continue;
-        e.data.rookClaimed = true;
+        const d = e.data || (e.data = {});
+        d.rookClaimed = true;
         const payout = rookPayoutCr(e.mass);
         const count = (Number(flags[ROOK_BOOTH.countFlag]) || 0) + 1;
         flags[ROOK_BOOTH.countFlag] = count;
@@ -130,7 +134,20 @@ export function createRookBooth() {
           entityId: e.id, mass: e.mass, payoutCr: payout, count,
           pos: { x: e.pos.x, z: e.pos.z },
         });
-        this.helpers?.removeEntity?.(e.id);
+        // The booth takes the hull through the canonical consumption receipt, not a silent
+        // delete: a durable aftermath marker retires on salvage:completed instead of
+        // rematerializing the sold body on the next enter (the respawn would return
+        // latch-free — an infinite re-sell), and every other listener (recovery calls,
+        // law discovery, world pressure) settles the wreck like a strip did.
+        this.bus?.emit('salvage:completed', {
+          wreckId: e.id,
+          markerId: d.markerId || (d.provenance && d.provenance.markerId) || null,
+          loot: {},
+          pos: { x: e.pos.x, z: e.pos.z },
+          radius: Number.isFinite(e.radius) ? e.radius : 0,
+          source: 'rook:booth',
+        });
+        this.helpers.removeEntity(e.id);
       }
     },
   };

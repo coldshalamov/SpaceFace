@@ -22,7 +22,7 @@ function fixture({ sector = ROOK_BOOTH.sectorId, kind = 'adventure' } = {}) {
     removeEntity(rid) { const e = state.entities.get(rid); if (e) e.alive = false; },
   };
   helpers.spawnEntity({ type: 'ship', id: 7, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 4, mass: 12, hull: 50, hullMax: 50, isPlayer: true });
-  for (const t of ['comms:popup', 'economy:grantCredits', 'rookWreck:delivered']) bus.on(t, (p) => events.push([t, p]));
+  for (const t of ['comms:popup', 'economy:grantCredits', 'rookWreck:delivered', 'salvage:completed']) bus.on(t, (p) => events.push([t, p]));
   const system = createRookBooth();
   system.init({ state, bus, helpers });
   const beacon = () => state.entityList.filter((e) => e.alive && e.data?.rookBooth === true);
@@ -109,6 +109,79 @@ test('authored and owned wrecks are not inventory — POI, unique, site-structur
   assert.equal(f.events.filter(([t]) => t === 'economy:grantCredits').length, 1, 'only the fair hull pays');
 });
 
+test('the ordinary kill hulk IS fair goods: aftermath ownership sells and retires its marker', () => {
+  const f = fixture();
+  // The real live shape — mining spawns the marker spec, or bindImmediateWreck merges this
+  // same identity.data (persistenceOwner 'aftermathWrecks' + provenance.markerId) onto the
+  // hull. This is the wreck the pad exists for.
+  const w = f.addWreck({ data: {
+    persistenceOwner: 'aftermathWrecks', parentType: 'ship', wreckClass: 'battlefield',
+    salvagePool: { cmdty_scrap_metal: 2 }, provenance: { markerId: 'mk_test_1', source: 'battle-aftermath' },
+  } });
+  f.system.update(0.5, f.state);
+  assert.equal(w.alive, false, 'an aftermath-record wreck is the canonical goods');
+  const grants = f.events.filter(([t]) => t === 'economy:grantCredits');
+  assert.equal(grants.length, 1);
+  // The sale consumes through the canonical receipt so the durable marker retires —
+  // otherwise the marker rematerializes the hull on the next enter and it sells forever.
+  const consumed = f.events.filter(([t]) => t === 'salvage:completed');
+  assert.equal(consumed.length, 1, 'the book files the consumption receipt once');
+  assert.equal(consumed[0][1].wreckId, w.id);
+  assert.equal(consumed[0][1].markerId, 'mk_test_1', 'the durable marker is named so it retires');
+  assert.equal(consumed[0][1].source, 'rook:booth');
+});
+
+test('marked freight refuses: mission, claim, encounter, durable-record and authored dressing', () => {
+  const f = fixture();
+  const kinds = [
+    ['mission-id', { missionId: 'm_1', missionPinned: true }],
+    ['mission-tag', { missionTag: 'm_2', physicalRole: 'tower' }],
+    ['contract-claim', { contractClaimSiteOf: 'm_3' }],
+    ['salvor-claimed', { salvorClaimedBy: 'claim:x' }],
+    ['recovery-call', { recoveryEncounterId: 'recovery:poi_charon_tether_wreck' }],
+    ['survivor aboard', { survivorPod: { survivorCount: 1 } }],
+    ['story prop', { storyPropKind: 'set_piece', encounterId: 'enc_1' }],
+    ['mission wreck tag', { wreckMissionId: 'm_4' }],
+    ['intervention site', { interventionId: 'job_1' }],
+    ['world record', { worldRecordId: 'rec_1', durable: true }],
+    ['identity key', { identityKey: 'rubric:f41' }],
+    ['durable row', { durable: true }],
+    ['world one-off', { worldOneOff: true, oneOffId: 'oo_1' }],
+    ['berth consign', { berthConsign: { berthId: 'b_1' } }],
+    ['arena shard', { arenaShardOf: 'mk_9', persistenceOwner: 'aftermathWrecks' }],
+    ['character prop', { authoredCharacter: 'ravel' }],
+    ['reef mine', { reefMine: true, reefMineId: 'rm_1' }],
+    ['lastShift body', { persistenceOwner: 'lastShift' }],
+    ['worldSite body', { persistenceOwner: 'asteroidSites', worldRecordId: 'wr_1' }],
+    ['echo body', { persistenceOwner: 'alienEcology', hullEchoLossId: 'loss_1' }],
+  ];
+  const bodies = kinds.map(([label, data]) => [label, f.addWreck({ data })]);
+  const flags = [
+    ['persistent flag', { persistent: true }],
+    ['durable flag', { durable: true }],
+    ['missionPinned flag', { missionPinned: true }],
+    ['invuln flag', { invuln: true }],
+  ].map(([label, flags]) => [label, f.addWreck({ data: {}, flags })]);
+  f.system.update(0.5, f.state);
+  for (const [label, e] of [...bodies, ...flags]) {
+    assert.equal(e.alive, true, `${label} is marked freight — the booth does not fence it`);
+  }
+  assert.equal(f.events.filter(([t]) => t === 'economy:grantCredits').length, 0, 'no marked hull pays');
+  assert.equal(f.events.filter(([t]) => t === 'salvage:completed').length, 0, 'nothing is consumed');
+});
+
+test('a data-less hull still sells — the latch never throws on a bare body', () => {
+  const f = fixture();
+  const w = f.helpers.spawnEntity({
+    type: 'wreck', pos: { ...PAD }, vel: { x: 0, z: 0 }, radius: 10, mass: 300, hull: 1, hullMax: 1,
+  });
+  delete w.data;
+  assert.doesNotThrow(() => f.system.update(0.5, f.state));
+  assert.equal(w.alive, false);
+  assert.equal(w.data.rookClaimed, true);
+  assert.equal(f.events.filter(([t]) => t === 'economy:grantCredits').length, 1);
+});
+
 test('non-wreck bodies never sell; the count and receipts ride the story flags', () => {
   const f = fixture();
   f.helpers.spawnEntity({ type: 'drone', pos: { ...PAD }, vel: { x: 0, z: 0 }, radius: 4, mass: 20, hull: 5, hullMax: 5, data: {} });
@@ -132,6 +205,12 @@ test('pure rules: eligibility rejects the exempt kinds, check sweeps by speed, p
   assert.equal(rookBoothEligible({ type: 'wreck', alive: true, data: {} }), true);
   assert.equal(rookBoothEligible({ type: 'wreck', alive: true, data: { rookClaimed: true } }), false);
   assert.equal(rookBoothEligible({ type: 'drone', alive: true, data: {} }), false);
+  // The ordinary kill record is the player's own residue — the one persistence owner that sells.
+  assert.equal(rookBoothEligible({ type: 'wreck', alive: true, data: { persistenceOwner: 'aftermathWrecks' } }), true);
+  assert.equal(rookBoothEligible({ type: 'wreck', alive: true, data: { persistenceOwner: 'uniqueWrecks' } }), false);
+  assert.equal(rookBoothEligible({ type: 'wreck', alive: true, data: { missionId: 'm' } }), false);
+  assert.equal(rookBoothEligible({ type: 'wreck', alive: true, data: { worldRecordId: 'r' } }), false);
+  assert.equal(rookBoothEligible({ type: 'wreck', alive: true, data: {}, flags: { persistent: true } }), false);
   const still = rookDeliveryCheck({ pos: { ...PAD }, vel: { x: 0, z: 0 } });
   assert.equal(still.arrived, true);
   const fast = rookDeliveryCheck({ pos: { ...PAD }, vel: { x: 20, z: 0 } });

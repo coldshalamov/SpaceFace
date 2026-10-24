@@ -10,17 +10,38 @@ function finiteXZ(v) {
 }
 
 /** A wreck Rook will actually buy: the salvage-law shape, minus every kind that belongs
- *  to someone else's story. Kill-wrecks, sort debris and spawned hulks are fair goods;
- *  authored POI bodies, unique-wreck records, world-site structures, and anything a
- *  persistence or runtime owner claims are not inventory — the booth does not fence
- *  marked freight. */
+ *  to someone else's story. Kill-wrecks, sort debris and spawned hulks are fair goods —
+ *  and the ordinary kill hulk IS the fair good: aftermathWrecks markers are the player's
+ *  own residue, retired through the sale's salvage:completed receipt, so that one
+ *  persistence owner stays sellable while every other (uniqueWrecks, lastShift,
+ *  asteroidSites, character props, world records) is another lane's durable body.
+ *  Mission-pinned, claimed, encounter-owned, durable-record and authored-dressing hulls
+ *  are never inventory — the booth does not fence marked freight. */
 export function rookBoothEligible(entity) {
   if (!entity || entity.alive === false || entity.type !== 'wreck') return false;
   const d = entity.data || {};
   if (d.rookClaimed === true) return false;
-  if (d.persistenceOwner || d.runtimeOwner || d.uniqueWreckId) return false;
+  // Named records and authored bodies: another system owns the hull's identity.
+  if (d.uniqueWreckId || d.authoredWreckId) return false;
   if (d.worldSiteStructural === true) return false;
-  if (d.poiId || d.authored === true) return false;
+  if (d.poiId || d.authored === true || d.authoredCharacter) return false;
+  if (d.runtimeOwner) return false;
+  if (d.persistenceOwner && d.persistenceOwner !== 'aftermathWrecks') return false;
+  // Mission-pinned and claimed freight: the contract outranks the pad — ambient salvors
+  // already refuse a staked body, and the book does not buy one either.
+  if (d.missionId || d.missionPinned || d.missionTag) return false;
+  if (d.contractClaimSiteOf || d.salvorClaimedBy) return false;
+  if (d.recoveryEncounterId || d.survivorPod || d.storyPropKind || d.wreckMissionId) return false;
+  if (d.interventionId || d.onboarding === true) return false;
+  // Durable records and authored dressing rematerialize — a sale cannot take what the
+  // world respawns (it would return next enter with the latch unwritten: a dupe, not a hull).
+  if (d.worldRecordId || d.identityKey || d.durable === true) return false;
+  if (d.worldOneOff === true || d.oneOffId || d.berthConsign) return false;
+  // An arena shard's marker owns its lifetime — it regrows while the marker lives.
+  if (d.arenaShardOf || d.reefMineId || d.reefMine === true) return false;
+  // Body-row flags carry the same ownership law.
+  const f = entity.flags || {};
+  if (f.persistent === true || f.durable === true || f.missionPinned === true || f.invuln === true) return false;
   return true;
 }
 
