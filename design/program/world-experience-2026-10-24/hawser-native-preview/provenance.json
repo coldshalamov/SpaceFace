@@ -1,0 +1,69 @@
+{
+  "source": "PR580 ad9b52dd00bf8cf78e64ba3ff70f7cb12390f3c5 final native proof",
+  "time": 154.0833333333481,
+  "finalPose": {
+    "f": {
+      "id": 2,
+      "pos": {
+        "x": 266.0094299316406,
+        "y": 0,
+        "z": -299.5530090332031
+      },
+      "vel": {
+        "x": 0.22733023762702942,
+        "y": 0,
+        "z": -0.21781571209430695
+      },
+      "rot": 0.011991040361309576,
+      "radius": 18,
+      "hull": 190,
+      "hullMax": 190,
+      "model": "ship_mule",
+      "collisionProxy": "skin:ship_mule",
+      "alive": true
+    },
+    "t": {
+      "id": 5,
+      "pos": {
+        "x": 305.8864440917969,
+        "y": 0,
+        "z": -236.02374267578125
+      },
+      "vel": {
+        "x": 0.22531366348266602,
+        "y": 0,
+        "z": -0.2192547619342804
+      },
+      "rot": 0.000006539328751433682,
+      "radius": 22,
+      "hull": 342.26051259259265,
+      "hullMax": 380,
+      "model": "ship_hawser",
+      "collisionProxy": "skin:ship_hawser",
+      "alive": true
+    },
+    "player": {
+      "id": 1,
+      "pos": {
+        "x": 164.26068115234375,
+        "y": 0,
+        "z": -232.732421875
+      },
+      "vel": {
+        "x": 0.21454468369483948,
+        "y": 0,
+        "z": -0.19701293110847473
+      },
+      "rot": 0.23568103502821433,
+      "radius": 14,
+      "hull": 150,
+      "hullMax": 150,
+      "model": "ship_wasp",
+      "collisionProxy": "skin:ship_wasp",
+      "alive": true
+    }
+  },
+  "assetMappingRevision": "ee049a838cff81446865cd8bbb46d056391f9965",
+  "nativeProofSHA256": "e0a6b8de01140f24cb7a461bc6247d715f55955573689ad2a3bd094a76743ea9",
+  "limits": "Existing released LOD0 geometry/material factors; six embedded KTX2 maps per asset NOT sampled. Not game camera, PBR/VFX or visual acceptance. Detail inset has separate framing."
+}

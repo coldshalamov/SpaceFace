@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Hawser exported-model preview: 2026-10-24 11:22 UTC
+
+The [completion preview and reproducible source](../world-experience-2026-10-24/hawser-native-preview/README.md) show three existing released models at recorded final native poses (154.083 seconds), with a separately framed Hawser detail. This is CPU material-factor geometry only: embedded KTX2 maps are not sampled, and it is not live game-camera/PBR/VFX or visual acceptance. No assets changed and no new models are counted.
+
+PR580's hosted gate passed 13/13 in run 40088669919, static-2 artifact 12557648197. The actual synthetic merge `b1d42d3` has the same tree as the published head. Broad CI remains pending under its publisher. Source-only inspection closed the competing default-job/traffic enrollment question without a runtime change or full-default-native claim. All twelve goals and approval holds remain OPEN; schedules are unchanged.
+
 ## Hawser attended repair delivered: 2026-10-24 11:12 UTC
 
 [Draft PR580](https://github.com/coldshalamov/SpaceFace/pull/580) is verified at `ad9b52dd00bf8cf78e64ba3ff70f7cb12390f3c5`, with five paths and sole public parent `a3c49d376fc7734c41ea218ceb63a4c4c9afd262`. Existing SalvageWatch/Hawser scene 362 now requires physical attended repair instead of paying after a timer while the tug is remote. The scene-only controller uses real propulsion and original actor/body/generation/role/control ownership; repair requires a 15–70-WU surface gap, relative speed at most 5 and 55 observed attended seconds. Pressure or separation pauses work and requires a real return. No shared AI, traffic, Save, generator or assets changed, and threats are not suppressed.
