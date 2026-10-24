@@ -107,29 +107,24 @@ export const runtime = Object.freeze({
   },
 
   tick(d, live, state, now) {
-    if (live.phase === 'done') return;
+    if (live.phase === 'done' || live.data.grandee?.terminal) return;
     const w = live.data.grandee || (live.data.grandee = { phase: 'crossing', hitSeen: false, held: false, saidHold: false });
-    const grandee = d.entsOf(live, 'squad')[0];
+    const grandee = d.entsOf(live, 'squad').find((e) => e.id === live.data.grandeeId);
     if (!grandee) {
-      // The famous ship is gone. Whatever did it, the pocket remembers. Surviving escorts
-      // burn out on the ordinary despawn path instead of lingering as stray law traffic.
+      // Missing membership can mean unloading or teardown, not a confirmed death.
+      // Let the surviving formation leave without inventing a culprit or obituary.
+      w.terminal = true;
       for (const esc of d.entsOf(live, 'escort')) {
         if (esc && esc.data && esc.data.despawnAt == null) esc.data.despawnAt = now + 30;
       }
       releaseToWorld(live);
-      d.rep('faction_mts', -8, 'grandee_lost');
-      d.emit('news:publish', {
-        text: 'THE GRANDEE IS GONE: the Grandee of Helion did not clear the pocket. The lane she named is quieter, and nobody is pretending otherwise.',
-        kind: 'incidents', source: 'lane-control', sourceRef: `grandee:${live.id}`,
-        eventId: `grandee:lost:${live.id}`,
-      });
-      return d.resolve(live, 'grandee_lost', { speak: true });
+      return d.abort(live, 'grandee_missing');
     }
-    if (!w.hitSeen && live.data.grandeeHull0 != null && grandee.hull < live.data.grandeeHull0) {
-      w.hitSeen = true;
-      d.say(live, 'danger',
-        'GRANDEE ESCORT: Break off! You are harassing a civilian run — every gun on this formation has your transponder now.',
-        null, { literal: true });
+    // Hull observation establishes damage, never its author. Healing is not damage.
+    const previousHull = w.lastHull ?? live.data.grandeeHull0;
+    if (Number.isFinite(grandee.hull)) {
+      if (Number.isFinite(previousHull) && grandee.hull < previousHull) w.damaged = true;
+      w.lastHull = grandee.hull;
     }
 
     const escorts = d.entsOf(live, 'escort').filter((e) => e && e.alive !== false);
@@ -161,6 +156,8 @@ export const runtime = Object.freeze({
           null, { literal: true });
       }
       if (w.t >= HOLD_S) {
+        // Latch before outward events: listeners may synchronously re-enter the runtime.
+        w.terminal = true;
         // The season turns: the formation is released to the world and burns out on its own.
         if (grandee.data) grandee.data.despawnAt = now + 25;
         for (const esc of escorts) {
@@ -172,12 +169,38 @@ export const runtime = Object.freeze({
           eventId: `grandee:cleared:${live.id}`,
         });
         releaseToWorld(live);
-        return d.resolve(live, w.hitSeen ? 'transit_harried' : 'transit_over', { speak: true });
+        return d.resolve(live, (w.hitSeen || w.damaged) ? 'transit_harried' : 'transit_over', { speak: true });
       }
     }
     w.lastNow = now;
   },
 
+  event(d, live, state, name, p) {
+    const w = live.data.grandee;
+    if (live.phase === 'done' || !w || w.terminal || !p) return;
+    if (name === 'playerHitSquad' && p.targetId === live.data.grandeeId && p.applied > 0) {
+      if (w.hitSeen) return;
+      w.hitSeen = true;
+      d.say(live, 'danger',
+        'GRANDEE ESCORT: Break off! You are harassing a civilian run — every gun on this formation has your transponder now.',
+        null, { literal: true });
+    } else if (name === 'squadKill' && p.id === live.data.grandeeId) {
+      // Death is a combat fact; responsibility is the director's separate player fact.
+      // Commit before reputation/news callbacks can re-enter with the same death.
+      w.terminal = true;
+      for (const esc of d.entsOf(live, 'escort')) {
+        if (esc && esc.data && esc.data.despawnAt == null) esc.data.despawnAt = d.now() + 30;
+      }
+      releaseToWorld(live);
+      if (p.byPlayer === true) d.rep('faction_mts', -8, 'grandee_lost');
+      d.emit('news:publish', {
+        text: 'THE GRANDEE IS GONE: the Grandee of Helion did not clear the pocket. The lane she named is quieter, and nobody is pretending otherwise.',
+        kind: 'incidents', source: 'lane-control', sourceRef: `grandee:${live.id}`,
+        eventId: `grandee:lost:${live.id}`,
+      });
+      return d.resolve(live, 'grandee_lost', { speak: true });
+    }
+  },
 });
 
 export default defineEncounter(trigger, {
@@ -213,7 +236,7 @@ export default defineEncounter(trigger, {
   },
   receipts: {
     transit_over: 'THE GRANDEE CLEARED — the famous run came and went clean. Half the bar will say they flew wing on her.',
-    transit_harried: 'THE GRANDEE CLEARED ANGRY — she took fire in your pocket and the escort logged every transponder that lit up.',
-    grandee_lost: 'THE GRANDEE IS GONE — the lane\'s one celebrity did not clear the pocket. Whatever your reason, the story is now about you.',
+    transit_harried: 'THE GRANDEE CLEARED — the famous ship cleared the pocket after taking damage.',
+    grandee_lost: 'THE GRANDEE IS GONE — the lane\'s one celebrity did not clear the pocket. The pocket remembers the ship and her crew.',
   },
 });

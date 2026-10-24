@@ -8,15 +8,17 @@
 //     pair, her identity stamps, and the inbound wire;
 //   2. the crossing closes into a holding: formation targets clear, the hold is spoken once,
 //     and the transit resolves with its receipt and cleared-the-pocket wire;
-//   3. fire drawn on her flips the receipt to the harried variant and warns once;
-//   4. her death resolves grandee_lost with the standing hit and the memorial wire;
+//   3. only confirmed player damage warns; other observed damage stays neutral;
+//   4. confirmed death makes the memorial; only a player kill costs standing;
 //   5. her pass-by hail speaks in the grandee register exactly once per contact, and the
 //     tourist hail still works after the shared-hail refactor.
 import test from 'node:test';
+import { runtime as grandeeRuntime } from '../src/data/encounters/365-the-grandee.js';
 import assert from 'node:assert/strict';
 
 import { createSimulation } from '../src/core/sim.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
+import { stationContacts } from '../src/systems/stationContacts.js';
 import { barkDirector } from '../src/systems/barkDirector.js';
 import { trafficRoleHail } from '../src/data/barks.js';
 
@@ -34,7 +36,7 @@ const OBSERVED = Object.freeze([
 const SECTOR = 'sector_helios_prime';
 
 function boot(seed = 4242) {
-  const sim = createSimulation({ seed, systems: [encounterDirector, barkDirector] });
+  const sim = createSimulation({ seed, systems: [encounterDirector, barkDirector, stationContacts] });
   const player = sim.spawn({
     type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
     radius: 8, mass: 100, hull: 100, hullMax: 100,
@@ -131,7 +133,8 @@ test('grandee: fire drawn on her flips the receipt to the harried variant', () =
   const live = liveOf(t, id);
   const grandee = t.director.entsOf(live, 'squad')[0];
 
-  grandee.hull = grandee.hull - 40;
+  grandee.hull -= 40;
+  t.bus.emit('combat:damage', { targetId: grandee.id, attackerId: t.state.playerId, applied: 40 });
   for (let i = 0; i < 60 * 2; i++) t.sim.step();
   assert.equal(live.data.grandee.hitSeen, true, 'the escort answers the first shot');
   assert.equal(countOf(rows, 'encounter:voice', 'harassing a civilian run'), 1, 'the warning is said once');
@@ -145,7 +148,7 @@ test('grandee: fire drawn on her flips the receipt to the harried variant', () =
     && r.payload.outcome === 'transit_harried');
   assert.equal(resolved.length, 1, 'the harried transit resolves with its own outcome');
   const receipt = rows.find((r) => r.name === 'encounter:receipt' && r.payload.outcome === 'transit_harried');
-  assert.ok(receipt && receipt.payload.text.includes('ANGRY'), 'the harried receipt speaks');
+  assert.ok(receipt && receipt.payload.text.includes('after taking damage'), 'the harried receipt speaks');
 });
 
 test('grandee: her death resolves grandee_lost with the standing hit and the memorial wire', () => {
@@ -155,6 +158,7 @@ test('grandee: her death resolves grandee_lost with the standing hit and the mem
 
   const grandee = t.director.entsOf(liveOf(t, id), 'squad')[0];
   grandee.alive = false;
+  t.bus.emit('entity:killed', { id: grandee.id, killerId: t.state.playerId, entity: grandee });
   for (let i = 0; i < 60 * 3 && liveOf(t, id); i++) t.sim.step();
 
   const resolved = rows.filter((r) => r.name === 'encounter:resolved'
@@ -199,4 +203,106 @@ test('grandee: her pass-by hail speaks once in her own register; the tourist hai
 
   const pick = trafficRoleHail('grandee', 3);
   assert.ok(pick && pick.register === 'grandee' && pick.text, 'the grandee register resolves');
+});
+
+// Feed the production bus, not a bespoke runtime payload: the director owns attribution.
+for (const attacker of ['npc', 'environment']) test(`grandee: ${attacker} damage stays neutral through departure and dock remembrance`, () => {
+  const t = boot(); const rows = record(t); const id = fire(t, attacker);
+  const live = liveOf(t, id); const grandee = t.director.entsOf(live, 'squad')[0];
+  grandee.hull -= 20;
+  t.bus.emit('combat:damage', { targetId: grandee.id, attackerId: attacker === 'npc' ? 999999 : null, applied: 20 });
+  for (let i = 0; i < 60 * 130 && liveOf(t, id); i++) t.sim.step();
+  assert.equal(countOf(rows, 'encounter:voice', 'harassing'), 0);
+  assert.equal(countOf(rows, 'faction:repDelta', 'grandee_lost'), 0);
+  assert.equal(countOf(rows, 'encounter:receipt', 'after taking damage'), 1);
+  assert.equal(t.state.stationLife.deeds[SECTOR].text, 'The Grandee cleared the pocket after taking damage.');
+});
+
+test('grandee: only positive player damage to the original Grandee warns, once', () => {
+  const t = boot(); const rows = record(t); const id = fire(t, 'hit-routing');
+  const live = liveOf(t, id); const grandee = t.director.entsOf(live, 'squad')[0];
+  const escort = t.director.entsOf(live, 'escort')[0];
+  for (const [targetId, applied] of [[grandee.id, 0], [grandee.id, -1], [escort.id, 20]]) {
+    t.bus.emit('combat:damage', { targetId, attackerId: t.state.playerId, applied });
+  }
+  assert.equal(countOf(rows, 'encounter:voice', 'harassing'), 0);
+  for (let i = 0; i < 2; i++) t.bus.emit('combat:damage', { targetId: grandee.id, attackerId: t.state.playerId, applied: 1 });
+  assert.equal(countOf(rows, 'encounter:voice', 'harassing'), 1);
+});
+
+for (const killer of ['player', 'npc', 'unknown']) test(`grandee: confirmed ${killer} kill resolves exactly once despite reentry`, () => {
+  const t = boot(); const rows = record(t); const id = fire(t, `kill-${killer}`);
+  const live = liveOf(t, id); const grandee = t.director.entsOf(live, 'squad')[0];
+  const escorts = t.director.entsOf(live, 'escort');
+  const payload = { id: grandee.id, killerId: killer === 'player' ? t.state.playerId : killer === 'npc' ? 999999 : null, entity: grandee };
+  t.bus.on('faction:repDelta', () => { t.bus.emit('entity:killed', payload); grandeeRuntime.tick(t.director, live, t.state, t.state.simTime); });
+  t.bus.on('news:publish', p => { if (p.eventId === `grandee:lost:${id}`) { t.bus.emit('entity:killed', payload); grandeeRuntime.tick(t.director, live, t.state, t.state.simTime); } });
+  grandee.alive = false;
+  t.bus.emit('entity:killed', payload);
+  t.bus.emit('entity:killed', payload);
+  t.bus.emit('entity:destroyed', { id: grandee.id, entity: grandee });
+  for (let i = 0; i < 120; i++) t.sim.step();
+  assert.equal(countOf(rows, 'encounter:resolved', 'grandee_lost'), 1);
+  assert.equal(countOf(rows, 'encounter:receipt', 'grandee_lost'), 1);
+  assert.equal(countOf(rows, 'faction:repDelta', 'grandee_lost'), killer === 'player' ? 1 : 0);
+  assert.equal(countOf(rows, 'news:publish', 'THE GRANDEE IS GONE'), 1);
+  assert.equal(countOf(rows, 'encounter:receipt', 'Whatever your reason'), 0);
+  assert.equal(liveOf(t, id), undefined);
+  for (const esc of escorts) assert.equal(esc.data.despawnAt, 30);
+});
+
+for (const removal of ['missing', 'virtualize', 'teardown']) test(`grandee: ${removal} is not evidence of death or guilt`, () => {
+  const t = boot(); const rows = record(t); const id = fire(t, removal);
+  const live = liveOf(t, id); const grandee = t.director.entsOf(live, 'squad')[0];
+  const escorts = t.director.entsOf(live, 'escort');
+  if (removal === 'missing') grandee.alive = false;
+  else t.bus.emit('entity:destroyed', { id: grandee.id, entity: grandee, reason: removal });
+  for (let i = 0; i < 120; i++) t.sim.step();
+  assert.equal(countOf(rows, 'encounter:resolved', 'aborted:grandee_missing'), 1);
+  assert.equal(countOf(rows, 'faction:repDelta', 'grandee_lost'), 0);
+  assert.equal(countOf(rows, 'news:publish', 'THE GRANDEE IS GONE'), 0);
+  assert.equal(countOf(rows, 'encounter:receipt'), 0);
+  assert.equal(t.state.stationLife.deeds[SECTOR], undefined);
+  assert.equal(liveOf(t, id), undefined);
+  for (const esc of escorts) assert.ok(esc.data.despawnAt >= 30);
+});
+
+
+test('grandee: healing is neutral and later observed damage above arrival hull is remembered', () => {
+  const t = boot(); const rows = record(t); const id = fire(t, 'healing');
+  const live = liveOf(t, id); const grandee = t.director.entsOf(live, 'squad')[0];
+  grandee.hull += 100;
+  grandeeRuntime.tick(t.director, live, t.state, t.state.simTime);
+  assert.notEqual(live.data.grandee.damaged, true);
+  grandee.hull -= 10;
+  grandeeRuntime.tick(t.director, live, t.state, t.state.simTime);
+  assert.equal(live.data.grandee.damaged, true);
+  assert.equal(countOf(rows, 'encounter:voice', 'harassing'), 0);
+});
+
+
+test('grandee: escort death does not become the famous ship obituary', () => {
+  const t = boot(); const rows = record(t); const id = fire(t, 'escort-death');
+  const live = liveOf(t, id); const escort = t.director.entsOf(live, 'escort')[0];
+  escort.alive = false;
+  t.bus.emit('entity:killed', { id: escort.id, killerId: t.state.playerId, entity: escort });
+  assert.equal(liveOf(t, id), live);
+  assert.equal(countOf(rows, 'news:publish', 'THE GRANDEE IS GONE'), 0);
+  assert.equal(countOf(rows, 'faction:repDelta', 'grandee_lost'), 0);
+});
+
+test('grandee: clean departure stays terminal under reentrant news listeners', () => {
+  const t = boot(); const rows = record(t); const id = fire(t, 'departure-reentry');
+  const live = liveOf(t, id); const grandee = t.director.entsOf(live, 'squad')[0];
+  t.bus.on('news:publish', p => {
+    if (p.eventId !== `grandee:cleared:${id}`) return;
+    grandeeRuntime.tick(t.director, live, t.state, t.state.simTime);
+    t.bus.emit('entity:killed', { id: grandee.id, killerId: t.state.playerId, entity: grandee });
+  });
+  for (let i = 0; i < 60 * 130 && liveOf(t, id); i++) t.sim.step();
+  assert.equal(countOf(rows, 'news:publish', 'CLEARED THE POCKET'), 1);
+  assert.equal(countOf(rows, 'encounter:receipt', 'transit_over'), 1);
+  assert.equal(countOf(rows, 'encounter:resolved'), 1);
+  assert.equal(countOf(rows, 'news:publish', 'THE GRANDEE IS GONE'), 0);
+  assert.equal(countOf(rows, 'faction:repDelta', 'grandee_lost'), 0);
 });
