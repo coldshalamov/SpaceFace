@@ -72,6 +72,8 @@ test('rejects foreign, impossible, distant, docked and paused pulses',()=>{
 test('delivery latch is positional: inside the cradle AND at rest',()=>{
  assert.equal(deliveryCheck({pos:{...C.depot},vel:{x:0,z:0}}).arrived,true);
  assert.equal(deliveryCheck({pos:{...C.depot},vel:{x:80,z:0}}).arrived,false,'a fast pass is transit, not delivery');
+ assert.equal(deliveryCheck({pos:{...C.depot},vel:{x:25,z:0}}).arrived,false,'even a gentle toss through is transit');
+ assert.equal(deliveryCheck({pos:{...C.depot},vel:{x:C.arriveSpeed-1,z:0}}).arrived,true,'the servo parks under the latch');
  assert.equal(deliveryCheck({pos:{x:C.depot.x+C.depotRadius+1,z:C.depot.z},vel:{x:0,z:0}}).arrived,false);
 });
 test('parking the parcel inside the cradle delivers it: latch, payoff, news, persistence',()=>{

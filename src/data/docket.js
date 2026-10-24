@@ -23,7 +23,9 @@ export const DOCKET = Object.freeze({
   maxSpeed: 26, maxAccel: 9, hoverHeight: 4,
   // Delivery is positional, never method-gated: inside the cradle and slow. A fast pass is an
   // overshoot — the drone calls it and waits for the redirect.
-  depotRadius: 140, arriveSpeed: 30,
+  // The latch is a rest threshold, well under the approach cap: a pass at any carrying speed —
+  // even a gentle toss — is transit, not delivery. The servo parks the parcel under this.
+  depotRadius: 140, arriveSpeed: 8,
   // Inside the approach shelf it trims its own final approach — weak, capped, and only toward
   // the address. A wild throw still carries it through and out.
   approachShelf: 380, approachAccel: 14, approachSpeed: 22,
