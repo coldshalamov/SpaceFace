@@ -1,5 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
+## Clear launch delivered: 2026-10-24 06:53 UTC
+
+PR568 is open draft at `b7483b10139be75170258638c97c1aa714645a08`, following `60c65426`. Its six-path clear-launch follow-up preserves the same four original pods while using an 80-WU actor gap, 22 + 8i axial offsets and at most 2 WU perpendicular jitter. Actual public measured native hulls clear eight bearings and first-second hold/pass checks. Independent local checks passed 63/63 plus native 12/12; the old baseline recorded 32 directed contacts, 30 negative gaps and a minimum gap of -2.1773968 WU. Hold bonds at 6.10 seconds and finishes at 8.1167; pass finishes at 14.1167 without reward. See `HANDOFF_CLEAR_LAUNCH.md` and its native evidence for the full record.
+
+This supersedes production-hull feasibility as the current blocker, but uses twenty public source owners with 901 archival modules/localization and archival FlightV3. Full current-tree, Save and live-camera acceptance remain unqualified. The older 60c follow-through diagram is historical prior-stage evidence, not a render of this launch layout.
+
+New run 40071871679 is pending under the publisher. Older run 40070527945 last had browser 3 running and eight failed groups, with hosted 43 + 2 checks passing and compatibility not run after the visual precheck. PR569's run 40069473633 is now terminal FAILURE: eight groups failed and browser 3 was cancelled. Node 6/6, actual confirm-browser, Orcus 40/40 and Pilgrim checks passed; browser 3 retains partial flight timeout/SIGKILL differences and no complete ship-visual result. Do not label the entire run baseline-matching.
+
+Next work is the existing Handoff owner's in-memory actual save/load investigation between bond and NPC completion, with no source edits or shared lifecycle changes yet. All twelve goals remain OPEN. Integration absorption approval and the separate browser hold remain pending; continuation reminders do not grant either approval. Archive's publication block and both schedules are unchanged.
+
 ## Handoff remaining trade delivered: 2026-10-24 06:34 UTC
 
 PR568 is verified open draft at `60c654268b4c5b05f5d2833062de0a937380599e`, following `8ee99a3`, with nine changed paths. See its `HANDOFF_REMAINING_TRADE.md`, published native evidence and follow-through diagram for the detailed record. Immediate original bond/reward remains once-only while NPC trade continues to physical receipt: 10.0833 seconds after a 7.0833-second bond. Recycled identities, re-entry and paid-cap cleanup are guarded. Independent checks passed 55/55 plus native 2/2; the inherited unexplained missing-cargo-minus-two limit remains documented.

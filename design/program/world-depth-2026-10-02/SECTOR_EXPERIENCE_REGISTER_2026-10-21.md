@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Clear launch delivered: 2026-10-24 06:53 UTC
+
+Handoff's four original cargo pods now launch clear of measured native hulls at eight bearings: an 80-WU actor gap, 22 + 8i axial offsets and at most 2 WU perpendicular jitter replace the overlapping placement. PR568 `b7483b10` publishes the six-path follow-up. Hold bonds at 6.10 seconds, then completes physical NPC receipt at 8.1167; pass completes at 14.1167 without reward. The narration now describes actual holding rather than nose-to-nose placement. Local 63/63 and native 12/12 pass.
+
+The previous 60c diagram remains labeled historical prior-stage evidence. These checks combine current public measured hull/source owners with archival modules and FlightV3, so full current-tree, ordinary admission, Save and live-camera acceptance remain open. Next is the existing owner's in-memory save/load check between bond and NPC completion, not a new controller or shared lifecycle edit. See the current checkpoint for CI and unchanged approval/publication holds; all twelve goals remain OPEN.
+
 ## Handoff remaining trade delivered: 2026-10-24 06:34 UTC
 
 PR568 is verified open draft at `60c654268b4c5b05f5d2833062de0a937380599e`, following `8ee99a3`, with nine changed paths. See its `HANDOFF_REMAINING_TRADE.md`, published native evidence and follow-through diagram for the detailed record. Immediate original bond/reward remains once-only while NPC trade continues to physical receipt: 10.0833 seconds after a 7.0833-second bond. Recycled identities, re-entry and paid-cap cleanup are guarded. Independent checks passed 55/55 plus native 2/2; the inherited unexplained missing-cargo-minus-two limit remains documented.

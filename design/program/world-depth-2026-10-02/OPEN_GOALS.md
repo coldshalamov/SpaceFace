@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Clear launch delivered: 2026-10-24 06:53 UTC
+
+All twelve goals remain OPEN. PR568's clear-launch follow-up is published at `b7483b10139be75170258638c97c1aa714645a08`; local 63/63 and native 12/12 qualify measured-hull launch clearance, not full current-tree, Save, live-camera or whole-game acceptance. The current checkpoint and `HANDOFF_CLEAR_LAUNCH.md` hold the detailed evidence.
+
+The existing Handoff owner now investigates actual save/load between the once-only bond and later NPC completion, in memory only so far. Integration absorption approval remains pending separately from the browser hold; reminders are not approval. Archive delivery remains blocked and both schedules are unchanged. PR569's overall CI is terminal failure despite its focused Node/browser-confirm and sector passes; PR568's new CI is publisher-owned and pending.
+
 ## Handoff remaining trade delivered: 2026-10-24 06:34 UTC
 
 PR568 is verified open draft at `60c654268b4c5b05f5d2833062de0a937380599e`, following `8ee99a3`, with nine changed paths. See its `HANDOFF_REMAINING_TRADE.md`, published native evidence and follow-through diagram for the detailed record. Immediate original bond/reward remains once-only while NPC trade continues to physical receipt: 10.0833 seconds after a 7.0833-second bond. Recycled identities, re-entry and paid-cap cleanup are guarded. Independent checks passed 55/55 plus native 2/2; the inherited unexplained missing-cargo-minus-two limit remains documented.
