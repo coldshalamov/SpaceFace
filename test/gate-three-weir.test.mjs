@@ -190,3 +190,34 @@ test('the shared scale model resolves a real weigh — pod counted, far freight 
   assert.equal(manifestMassT, 20);
   assert.ok(verdict.readMassT > manifestMassT, 'loose freight reads over manifest');
 });
+
+test('lane clutter on the cordon sightline cannot shadow the scale — casters are the barge\'s set', () => {
+  const f = fixture();
+  // Hull parked inside the ring; a fighter parked exactly on the post->hull line.
+  // A fighter is not a mass-shadow caster: the hull still weighs itself (700's filter).
+  f.player.pos.x = POST.x; f.player.pos.z = POST.z + 100;
+  f.helpers.spawnEntity({
+    type: 'ship', pos: { x: POST.x, z: POST.z + 50 }, vel: { x: 0, z: 0 },
+    radius: 8, mass: 40, hull: 10, hullMax: 10, data: {},
+  });
+  const { read } = gateThreeWeigh(f.player, f.state.entityList);
+  assert.equal(read.subjectMassT, 20, 'a small body on the line is clutter, not a shadow');
+});
+
+test('a real mass-shadow caster still hides freight behind it — shadows read through the filter', () => {
+  const f = fixture();
+  // Hull at +150 on the axis; a dense fragment at +200 hides the pod parked behind it
+  // at +240 without covering the hull — the same hiding lesson the barge teaches.
+  f.player.pos.x = POST.x + 150; f.player.pos.z = POST.z;
+  const pod = f.addPod({ mass: 15 });
+  pod.pos.x = POST.x + 240; pod.pos.z = POST.z + 5;
+  f.helpers.spawnEntity({
+    type: 'prop', pos: { x: POST.x + 200, z: POST.z }, vel: { x: 0, z: 0 },
+    radius: 40, mass: 5000, hull: 1, hullMax: 1, data: { massShadow: true },
+  });
+  const { read, verdict } = gateThreeWeigh(f.player, f.state.entityList);
+  assert.equal(read.subjectMassT, 20, 'the hull stands clear of the shadow');
+  assert.ok(read.hidden.some((h) => h.id === pod.id && h.reason === 'mass_shadow'),
+    'freight behind a real caster never existed — the shared model');
+  assert.equal(verdict.outcome, 'clean', 'the hidden pod never counted against the manifest');
+});

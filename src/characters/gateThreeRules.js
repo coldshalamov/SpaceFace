@@ -4,7 +4,7 @@
 // whose name goes on the receipt — Hale's filed fine or Dree's one waved weir.
 
 import { GATE_THREE_WEIR } from '../data/gateThree.js';
-import { SWEEP_SCANNER_PROFILES, weighingRead, weighingVerdict } from '../data/massSignature.js';
+import { SWEEP_SCANNER_PROFILES, weighingRead, weighingVerdict, castsMassShadow } from '../data/massSignature.js';
 
 const BARGE_PROFILE = SWEEP_SCANNER_PROFILES.scale_barge;
 // Loose freight this close to the hull reads as YOUR mass — the encounter's same radius.
@@ -69,7 +69,12 @@ export function gateThreeManifestT(player) {
  *  loose freight, mass shadows and decoys and Hush Heads all read exactly as the barge's. */
 export function gateThreeWeigh(player, entityList) {
   const bodies = gateThreeCargoNear(player, entityList);
-  const read = weighingRead(BARGE_PROFILE, GATE_THREE_WEIR.post, player, bodies, entityList);
+  // The barge's own caster set (encounter 700): only mass-shadow bodies occlude.
+  // Raw entityList would let any small body on the post->hull line shadow the read —
+  // a fighter crossing the cordon's sightline could zero a smuggler's hull once.
+  const casters = [];
+  for (const e of entityList || []) if (castsMassShadow(e)) casters.push(e);
+  const read = weighingRead(BARGE_PROFILE, GATE_THREE_WEIR.post, player, bodies, casters);
   const manifestMassT = gateThreeManifestT(player);
   const verdict = weighingVerdict(read.readMassT, manifestMassT);
   return { read, verdict, manifestMassT };
