@@ -46,9 +46,17 @@ const SHIPPED_WEAPONS = [
     sentence: 'A reliable starter bolt: steady damage, and enough push to slide a light hull off its line.',
     // Starter reliability: a long, readable engagement burst rather than five-shot lockout or
     // infinite fire. Heat is the kit-balance lever against the physics kit — Pulse still dumps
-    // a real burst (dmg 8 at 5.5 rps), then a short forced vent, instead of grinding the room
+    // a real burst (dmg 5 at 5.5 rps), then a short forced vent, instead of grinding the room
     // forever. Impulse is 5 % of Wasp cruise (mass 16, governed 105 WU/s) per full hit: 84 momentum.
-    dmg: 8, rof: 5.5, dps: 44, damageType: 'energy', energyCost: 2,
+    // ROW 482 (ROCK-GUN, build_map §33.1) "guns become the nudge and the finisher": dmg was 8
+    // (dps 44) — that killed a swarm-tier hull (Wasp 55/8/25) in ~2.4 s, FASTER than a committed
+    // thrown boulder per hull (~1.8 s at 2 kills/throw), so the optimal swarm play was standing
+    // off and grinding. dmg 5 (dps 27.5) puts the starter bolt at ~2× the throw cadence on the
+    // wave-1–5 mass hulls — the nudge/finisher role; committed mass is the killer. Swarm rule 1
+    // holds: no enemy HP was padded to force this. NPC copies of this gun carry their own
+    // dmgOverride in src/data/enemies.js (wasp 6, zealot 4, reaver 6), so NPC lethality is
+    // unchanged. Pinned by test/zc-a34-guns-nudge.test.mjs.
+    dmg: 5, rof: 5.5, dps: 27.5, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 8, heatMax: 100, heatDissip: 12,
     impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
@@ -79,11 +87,18 @@ const SHIPPED_WEAPONS = [
     // and starter hulls (Hitch, Kestrel, Wasp) that cannot mount medium hardware. A hit punches
     // a light target with 520 momentum (520 ÷ 16 = 32.5 wu/s on a Wasp, ~31 % of governed cruise),
     // enough to shove it off an attack vector, tumble its firing arc, or slide it into an asteroid.
-    // Heavy hulls (mass 120+) shrug it (4.3 wu/s). Trades away almost all damage (dmg 6 at 1.2 rps = 7.2 dps)
+    // Heavy hulls (mass 120+) shrug it (4.3 wu/s). Trades away almost all damage (dmg 5 at 1.2 rps = 6.0 dps)
     // for directional authority and environmental kills.
     id: 'wpn_concussion_cannon_s', name: 'Concussion Cannon S', slotType: 'weapon', size: 'S', tier: 1, mass: 3, price: 9500,
     sentence: 'A light kicker slug that trades raw damage for pure momentum: one punch sends a light fighter tumbling into a rock.',
-    dmg: 6, rof: 1.2, dps: 7.2, damageType: 'kinetic', energyCost: 3,
+    // ROW 482 (ROCK-GUN, build_map §33.1), 2026-10-23: dmg was 6 (dps 7.2). The starter pulse's
+    // retune to the nudge role (dmg 8 -> 5, dps 44 -> 27.5) moved the WF-05 authored bar
+    // "concussion dps < 25% of the starter's" to 6.875, so the concussion follows its own
+    // identity — "the collision is the payoff" — down one notch rather than sitting above the
+    // fraction. The shove (impulsePerHit 520, tumbleTorque 35) is untouched: this gun's job is
+    // the nudge that starts the impact kill, exactly row 482's guns role. Pinned by
+    // test/concussion-cannon-s.test.mjs and test/zc-a34-guns-nudge.test.mjs.
+    dmg: 5, rof: 1.2, dps: 6.0, damageType: 'kinetic', energyCost: 3,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 1.0,
     heatPerShot: 10, heatMax: 100, heatDissip: 24,
     impulsePerHit: 520, environmentImpulsePerHit: 1024, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
@@ -355,12 +370,91 @@ const SHIPPED_WEAPONS = [
     // can still fly volley+bank+chain when Twin Mount occupies the utility slot.
     id: 'unique_mirrorjaw_pulse', baseId: 'wpn_pulse_laser_s', name: 'Mirrorjaw Pulse', slotType: 'weapon', size: 'S', tier: 2, mass: 2, price: 0,
     sentence: 'The starter bolt reborn meaner: the same push, faster and meaner on the follow-up.',
-    dmg: 8, rof: 5.5, dps: 44, damageType: 'energy', energyCost: 2,
+    // dmg follows the row-482 rock-gun retune of its base (was 8): the unique stays the starter
+    // bolt (heat 5 + Bank Shot/Relay), not a return of the pre-tune grind gun.
+    dmg: 5, rof: 5.5, dps: 27.5, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 5, heatMax: 100, heatDissip: 12,
     impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
     purchasable: false, unique: true, salvageOnly: true,
     attackTraits: ['mod_bank_shot', 'mod_bank_relay'],
+  },
+
+  // ─── SEED-SW-17 … 23 — Swarm/Crucible armory weapons ──────────────────────────────
+  // Seven authored armory verbs. Structural fields (`volley`, `hullRicochet`, `swarmSeekers`,
+  // `mortarShell`, `debrisOrbit`, `returnArc`) are consumed by src/systems/weapons.js at the
+  // existing spawn/hit/tick seams; chain, bounce, pierce and fan geometry ride the compiled
+  // AttackSpec machinery (emergentChain / emergentBounces / attackTraits).
+  {
+    // SEED-SW-18 — ricochet sawblades that carom between hostile bodies (NOT rock banks:
+    // `hullRicochet` spends the same authored bounce budget on entity contacts).
+    id: 'wpn_disc_launcher_m', name: 'Disc Launcher', slotType: 'weapon', size: 'M', tier: 3, mass: 6, price: 34000,
+    dmg: 14, rof: 1.6, dps: 22.4, damageType: 'kinetic', energyCost: 9,
+    projSpeed: 300, range: 420, tracking: 'fixed',
+    heatPerShot: 12, heatMax: 60, heatDissip: 14,
+    impulsePerHit: 18, tumbleTorque: 10, impulseProvenance: 'disc_ricochet',
+    hullRicochet: true,
+    attackTraits: [['mod_bank_shot', 3], 'mod_smart_bank'],
+    lineageGenerationMax: 3,
+    sentence: 'A sawblade that caroms off one hull into the next until the edge is spent.',
+    swarmReason: 'The disc keeps a hit for every hull it can reach.',
+  },
+  {
+    // SEED-SW-19 — one trigger fans out six small guided missiles, each hunting its own hull.
+    id: 'wpn_micro_barrage_m', name: 'Micro-missile Barrage', slotType: 'weapon', size: 'M', tier: 3, mass: 7, price: 36000,
+    requiresTech: 'tech_guided_ordnance',
+    dmg: 4, rof: 0.9, dps: 21.6, damageType: 'explosive', energyCost: 12,
+    projSpeed: 300, projSpeedMin: 160, range: 300, tracking: 'homing', turnRate: 2.2, lockTimeS: 0.8,
+    heatPerShot: 14, heatMax: 60, heatDissip: 14,
+    volley: { count: 6, spreadDeg: 60 }, swarmSeekers: true,
+    sentence: 'One trigger — a fan of small missiles that pick their own hulls.',
+    swarmReason: 'A pull releases a whole flight; the pack shares the volley.',
+  },
+  {
+    // SEED-SW-20 — a short-range fan of plasma bolts: five roots across a cone, dead past its reach.
+    id: 'wpn_plasma_cone_s', name: 'Plasma Cone', slotType: 'weapon', size: 'S', tier: 2, mass: 4, price: 26000,
+    dmg: 5, rof: 1.8, dps: 45, damageType: 'thermal', energyCost: 9,
+    projSpeed: 260, range: 150, tracking: 'fixed',
+    heatPerShot: 13, heatMax: 60, heatDissip: 16,
+    impulsePerHit: 6, tumbleTorque: 1,
+    volley: { count: 5, spreadDeg: 44 },
+    sentence: 'A fan of plasma bolts that dies inside knife range.',
+    swarmReason: 'A cone of plasma for the fights that get close.',
+  },
+  {
+    // SEED-SW-21 — a lobbed shell; its landing point runs a brief pull field, then detonates.
+    id: 'wpn_singularity_mortar_m', name: 'Singularity Mortar', slotType: 'weapon', size: 'M', tier: 4, mass: 8, price: 42000,
+    dmg: 6, rof: 0.7, dps: 4.2, damageType: 'explosive', energyCost: 14,
+    projSpeed: 190, range: 260, tracking: 'fixed',
+    heatPerShot: 16, heatMax: 60, heatDissip: 12,
+    impulsePerHit: 10, tumbleTorque: 4, impulseProvenance: 'singularity_mortar',
+    mortarShell: { pullS: 1.1, pullRadius: 170, pull: 95, blastRadius: 150, blastDmg: 24, impulse: 460 },
+    sentence: 'A lobbed shell that drags the pack into a knot, then pops.',
+    swarmReason: 'The shell lands, the room slides inward, then it bursts.',
+  },
+  {
+    // SEED-SW-22 — claims loose rocks near the ship into a shield ring riding the latch constraint.
+    id: 'wpn_debris_orbit_s', name: 'Debris Orbit', slotType: 'weapon', size: 'S', tier: 3, mass: 5, price: 32000,
+    dmg: 4, rof: 1.4, dps: 5.6, damageType: 'kinetic', energyCost: 6,
+    projSpeed: 300, range: 280, tracking: 'fixed',
+    heatPerShot: 8, heatMax: 60, heatDissip: 14,
+    impulsePerHit: 10, tumbleTorque: 2,
+    debrisOrbit: { maxRocks: 4, captureRadius: 170, ringRadius: 34, rockSpeed: 2.4 },
+    sentence: 'Loose rocks near the hull get lashed into a circling shield.',
+    swarmReason: 'The room’s own debris becomes your armour ring.',
+  },
+  {
+    // SEED-SW-23 — flies out, carves back through the thrower once, hits on each pass.
+    id: 'wpn_glaive_s', name: 'Glaive', slotType: 'weapon', size: 'S', tier: 3, mass: 4, price: 33000,
+    dmg: 12, rof: 1.1, dps: 13.2, damageType: 'kinetic', energyCost: 8,
+    projSpeed: 320, range: 300, tracking: 'fixed',
+    heatPerShot: 11, heatMax: 60, heatDissip: 14,
+    impulsePerHit: 14, tumbleTorque: 8, impulseProvenance: 'glaive_return',
+    returnArc: { legRange: 140 },
+    attackTraits: [['mod_piercing_core', 2]],
+    lineageGenerationMax: 2,
+    sentence: 'Flies out, carves back through you — a hit on each pass.',
+    swarmReason: 'The bolt comes back; whatever stands in the return path eats it.',
   },
   ...EMERGENT_WEAPON_DEFS,
 ];
