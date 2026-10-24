@@ -124,3 +124,5 @@ export function createMop() {
     },
   };
 }
+
+export const mop = createMop();
