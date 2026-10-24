@@ -596,7 +596,12 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
    Desktop only; the phone layout keeps its own receipt. */
 @media (max-height:800px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { left:auto !important; right:calc(100% + 24px) !important;
-    bottom:calc(100% - 4px) !important; max-width:none !important; padding:0 !important; }
+    bottom:calc(100% - 4px) !important; padding:0 !important;
+    /* It ends 24px left of COMMS and grows left — but a berth-session line is longer than the
+       ~480px TRADE CLEARED this anchor was tuned for, and past ~900 wide the unbounded box
+       starts off the left edge of the glass (D248: a 1328px line began at -535). Bound it to
+       the room the rail actually leaves, and let the sentence wrap into that room. */
+    width:max-content !important; max-width:min(58vw, calc(100vw - 414px), 720px) !important; white-space:normal !important; }
 }
 /* ≤460 tall the destination words ride 5px above the comms box, so the line sits 2px over it */
 @media (max-height:460px) {
@@ -769,6 +774,15 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { left:calc(100% + 24px) !important; right:auto !important; top:-2px !important; bottom:auto !important;
     flex-wrap:wrap !important; white-space:normal !important; width:max-content !important; max-width:calc(100vw - 350px) !important; row-gap:2px !important; }
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt > * { white-space:nowrap; }
+}
+/* …and past ~900 wide at 461–800 tall, the strip "under the register" that the line was meant to
+   read in is the market table's own last row — the receipt printed over live cells (D248). It takes
+   the same dead lane the destination captions use: pinned to the frame's bottom strip, aligned to
+   the rail's left edge, where the only thing under it is the row's tick rule — decoration. Fixed
+   coordinates keep it on-glass however tall the sentence wraps. */
+@media (min-width:901px) and (min-height:461px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { position:fixed !important; left:32px !important; right:auto !important; top:auto !important; bottom:4px !important;
+    max-width:min(58vw, calc(100vw - 414px), 720px) !important; z-index:4 !important; }
 }
 /* ---- 651–760 × ≤800: the analysis column is ~120–150px, so the kind line ("RAW ORE · LEGA"), the
    readings ("SECTOR NO CONF", with SPREAD and TREND in a second column past the edge) and ROUTE

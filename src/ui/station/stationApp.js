@@ -168,11 +168,17 @@ export function stampDestinationRail(dockEl, destinations = DESTINATIONS, help =
     if (!tile) continue;
     const spoken = `${dest.label}. ${line}`;
     if (tile.getAttribute('aria-label') !== spoken) tile.setAttribute('aria-label', spoken);
-    let gloss = typeof tile.querySelector === 'function' ? tile.querySelector('.sx-tile__gloss') : null;
+    const host = tile.parentNode && tile.parentNode.nodeType === 1 ? tile.parentNode : tile;
+    let gloss = typeof host.querySelector === 'function' ? host.querySelector(':scope > .sx-tile__gloss') : null;
     if (!gloss && tile.ownerDocument && typeof tile.ownerDocument.createElement === 'function') {
       gloss = tile.ownerDocument.createElement('span');
       gloss.className = 'sx-tile__gloss k-t-fine';
-      tile.appendChild(gloss);
+      if (typeof gloss.setAttribute === 'function') gloss.setAttribute('aria-hidden', 'true');
+      // The span rides beside the tile, not inside it: the row (ul.sx-dock__group--nav) is the
+      // positioned ancestor that reserves the tick lane under the words, and a caption that
+      // etches there must anchor to the row, which it cannot do from inside the positioned
+      // tile button. The tile's aria-label still speaks the whole line.
+      host.appendChild(gloss);
     }
     if (gloss && gloss.textContent !== line) gloss.textContent = line;
     stamped.push({ id: dest.id, line });

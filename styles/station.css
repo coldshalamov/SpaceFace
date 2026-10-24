@@ -1111,9 +1111,11 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   flex: 1 1 0;
   min-width: 0;
   width: auto;
-}
-#screens .sx-berth .sx-tile:has(.sx-tile__gloss) {
+  display: flex;
   flex-wrap: wrap;
+}
+#screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) > .sx-tile {
+  flex: 1 0 100%;
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -1133,45 +1135,43 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 }
 /* Desktop windows up to 900 tall: seven help lines of four to eight lines each took ~150px from
    the tab body (at 960x540 the Market body vanished; at 1024x768 BUY and SELL sat under the rail).
-   There the line leaves the flow and reads as a caption over its own name on hover or keyboard
-   focus (not on the open tab, whose body is already showing). The name's aria-label still speaks it. Taller windows keep it under the name. */
+   There the line leaves the flow and etches into the row's own tick lane on hover or keyboard
+   focus (not on the open tab, whose body is already showing) — the row reserves 26px under the
+   words for its rule, which is decoration, so the caption covers no body's words (a plate above
+   the row landed on the market table, D248). It is one line, read from the rail's left, clipped
+   only after the rail itself is full; the name's aria-label still speaks the whole line. Taller
+   windows keep it under the name. */
 @media (min-width: 641px) and (max-height: 900px) {
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) { flex: 0 0 auto; }
-  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile:has(.sx-tile__gloss) { flex-wrap: nowrap; width: auto; }
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) > .sx-tile { flex: none; width: auto; }
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile__gloss {
     position: absolute;
     left: 0;
-    bottom: calc(100% + 10px);
+    right: 0;
+    bottom: 4px;
     z-index: 6;
-    width: max-content;
-    max-width: 17em;
-    padding: 8px 11px 9px;
+    width: auto;
+    max-width: none;
+    padding: 2px 8px 3px;
     font-size: var(--k-fs-fine);
-    line-height: 1.35;
+    line-height: 1.25;
     color: var(--dp-ink, #e8e2d4);
     text-align: left;
-    overflow-wrap: normal;
-    background: rgba(8, 9, 11, 0.94);
-    border-top: 2px solid var(--dp-hand, #f2b950);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+    letter-spacing: 0.01em;
+    font-variation-settings: "wght" 480, "wdth" 82;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: linear-gradient(90deg, rgba(7, 8, 10, 0), rgba(7, 8, 10, 0.88) 40px, rgba(7, 8, 10, 0.88) calc(100% - 40px), rgba(7, 8, 10, 0));
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
     transition: opacity 140ms var(--dp-ease-lamp, ease), visibility 0s linear 140ms;
   }
-  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:nth-last-child(-n+2) .sx-tile__gloss {
-    left: auto;
-    right: 0;
-  }
   /* the dock's sideways scroller would clip the caption; with the lines out of the flow the seven
      names fit, so it can let the caption out */
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock:has(.sx-tile__gloss) { overflow: visible; }
-  /* the foot and the body are both z-index 1 frame layers and the body paints later, so the foot
-     steps up only while its caption shows */
-  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .dp-frame__foot:has(.sx-tile:not([aria-selected="true"]):is(:hover, :focus-visible) > .sx-tile__gloss) {
-    z-index: 3;
-  }
-  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile:not([aria-selected="true"]):is(:hover, :focus-visible) > .sx-tile__gloss {
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile:not([aria-selected="true"]):is(:hover, :focus-visible) ~ .sx-tile__gloss {
     opacity: 1;
     visibility: visible;
     transition-delay: 0s;

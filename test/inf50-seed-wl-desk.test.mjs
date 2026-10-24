@@ -348,14 +348,14 @@ test('seed 4242: the live rail keeps its help line, and the board shows the coun
   const help = STATION_HELP.contracts[1];
   assert.equal(missions.getAttribute('aria-label').includes(help), true);
   assert.equal(missions.getAttribute('aria-label').includes('recovery waiting'), false);
-  assert.equal(missions.querySelector('.sx-tile__gloss').textContent, help);
+  assert.equal(missions.parentNode.querySelector('.sx-tile__gloss').textContent, help);
   assert.equal(missions.querySelector('[data-badge="contracts"]').textContent, '!');
   dock.setAttention(null);
   assert.equal(missions.getAttribute('aria-label').includes(help), true);
   assert.equal(missions.hasAttribute('title'), false);
   for (const [id, pair] of Object.entries(STATION_HELP)) {
     const tile = dock.el.querySelector(`[data-nav="${id}"]`);
-    assert.equal(tile.querySelector('.sx-tile__gloss').textContent, pair[1]);
+    assert.equal(tile.parentNode.querySelector('.sx-tile__gloss').textContent, pair[1]);
   }
 
   const offer = {
