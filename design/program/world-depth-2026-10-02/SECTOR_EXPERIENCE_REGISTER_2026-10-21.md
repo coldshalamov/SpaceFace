@@ -1,5 +1,21 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current external landing, refreshed gates and custody work: 2026-10-24 16:13 UTC
+
+All twelve goals remain OPEN. [PR585](https://github.com/coldshalamov/SpaceFace/pull/585) and [PR586](https://github.com/coldshalamov/SpaceFace/pull/586) have externally merged as `03fb16fd792001ce5abc668711d5611e28a9972d` and `b683b23ce299fe7dd746da9547c34d1cac5aff05`. Verified master `9a88f14bdbc35797de4bb1bb589ff0004e6a41a6` includes both. Root did not merge master; do not continue waiting for these already-landed repairs.
+
+Authorized proper public merge children refreshed the still-open draft branches, preserving their prior heads and landed master work:
+- [PR582](https://github.com/coldshalamov/SpaceFace/pull/582): `f14e56367bc50831eaaddea5e7c9eb0d393cf148`, [run40109456149](https://github.com/coldshalamov/SpaceFace/actions/runs/40109456149). Current gate24/25: native rescue/Save and23focused pass; the new visual fixture alone imports non-exported `entityInfoBlock`. Artifact12565778984 SHA256 `0898469e64a97ad5ace95335a6ea2492f6836593cedc18cdeea828da152eca19`. The original visual owner is fixing the test against the real public route; no runtime defect is inferred from that import mistake.
+- [PR583](https://github.com/coldshalamov/SpaceFace/pull/583): `bc2cad189c45b3f4015297127ab2d44243301902`, [run40109453670](https://github.com/coldshalamov/SpaceFace/actions/runs/40109453670). Hosted gate14/14 PASS, command6852ms/TAP6756.815ms. Artifact12566195910 SHA256 `2463ffa14f6fc78968c57a3ec5f229409a9b14f73974ff6353d8dc4dc9902eaf`; logged syntheticeb464f6f. Broader CI remains publisher-owned and active, not full-green acceptance.
+- [PR584](https://github.com/coldshalamov/SpaceFace/pull/584): `74cba4909ad0bd7bfd4026fefef7afa5bdd059ee`, [run40109520149](https://github.com/coldshalamov/SpaceFace/actions/runs/40109520149). It now contains only package/isolated-test/report work; landed manifestc45fd450 and existing fulltesta73362a1 are untouched. There is no duplicate runtime repair. New CI is active/pending separately from old results.
+
+Each refreshed synthetic tree was verified against its candidate; owned582/583 source blobs stayed unchanged. Earlier terminal results remain historical. In particular old PR584 run40104569872 ended FAILURE15:24:45, browser3 cancelled15:24:37 with no final report; startup2/2 and RUCKUS passed. Partial browser artifact12564514857 SHA256 `fcaea361e2732a60642df9d7ef0365dfdf563e4db375d735d57e442956183fad` contains click timeouts and station-egress AUTHORED_LIBRARY_UNAVAILABLE, not completed visual acceptance. Completed failed-command sets are subsets of actualc564base, while deeper newly observable assertions are not baseline-equivalent.
+
+Current finite-custody work is meaningful but still unpublished: the source owner reports native4/API10/transfer/focused9/prompt14/cargo32 checks passing on the selected/hybrid graph. The frozen replay driver now checks every original base pin and final source hash; all five replay/syntax checks pass. Its trimmed native fixture's exact rerun remains owner-active at this checkpoint. These are not full current-checkout, ordinary-play or whole-sector acceptance. The initial syntax-only packet below is superseded by independently verified current source/AI-lease/test/review packets, while its history remains recoverable.
+
+Approved ownership remains narrow: encounterScripts; director normalizer/clear hunks; scene367; AiPorts/public-receipt paths and any explicitly approved pre-capture hook. Existing470/474 guard insertions are preserved, not treated as authorization to absorb their drafts. Source work continues in RAM while frozen artifacts are saved; no competing writer or blanket shared-AI authority is introduced. Next executable actions are exact custody/native review and draft delivery, plus the isolated PR582 fixture correction and refreshed CI checks under their existing owners. Browser/integration holds, Archive publication limits and both schedules remain unchanged. No merge/deploy or goal closure is implied.
+
+
 ## Current ordinary Tail admission and startup gate: 2026-10-24 15:16 UTC
 
 All twelve goals remain OPEN. The following separates newly observed ordinary admission, hosted startup success and unfinished cargo implementation.
