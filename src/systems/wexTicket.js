@@ -25,10 +25,18 @@ export function wexTicketSpec() {
   return {
     type: 'pickup', pos: { ...WEX_TICKET.pos }, vel: { x: 0, z: 0 },
     radius: WEX_TICKET.radius, mass: 0.4, collides: true,
+    homeSectorId: WEX_TICKET.sectorId,
     data: {
       kind: WEX_TICKET.kind, amount: 1, wexTicket: true,
+      // Player-reserved like every authored world object (the Ceres probe line): a passing NPC
+      // hull or drone would otherwise full-consume the slip on contact — no flag filed, nothing
+      // left to find until the next sector re-entry.
+      playerCollectOnly: true,
+      homeSectorId: WEX_TICKET.sectorId,
       scanLabel: 'Scent ticket · Bay 7',
-      scannerSignalKind: 'artifact',
+      // 'archive' is a real scanner kind (records/documents): 'artifact' is not one, and an
+      // unknown kind resolves to no signal at all — the slip would never ping.
+      scannerSignalKind: 'archive',
     },
   };
 }
@@ -37,6 +45,9 @@ export function createWexTicket() {
   return {
     name: 'wexTicket',
     init(ctx) {
+      // Re-init on the singleton must retire the old listener set and cook provider first,
+      // like every other one-off owner (morrow/docket/ravel) — never stack a second provider.
+      this.destroy();
       this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
       this._unsubs = [];
       const on = (event, fn) => {
@@ -64,6 +75,15 @@ export function createWexTicket() {
         const i = providers.indexOf(this._cookProvider);
         if (i >= 0) providers.splice(i, 1);
       }
+      // A deferred-enter entry queued for this provider must not call back into a retired
+      // system — same purge ravel/docket run before nulling the arm.
+      const queue = this.state?.render?.deferredEnterMaterializers;
+      if (Array.isArray(queue)) {
+        for (let i = queue.length - 1; i >= 0; i--) {
+          if (queue[i] && queue[i].provider === this._cookProvider) queue.splice(i, 1);
+        }
+      }
+      this._cookProvider = null;
       this._removeOwned();
     },
     _flag() {
