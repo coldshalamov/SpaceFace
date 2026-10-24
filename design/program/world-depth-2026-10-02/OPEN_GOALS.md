@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 24 October 2026, 18:12 UTC.
+Updated: 24 October 2026, 18:23 UTC.
 
 All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
 
@@ -26,7 +26,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; PR59088cf8209 publishes visual parity; new Camp41/Tail27 gates pending. Prior c435 passed67 cases but full CI failed. Publication is not integration/acceptance.
+- State: OPEN; PR59088cf8209 passes Camp41/Tail27; PR592 passes5. Both broader runs active/red; integration/acceptance open. Publication is not integration/acceptance.
 - Owner: publisher, root and exact feature owners.
 - Evidence: [PR590](https://github.com/coldshalamov/SpaceFace/pull/590); current checkpoint separates exact heads, passes and failures.
 - Next: follow terminal CI and attributable failures; preserve PR583 dependency review.
@@ -69,7 +69,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 - State: OPEN; Powered Camp departure/capture and inherited finite custody pass hosted tests; normal later-game Sker admission is observed, not a completed player route.
 - Owner: root and current Camp source/review owners.
 - Evidence: [Tail/PR583](https://github.com/coldshalamov/SpaceFace/pull/583), [Camp/PR590](https://github.com/coldshalamov/SpaceFace/pull/590), checkpoint.
-- Next: review verified arrival composition, then connected place/activity work and ordinary consequences.
+- Next: advance Nursery disturbance/settling captions in existing helpers; qualify ordinary consequences.
 - Awaiting user: world acceptance; no routine choice.
 
 ## SF-SECTOR-COHERENCE
