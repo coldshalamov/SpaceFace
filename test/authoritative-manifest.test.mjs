@@ -141,7 +141,7 @@ test('production init + update order lengths match the live browser baseline', (
   // 237 -> 238 init / 184 -> 185 update: W-CAST-HANDS registers slateColumn — the
   // weld-spike ledger's proximity read joins the same clock (row 542 complete).
   assert.equal(PRODUCTION_INIT_ORDER.length, 238);
-183);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 185);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));
