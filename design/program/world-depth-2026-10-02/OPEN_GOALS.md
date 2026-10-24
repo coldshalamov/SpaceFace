@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 24 October 2026, 21:38 UTC.
+Updated: 24 October 2026, 22:20 UTC.
 
 All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
 
@@ -26,15 +26,15 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; PR597 passes20 hosted cases but full CI failed. P08 v5 recovery is archived; runtime publication and full acceptance remain pending. Publication is not integration/acceptance.
+- State: OPEN; PR597 passes20 hosted cases but full CI failed. PR598 preserves the full P08 candidate source/model recovery; runtime integration and acceptance remain pending. Publication is not integration/acceptance.
 - Owner: publisher, root and exact feature owners.
 - Evidence: [PR590](https://github.com/coldshalamov/SpaceFace/pull/590); current checkpoint separates exact heads, passes and failures.
-- Next: finish the reviewed P08 source/asset publication and verify remote delivery; preserve exact ownership.
+- Next: follow PR598 recovery CI and review the separate prerequisite-guidance successor; retain runtime integration boundaries.
 - Awaiting user: existing publication holds; no repeated approval cards.
 
 ## SF-RECOVER
 - Outcome: recoverable source, models, tests and handoff beyond a disposable environment, including GitHub.
-- State: OPEN; public increments and raw before/after evidence preserved; active work must remain recoverable.
+- State: OPEN; PR598 verifies recovery of67 intended text paths and44 original assets; active successors must remain recoverable.
 - Owner: preserver, exact source owners and root integration.
 - Evidence: [hosted evidence](../world-experience-2026-10-24/hosted-custody-evidence/README.md), [Press Camp guard proof](../world-experience-2026-10-24/press-camp-evidence/guard-native-proof.json), checkpoint.
 - Next: preserve tested source, failed/final raw measurements and restoration pins before interruption.
