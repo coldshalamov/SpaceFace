@@ -282,9 +282,9 @@ export function createBroodPresentation(scene, capacity = 400) {
         mesh.setMatrixAt(written, matrix);
         const c = drawn ? FAMILY_COLORS[fam] : FAMILY_COLORS[0];
         color.copy(c);
-        if (drawn && drawn.splits && Array.isArray(drawn.bodyEmissive)) {
+        if (drawn && (drawn.splits || drawn.births) && Array.isArray(drawn.bodyEmissive)) {
           splitTint.setRGB(drawn.bodyEmissive[0], drawn.bodyEmissive[1], drawn.bodyEmissive[2]);
-          color.lerp(splitTint, 0.45);
+          color.lerp(splitTint, drawn.births ? 0.55 : 0.45);
         }
         mesh.setColorAt(written, color);
         // The charger's line telegraph: one stretched marker per winding pass.

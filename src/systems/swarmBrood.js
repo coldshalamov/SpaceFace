@@ -353,6 +353,9 @@ export function createBroodEngine(deps = {}) {
   let hiveMode = false;
   let sacBudget = 0;
   let splitterReserve = 0;
+  let motherReserve = 0;
+  const birthLeft = new Uint8Array(CAP);
+  const birthTold = new Uint8Array(CAP);
   let immediateQuota = Infinity;
 
   const view = {
@@ -456,6 +459,9 @@ export function createBroodEngine(deps = {}) {
     hiveMode = false;
     sacBudget = 0;
     splitterReserve = 0;
+    motherReserve = 0;
+    birthLeft.fill(0);
+    birthTold.fill(0);
     immediateQuota = Infinity;
     // The Domino ledger dies with the room: an unflushed death must never shove in the next one.
     deathScratchCount = 0;
@@ -500,6 +506,20 @@ export function createBroodEngine(deps = {}) {
       splitterReserve = take;
       pendingPlan = pendingPlan.filter((part) => part.count > 0);
     }
+    // The mother's mite tide is the same kind of reserve: bodies held back from the plan,
+    // released on her cadence, and dropped when she dies. It is not a Hive sac.
+    motherReserve = 0;
+    const motherRow = pendingPlan.find((part) => part.id === 'brood_mother');
+    if (motherRow && motherRow.count > 0) {
+      const miteRow = pendingPlan.find((part) => part.id === 'mite');
+      const room = miteRow ? Math.max(0, miteRow.count - 1) : 0;
+      const late = swarmBroodLateFamily('brood_mother');
+      const per = late && late.birthBudget > 0 ? Math.trunc(late.birthBudget) : 12;
+      const take = Math.min(motherRow.count * per, room);
+      if (miteRow && take > 0) miteRow.count -= take;
+      motherReserve = take;
+      pendingPlan = pendingPlan.filter((part) => part.count > 0);
+    }
     liveWave = w;
     view.wave = liveWave;
     view.tendril = tendrilMode;
@@ -541,6 +561,7 @@ export function createBroodEngine(deps = {}) {
       if (owed > 0) deferred.push({ ...part, count: owed });
     }
     pendingPlan = deferred.length ? deferred : null;
+    assignMotherShares();
     publish();
     return spawned;
   }
@@ -921,6 +942,7 @@ export function createBroodEngine(deps = {}) {
         } else if (def && def.id === 'leecher') {
           stepLeecher(i, fam, dp);
         }
+        if (def && def.births) stepMother(i, def, dt, simTime);
       }
 
       // -- deaths by contact: rocks. The room's walls are ammunition too — and a rock that is
@@ -1674,6 +1696,13 @@ export function createBroodEngine(deps = {}) {
       killPosZ[c] = finite(sampleZ);
     }
     if (def && (def.burstRadius > 0 || def.shardRadius > 0)) broodDeathBurst(i, def, credited);
+    if (def && def.births) {
+      const leftover = birthLeft[i];
+      if (leftover > 0) {
+        motherReserve = Math.max(0, motherReserve - leftover);
+        birthLeft[i] = 0;
+      }
+    }
     if (def && def.splits) releaseSplit(i, def);
     if (!credited) return;
     creditedCount[c]++;
@@ -1683,6 +1712,57 @@ export function createBroodEngine(deps = {}) {
     // Same Domino receipt as the chain: the cell's own last position, keyed by its spawn serial
     // so a slot reused inside the wave still counts as a new death.
     noteCreditedDeath(`cell:${serial[i]}`, px[i], pz[i]);
+  }
+
+  function assignMotherShares() {
+    if (motherReserve <= 0) return;
+    let held = 0;
+    for (let i = 0; i < CAP; i++) held += birthLeft[i];
+    let free = motherReserve - held;
+    if (free <= 0) return;
+    const mothers = [];
+    for (let i = 0; i < CAP; i++) {
+      if (!alive[i] || birthLeft[i] > 0) continue;
+      if (liveFamilyId[family[i]] !== 'brood_mother') continue;
+      mothers.push(i);
+    }
+    if (mothers.length === 0) return;
+    const each = Math.floor(free / mothers.length);
+    let extra = free - each * mothers.length;
+    for (const slot of mothers) {
+      const give = each + (extra > 0 ? 1 : 0);
+      if (extra > 0) extra -= 1;
+      birthLeft[slot] = give;
+      const def = liveFamilyDef[family[slot]];
+      timer[slot] = def && def.birthEveryS > 0 ? def.birthEveryS : 1.2;
+    }
+  }
+
+  function stepMother(i, def, dt, simTime) {
+    if (birthLeft[i] <= 0 || motherReserve <= 0) return;
+    timer[i] -= dt;
+    if (timer[i] > 0) return;
+    const tele = def.telegraph || {};
+    if (bus && !birthTold[i]) {
+      bus.emit('swarm:broodTelegraph', {
+        familyId: def.id,
+        bark: tele.bark,
+        line: tele.line,
+        cue: tele.cue,
+        pos: { x: px[i], z: pz[i] },
+      });
+      birthTold[i] = 1;
+    }
+    timer[i] = def.birthEveryS > 0 ? def.birthEveryS : 1.2;
+    if (aliveCount >= CAP) return;
+    const miteIdx = familyIndexOf('mite');
+    if (miteIdx < 0) return;
+    const slot = findFreeSlot();
+    if (slot < 0) return;
+    const ang = (simTime * 1.7 + i) % (Math.PI * 2);
+    spawnAt(slot, miteIdx, px[i] + Math.cos(ang) * 8, pz[i] + Math.sin(ang) * 8);
+    birthLeft[i] -= 1;
+    motherReserve -= 1;
   }
 
   function familyIndexOf(id) {
@@ -1890,6 +1970,9 @@ export function createBroodEngine(deps = {}) {
     },
     _splitter() {
       return { reserve: splitterReserve };
+    },
+    _mother() {
+      return { reserve: motherReserve };
     },
     _setFamilyMirrorForTest: setFamilyMirror,
     _killDirectForTest(i, cause) {
