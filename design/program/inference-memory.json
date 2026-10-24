@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "exp-01-helix-barks",
-      "date": "2026-10-22",
-      "wf": "WF-01",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Unmasked Helix ships answer in their own invoice voice: lawful interdiction, under orders, read the invoice first.",
-      "fingerprint": "verb=voice,subject=helix-barks,sector=helios,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "3b7d7fc2656d9fb9afcaaf503cac7c5fb3bc0f4e",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-enter-activity-wreck",
       "date": "2026-10-22",
       "wf": "WF-10",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "7bcdae72e7",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-31",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A route stop can open a derelict card. Salvage spends run credits and fits a part. Leave pays nothing. Either way the next stage fights.",
+      "fingerprint": "verb=salvage,subject=derelict,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "680b2d5e70",
       "verification": "focused_green"
     }
   ],
