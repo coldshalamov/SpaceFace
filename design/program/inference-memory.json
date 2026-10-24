@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-23",
+  "updated": "2026-10-24",
   "runs": [
     {
       "date": "2026-08-12",
@@ -113,32 +113,6 @@
     }
   ],
   "units": [
-    {
-      "id": "seed-pc-09",
-      "date": "2026-10-22",
-      "wf": "WF-01",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A crew found on a dead relay hails and talks, and asks for nothing.",
-      "fingerprint": "verb=greet,subject=relay-crew,sector=relay,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "b01ca0eb021c51be8e1801d82931a2f0467dd432",
-      "verification": "focused_green"
-    },
-    {
-      "id": "seed-wl-04",
-      "date": "2026-10-22",
-      "wf": "WF-09",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A returning ace names the weapon that downed them. An ace without that memory stays quiet.",
-      "fingerprint": "verb=recall,subject=last-weapon,sector=ace,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "0804fedcb156b643557a3fef826043af15d6c2d5",
-      "verification": "focused_green"
-    },
     {
       "id": "seed-wl-06",
       "date": "2026-10-22",
@@ -1671,6 +1645,32 @@
       "references": [],
       "integration": "live",
       "commit": "86dfc97f03",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-09-chain-feeder",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "chain_feeder legendary scales player damage packets +1pct per live chain point",
+      "fingerprint": "verb=feed,subject=chain-damage,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "041692963d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-10-echo",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "echo legendary duplicates every fifth fitted player gun shot, deterministic per gun",
+      "fingerprint": "verb=echo,subject=fifth-shot,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "f88dea7356",
       "verification": "focused_green"
     }
   ],
