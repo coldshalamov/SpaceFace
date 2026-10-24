@@ -84,12 +84,12 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
     const profile = resolveVfxAccessibilityProfile(privateState.settings);
     a11y.reducedMotion = !!privateState.settings.video?.motionReduce || profile.id.includes('motion');
     a11y.reducedFlash = profile.flashOpacityScale < 1;
-    owner._gas.setAccessibility(profile);
+    owner._gas?.setAccessibility(profile);
     return profile;
   }
   function publish(dt) {
     owner._integrateParticles(dt); owner._integrateSprites(dt); owner._integrateTrailStreaks(dt);
-    owner._decayEventLights(dt); owner._gas.update(clock, camera);
+    owner._decayEventLights(dt); owner._gas?.update(clock, camera);
     // These presentation owners normally run from vfx.update(). The lab advances the
     // production mining/rope paths directly so it can keep its deterministic fixture small;
     // explicitly step the companion owners here as well so each scenario exercises the same
@@ -134,21 +134,30 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
     owner._admissionSerial = seed; quarks._flowSequence = seed;
     while (owner._liveCount) owner._retireParticle(owner._activeParticles[owner._liveCount - 1]);
     while (owner._liveSpriteCount) owner._retireSprite(owner._activeSprites[owner._liveSpriteCount - 1]);
-    owner._clearTrailStreaks(); for (const light of owner._lights) owner._retireEventLightSlot(light);
-    owner._gas.clear(); quarks.reset(); propulsion.reset();
+    // The event-light pool and gas system are lazily built by the live owner (wave-143 payload
+    // gate); a fresh lab adapter at construction time has neither yet.
+    owner._clearTrailStreaks(); for (const light of owner._lights || []) owner._retireEventLightSlot(light);
+    owner._gas?.clear(); quarks.reset(); propulsion.reset();
     propulsion._time = 0; propulsion._boostBlend = 0; propulsion._lastDrive = 0; propulsion._lastBoost = 0;
     owner._hideEnergyPlumes?.();
     owner._plumeDashPending = false;
     // Shipping reset keeps a monotonic history clock. A laboratory replay starts a new clock;
     // otherwise float birth-time rounding can retire one different sample on the second replay.
     for (const trail of propulsion._trails) { trail._now = 0; trail.material.uniforms.uNow.value = 0; }
-    const beam = owner._miningBeam; beam.active = false; beam.release = 0; beam.attack = 0; beam.time = 0;
-    beam.mesh.visible = beam.glow.visible = false; beam.shaderShared.power.value = 0; beam.shaderShared.time.value = 0;
+    // The mining beam and tether cable are built inside the payload-gated pool init; the
+    // construction-time reset may run before it lands, so reset them only when they exist.
+    const beam = owner._miningBeam;
+    if (beam) {
+      beam.active = false; beam.release = 0; beam.attack = 0; beam.time = 0;
+      beam.mesh.visible = beam.glow.visible = false; beam.shaderShared.power.value = 0; beam.shaderShared.time.value = 0;
+    }
     const cable = owner._tetherCable;
-    Object.assign(cable, { wasActive: false, lastSourceId: null, lastTargetId: null, lastAttachmentId: null,
-      fade: 0, latchAge: 999, snapAge: 999, loadSmooth: 0, strainSmooth: 0, reelGlow: 0, sparkAcc: 0,
-      stressFlashAt: -1, stressFlashEnd: false });
-    for (const key of ['mesh', 'glow', 'band', 'anchorCore']) if (cable[key]) cable[key].visible = false;
+    if (cable) {
+      Object.assign(cable, { wasActive: false, lastSourceId: null, lastTargetId: null, lastAttachmentId: null,
+        fade: 0, latchAge: 999, snapAge: 999, loadSmooth: 0, strainSmooth: 0, reelGlow: 0, sparkAcc: 0,
+        stressFlashAt: -1, stressFlashEnd: false });
+      for (const key of ['mesh', 'glow', 'band', 'anchorCore']) if (cable[key]) cable[key].visible = false;
+    }
     owner._resetMasslineReleaseToken();
     owner._resetMasslineReleaseArc?.();
     owner._resetMasslineSwingTrace?.();
@@ -211,7 +220,9 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
         };
         privateState.combat.attachments.byId[snarlLink.id] = snarlLink;
       }
-      publish(0);
+      // Same pool-pending gate as the explosion adapter: the construction-time publish may not
+      // run before the payload-gated pool build lands; the page loop re-publishes this state.
+      if (owner._volumePoolsPending !== true) publish(0);
     });
   }
   function stepTool(dt, age) {
