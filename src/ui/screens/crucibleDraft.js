@@ -42,6 +42,7 @@ import {
   circuitRoundFor,
   circuitRouteView,
   circuitStateError,
+  CIRCUIT_EVENT,
   CIRCUIT_STAGE_COUNT,
 } from '../../systems/survivalCircuit.js';
 import { survivalRun } from '../../systems/survivalRun.js';
@@ -679,7 +680,9 @@ export function circuitPanelLines(run) {
                   : 'break the pack';
     next = `Next — stage ${round.stage}, round ${round.localRound}: ${objectiveLine}.`;
   }
-  const status = circuit.status === 'route'
+  const status = circuit.card
+    ? CIRCUIT_EVENT.line
+    : circuit.status === 'route'
     ? `Stage ${circuit.clearedStages} cleared. Choose where stage ${circuit.clearedStages + 1} fights.`
     : circuit.status === 'finale'
       ? 'Four stages cleared. Finish the Circuit, or keep the build and fly into Overtime.'
@@ -1152,9 +1155,11 @@ export const crucibleDraftScreen = {
     const circuit = run ? circuitFor(run) : null;
     const error = circuitStateError(run);
     if (!error && (!circuit || (circuit.status !== 'route' && circuit.status !== 'finale'))) return false;
-    const text = error || (circuit.status === 'route'
-      ? 'Choose a destination before launching.'
-      : 'Finish the Circuit or enter Overtime.');
+    const text = error || (circuit.card
+      ? CIRCUIT_EVENT.line
+      : circuit.status === 'route'
+        ? 'Choose a destination before launching.'
+        : 'Finish the Circuit or enter Overtime.');
     if (this._note) this._note.textContent = text;
     const first = this._circuit && this._circuit.choices
       ? this._circuit.choices.querySelector('button')

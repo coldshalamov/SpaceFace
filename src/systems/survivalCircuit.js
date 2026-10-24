@@ -14,6 +14,9 @@ import {
 import { COMBAT_LAB_ARENAS } from '../data/combatLabSetups.js';
 import { SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
 import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
+import { MODULES } from '../data/modules.js';
+import { SHIPS } from '../data/ships.js';
+import { buildSlotList, fits, outfitBudgetBlocker } from './ships.js';
 
 export { SURVIVAL_BOSS_CIRCUIT, SURVIVAL_BOSS_CIRCUIT_LENGTH, SURVIVAL_LIVE_CIRCUIT_ARENAS };
 
@@ -49,6 +52,17 @@ export const CIRCUIT_ESCORT_PURSE_CUT = 40;
 export const CIRCUIT_ESCORT_LANE = Object.freeze({
   startZ: 90,
   endZ: 160,
+});
+
+/**
+ * One event card offered beside a stage's rooms. Picking it asks a two-answer question on the
+ * same draft; it is not a fifth destination and it does not remember anything after the run.
+ */
+export const CIRCUIT_EVENT = Object.freeze({
+  id: 'derelict',
+  label: 'Derelict signal',
+  line: 'A derelict is broadcasting — salvage it or leave it.',
+  salvageCost: 30,
 });
 export const CIRCUIT_NODE_COUNT = 3;
 export const CIRCUIT_CORE_COUNT = 4;
@@ -231,13 +245,23 @@ export function normalizeCircuitState(raw) {
     if (status === 'route' && (clearedStages < 1 || clearedStages >= CIRCUIT_STAGE_COUNT || route.length !== clearedStages)) return null;
   } else if (clearedStages !== CIRCUIT_STAGE_COUNT || route.length !== CIRCUIT_STAGE_COUNT
     || raw.wonAtWave !== CIRCUIT_TOTAL_ROUNDS) return null;
+  const card = circuitCardOf(raw, status, clearedStages);
   return {
     ...identity,
     clearedStages,
     revision: raw.revision ?? 1,
     status,
     wonAtWave: raw.wonAtWave ?? null,
+    ...(card ? { card } : {}),
   };
+}
+
+/** A derelict card is only legal while the route is still owed. Anything else is stripped. */
+function circuitCardOf(raw, status, clearedStages) {
+  if (status !== 'route' || !isPlainObject(raw.card)) return null;
+  const stage = clearedStages + 1;
+  if (raw.card.id !== CIRCUIT_EVENT.id || raw.card.stage !== stage) return null;
+  return { id: CIRCUIT_EVENT.id, stage };
 }
 
 /** The normalized Circuit state carried by a run, or null for ordinary Swarm. */
@@ -321,6 +345,9 @@ export function circuitChoiceId(kind, { arenaId = null, wave = 0, revision = 1, 
   if (kind === 'start') return `circuit_start_w${w}_r${rev}`;
   if (kind === 'finish') return `circuit_finish_w${w}_r${rev}`;
   if (kind === 'overtime') return `circuit_overtime_w${w}_r${rev}`;
+  if (kind === 'event' || kind === 'salvage' || kind === 'leave') {
+    return `circuit_${kind}_${CIRCUIT_EVENT.id}_w${w}_r${rev}`;
+  }
   if (kind === 'route' && typeof arenaId === 'string' && arenaId) {
     const suffix = fight === 'elite' || fight === 'challenge' ? `_${fight}` : '';
     return `circuit_route_${arenaId}${suffix}_w${w}_r${rev}`;
@@ -344,6 +371,80 @@ export function parseCircuitChoiceId(id) {
   const simple = /^circuit_(start|finish|overtime)_w(\d+)_r(\d+)$/.exec(id);
   if (simple) {
     return { kind: simple[1], arenaId: null, wave: Number(simple[2]), revision: Number(simple[3]) };
+  }
+  const card = /^circuit_(event|salvage|leave)_([a-z0-9_]+)_w(\d+)_r(\d+)$/.exec(id);
+  if (card && card[2] === CIRCUIT_EVENT.id) {
+    return {
+      kind: card[1],
+      arenaId: null,
+      eventId: card[2],
+      wave: Number(card[3]),
+      revision: Number(card[4]),
+    };
+  }
+  return null;
+}
+
+/** The two answers on an open derelict card. Rooms are hidden until one of these resolves. */
+function circuitEventAnswers(stage, wave, revision) {
+  const cost = CIRCUIT_EVENT.salvageCost;
+  return [
+    {
+      id: circuitChoiceId('salvage', { wave, revision }),
+      kind: 'salvage',
+      stage,
+      arenaId: null,
+      fight: null,
+      label: 'Salvage it',
+      line: `Pay ${cost} run credits and take a fitting the hull can mount.`,
+      wave,
+      revision,
+    },
+    {
+      id: circuitChoiceId('leave', { wave, revision }),
+      kind: 'leave',
+      stage,
+      arenaId: null,
+      fight: null,
+      label: 'Leave it',
+      line: 'Pay nothing. The stage still fights.',
+      wave,
+      revision,
+    },
+  ];
+}
+
+const CIRCUIT_SHIP_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
+const CIRCUIT_SALVAGE_MODULES = Object.freeze([...MODULES]
+  .filter((def) => def && typeof def.id === 'string' && !def.intrinsicHull && !def.swarmEarned
+    && !def.requiresTech && !def.exclusivity)
+  .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)));
+
+/**
+ * The one fitting salvage will bolt on, or null when the hull has no open legal slot.
+ * Same slot order and fit rule the armory uses. Deterministic: modules are sorted by id.
+ */
+export function circuitSalvageOffer(state) {
+  const player = state && state.player;
+  const ownedShips = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const index = Number.isInteger(player && player.activeShipIndex) ? player.activeShipIndex : 0;
+  const owned = ownedShips[index];
+  if (!owned || typeof owned.defId !== 'string') return null;
+  const shipDef = CIRCUIT_SHIP_BY_ID.get(owned.defId);
+  if (!shipDef) return null;
+  const slots = buildSlotList(shipDef);
+  const fittings = Array.isArray(owned.fittings) ? owned.fittings.slice() : [];
+  while (fittings.length < slots.length) fittings.push(null);
+  for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
+    if (fittings[slotIndex]) continue;
+    const slot = slots[slotIndex];
+    for (const def of CIRCUIT_SALVAGE_MODULES) {
+      if (!fits(slot, def)) continue;
+      const prospective = fittings.slice();
+      prospective[slotIndex] = def.id;
+      if (outfitBudgetBlocker(shipDef, prospective)) continue;
+      return { defId: def.id, slotIndex, name: def.name || def.id };
+    }
   }
   return null;
 }
@@ -376,8 +477,11 @@ export function circuitChoicesFor(run) {
   const revision = circuit.revision;
   if (circuit.status === 'route') {
     const nextStage = circuit.clearedStages + 1;
+    if (circuit.card && circuit.card.id === CIRCUIT_EVENT.id) {
+      return circuitEventAnswers(nextStage, wave, revision);
+    }
     const destinations = CIRCUIT_DESTINATIONS[nextStage] || [];
-    return destinations.flatMap((dest) => {
+    const rooms = destinations.flatMap((dest) => {
       const ordinary = {
         id: circuitChoiceId('route', { arenaId: dest.arenaId, wave, revision }),
         kind: 'route',
@@ -402,6 +506,17 @@ export function circuitChoicesFor(run) {
         };
       })];
     });
+    return rooms.concat([{
+      id: circuitChoiceId('event', { wave, revision }),
+      kind: 'event',
+      stage: nextStage,
+      arenaId: null,
+      fight: null,
+      label: CIRCUIT_EVENT.label,
+      line: CIRCUIT_EVENT.line,
+      wave,
+      revision,
+    }]);
   }
   if (circuit.status === 'finale') {
     return [

@@ -13,6 +13,8 @@ import {
 } from '../data/survivalActs.js';
 import { SURVIVAL_ENDLESS_WAVE_MAX } from '../data/survivalWaves.js';
 import {
+  CIRCUIT_DESTINATIONS,
+  CIRCUIT_EVENT,
   CIRCUIT_ROUNDS_PER_STAGE,
   CIRCUIT_STAGE_COUNT,
   CIRCUIT_TOTAL_ROUNDS,
@@ -20,6 +22,7 @@ import {
   circuitEntryBlocker,
   circuitFor,
   circuitRoundFor,
+  circuitSalvageOffer,
   circuitStateError,
   createCircuitState,
   isBossCircuitRuleset,
@@ -487,6 +490,84 @@ export const survivalRun = {
       });
       return;
     }
+    if (choice.kind === 'event') {
+      if (circuit.status !== 'route' || circuit.card || choice.stage !== circuit.clearedStages + 1) {
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: false, kind: 'event', reason: 'That event is not on offer.',
+        });
+        return;
+      }
+      circuit.card = { id: CIRCUIT_EVENT.id, stage: choice.stage };
+      circuit.revision += 1;
+      run.telemetry.circuit = circuit;
+      this._emit('run:circuitChoiceApplied', {
+        offerId, accepted: true, kind: 'event', circuit: circuitFor(run),
+      });
+      return;
+    }
+    if (choice.kind === 'salvage' || choice.kind === 'leave') {
+      if (circuit.status !== 'route' || !circuit.card || circuit.card.stage !== choice.stage) {
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: false, kind: choice.kind, reason: 'That answer is not on the card.',
+        });
+        return;
+      }
+      const stage = circuit.card.stage;
+      const dest = (CIRCUIT_DESTINATIONS[stage] || [])[0];
+      if (!dest) {
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: false, kind: choice.kind, reason: 'That stage has no room.',
+        });
+        return;
+      }
+      let salvage = null;
+      if (choice.kind === 'salvage') {
+        salvage = circuitSalvageOffer(this.state);
+        if (!salvage) {
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'salvage',
+            reason: 'The hull has no open hardpoint for that salvage.',
+          });
+          return;
+        }
+        const before = Number.isFinite(run.credits) ? run.credits : 0;
+        const cost = CIRCUIT_EVENT.salvageCost;
+        if (!(before >= cost)) {
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'salvage',
+            reason: 'Not enough run credits to salvage.',
+          });
+          return;
+        }
+        this._emit('run:spendRequested', { credits: cost, reason: 'circuit_derelict_salvage' });
+        const paid = liveSurvivalRun(this.state);
+        if (!paid || paid.credits !== before - cost) {
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'salvage', reason: 'The purse refused the salvage.',
+          });
+          return;
+        }
+        const paidCircuit = circuitFor(paid);
+        if (!paidCircuit || !paidCircuit.card) {
+          this._emit('run:awardRequested', { credits: cost, reason: 'circuit_derelict_refund' });
+          this._emit('run:circuitChoiceApplied', {
+            offerId, accepted: false, kind: 'salvage', reason: 'The card is no longer on the table.',
+          });
+          return;
+        }
+        const installed = this._installCircuitRoom(paid, paidCircuit, stage, dest);
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: true, kind: 'salvage', arenaId: installed.arenaId,
+          salvage, circuit: circuitFor(paid),
+        });
+        return;
+      }
+      const installed = this._installCircuitRoom(run, circuit, stage, dest);
+      this._emit('run:circuitChoiceApplied', {
+        offerId, accepted: true, kind: 'leave', arenaId: installed.arenaId, circuit: circuitFor(run),
+      });
+      return;
+    }
     if (choice.kind === 'finish') {
       if (circuit.status !== 'finale') {
         this._emit('run:circuitChoiceApplied', {
@@ -520,6 +601,21 @@ export const survivalRun = {
       // The build, purse, score and seed are untouched; the armory resolves through its own path.
       return;
     }
+  },
+
+  /** Install the stage's first ordinary room and clear the card. The draft stays open. */
+  _installCircuitRoom(run, circuit, stage, dest) {
+    const routeEntry = { stage, arenaId: dest.arenaId, nodeId: dest.nodeId };
+    circuit.route = circuit.route
+      .filter((entry) => entry.stage !== stage)
+      .concat([routeEntry])
+      .sort((a, b) => a.stage - b.stage);
+    circuit.status = 'running';
+    delete circuit.card;
+    circuit.revision += 1;
+    run.arenaId = dest.arenaId;
+    run.telemetry.circuit = circuit;
+    return dest;
   },
 
   _onDraftResolved() {

@@ -632,9 +632,11 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.equal(after.status, 'route');
       assert.equal(after.clearedStages, wave / 4);
       const choices = circuitChoicesFor(h.state.run);
-      assert.equal(choices.filter((entry) => !entry.fight).length, 2, 'each stage offers two ordinary destinations');
-      assert.equal(choices.length, 6, 'elite and challenge sit beside them and can be refused');
-      const choice = choices.find((entry) => !entry.fight);
+      const rooms = choices.filter((entry) => entry.kind === 'route' && !entry.fight);
+      assert.equal(rooms.length, 2, 'each stage offers two ordinary destinations');
+      assert.equal(choices.filter((entry) => entry.kind === 'route').length, 6, 'elite and challenge sit beside them and can be refused');
+      assert.equal(choices.filter((entry) => entry.kind === 'event').length, 1, 'one event card sits beside the rooms');
+      const choice = rooms[0];
       const applied = choose(h, choice.id);
       assert.equal(applied.accepted, true, applied.reason);
       assert.equal(h.state.run.arenaId, choice.arenaId, 'the destination is installed before the next plan');
@@ -947,7 +949,8 @@ test('presentation names survive rounds, stages, route progress and the finale',
   const panel = circuitPanelLines(run);
   assert.equal(panel.heading, 'The Circuit');
   assert.match(panel.status, /Choose where stage 2 fights/);
-  assert.deepEqual(panel.choices.filter((c) => !c.fight).map((c) => c.kind), ['route', 'route']);
+  assert.deepEqual(panel.choices.filter((c) => c.kind === 'route' && !c.fight).map((c) => c.kind), ['route', 'route']);
+  assert.equal(panel.choices.filter((c) => c.kind === 'event').length, 1);
   assert.equal(panel.choices.filter((c) => c.fight === 'elite').length, 2);
   assert.equal(panel.choices.filter((c) => c.fight === 'challenge').length, 2);
   const names = panel.choices.map((c) => c.label);
@@ -1140,9 +1143,11 @@ test('both destinations at every boundary are authored arenas with their own law
       const first = circuitChoicesFor(run);
       const second = circuitChoicesFor(run);
       assert.deepEqual(first, second, 'identical state yields identical descriptors');
-      assert.equal(first.filter((entry) => !entry.fight).length, 2);
-      assert.equal(first.length, 6);
-      const choice = first.find((entry) => entry.arenaId === dest.arenaId && !entry.fight);
+      const rooms = first.filter((entry) => entry.kind === 'route' && !entry.fight);
+      assert.equal(rooms.length, 2);
+      assert.equal(first.filter((entry) => entry.kind === 'route').length, 6);
+      assert.equal(first.length, 7);
+      const choice = first.find((entry) => entry.kind === 'route' && entry.arenaId === dest.arenaId && !entry.fight);
       assert.ok(choice, `${dest.arenaId} is offered at stage ${stage}`);
       assert.equal(choice.line, dest.line);
       const wave = run.wave + 1;
@@ -1303,12 +1308,12 @@ test('Circuit choice controls are native buttons and activate through the draft-
       bus: { emit: (event, payload) => emitted.push({ event, payload }) },
     }, choices);
     assert.equal(list.children.length, choices.length);
-    assert.equal(choices.filter((choice) => !choice.fight).length, 2);
+    assert.equal(choices.filter((choice) => choice.kind === 'route' && !choice.fight).length, 2);
     for (const [index, item] of list.children.entries()) {
       const button = item.children[0];
       assert.equal(button.tag, 'button');
       assert.equal(button.type, 'button', 'a real button keeps native Enter/Space activation');
-      assert.equal(button.dataset.circuitChoice, 'route');
+      assert.equal(button.dataset.circuitChoice, choices[index].kind);
       assert.equal(button.title, choices[index].line);
       assert.ok(button.textContent.length > 0, 'the destination name is visible');
       assert.equal(item.children[1].tag, 'span');
