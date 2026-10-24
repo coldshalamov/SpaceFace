@@ -1183,7 +1183,7 @@ production units, and never build what they write.
 | 539 | W-CULL | The Cull ladder — ten leagues, Ma Sprocket, Clatter (§34.7) | BUILD | OPEN — after 519 and 541 |
 | 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | DONE devin-ten-oct22 (0749dfe36e) |
 | 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | DONE devin-25-oct22 |
-| 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | OPEN |
+| 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | OPEN — 1/7 wired: Wex smell ticket at Helios Bay 7 (72b4a4f84b) |
 | 543 | W-FACES | Canon, new and culture portrait pools (§34.8) | ART | OPEN |
 | 544 | W-ECONOMY | Economy re-pace — travel ≤50 %, a play-changing purchase every 15–25 minutes, pay by the tonne (§34.9) | BUILD | OPEN |
 | 545 | W-CAMERA | The camera follows the weight (§34.9) | BUILD | OPEN |
