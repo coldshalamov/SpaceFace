@@ -1,5 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 
+## Quiet-beacon retirement delivered and CI qualification: 2026-10-24 04:11 UTC
+
+Draft [PR571](https://github.com/coldshalamov/SpaceFace/pull/571) is verified open at `90e223cd9b555f7539f78235fbb37b4dd1ae479b`, with four paths (core system, existing quiet test, package and report), tree `4bc1a6aa98ebb85635bc529764e2ca69bd795eef` and sole public parent `316eed66`. The publisher verified full remote bytes and blob hashes and owns exact-head CI monitoring.
+
+The core correction adds only a beacon despawnAt probe over existing radarContacts after the original guards. It does not enroll H4, add an index, alter physics or redesign TTL handling. Baseline quiet tests passed 9/12; the correction passed 12/12 plus four neighbors, retaining all eight original assertions. Evidence covers original removal events, lane cleanup and ID recycling; future, late and zero deadlines; and quiet skipping for untimed/cancelled cases. The extra scan has a real cost: 100 to 400 visits in the measured 100-ship/200-station no-beacon scene. A noisy helper timing changed from 1.617 to 5.636 microseconds; this is not target-device performance, native Rapier or full Save acceptance.
+
+PR569 run 40058601423 ended FAILURE. Its hosted fourteen-case and one-case gates passed, while the standalone cadence gate did not run behind the static-1 precheck. Comparable failures match the exact parent, but browser shard 3 completed where the parent was cancelled, leaving two probes unpaired. Ship stability reported an internal pass while its command failed on missing stationLife; flight-visual reported page/warm/opening/mobile-throttle failures. Do not describe every failure as baseline-matching or the aggregate as green.
+
+PR570's hosted focused gate passed 25/25, and its existing E1 gate passed 25/25 including nineteen runtime cases. Overall run 40060333392 remains running with failures at the latest owner report. Its publisher retains terminal monitoring; no duplicate watch is created.
+
+All twelve goals remain OPEN. Existing ownership, recovery chains, Archive's two-object publication block and the browser hold are unchanged. This handoff changes no testing overlay, ledger, merge or deployment state.
+
 ## Io Love Letter Buoy service delivered: 2026-10-24 03:59 UTC
 
 Draft [PR570](https://github.com/coldshalamov/SpaceFace/pull/570) is verified open at `e74118222ce1c6f778c04b01340a85b19376a900`, with six paths, tree `ac3529dd91e351ae5e49f4d5dc2021e214fec9f6` and sole public parent `316eed66`. The publisher verified full remote bytes and blob hashes and owns exact-head CI monitoring.
