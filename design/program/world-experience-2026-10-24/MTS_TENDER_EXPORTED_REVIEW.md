@@ -16,6 +16,18 @@ Top-down, forward detail and rear-quarter views retain source-axis coordinates. 
 
 ## Qualification
 
-This is an offline review of actual released geometry, not a game-camera capture, material/PBR review, physics or performance test, or full visual acceptance. Bounded textured-render feasibility is being investigated separately and is not yet implemented here. No game source, model, placement or runtime behavior changed.
+This is an offline review of actual released geometry, not a game-camera capture, material/PBR review, physics or performance test, or full visual acceptance. The completed textured studio study below supplements this untextured geometry sheet; it does not establish runtime visual acceptance. No game source, model, placement or runtime behavior changed.
 
 Image: 57,367 bytes, SHA-256 `4384904983514a28eaaa2c877db07adb9a1134c49714998f94afc0ad972a6580`.
+
+## Completed textured studio study
+
+![Offline textured MTS studio reconstruction](mts-tender-material-studio.jpg)
+
+All six actual embedded KTX2 maps were decoded in memory. Blender 4.3.2 Cycles CPU rendered 32 samples without denoising, using the actual albedo, normal, roughness, metallic and emissive inputs. Panel maps are 1024 × 1024 and machinery maps are 512 × 512. The nineteen visible meshes and 34,277 triangles match the inspected LOD0 geometry.
+
+Neutral studio world lighting and two area lights replace game lighting. Authored AO remains present in importer settings but was **not applied** to shading or multiplied into base color. This is a studio reconstruction, not a game-renderer capture or a test of the runtime shader, lighting, rig, effects or performance.
+
+No model, UV, normal, material-assignment or material-factor edits were made. The study closes the earlier material-preview feasibility question, not full visual acceptance or any larger asset/game goal.
+
+Studio JPEG: 86,285 bytes, SHA-256 `def2f19f60b89cb889d80cda52e5d0dc639a09748a3cb07ffba9c809da9a7726`.

@@ -1,5 +1,13 @@
 <!-- LIFETIME: DURABLE -->
 
+## Completed MTS material study and active Pilgrim work: 2026-10-24 02:59 UTC
+
+The [existing MTS review](../world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) now includes a distinct textured studio JPEG. All six embedded KTX2 maps were decoded in memory and rendered with Blender 4.3.2 Cycles CPU at 32 samples using actual normal, roughness, metallic and emissive inputs. Authored AO was not applied. This replaces the earlier feasibility-only status without claiming game shader/lighting parity or visual acceptance. Geometry and material assignments are unchanged; no new model is counted.
+
+The existing Pilgrim implementation is active under its source owner, not published or finally accepted. Fifteen focused/native tests passed, including the real Choir factory and a late twenty-second native escort. The candidate was manually ticked at 1 Hz with director.update disabled. The observed outcome is 30 credits and one receipt; emitted +2 reputation is not proof of faction-state persistence. Unfinished work aborts on Save. Another 218 captured emitter outputs remained unchanged, which is not the full generator pipeline. Neighboring lived-world test updates, final review and publication remain pending.
+
+Public master was last independently verified at `316eed66`; PR566 `6359f0f9`, PR567 `a24a8573` and PR568 `8ee99a33` remain drafts with their previously recorded terminal CI qualifications. No new goal closure or ledger number is assigned. All twelve goals, the Handoff lifecycle residual and ownership constraints, Archive's two-object publication block and the browser approval hold remain open. No merge or deployment is implied.
+
 ## Released MTS review and terminal Handoff evidence: 2026-10-24 01:59 UTC
 
 The [MTS tender exported-model review](../world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) and its new detail sheet preserve inspection of the actual released LOD0 geometry. Six cargo modules, four crossframes, exposed spine, rounded cockpit and vented aft unit already provide distinct construction detail. No geometry edit is justified by these views and no model is added. The asset and relevant source definitions are unchanged at inspected master `47be172e0736cb3e32925a550807c684a155ef82`.
