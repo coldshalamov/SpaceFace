@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Native trajectory diagnostic: 2026-10-24 10:13 UTC
+
+![Measured convoy native-physics samples, not a game camera](../world-experience-2026-10-24/convoy-native-preview/convoy-trajectory.png)
+
+The [reproduction script](../world-experience-2026-10-24/convoy-native-preview/render.py) preserves measured leader/range samples and only the final player position. Connecting lines are guides, not a complete measured trajectory. This is a native-physics diagnostic, not game-camera imagery, model-quality evidence or human-playability acceptance. PR577 source and its active CI are untouched; all twelve goals remain OPEN.
+
 ## Accompanied formation delivered: 2026-10-24 10:10 UTC
 
 [Draft PR577](https://github.com/coldshalamov/SpaceFace/pull/577) is verified at `d98ea998bf93dfcd2e36dff401c3432bee1418a1`, with four paths and sole latest public parent `8810e2255aabbc7c01d8eeaf65d22f3f23cc3ee4`. Six unrelated newer swarm/program commits are preserved. The reproduced late-join progress exploit is corrected: accompanying formation now requires 100 WU of progress during one uninterrupted 60–180-WU range interval lasting at least eight seconds. Distance and time accrue concurrently, not as an extra eight-second wait after distance. Focused checks pass 11/11 versus baseline 4/11, and eight existing RC checks pass. See the [formation-progress report](https://github.com/coldshalamov/SpaceFace/blob/d98ea998bf93dfcd2e36dff401c3432bee1418a1/design/program/world-experience-2026-10-24/ACCOMPANIED_FORMATION_PROGRESS.md).
