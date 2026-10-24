@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 24 October 2026, 17:28 UTC.
+Updated: 24 October 2026, 17:40 UTC.
 
 All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
 
@@ -26,10 +26,10 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; PR590c435d10d powered escape/capture successor published, dependent on PR58390f59e71; new hosted gates pending. Earlier broader CI red.
+- State: OPEN; PR590c435d10d dependent successor passes hosted Tail27/Camp40; broader CI active/failing. Publication is not integration/acceptance.
 - Owner: publisher, root and exact feature owners.
 - Evidence: [PR590](https://github.com/coldshalamov/SpaceFace/pull/590); current checkpoint separates exact heads, passes and failures.
-- Next: follow current Tail27/Camp40 hosted gates, dependency review and attributable failures.
+- Next: follow terminal CI and attributable failures; preserve PR583 dependency review.
 - Awaiting user: existing publication holds; no repeated approval cards.
 
 ## SF-RECOVER
@@ -66,18 +66,18 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-LIVING-WORLD
 - Outcome: inhabited places, work, economy, history, relationships and consequences using actual assets/systems.
-- State: OPEN; finite custody and powered Camp departure/capture controls published; ordinary route acceptance open.
+- State: OPEN; Powered Camp departure/capture and inherited finite custody pass hosted tests; normal later-game Sker admission is observed, not a completed player route.
 - Owner: root and current Camp source/review owners.
 - Evidence: [Tail/PR583](https://github.com/coldshalamov/SpaceFace/pull/583), [Camp/PR590](https://github.com/coldshalamov/SpaceFace/pull/590), checkpoint.
-- Next: verify hosted departure/capture/Continue, then connected place/activity composition.
+- Next: review verified arrival composition, then connected place/activity work and ordinary consequences.
 - Awaiting user: world acceptance; no routine choice.
 
 ## SF-SECTOR-COHERENCE
 - Outcome: coherent arrivals, ordinary visits, time/progression, choices, return and Save/Continue across sectors.
-- State: OPEN; configured admission, native components and accepted sector experience remain distinct.
+- State: OPEN; Seed24 later-game Sker normal planner admits full-catalog camp at59.833s with native cast/voice. Configured admission is not human travel or sector acceptance.
 - Owner: root sector register and exact gameplay/story owners.
 - Evidence: sector experience register and build map; Camp/Tail proof boundaries.
-- Next: connect arrival teaching, actors, consequences and persistence in complete ordinary routes.
+- Next: inspect actual visual selectors/placement, then connect arrival teaching to ordinary choices and Save consequences.
 - Awaiting user: none for continued authorized implementation; eventual sector acceptance.
 
 ## SF-PLAY-WORLD

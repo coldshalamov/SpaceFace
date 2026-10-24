@@ -1,0 +1,290 @@
+{
+  "schema": "spaceface.ciCommandDiagnostic.v1",
+  "id": "check-press-camp-consequences",
+  "command": "npm run check:press-camp-consequences",
+  "ok": true,
+  "code": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 3186,
+  "reason": "passed",
+  "classification": {
+    "category": "passed",
+    "confidence": "high",
+    "evidence": "command exited with code 0",
+    "flake": {
+      "status": "unknown",
+      "attemptsObserved": 1,
+      "passedAttempts": 0,
+      "failedAttempts": 0
+    }
+  },
+  "artifactPath": "scratch/check-ci-report/2026-10-24T17-30-59-477Z/check-press-camp-consequences.log",
+  "structured": null
+}
+--- stdout ---
+
+> spaceface@0.2.0-beta.1 check:press-camp-consequences
+> node --test test/press-camp-truthful-consequences.test.mjs test/press-camp-native-consequences.test.mjs test/activity-capture-control-native.test.mjs
+
+TAP version 13
+# Subtest: capture closure is single-use and callback failure cannot escape committed boundary
+ok 1 - capture closure is single-use and callback failure cannot escape committed boundary
+  ---
+  duration_ms: 7.03835
+  type: 'test'
+  ...
+# Subtest: snapshot release preserves foreign successor: ai
+ok 2 - snapshot release preserves foreign successor: ai
+  ---
+  duration_ms: 0.820141
+  type: 'test'
+  ...
+# Subtest: snapshot release preserves foreign successor: activity
+ok 3 - snapshot release preserves foreign successor: activity
+  ---
+  duration_ms: 0.69105
+  type: 'test'
+  ...
+# Subtest: snapshot release preserves foreign successor: lease
+ok 4 - snapshot release preserves foreign successor: lease
+  ---
+  duration_ms: 0.590071
+  type: 'test'
+  ...
+# Subtest: snapshot release preserves foreign successor: body
+ok 5 - snapshot release preserves foreign successor: body
+  ---
+  duration_ms: 0.584591
+  type: 'test'
+  ...
+# Subtest: snapshot release preserves foreign successor: occupant
+ok 6 - snapshot release preserves foreign successor: occupant
+  ---
+  duration_ms: 0.58899
+  type: 'test'
+  ...
+# {"kind":"normal","result":{"ok":true,"operationId":"camp:capture","vesselId":"camp:target","fromVesselId":"camp:player","fromId":1,"toId":2,"index":1,"tick":1},"fromCalls":1,"toCalls":1,"freightCalls":2,"events":1}
+# {"kind":"throw_from","result":{"ok":true,"operationId":"camp:capture","vesselId":"camp:target","fromVesselId":"camp:player","fromId":1,"toId":2,"index":1,"tick":1},"fromCalls":1,"toCalls":1,"freightCalls":2,"events":1}
+# {"kind":"failed_admission","result":{"ok":false,"reason":"stale_target","operationId":"camp:capture"},"fromCalls":0,"toCalls":0,"freightCalls":0,"events":0}
+# Subtest: canonical helm capture preserves commit and cleanup: normal
+ok 7 - canonical helm capture preserves commit and cleanup: normal
+  ---
+  duration_ms: 190.612492
+  type: 'test'
+  ...
+# Subtest: canonical helm capture preserves commit and cleanup: throw_from
+ok 8 - canonical helm capture preserves commit and cleanup: throw_from
+  ---
+  duration_ms: 33.469377
+  type: 'test'
+  ...
+# Subtest: canonical helm capture preserves commit and cleanup: failed_admission
+ok 9 - canonical helm capture preserves commit and cleanup: failed_admission
+  ---
+  duration_ms: 17.065421
+  type: 'test'
+  ...
+# Subtest: capture cancels only its receipt and preserves foreign control and queued impulse
+ok 10 - capture cancels only its receipt and preserves foreign control and queued impulse
+  ---
+  duration_ms: 23.067928
+  type: 'test'
+  ...
+# {"beforeContinue":{"moved":313.7066462287288,"alive":true,"ai":{"kind":"flee","reason":"press_camp:released","anchor":{"x":10061.456846551459,"z":9706.739321500858},"leashRadius":1440,"preferredRange":0,"startedTick":0,"deadlineTick":null,"targetId":null,"routeId":null,"encounterId":"camp_test"},"intent":{"fire":false,"fireGroup":null,"fireBlockReason":null,"fireBlockerId":null},"forceFlee":true}}
+# {"kind":"press_camp_native","moved":313.7066462287288,"heldActivity":"press_camp:held","outcomes":["garrison_broken"],"grants":[],"credits":2341,"afterContinueCredits":2341,"simTime":11.050000000000129,"claim":"forced component admission, actual combat.kill, actual AI/flight/Rapier, unchanged-envelope Save/load; not human play or full current graph"}
+# {"kind":"camp_burned_continue","credits":640,"afterContinue":640,"grants":[[120,"press_camp:base_burned"]],"outcomes":["base_destroyed"]}
+# {"kind":"camp_capture_continue","held":false,"early":{"force":0,"activity":null,"flee":false,"permit":false},"restoredId":2}
+# {"kind":"camp_capture_continue","held":true,"early":{"force":0,"activity":null,"flee":false,"permit":false},"restoredId":2}
+# Subtest: native defeated garrison preserves base; completed save cannot replay scene pay
+ok 11 - native defeated garrison preserves base; completed save cannot replay scene pay
+  ---
+  duration_ms: 1228.746798
+  type: 'test'
+  ...
+# Subtest: native original base kill survives body removal and Continue without replay
+ok 12 - native original base kill survives body removal and Continue without replay
+  ---
+  duration_ms: 152.489266
+  type: 'test'
+  ...
+# Subtest: capture subscriber cannot flush or save released captive helm, pending and held
+ok 13 - capture subscriber cannot flush or save released captive helm, pending and held
+  ---
+  duration_ms: 249.435394
+  type: 'test'
+  ...
+# Subtest: missing or recycled base is not a destroyed camp: missing
+ok 14 - missing or recycled base is not a destroyed camp: missing
+  ---
+  duration_ms: 50.35388
+  type: 'test'
+  ...
+# Subtest: missing or recycled base is not a destroyed camp: replaced_alive
+ok 15 - missing or recycled base is not a destroyed camp: replaced_alive
+  ---
+  duration_ms: 6.759951
+  type: 'test'
+  ...
+# Subtest: missing or recycled base is not a destroyed camp: replaced_dead
+ok 16 - missing or recycled base is not a destroyed camp: replaced_dead
+  ---
+  duration_ms: 6.47548
+  type: 'test'
+  ...
+# Subtest: actual killed and reaped base preserves one reward, replacement=false
+ok 17 - actual killed and reaped base preserves one reward, replacement=false
+  ---
+  duration_ms: 7.51663
+  type: 'test'
+  ...
+# Subtest: actual killed and reaped base preserves one reward, replacement=true
+ok 18 - actual killed and reaped base preserves one reward, replacement=true
+  ---
+  duration_ms: 3.373168
+  type: 'test'
+  ...
+# Subtest: does not free a foreign or unavailable captive: absent
+ok 19 - does not free a foreign or unavailable captive: absent
+  ---
+  duration_ms: 3.389689
+  type: 'test'
+  ...
+# Subtest: does not free a foreign or unavailable captive: dead
+ok 20 - does not free a foreign or unavailable captive: dead
+  ---
+  duration_ms: 3.084078
+  type: 'test'
+  ...
+# Subtest: does not free a foreign or unavailable captive: replaced
+ok 21 - does not free a foreign or unavailable captive: replaced
+  ---
+  duration_ms: 3.058961
+  type: 'test'
+  ...
+# Subtest: does not free a foreign or unavailable captive: captured
+ok 22 - does not free a foreign or unavailable captive: captured
+  ---
+  duration_ms: 4.720803
+  type: 'test'
+  ...
+# Subtest: does not free a foreign or unavailable captive: player
+ok 23 - does not free a foreign or unavailable captive: player
+  ---
+  duration_ms: 3.490016
+  type: 'test'
+  ...
+# Subtest: does not free a foreign or unavailable captive: foreign_ai
+ok 24 - does not free a foreign or unavailable captive: foreign_ai
+  ---
+  duration_ms: 2.567113
+  type: 'test'
+  ...
+# Subtest: does not free a foreign or unavailable captive: foreign_activity
+ok 25 - does not free a foreign or unavailable captive: foreign_activity
+  ---
+  duration_ms: 2.627836
+  type: 'test'
+  ...
+# Subtest: does not free a foreign or unavailable captive: foreign_intent
+ok 26 - does not free a foreign or unavailable captive: foreign_intent
+  ---
+  duration_ms: 2.323939
+  type: 'test'
+  ...
+# Subtest: does not free a foreign or unavailable captive: foreign_body
+ok 27 - does not free a foreign or unavailable captive: foreign_body
+  ---
+  duration_ms: 2.321024
+  type: 'test'
+  ...
+# Subtest: synchronous comms callback cannot settle twice
+ok 28 - synchronous comms callback cannot settle twice
+  ---
+  duration_ms: 2.435808
+  type: 'test'
+  ...
+# Subtest: synchronous grant callback cannot settle twice
+ok 29 - synchronous grant callback cannot settle twice
+  ---
+  duration_ms: 2.746818
+  type: 'test'
+  ...
+# Subtest: synchronous rep callback cannot settle twice
+ok 30 - synchronous rep callback cannot settle twice
+  ---
+  duration_ms: 2.082368
+  type: 'test'
+  ...
+# Subtest: synchronous resolve callback cannot settle twice
+ok 31 - synchronous resolve callback cannot settle twice
+  ---
+  duration_ms: 2.452208
+  type: 'test'
+  ...
+# Subtest: real defeated garrison frees original captive, preserves camp and three authored loot pods
+ok 32 - real defeated garrison frees original captive, preserves camp and three authored loot pods
+  ---
+  duration_ms: 2.756687
+  type: 'test'
+  ...
+# Subtest: missing guard does not imply defeated garrison
+ok 33 - missing guard does not imply defeated garrison
+  ---
+  duration_ms: 1.385557
+  type: 'test'
+  ...
+# Subtest: cleanup cannot manufacture camp outcome: restoring
+ok 34 - cleanup cannot manufacture camp outcome: restoring
+  ---
+  duration_ms: 1.370589
+  type: 'test'
+  ...
+# Subtest: cleanup cannot manufacture camp outcome: stale_live
+ok 35 - cleanup cannot manufacture camp outcome: stale_live
+  ---
+  duration_ms: 1.55346
+  type: 'test'
+  ...
+# Subtest: timeout cannot later claim a destruction reward
+ok 36 - timeout cannot later claim a destruction reward
+  ---
+  duration_ms: 2.28691
+  type: 'test'
+  ...
+# Subtest: real lifecycle save:restoring prevents stale settlement
+ok 37 - real lifecycle save:restoring prevents stale settlement
+  ---
+  duration_ms: 2.350889
+  type: 'test'
+  ...
+# Subtest: real lifecycle save:loaded prevents stale settlement
+ok 38 - real lifecycle save:loaded prevents stale settlement
+  ---
+  duration_ms: 17.213707
+  type: 'test'
+  ...
+# Subtest: real lifecycle sector:exit prevents stale settlement
+ok 39 - real lifecycle sector:exit prevents stale settlement
+  ---
+  duration_ms: 2.799477
+  type: 'test'
+  ...
+# Subtest: continuous sector crossing retains authentic camp outcome
+ok 40 - continuous sector crossing retains authentic camp outcome
+  ---
+  duration_ms: 2.493305
+  type: 'test'
+  ...
+1..40
+# tests 40
+# suites 0
+# pass 40
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3046.272366
+
+--- stderr ---
+(empty)
