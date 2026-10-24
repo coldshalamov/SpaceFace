@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-living-hold",
-      "date": "2026-10-22",
-      "wf": "WF-14",
-      "mode": "opportunity",
-      "verdict": "cut",
-      "reason": "A hold of spore catalyst or a live specimen reads as Concord risk, Frontier wary, and Quiet favor instead of a blank conscience.",
-      "fingerprint": "verb=weigh,subject=living-hold,sector=hold,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "88449c7f5188cc8bad7cac25727686ef17534add",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-living-spill",
       "date": "2026-10-22",
       "wf": "WF-16",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "29366dd768",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-36",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Killing a splitter spends the wave reserve and leaves three smaller mites.",
+      "fingerprint": "verb=split,subject=brood,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "be1f92b6f2",
       "verification": "focused_green"
     }
   ],
