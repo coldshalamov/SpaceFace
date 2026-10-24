@@ -130,8 +130,10 @@ test('production init + update order lengths match the live browser baseline', (
   // whose modules are not on master; that was dropped, so those owners are not counted.)
   // 232 -> 233 init: W-CAST-HANDS (row 542) registers wexTicket — the smell ticket at Helios
   // Bay 7 is event-driven (sector sync + pickup:collected), so it never ticks.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 233);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 180);
+  // 233 -> 234 init / 180 -> 181 update: W-CAST-HANDS registers moistureLoss (row 542),
+  // on top of the manifest hotfix that dropped the undefined shipbreaking/salvage wiring.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 234);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 181);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

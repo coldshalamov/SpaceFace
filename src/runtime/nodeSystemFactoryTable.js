@@ -191,6 +191,7 @@ import { ruckus } from '../systems/ruckus.js';
 import { ruud } from '../systems/ruud.js';
 import { docket } from '../systems/docket.js';
 import { wexTicket } from '../systems/wexTicket.js';
+import { moistureLoss } from '../systems/moistureLoss.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -427,6 +428,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['ruud', ruud],
     ['docket', docket],
     ['wexTicket', wexTicket],
+    ['moistureLoss', moistureLoss],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

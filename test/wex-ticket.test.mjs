@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import { createWexTicket, WEX_TICKET, wexTicketSpec } from '../src/systems/wexTicket.js';
 import { createBus } from '../src/core/eventBus.js';
 import { makeEntity } from '../src/core/entity.js';
+import { drainDeferredEnterMaterializers } from '../src/core/sectorEnterDefer.js';
+import { signalKindForPoi } from '../src/systems/scanner.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 
 function fixture() {
   const bus=createBus(), events=[];
-  const state={simTime:0, tick:0, mode:'flight', run:{kind:'adventure'},
+  const state={simTime:0, tick:0, mode:'flight', run:{kind:'adventure'}, render:{},
     world:{currentSectorId:WEX_TICKET.sectorId}, entities:new Map(),entityList:[],
     story:{flags:{}},playerId:7};
   let id=10;
@@ -55,6 +57,49 @@ test('NPC collection and foreign kinds are ignored',()=>{
   f.bus.emit('pickup:collected',{pickupId:999,collectorId:7,kind:'ore',amount:5});
   assert.equal(f.state.story.flags.wex_ticket_found,undefined);
   assert.equal(f.events.length,0);
+});
+test('the slip is player-reserved and pingable — an NPC hull cannot eat the find',()=>{
+  const spec=wexTicketSpec();
+  // physics.collectPickups refuses non-player collectors outright on playerCollectOnly —
+  // the only contact path that could have consumed the slip without filing the flag.
+  assert.equal(spec.data.playerCollectOnly,true);
+  // The scanner's kind table is module-private; signalKindForPoi runs the same hasOwn gate
+  // the entity path uses. An unrecognized kind (the landed 'artifact') resolves null there.
+  assert.equal(spec.data.scannerSignalKind,'archive');
+  assert.equal(signalKindForPoi({scannerSignalKind:spec.data.scannerSignalKind}),'archive');
+  assert.equal(signalKindForPoi({scannerSignalKind:'artifact'}),null,'unknown kinds resolve no signal');
+  assert.equal(spec.homeSectorId,WEX_TICKET.sectorId);
+  assert.equal(spec.data.homeSectorId,WEX_TICKET.sectorId);
+});
+test('a deferred sector enter materializes the slip under the cook drain',()=>{
+  const f=fixture();
+  f.state.render.sectorEnterCookWillRun=()=>true;
+  f.state.render.deferredEnterMaterializers=[];
+  f.state.world.enterSerial=3;
+  f.ticket()[0].alive=false;
+  f.bus.emit('sector:enter',{});
+  assert.equal(f.ticket().length,0,'the emit itself spawns nothing while the cook owns materialization');
+  assert.equal(f.state.render.deferredEnterMaterializers.length,1);
+  drainDeferredEnterMaterializers(f.state);
+  assert.equal(f.ticket().length,1,'the drain runs the provider and the slip lands');
+});
+test('re-init retires the old mount — one provider, one listener set, one slip',()=>{
+  const f=fixture();
+  assert.equal(f.helpers.sectorCookProviders.length,1);
+  f.system.init({state:f.state,bus:f.bus,helpers:f.helpers});
+  assert.equal(f.helpers.sectorCookProviders.length,1,'second init must not stack a provider');
+  f.bus.emit('sector:enter',{});
+  assert.equal(f.ticket().length,1);
+  f.bus.emit('pickup:collected',{pickupId:f.ticket()[0].id,collectorId:7,kind:WEX_TICKET.kind,amount:1});
+  assert.equal(f.events.filter(x=>x[0]==='wexTicket:found').length,1,'old listeners were unsubscribed');
+});
+test('destroy purges a queued deferred-enter entry before unmounting',()=>{
+  const f=fixture();
+  f.state.render.deferredEnterMaterializers=[
+    {epoch:null,provider:f.system._cookProvider,clock:null,tick:null,iterator:null,done:false}];
+  f.system.destroy();
+  assert.equal(f.state.render.deferredEnterMaterializers.length,0);
+  assert.equal(f.system._cookProvider,null);
 });
 test('a found flag means the rack stays empty across sector leave and save restore',()=>{
   const f=fixture();
