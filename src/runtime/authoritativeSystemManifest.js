@@ -49,7 +49,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
-  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'wexTicket', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn',
+  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'wexTicket', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn', 'bouncer',
   // (the eight faction-signature owners above already init at line 41 — the earlier
   // duplicate block here was a merge artifact; init ids are unique)
   'recoveryEncounter', 'factions',
@@ -127,7 +127,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'stationServices',
   'difficultyDirector', 'gateControlDirector',
-  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn', 'recoveryEncounter',
+  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn', 'bouncer', 'recoveryEncounter',
   'factions',
   // §34 rows 513/515/516/526/530: these five tick real per-step work — the sweep-ring
   // sensor model, formation lock, coupler snap, flag-flip/lien dwell, and pylon claims all
@@ -338,6 +338,8 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   'gateThreeWeir',
   // row 542 Slate's hook: the column's proximity read is a seconds-scale census.
   'slateColumn',
+  // row 506 BOUNCER: the door robot's drift-home pass is a seconds-scale census.
+  'bouncer',
 ]);
 
 /**

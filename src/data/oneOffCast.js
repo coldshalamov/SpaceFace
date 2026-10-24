@@ -307,8 +307,8 @@ export const ONE_OFF_CAST = Object.freeze([
     id: 'bouncer', name: 'BOUNCER / DR-0 — the bazaar\'s door robot',
     sectorIds: ['sector_sker_haven'],
     books: { from: 2, to: 7 },
-    chart: { kind: 'planned', ref: null },
-    implemented: false,
+    chart: { kind: 'contact', ref: 'bouncer', presentVia: 'bouncer' },
+    implemented: true,
   }),
   entry({
     id: 'receipt', name: 'RECEIPT / PR-8 — the printer filing every kill',
