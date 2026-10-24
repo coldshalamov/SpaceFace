@@ -1406,11 +1406,11 @@
       "wf": "WF-11",
       "mode": "opportunity",
       "verdict": "implemented",
-      "reason": "Hyperion's caved shaft draws the cold drill at the quest pin instead of a dead hulk.",
+      "reason": "Hyperion's caved shaft is a hollow bore with a fallen mast at the quest pin.",
       "fingerprint": "verb=show,subject=caved-shaft,sector=hyperion,domain=wf-11",
       "references": [],
       "integration": "live",
-      "commit": "818c347637",
+      "commit": "eeeaef5893",
       "verification": "focused_green"
     },
     {
@@ -1432,11 +1432,11 @@
       "wf": "WF-11",
       "mode": "opportunity",
       "verdict": "implemented",
-      "reason": "The Orcus plinth draws a memorial array facing the signal rock.",
+      "reason": "The Orcus plinth is a lamped pillar facing the signal.",
       "fingerprint": "verb=show,subject=shadow-plinth,sector=orcus,domain=wf-11",
       "references": [],
       "integration": "live",
-      "commit": "7f0b3760ee",
+      "commit": "eeeaef5893",
       "verification": "focused_green"
     },
     {
@@ -1458,11 +1458,11 @@
       "wf": "WF-11",
       "mode": "opportunity",
       "verdict": "implemented",
-      "reason": "The Triton watcher draws an observation blister apart from the field lab.",
+      "reason": "The Triton watcher is an aperture monolith facing the wake.",
       "fingerprint": "verb=show,subject=watcher,sector=triton,domain=wf-11",
       "references": [],
       "integration": "live",
-      "commit": "e181a55af2",
+      "commit": "eeeaef5893",
       "verification": "focused_green"
     },
     {
@@ -1484,11 +1484,11 @@
       "wf": "WF-11",
       "mode": "opportunity",
       "verdict": "implemented",
-      "reason": "Io's wreck cathedral draws the cathedral hull instead of a dead hulk.",
+      "reason": "Io's approach wreck is a broken nave that only Io uses.",
       "fingerprint": "verb=show,subject=wreck-cathedral,sector=io,domain=wf-11",
       "references": [],
       "integration": "live",
-      "commit": "3ed5e8930a",
+      "commit": "eeeaef5893",
       "verification": "focused_green"
     },
     {
@@ -1497,11 +1497,11 @@
       "wf": "WF-11",
       "mode": "opportunity",
       "verdict": "implemented",
-      "reason": "Nyx's arrival station draws the claim-outpost fence instead of the shared black-market kit.",
+      "reason": "Nyx's arrival station is a welded false gate, not a shared claim fence.",
       "fingerprint": "verb=show,subject=fence,sector=nyx,domain=wf-11",
       "references": [],
       "integration": "live",
-      "commit": "3ee8732a04",
+      "commit": "eeeaef5893",
       "verification": "focused_green"
     },
     {
