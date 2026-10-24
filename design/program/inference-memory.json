@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-machine-containment",
-      "date": "2026-10-22",
-      "wf": "WF-03",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "The Veil containment core stays alive; only the seal ring around it scatters fauna.",
-      "fingerprint": "verb=spare,subject=containment-core,sector=veil,domain=wf-03",
-      "references": [],
-      "integration": "live",
-      "commit": "b0d0977f7839ec309d52249a77bac1270925020f",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-machine-fault-name",
       "date": "2026-10-22",
       "wf": "WF-12",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "818c347637",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sc-04",
+      "date": "2026-10-24",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Kepler's flight deck draws an upturned liner bow beside the bazaar instead of a dead hulk.",
+      "fingerprint": "verb=show,subject=flight-deck,sector=kepler,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "7618311831",
       "verification": "focused_green"
     }
   ],
