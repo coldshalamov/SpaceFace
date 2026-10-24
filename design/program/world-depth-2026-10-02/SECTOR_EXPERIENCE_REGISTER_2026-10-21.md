@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Sori saved return qualified: 2026-10-24 09:57 UTC
+
+Sori's existing return now connects a genuine Ceres origin and four-scan calibration to eight He3 mined from an original compact gas row, a real Triton sale for 1,087 credits, and a completed delivery receipt. Actual Save JSON/load preserves career state. Exact PR561 contacts recognize “Triton accepted the envelope”; comparison/work/leave produce no extra observed trade, mining, settlement or player/mission/career mutation, and no extra delivery order.
+
+The earlier live-only gas census missed compact asteroid-field rows; real beam acquisition promotes those rows correctly. No production defect or source patch resulted. These are selected-public-owner plus archived-transitive tests with controlled relocations/economy execution, not physical flight/docking/browser or whole-sector acceptance. PR576's authored-profession gate separately passes hosted 15/15 while broad CI remains red. All twelve goals and ordinary-route/visual acceptance remain open; see the current checkpoint for CI and pending approval limits.
+
 ## Contact professions and qualification handoff: 2026-10-24 09:38 UTC
 
 Station contacts in [PR576](https://github.com/coldshalamov/SpaceFace/pull/576) now show authored professions for eleven canonical roles and SettlementCourier instead of exposing inappropriate runtime role labels. Recognition suffixes, choices, portraits and runtime behavior remain unchanged. Independent 15/15 checks establish source HTML-string behavior only; see the [report](https://github.com/coldshalamov/SpaceFace/blob/e8eb8ea9993876d078211ecc45d3c6ea4b6c12e9/design/program/world-experience-2026-10-24/AUTHORED_CONTACT_PROFESSIONS.md) for limits. Browser layout and whole-game acceptance remain open.

@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Sori saved return qualified: 2026-10-24 09:57 UTC
+
+All twelve goals remain OPEN. PR576's hosted profession gate passes 15/15, but broad CI is terminal failure; the current checkpoint records exact-parent comparison limits and the unpaired mobile result.
+
+The already-implemented Sori return is now qualified through authentic origin, original gas-row mining, real Triton sale and actual Save JSON/load, with the expected acknowledgment and no extra observed reward/mission mutation. The former missing-cloud assumption was a fixture lookup error, not a production defect. This closes that bounded investigation only: mixed transitive dependencies and controlled owner relocation do not prove physical flight, docking, browser Continue or full-game acceptance. No source changes or new scene were needed. Both approval holds, Archive's delivery block and schedules remain unchanged.
+
 ## Contact professions and qualification handoff: 2026-10-24 09:38 UTC
 
 All twelve goals remain OPEN. [PR576](https://github.com/coldshalamov/SpaceFace/pull/576) publishes authored profession labels at `e8eb8ea9`, with independent 15/15 source-function checks, not browser/layout acceptance. Its [report](https://github.com/coldshalamov/SpaceFace/blob/e8eb8ea9993876d078211ecc45d3c6ea4b6c12e9/design/program/world-experience-2026-10-24/AUTHORED_CONTACT_PROFESSIONS.md) documents the bounded change; no other open PR's content was absorbed.
