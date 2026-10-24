@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 24 October 2026, 17:40 UTC.
+Updated: 24 October 2026, 18:12 UTC.
 
 All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
 
@@ -26,7 +26,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; PR590c435d10d dependent successor passes hosted Tail27/Camp40; broader CI active/failing. Publication is not integration/acceptance.
+- State: OPEN; PR59088cf8209 publishes visual parity; new Camp41/Tail27 gates pending. Prior c435 passed67 cases but full CI failed. Publication is not integration/acceptance.
 - Owner: publisher, root and exact feature owners.
 - Evidence: [PR590](https://github.com/coldshalamov/SpaceFace/pull/590); current checkpoint separates exact heads, passes and failures.
 - Next: follow terminal CI and attributable failures; preserve PR583 dependency review.
@@ -42,10 +42,10 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-VISUALS
 - Outcome: new inspected actual-work images and live game-camera acceptance.
-- State: OPEN; exported model previews and measured custody chart are reviewed; neither proves live visuals.
+- State: OPEN; Press Camp source-model reconstruction is reviewed/published; textures, live camera and performance remain unverified.
 - Owner: root visual review and exact feature owners.
 - Evidence: [Pitborn preview/PR582](https://github.com/coldshalamov/SpaceFace/pull/582), [measured chart](../world-experience-2026-10-24/hosted-custody-evidence/README.md).
-- Next: show meaningful new work; inspect actual camera readability/lighting when permitted.
+- Next: show meaningful new work; qualify new Camp binding workload and actual camera readability/lighting when permitted.
 - Awaiting user: eventual visual acceptance; live-browser hold unchanged.
 
 ## SF-ASSETBANK
@@ -58,7 +58,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-ASSET-QUALITY
 - Outcome: cohesive detail/materials with distinctive industrial, civilian, military, salvaged and alien character.
-- State: OPEN; Ceres delivery and Pitborn capsule selection are not full visual acceptance.
+- State: OPEN; Camp visual/native parity is published; authored Tradehub workload and final materials remain unqualified.
 - Owner: root and asset reviewers; no duplicate writers.
 - Evidence: PR480 history in archive; Pitborn actual exported-material comparison.
 - Next: inspect weak exported pieces/placements; retain physical/visual parity and stage distinctions.
@@ -77,7 +77,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 - State: OPEN; Seed24 later-game Sker normal planner admits full-catalog camp at59.833s with native cast/voice. Configured admission is not human travel or sector acceptance.
 - Owner: root sector register and exact gameplay/story owners.
 - Evidence: sector experience register and build map; Camp/Tail proof boundaries.
-- Next: inspect actual visual selectors/placement, then connect arrival teaching to ordinary choices and Save consequences.
+- Next: qualify published Camp visual binding and workload, then ordinary choices and Save consequences.
 - Awaiting user: none for continued authorized implementation; eventual sector acceptance.
 
 ## SF-PLAY-WORLD
