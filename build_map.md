@@ -590,7 +590,7 @@ finished plan — the board is finished only when every number in this table is 
 |---|---|
 | Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **8 open defects** — D188, D191, D199, D225, D198, D130, D227, D231 — plus standing import guard D175 and watch-only D229 (D226 landed c8eec27a272 2026-10-19; live count: `program-dispatch --status`) |
 | Landed review (`design/program/LANDED_REVIEW.md`) | **4 open** — R-cc46e17, R-48e411f, R-183df8f, R-0df2ec6. A second look at a pushed build-map or dispatched unit. The author pushes first and files the row; a later agent deletes it by reviewing. `--status` is the live count. Eight or more jump ahead of every other surface |
-| Numbered board rows (§A–§N tables below) | **95 open, plus 69 added 2026-10-21** (§33 rows 482–497, the swarm-physics core and fight craft; §34 rows 498–550, THE WEIGHT expansion; seams `rock-core`, `fight-read`, `glass-tiers`, `line-progression`, `bloom`, `world-pressure`, `faction-art`, `faction-law-trade`, `faction-strange`, `campaign`, `places-people`, `cadence`, `audit-50`) — §N rows 390–481 (the 2026-10-19 A-list audit, vision and report card: 77 BUILD, 2 ART, 5 FIX, 8 SEED; §31, §32); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
+| Numbered board rows (§A–§P tables below) | **95 open, plus 69 added 2026-10-21, plus 16 unfinished added 2026-10-24 — §1O 551–558 attention ledger rows, §1P 559–567 experience journey rows, claimed per-row via program law (ATTENTION_PROGRAM.md, EXPERIENCE_PROGRAM.md)** (§33 rows 482–497, the swarm-physics core and fight craft; §34 rows 498–550, THE WEIGHT expansion; seams `rock-core`, `fight-read`, `glass-tiers`, `line-progression`, `bloom`, `world-pressure`, `faction-art`, `faction-law-trade`, `faction-strange`, `campaign`, `places-people`, `cadence`, `audit-50`) — §N rows 390–481 (the 2026-10-19 A-list audit, vision and report card: 77 BUILD, 2 ART, 5 FIX, 8 SEED; §31, §32); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
 | Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 383–384 and the four INFERENCE lines still OPEN (WORLD-48, FIGHT-14, FIGHT-15 and the model-view lines SFQ-I070 and SFQ-I071) |
 | Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
 | Inference catalog (`INFERENCE_IDEAS.md`) | **55 OPEN lines** — section A-LIST (AL-HF-01…15, AL-LG-01…16, AL-PR-01…16), each already owned by a §N row and taken inside it, plus section PULSE (PULSE-01…08, volume fill for the living world, §31.6) and section REPORT CARD (RC-01…50, the audited small parts of rows 456–481, §32.7) — 105 OPEN in all; every earlier catalog line SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
@@ -658,6 +658,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | racing | devin-fleet-oct20 | `racing*` systems/ui/render, `ai/racingDriver.js`, `missions/racing*`, `raceLevels.js`, `raceCourses.js`, `world/racingCorridor.js`, `raceBoard.js` (§31 THE FIGHT) | 394, 395, 472 |
 | world-answers-2 | done (devin-25-oct22) | ending application in `story.js`, `postEndingReplay.js`, `sectorSim.js` readers, faction territory-flip embodiment, `traffic.js` pickets/identity, `npcJobsRuntime.js`, `stationContacts.js`, standing-order offers (§31 THE WORLD) | - |
 | run-memory | devin-fleet-oct20 | `worldOneOffs.js`, `scanReveal.js`, `shipCapabilities.js`, `story/campaign47a/embodiedMissions.js`, B7 board hunk of `missions.js`, `story/endings/lifeLedger.js` (§31 THE LONG GAME) | 399, 400 |
+| attention | free — claim per row via §1O/§1P law | `design/program/attention/`, `design/program/experience/`, ledger surfaces | 551, 552, 553, 554, 555, 556, 557, 558, 559, 560, 561, 562, 563, 564, 565, 566, 567 |
 | hull-commit | devin-fleet-oct20 | `data/ships.js`, `systems/ships.js` refit/resale, `data/modules.js`, `techVerbLadder.js`, `shipLedger.js` (§31 THE LONG GAME) | 401, 469 |
 | works | devin-fleet-oct20 | `data/automation.js`, `automation.js`, `alphabet.js`, `claims.js`, `data/sites.js`, `siteProduction.js`, `crafting.js`, automation-panel composer (§31 THE LONG GAME) | 402, 466, 403 |
 | chain-ear | done (devin-25-oct22) | `audio/audioSystem.js` stunt/stinger handlers, `scoreDirector.js`, `themeMatrix.js`, `themeCompose.js`, `bandBeds.js` (§31 THE EAR) | - |
@@ -1209,8 +1210,8 @@ Claim rows by editing the ledger, not this table.
 |---|---|---|---|---|
 | 551 | ATT-SEED | Attention program scaffolding: program law + coverage ledger + dossier phase | PLAN | DONE — this section |
 | 552 | ATT-DOSSIER-A | Four evidence dossiers (first hour, audio/feel, world memory, economy/failure) → `design/program/attention/` | ANALYZE | IN PROGRESS — first-hour landed; three running |
-| 553 | ATT-E01 | Onboarding rail + first hour (minutes 0-60): rail texture, tier-0 life, guided beat, ambient traffic (dossier-first-hour directions 1-3,7) | BUILD | OPEN |
-| 554 | ATT-V01 | Comms/bark density: per-sector bark banks so ambient life registers outside the rail | BUILD | OPEN |
+| 553 | ATT-E01 | Onboarding rail + first hour (minutes 0-60): rail texture, tier-0 life, ambient traffic (directions 1-3 joint with §1P X-01; guided beat joint with §1P X-04; raid beat joint with §1P X-02) | BUILD | OPEN |
+| 554 | ATT-V01 | Comms/bark density: per-sector bark banks so ambient life registers outside the rail (joint with §1P X-06) | BUILD | OPEN |
 | 555 | ATT-T02 | Station life: named regulars, rumors, overheard plots on the most-docked stations | BUILD | OPEN |
 | 556 | ATT-S13 | Wreck/debris fields: named dead, salvage notes, kill-marks across the wreck surfaces | BUILD | OPEN |
 | 557 | ATT-H01/H02 | Hull markings: stencils and wear on starter hulls; kill tallies and owner names on traffic variants | ART | OPEN |
@@ -1227,15 +1228,15 @@ attention rows fill the surfaces).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 559 | X-01 | P2 first-hour life — tier-0 encounter deck, one real fight, loop-closure beat (joint with ledger E-01) | BUILD | OPEN |
-| 560 | X-02 | P1 raid beat teeth — staged hostile that shoots and flees at ≤30% hull | BUILD | OPEN |
+| 559 | X-01 | P2 first-hour life — tier-0 encounter deck, one real fight, loop-closure beat (joint with ledger E-01; direction-1 rail staging is X-02's) | BUILD | OPEN |
+| 560 | X-02 | P1 raid beat teeth — staged hostile that shoots and flees at ≤30% hull (raid beat joint with ledger E-01; direction-1 split — rail staging here, hour-1 outcome is X-01's) | BUILD | OPEN |
 | 561 | X-03 | First purchase staged — a sub-5k module that changes a verb | BUILD | OPEN |
-| 562 | X-04 | Guided gate jump beat — first jump + return, toll math lands | BUILD | OPEN |
+| 562 | X-04 | Guided gate jump beat — first jump + return, toll math lands (joint with ledger E-01) | BUILD | OPEN |
 | 563 | X-05 | Law/consequence persists past the rail — heat, wanted, witnesses in sandbox | BUILD | OPEN |
-| 564 | X-06 | Per-sector bark banks so ambient comms register outside the rail (ledger V-01) | BUILD | OPEN |
+| 564 | X-06 | Per-sector bark banks so ambient comms register outside the rail (joint with ledger V-01) | BUILD | OPEN |
 | 565 | X-07 | Mining payoff surface — seam/overheat skill variance | BUILD | OPEN |
 | 566 | X-08 | Sling income verb — authored thrown-mass kill payoff | BUILD | OPEN |
-| 567 | X-09 | Per-cause death lessons beyond massline-snap | BUILD | OPEN |
+| 567 | X-09 | Per-cause death lessons beyond massline-snap (joint with ledger V-04) | BUILD | OPEN |
 
 ### Landed rows index (consolidated 2026-10-15)
 
