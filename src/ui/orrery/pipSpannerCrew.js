@@ -107,8 +107,15 @@ export function createPipSpannerCrew({ host, doc = host?.ownerDocument } = {}) {
       // Closed/retired screens can reread the result without replaying the old action.
       root.dataset.animate = active && selectedResult && value.outcome === 'accepted' ? 'true' : 'false';
       if (active && selectedResult) preview?.receipt(value, selection);
+      // Only committed repair deltas are evidence. Old receipts and other services keep
+      // their original wording; never infer missing health from the current ship.
+      const repaired = value.kind === 'service' && value.offerId === 'svc_weld'
+        && Number.isFinite(value.restoredHull) && value.restoredHull >= 0
+        && Number.isFinite(value.restoredArmor) && value.restoredArmor >= 0
+        && (value.restoredHull > 0 || value.restoredArmor > 0)
+        ? ` Restored ${value.restoredHull} hull · ${value.restoredArmor} armor.` : '';
       status.textContent = value.outcome === 'accepted'
-        ? `Spanner: ${value.name} ready. ${value.text}${value.charged ? ` ${value.price} run credits spent.` : ' No run credits spent.'}`
+        ? `Spanner: ${value.name} ready. ${value.text}${repaired}${value.charged ? ` ${value.price} run credits spent.` : ' No run credits spent.'}`
         : value.outcome === 'pending' ? `Spanner: preparing ${value.name}…`
           : `Pip: preparation refused. ${value.text}`;
     },
