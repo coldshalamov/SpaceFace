@@ -465,7 +465,7 @@ const REGION_KEPLER = freezeRegion({
         // The station grew around this hull. Keep the two physical carriers distinct, but close
         // enough that arriving at either reveals one market-under-a-dead-carrier composition.
         pos: { x: 40, z: 720 },
-        landmarkGlb: 'place_dead_hulk',
+        landmarkGlb: 'place_aftermath_wreck_liner_bow_authored_down',
         landmark: true,
       },
       {
