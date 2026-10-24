@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { BINDINGS } from '../src/ui/bindings.js';
-import { createBarProbeLifecycle } from './lib/barProbeLifecycle.mjs';
+import { createBarProbeLifecycle, rethrowBarBootFailure } from './lib/barProbeLifecycle.mjs';
 
 const lifecycle = createBarProbeLifecycle();
 lifecycle('fixture-start', { pid: process.pid });
@@ -60,7 +60,8 @@ try {
   // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
   // this is an environment allowance, not a behavioural assertion being loosened. Everything
   // these checks actually assert happens after boot and is untouched.
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: START_TIMEOUT_MS, polling: 250 });
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: START_TIMEOUT_MS, polling: 250 })
+    .catch((error) => rethrowBarBootFailure(error, issues));
   // The main menu is the first surface painted after boot — SwiftShader is still draining the
   // serial shader-compilation backlog here, so this wait gets the boot-adjacent budget, not the
   // warm-UI one (30 s proved short under shard contention).

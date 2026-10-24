@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createBarProbeLifecycle } from '../scripts/lib/barProbeLifecycle.mjs';
+import { createBarProbeLifecycle, rethrowBarBootFailure } from '../scripts/lib/barProbeLifecycle.mjs';
 
 const fixture = await readFile(new URL('../scripts/check-bar-mission-readiness-live.mjs', import.meta.url), 'utf8');
 const events = ['fixture-start', 'assertions-complete', 'browser-close-start', 'browser-close-end',
@@ -66,4 +66,59 @@ test('fixture preserves assertions, success text and cleanup ordering without ne
   assert.equal((fixture.match(/setTimeout/g) || []).length, 1, 'no added timers');
   assert.equal((fixture.match(/await browser.close\(\)/g) || []).length, 1);
   assert.equal((fixture.match(/child.kill\(\)/g) || []).length, 2, 'existing server signals only');
+});
+
+test('boot failure reports existing issues once and rethrows the identical error', () => {
+  const original = new Error('original timeout');
+  let reads = 0;
+  const output = [];
+  const collector = { errorIssues() { reads++; return [
+    { type: 'pageerror', text: 'ReferenceError: missingBootOwner is not defined' },
+    { type: 'error', text: 'HTTP 404 https://user:password@example.test/src/a.js?token=secret#private' },
+    { type: 'error', text: 'Request failed https://example.test/?token=secret: net::ERR_FAILED' },
+    { type: 'pageerror', text: 'private email alice@example.test and secret arbitrary payload' },
+  ]; } };
+  assert.throws(() => rethrowBarBootFailure(original, collector, line => output.push(line)), err => err === original);
+  assert.equal(reads, 1);
+  assert.equal(output.length, 1);
+  const report = JSON.parse(output[0].slice('[bar-probe-boot-issues] '.length));
+  assert.equal(report.stage, 'initial-runtime-ready');
+  assert.equal(report.count, 4);
+  assert.deepEqual(report.issues.map(row => row.text), [
+    'missingBootOwner is not defined', 'HTTP 404 [URL omitted]',
+    'Request failed [URL omitted]: net::ERR_FAILED',
+    '[message omitted: unrecognized technical shape]',
+  ]);
+  assert(!/password|secret|alice|example\.test/.test(output[0]));
+});
+
+test('boot report bounds issue count and text without modifying collector evidence', () => {
+  const original = new Error('timeout');
+  const issues = Array.from({ length: 100 }, () => ({ type: 'error', text: 'x'.repeat(10000) }));
+  let output;
+  assert.throws(() => rethrowBarBootFailure(original, { errorIssues: () => issues }, line => { output = line; }), err => err === original);
+  const report = JSON.parse(output.slice('[bar-probe-boot-issues] '.length));
+  assert.equal(report.issues.length, 8);
+  assert.equal(report.omitted, 92);
+  assert(report.issues.every(row => row.text.length <= 160));
+  assert.equal(issues.length, 100);
+  assert.equal(issues[0].text.length, 10000);
+});
+
+test('collector, field and sink failures cannot mask the original boot rejection', () => {
+  const original = new Error('timeout');
+  const throwing = () => { throw new Error('diagnostic failure'); };
+  const cases = [
+    [{ errorIssues: throwing }, () => {}],
+    [{ errorIssues: () => [{ get text() { return throwing(); } }] }, () => {}],
+    [{ errorIssues: () => [] }, throwing],
+  ];
+  for (const [collector, sink] of cases) {
+    assert.throws(() => rethrowBarBootFailure(original, collector, sink), err => err === original);
+  }
+});
+
+test('only the existing initial runtime wait gains a Node-side failure report', () => {
+  assert.equal((fixture.match(/\.catch\(\(error\) => rethrowBarBootFailure\(error, issues\)\)/g) || []).length, 1);
+  assert(fixture.includes('window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: START_TIMEOUT_MS, polling: 250 })\n    .catch((error) => rethrowBarBootFailure(error, issues));'));
 });

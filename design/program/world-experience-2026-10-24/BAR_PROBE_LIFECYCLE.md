@@ -20,4 +20,16 @@ No browser/game execution was performed for this change. This does not resolve t
 ## Publication
 Three source/test paths plus package alias, this report and the evidence file. The additive check:bar-probe-milestones command runs only test/bar-probe-lifecycle.test.mjs (5 expected TAP tests), appended to the existing check chain without moving prior commands. Existing classification reaches static shard2/3; no unclassified leaf or workflow change. The existing browser Bar command is unchanged and will run through the normal hosted graph.
 
-Sole public parent29b08e55bd3d8354e1d82e960376e057c7cddfdd. This is a separate draft, not part of PR590, and contains no private ancestry, merge or deployment. Hosted validation is pending.
+Sole public parent29b08e55bd3d8354e1d82e960376e057c7cddfdd. This is a separate draft, not part of PR590, and contains no private ancestry, merge or deployment. Historical initial-head validation is recorded below; successor validation remains pending.
+
+
+## Initial hosted evidence and bounded boot-issue extension
+At head 329d83958986f7499c9b633651545d6427913f8e, run [40119624351](https://github.com/coldshalamov/SpaceFace/actions/runs/40119624351) passed all five Node-only tests, but the full workflow failed. Actual synthetic checkout 9542e603aef5aa5b0247b34f7132e61dc110c715 had public master 29b08e55bd3d8354e1d82e960376e057c7cddfdd and that head as parents, with the same tree as the head.
+
+The Bar command exited 1 after 92903 ms, without a runner timeout. Its existing initial 90000 ms page.waitForFunction rejected before assertions. Browser-close start/end markers were both printed, about 87.5 ms apart; this run does not demonstrate a browser-close hang. No server exit/close marker was present before process failure. These observations do not settle the older untimestamped runs.
+
+The successor adds one bounded Node-side report on rejection of that same initial wait. It reads only already-collected browser issues, emits at most eight allowlisted technical summaries, omits URLs/arbitrary console text, and rethrows the identical original error. Collector, formatting or sink failure cannot replace that rejection. It adds no browser evaluation, wait, timer, signal, timeout extension or success override. The seven lifecycle milestones remain unchanged.
+
+Exact successor helper/test/fixture strings passed nine Node-only tests; error-identity and bounded-output negative controls fail as expected. Three syntax checks passed. Negative-control excerpts are labeled as summaries, not complete raw output, in [the sanitized extension proof](BAR_PROBE_BOOT_ISSUES_PROOF.json). No local browser execution was performed, and this is observability rather than a boot or gameplay fix.
+
+The existing named alias reaches all nine tests on static shard 2/3 without changing package commands, prior order, shared runner or workflows. Publication uses a public merge child of the initial diagnostic head and current master 8d2373447b187b4f476c7fba0268910af98b2106, preserving newer weapon-level and VFX-lab work. The historical initial proof is retained. Hosted successor results must be evaluated separately; no full-CI green claim is made.
