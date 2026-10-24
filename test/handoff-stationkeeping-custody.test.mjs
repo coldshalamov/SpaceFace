@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import encounter, { runtime } from '../src/data/encounters/357-the-handoff.js';
 import { spawnJettisonedCargoPod } from '../src/systems/lootShards.js';
+import { authoredPayloadFileForEntity, authoredPayloadSlotForEntity } from '../src/render/partsLibrary.js';
 
 function harness() {
   const state = { mode: 'flight', input: {}, simTime: 0, entities: new Map(), entityList: [] };
@@ -140,4 +141,15 @@ test('actual autonomous buyer completion takes priority at the deadline', () => 
   const h = harness(); h.live.deadlineAt = 6; h.tick(0);
   for (const p of h.pods) p.pos = { ...h.buyer.pos };
   h.tick(6); assert.equal(h.live.outcome, 'deal_done'); assert.equal(h.live.data.delivered, 4); noBond(h);
+});
+
+test('pending warm declares the actual handoff pod render body and slot', () => {
+  const h = harness();
+  assert.equal(h.pods.length, 4);
+  for (const pod of h.pods) {
+    const file = authoredPayloadFileForEntity(pod);
+    assert.equal(file, 'places/place_cargo_pod_standard.glb');
+    assert.equal(authoredPayloadSlotForEntity(pod), 'place');
+    assert.ok(encounter.warmAssets.includes(file), `missing pending decode for ${file}`);
+  }
 });

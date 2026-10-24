@@ -11,8 +11,8 @@ The existing four physical pods and their finite cargo remain authoritative. Del
 ## Verification
 
 - Frozen source and regression test reviewed independently and inspected before publication.
-- Focused consumer overlay: 31/31 tests passed (19 new stationkeeping cases, 7 original THE HANDOFF cases, 5 NXB-040 commitment cases).
-- Independent reviewer: the same 31/31 passed, plus five additional boundary probes passed without modifying the candidate.
+- Focused consumer overlay: 32/32 tests passed (20 new stationkeeping and asset-selection cases, 7 original THE HANDOFF cases, 5 NXB-040 commitment cases).
+- Independent reviewer: the revised 32/32 passed. Five earlier additional boundary probes passed against the unchanged stationkeeping logic.
 - The focused overlay was checked against public master `3095a835eb3dbda178d359bbb0541e3ee6124f4c`, including its exact doctrine source (blob `d4333d2b8065b0a23ed664eee3508efe50c6a312`) and relevant contracts. Current public director cadence, event dispatch, and receipt contracts were inspected.
 - Negative control: the new fly-through regression fails against original public encounter blob `a8e6ebd04606ca26c314bb8b013e575c44040587`, demonstrating the prior accidental acceptance.
 - Package wiring adds `check:handoff-stationkeeping-custody` and invokes it once at the end of existing `check`, retaining all prior ordering and CRLF bytes. Removing the two additions exactly recovers the original package file.
@@ -24,7 +24,7 @@ node --test test/handoff-stationkeeping-custody.test.mjs test/cr-hollow-1-the-ha
 npm run check:handoff-stationkeeping-custody
 ```
 
-The 31-test result is a focused, qualified consumer-overlay result, not a full clean current-tree run. The new npm alias is wiring for the same focused test; a separate alias execution was NOT RUN for this publication.
+The 32-test result is a focused, qualified consumer-overlay result, not a full clean current-tree run. The new npm alias is wiring for the same focused test; a separate alias execution was NOT RUN for this publication.
 
 ## Limits and remaining acceptance
 
@@ -34,3 +34,11 @@ The 31-test result is a focused, qualified consumer-overlay result, not a full c
 - Broad local `check` / `check:ci`: NOT RUN.
 
 These results do not establish release readiness, live visual quality, or whole-game acceptance. Remote CI is tracked for the exact published head separately in the pull request. This is a narrow draft increment, with no merge or deployment.
+
+## Cargo-pod prewarm correction
+
+The encounter now declares `places/place_cargo_pod_standard.glb`, the actual rigged place asset selected by its existing jettisoned-cargo producer, instead of the unrelated capsule model. The renderer warms literal declared paths; a capsule declaration does not warm the standard pod. A new regression constructs the real producer's pod and verifies the model selector's file and place-slot contract against the encounter declaration. Custody, stationkeeping, cargo amounts, actor identities, and rewards are unchanged by this correction.
+
+The revised focused consumer overlay passes 32/32 (20 focused cases plus 7 original THE HANDOFF and 5 NXB-040 cases), independently repeated with exact public doctrine and model-selector sources over the qualified consumer dependencies. The additional original five boundary probes apply to the unchanged stationkeeping logic. This is source/contract evidence, not a measured hitch reduction, browser rendering result, or full native integration pass.
+
+Initial published head `12ec3648a09a019a54a01104bcf8f83c0614967c` completed remote CI with failure: eight failed jobs with baseline-matching failure sections, a cancelled browser shard, and a failed aggregate gate. The static-shard-one matrix step was skipped after an earlier visual-continuity failure, so the new focused command was not executed remotely in that run. Exact-head remote CI remains separate from the focused local evidence above.
