@@ -185,6 +185,41 @@ export const SWARM_DRAFT_OFFERS = Object.freeze([
     kind: 'number', shape: null,
     blurb: 'More thrust under you. The whole fight gets faster.',
   },
+
+  // SEED-SW-17 … 23 — the armory's authored weapon verbs. Each card is a live gun in
+  // src/data/weapons.js whose verb the room can feel, gated behind wave debuts like the
+  // emergent set above them. (SW-17 arc caster shipped separately as `wpn_arc_caster`
+  // via the emergent-primitive route — no duplicate offer here.)
+  {
+    id: 'disc_launcher', defId: 'wpn_disc_launcher_m', verb: 'Carom',
+    kind: 'verb', shape: null, fromWave: 4,
+    blurb: 'A sawblade that caroms hull to hull until its edge is spent.',
+  },
+  {
+    id: 'micro_barrage', defId: 'wpn_micro_barrage_m', verb: 'Flight',
+    kind: 'verb', shape: null, fromWave: 5,
+    blurb: 'One pull releases a fan of small missiles; each picks its own hull.',
+  },
+  {
+    id: 'plasma_cone', defId: 'wpn_plasma_cone_s', verb: 'Cone',
+    kind: 'verb', shape: null, fromWave: 3,
+    blurb: 'A fan of plasma bolts for the fights that get close.',
+  },
+  {
+    id: 'singularity_mortar', defId: 'wpn_singularity_mortar_m', verb: 'Knot',
+    kind: 'verb', shape: null, fromWave: 6,
+    blurb: 'A lobbed shell drags the pack into a knot, then pops.',
+  },
+  {
+    id: 'debris_orbit', defId: 'wpn_debris_orbit_s', verb: 'Ring',
+    kind: 'verb', shape: null, fromWave: 5,
+    blurb: 'Loose rocks lash to your hull and circle it as a shield.',
+  },
+  {
+    id: 'glaive', defId: 'wpn_glaive_s', verb: 'Return',
+    kind: 'verb', shape: null, fromWave: 4,
+    blurb: 'The shot flies out and carves back through you — a hit each way.',
+  },
 ]);
 
 /** Every defId this pool can offer, for validators and tests. */

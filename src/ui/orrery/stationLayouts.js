@@ -390,6 +390,22 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
     display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden !important; }
   ${D} .sxb-signs .sx-adboard__text { display:inline !important; margin:0 0 0 8px !important; }
 }
+/* …and at 1101–1280 the crown column was the strip's 326px cap, so the five dials wrapped 2·2·1 into a
+   ~330px tower: CREDIT LINE OPEN ran off the right edge and, at 540 tall, LEDGER's DRAW and the
+   Munitions dial printed over the station wire. The note column takes what the strip leaves and the
+   five dials stand on one row, as they do from 1281 up. */
+@media (min-width:1101px) and (max-width:1280px) and (min-height:461px) and (max-height:800px) {
+  ${D} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 1fr) max-content !important; }
+  ${D} .sxb-berth .sxb-crown { width:auto !important; justify-self:end !important; left:0 !important; right:auto !important; }
+  ${D} .sxb-crown .sxb-vitals { max-width:none !important; flex-wrap:nowrap !important; gap:6px !important; justify-content:flex-end !important; }
+}
+/* …and its foot at 1101–1200 wide (ui-polish-124): the rail's 64vw cap (~705px at 1101) is narrower than the
+   seven words at .16em tracking with 16px gaps, so LEDGER ran into COMMS. A little less tracking and gap
+   puts the whole rail inside its cap with clear air before COMMS. */
+@media (min-width:1101px) and (max-width:1200px) {
+  ${D} .sxb-ops .sx-dock__group--nav { gap:0 14px !important; }
+  ${D} .sxb-ops .sx-tile__label { letter-spacing:.12em !important; }
+}
 /* …and its foot: the seven destination words (~715px at full tracking) were capped at 64vw, so at
    651–800 wide only MARKET and SHIPWORKS showed and INDUSTRY ran under COMMS. Now the words own the
    row's left side, closed up at the 12px floor, and the right side stacks UNDOCK over COMMS · HELP,

@@ -68,6 +68,13 @@ const rows = [
   ['mod_fire_lance_s_mk2', 'fire-lance-heavy', 'Boost with a longer, hotter nose lance. Keep contact while the boost meter is paying for it.'],
   ['mod_grip_bumper_s', 'grip', 'Boost to catch a light hostile on the nose. Carry it into the pile, then release boost to let it go.'],
   ['mod_grip_bumper_s_mk2', 'grip-heavy', 'Boost with a wider grip to catch and carry a hostile hull. Release boost to release the catch.'],
+  ['wpn_disc_launcher_m', 'carom', 'A sawblade that caroms off one hull into the next until the edge is spent.'],
+  ['wpn_micro_barrage_m', 'swarm', 'One trigger — a fan of small missiles that pick their own hulls.'],
+  ['wpn_plasma_cone_s', 'cone', 'A fan of plasma bolts that dies inside knife range.'],
+  ['wpn_singularity_mortar_m', 'knot', 'A lobbed shell that drags the pack into a knot, then pops.'],
+  ['wpn_debris_orbit_s', 'ring', 'Loose rocks near the hull get lashed into a circling shield.'],
+  ['wpn_glaive_s', 'return', 'Flies out, carves back through you — a hit on each pass.'],
+  ['wpn_arc_caster', 'arccast', 'A hit jumps to two more hulls in the pack. Crowded enemies pay for standing together.'],
 ];
 
 export const ARSENAL_IDENTITIES = Object.freeze(Object.fromEntries(rows.map(([id, glyph, sentence]) =>

@@ -1,7 +1,7 @@
 import { addEnvironmentHeat } from './environmentMaterials.js';
 import { CRYO_QUENCH, environmentMaterialOf, stampEnvironmentMaterial } from '../data/environmentMaterials.js';
 import { steerAfterBounce } from '../combat/surfaceReflection.js';
-import { applyReflectedVelocity } from '../core/surfaceContact.js';
+import { applyReflectedVelocity, reflectVelocity } from '../core/surfaceContact.js';
 // Weapons system (ARCHITECTURE §2.3 step 4 — runs after ai/flight, before physics.integrate).
 // Per tick: cool down + dissipate heat on every weapon instance, steer in-flight homing
 // projectiles, build/decay missile locks, then fire — for the player (state.input.fire / group 1)
@@ -66,12 +66,14 @@ import {
 } from '../data/combatDefs.js';
 import { causalKindsFromSpec, collectAttackModifiers } from './adventureMigration.js';
 import { compactLineageRecord, createLineage } from '../combat/attackLineage.js';
-import { emitVolley } from '../combat/attackPropagation.js';
+import { emitVolley, tryBounce } from '../combat/attackPropagation.js';
 import { resolvePayload } from '../combat/attackPayload.js';
 import { handlePayloadSectorTransition } from '../combat/industrialBeam.js';
+import { getCombatKernel } from '../combat/kernel.js';
 import {
   armAttackContinue,
   collectAttackCandidates,
+  requestAttackContinue,
   resolveLiveAttackHit,
 } from '../combat/attackHit.js';
 import {
@@ -92,11 +94,31 @@ import { observeProjectileEmission, observeProjectileRedirect, prepareProjectile
 import {
   projectileContinuationPlan,
   projectileFlightPlan,
+  refreshFlightAfterBounce,
   reserveProjectileCapacity,
 } from '../combat/projectileFlight.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
+
+// SEED-SW-22 — bodies the Debris Orbit will claim. Loose room matter only; the list stays
+// narrow so the ring can never reach out and pin a hull.
+const DEBRIS_ORBIT_ROCK_TYPES = new Set(['asteroid', 'debris', 'wreck', 'rock', 'cargo_pod']);
+
+/**
+ * SEED-SW-19/20 — a def-declared root volley rides the compiled spec's emitter. The compiler
+ * only raises rootCount through fitted traits; an armory gun whose card PROMISES a fan carries
+ * that promise on its def, and the emit loop spends the same lineage proc budget either way.
+ */
+function armoryVolleySpecView(spec, def) {
+  const volley = def && def.volley;
+  if (!spec || !volley) return spec;
+  const count = Number.isInteger(volley.count) ? volley.count : 0;
+  if (count <= 1) return spec;
+  const emitter = { ...(spec.emitter || {}), rootCount: count };
+  if (Number.isFinite(volley.spreadDeg)) emitter.spreadDeg = volley.spreadDeg;
+  return { ...spec, emitter };
+}
 const NPC_FIRE_PLAYER_RADAR_RANGE = 4000;
 
 // MissileV2 (BP-02, flag `combat.missileV2` — OFF in the golden): a missile burns fuel for a fixed
@@ -583,6 +605,11 @@ export const weapons = {
     this._tickWeapons(dt, state);
     this._steerHoming(dt, state);
     serviceOpticRekindle(this, state);
+    // SEED-SW-21/22/23 — armory behaviors that own a per-tick seam: mortar shells land and
+    // detonate, the debris ring keeps its orbit, and a glaive carves back once.
+    this._tickMortarShots(dt, state);
+    this._tickDebrisOrbit(dt, state);
+    this._tickReturnArc(dt, state);
 
     // 2) fire — player first, then NPC ships.
     const player = this.helpers.getEntity(state.playerId);
@@ -1619,12 +1646,12 @@ export const weapons = {
     let compiled = this._attackSpecCache.get(key);
     if (compiled) {
       this._attackMetrics.cacheHits += 1;
-      return compiled.spec;
+      return armoryVolleySpecView(compiled.spec, def);
     }
     compiled = compileAttackSpec({ weapon: mergeWeaponView(w, def), modifiers });
     this._attackSpecCache.set(key, compiled);
     this._attackMetrics.specsCompiled += 1;
-    return compiled && compiled.spec;
+    return armoryVolleySpecView(compiled && compiled.spec, def);
   },
 
   _emitProjectileVolley(e, w, def, dir, tgt, isMissile, state, spec) {
@@ -1647,6 +1674,21 @@ export const weapons = {
     this._attackMetrics.volleys += 1;
     this._attackMetrics.rootsEmitted += volley.emitted.length;
     this._attackMetrics.rootsSuppressed += volley.suppressed.length;
+    // SEED-SW-19 (swarmSeekers): a missile volley deals its roots across the hostile field —
+    // the locked target first, then the remaining candidates in id order, so each small
+    // missile leaves tracking a distinct hull when the room offers enough of them.
+    let seekTargets = null;
+    if (def && def.swarmSeekers === true && isMissile && volley.emitted.length > 0) {
+      const scratch = this._attackQueryScratch || (this._attackQueryScratch = []);
+      const range = w.range != null ? w.range : def.range || 600;
+      const candidates = collectAttackCandidates(state, e.pos, range, scratch, e.id, e.team)
+        .map((c) => c.id)
+        .sort();
+      seekTargets = [];
+      if (tgt && tgt.id != null) seekTargets.push(tgt.id);
+      for (const id of candidates) if (!seekTargets.includes(id)) seekTargets.push(id);
+      if (!seekTargets.length) seekTargets = null;
+    }
     // Echo (SEED-SW-10): while the run owns the record, a fitted player gun duplicates
     // every fifth emitted projectile — deterministic per gun (`w._echoShots`), identical
     // trajectory, and never a second draw on heat or capacitor. Guns only: a thrown
@@ -1659,6 +1701,9 @@ export const weapons = {
         spec,
         liveRuntime: lineage,
       };
+      if (seekTargets) {
+        spawnOpts.seekTargetId = seekTargets[root.index % seekTargets.length];
+      }
       this._spawnProjectile(e, w, def, dir + root.offsetRad, tgt, isMissile, state, spawnOpts);
       if (echoOwned) {
         w._echoShots = (w._echoShots || 0) + 1;
@@ -1716,6 +1761,16 @@ export const weapons = {
     // Attribution: a packet the chain fed names the legendary that fed it.
     if (feederScale > 1 && data.damagePacket) data.damagePacket.scalingSource = 'swarm_chain_feeder';
     if (opts && opts.attackRuntime) data.attackRuntime = opts.attackRuntime;
+    // SEED-SW-18/21/23 — authored armory behaviors stamped on the round so the hit and
+    // tick seams can find them: hull ricochet (disc), timed pull-then-pop shell (mortar),
+    // and the single return arc (glaive).
+    if (def && def.hullRicochet === true) data.hullRicochet = true;
+    if (def && def.mortarShell && typeof def.mortarShell === 'object') {
+      data.mortar = { ...def.mortarShell };
+    }
+    if (def && def.returnArc && typeof def.returnArc === 'object') {
+      data.returnArc = { ...def.returnArc, phase: 'out' };
+    }
     if (opts && opts.spec) {
       const resolved = resolvePayload(opts.spec, {
         generation: opts.liveRuntime && Number.isInteger(opts.liveRuntime.generation)
@@ -1732,8 +1787,13 @@ export const weapons = {
       }
     }
     if (isMissile) {
-      data.targetId = tgt ? tgt.id : null;
-      data.targetGeneration = tgt ? targetIdentityGeneration(tgt) : null;
+      const seekTarget = opts && opts.seekTargetId != null && state && state.entities
+        && typeof state.entities.get === 'function'
+        ? state.entities.get(opts.seekTargetId) : null;
+      data.targetId = seekTarget ? seekTarget.id : (tgt ? tgt.id : null);
+      data.targetGeneration = seekTarget
+        ? targetIdentityGeneration(seekTarget)
+        : (tgt ? targetIdentityGeneration(tgt) : null);
       data.lockGeneration = e.data && e.data.combat ? (e.data.combat.lockGeneration | 0) : 0;
       data.lockShooterId = e.id;
       data.turnRate = w.turnRate != null ? w.turnRate : def.turnRate || 0;
@@ -1839,6 +1899,32 @@ export const weapons = {
       suppressHitPayload(payload);
     } else if (result.payload && Number.isFinite(result.payload.scale) && result.payload.scale !== 1) {
       scaleHitPayload(payload, result.payload.scale);
+    }
+    // SEED-SW-18 hull ricochet: a surface target's bounce is resolved inside
+    // resolveLiveAttackHit; a ship/drone contact consumes the shot instead. A disc spends the
+    // same authored bounce budget to reflect off the hull it just hit — the contact still
+    // lands its full packet, and the blade flies on through ONE steering event per bounce
+    // (the compiled afterBounceSteer cone, not homing).
+    if (result.consume && target && projectile.data && projectile.data.hullRicochet === true
+      && live.runtime && live.runtime.remaining && live.runtime.remaining.bounces > 0) {
+      const normal = payload.normal || (payload.receipt && payload.receipt.normal) || null;
+      const incoming = payload.projectileVelocity || projectile.vel;
+      const bounced = normal && incoming ? tryBounce(live.runtime) : null;
+      if (bounced && bounced.ok) {
+        const point = payload.pos || projectile.pos;
+        const reflected = reflectVelocity({ x: incoming.x, z: incoming.z }, normal);
+        const hostiles = live.spec && live.spec.trajectory && live.spec.trajectory.afterBounceSteer
+          ? collectAttackCandidates(state, point, steerRange, scratch, projectile.ownerId, projectile.team)
+          : null;
+        applyReflectedVelocity(projectile,
+          steerAfterBounce(reflected, point, live.spec, hostiles, live.runtime.visitedTargets));
+        requestAttackContinue(projectile);
+        const owner = state.entities && projectile.ownerId != null
+          ? state.entities.get(projectile.ownerId) : null;
+        refreshFlightAfterBounce(projectile, owner && owner.pos);
+        result.consume = false;
+        result.bounce = { ok: true, velocity: { x: projectile.vel.x, z: projectile.vel.z }, hull: true };
+      }
     }
     if (result.consume) this._attackLive.delete(projectile.id);
     stampHitCausal(payload, live, result);
@@ -2079,6 +2165,262 @@ export const weapons = {
         sourceId: d.ownerId, targetId: null, flashReduced: false,
       });
       this.bus.emit('audio:cue', { id: 'sfx_vector_mine', position: pos, gain: 0.6 });
+    }
+  },
+
+  // ── SEED-SW-21 Singularity Mortar ─────────────────────────────────────────────────
+  // A mortar round is an ordinary projectile until it lands: reaching its authored range or
+  // dying early both plant the shell where it is. The landing runs a brief timed pull — the
+  // same uniform-acceleration seam the gravity wellhead uses, never a placed wellhead — then
+  // detonates once: one radial shove plus one real damage packet per body, both through the
+  // existing physics/combat seams. The pull never touches the hull that threw it.
+  _tickMortarShots(dt, state) {
+    if (!this._mortarShots) this._mortarShots = new Map();
+    const shots = this._mortarShots;
+    const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+    for (const p of projectiles) {
+      if (!p || p.type !== 'projectile' || !p.data || !p.data.mortar) continue;
+      let rec = shots.get(p.id);
+      // A recycled entity id must not inherit a dead shell's record: the live
+      // projectile carries its own config, anything else is a stale slot.
+      if (rec && rec.cfg !== p.data.mortar) { shots.delete(p.id); rec = null; }
+      if (!rec) {
+        rec = {
+          phase: 'fly', pos: { x: p.pos.x, z: p.pos.z }, pullUntil: 0,
+          ownerId: p.ownerId, weaponId: p.data.weaponId, cfg: p.data.mortar,
+        };
+        shots.set(p.id, rec);
+      }
+      if (p.alive !== false) {
+        rec.pos.x = p.pos.x;
+        rec.pos.z = p.pos.z;
+      }
+    }
+    const now = state.simTime || 0;
+    for (const [id, rec] of shots) {
+      const p = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+      if (rec.phase === 'fly') {
+        // The landing point is the round's authored range: it plants where it is when the
+        // shot has flown its maxDistance, or at its last live position if a body ate it.
+        const dead = !p || p.alive === false;
+        const spawnPos = p && p.data && p.data.spawnPos ? p.data.spawnPos : null;
+        const maxDist = p && p.data && Number.isFinite(p.data.maxDistance) ? p.data.maxDistance : Infinity;
+        const flown = p && spawnPos ? Math.hypot(p.pos.x - spawnPos.x, p.pos.z - spawnPos.z) : 0;
+        if (dead || flown >= maxDist) this._mortarLand(rec, state, now);
+      } else if (rec.phase === 'pull') {
+        this._mortarPullTick(rec, state, dt);
+        if (now >= rec.pullUntil) this._mortarDetonate(rec, state);
+      } else {
+        shots.delete(id);
+      }
+    }
+  },
+
+  _mortarLand(rec, state, now) {
+    rec.phase = 'pull';
+    rec.pullUntil = now + Math.max(0.1, Number(rec.cfg.pullS) || 1);
+    if (this.bus) {
+      this.bus.emit('weapons:mortarLanded', {
+        ownerId: rec.ownerId, weaponId: rec.weaponId,
+        pos: { x: rec.pos.x, z: rec.pos.z },
+        pullS: rec.pullUntil - now, pullRadius: rec.cfg.pullRadius,
+      });
+    }
+  },
+
+  _mortarPullTick(rec, state, dt) {
+    const pull = Math.max(0, Number(rec.cfg.pull) || 0);
+    const radius = Math.max(1, Number(rec.cfg.pullRadius) || 1);
+    if (!(pull > 0) || !(dt > 0)) return;
+    const bodies = queryPhysicalBodies(state, rec.pos, radius, this.helpers, this._wellBodies || (this._wellBodies = []));
+    const step = Math.min(dt, 1 / 30);
+    for (const body of bodies) {
+      if (body.id === rec.ownerId || body.id === state.playerId) continue;
+      const dx = rec.pos.x - body.pos.x, dz = rec.pos.z - body.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 1e-4) continue;
+      const accel = pull * Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
+      deliverPhysicalAcceleration(state, body, { x: dx / dist * accel, z: dz / dist * accel }, step,
+        { actorId: rec.ownerId ?? null, weaponId: rec.weaponId, tag: 'mortar_pull', appliedTick: state.tick });
+    }
+  },
+
+  _mortarDetonate(rec, state) {
+    rec.phase = 'done';
+    const pos = { x: rec.pos.x, z: rec.pos.z };
+    const blastR = Math.max(1, Number(rec.cfg.blastRadius) || 1);
+    const dmg = Number(rec.cfg.blastDmg) || 0;
+    const baseImpulse = Number(rec.cfg.impulse) || 0;
+    const hits = [];
+    schedulePhysicalBlast(state, {
+      center: pos, radius: blastR, helpers: this.helpers,
+      excludeId: rec.ownerId,
+      payload: {
+        kind: 'mortar_shell', sourceId: rec.ownerId, weaponId: rec.weaponId,
+        baseImpulse, damage: dmg, damageType: 'explosive',
+      },
+      onBody: (body) => {
+        const dx = body.pos.x - pos.x, dz = body.pos.z - pos.z;
+        const dist = Math.hypot(dx, dz);
+        const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / blastR);
+        const nx = dist > 1e-4 ? dx / dist : 0;
+        const nz = dist > 1e-4 ? dz / dist : 1;
+        deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
+          { actorId: rec.ownerId ?? null, weaponId: rec.weaponId, tag: 'mortar_blast', appliedTick: state.tick });
+        if (dmg > 0 && this.helpers && typeof this.helpers.routeCombatDamage === 'function') {
+          this.helpers.routeCombatDamage({
+            attackerId: rec.ownerId ?? null,
+            targetId: body.id,
+            packet: scalarHitToDamagePacket({
+              damage: dmg * fall, damageType: 'explosive', pos,
+              source: { kind: 'weapon', weaponId: rec.weaponId },
+            }),
+            origin: { kind: 'weapon', id: rec.weaponId },
+          });
+        }
+        hits.push(body.id);
+      },
+    });
+    if (this.bus) {
+      this.bus.emit('weapons:mortarDetonated', {
+        schemaVersion: 1, tick: state.tick, ownerId: rec.ownerId, weaponId: rec.weaponId,
+        pos, blastRadius: blastR, hits,
+      });
+      this.bus.emit('presentation:vfxCue', {
+        id: 'combat.vectorMine.detonate', lane: 'combat', particles: 30, lights: 1,
+        magnitude: Math.max(0.6, blastR / 150), position: pos, material: 'impulse',
+        sourceId: rec.ownerId, targetId: null, flashReduced: false,
+      });
+      this.bus.emit('audio:cue', { id: 'sfx_vector_mine', position: pos, gain: 0.6 });
+    }
+  },
+
+  // ── SEED-SW-22 Debris Orbit ───────────────────────────────────────────────────────
+  // While the gun is fitted, loose rocks near the ship are latched into a readable ring: the
+  // salvage clamp (the latch constraint the massline owns — source 'tether', target 'tether',
+  // max four per owner) claims real debris bodies, and a tangential nudge sends the constraint
+  // swinging them around the hull. Each ring rock is a body: it absorbs a hostile hit like
+  // any debris and can be thrown like any latched body. A spent slot refills only from the
+  // room's own loose rocks — nothing is conjured, nothing becomes a shield bar.
+  _tickDebrisOrbit(dt, state) {
+    if (!this._orbitRings) this._orbitRings = new Map();
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    const attachments = this._attachmentsService();
+    for (const ship of ships) {
+      if (!ship || ship.type !== 'ship' || ship.alive === false) continue;
+      const def = this._fittedDef(ship, 'wpn_debris_orbit_s');
+      const prev = this._orbitRings.get(ship.id);
+      if (!def || !attachments || typeof attachments.create !== 'function') {
+        if (prev) this._orbitRings.delete(ship.id);
+        continue;
+      }
+      const cfg = def.debrisOrbit || {};
+      const maxRocks = Math.max(1, Number(cfg.maxRocks) || 4);
+      const captureR = Math.max(1, Number(cfg.captureRadius) || 150);
+      const ring = prev || new Map();
+      this._orbitRings.set(ship.id, ring);
+      // A spent slot reads honestly empty: dead rocks and broken latches free their slot,
+      // and only the room's own loose debris can refill it.
+      for (const [rockId, attachmentId] of ring) {
+        const rock = this._entityGetter(rockId);
+        const live = attachments.get
+          ? attachments.get(attachmentId)
+          : (state.combat && state.combat.attachments && state.combat.attachments.byId
+            ? state.combat.attachments.byId[attachmentId] : null);
+        if (!rock || rock.alive === false || !live || live.state !== 'active') ring.delete(rockId);
+      }
+      if (ring.size >= maxRocks) continue;
+      const speed = Number(cfg.rockSpeed) || 0;
+      const list = state.entityList || ships;
+      const claims = [];
+      for (const rock of list) {
+        if (ring.size >= maxRocks) break;
+        if (!rock || rock.alive === false || rock.id === ship.id) continue;
+        if (!DEBRIS_ORBIT_ROCK_TYPES.has(rock.type)) continue;
+        if (ring.has(rock.id)) continue;
+        const dx = rock.pos.x - ship.pos.x, dz = rock.pos.z - ship.pos.z;
+        const dist = Math.hypot(dx, dz);
+        if (!(dist > 0) || dist > captureR) continue;
+        const created = attachments.create({
+          defId: 'attachment_salvage_clamp',
+          ownerId: ship.id,
+          targetId: rock.id,
+          actionInstanceId: 'debris_orbit',
+        });
+        if (!created || created.ok !== true) continue;
+        ring.set(rock.id, created.attachment.id);
+        // One tangential nudge: the clamp then does the orbiting — velocity is handed to the
+        // latched body through the same impulse authority every other weapon uses, once.
+        if (speed > 0) {
+          const tx = -dz / dist, tz = dx / dist;
+          deliverPhysicalImpulse(state, rock,
+            { x: tx * speed * (rock.mass || 1), z: tz * speed * (rock.mass || 1) },
+            { actorId: ship.id, weaponId: 'wpn_debris_orbit_s', tag: 'debris_orbit_claim', appliedTick: state.tick });
+        }
+        claims.push(rock.id);
+      }
+      if (claims.length && this.bus) {
+        this.bus.emit('weapons:debrisOrbitClaimed', { ownerId: ship.id, rocks: claims, ringSize: ring.size });
+      }
+    }
+  },
+
+  _attachmentsService() {
+    const kernel = getCombatKernel(this.ctx);
+    return kernel && kernel.attachments ? kernel.attachments : null;
+  },
+
+  _fittedDef(ship, defId) {
+    const fittings = ship && ship.data
+      ? (Array.isArray(ship.data.fittings) ? ship.data.fittings : null)
+      : null;
+    if (fittings && fittings.includes(defId)) return this._byId.get(defId) || null;
+    const weapons = ship && ship.data && Array.isArray(ship.data.weapons) ? ship.data.weapons : null;
+    if (weapons && weapons.some((w) => w && w.defId === defId)) return this._byId.get(defId) || null;
+    return null;
+  },
+
+  // ── SEED-SW-23 Glaive ─────────────────────────────────────────────────────────────
+  // One redirect per bolt: the outward leg ends at its authored range and the bolt points
+  // back through the thrower's position once. After it crosses that point the arc is spent —
+  // no homing, no second turn — and the bolt expires there: nothing outlives its return.
+  // Pierce on the spec is what lets each pass land on a different body.
+  _tickReturnArc(dt, state) {
+    void dt;
+    const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+    for (const p of projectiles) {
+      if (!p || p.type !== 'projectile' || !p.data || !p.data.returnArc) continue;
+      const arc = p.data.returnArc;
+      if (arc.phase === 'done') continue;
+      if (p.alive === false) { arc.phase = 'done'; continue; }
+      const owner = this._entityGetter(p.ownerId != null ? p.ownerId : p.data.ownerId);
+      if (!owner || owner.alive === false || !owner.pos) { arc.phase = 'done'; continue; }
+      if (arc.phase === 'out') {
+        const spawnPos = p.data.spawnPos;
+        const leg = Number(arc.legRange) || 0;
+        const flown = spawnPos ? Math.hypot(p.pos.x - spawnPos.x, p.pos.z - spawnPos.z) : 0;
+        if (flown >= leg) {
+          const dx = owner.pos.x - p.pos.x, dz = owner.pos.z - p.pos.z;
+          const dist = Math.hypot(dx, dz) || 1;
+          const speed = Math.hypot(p.vel.x, p.vel.z) || 1;
+          p.vel.x = dx / dist * speed;
+          p.vel.z = dz / dist * speed;
+          p.rot = Math.atan2(p.vel.z, p.vel.x);
+          arc.phase = 'return';
+          arc.passX = owner.pos.x;
+          arc.passZ = owner.pos.z;
+          arc.dirX = p.vel.x / speed;
+          arc.dirZ = p.vel.z / speed;
+        }
+      } else if (arc.phase === 'return') {
+        const along = (p.pos.x - arc.passX) * arc.dirX + (p.pos.z - arc.passZ) * arc.dirZ;
+        if (along > (owner.radius || 0) + (p.radius || 0) + 1) {
+          // The arc is spent exactly once it has crossed back through the thrower: the bolt
+          // expires there — no lingering shot outlives its return.
+          arc.phase = 'done';
+          p.alive = false;
+        }
+      }
     }
   },
 

@@ -19,6 +19,9 @@ const CAP = Math.round(KILL_REPLAY_S / KILL_REPLAY_DT);
 export const ADVENTURE_TAPE_S = 30;
 const TAPE_CAP = Math.round(ADVENTURE_TAPE_S * 60);
 const TAPE_MAX_MARKS = 32;
+// Hull hits band-limit to one mark per 1.5 s of tape: under sustained fire the timeline paints a
+// bounded row of red ticks, never a smear, and a grind cannot flood the shared 32-mark budget.
+const TAPE_DAMAGE_MARK_GAP_TICKS = 90;
 export const ADVENTURE_POSE_STRIDE = 6;
 export const ADVENTURE_POSE_ACTORS = 12;
 const POSE_FRAME_CAP = Math.ceil(TAPE_CAP / ADVENTURE_POSE_STRIDE);
@@ -166,6 +169,7 @@ const tape = {
   marks: [],           // { at (absolute tape tick), type, label } — windowed on publish
   marksVersion: 0,     // bumped only when marks change; the published list rebuilds then
   publishedVersion: -1,
+  lastDamageAt: -Infinity, // tape tick of the newest 'damage' mark (band-limit, see above)
 };
 
 function resetAdventureTape() {
@@ -175,6 +179,7 @@ function resetAdventureTape() {
   tape.head = 0;
   tape.marks.length = 0;
   tape.marksVersion += 1;
+  tape.lastDamageAt = -Infinity;
 }
 
 function tapeBoostAt(absoluteTick) {
@@ -183,12 +188,12 @@ function tapeBoostAt(absoluteTick) {
   return tape.boost[absoluteTick % TAPE_CAP];
 }
 
-function entityLabel(entity) {
+function entityLabel(entity, fallback = 'Kill') {
   const data = entity && entity.data || {};
   const value = data.callsign || data.displayName || data.name
     || (data.def && data.def.name) || data.defId || entity && entity.name;
   const text = String(value || '').trim();
-  return text || 'Kill';
+  return text || fallback;
 }
 
 function recordTape(state) {
@@ -228,32 +233,60 @@ function recordEntityPoses(state, player, recording) {
   const candidates = [];
   const consider = (entity) => {
     if (!entity || entity.alive === false || !entity.pos || entity.id == null) return;
-    const distance = (entity.pos.x - player.pos.x) ** 2 + (entity.pos.z - player.pos.z) ** 2;
-    if (entity !== player && distance > 1400 ** 2) return;
+    const actualDistance = (entity.pos.x - player.pos.x) ** 2 + (entity.pos.z - player.pos.z) ** 2;
+    if (entity !== player && actualDistance > 1400 ** 2) return;
+    const data = entity.data || {};
+    const authored = data.worldOneOff || data.storyPropKind
+      || (data.worldSiteId && (data.placeId || data.archetypeGlb));
+    // A field of small rocks must not evict the visited landmark or the pilot.
+    const distance = actualDistance - (entity === player ? 2e12 : authored ? 1e12 : 0);
     const at = candidates.findIndex((row) => row.distance > distance);
     if (at < 0) { if (candidates.length < ADVENTURE_POSE_ACTORS) candidates.push({ entity, distance }); }
     else { candidates.splice(at, 0, { entity, distance }); candidates.length = Math.min(candidates.length, ADVENTURE_POSE_ACTORS); }
   };
   if (state.entityList) for (const entity of state.entityList) consider(entity);
   else state.entities?.forEach(consider);
+  for (const row of state.world?.dressing?.rows || []) consider(row);
   const poses = candidates.map(({ entity }) => ({
     tick: state.tick, id: String(entity.id), generation: entity.occupantGeneration || 0,
     x: Number(entity.pos.x) || 0, z: Number(entity.pos.z) || 0,
     heading: Number(entity.rot) || 0, type: String(entity.type || ''),
-    player: entity === player, team: entity.team || 0, radius: entity.radius || entity.collisionRadius || 0,
+    player: entity === player, team: entity.team || 0,
+    radius: entity.data?.visualRadius || entity.radius || entity.collisionRadius || 0,
     visual: entity.data?.lootTableId || entity.data?.defId || entity.data?.hullDefId || null,
     weaponId: entity.data?.weaponId || null,
     silhouette: entity.data?.silhouette || null, factionId: entity.factionId || entity.data?.factionId || null,
+    visualData: replayVisualData(entity.data),
   }));
   const forces = forceTape.read(tape.total - 1);
-  recording.poseFrames.push({ tick: state.tick, poses, ...forces });
+  const scene = { sectorId: state.world?.currentSectorId, simTime: state.simTime };
+  if (scene.sectorId === 'sector_the_bolus') {
+    scene.bolusFlags = {};
+    for (const [key, value] of Object.entries(state.world?.alienEcology?.sectorFlags || {})) {
+      if (key.startsWith('bolus:') && (Number.isFinite(value) || typeof value === 'boolean')) scene.bolusFlags[key] = value;
+    }
+  }
+  recording.poseFrames.push({ tick: state.tick, poses, scene, ...forces });
   while (recording.poseFrames.length > POSE_FRAME_CAP) recording.poseFrames.shift();
   // The worker bridge mirrors this one small serializable leaf, never the native tape.
   state.replay.latestPoseSample = {
-    tick: state.tick, poses, ...forces, seed: recording.seed, tickRate: 60,
+    tick: state.tick, poses, scene, ...forces, seed: recording.seed, tickRate: 60,
     boost: tape.boost[(tape.head + TAPE_CAP - 1) % TAPE_CAP] === 1,
     events: recording.events.filter((event) => event.tick >= 0).map((event) => ({ ...event })),
   };
+}
+
+const REPLAY_VISUAL_KEYS = ['placeId', 'archetypeGlb', 'landmarkGlb', 'assetId', 'assetRef',
+  'storyPropKind', 'worldSiteId', 'worldOneOff', 'oneOffId', 'landmark', 'poi',
+  'placeScale', 'placeRadius', 'placeTargetRadius', 'visualRadius', 'stationTypeId', 'isGate',
+  'isWormhole', 'kilnback', 'name', 'scanLabel', 'kind', 'homeSectorId'];
+function replayVisualData(data) {
+  const out = {};
+  for (const key of REPLAY_VISUAL_KEYS) {
+    const value = data?.[key];
+    if (typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value)) out[key] = value;
+  }
+  return out;
 }
 
 function rebuildTapeMarks(recording, base) {
@@ -352,6 +385,19 @@ export const killReplay = {
         if (actor != null && actor !== this.state.playerId) return;
         addTapeMark(this.state, 'stunt', String(p.name || p.trickId || 'Stunt'), p.targetId ?? p.actorId ?? this.state.playerId);
       });
+      // SEED-SE-15 — the player's own hull hits paint 'damage' ticks on the same tape. Only a
+      // settled hull strike marks (shield/armor chips stay quiet), band-limited so a grind is a
+      // row of ticks, not a smear. Read-only: the receipt is consumed, never written back.
+      this._offTapeDamage = bus.on('combat:damage', (p) => {
+        if (!this.state || !p || tape.total <= 0) return;
+        const isPlayerHit = p.isPlayer === true
+          || (p.targetId != null && p.targetId === this.state.playerId);
+        if (!isPlayerHit || p.hullHit !== true) return;
+        if (tape.total - tape.lastDamageAt < TAPE_DAMAGE_MARK_GAP_TICKS) return;
+        tape.lastDamageAt = tape.total;
+        const attacker = p.attackerId != null ? this.state.entities?.get(p.attackerId) : null;
+        addTapeMark(this.state, 'damage', entityLabel(attacker, 'Damage'), this.state.playerId);
+      });
     }
   },
 
@@ -369,7 +415,7 @@ export const killReplay = {
     }
   },
   destroy() {
-    for (const key of ['_offTapeNew', '_offTapeKill', '_offTapeTrick']) {
+    for (const key of ['_offTapeNew', '_offTapeKill', '_offTapeTrick', '_offTapeDamage']) {
       this[key]?.();
       this[key] = null;
     }

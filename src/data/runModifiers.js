@@ -22,7 +22,9 @@
  * Pierce Sustain Burn Volume Cadence Sidearm. Swarm additions
  * (src/data/swarmDraft.js): Bank Punch Fork Twin Arc Weight Short Freeze Fan Ram
  * Reel Cool Charges Harden Burst Drive Pull Whip Sweep Snare Spool Chaff Web Trap
- * (Burn, Screen, and Ram overlap the arc pool).
+ * (Burn, Screen, and Ram overlap the arc pool). Authored armory guns
+ * (SEED-SW-18…23): Carom Flight Cone Knot Return — Ring is defensive and carries
+ * no build family on purpose.
  */
 export const RUN_MODIFIER_VERBS = Object.freeze([
   'Throw',
@@ -63,6 +65,13 @@ export const RUN_MODIFIER_VERBS = Object.freeze([
   'Chaff',
   'Web',
   'Trap',
+  // Authored armory guns (SEED-SW-18…23) — live weapon defs whose verbs are their card faces.
+  'Carom',
+  'Flight',
+  'Cone',
+  'Knot',
+  'Ring',
+  'Return',
   // Named-synthesis records (kind: 'evolution') — the build converts parts into an evolved item.
   'Evolve',
 ]);
@@ -159,6 +168,13 @@ const VERB_BUILD_FAMILY = Object.freeze({
   Unsteer: 'chain',
   Mine: 'chain',
   Trap: 'chain',
+  // One authored hit that spreads, caroms, herds, or multiplies.
+  Carom: 'chain',
+  Flight: 'chain',
+  Cone: 'chain',
+  Knot: 'chain',
+  Return: 'chain',
+  // 'Ring' intentionally absent: debris orbit is a shield, not a way of killing.
 });
 
 export const RUN_BUILD_FAMILIES = Object.freeze(['collision', 'orbit', 'chain']);

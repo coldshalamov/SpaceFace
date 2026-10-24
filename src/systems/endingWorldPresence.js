@@ -3,7 +3,7 @@
 import { endingWorldFact } from '../story/endings/worldAfter.js';
 import { makeShipEntitySpec } from './ships.js';
 
-export function materializeEndingWorldPresence(state, helpers, activeIds = []) {
+export function materializeEndingWorldPresence(state, helpers, activeIds = [], onSpawned = null) {
   const row = endingWorldFact(state, state?.world?.currentSectorId);
   if (!row || state?.world?.currentSectorId !== row.sectorId || !helpers?.spawnEntity) return [];
   const bodies = state.entityList || [...(state.entities?.values?.() || [])];
@@ -33,6 +33,9 @@ export function materializeEndingWorldPresence(state, helpers, activeIds = []) {
         sectorId: row.sectorId, homeSectorId: row.sectorId, name: label, displayName: label,
         scanLabel: label, callsign: label, endingApproachWatch: true };
       entity = helpers.spawnEntity(spec);
+      // A fresh mint mid-flight (endgame:chosen) is a watched spawn: the caller stamps the
+      // arrival signature. Deduped bodies re-found above are not re-arrived.
+      if (entity && typeof onSpawned === 'function') onSpawned(entity);
     }
     if (!entity) continue;
     if (!activeIds.includes(entity.id)) activeIds.push(entity.id);

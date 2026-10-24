@@ -1,9 +1,11 @@
 // src/data/barks.js — per-faction radio VOICE corpus + deterministic selector.
+import { topUpBarkSituationCells } from './barkSituationFill.js';
 //
 // "The story is in the paperwork." Each of the 8 code factions speaks in a DISTINCT
 // register so a scan/warn/attack line instantly reads as who is talking, without an
-// IFF tag. This is PURE DATA — no imports, no DOM, no Math.random; the one witness-run
-// seam below stays a pure function of the counter values passed into it.
+// IFF tag. Pure data: no DOM, no Math.random. One data import appends house lines onto
+// the cells below so index 0 of every cell stays the line that already shipped. The
+// witness-run seam stays a pure function of the counter values passed into it.
 //
 // The selector barkFor(factionId, situation, rng) is deterministic: it takes either a
 // seeded rng function (mulberry32-style, returns [0,1)) OR a numeric index. Given the
@@ -890,6 +892,8 @@ export const BARKS = {
     ],
   },
 };
+
+topUpBarkSituationCells(BARKS, BARK_FACTIONS, BARK_SITUATIONS, BARK_EVENT_SITUATIONS);
 
 /**
  * Pick a deterministic index in [0, len) from a seeded rng OR a numeric index.
