@@ -1,5 +1,13 @@
 <!-- LIFETIME: DURABLE -->
 
+## Contact professions and qualification handoff: 2026-10-24 09:38 UTC
+
+Station contacts in [PR576](https://github.com/coldshalamov/SpaceFace/pull/576) now show authored professions for eleven canonical roles and SettlementCourier instead of exposing inappropriate runtime role labels. Recognition suffixes, choices, portraits and runtime behavior remain unchanged. Independent 15/15 checks establish source HTML-string behavior only; see the [report](https://github.com/coldshalamov/SpaceFace/blob/e8eb8ea9993876d078211ecc45d3c6ea4b6c12e9/design/program/world-experience-2026-10-24/AUTHORED_CONTACT_PROFESSIONS.md) for limits. Browser layout and whole-game acceptance remain open.
+
+Tethys PR574 has hosted 19/19 passes but terminal red broad CI. No attributable Tethys regression is established; the current checkpoint records the unmatched confirm-dialog diagnostic and job-limit cancellation.
+
+The next connected experience under qualification is Sori's already-implemented saved return, not a duplicate scene or hook. The real prospector origin, Eno and Sori prerequisites must remain distinct, and the registered mission serializer must be present before judging career persistence. The mixed-dependency import closure succeeds, but the actual origin/return journey is still being qualified. All twelve goals remain OPEN and no new source queue is implied.
+
 ## Tethys finite shipment published: 2026-10-24 08:33 UTC
 
 Tethys checkpoint day now has a published finite-shipment experience in [PR574](https://github.com/coldshalamov/SpaceFace/pull/574), head `9c4c2269`. The existing six authored units remain three exchanged plus three reserved, guarded by original record, row, body and controller identity; eligible jobs can recommission without fresh stock being silently minted. Existing fixed-cache meeting and two-slot physical control are retained. Independent 26/26 checks include actual Save-envelope/RAM-slot and soft/hard conservation; native exchanges occur at 125.10 and 163.10 seconds.

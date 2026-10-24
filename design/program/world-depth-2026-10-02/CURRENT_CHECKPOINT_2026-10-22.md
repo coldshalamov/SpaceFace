@@ -1,5 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 
+## Contact professions and qualification handoff: 2026-10-24 09:38 UTC
+
+[Draft PR576](https://github.com/coldshalamov/SpaceFace/pull/576) is verified at `e8eb8ea9993876d078211ecc45d3c6ea4b6c12e9`, with five paths and sole public parent `0ebaf5d3`. Eleven canonical professions plus SettlementCourier now display their authored, trimmed string labels. Runtime roles, escaping, recognition suffixes, choices and portraits are unchanged. Independent checks pass 15/15 versus the exact base's 1/15. These exercise source-function HTML strings and pinned producer excerpts, not DOM parsing, browser layout or visual acceptance. No Sori PR561 or PR544 content was absorbed. See the [authored-contact report](https://github.com/coldshalamov/SpaceFace/blob/e8eb8ea9993876d078211ecc45d3c6ea4b6c12e9/design/program/world-experience-2026-10-24/AUTHORED_CONTACT_PROFESSIONS.md).
+
+PR576 run 40081484940 remains under its publisher; hosted focused-gate proof was pending the last artifact read. Mobile run 40081484946 failed six startup/probe checks, 116/122 per engine, without a paired parent mobile run. This is not an exact baseline comparison or proof of a gameplay defect.
+
+PR574 `9c4c2269` remains draft/unmerged. Run 40077977394 ended FAILURE at 08:55:50 UTC, while hosted Tethys checks passed 19/19. Other failure sets matched the parent except the newly observed confirm-dialog stationLife.js 404; that file is absent at both parent/head and UI is unchanged. Browser 3 reached its job limit. No attributable Tethys defect was established and no rerun was requested.
+
+The seven extracted-traffic companion checks closed with only the already-fixed stationName omission; actor lookup review found no additional confirmed gameplay defect. Archive's compact JSON still returned 404 on the latest read and its staging ref remained unchanged. No supported streamed/file-reference publication route was found; recovery remains intact and runtime delivery is still blocked.
+
+Next is the existing Sori saved-return qualification, without changing its owned hooks. Its 1,029-module import closure has no missing imports, but mixes selected public owners with older archived dependencies and is not a journey pass. Qualification must use the real prospector-origin sequence and registered mission serializer that preserves careerContracts, not the fallback Save path or old synthetic receipt. The current origin catalog pin is still being verified. All twelve goals remain OPEN. Integration-absorption approval and the browser hold remain separate and pending; routine reminders grant neither, and both schedules are unchanged.
+
 ## Tethys finite shipment published: 2026-10-24 08:33 UTC
 
 [Draft PR574](https://github.com/coldshalamov/SpaceFace/pull/574) is verified at `9c4c22694a3cedf8d1295b6e62fe5644306c8d2b`, with fourteen paths and sole public parent `0ebaf5d3`. The [Tethys finite-shipment report](https://github.com/coldshalamov/SpaceFace/blob/9c4c22694a3cedf8d1295b6e62fe5644306c8d2b/design/program/world-experience-2026-10-24/TETHYS_FINITE_SHIPMENT.md) records the authored six units conserved as three exchange plus three reserve, fresh-only initialization, staged atomic publication and original record/row/body/control guards. Existing two-slot physical meeting control and eligible-job recommission are preserved; actual Save-envelope/RAM-slot and soft/hard conservation checks are included. Independent tests pass 26/26. No other PR, private guard or Quarry work was absorbed.
