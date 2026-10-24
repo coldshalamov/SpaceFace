@@ -182,5 +182,5 @@ test('the voice layer resolves distress without laundering it to scan', () => {
 test('the ordinary-contact corpus contract is untouched', () => {
   assert.equal(BARK_SITUATIONS.length, 8, 'BARK_SITUATIONS is the generated-WAV index — it must not grow');
   assert.deepEqual([...BARK_EVENT_SITUATIONS], ['distress']);
-  assert.equal(countBarkCorpus(), 471, 'Helix appends 32 lines; earlier line indices stay put');
+  assert.equal(countBarkCorpus(), 1344, 'Every core cell is 12 lines; 14 factions x 8 situations');
 });
