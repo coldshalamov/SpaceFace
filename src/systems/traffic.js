@@ -206,7 +206,8 @@ export function stampTrafficWatchSignature(entity, player, {
     ? TRAFFIC_DEPARTURE_CUE
     : (loaded ? TRAFFIC_ARRIVAL_CUE_LOADED : TRAFFIC_ARRIVAL_CUE_EMPTY);
   const data = entity.data || (entity.data = {});
-  const authoredPlace = !!(data.ceresActivityCast || data.authoredActivityCast || data.activityActorSlotId);
+  const authoredPlace = !!(data.ceresActivityCast || data.authoredActivityCast || data.activityActorSlotId
+    || data.endingWorldKey || data.endingApproachWatch);
   let placedAtEdge = false;
   if (watching && !authoredPlace && player && player.pos && entity.pos) {
     const px = Number(player.pos.x) || 0;
@@ -2093,8 +2094,8 @@ export const traffic = {
     }
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
-    this.bus.on('endgame:chosen', () => materializeEndingWorldPresence(this.state, this.helpers, this._active));
-    this.bus.on('save:loaded', () => materializeEndingWorldPresence(this.state, this.helpers, this._active));
+    this.bus.on('endgame:chosen', () => this._materializeEndingWorldPresence());
+    this.bus.on('save:loaded', () => this._materializeEndingWorldPresence());
     // Census arm: ambient traffic materialization lands inside the sector cook
     // deterministically (the handler falls back to world.currentSectorId itself). The cook
     // drives the chunked twin across the census's slice clock — the emit listener drains
@@ -2392,7 +2393,7 @@ export const traffic = {
       this._emittedEpoch = Number.isFinite(p.enterEpoch) ? p.enterEpoch : null;
     }
     const sectorId = sector.id || requestedSectorId;
-    materializeEndingWorldPresence(this.state, this.helpers, this._active);
+    this._materializeEndingWorldPresence();
     this._coldburnRey?.materialize();
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
       this._retireLegacyCeresTraffic();
@@ -3978,13 +3979,16 @@ export const traffic = {
   },
 
   _releaseTrafficWatches(state) {
-    const list = state && state.traffic && state.traffic.freighters;
-    if (!list || !state.entities) return;
+    if (!state || !state.entities) return;
     const now = state.simTime || 0;
-    for (let i = 0; i < list.length; i++) {
-      const rec = list[i];
-      if (!rec || rec.id == null) continue;
-      const ent = state.entities.get(rec.id);
+    // Freighter records cover the ambient roster; _active also holds owned bodies with no
+    // freighter row (ending-cast pickets, service hulls) whose arrival holds must release too.
+    const seen = new Set();
+    const list = state.traffic && state.traffic.freighters;
+    if (list) for (const rec of list) { if (rec && rec.id != null) seen.add(rec.id); }
+    if (this._active) for (const id of this._active) { if (id != null) seen.add(id); }
+    for (const id of seen) {
+      const ent = state.entities.get(id);
       if (ent) releaseExpiredTrafficWatch(ent, now);
     }
   },
@@ -4016,6 +4020,14 @@ export const traffic = {
       seed: (this.state && this.state.meta && this.state.meta.seed) || 1,
       simTime: this.state && this.state.simTime,
     });
+  },
+
+  // The disposition cast mints on endgame:chosen — possibly mid-flight in front of the player.
+  // Fresh mints are traffic-owned hulls, so they take the same watched-spawn signature as any
+  // other spawn site; their endingWorldKey slots exempt them from the pocket-edge slide.
+  _materializeEndingWorldPresence() {
+    return materializeEndingWorldPresence(this.state, this.helpers, this._active,
+      (ent) => this._watchSpawnedTraffic(ent));
   },
 
   /** Drop tracking for freighters already despawned by residency demotion (continuous handoff). */

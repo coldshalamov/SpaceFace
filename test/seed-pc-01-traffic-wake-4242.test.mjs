@@ -117,3 +117,88 @@ test('seed 4242: the traffic owner stamps a watched spawn and a watched exit', (
   assert.equal(exiting.data.ceresCausalCue, 'spine_wake');
   assert.ok(Math.hypot(exiting.pos.x, exiting.pos.z) >= TRAFFIC_WATCH_POCKET_WU - 0.001);
 });
+
+test('seed 4242: a watched ending-cast mint wears the arrival burn and holds its authored slot', () => {
+  const state = {
+    mode: 'flight',
+    simTime: 40,
+    meta: { seed: SEED },
+    playerId: 1,
+    entities: new Map(),
+    entityList: [],
+    story: { endgameChoice: 'A', endgameResolved: true },
+    world: { currentSectorId: 'sector_ashfall_reach' },
+    traffic: { freighters: [] },
+  };
+  // Player sits inside the watch pocket beside the Ash Cache approach, so a naked mint
+  // would pop in view. The authored picket slot must not move.
+  const player = { id: 1, alive: true, pos: { x: 2150, z: -950 }, data: {} };
+  const station = { id: 100, type: 'station', alive: true, pos: { x: 2000, z: -1000 }, data: { stationId: 'station_ashcache' } };
+  state.entities.set(1, player); state.entities.set(100, station);
+  state.entityList.push(player, station);
+  let nextId = 200;
+  const helpers = { spawnEntity(spec) {
+    const entity = { ...spec, id: nextId++, alive: true };
+    state.entities.set(entity.id, entity); state.entityList.push(entity); return entity;
+  } };
+  const sys = Object.create(trafficBase);
+  sys.state = state; sys.helpers = helpers; sys._active = [];
+
+  const bodies = sys._materializeEndingWorldPresence();
+  assert.equal(bodies.length, 2);
+  for (const [index, ent] of bodies.entries()) {
+    const authored = { x: 2000 + 200 + index * 85, z: -1000 + (index % 2 ? 120 : -120) };
+    assert.equal(ent.pos.x, authored.x, 'authored approach slot moved');
+    assert.equal(ent.pos.z, authored.z, 'authored approach slot moved');
+    assert.equal(ent.data.ceresCausalCue, TRAFFIC_ARRIVAL_CUE_EMPTY, 'mint entered with no wake');
+    assert.equal(ent.data.trafficWatchUntil, 40 + TRAFFIC_ARRIVAL_CUE_HOLD_S);
+    assert.ok(ent.data.endingWorldKey);
+  }
+
+  // A second materialize (re-entry / reload dedupe) adopts the same bodies — no re-arrival.
+  const firstHold = bodies[0].data.trafficWatchUntil;
+  state.simTime = 41; // a re-stamp would move the hold; adoption must leave it alone
+  const again = sys._materializeEndingWorldPresence();
+  assert.deepEqual(again.map(e => e.id), bodies.map(e => e.id));
+  assert.equal(bodies[0].data.trafficWatchUntil, firstHold);
+
+  // The owner's sweep reaches _active-only hulls, so the burn lets go after its hold.
+  state.simTime = 40 + TRAFFIC_ARRIVAL_CUE_HOLD_S;
+  sys._releaseTrafficWatches(state);
+  for (const ent of bodies) {
+    assert.equal(ent.data.ceresCausalCue, undefined);
+    assert.equal(ent.data.trafficWatchUntil, undefined);
+  }
+});
+
+test('seed 4242: quiet-route beacons mint under the same rule', () => {
+  const state = {
+    mode: 'flight',
+    simTime: 5,
+    meta: { seed: SEED },
+    playerId: 1,
+    entities: new Map(),
+    entityList: [],
+    story: { endgameChoice: 'B', endgameResolved: true },
+    world: { currentSectorId: 'sector_sker_haven' },
+    traffic: { freighters: [] },
+  };
+  const player = { id: 1, alive: true, pos: { x: 1200, z: 400 }, data: {} };
+  const station = { id: 100, type: 'station', alive: true, pos: { x: 1000, z: 500 }, data: { stationId: 'station_sker' } };
+  state.entities.set(1, player); state.entities.set(100, station);
+  state.entityList.push(player, station);
+  let nextId = 200;
+  const helpers = { spawnEntity(spec) {
+    const entity = { ...spec, id: nextId++, alive: true };
+    state.entities.set(entity.id, entity); state.entityList.push(entity); return entity;
+  } };
+  const sys = Object.create(trafficBase);
+  sys.state = state; sys.helpers = helpers; sys._active = [];
+
+  const bodies = sys._materializeEndingWorldPresence();
+  assert.equal(bodies.filter(e => e.type === 'beacon').length, 2);
+  const beacon = bodies.find(e => e.type === 'beacon');
+  assert.equal(beacon.data.storyPropKind, 'claim_beacon');
+  assert.equal(beacon.data.ceresCausalCue, TRAFFIC_ARRIVAL_CUE_EMPTY);
+  assert.equal(Math.hypot(beacon.pos.x - 1000, beacon.pos.z - 500), Math.hypot(200 + 2 * 85, -120));
+});
