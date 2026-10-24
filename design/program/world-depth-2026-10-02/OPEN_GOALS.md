@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 24 October 2026, 20:29 UTC.
+Updated: 24 October 2026, 21:38 UTC.
 
 All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
 
@@ -13,7 +13,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 - State: OPEN; tested increments are delivered, not whole-game acceptance.
 - Owner: root integration and exact feature owners.
 - Evidence: scope links; current checkpoint and PR590.
-- Next: follow the Press Camp successor, then connected world composition and ordinary-play qualification.
+- Next: finish current P08 restoration delivery, then full Save/traversal and connected-world qualification.
 - Awaiting user: final acceptance when demonstrated; no routine engineering decision.
 
 ## SF-ORCHARD
@@ -26,10 +26,10 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; PR597 P19 passes20 hosted cases; broad CI active/red. Hundred-Hand recovery is archived, not runtime integration. Publication is not integration/acceptance.
+- State: OPEN; PR597 passes20 hosted cases but full CI failed. P08 v5 recovery is archived; runtime publication and full acceptance remain pending. Publication is not integration/acceptance.
 - Owner: publisher, root and exact feature owners.
 - Evidence: [PR590](https://github.com/coldshalamov/SpaceFace/pull/590); current checkpoint separates exact heads, passes and failures.
-- Next: follow P19 hosted/full CI; preserve dependency review and exact publication ownership.
+- Next: finish the reviewed P08 source/asset publication and verify remote delivery; preserve exact ownership.
 - Awaiting user: existing publication holds; no repeated approval cards.
 
 ## SF-RECOVER
@@ -42,7 +42,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-VISUALS
 - Outcome: new inspected actual-work images and live game-camera acceptance.
-- State: OPEN; Nursery measured before/after source preview is reviewed; live camera, materials and performance remain unverified.
+- State: OPEN; Nursery comparison and original P08 source preview are reviewed and delivered; live camera, PBR and performance remain unverified.
 - Owner: root visual review and exact feature owners.
 - Evidence: [Pitborn preview/PR582](https://github.com/coldshalamov/SpaceFace/pull/582), [measured chart](../world-experience-2026-10-24/hosted-custody-evidence/README.md).
 - Next: show meaningful new work; qualify new Camp binding workload and actual camera readability/lighting when permitted.
