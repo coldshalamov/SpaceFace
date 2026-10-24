@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 
-## Final P08 integration preparation: 2026-10-24 23:39 UTC
+## Current narrative guards and P08 preparation: 2026-10-24 23:48 UTC
 
 All twelve goals remain OPEN. [Final reviewed preparation bundle](../world-experience-2026-10-24/P08-normal-integration-prep/final/README.md) preserves source map8327dcea, final package71de22cc, serial runner385df0c7, exact-nine-path ignore rule59d4b394, documentation2a0f35d6 and shared runtime/authoring I/O packetd54edb87. Historical source map1fd6eaff and unsafe parallel package86df5d30 remain evidence only, explicitly not shipping.
 
@@ -10,7 +10,11 @@ Shared I/O review is GREEN:17 runtime+13 authoring tiny-filesystem fixtures pass
 
 Source publication remains incomplete. One Contents API trial on isolated staging branch saved exact497130-byte saveSystem content at commit86933cacb78061d75de0968d55f3beb96abf8381, parent fresh public master786ae6eb04bb70b943b6b8e2bd90883495c62469, blob6bdfaac4cb4be9cff3fbd5b1ef6f3272bb4053c6. New PR593 Market layout from that master must be preserved. Only one further write was attempted: partsLibrary (847433 bytes), started23:31:37 and interrupted after373.5 seconds without a returned result. At23:38:30 its expected blob61fbd9a8a4d731b08ab92a6a3ae1e532f6a920b8 returned404 and the staging ref/current path had not advanced. This is one uncertain outcome, not proof of nonexecution or a hard size limit. Renderer and both modelTruthCensus files were never attempted. Further large Contents writes are stopped. The [exact transport receipt](../world-experience-2026-10-24/P08-normal-integration-prep/final/transport-status.json) preserves the distinction. No denial is inferred, and this handoff does not advance any runtime/staging ref.
 
-PR599 c4e82b04 retains new-head hosted31/31 and RUCKUS89/89 including16 manifest cases; main CI remains pending/red at last observation. PR598 is recovery-only. Next owners: reconcile_mile_runtime_candidate for normal-runtime source integration, prepare_mile_authoring_assets for source restoration, publisher for uncertain write inspection and exact current-master reconciliation. Resolve publication uncertainty without blind retries, then verify full tree and qualified gates before claiming integration. All prior holds, failure history and acceptance boundaries remain open.
+Draft [PR599](https://github.com/coldshalamov/SpaceFace/pull/599) now publishes normal-runtime prompt reentrancy guards at5ce922abc78e7c85f514d7aef5a1db9fc00fa29c, tree63105724639b1b1e65bec8a4bd62715d9faeafaa, parentc4e82b04. Six paths change three prompt adapters, append68 test lines and preserve report/proof. Author baseline0/18 becomes18/18 in isolated tests; independent39 V8 assertions exercise the actual three adapter bytes with injected deck/bus. In-place card updates remain; no owner, manifest, package or asset change. [Committed proof](https://github.com/coldshalamov/SpaceFace/blob/5ce922abc78e7c85f514d7aef5a1db9fc00fa29c/design/program/world-experience-2026-10-24/evidence/narrative-prompt-reentrancy.json) is44937e68. This is not browser or ordinary-play acceptance.
+
+New [CI40144107069](https://github.com/coldshalamov/SpaceFace/actions/runs/40144107069) expects49 narrative cases; RUCKUS40144107041 expects89 and mobile40144107029 is separate. All are pending qualification at this checkpoint. Prior c4e82b04 hosted31/31 and RUCKUS89/89 are historical, not new-head proof. Actual synthetic7a2320878c4d1b85fa6abc1936ebc65f333c6e40 has parents786ae6eb+5ce922ab and tree939f8174badc63dc092a7428b726d28937a83aae, preserving landed PR593 Market layout and documentation. No overall-green claim.
+
+Next: publisher follows this exact head through terminal CI; no further guard polish without a concrete failure. P08 integration remains separately owned by reconcile_mile_runtime_candidate and prepare_mile_authoring_assets, with large-source writes stopped as documented above. PR598 remains recovery-only. All holds, failure history and acceptance boundaries remain open.
 
 
 ## Current P08 recovery delivery checkpoint: 2026-10-24 22:28 UTC
