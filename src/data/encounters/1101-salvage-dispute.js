@@ -218,6 +218,8 @@ export const runtime = Object.freeze({
     const pod = d.spawnProp(live, {
       type: 'payload', pos: layout.pod, radius: POD_RADIUS, mass: POD_MASS, tetherable: true,
       scanLabel: 'ESCAPE POD — LIFE SIGNS, AIR FAILING', storyPropKind: 'm09_escape_pod',
+      // Bind the existing lifeboat before spawn publication; no gameplay rescue flags.
+      assetRef: 'asset.slice.civilian_pod',
     });
     if (!wreck || !pod) return d.abort(live, 'no_bodies');
     wreck.data.salvorClaimedBy = claimId;

@@ -1,3 +1,19 @@
+# Presentation successor: identifiable survivor capsule
+
+The pod now receives the existing asset.slice.civilian_pod reference in spawnProp options, before core recordSpawn and entity:spawned publication. The existing resolver selects places/place_47a_rescue_capsule.glb; ordinary payloads retain pods/pod_cargo_container.glb. No asset edits or shared renderer changes.
+
+Source a914874479c3f5a90fdd383b63313523f8d89913 and focused test b17eeeb8dd45cdf87f398e01de1f7bcb24e9736f. New test executes real presentation journal, event publication, entityInfoBlock, structured clone, applySpawnInfos and packagedPropSpec; it also compares normalized native body/towability with the prior spawn specification. No new gameplay flags.
+
+Local24/24 passed using final source/test plus exact public visualOverrides over a mixed read-only dependency graph. This is explicitly not a pure current public graph or new Rapier/browser rerun. Original source is23/24 with the new test failing the missing first-spawn assetRef. Existing native file unchanged; reachable hosted gate now expects25TAP tests (24focused+1native file), workflow/order/package unchanged.
+
+[Actual exported-package comparison and reproducible CPU adaptation](pitborn-pod-preview/README.md) includes corrected pixels and provenance. Existing max-axis10WU fit produces capsule XZradius5.0627626WU versus physicsradius5:1.26% trim protrusion, accepted without collider change. Prior freight fallback protruded15.3%. This is not exact visual/collider coincidence or live camera acceptance.
+
+Independent source review and corrected pixel review passed. Mass10, radius5, canonical ball body, towability, simulation/reward/Save/claim behavior are unchanged. No distressBeacon/rescuePriority flags. The portable render adaptation was syntax checked, not rerendered after path sanitization.
+
+Historical qualification below applies to prior gameplay source557c714 and head46ea8158, not a current hosted25-test claim. Prior full-checkout gate24/24 passed; broader run40099448954 failed with cancelled browser3 and incomplete actual-parent comparison. Current public master719a82b has an inherited undefined SHIPBREAKING_YARD_INIT_IDS manifest import blocker, independently seen in PR583 and its exact parent run; this successor does not edit that shared owner.
+
+## Historical gameplay handoff
+
 # Pitborn salvage dispute: physical recovery
 
 ## Change

@@ -381,3 +381,59 @@ test('stale owner, pod and controller generations cannot turn an old active line
     h.sim.runTicks(120);assert.deepEqual(resolved(h),['rescued']);assert.deepEqual(grants(h),[260]);
   }
 });
+
+test('survivor capsule is bound before spawn publication and survives worker presentation', async () => {
+  const { packagedPropSpec } = await import('../src/render/visualOverrides.js');
+  const { entityInfoBlock } = await import('../scripts/lib/simWorkerHost.mjs');
+  const { createReadModel, applySpawnInfos } = await import('../scripts/lib/simReadModel.mjs');
+  const h = makeHarness();
+  let eventPod = null, journalPod = null;
+  const core = h.sim.registry.get('core');
+  const { createPresentationJournal } = await import('../src/core/presentationJournal.js');
+  const journal = core.presentationJournal = createPresentationJournal();
+  const recordSpawn = journal.recordSpawn;
+  journal.recordSpawn = function (tick, entity) {
+    if (entity.data?.storyPropKind === 'm09_escape_pod') journalPod = structuredClone(entityInfoBlock(h.state, entity.id));
+    return recordSpawn.call(this, tick, entity);
+  };
+  h.bus.on('entity:spawned', ({ entity }) => {
+    if (entity.data?.storyPropKind === 'm09_escape_pod') eventPod = structuredClone(entityInfoBlock(h.state, entity.id));
+  });
+  const live = fire(h);
+  journal.recordSpawn = recordSpawn;
+  assert.ok(journalPod, 'first recordSpawn carries the lifeboat identity');
+  assert.ok(eventPod, 'first entity:spawned carries the lifeboat identity');
+  const model = createReadModel();
+  applySpawnInfos(model, [structuredClone(eventPod)]);
+  for (const pod of [ent(h, mOf(live).podId), journalPod, eventPod, model.entities.get(eventPod.entityId)]) {
+    assert.equal(pod.data.assetRef, 'asset.slice.civilian_pod');
+    assert.equal(pod.radius, 5);
+    assert.equal(pod.data.distressBeacon, undefined);
+    assert.equal(pod.data.rescuePriority, undefined);
+    assert.deepEqual(packagedPropSpec(pod), {
+      file: 'places/place_47a_rescue_capsule.glb', slot: 'place',
+      radius: undefined, hideImmediately: true,
+    });
+  }
+  const pod = ent(h, mOf(live).podId);
+  const baseline = makeHarness();
+  const baselineDirector = baseline.sim.registry.get('encounterDirector');
+  const baselineSpawn = baselineDirector.spawnProp;
+  baselineDirector.spawnProp = function (live, opts) {
+    if (opts.storyPropKind === 'm09_escape_pod') {
+      const { assetRef, ...priorSpec } = opts;
+      return baselineSpawn.call(this, live, priorSpec);
+    }
+    return baselineSpawn.call(this, live, opts);
+  };
+  const prior = ent(baseline, mOf(fire(baseline)).podId);
+  const physical = e => ({ type: e.type, radius: e.radius, mass: e.mass,
+    physicsBody: structuredClone(e.physicsBody), tetherable: e.data.tetherable,
+    masslineTetherable: e.data.masslineTetherable });
+  assert.deepEqual(physical(pod), physical(prior), 'visual identity cannot change normalized native body');
+  assert.equal(pod.physicsBody.mass, 10);
+  assert.equal(pod.physicsBody.shape, 'ball');
+  assert.equal(pod.data.masslineTetherable, true);
+  assert.equal(packagedPropSpec({ type: 'payload', radius: 5, data: {} }).file,
+    'pods/pod_cargo_container.glb', 'ordinary freight keeps its freight model');
+});
