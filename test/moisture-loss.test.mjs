@@ -11,7 +11,7 @@ const DIM = 'sector_charon_expanse';     // insolation 0.15
 const DARK = 'sector_unmapped';          // unlisted = dark
 const ICE_MASS = COMMODITIES.find((c) => c.id === 'cmdty_ice_water').massPerU;
 
-function fixture({ sector = LIT, ice = 10, volatiles = 0, iron = 0, docked = false } = {}) {
+function fixture({ sector = LIT, ice = 10, volatiles = 0, iron = 0, docked = false, flagDocked = false } = {}) {
   const bus = createBus(), events = [];
   const cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume: 500, capMass: 500 };
   const put = (id, qty) => {
@@ -23,9 +23,10 @@ function fixture({ sector = LIT, ice = 10, volatiles = 0, iron = 0, docked = fal
   };
   put('cmdty_ice_water', ice); put('cmdty_volatiles', volatiles); put('cmdty_ore_iron', iron);
   const state = {
-    simTime: 0, tick: 0, mode: 'flight', run: { kind: 'adventure' },
+    simTime: 0, tick: 0, mode: 'flight', run: { kind: 'adventure' }, playerId: 1,
     world: { currentSectorId: sector }, ui: { docked },
     player: { cargo }, story: { flags: {} },
+    entities: new Map([[1, { id: 1, alive: true, flags: { docked: flagDocked } }]]),
   };
   for (const t of ['comms:popup', 'moisture:loss', 'cargo:changed']) bus.on(t, (p) => events.push([t, p]));
   const system = createMoistureLoss();
@@ -127,6 +128,61 @@ test('persistent (story-locked) ice cannot vent — accumulator resets, no churn
   assert.ok(f.cargo.moisture.cmdty_ice_water >= 0 && f.cargo.moisture.cmdty_ice_water < 1,
     'failed vents reset to 0 then re-accumulate — never bank a phantom unit');
   assert.equal(f.events.filter(([t]) => t === 'moisture:loss').length, 0);
+});
+
+test('a sim-side dock flag shades the hold even without the ui latch', () => {
+  // combat.js sets player entity flags.docked on dock:docked independently of the
+  // ui.docked lane write — fragileCargo checks both, and so does the drip.
+  const f = fixture({ flagDocked: true });
+  f.run(MOISTURE_LOSS.secondsPerUnit * 2);
+  assert.equal(f.cargo.items.cmdty_ice_water, 10, 'berthed hull stays in the shade');
+  assert.equal(f.cargo.moisture, undefined, 'no drip accrued while berthed');
+  f.bus.emit('sector:enter', {});
+  assert.equal(f.events.filter(([t]) => t === 'comms:popup').length, 0, 'no warning while berthed');
+});
+
+test('a lot that leaves the hold takes its fraction — a fresh lot starts dry', () => {
+  const f = fixture({ ice: 10 });
+  f.run(MOISTURE_LOSS.secondsPerUnit * 0.6);
+  assert.ok(f.cargo.moisture.cmdty_ice_water > 0.5, 'accumulator primed');
+  // Sell the whole stack (any out-path works: sale, jettison, parked swap).
+  delete f.cargo.items.cmdty_ice_water;
+  f.bus.emit('cargo:changed', {});
+  assert.equal(f.cargo.moisture, undefined, 'the sweat died with the lot');
+  // A different lot bought later inherits nothing.
+  f.cargo.items.cmdty_ice_water = 5;
+  f.run(MOISTURE_LOSS.secondsPerUnit * 0.2);
+  assert.ok(f.cargo.moisture.cmdty_ice_water > 0.15 && f.cargo.moisture.cmdty_ice_water < 0.25,
+    'fresh ice starts at zero — no phantom head start');
+});
+
+test('a line vented dry drops its accumulator key, not a stale remainder', () => {
+  const f = fixture({ ice: 1 });
+  f.run(MOISTURE_LOSS.secondsPerUnit + 2);
+  assert.equal(f.cargo.items.cmdty_ice_water ?? 0, 0);
+  assert.equal(f.cargo.moisture, undefined, 'nothing aboard, nothing to accumulate');
+});
+
+test('re-init on the same instance retires the old listener set', () => {
+  const f = fixture({ ice: 5 });
+  const bus2 = createBus();
+  const events2 = [];
+  bus2.on('comms:popup', (p) => events2.push(p));
+  f.system.init({ state: f.state, bus: bus2 });
+  f.bus.emit('sector:enter', {});
+  assert.equal(f.events.filter(([t]) => t === 'comms:popup').length, 0,
+    'the retired bus hears nothing after re-init');
+  bus2.emit('sector:enter', {});
+  assert.equal(events2.length, 1, 'the live bus warns once');
+});
+
+test('a hold already sweating warns warm on re-entry', () => {
+  const f = fixture({ ice: 10 });
+  f.run(MOISTURE_LOSS.secondsPerUnit * 0.6); // first in-sector update files the cold line
+  f.bus.emit('sector:enter', {});
+  const warns = f.events.filter(([t, p]) => t === 'comms:popup' && p.id === 'moisture:warn');
+  assert.equal(warns.length, 2, 'cold on arrival, warm on the return leg');
+  assert.ok(warns[1][1].text.includes('never stopped sweating'), 'partly-melted hold gets the warm line');
 });
 
 test('destroy unsubscribes and survives double teardown', () => {
