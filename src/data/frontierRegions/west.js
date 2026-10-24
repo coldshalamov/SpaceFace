@@ -339,7 +339,7 @@ const REGION_HYPERION = freezeRegion({
       {
         id: 'poi_hyperion_driller',
         pos: { x: 240, z: -1180 },
-        landmarkGlb: 'place_dead_hulk',
+        landmarkGlb: 'place_drill_platform_cold',
         landmark: true,
       },
       {
