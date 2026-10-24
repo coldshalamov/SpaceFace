@@ -15,6 +15,9 @@ export function injectBlackFlagRegistryLayout(doc = globalThis.document) {
   padding:0 24px 24px 14px; background:linear-gradient(90deg,var(--dp-void,#05070a) 92%,transparent); }
 .orr-blackflag-registry > div, .orr-blackflag-registry details { display:grid; gap:10px; min-width:0; }
 .orr-blackflag-registry details:not([open]) > :not(summary) { display:none; }
+/* A closed registry keeps its rows laid out under the fleet index (Chromium hides <details> content with
+   content-visibility, not display), so hit-tests and the layout gate see ghost rows. Closed means no boxes. */
+.orr-blackflag-registry:not([open]) > :not(summary) { display:none!important; }
 .orr-blackflag-registry :is(p,h3,h4) { margin:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
 .orr-blackflag-registry p { font-family:var(--dp-face-body); font-size:14px; line-height:1.45; color:var(--dp-ink-dim); }
 .orr-blackflag-registry h3 { font-family:var(--dp-face-display); font-size:22px; line-height:1.2; color:var(--dp-ink); }
