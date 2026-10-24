@@ -1,5 +1,13 @@
 <!-- LIFETIME: DURABLE -->
 
+## Tethys finite shipment published: 2026-10-24 08:33 UTC
+
+Tethys checkpoint day now has a published finite-shipment experience in [PR574](https://github.com/coldshalamov/SpaceFace/pull/574), head `9c4c2269`. The existing six authored units remain three exchanged plus three reserved, guarded by original record, row, body and controller identity; eligible jobs can recommission without fresh stock being silently minted. Existing fixed-cache meeting and two-slot physical control are retained. Independent 26/26 checks include actual Save-envelope/RAM-slot and soft/hard conservation; native exchanges occur at 125.10 and 163.10 seconds.
+
+See the [full report](https://github.com/coldshalamov/SpaceFace/blob/9c4c22694a3cedf8d1295b6e62fe5644306c8d2b/design/program/world-experience-2026-10-24/TETHYS_FINITE_SHIPMENT.md) and [explicitly WIP preview](https://github.com/coldshalamov/SpaceFace/blob/9c4c22694a3cedf8d1295b6e62fe5644306c8d2b/design/program/world-experience-2026-10-24/tethys-preview/README.md). Measured hull-to-pickup-sphere clearance is 7.365 WU, not a pickup contact-manifold result. The historical capture predates final safety fixes, uses different visible and native ship representations, and is not live-camera/PBR acceptance. Caps/expiry still bound record identity; internal cargo_moved/runner_bolted window seeds are not cargo receipts.
+
+Handoff's hosted 52 focused/13 native passes now accompany terminal red broad CI, not whole-game acceptance. The current checkpoint keeps the exact comparison limits and holds. All twelve goals remain OPEN; the next activity is read-only extracted-traffic import checking, with no additional source queue allocated yet.
+
 ## Handoff Save qualification and next shipment: 2026-10-24 07:17 UTC
 
 Handoff now has published actual save/load and ordinary-pickup coverage in PR568 `34bc233d`. The hosted native gate passes 13/13, including the 60-credit wallet, original pod 4 accepted quantity 2 and no post-pickup resurrection after another save/load. Local 64 focused/13 native checks pass. This is bounded published-test evidence, not browser Continue, natural admission or full-scene acceptance.
@@ -68,7 +76,7 @@ All twelve goals remain OPEN. Existing recovery chains, ownership constraints, A
 
 ## Pilgrim native-pose visual preserved: 2026-10-24 03:38 UTC
 
-The [Pilgrim native-pose review](../world-experience-2026-10-24/PILGRIM_NATIVE_POSE_REVIEW.md) now preserves the completed offline comparison of actual acceptance at 20 seconds and settlement at 33.0833 seconds from PR569's successful route. All seven shipping hashes remained unchanged; the three original Choir actors and player were alive with zero captured impacts. Recorded poses are reconstructed using the actual released Wasp and Choir Dart, with constructor-derived selectors and radii.
+The [Pilgrim native-pose review](https://github.com/coldshalamov/SpaceFace/blob/9c4c22694a3cedf8d1295b6e62fe5644306c8d2b/design/program/world-experience-2026-10-24/PILGRIM_NATIVE_POSE_REVIEW.md) now preserves the completed offline comparison of actual acceptance at 20 seconds and settlement at 33.0833 seconds from PR569's successful route. All seven shipping hashes remained unchanged; the three original Choir actors and player were alive with zero captured impacts. Recorded poses are reconstructed using the actual released Wasp and Choir Dart, with constructor-derived selectors and radii.
 
 This is CPU material-factor geometry, not live capture, texture/PBR/runtime-palette/fittings/rig/VFX rendering, natural admission or visual acceptance. The report distinguishes recorded state from constructor-derived rendering inputs. PR569's source/head and publisher-owned CI monitoring remain untouched.
 
@@ -96,7 +104,7 @@ All twelve goals remain OPEN. Existing source ownership, Archive publication blo
 
 ## Completed MTS material study and active Pilgrim work: 2026-10-24 02:59 UTC
 
-The [existing MTS review](../world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) now includes a distinct textured studio JPEG. All six embedded KTX2 maps were decoded in memory and rendered with Blender 4.3.2 Cycles CPU at 32 samples using actual normal, roughness, metallic and emissive inputs. Authored AO was not applied. This replaces the earlier feasibility-only status without claiming game shader/lighting parity or visual acceptance. Geometry and material assignments are unchanged; no new model is counted.
+The [existing MTS review](https://github.com/coldshalamov/SpaceFace/blob/9c4c22694a3cedf8d1295b6e62fe5644306c8d2b/design/program/world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) now includes a distinct textured studio JPEG. All six embedded KTX2 maps were decoded in memory and rendered with Blender 4.3.2 Cycles CPU at 32 samples using actual normal, roughness, metallic and emissive inputs. Authored AO was not applied. This replaces the earlier feasibility-only status without claiming game shader/lighting parity or visual acceptance. Geometry and material assignments are unchanged; no new model is counted.
 
 The existing Pilgrim implementation is active under its source owner, not published or finally accepted. Fifteen focused/native tests passed, including the real Choir factory and a late twenty-second native escort. The candidate was manually ticked at 1 Hz with director.update disabled. The observed outcome is 30 credits and one receipt; emitted +2 reputation is not proof of faction-state persistence. Unfinished work aborts on Save. Another 218 captured emitter outputs remained unchanged, which is not the full generator pipeline. Neighboring lived-world test updates, final review and publication remain pending.
 
@@ -104,7 +112,7 @@ Public master was last independently verified at `316eed66`; PR566 `6359f0f9`, P
 
 ## Released MTS review and terminal Handoff evidence: 2026-10-24 01:59 UTC
 
-The [MTS tender exported-model review](../world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) and its new detail sheet preserve inspection of the actual released LOD0 geometry. Six cargo modules, four crossframes, exposed spine, rounded cockpit and vented aft unit already provide distinct construction detail. No geometry edit is justified by these views and no model is added. The asset and relevant source definitions are unchanged at inspected master `47be172e0736cb3e32925a550807c684a155ef82`.
+The [MTS tender exported-model review](https://github.com/coldshalamov/SpaceFace/blob/9c4c22694a3cedf8d1295b6e62fe5644306c8d2b/design/program/world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) and its new detail sheet preserve inspection of the actual released LOD0 geometry. Six cargo modules, four crossframes, exposed spine, rounded cockpit and vented aft unit already provide distinct construction detail. No geometry edit is justified by these views and no model is added. The asset and relevant source definitions are unchanged at inspected master `47be172e0736cb3e32925a550807c684a155ef82`.
 
 The CPU factor-color preview does not sample the six embedded KTX2 maps or render PBR, motion rig or VFX. Those preview exclusions are not asset defects. The image is not game-camera, material, physics, performance or full visual acceptance; bounded textured-render feasibility remains a separate investigation.
 

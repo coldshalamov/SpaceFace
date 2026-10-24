@@ -1,5 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 
+## Tethys finite shipment published: 2026-10-24 08:33 UTC
+
+[Draft PR574](https://github.com/coldshalamov/SpaceFace/pull/574) is verified at `9c4c22694a3cedf8d1295b6e62fe5644306c8d2b`, with fourteen paths and sole public parent `0ebaf5d3`. The [Tethys finite-shipment report](https://github.com/coldshalamov/SpaceFace/blob/9c4c22694a3cedf8d1295b6e62fe5644306c8d2b/design/program/world-experience-2026-10-24/TETHYS_FINITE_SHIPMENT.md) records the authored six units conserved as three exchange plus three reserve, fresh-only initialization, staged atomic publication and original record/row/body/control guards. Existing two-slot physical meeting control and eligible-job recommission are preserved; actual Save-envelope/RAM-slot and soft/hard conservation checks are included. Independent tests pass 26/26. No other PR, private guard or Quarry work was absorbed.
+
+Native transfers occurred at 125.10 and 163.10 seconds. Minimum measured Rapier hull-to-pickup-sphere clearance was 7.365 WU; pickups are not SG02 bodies, so this is not a contact-manifold claim. The [WIP preview](https://github.com/coldshalamov/SpaceFace/blob/9c4c22694a3cedf8d1295b6e62fe5644306c8d2b/design/program/world-experience-2026-10-24/tethys-preview/README.md) uses exported model material factors and a capture predating final safety fixes. Visible Drifter/repair-Tender models differ from the two native drifter skins. Neither the preview nor these bounded tests establish live-camera/runtime-PBR or whole-game acceptance. Record caps/expiry still bound identity; there is no eternal-stock guarantee, and internal window seeds are not cargo receipts.
+
+The missing stationName import in trafficJobOps was corrected by one name, with clean return logs and no courier semantic transplant. PR574 run 40077977394 is active under its publisher; the red parent run does not itself attribute every new failure. Read-only checking of remaining extracted traffic companions continues; no new source queue is allocated.
+
+PR568 `34bc233d` now has terminal FAILURE on run 40072698731: eight groups failed and browser 3 reached its cancellation limit. Hosted focused 52/52 and native 13/13 pass, including actual Save/pickup/non-resurrection; compatibility 12 did not run after the visual precheck. Six groups match the parent, but browser 1 differs in failure stage and cancelled parent browser coverage limits comparison. No attributable Handoff regression is established, and this is not full browser Continue acceptance.
+
+All twelve goals remain OPEN. Integration-absorption permission and browser-document approval remain separately pending; routine reminders grant neither. Archive's recovery/publication limits and both schedules are unchanged.
+
 ## Handoff Save qualification and next shipment: 2026-10-24 07:17 UTC
 
 PR568 is verified open draft at `34bc233d3d44834e37490158d89aaa55b8398699`, following `b7483b10`. Its five-path Save/copy follow-up corrects the missed primary line and adds actual save/load plus ordinary pickup to the existing native gate. Local checks pass 64 focused and 13 native cases. Exact-head hosted native checks pass 13/13, including save/load, wallet 60, original pod 4 accepted quantity 2, and no resurrection after pickup and a subsequent save/load. This establishes execution of the published test, not browser Continue or full-game acceptance.
@@ -78,7 +90,7 @@ All twelve goals remain OPEN. Existing recovery chains, ownership constraints, A
 
 ## Pilgrim native-pose visual preserved: 2026-10-24 03:38 UTC
 
-The [Pilgrim native-pose review](../world-experience-2026-10-24/PILGRIM_NATIVE_POSE_REVIEW.md) now preserves the completed offline comparison of actual acceptance at 20 seconds and settlement at 33.0833 seconds from PR569's successful route. All seven shipping hashes remained unchanged; the three original Choir actors and player were alive with zero captured impacts. Recorded poses are reconstructed using the actual released Wasp and Choir Dart, with constructor-derived selectors and radii.
+The [Pilgrim native-pose review](https://github.com/coldshalamov/SpaceFace/blob/9c4c22694a3cedf8d1295b6e62fe5644306c8d2b/design/program/world-experience-2026-10-24/PILGRIM_NATIVE_POSE_REVIEW.md) now preserves the completed offline comparison of actual acceptance at 20 seconds and settlement at 33.0833 seconds from PR569's successful route. All seven shipping hashes remained unchanged; the three original Choir actors and player were alive with zero captured impacts. Recorded poses are reconstructed using the actual released Wasp and Choir Dart, with constructor-derived selectors and radii.
 
 This is CPU material-factor geometry, not live capture, texture/PBR/runtime-palette/fittings/rig/VFX rendering, natural admission or visual acceptance. The report distinguishes recorded state from constructor-derived rendering inputs. PR569's source/head and publisher-owned CI monitoring remain untouched.
 
@@ -106,7 +118,7 @@ All twelve goals remain OPEN. Existing source ownership, Archive publication blo
 
 ## Completed MTS material study and active Pilgrim work: 2026-10-24 02:59 UTC
 
-The [existing MTS review](../world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) now includes a distinct textured studio JPEG. All six embedded KTX2 maps were decoded in memory and rendered with Blender 4.3.2 Cycles CPU at 32 samples using actual normal, roughness, metallic and emissive inputs. Authored AO was not applied. This replaces the earlier feasibility-only status without claiming game shader/lighting parity or visual acceptance. Geometry and material assignments are unchanged; no new model is counted.
+The [existing MTS review](https://github.com/coldshalamov/SpaceFace/blob/9c4c22694a3cedf8d1295b6e62fe5644306c8d2b/design/program/world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) now includes a distinct textured studio JPEG. All six embedded KTX2 maps were decoded in memory and rendered with Blender 4.3.2 Cycles CPU at 32 samples using actual normal, roughness, metallic and emissive inputs. Authored AO was not applied. This replaces the earlier feasibility-only status without claiming game shader/lighting parity or visual acceptance. Geometry and material assignments are unchanged; no new model is counted.
 
 The existing Pilgrim implementation is active under its source owner, not published or finally accepted. Fifteen focused/native tests passed, including the real Choir factory and a late twenty-second native escort. The candidate was manually ticked at 1 Hz with director.update disabled. The observed outcome is 30 credits and one receipt; emitted +2 reputation is not proof of faction-state persistence. Unfinished work aborts on Save. Another 218 captured emitter outputs remained unchanged, which is not the full generator pipeline. Neighboring lived-world test updates, final review and publication remain pending.
 
@@ -114,7 +126,7 @@ Public master was last independently verified at `316eed66`; PR566 `6359f0f9`, P
 
 ## Released MTS review and terminal Handoff evidence: 2026-10-24 01:59 UTC
 
-The [MTS tender exported-model review](../world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) and its new detail sheet preserve inspection of the actual released LOD0 geometry. Six cargo modules, four crossframes, exposed spine, rounded cockpit and vented aft unit already provide distinct construction detail. No geometry edit is justified by these views and no model is added. The asset and relevant source definitions are unchanged at inspected master `47be172e0736cb3e32925a550807c684a155ef82`.
+The [MTS tender exported-model review](https://github.com/coldshalamov/SpaceFace/blob/9c4c22694a3cedf8d1295b6e62fe5644306c8d2b/design/program/world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) and its new detail sheet preserve inspection of the actual released LOD0 geometry. Six cargo modules, four crossframes, exposed spine, rounded cockpit and vented aft unit already provide distinct construction detail. No geometry edit is justified by these views and no model is added. The asset and relevant source definitions are unchanged at inspected master `47be172e0736cb3e32925a550807c684a155ef82`.
 
 The CPU factor-color preview does not sample the six embedded KTX2 maps or render PBR, motion rig or VFX. Those preview exclusions are not asset defects. The image is not game-camera, material, physics, performance or full visual acceptance; bounded textured-render feasibility remains a separate investigation.
 
