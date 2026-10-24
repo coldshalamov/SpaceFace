@@ -1,0 +1,358 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import encounter, { runtime } from '../src/data/encounters/357-the-handoff.js';
+import { spawnJettisonedCargoPod, enforceJettisonedCargoPodCap } from '../src/systems/lootShards.js';
+import { consumePhysicsCommand, resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
+import { authoredPayloadFileForEntity, authoredPayloadSlotForEntity } from '../src/render/partsLibrary.js';
+
+function harness(layoutRandom = () => 0.5) {
+  const state = { mode: 'flight', input: {}, simTime: 0, entities: new Map(), entityList: [] };
+  let id = 0, present = true;
+  const helpers = { spawnEntity(spec) {
+    const e = { ...spec, id: ++id, alive: true };
+    state.entities.set(e.id, e); state.entityList.push(e); return e;
+  } };
+  const seller = helpers.spawnEntity({ type: 'ship', hull: 100, pos: { x: 32, z: 0 }, data: {} });
+  const buyer = helpers.spawnEntity({ type: 'ship', hull: 100, pos: { x: -32, z: 0 }, data: {} });
+  const player = helpers.spawnEntity({ type: 'ship', hull: 100, pos: { x: 140, z: 0 }, vel: { x: 0, z: 0 }, flags: {}, data: {} });
+  state.playerId = player.id;
+  const events = [], pods = [], live = { id: 'deliberate_handoff', shape: {}, ids: [seller.id, buyer.id], roles: {}, data: {},
+    plan: { zoneCenter: { x: 0, z: 0 }, ships: [{ role: 'hauler', pos: { x: 0, z: 0 } }, { role: 'raider', pos: { x: 0, z: 0 } }] } };
+  const d = { now: () => state.simTime, stream: () => layoutRandom,
+    spawnShips: (_, ships) => {
+      for (const spec of ships) Object.assign((spec.role === 'hauler' ? seller : buyer).pos, spec.pos);
+      return live.ids;
+    }, aliveCount: () => 1,
+    entsOf: (_, role) => [role === 'hauler' ? seller : buyer],
+    spawnCargoPod: (_, spec) => { const p = spawnJettisonedCargoPod(state, spec, helpers); pods.push(p); return p; },
+    say() {}, emit: (name, p) => events.push({ name, ...p }),
+    rep: (faction, delta) => events.push({ name: 'rep', faction, delta }),
+    grant: (amount, reason) => events.push({ name: 'grant', amount, reason }),
+    player: () => present ? player : null,
+    resolve: (_, outcome, opts) => { live.outcome = outcome; live.phase = 'done'; events.push({ name: 'resolve', outcome, ...opts }); } };
+  runtime.fire(d, live, state);
+  return { state, seller, buyer, player, live, events, pods, d,
+    present: v => { present = v; },
+    tick(t, integrate = false) {
+      const dt = t - state.simTime;
+      if (integrate) for (const e of state.entityList) if (e.pos && e.vel) {
+        e.pos.x += e.vel.x * dt; e.pos.z += e.vel.z * dt;
+      }
+      state.simTime = t; runtime.tick(d, live, state, t);
+    },
+    hit: (targetId = seller.id) => runtime.event(d, live, state, 'playerHitSquad', { targetId }),
+  };
+}
+const rewards = h => h.events.filter(e => e.name === 'grant' || e.name === 'rep');
+const bonded = h => h.pods.filter(p => p.data.ownerId === h.player.id);
+function noBond(h) { assert.equal(bonded(h).length, 0); assert.equal(rewards(h).length, 0); }
+function accepted(h) {
+  assert.notEqual(h.live.phase, 'done'); assert.equal(bonded(h).length, 1);
+  assert.equal(h.live.ids.length, 2);
+  assert.ok(!h.seller.data.ai.forceFlee && !h.buyer.data.ai.forceFlee);
+  const pod = bonded(h)[0]; assert.equal(pod.data.amount, 2);
+  assert.equal(pod.data.bondedBy, h.live.id); assert.equal(h.live.data.custodyCommit.podId, pod.id);
+  assert.equal(h.live.data.pods.includes(pod.id), false);
+  assert.equal(h.pods.length, 4, 'no substitute cargo is minted');
+  assert.deepEqual(rewards(h), [{ name: 'rep', faction: 'faction_quiet', delta: 2 },
+    { name: 'grant', amount: 60, reason: 'handoff:quiet_lay' }]);
+}
+
+test('ordinary 60 WU/s fly-through neither bonds original contraband nor pays for transit', () => {
+  const h = harness(); h.player.pos.x = h.seller.pos.x - 200; h.player.vel.x = 60;
+  h.tick(0); for (let t = 1; t <= 6; t++) h.tick(t, true);
+  assert.equal(h.player.pos.x - h.seller.pos.x, 160); noBond(h);
+  assert.notEqual(h.live.outcome, 'contact_made'); assert.equal(h.live.data.delivered, 2);
+  assert.equal(h.events.filter(e => e.text?.startsWith('Passing through')).length, 1);
+  for (let t = 7; t <= 12; t++) h.tick(t, true);
+  assert.equal(h.live.outcome, 'deal_done'); assert.equal(h.live.data.delivered, 4); noBond(h);
+  assert.ok(h.pods.every(p => p.data.ownerId === h.buyer.id));
+});
+
+test('braking into a genuine six-second hold cuts exactly one original pod and pays once', () => {
+  const h = harness(); h.player.vel.x = 30; h.tick(0); h.tick(1); noBond(h);
+  h.player.vel.x = 0; h.tick(2); for (let t = 3; t < 8; t++) { h.tick(t); noBond(h); }
+  h.tick(8); accepted(h); const id = bonded(h)[0].id;
+  h.tick(9); h.hit(); h.tick(15); accepted(h); assert.equal(bonded(h)[0].id, id);
+});
+
+test('stationkeeping is relative to seller, not absolute world speed', () => {
+  const h = harness(); h.seller.vel.z = h.buyer.vel.z = h.player.vel.z = 40;
+  for (const pod of h.pods) pod.vel.z = 40; // translate the same physical scene together
+  h.tick(0); for (let t = 1; t <= 6; t++) h.tick(t, true);
+  accepted(h); assert.equal(h.player.pos.x - h.seller.pos.x, 100);
+});
+
+test('slow relative creep fits the authored crawl tolerance without requiring exact zero', () => {
+  const h = harness(); h.player.vel.x = 3.2; h.tick(0);
+  for (let t = 1; t <= 6; t++) h.tick(t, true); accepted(h);
+});
+
+for (const interruption of ['acceleration', 'outside', 'missing', 'dead', 'docked', 'disabled', 'mode', 'fire', 'hit']) {
+  test(`${interruption} interrupts continuous dwell without changing pod ownership`, () => {
+    const h = harness(); h.tick(0); h.tick(1); h.tick(2);
+    if (interruption === 'acceleration') h.player.vel.x = 30;
+    if (interruption === 'outside') h.player.pos.x += 1000;
+    if (interruption === 'missing') h.present(false);
+    if (interruption === 'dead') h.player.hull = 0;
+    if (interruption === 'docked') h.player.flags.docked = true;
+    if (interruption === 'disabled') h.player.disabled = true;
+    if (interruption === 'mode') h.state.mode = 'station';
+    if (interruption === 'fire') h.state.input.fire = true;
+    if (interruption === 'hit') h.hit(); else h.tick(3);
+    assert.equal(h.live.data.parleySince, null); noBond(h);
+    h.player.vel.x = 0; h.player.pos.x = h.seller.pos.x + 100; h.present(true);
+    h.player.hull = 100; h.player.flags.docked = false; h.player.disabled = false;
+    h.state.mode = 'flight'; h.state.input.fire = false;
+    for (let t = 4; t < 10; t++) { h.tick(t); noBond(h); }
+    h.tick(10); accepted(h);
+  });
+}
+
+test('unknown velocity cannot authorize a hold; restoring observation begins a fresh dwell', () => {
+  const h = harness(); h.tick(0); h.tick(1); delete h.player.vel; h.tick(2); noBond(h);
+  assert.equal(h.live.data.parleySince, null); h.player.vel = { x: 0, z: 0 };
+  for (let t = 3; t <= 8; t++) { h.tick(t); noBond(h); }
+  h.tick(9); accepted(h);
+});
+
+test('zero-hull counterpart with a lingering alive flag cannot sign a new bond', () => {
+  for (const role of ['seller', 'buyer']) {
+    const h = harness(); h.tick(0); h.tick(1); h[role].hull = 0; h.tick(2);
+    assert.equal(h.live.outcome, 'deal_burned'); noBond(h); assert.equal(h.pods.length, 4);
+  }
+});
+
+test('normal coarse director cadence admits six seconds; paused time cannot advance it', () => {
+  const h = harness(); h.tick(0); for (let i = 0; i < 30; i++) h.tick(0);
+  noBond(h); h.tick(1.5); h.tick(3); h.tick(4.5); noBond(h); h.tick(6); accepted(h);
+});
+
+test('a missing observation interval is not retroactive stationkeeping', () => {
+  const h = harness(); h.tick(0); h.tick(1); h.tick(2); h.tick(10); noBond(h);
+  assert.equal(h.live.data.parleySince, 10);
+  for (let t = 11; t < 16; t++) { h.tick(t); noBond(h); } h.tick(16); accepted(h);
+});
+
+test('an expired incomplete deal releases original bodies without signing or claiming delivery', () => {
+  const h = harness(); h.live.deadlineAt = 6; h.tick(0);
+  for (let t = 1; t <= 6; t++) h.tick(t);
+  assert.equal(h.live.outcome, 'deal_lapsed'); assert.equal(h.live.data.delivered, 0); noBond(h);
+  assert.ok(h.pods.every(p => p.alive && p.data.ownerId === h.seller.id));
+  assert.ok(h.seller.data.ai.forceFlee && h.buyer.data.ai.forceFlee);
+  assert.ok(encounter.receipts.deal_lapsed.includes('Unreceived pods'));
+});
+
+test('actual autonomous buyer completion takes priority at the deadline', () => {
+  const h = harness(); h.live.deadlineAt = 6; h.tick(0);
+  for (const p of h.pods) p.pos = { ...h.buyer.pos };
+  h.tick(6); assert.equal(h.live.outcome, 'deal_done'); assert.equal(h.live.data.delivered, 4); noBond(h);
+});
+
+test('pending warm declares the actual handoff pod render body and slot', () => {
+  const h = harness();
+  assert.equal(h.pods.length, 4);
+  for (const pod of h.pods) {
+    const file = authoredPayloadFileForEntity(pod);
+    assert.equal(file, 'places/place_cargo_pod_standard.glb');
+    assert.equal(authoredPayloadSlotForEntity(pod), 'place');
+    assert.ok(encounter.warmAssets.includes(file), `missing pending decode for ${file}`);
+  }
+});
+
+// These assert the real command membrane, not native motion. The separate Flight/Rapier
+// route owns next-publication braking and directed displacement evidence.
+function commandedVelocity(pod, before, kind, backend) {
+  if (backend !== 'rapier-dynamic') {
+    assert.equal(consumePhysicsCommand(pod), null, 'legacy must not also queue an impulse');
+    return pod.vel;
+  }
+  assert.deepEqual(pod.vel, before, 'native projection is not a second motion writer');
+  const command = consumePhysicsCommand(pod);
+  assert.equal(command.impulses.length, 1);
+  assert.equal(command.impulses[0].kind, kind);
+  assert.equal(command.impulses[0].provenance, 'encounter:off_book_handoff');
+  const mass = resolvePhysicsBodySpec(pod).mass;
+  const target = { x: before.x + command.impulses[0].x / mass,
+    z: before.z + command.impulses[0].z / mass };
+  assert.equal(consumePhysicsCommand(pod), null, 'command consumes exactly once');
+  return target;
+}
+for (const backend of ['legacy', 'rapier-dynamic']) for (const drift of [0, 40]) {
+  test(`${backend}: paid original matches buyer drift ${drift} exactly once`, () => {
+    const h = harness(); h.state.settings = { gameplay: { physicsBackend: backend } };
+    h.buyer.vel = { x: 2, z: drift }; h.player.pos.x = 2000;
+    const pod = h.pods[0]; pod.pos = { x: h.buyer.pos.x + 10, z: h.buyer.pos.z };
+    const before = { ...pod.vel }; h.tick(0);
+    assert.equal(pod.data.ownerId, h.buyer.id); assert.equal(h.live.data.delivered, 1);
+    const target = commandedVelocity(pod, before, 'buyer_receipt', backend);
+    assert.ok(Math.abs(target.x - h.buyer.vel.x) < 1e-10);
+    assert.ok(Math.abs(target.z - h.buyer.vel.z) < 1e-10);
+    h.tick(1); assert.equal(h.live.data.delivered, 1);
+    assert.equal(consumePhysicsCommand(pod), null); assert.equal(h.pods.length, 4); noBond(h);
+  });
+  test(`${backend}: bonded original gets crawl relative to player drift ${drift} once`, () => {
+    const h = harness(); h.state.settings = { gameplay: { physicsBackend: backend } };
+    h.seller.vel.z = h.player.vel.z = drift;
+    for (const pod of h.pods) pod.vel.z = drift;
+    const before = new Map(h.pods.map(p => [p.id, { ...p.vel }]));
+    for (let t = 0; t <= 6; t++) h.tick(t);
+    accepted(h); const pod = bonded(h)[0], delta = { x: h.player.pos.x - pod.pos.x, z: h.player.pos.z - pod.pos.z };
+    const length = Math.hypot(delta.x, delta.z) || 1;
+    const target = commandedVelocity(pod, before.get(pod.id), 'bonded_shove', backend);
+    assert.ok(Math.abs(target.x - h.player.vel.x - delta.x / length * 3.2) < 1e-10);
+    assert.ok(Math.abs(target.z - h.player.vel.z - delta.z / length * 3.2) < 1e-10);
+    h.tick(7); accepted(h); assert.equal(consumePhysicsCommand(pod), null);
+  });
+}
+
+test('bond settles once while original NPC remainder physically completes', () => {
+  const h = harness(); h.tick(0); for (let t=1;t<=6;t++) h.tick(t,true);
+  accepted(h); const bond=bonded(h)[0], commit=h.live.data.custodyCommit;
+  assert.ok(h.live.data.delivered < h.live.data.pods.length);
+  h.present(false); h.hit();
+  for (let t=7;t<=20;t++) h.tick(t,true);
+  assert.equal(h.live.outcome,'contact_made');
+  assert.equal(h.live.data.delivered,3);
+  assert.ok(h.pods.filter(p=>p!==bond).every(p=>p.data.ownerId===h.buyer.id));
+  assert.equal(h.live.data.custodyCommit,commit); assert.equal(bond.data.ownerId,h.player.id);
+  assert.equal(h.events.filter(e=>e.name==='resolve').length,1);
+  assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+  assert.equal(h.events.filter(e=>e.text?.includes('nothing signed')).length,0);
+  h.tick(120);h.hit();h.tick(121);
+  assert.equal(h.events.filter(e=>e.name==='resolve').length,1);
+  assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+  assert.equal(h.live.ids.length,0);
+});
+
+for (const ending of ['deadline','seller_dead','buyer_dead','stolen','destroyed']) {
+ test(`post-bond ${ending} closes honestly without undoing or repeating custody`, () => {
+  const h=harness();h.tick(0);for(let t=1;t<=6;t++)h.tick(t);
+  accepted(h); const bond=bonded(h)[0], commit=h.live.data.custodyCommit;
+  const remaining=h.pods.find(p=>p!==bond);
+  if(ending==='deadline')h.live.deadlineAt=7;
+  if(ending==='seller_dead')h.seller.hull=0;
+  if(ending==='buyer_dead')h.buyer.alive=false;
+  if(ending==='stolen'){h.state.entityList=h.state.entityList.filter(p=>p!==remaining);h.state.entities.delete(remaining.id);}
+  if(ending==='destroyed')remaining.alive=false;
+  h.tick(7);h.tick(8);h.hit();h.tick(120);
+  assert.equal(h.live.outcome,ending==='deadline'?'deal_lapsed':ending.endsWith('dead')?'deal_burned':ending==='stolen'?'take_taken':'take_burned');
+  assert.equal(h.live.data.custodyCommit,commit);assert.equal(commit.settled,true);
+  assert.equal(bond.data.ownerId,h.player.id);assert.equal(bond.data.bondedBy,h.live.id);
+  assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+  assert.equal(h.events.filter(e=>e.name==='rep'&&e.delta===2).length,1);
+  assert.equal(h.events.filter(e=>e.name==='resolve').length,1);
+  assert.equal(h.live.ids.length,0);
+  assert.equal(h.events.filter(e=>e.text?.includes('nothing signed')).length,0);
+ });
+}
+
+test('empty manifest cannot claim an unpaid contact', () => {
+ const h=harness();h.live.data.pods=[];h.tick(0);for(let t=1;t<=6;t++)h.tick(t);
+ noBond(h);assert.equal(h.live.data.custodyCommit,null);assert.notEqual(h.live.phase,'done');
+ h.tick(h.live.deadlineAt);assert.equal(h.live.outcome,'deal_lapsed');noBond(h);
+});
+
+test('synchronous terminal callbacks cannot repeat theft penalty or resolution', () => {
+ const h=harness();h.tick(0);for(let t=1;t<=6;t++)h.tick(t);
+ const p=h.pods.find(p=>p.data.ownerId===h.seller.id);h.state.entities.delete(p.id);
+ const rep=h.d.rep,emit=h.d.emit;
+ h.d.rep=(...args)=>{rep(...args);h.tick(7);};
+ h.d.emit=(...args)=>{emit(...args);h.tick(7);h.hit();};
+ h.tick(7);
+ assert.equal(h.live.outcome,'take_taken');
+ assert.equal(h.events.filter(e=>e.name==='rep'&&e.delta===-2).length,1);
+ assert.equal(h.events.filter(e=>e.name==='resolve').length,1);
+ assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+});
+
+test('stale list entry cannot receive cargo after original body removal', () => {
+ const h=harness();h.player.pos.x=2000;
+ const p=h.pods[0];p.pos={...h.buyer.pos};h.state.entities.delete(p.id);
+ h.tick(0);
+ assert.equal(h.live.outcome,'take_taken');assert.equal(p.data.ownerId,h.seller.id);
+ assert.equal(h.live.data.delivered,0);
+});
+
+for (const replaced of ['pod','seller','buyer']) test(`recycled ${replaced} identity never inherits the original deal`, () => {
+ const h=harness();h.tick(0);for(let t=1;t<=6;t++)h.tick(t);
+ const bond=bonded(h)[0];
+ const original=replaced==='pod'?h.pods.find(p=>p!==bond):h[replaced];
+ const foreign={...original,pos:{...h.buyer.pos},data:{ownerId:9001,ownerName:'UNRELATED',ai:{}}};
+ h.state.entities.set(original.id,foreign);
+ h.state.entityList=h.state.entityList.map(e=>e===original?foreign:e);
+ h.tick(7);h.tick(8);
+ assert.equal(h.live.outcome,replaced==='pod'?'take_taken':'deal_burned');
+ assert.deepEqual(foreign.data,{ownerId:9001,ownerName:'UNRELATED',ai:{}});
+ assert.equal(bond.data.ownerId,h.player.id);
+ assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+ assert.equal(h.events.filter(e=>e.name==='resolve').length,1);
+ assert.equal(Object.keys(h.live).includes('_handoffBodies'),false,'identities are transient, not serialized scene data');
+});
+
+test('foreign custody of an original pending pod is not overwritten by buyer receipt', () => {
+ const h=harness();h.tick(0);for(let t=1;t<=6;t++)h.tick(t);
+ const p=h.pods.find(p=>p.data.ownerId===h.seller.id);
+ p.data.ownerId=9001;p.data.ownerName='OTHER CARRIER';p.pos={...h.buyer.pos};
+ h.tick(7);
+ assert.equal(h.live.outcome,'take_taken');
+ assert.equal(p.data.ownerId,9001);assert.equal(p.data.ownerName,'OTHER CARRIER');
+ assert.equal(p.data.deliveredBy,undefined);
+ assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+});
+
+test('actual cargo-cap removal of paid original cannot undo receipt during post-bond trade', () => {
+ const h=harness(),paid=h.pods[0];paid.pos={...h.buyer.pos};h.tick(0);
+ for(let t=1;t<=6;t++)h.tick(t);accepted(h);
+ const bond=bonded(h)[0],removed=[];
+ assert.equal(paid.data.deliveredBy,h.live.id);
+ assert.equal(enforceJettisonedCargoPodCap(h.state,(id,opts)=>{
+  removed.push({id,...opts});h.state.entities.delete(id);
+  h.state.entityList=h.state.entityList.filter(e=>e.id!==id);
+ },3),1);
+ assert.deepEqual(removed,[{id:paid.id,immediate:true,reason:'jettisoned_cargo_pod_cap'}]);
+ const foreign={...paid,data:{ownerId:9001},pos:{...h.buyer.pos}};
+ h.state.entities.set(paid.id,foreign);h.state.entityList.push(foreign);
+ h.tick(7);assert.notEqual(h.live.phase,'done');assert.equal(h.live.data.delivered,1);
+ for(const id of h.live.data.pods){const p=h.state.entities.get(id);if(p!==foreign)p.pos={...h.buyer.pos};}
+ h.tick(8);h.tick(9);
+ assert.equal(h.live.outcome,'contact_made');assert.equal(h.live.data.delivered,3);
+ assert.deepEqual(foreign.data,{ownerId:9001});
+ assert.equal(bond.data.ownerId,h.player.id);
+ assert.equal(h.events.filter(e=>e.name==='rep'&&e.delta<0).length,0);
+ assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+});
+
+test('actual cargo-cap removal of unreceived original still interrupts trade', () => {
+ const h=harness();h.player.pos.x=2000;
+ const removed=[];
+ assert.equal(enforceJettisonedCargoPodCap(h.state,(id,opts)=>{
+  removed.push({id,...opts});h.state.entities.delete(id);
+  h.state.entityList=h.state.entityList.filter(e=>e.id!==id);
+ },3),1);
+ assert.equal(removed[0].reason,'jettisoned_cargo_pod_cap');
+ h.tick(0);assert.equal(h.live.outcome,'take_taken');assert.equal(h.live.data.delivered,0);
+ assert.equal(h.events.filter(e=>e.name==='rep'&&e.delta===-2).length,1);
+ assert.equal(h.events.filter(e=>e.name==='grant').length,0);
+});
+
+for (const bearing of [0,.125,.25,.375,.5,.625,.75,.875]) test(`initial freight clears real hull envelopes at bearing ${bearing} and extreme lateral jitter`, () => {
+ let draw=0;const h=harness(()=>draw++===0?bearing:draw%2?0:1);
+ const axis=h.live.data.axis;
+ assert.ok(Math.abs(Math.hypot(h.buyer.pos.x-h.seller.pos.x,h.buyer.pos.z-h.seller.pos.z)-80)<1e-8);
+ for(const [i,p] of h.pods.entries()){
+  const dx=p.pos.x-h.seller.pos.x,dz=p.pos.z-h.seller.pos.z;
+  assert.ok(Math.abs(dx*axis.x+dz*axis.z-(22+i*8))<1e-8);
+  assert.ok(Math.abs(-dx*axis.z+dz*axis.x)<=2+1e-8);
+  assert.ok(Math.hypot(dx,dz)>=22-1e-8,'original pod outside radius18 hull + radius3 pod + margin1');
+  assert.ok(Math.hypot(p.pos.x-h.buyer.pos.x,p.pos.z-h.buyer.pos.z)>26,'no initial buyer receipt');
+  assert.equal(p.data.amount,2);assert.equal(p.data.ownerId,h.seller.id);
+  for(const other of h.pods.slice(i+1))assert.ok(Math.hypot(p.pos.x-other.pos.x,p.pos.z-other.pos.z)>=8-1e-8,'all original pods clear each other');
+ }
+ assert.equal(h.pods.length,4);
+});
+
+test('authored Handoff copy describes holding hulls without promising nose alignment', () => {
+  assert.match(encounter.primaryLine, /two hulls holding off the lane/);
+  assert.doesNotMatch(encounter.primaryLine, /nose-to-nose/);
+});
