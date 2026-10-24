@@ -114,45 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-ask-page-nine",
-      "date": "2026-10-22",
-      "wf": "WF-10",
-      "mode": "opportunity",
-      "verdict": "cut",
-      "reason": "Asking at Research Station Veil names Page Nine, and Ashfall names the Charon garden while Big Ballast is off the lane.",
-      "fingerprint": "verb=ask,subject=page-nine,sector=veil,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "d87e6a87565b388f91376d100147d7d81eedbd39",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-living-hold",
-      "date": "2026-10-22",
-      "wf": "WF-14",
-      "mode": "opportunity",
-      "verdict": "cut",
-      "reason": "A hold of spore catalyst or a live specimen reads as Concord risk, Frontier wary, and Quiet favor instead of a blank conscience.",
-      "fingerprint": "verb=weigh,subject=living-hold,sector=hold,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "88449c7f5188cc8bad7cac25727686ef17534add",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-living-spill",
-      "date": "2026-10-22",
-      "wf": "WF-16",
-      "mode": "opportunity",
-      "verdict": "cut",
-      "reason": "A hard hit cracks spore catalyst and the unbroken lens into scoopable spill, and leaves iron ore and a gate handshake in the hold.",
-      "fingerprint": "verb=spill,subject=living-sample,sector=flight,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "0a0da0f78a8b06d2dd7c1593811d885c276e0e1b",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-corrosive-sample",
       "date": "2026-10-22",
       "wf": "WF-16",
@@ -1671,6 +1632,45 @@
       "references": [],
       "integration": "live",
       "commit": "7926462e98",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-35",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A burrower parks inside a rock and leaves only after its bark, line, and cue.",
+      "fingerprint": "verb=burst,subject=burrower,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "29366dd768",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-36",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Killing a splitter spends the wave reserve and leaves three smaller mites.",
+      "fingerprint": "verb=split,subject=brood,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "be1f92b6f2",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-37",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A brood mother walks and births mites from the wave reserve until she dies.",
+      "fingerprint": "verb=birth,subject=brood-mother,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "e6d2a94e79",
       "verification": "focused_green"
     }
   ],

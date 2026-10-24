@@ -11,9 +11,10 @@
 // mission-pinned, durable and claimed hulls are somebody's property, not evidence.
 import { MOP } from '../data/mop.js';
 import {
-  mopEligible, mopSweepTarget, mopSteerVelocity, mopCanConsume, mopNoticed,
+  mopEligible, mopSweepTarget, mopSteerDeltaV, mopCanConsume, mopNoticed,
 } from '../characters/mopRules.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 
 export function mopSpec() {
   return {
@@ -94,33 +95,60 @@ export function createMop() {
       if (!this._adventure()) { this._removeOwned(); return; }
       if (!this._drone() && this.helpers.spawnEntity) this.helpers.spawnEntity(mopSpec());
     },
-    /** The calendar patrol: steer at the nearest unmarked hull, tidy it on contact, then
-     *  drift home when the sector is clean. One quiet remark only when the client was
-     *  close enough to feel the loss — a Quiet drone does not file reports. */
-    update() {
-      if (!this._adventure()) return;
+    /** Hulls mid-hand are somebody's property, not evidence: the client's live massline
+     *  latch and salvage-beam lock ride on state.player, where the pure entity law
+     *  cannot see — the sweep refuses them so the drone never takes a hull off the
+     *  client's line or out from under the client's beam. */
+    _engagedIds(s) {
+      const player = (s && s.player) || s?.entities?.get?.(s.playerId);
+      if (!player) return null;
+      let ids = null;
+      const tether = player.tether;
+      if (tether && tether.active && tether.targetId != null) (ids || (ids = new Set())).add(tether.targetId);
+      if (player.miningTargetId != null) (ids || (ids = new Set())).add(player.miningTargetId);
+      return ids;
+    },
+    /** The calendar patrol: steer at the nearest unmarked hull through the impulse
+     *  membrane — the drone is a live Rapier body and owns its own linvel, so a direct
+     *  vel write would die in the readback before it ever moved (same membrane the
+     *  bouncer's drift-home and docket's servo ride). Tidy on contact, brake over the
+     *  cleared site, drift home when the sector is clean. One quiet remark only when
+     *  the client was close enough to feel the loss — a Quiet drone does not file
+     *  reports. */
+    update(dt, state) {
+      const s = state || this.state;
+      if (!s || !this._adventure()) return;
       const drone = this._drone();
-      if (!drone) return;
-      const target = mopSweepTarget(drone.pos, this.state?.entityList);
+      if (!drone || !drone.pos) return;
+      const engaged = this._engagedIds(s);
+      const eligible = engaged ? (e) => mopEligible(e) && !engaged.has(e.id) : mopEligible;
+      const target = mopSweepTarget(drone.pos, s.entityList, eligible);
+      let dv = null;
       if (!target) {
-        drone.vel = mopSteerVelocity(drone.pos, MOP.post, MOP.sweepSpeed, MOP.leashRadius);
-        return;
-      }
-      if (mopCanConsume(drone.pos, target.pos)) {
+        dv = mopSteerDeltaV(drone, MOP.post, MOP.sweepSpeed, MOP.leashRadius);
+      } else if (mopCanConsume(drone.pos, target.pos)) {
         this.helpers?.removeEntity?.(target.id);
         const flags = this._flags();
         if (flags) flags[MOP.tidyFlag] = (Number(flags[MOP.tidyFlag]) || 0) + 1;
-        const player = this.state?.player || this.state?.entities?.get?.(this.state?.playerId);
+        const player = s.player || s.entities?.get?.(s.playerId);
         if (mopNoticed(target.pos, player?.pos)) {
           this.bus?.emit('comms:popup', {
             id: `mop_tidy_${target.id}`, sender: MOP.sender, category: 'story',
             text: MOP.tidyLine, ttl: 6, persist: false,
           });
         }
-        drone.vel = { x: 0, z: 0 };
-        return;
+        // Brake over the cleared site: the drone parks on a tidy, it does not coast past.
+        const vx = Number.isFinite(drone.vel?.x) ? drone.vel.x : 0;
+        const vz = Number.isFinite(drone.vel?.z) ? drone.vel.z : 0;
+        dv = (vx !== 0 || vz !== 0) ? { x: -vx, z: -vz } : null;
+      } else {
+        dv = mopSteerDeltaV(drone, target.pos, MOP.sweepSpeed, MOP.consumeRadius);
       }
-      drone.vel = mopSteerVelocity(drone.pos, target.pos, MOP.sweepSpeed, MOP.consumeRadius);
+      if (dv && drone.mass > 0) {
+        queuePhysicsImpulse(drone, { x: dv.x * drone.mass, z: dv.z * drone.mass }, { tick: s.tick });
+      }
     },
   };
 }
+
+export const mop = createMop();

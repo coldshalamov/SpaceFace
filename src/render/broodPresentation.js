@@ -17,8 +17,20 @@
 import * as THREE from 'three';
 import { SWARM_BROOD_FAMILIES, BROOD_SPITTER_SPLASH_RADIUS, BROOD_SPITTER_POOL_RADIUS,
   TENDRIL_SEG_MAX, TENDRIL_SEG_RADIUS } from '../data/swarmBrood.js';
+import { SWARM_BROOD_LATE_FAMILIES } from '../data/swarmBroodLate.js';
 
-const FAMILY_N = SWARM_BROOD_FAMILIES.length;
+const DRAW_FAMILIES = SWARM_BROOD_FAMILIES.concat(SWARM_BROOD_LATE_FAMILIES);
+const FAMILY_N = DRAW_FAMILIES.length;
+
+function familyStretch(fam) {
+  const lateIndex = fam - SWARM_BROOD_FAMILIES.length;
+  if (lateIndex >= 0) {
+    const late = SWARM_BROOD_LATE_FAMILIES[lateIndex];
+    if (late && Array.isArray(late.stretch)) return late.stretch;
+  }
+  if (fam >= 0 && fam < FAMILY_STRETCH.length) return FAMILY_STRETCH[fam];
+  return FAMILY_STRETCH[0];
+}
 
 // Per-family silhouette stretch over the shared dart body: the spitter runs fat, the charger
 // long, the leecher low and wide — distinct moving silhouettes, one geometry.
@@ -210,8 +222,9 @@ export function createBroodPresentation(scene, capacity = 400) {
   const pos = new THREE.Vector3();
   const scl = new THREE.Vector3();
   const color = new THREE.Color();
+  const splitTint = new THREE.Color();
 
-  const FAMILY_COLORS = SWARM_BROOD_FAMILIES.map((def) => color.clone().setRGB(
+  const FAMILY_COLORS = DRAW_FAMILIES.map((def) => color.clone().setRGB(
     def.bodyColor[0], def.bodyColor[1], def.bodyColor[2],
   ));
 
@@ -261,17 +274,21 @@ export function createBroodPresentation(scene, capacity = 400) {
         quat.setFromAxisAngle(axis, heading[i]);
         pos.set(px[i], 0.6 + bob, pz[i]);
         const fam = family[i];
-        const base = fam >= 0 && fam < FAMILY_N ? SWARM_BROOD_FAMILIES[fam].radius / 2.4 : 1;
-        const stretch = fam >= 0 && fam < FAMILY_N ? FAMILY_STRETCH[fam] : FAMILY_STRETCH[0];
+        const drawn = fam >= 0 && fam < FAMILY_N ? DRAW_FAMILIES[fam] : null;
+        const base = drawn ? drawn.radius / 2.4 : 1;
+        const stretch = familyStretch(fam);
         scl.set(base * stretch[0], base * stretch[1], base * stretch[2]);
         matrix.compose(pos, quat, scl);
         mesh.setMatrixAt(written, matrix);
-        const c = fam >= 0 && fam < FAMILY_N ? FAMILY_COLORS[fam] : FAMILY_COLORS[0];
+        const c = drawn ? FAMILY_COLORS[fam] : FAMILY_COLORS[0];
         color.copy(c);
+        if (drawn && (drawn.splits || drawn.births) && Array.isArray(drawn.bodyEmissive)) {
+          splitTint.setRGB(drawn.bodyEmissive[0], drawn.bodyEmissive[1], drawn.bodyEmissive[2]);
+          color.lerp(splitTint, drawn.births ? 0.55 : 0.45);
+        }
         mesh.setColorAt(written, color);
         // The charger's line telegraph: one stretched marker per winding pass.
-        if (phase[i] === 1 && chargersWinding < LINE_CAP && fam >= 0 && fam < FAMILY_N
-          && SWARM_BROOD_FAMILIES[fam].id === 'charger') {
+        if (phase[i] === 1 && chargersWinding < LINE_CAP && drawn && drawn.id === 'charger') {
           const dx = teleX[i] - px[i];
           const dz = teleZ[i] - pz[i];
           const len = Math.sqrt(dx * dx + dz * dz);
@@ -304,7 +321,7 @@ export function createBroodPresentation(scene, capacity = 400) {
       for (let i = 0; i < count && ringN < RING_CAP; i++) {
         if (!alive[i] || phase[i] !== 1) continue;
         const fam = family[i];
-        if (!(fam >= 0 && fam < FAMILY_N) || SWARM_BROOD_FAMILIES[fam].id !== 'spitter') continue;
+        if (!(fam >= 0 && fam < FAMILY_N) || DRAW_FAMILIES[fam].id !== 'spitter') continue;
         // Grow from 0.2 to 1.0 across the windup so the marker tightens as it lands.
         writeRing(ringN, teleX[i], teleZ[i], BROOD_SPITTER_SPLASH_RADIUS, 1.15 - 0.55 * Math.max(0, Math.min(1, timer[i] / 0.8)));
         ringN += 1;

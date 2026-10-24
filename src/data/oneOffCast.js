@@ -342,8 +342,8 @@ export const ONE_OFF_CAST = Object.freeze([
     id: 'tallyho', name: 'TALLYHO / CN-2 — the scoreboard robot looking for a crowd',
     sectorIds: ['sector_rhea_cinder'],
     books: { from: 4, to: 7 },
-    chart: { kind: 'planned', ref: null },
-    implemented: false,
+    chart: { kind: 'contact', ref: 'tallyho', presentVia: 'tallyho' },
+    implemented: true,
   }),
 ]);
 

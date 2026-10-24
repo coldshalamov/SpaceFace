@@ -275,6 +275,25 @@ export const EMERGENT_WEAPON_DEFS = [
     emergentChain: { count: 1, range: 400 },
     lineageGenerationMax: EMERGENT_LIMITS.generationMax,
   }),
+  gun({
+    id: 'wpn_arc_caster',
+    name: 'Arc Caster',
+    price: 27000,
+    damageType: 'emp',
+    dmg: 8,
+    rof: 2.4,
+    dps: 19,
+    range: 220,
+    projSpeed: 360,
+    heatPerShot: 6,
+    impulsePerHit: 10,
+    tumbleTorque: 1,
+    impulseProvenance: 'arc_caster',
+    emergentPrimitive: 'arc_caster',
+    emergentChain: { count: 2, range: 80 },
+    lineageGenerationMax: 3,
+    description: 'A hit jumps to two more hulls in the pack.',
+  }),
 ];
 
 const BY_ID = new Map(EMERGENT_WEAPON_DEFS.map((def) => [def.id, def]));

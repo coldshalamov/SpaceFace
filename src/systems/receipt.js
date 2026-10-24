@@ -11,9 +11,10 @@
 // the kill itself — combat owns the death; the printer only reads the report.
 import { RECEIPT } from '../data/receipt.js';
 import {
-  receiptPrintableKill, receiptLine, receiptBatchLine, receiptFollowVelocity,
+  receiptPrintableKill, receiptLine, receiptBatchLine, receiptFollowDeltaV,
 } from '../characters/receiptRules.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 
 export function receiptSpec() {
   return {
@@ -50,7 +51,9 @@ export function createReceipt() {
       this._cookProvider = () => { this._sync(); };
       (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
         .push(this._cookProvider);
-      on('save:loaded', () => this._sync());
+      // The hopper is live-timeline state: kills queued before a load belong to
+      // the abandoned timeline and must not print against the restored one.
+      on('save:loaded', () => { this._pending.length = 0; this._sync(); });
       on('game:newGame', () => { this._pending.length = 0; this._sync(); });
       on('entity:killed', (p) => this._onKilled(p));
       this._sync();
@@ -81,6 +84,10 @@ export function createReceipt() {
       return (!run || !run.kind || run.kind === 'adventure' || run.kind === 'campaign')
         && this.state?.world?.currentSectorId === RECEIPT.sectorId;
     },
+    _entity(id) {
+      const s = this.state;
+      return s?.entities?.get?.(id) || (s?.entityList || []).find((e) => e && e.id === id) || null;
+    },
     _drone() {
       for (const e of this.state?.entityList || []) {
         if (e?.alive && e.data?.receipt === true) return e;
@@ -95,8 +102,10 @@ export function createReceipt() {
     _sync() {
       if (!this.state?.story) return;
       if (!this._adventure()) { this._removeOwned(); this._pending.length = 0; return; }
-      if (!this._drone() && this.helpers.spawnEntity) this.helpers.spawnEntity(receiptSpec());
       const flags = this._flags();
+      // A printer that filed its final receipt stays filed — the feed went dark.
+      if (flags?.[RECEIPT.finalFlag] === true) { this._removeOwned(); this._pending.length = 0; return; }
+      if (!this._drone() && this.helpers.spawnEntity) this.helpers.spawnEntity(receiptSpec());
       if (flags && flags[RECEIPT.announceFlag] !== true) {
         flags[RECEIPT.announceFlag] = true;
         this.bus?.emit('comms:popup', {
@@ -109,11 +118,14 @@ export function createReceipt() {
      *  other report goes in the hopper for the next pass — a printer works in batches. */
     _onKilled(p) {
       if (!this._adventure() || !p) return;
-      const drone = this._drone();
-      if (drone && p.id === drone.id) {
+      // Every entity:killed emitter marks the victim dead before the report reaches
+      // the bus, so the printer's own body never answers the alive-gated _drone()
+      // scan — read the victim by id and check the mark directly.
+      const victim = this._entity(p.id);
+      if (victim && victim.data?.receipt === true) {
         const flags = this._flags();
-        if (flags && !flags.receipt_final) {
-          flags.receipt_final = true;
+        if (flags && flags[RECEIPT.finalFlag] !== true) {
+          flags[RECEIPT.finalFlag] = true;
           this.bus?.emit('comms:popup', {
             id: 'receipt_final', sender: RECEIPT.sender, category: 'story',
             text: RECEIPT.finalLine, ttl: 9, persist: false,
@@ -122,6 +134,7 @@ export function createReceipt() {
         this._pending.length = 0;
         return;
       }
+      const drone = this._drone();
       if (!drone) return; // no printer, no feed
       const playerId = this.state?.playerId ?? this.state?.player?.id;
       if (!receiptPrintableKill(p, playerId, drone.id)) return;
@@ -137,8 +150,12 @@ export function createReceipt() {
       const drone = this._drone();
       if (drone) {
         const player = this.state?.player || (this.state?.entities?.get?.(this.state?.playerId));
-        const v = receiptFollowVelocity(drone.pos, player?.pos, player?.vel);
-        drone.vel = v;
+        // The printer is a live dynamic body — steer it through the impulse membrane,
+        // never a direct vel write (physics readback owns linvel; see bouncer).
+        const dv = receiptFollowDeltaV(drone, player?.pos, player?.vel);
+        if (dv && drone.mass > 0) {
+          queuePhysicsImpulse(drone, { x: dv.x * drone.mass, z: dv.z * drone.mass }, { tick: this.state?.tick });
+        }
       }
       if (this._pending.length === 0) return;
       const flags = this._flags();
@@ -162,3 +179,5 @@ export function createReceipt() {
     },
   };
 }
+
+export const receipt = createReceipt();
