@@ -1,5 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 
+## Released MTS review and terminal Handoff evidence: 2026-10-24 01:59 UTC
+
+The [MTS tender exported-model review](../world-experience-2026-10-24/MTS_TENDER_EXPORTED_REVIEW.md) and its new detail sheet preserve inspection of the actual released LOD0 geometry. Six cargo modules, four crossframes, exposed spine, rounded cockpit and vented aft unit already provide distinct construction detail. No geometry edit is justified by these views and no model is added. The asset and relevant source definitions are unchanged at inspected master `47be172e0736cb3e32925a550807c684a155ef82`.
+
+The CPU factor-color preview does not sample the six embedded KTX2 maps or render PBR, motion rig or VFX. Those preview exclusions are not asset defects. The image is not game-camera, material, physics, performance or full visual acceptance; bounded textured-render feasibility remains a separate investigation.
+
+PR568 at `8ee99a339585d029bb11c44485c5890915050f7c` has terminal overall CI FAILURE, with focused 28/28 and native 2/2 hosted passes retained separately. Completed failures match the inspected parent `3095a835`; browser shard 3 was externally cancelled. This does not attribute failures against newer master `47be172e`. Existing source CI watches are terminal; no merge or deployment occurred.
+
+The owned Archive overlay's census JSON was recoverably evicted after exact durable-member/hash and safe-file checks. It is not lost and is not missing from the public repository. Restore that JSON before Archive local tests or publication, only into the absent target and after checking the retained generated-file hash. The retained generated file is `modelTruthCensus.generated.js`, not `modelTruthCensus.js`. Exact recovery instructions and original archive identities remain preserved privately; neither source manifests nor remote publication state changed.
+
+All twelve goals remain OPEN. Handoff's later-receipt lifecycle residual remains open under the existing lifecycle/save owners. Proposed D250 remains withdrawn because PR554 owns that unrelated startup-import item; no new ledger entry is reserved or written. Archive's two remote census-object block and browser approval hold are unchanged. Original-scope review found owned candidates rather than authorizing duplicate scenes or competing queues.
+
 ## Handoff native correction published and hosted: 2026-10-24 01:13 UTC
 
 This supersedes the previous unpublished-motion status. Draft [PR568](https://github.com/coldshalamov/SpaceFace/pull/568) is verified open at `8ee99a339585d029bb11c44485c5890915050f7c`, following `34e88d275571b4cf86ae5b76b8fdd1a3a0a33ca8`, with tree `201b1937a575dd69b174b144ae15c937281debc3` and five cumulative paths. The native-motion source, tests, package wiring and report are now published.
