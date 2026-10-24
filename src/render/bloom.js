@@ -1235,8 +1235,10 @@ const COMPOSITE_FRAG = /* glsl */`
         texture2D(tScene, clamp(sceneUv + vec2(0.0, texel.y), vec2(0.0), uUvScale)).rgb +
         texture2D(tScene, clamp(sceneUv - vec2(0.0, texel.y), vec2(0.0), uUvScale)).rgb
       ) * 0.25;
-      // Sharpen the composed LDR color using a scene-luma proxy so we don't re-tonemap.
-      float sharpLuma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+      // Unsharp mask on scene luma: center against neighbours, both in the same linear space,
+      // so a flat field contributes exactly zero. Applying that edge term to the composed color
+      // sharpens without re-tonemapping the neighbourhood.
+      float sharpLuma = dot(scene, vec3(0.2126, 0.7152, 0.0722));
       float blurLuma = dot(blur, vec3(0.2126, 0.7152, 0.0722));
       color = clamp(color + (sharpLuma - blurLuma) * uSharpen, 0.0, 1.0);
     }
