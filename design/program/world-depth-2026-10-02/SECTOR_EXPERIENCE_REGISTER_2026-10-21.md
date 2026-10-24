@@ -2,6 +2,8 @@
 
 ## Grandee causal consequences delivered: 2026-10-24 10:34 UTC
 
+Hosted update: Grandee's gate passed 18/18 (exit 0, 1,180 ms) in run 40086172183, artifact 12556829425. The verified synthetic checkout `f3a6cd53` has the same full tree as corrected head `e7d2d8d3`. All eleven static-2 failed command IDs and the two FEEL failures match the actual public parent; broader CI remains active, not green.
+
 Grandee's response now follows the original target's actual fate rather than automatically blaming the player: positive original-target player damage can warn, confirmed original death can be remembered, and the -8 penalty requires player attribution. Missing or unloaded targets abort neutrally. [PR578](https://github.com/coldshalamov/SpaceFace/pull/578), head `e7d2d8d3`, preserves terminal guards and neutral loss/remembrance copy.
 
 The [report](https://github.com/coldshalamov/SpaceFace/blob/e7d2d8d3a637035b0816b00353921a2bf5dfac1e/design/program/world-experience-2026-10-24/GRANDEE_CAUSAL_CONSEQUENCES.md) documents 17/17 focused checks plus one actual combat/director/Save-owner test. Saved deeds do not replay; remembrance lasts through the inclusive 1,800-second boundary and expires at 1,800.01. These are bounded owner-level checks, not native flight, browser or full-sector acceptance. Accompanied formation PR577 separately gains hosted 11/11 focused proof on its package-only successor, with broad CI pending. All twelve goals remain OPEN; no additional scene/source queue is allocated here.

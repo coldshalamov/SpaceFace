@@ -2,6 +2,8 @@
 
 ## Grandee causal consequences delivered: 2026-10-24 10:34 UTC
 
+Hosted update: Grandee's gate passed 18/18 (exit 0, 1,180 ms) in run 40086172183, artifact 12556829425. The verified synthetic checkout `f3a6cd53` has the same full tree as corrected head `e7d2d8d3`. All eleven static-2 failed command IDs and the two FEEL failures match the actual public parent; broader CI remains active, not green.
+
 All twelve goals remain OPEN. [PR578](https://github.com/coldshalamov/SpaceFace/pull/578) publishes Grandee's causal attribution and neutral missing-target behavior at `e7d2d8d3`. The [report](https://github.com/coldshalamov/SpaceFace/blob/e7d2d8d3a637035b0816b00353921a2bf5dfac1e/design/program/world-experience-2026-10-24/GRANDEE_CAUSAL_CONSEQUENCES.md) records 17/17 focused and one actual combat/director/Save-owner pass, without physics, flight, browser or performance acceptance.
 
 PR577's package-only successor `c78f9868` has hosted 11/11 focused passes, but broad CI remains active with partially cancelled parent coverage. Both publishers retain their monitor ownership. No new source queue is assigned; integration absorption and browser approval remain pending separately, Archive stays recoverable but runtime-unpublished, and both schedules are unchanged.
