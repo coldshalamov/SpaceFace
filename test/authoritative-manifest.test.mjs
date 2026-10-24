@@ -134,8 +134,10 @@ test('production init + update order lengths match the live browser baseline', (
   // on top of the manifest hotfix that dropped the undefined shipbreaking/salvage wiring.
   // 234 -> 235 init / 181 -> 182 update: W-CAST-HANDS registers rookBooth — the pad's
   // wreck census is a seconds-scale read of settled bodies; same calendar clock.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 235);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 182);
+  // 235 -> 236 init / 182 -> 183 update: W-CAST-HANDS registers kesslerScale — the
+  // weigh-slip plate census joins the post-physics salvage cluster on the calendar clock.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 236);
+183);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

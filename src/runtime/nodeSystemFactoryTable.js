@@ -193,6 +193,7 @@ import { docket } from '../systems/docket.js';
 import { wexTicket } from '../systems/wexTicket.js';
 import { moistureLoss } from '../systems/moistureLoss.js';
 import { rookBooth } from '../systems/rookBooth.js';
+import { kesslerScale } from '../systems/kesslerScale.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
