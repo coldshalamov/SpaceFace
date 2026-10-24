@@ -151,11 +151,14 @@ test('contact_made: standing inside the ring unarmed buys a Quiet contact', () =
   player.pos.x = seller.pos.x + 100;
   player.pos.z = seller.pos.z;
   sim.runTicks(60 * 8);
-  assert.equal(live.outcome, 'contact_made');
+  assert.equal(live.data.custodyCommit?.settled, true, 'the original player bond settles immediately');
+  assert.notEqual(live.phase, 'done', 'NPC manifest remains live after acceptance');
+  assert.equal(live.ids.length, 2, 'the original cast stays for the unfinished trade');
   assert.ok(events.some((e) => e.name === 'repDelta'
     && e.payload.factionId === 'faction_quiet' && e.payload.delta > 0), 'a Quiet contact pays rep');
   assert.ok(events.some((e) => e.name === 'grant' && e.payload.reason === 'handoff:quiet_lay'),
     'a cut for the careful');
+  finishDirectorOnlyRemainder(sim, state, live);
 });
 
 test('deal_burned: a dead party ends the deal, the survivor runs', () => {
@@ -184,3 +187,16 @@ test('deal_done: every pod delivered ends the deal quietly', () => {
   assert.equal(live.outcome, 'deal_done');
   assert.equal(live.data.delivered, 4, 'all four pods transferred');
 });
+
+// Director-only boundary fixture: explicitly arrange arrival, not a native-motion proof.
+// Real Flight/Rapier continuation is covered by handoff-stationkeeping-native.test.mjs.
+function finishDirectorOnlyRemainder(sim, state, live) {
+  const buyer = state.entities.get(live.data.buyerId);
+  const originals = live.data.pods.map(id => state.entities.get(id));
+  for (const pod of originals) pod.pos = { ...buyer.pos };
+  sim.runTicks(90);
+  assert.equal(live.outcome, 'contact_made', 'terminal contact follows the remaining manifest receipt');
+  assert.ok(originals.every(pod => pod.data.ownerId === buyer.id));
+  assert.equal(live.data.delivered, originals.length);
+  assert.equal(live.ids.length, 0, 'cast releases only after actual terminal processing');
+}

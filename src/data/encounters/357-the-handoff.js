@@ -63,7 +63,7 @@ function scatter(entity) {
 function resetParley(d, live) {
   live.data.parleySince = null;
   live.data.parleyLastAt = null;
-  if (live.data.termsSpoken && !live.data.withdrawNoted) {
+  if (live.data.termsSpoken && !live.data.withdrawNoted && !live.data.custodyCommit?.settled) {
     live.data.withdrawNoted = true;
     d.emit('comms:log', {
       from: 'QUIET RUNNER',
@@ -161,6 +161,13 @@ export const runtime = Object.freeze({
       if (pod && pod.id != null) live.data.pods.push(pod.id);
     }
 
+    // Transient identities prevent recycled IDs from inheriting this manifest or cast.
+    // Unfinished encounters retain the director's existing abandonment policy on load.
+    Object.defineProperty(live, '_handoffBodies', { configurable: true, value: new Map(
+      [seller, buyer, ...live.data.pods.map(id => state.entities.get(id))]
+        .filter(Boolean).map(entity => [entity.id, entity]),
+    ) });
+
     live.data.sellerId = seller.id;
     live.data.buyerId = buyer.id;
     live.data.axis = axis;
@@ -178,14 +185,17 @@ export const runtime = Object.freeze({
   },
 
   tick(d, live, state, now) {
-    if (live.phase === 'done') return;
-    const seller = state.entities.get(live.data.sellerId) || null;
-    const buyer = state.entities.get(live.data.buyerId) || null;
+    if (live.phase === 'done' || live.data.terminalPending) return;
+    const sellerBody = state.entities.get(live.data.sellerId);
+    const seller = sellerBody === live._handoffBodies?.get(live.data.sellerId) ? sellerBody : null;
+    const buyerBody = state.entities.get(live.data.buyerId);
+    const buyer = buyerBody === live._handoffBodies?.get(live.data.buyerId) ? buyerBody : null;
     const sellerAlive = seller && seller.alive !== false && !(seller.hull <= 0);
     const buyerAlive = buyer && buyer.alive !== false && !(buyer.hull <= 0);
 
     // A dead party ends the deal: the survivor scatters with the manifest.
     if (!sellerAlive || !buyerAlive) {
+      live.data.terminalPending = true;
       if (sellerAlive) { scatter(seller); live.data.survivorId = seller.id; }
       if (buyerAlive) { scatter(buyer); live.data.survivorId = buyer.id; }
       releaseCast(live);
@@ -195,11 +205,16 @@ export const runtime = Object.freeze({
     // Pods physically arrive: close to the buyer, they are restamped paid and park.
     const podIds = new Set(live.data.pods || []);
     let stolen = false, destroyed = false;
-    const found = new Set();
+    // Receipt is final even if the buyer's paid body later leaves through cargo-cap
+    // cleanup. Only original, still-unreceived freight can interrupt this manifest.
+    const found = new Set([...podIds].filter(id => live._handoffBodies?.get(id)?.data?.deliveredBy === live.id));
     for (const e of state.entityList || []) {
-      if (!e || !podIds.has(e.id)) continue;
+      if (!e || !podIds.has(e.id) || found.has(e.id)
+        || state.entities.get(e.id) !== e || live._handoffBodies?.get(e.id) !== e) continue;
       found.add(e.id);
       if (e.alive === false) { destroyed = true; continue; }
+      const expectedOwner = e.data?.deliveredBy === live.id ? buyer.id : seller.id;
+      if (e.data?.ownerId !== expectedOwner) { stolen = true; continue; }
       if (!e.pos) continue;
       const dx = e.pos.x - buyer.pos.x, dz = e.pos.z - buyer.pos.z;
       if (dx * dx + dz * dz <= DELIVER_REACH_WU * DELIVER_REACH_WU) {
@@ -218,13 +233,14 @@ export const runtime = Object.freeze({
 
     // Taking freight mid-line is a robbery; burning one is louder.
     if (destroyed || stolen) {
+      live.data.terminalPending = true;
       scatter(seller); scatter(buyer);
       d.rep('faction_quiet', -2, 'handoff_robbed');
       d.emit('comms:log', {
         from: 'QUIET RUNNER',
         text: destroyed
           ? 'You just shot paid freight. We are done here.'
-          : 'That manifest was spoken for. Walk it off fast.',
+          : 'Freight is missing from the manifest. This deal is off.',
         kind: 'encounter',
       });
       releaseCast(live);
@@ -233,6 +249,7 @@ export const runtime = Object.freeze({
 
     // Every pod delivered: the deal completes, both crews ease off the pocket.
     if (live.data.delivered >= podIds.size && podIds.size > 0) {
+      live.data.terminalPending = true;
       scatter(seller); scatter(buyer);
       d.emit('comms:log', {
         from: 'MTS MULE',
@@ -240,16 +257,20 @@ export const runtime = Object.freeze({
         kind: 'encounter',
       });
       releaseCast(live);
-      return d.resolve(live, 'deal_done', { speak: true });
+      return d.resolve(live, live.data.custodyCommit?.settled ? 'contact_made' : 'deal_done', { speak: true });
     }
 
     // Complete actual buyer delivery first, but never accept a new bond after closing time.
     if (now >= live.deadlineAt) {
+      live.data.terminalPending = true;
       resetParley(d, live);
       scatter(seller); scatter(buyer);
       releaseCast(live);
       return d.resolve(live, 'deal_lapsed', { speak: true });
     }
+
+    // Bonded freight is already settled. Only the remaining NPC manifest is live now.
+    if (live.data.custodyCommit?.settled) return;
 
     // The join read is a real commitment boundary (NXB-040): inside the ring the seller
     // speaks the exact terms once (inspection) — that alone moves no freight and pays
@@ -331,10 +352,9 @@ export const runtime = Object.freeze({
               });
             }
           }
-          // The deal finishes around the new owner; nothing forces an exit.
-          scatter(seller); scatter(buyer);
-          releaseCast(live);
-          return d.resolve(live, 'contact_made', { speak: true });
+          // Keep the original cast and remaining manifest live until physical receipt or
+          // the existing failure/deadline boundary. Acceptance never means NPC delivery.
+          return;
         }
       } else {
         resetParley(d, live);
@@ -345,7 +365,7 @@ export const runtime = Object.freeze({
   },
 
   event(d, live, state, name, payload) {
-    if (!live || live.phase === 'done' || name !== 'playerHitSquad') return;
+    if (!live || live.phase === 'done' || live.data.terminalPending || name !== 'playerHitSquad') return;
     if (payload && (payload.targetId === live.data.sellerId || payload.targetId === live.data.buyerId)) {
       resetParley(d, live);
     }
@@ -396,11 +416,11 @@ export default defineEncounter(trigger, {
     kill: 'The deal ends the loud way. The Quiet keep better ledgers than grudges.',
   },
   receipts: {
-    deal_lapsed: 'DEAL LAPSED — the crews broke off. Unreceived pods are still on the line; no new bond was signed.',
+    deal_lapsed: 'DEAL LAPSED — the crews broke off. Unreceived pods are still on the line. Any pod already bonded to you stays yours.',
     deal_done: 'DEAL DONE — manifest paid, no record. The original pods remain beside the buyer.',
     deal_burned: 'DEAL BURNED — a body dropped; the survivor ran with the record.',
-    take_taken: 'TAKEN — the pods are yours; the Quiet ledger remembers it.',
+    take_taken: 'MANIFEST INTERRUPTED — freight left the deal. Any pod already bonded to you stays yours.',
     take_burned: 'BURNED — shot freight buys nothing but a story.',
-    contact_made: 'A QUIET CONTACT — you walked up slow; the Den knows your hull now.',
+    contact_made: 'A QUIET CONTACT — your bond stands, and the buyer received the remaining manifest.',
   },
 });

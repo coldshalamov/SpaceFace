@@ -76,6 +76,11 @@ for (const passing of [true, false]) test(`native ${passing ? 'fly-through rejec
   try {
     let insideFast = 0, contiguousHold = 0, longestHold = 0, bondAt = null, bondPose = null;
     let directedDisplacement = null, deadlineObservedAt = null, dwellStart = h.live.data.parleySince;
+    const snapshots = [];
+    const snapshot = kind => ({ kind, time: h.state.simTime, outcome: h.live.outcome || null,
+      bodies: [h.player,h.seller,h.buyer,...h.pods].map(e=>({ id:e.id, role:e===h.player?'player':e===h.seller?'seller':e===h.buyer?'buyer':'pod',
+        x:e.pos.x,z:e.pos.z,ownerId:e.data?.ownerId??null,alive:e.alive!==false })) });
+    let terminalCaptured = false;
     for (let i = 0; i < 6900; i++) {
       h.advance();
       if (h.live.data.parleySince != null) dwellStart = h.live.data.parleySince;
@@ -87,6 +92,10 @@ for (const passing of [true, false]) test(`native ${passing ? 'fly-through rejec
       longestHold = Math.max(longestHold, contiguousHold);
       if (h.live.data.custodyCommit && bondAt === null) {
         bondAt = h.state.simTime;
+        snapshots.push(snapshot('acceptance'));
+        assert.notEqual(h.live.phase, 'done', 'player bond does not terminate NPC trade');
+        assert.equal(h.live.ids.length, 2, 'original cast remains live');
+        assert.ok(!h.seller.data.ai.forceFlee && !h.buyer.data.ai.forceFlee);
         const p = h.pods.find(p => p.id === h.live.data.custodyCommit.podId);
         bondPose = { x: p.pos.x, z: p.pos.z, toX: h.player.pos.x-p.pos.x, toZ: h.player.pos.z-p.pos.z };
       }
@@ -94,11 +103,12 @@ for (const passing of [true, false]) test(`native ${passing ? 'fly-through rejec
         const p=h.pods.find(p=>p.id===h.live.data.custodyCommit.podId);
         directedDisplacement=((p.pos.x-bondPose.x)*bondPose.toX+(p.pos.z-bondPose.z)*bondPose.toZ)/Math.hypot(bondPose.toX,bondPose.toZ);
       }
+      if (!terminalCaptured && h.live.phase === 'done') { terminalCaptured = true; snapshots.push(snapshot('terminal_receipt')); }
       if (deadlineObservedAt !== null && h.state.simTime-deadlineObservedAt >= .11) break;
     }
     const bonded = h.pods.filter(p => p.data.ownerId === h.player.id);
     const native = h.state.physicsRuntime.diagnostics.backend;
-    const detail = { native, passing, time: h.state.simTime, insideFast, longestHold, bondAt,
+    const detail = { native, passing, snapshots, time: h.state.simTime, insideFast, longestHold, bondAt,
       outcome: h.live.outcome, observations:h.observations, dwellStart, deadlineObservedAt,
       contacts:[...h.contacts.values()], remaining:h.pods.filter(p=>p.data.ownerId===h.seller.id).map(p=>p.id),
       bondPose, directedDisplacement, player: { pos: h.player.pos, speed: speed(h.player) },
@@ -123,6 +133,11 @@ for (const passing of [true, false]) test(`native ${passing ? 'fly-through rejec
       assert.ok(longestHold >= 360); assert.ok(bondAt-dwellStart >= 6);
       assert.ok(h.observations.filter(t=>t>=dwellStart&&t<=bondAt).every((t,i,a)=>i===0||t-a[i-1]<=2));
       assert.equal(h.live.outcome, 'contact_made'); assert.equal(bonded.length, 1);
+      assert.equal(h.received.length, 3, 'all remaining original pods physically received');
+      assert.equal(h.pods.filter(p=>p.data.ownerId===h.seller.id).length, 0);
+      assert.ok(h.received.some(r=>r.t>bondAt), 'NPC receipt continues after player bond');
+      assert.ok(h.pods.filter(p=>p!==bonded[0]).every(p=>p.data.ownerId===h.buyer.id));
+      assert.equal(h.live.ids.length, 0, 'cast released only at terminal outcome');
       assert.equal(bonded[0].id, h.live.data.custodyCommit.podId);
       assert.equal(bonded[0].data.amount, 2);
       assert.deepEqual(reward(h), [{name:'rep',faction:'faction_quiet',delta:2},

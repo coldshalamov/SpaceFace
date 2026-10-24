@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import encounter, { runtime } from '../src/data/encounters/357-the-handoff.js';
-import { spawnJettisonedCargoPod } from '../src/systems/lootShards.js';
+import { spawnJettisonedCargoPod, enforceJettisonedCargoPodCap } from '../src/systems/lootShards.js';
 import { consumePhysicsCommand, resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
 import { authoredPayloadFileForEntity, authoredPayloadSlotForEntity } from '../src/render/partsLibrary.js';
 
@@ -44,7 +44,9 @@ const rewards = h => h.events.filter(e => e.name === 'grant' || e.name === 'rep'
 const bonded = h => h.pods.filter(p => p.data.ownerId === h.player.id);
 function noBond(h) { assert.equal(bonded(h).length, 0); assert.equal(rewards(h).length, 0); }
 function accepted(h) {
-  assert.equal(h.live.outcome, 'contact_made'); assert.equal(bonded(h).length, 1);
+  assert.notEqual(h.live.phase, 'done'); assert.equal(bonded(h).length, 1);
+  assert.equal(h.live.ids.length, 2);
+  assert.ok(!h.seller.data.ai.forceFlee && !h.buyer.data.ai.forceFlee);
   const pod = bonded(h)[0]; assert.equal(pod.data.amount, 2);
   assert.equal(pod.data.bondedBy, h.live.id); assert.equal(h.live.data.custodyCommit.podId, pod.id);
   assert.equal(h.live.data.pods.includes(pod.id), false);
@@ -200,3 +202,133 @@ for (const backend of ['legacy', 'rapier-dynamic']) for (const drift of [0, 40])
     h.tick(7); accepted(h); assert.equal(consumePhysicsCommand(pod), null);
   });
 }
+
+test('bond settles once while original NPC remainder physically completes', () => {
+  const h = harness(); h.tick(0); for (let t=1;t<=6;t++) h.tick(t,true);
+  accepted(h); const bond=bonded(h)[0], commit=h.live.data.custodyCommit;
+  assert.ok(h.live.data.delivered < h.live.data.pods.length);
+  h.present(false); h.hit();
+  for (let t=7;t<=20;t++) h.tick(t,true);
+  assert.equal(h.live.outcome,'contact_made');
+  assert.equal(h.live.data.delivered,3);
+  assert.ok(h.pods.filter(p=>p!==bond).every(p=>p.data.ownerId===h.buyer.id));
+  assert.equal(h.live.data.custodyCommit,commit); assert.equal(bond.data.ownerId,h.player.id);
+  assert.equal(h.events.filter(e=>e.name==='resolve').length,1);
+  assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+  assert.equal(h.events.filter(e=>e.text?.includes('nothing signed')).length,0);
+  h.tick(120);h.hit();h.tick(121);
+  assert.equal(h.events.filter(e=>e.name==='resolve').length,1);
+  assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+  assert.equal(h.live.ids.length,0);
+});
+
+for (const ending of ['deadline','seller_dead','buyer_dead','stolen','destroyed']) {
+ test(`post-bond ${ending} closes honestly without undoing or repeating custody`, () => {
+  const h=harness();h.tick(0);for(let t=1;t<=6;t++)h.tick(t);
+  accepted(h); const bond=bonded(h)[0], commit=h.live.data.custodyCommit;
+  const remaining=h.pods.find(p=>p!==bond);
+  if(ending==='deadline')h.live.deadlineAt=7;
+  if(ending==='seller_dead')h.seller.hull=0;
+  if(ending==='buyer_dead')h.buyer.alive=false;
+  if(ending==='stolen'){h.state.entityList=h.state.entityList.filter(p=>p!==remaining);h.state.entities.delete(remaining.id);}
+  if(ending==='destroyed')remaining.alive=false;
+  h.tick(7);h.tick(8);h.hit();h.tick(120);
+  assert.equal(h.live.outcome,ending==='deadline'?'deal_lapsed':ending.endsWith('dead')?'deal_burned':ending==='stolen'?'take_taken':'take_burned');
+  assert.equal(h.live.data.custodyCommit,commit);assert.equal(commit.settled,true);
+  assert.equal(bond.data.ownerId,h.player.id);assert.equal(bond.data.bondedBy,h.live.id);
+  assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+  assert.equal(h.events.filter(e=>e.name==='rep'&&e.delta===2).length,1);
+  assert.equal(h.events.filter(e=>e.name==='resolve').length,1);
+  assert.equal(h.live.ids.length,0);
+  assert.equal(h.events.filter(e=>e.text?.includes('nothing signed')).length,0);
+ });
+}
+
+test('empty manifest cannot claim an unpaid contact', () => {
+ const h=harness();h.live.data.pods=[];h.tick(0);for(let t=1;t<=6;t++)h.tick(t);
+ noBond(h);assert.equal(h.live.data.custodyCommit,null);assert.notEqual(h.live.phase,'done');
+ h.tick(h.live.deadlineAt);assert.equal(h.live.outcome,'deal_lapsed');noBond(h);
+});
+
+test('synchronous terminal callbacks cannot repeat theft penalty or resolution', () => {
+ const h=harness();h.tick(0);for(let t=1;t<=6;t++)h.tick(t);
+ const p=h.pods.find(p=>p.data.ownerId===h.seller.id);h.state.entities.delete(p.id);
+ const rep=h.d.rep,emit=h.d.emit;
+ h.d.rep=(...args)=>{rep(...args);h.tick(7);};
+ h.d.emit=(...args)=>{emit(...args);h.tick(7);h.hit();};
+ h.tick(7);
+ assert.equal(h.live.outcome,'take_taken');
+ assert.equal(h.events.filter(e=>e.name==='rep'&&e.delta===-2).length,1);
+ assert.equal(h.events.filter(e=>e.name==='resolve').length,1);
+ assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+});
+
+test('stale list entry cannot receive cargo after original body removal', () => {
+ const h=harness();h.player.pos.x=2000;
+ const p=h.pods[0];p.pos={...h.buyer.pos};h.state.entities.delete(p.id);
+ h.tick(0);
+ assert.equal(h.live.outcome,'take_taken');assert.equal(p.data.ownerId,h.seller.id);
+ assert.equal(h.live.data.delivered,0);
+});
+
+for (const replaced of ['pod','seller','buyer']) test(`recycled ${replaced} identity never inherits the original deal`, () => {
+ const h=harness();h.tick(0);for(let t=1;t<=6;t++)h.tick(t);
+ const bond=bonded(h)[0];
+ const original=replaced==='pod'?h.pods.find(p=>p!==bond):h[replaced];
+ const foreign={...original,pos:{...h.buyer.pos},data:{ownerId:9001,ownerName:'UNRELATED',ai:{}}};
+ h.state.entities.set(original.id,foreign);
+ h.state.entityList=h.state.entityList.map(e=>e===original?foreign:e);
+ h.tick(7);h.tick(8);
+ assert.equal(h.live.outcome,replaced==='pod'?'take_taken':'deal_burned');
+ assert.deepEqual(foreign.data,{ownerId:9001,ownerName:'UNRELATED',ai:{}});
+ assert.equal(bond.data.ownerId,h.player.id);
+ assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+ assert.equal(h.events.filter(e=>e.name==='resolve').length,1);
+ assert.equal(Object.keys(h.live).includes('_handoffBodies'),false,'identities are transient, not serialized scene data');
+});
+
+test('foreign custody of an original pending pod is not overwritten by buyer receipt', () => {
+ const h=harness();h.tick(0);for(let t=1;t<=6;t++)h.tick(t);
+ const p=h.pods.find(p=>p.data.ownerId===h.seller.id);
+ p.data.ownerId=9001;p.data.ownerName='OTHER CARRIER';p.pos={...h.buyer.pos};
+ h.tick(7);
+ assert.equal(h.live.outcome,'take_taken');
+ assert.equal(p.data.ownerId,9001);assert.equal(p.data.ownerName,'OTHER CARRIER');
+ assert.equal(p.data.deliveredBy,undefined);
+ assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+});
+
+test('actual cargo-cap removal of paid original cannot undo receipt during post-bond trade', () => {
+ const h=harness(),paid=h.pods[0];paid.pos={...h.buyer.pos};h.tick(0);
+ for(let t=1;t<=6;t++)h.tick(t);accepted(h);
+ const bond=bonded(h)[0],removed=[];
+ assert.equal(paid.data.deliveredBy,h.live.id);
+ assert.equal(enforceJettisonedCargoPodCap(h.state,(id,opts)=>{
+  removed.push({id,...opts});h.state.entities.delete(id);
+  h.state.entityList=h.state.entityList.filter(e=>e.id!==id);
+ },3),1);
+ assert.deepEqual(removed,[{id:paid.id,immediate:true,reason:'jettisoned_cargo_pod_cap'}]);
+ const foreign={...paid,data:{ownerId:9001},pos:{...h.buyer.pos}};
+ h.state.entities.set(paid.id,foreign);h.state.entityList.push(foreign);
+ h.tick(7);assert.notEqual(h.live.phase,'done');assert.equal(h.live.data.delivered,1);
+ for(const id of h.live.data.pods){const p=h.state.entities.get(id);if(p!==foreign)p.pos={...h.buyer.pos};}
+ h.tick(8);h.tick(9);
+ assert.equal(h.live.outcome,'contact_made');assert.equal(h.live.data.delivered,3);
+ assert.deepEqual(foreign.data,{ownerId:9001});
+ assert.equal(bond.data.ownerId,h.player.id);
+ assert.equal(h.events.filter(e=>e.name==='rep'&&e.delta<0).length,0);
+ assert.equal(h.events.filter(e=>e.name==='grant').length,1);
+});
+
+test('actual cargo-cap removal of unreceived original still interrupts trade', () => {
+ const h=harness();h.player.pos.x=2000;
+ const removed=[];
+ assert.equal(enforceJettisonedCargoPodCap(h.state,(id,opts)=>{
+  removed.push({id,...opts});h.state.entities.delete(id);
+  h.state.entityList=h.state.entityList.filter(e=>e.id!==id);
+ },3),1);
+ assert.equal(removed[0].reason,'jettisoned_cargo_pod_cap');
+ h.tick(0);assert.equal(h.live.outcome,'take_taken');assert.equal(h.live.data.delivered,0);
+ assert.equal(h.events.filter(e=>e.name==='rep'&&e.delta===-2).length,1);
+ assert.equal(h.events.filter(e=>e.name==='grant').length,0);
+});
