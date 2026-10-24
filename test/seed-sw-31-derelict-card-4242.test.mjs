@@ -203,7 +203,7 @@ test('seed 4242: salvaging the derelict pays, fits a part, and the stage still f
   const event = offered.find((entry) => entry.kind === 'event');
   assert.ok(event, 'the route offers the derelict beside the rooms');
   assert.equal(event.line, CIRCUIT_EVENT.line);
-  assert.equal(offered.filter((entry) => entry.kind === 'route' && !entry.fight).length, 2);
+  assert.equal(offered.filter((entry) => entry.kind === 'route' && !entry.fight && !entry.node).length, 2);
 
   armHull(h);
   const opened = pick(h, event.id);

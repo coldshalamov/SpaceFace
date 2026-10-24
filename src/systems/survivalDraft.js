@@ -50,7 +50,7 @@ import {
   EVOLUTION_OFFER_KIND,
   evolutionOffersFor,
 } from '../data/survivalEvolutions.js';
-import { CIRCUIT_EVENT, CIRCUIT_STAGE_COUNT, circuitChoicesFor, circuitFor, circuitStateError, parseCircuitChoiceId } from './survivalCircuit.js';
+import { CIRCUIT_EVENT, CIRCUIT_MYSTERY, CIRCUIT_SERVICES, CIRCUIT_STAGE_COUNT, circuitChoicesFor, circuitFor, circuitMysteryOffer, circuitStateError, parseCircuitChoiceId } from './survivalCircuit.js';
 import {
   runModifierRecord,
   summarizeRunBuild,
@@ -291,7 +291,9 @@ export const survivalDraft = {
           ? 'Hull already sound'
           : entry.service === 'ordnance' && (entry._serviceCharges || 0) >= SWARM_ORDNANCE_RACK_MAX
             ? 'Rack already full'
-            : null;
+            : entry.service === 'mystery' && entry._mysteryEmpty
+              ? 'Nothing this hull can mount'
+              : null;
       // A legendary the run already owns stays visible but is never buyable again — not "Done"
       // like a consumed weld: the row is the room upgrade's receipt, so it says what it is.
       const legendaryOwned = entry.service === 'legendary' && entry._legendaryOwned === true;
@@ -440,6 +442,7 @@ export const survivalDraft = {
     this._locked = null;
     this._lockedInto = new Map();
     this._gamblerUsed = 0;
+    this._circuitMystery = null;
   },
 
   _onTransitioned(payload) {
@@ -861,11 +864,16 @@ export const survivalDraft = {
         return false;
       }
       if (offerId == null && circuit && (circuit.status === 'route' || circuit.status === 'finale')) {
+        const openService = circuit.service
+          ? CIRCUIT_SERVICES.find((svc) => svc.id === circuit.service.id)
+          : null;
         this._notice = circuit.card
           ? CIRCUIT_EVENT.line
-          : circuit.status === 'route'
-            ? 'Choose a destination before launching.'
-            : 'Finish the Circuit or enter Overtime.';
+          : openService
+            ? openService.line
+            : circuit.status === 'route'
+              ? 'Choose a destination before launching.'
+              : 'Finish the Circuit or enter Overtime.';
         this._emit('run:draftPickRejected', { wave: run.wave, offerId: null, reason: 'circuit_choice_owed' });
         this._refreshOffers(run);
         return false;
@@ -965,6 +973,39 @@ export const survivalDraft = {
     }
     if (kind === 'leave') {
       this._notice = 'Left the derelict. The stage fight is set.';
+      this._refreshOffers(run);
+      return;
+    }
+    if (kind === 'service' && payload && payload.serviceId === 'armory') {
+      this._notice = 'The bench is open. Buy, then leave the bench to skip this stage.';
+      this._refreshOffers(run);
+      return;
+    }
+    if (kind === 'service' && payload && payload.serviceId === 'repair') {
+      this._notice = 'Hull topped. This stage is skipped.';
+      this._refreshOffers(run);
+      return;
+    }
+    if (kind === 'service' && payload && payload.serviceId === 'treasure') {
+      const name = payload.treasure && payload.treasure.name;
+      this._notice = name
+        ? `${name} is yours. This stage is skipped.`
+        : 'Treasure bought. This stage is skipped.';
+      this._refreshOffers(run);
+      return;
+    }
+    if (kind === 'service_done') {
+      this._notice = 'Bench closed. Choose the next stage.';
+      this._refreshOffers(run);
+      return;
+    }
+    // SEED-SW-34 — the box commits its stage through the ordinary route branch; the sealed
+    // card it sells keys off the applied stop, not a second screen.
+    if (kind === 'route' && parseCircuitChoiceId(payload && payload.offerId)?.kind === 'mystery') {
+      const committed = circuitFor(run);
+      const last = committed && committed.route[committed.route.length - 1];
+      this._circuitMystery = { stage: last ? last.stage : null, wave: this._wave };
+      this._notice = CIRCUIT_MYSTERY.line;
       this._refreshOffers(run);
       return;
     }
@@ -1197,6 +1238,24 @@ export const survivalDraft = {
         blurb: entry.blurb,
         price: ask(entry.price), category: 'Service', slotLabel: `Passive · stack ${held}/${SWARM_PASSIVE_STACK_MAX}`,
         _passiveHeld: held,
+      });
+    }
+    // SEED-SW-34 — the mystery box's sealed card rides the service counter for the armory the
+    // node was picked in. The wave key keeps the crate from trailing the stage: a later armory
+    // stocks only its own rows. The pull itself stays sealed until the wallet answers.
+    const mystery = this._circuitMystery
+      && this._circuitMystery.wave === this._wave
+      && Number.isInteger(this._circuitMystery.stage)
+      ? this._circuitMystery
+      : null;
+    if (mystery) {
+      extras.push({
+        id: 'svc_mystery_box', kind: SWARM_SERVICE_OFFER_KIND, service: 'mystery',
+        verb: 'Unbox', name: 'Mystery box',
+        blurb: 'A sealed crate. One fitting the hull can mount — no peeking.',
+        price: ask(CIRCUIT_MYSTERY.cost), category: 'Service', slotLabel: 'Sealed crate',
+        _mysteryStage: mystery.stage,
+        _mysteryEmpty: !circuitMysteryOffer(this.state, run.seed, mystery.stage),
       });
     }
     const cargoUsed = player && player.cargo && Number.isFinite(player.cargo.usedVolume)
@@ -1553,6 +1612,34 @@ export const survivalDraft = {
         return;
       }
       this._notice = `${entry.name} stacked (${swarmPassiveCount(committed, entry.id)}/${SWARM_PASSIVE_STACK_MAX}).`;
+      this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+      return;
+    }
+    if (pending.service === 'mystery') {
+      // SEED-SW-34 — the box pays out after the wallet: one pull, seeded by run seed + stage,
+      // over the fittings the hull can legally mount right now. Delivery is the same
+      // grant-then-fit the shelf uses, so a pull that would not mount refunds in full —
+      // no charge without delivery.
+      const run = liveSurvivalRun(this.state);
+      const stage = Number.isInteger(pending._mysteryStage) ? pending._mysteryStage : null;
+      const offer = run && stage != null ? circuitMysteryOffer(this.state, run.seed, stage) : null;
+      if (!offer) {
+        refund(`The box had nothing this hull could mount. ${pending.price} cr refunded.`);
+        return;
+      }
+      const applied = this._applyCircuitSalvage(offer);
+      if (!applied.ok) {
+        refund(`${offer.name} would not mount. ${pending.price} cr refunded.`);
+        return;
+      }
+      this._purchased.add(pending.id);
+      this._notice = `Unboxed — ${offer.name} bolted on.`;
+      this._noteModifier({
+        kind: 'weapon', offerId: pending.id, verb: 'Unbox', defId: offer.defId,
+        slotIndex: offer.slotIndex, replaced: null, wave: this._wave,
+      }, {
+        wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id,
+      });
       this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
       return;
     }
