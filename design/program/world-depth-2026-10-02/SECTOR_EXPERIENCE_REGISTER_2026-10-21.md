@@ -1,5 +1,21 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current delivery and visual review: 2026-10-24 12:57 UTC
+
+All twelve goals remain OPEN. This section supersedes dated current-state/next-operation claims below without removing historical evidence, acceptance fields or the original [twenty-concept map](TWENTY_CONCEPT_MAP.json), [P00–P21 implementation scope](IMPLEMENTATION.md) and [build map](../../../build_map.md).
+
+[PR580](https://github.com/coldshalamov/SpaceFace/pull/580) is published at `32103806c3b34779022e3b2be274efc997db27f8`. The original Hawser and Mule now depart under real propulsion after the unchanged once-only 300-credit/+6 receipt. Scoped custody cleanup relinquishes only original owned intent/expiry packets on confirmed capture or committed control transfer, preserving foreign successors. Native tail evidence has zero pair contacts, minimum 35.0081-WU clearance and retirement by +21 seconds; focused capture/Save qualification uses the exact public transfer owner. It does not prove player-flown capture, home arrival or docking.
+
+[Hosted run 40092100386](https://github.com/coldshalamov/SpaceFace/actions/runs/40092100386) is terminal FAILURE, not pending: the focused gate passed 23/23, exit 0. Static-2 artifact 12559546862 SHA256 `0b171275df49446f9c4080c21318a18772572862e5b932e3b664830699d07e36`. Completed static 2/3, simulation and browser 1/4 failing-command sets match the actual synthetic base; browser 2 is only a subset, and browser 3 was cap-cancelled with an incomplete base comparison. No blanket unrelated-failure or full-green claim. PR577 and PR578 broad monitors are also terminal red, with focused hosted 11/11 and 18/18 respectively.
+
+The [Wasp textured studio review](../world-experience-2026-10-24/wasp-material-preview/README.md) preserves an actual exported-package image and reproducible source. All six embedded maps were decoded; albedo, normal, roughness and metallic maps were applied, while authored AO red was not. Dark paneling and highlights remain readable. No asset change or new model count is justified by this review; live-camera lighting, performance and visual acceptance remain open.
+
+The next allocated unit is a bounded repair-work pulse tied to actual qualifying Hawser work, owned by the existing scene author in scene 362 and actionVfx only. Production event transport was inspected; generation/sector/freshness admission, pause expiry and reduced-motion checks remain implementation work, not delivered behavior. Shared VFX/lighting and other owners stay untouched.
+
+Both specific approval holds remain pending: browser API documentation refresh and absorption of PR558/471/570/571 for integration. The 12:22:41 UTC Archive object read still returned 404 with unchanged staging ref; no large write or credential retry occurred. Small GitHub delivery works. Both continuation schedules remain unchanged. No merge, deployment, ordinary-play or whole-game acceptance is implied.
+
+
+
 ## Hawser attended repair delivered: 2026-10-24 11:12 UTC
 
 Hawser's existing salvage-watch repair now depends on the original tug physically attending the original casualty. Real propulsion closes the gap; work accrues only within a 15–70-WU surface gap and relative speed at most 5 for 55 observed seconds. Threat pressure and separation pause work rather than granting remote repairs, while ownership and cleanup guards prevent foreign actors from being mistaken for the original cast.

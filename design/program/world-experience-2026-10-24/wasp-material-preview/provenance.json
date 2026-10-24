@@ -1,0 +1,140 @@
+{
+  "kind": "offline textured studio material reconstruction",
+  "blob": "6d9912a982090e1911f3932eef7b8cd9d8aae880",
+  "originalSha256": "58aa882b40036e3af8ec56f190180443a4a6e937e13c38f2cc2e7adf7dc896c3",
+  "originalBytes": 798728,
+  "inMemoryTransportDecodedGLBBytes": 1620680,
+  "maps": [
+    {
+      "name": "forge_panel_normal",
+      "width": 1024,
+      "height": 1024,
+      "ktxBytes": 35770,
+      "rgbaSha256": "fbfb8cd895d8f408ab12859fb50ecbe54e1cd60dcec1c6d6c571ec883edb1b46",
+      "pngBytes": 40730
+    },
+    {
+      "name": "forge_panel_orm",
+      "width": 1024,
+      "height": 1024,
+      "ktxBytes": 114191,
+      "rgbaSha256": "f5dc337bd8aa81ef7fadef90fa11cd4370c38ac04c84378e8a3686d0a71c4a63",
+      "pngBytes": 75734
+    },
+    {
+      "name": "forge_panel_albedo",
+      "width": 1024,
+      "height": 1024,
+      "ktxBytes": 72992,
+      "rgbaSha256": "4eed90a02d91deaf18159b880ee53da3c12bd9dee731473e17629fc39577e10c",
+      "pngBytes": 45502
+    },
+    {
+      "name": "forge_machinery_normal",
+      "width": 512,
+      "height": 512,
+      "ktxBytes": 5381,
+      "rgbaSha256": "ce8ec25d60c9e4a84d3d3d40cd1700ef0645b3d564139024aedae2b529c84f8f",
+      "pngBytes": 8455
+    },
+    {
+      "name": "forge_machinery_orm",
+      "width": 512,
+      "height": 512,
+      "ktxBytes": 58536,
+      "rgbaSha256": "cc2a511afb67c4c1641e378dbd80fb1f20040c0c850bf21ded362f5f22f12a83",
+      "pngBytes": 39318
+    },
+    {
+      "name": "forge_machinery_albedo",
+      "width": 512,
+      "height": 512,
+      "ktxBytes": 6409,
+      "rgbaSha256": "46b925a8904d9927984ff47598bd7396a9a0dd20ddcbb5beea8b48d148969373",
+      "pngBytes": 9340
+    }
+  ],
+  "blenderEvidence": {
+    "blender": "4.3.2",
+    "engine": "Cycles CPU",
+    "samples": 32,
+    "denoise": false,
+    "visibleMeshes": 22,
+    "triangles": 39392,
+    "images": [
+      {
+        "name": "forge_machinery_albedo",
+        "size": [
+          512,
+          512
+        ],
+        "colorSpace": "sRGB"
+      },
+      {
+        "name": "forge_machinery_normal",
+        "size": [
+          512,
+          512
+        ],
+        "colorSpace": "Non-Color"
+      },
+      {
+        "name": "forge_machinery_orm",
+        "size": [
+          512,
+          512
+        ],
+        "colorSpace": "Non-Color"
+      },
+      {
+        "name": "forge_panel_albedo",
+        "size": [
+          1024,
+          1024
+        ],
+        "colorSpace": "sRGB"
+      },
+      {
+        "name": "forge_panel_normal",
+        "size": [
+          1024,
+          1024
+        ],
+        "colorSpace": "Non-Color"
+      },
+      {
+        "name": "forge_panel_orm",
+        "size": [
+          1024,
+          1024
+        ],
+        "colorSpace": "Non-Color"
+      }
+    ],
+    "camera": {
+      "position": [
+        -12.0,
+        -22.0,
+        34.0
+      ],
+      "target": [
+        0,
+        0,
+        0.4
+      ],
+      "orthoScale": 37
+    },
+    "lighting": "neutral world plus two area lights; no game lighting",
+    "ao": "Authored AO retained in importer settings socket but NOT applied to shading; no base-color multiplication"
+  },
+  "limits": "Authored AO not applied. No game renderer, lighting, runtime or visual acceptance. No model, UV, normal, material assignment or factor edits. CPU studio reconstruction only.",
+  "image": {
+    "bytes": 62196,
+    "sha256": "ae42a3d4b09b11a2fe612cd8cdb3bebd8fec0e8da3745a482a547fc2bc2f57f9"
+  },
+  "reproduction": {
+    "portableScriptSha256": "dad08f21bde3e9544f155d2e2afc88c1c3df5e119c6b6b36955598a840d3f8ef",
+    "originalScriptSha256": "06fb56db7194b6668a5b6c5fdc019c5489ee9ed61f143cc1fb950bafcc5abd1d",
+    "changes": "Portable repository/output paths, self-loading script source, no-overwrite guard and removed unused import. Compiled only; not rerendered."
+  }
+}
