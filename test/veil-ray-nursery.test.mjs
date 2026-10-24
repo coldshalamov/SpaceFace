@@ -13,6 +13,7 @@ import { veilNurseryMemory, tickVeilNursery, handleVeilNurseryEvent, nurseryDist
 import { writePhysicsControl } from '../src/core/physicsAuthority.js';
 import { admitReceipt } from '../src/ui/hudAttention.js';
 import { buildFaunaMesh } from '../src/render/faunaVisuals.js';
+import { nurseryShelterQualified } from '../src/world/veilRayHabitat.js';
 
 const site = ALIEN_SITES.veil_ray_nursery;
 function fixture(tier = 2) {
@@ -58,8 +59,17 @@ test('actual scan and weapons disturb, quiet recovery and passive survey are fin
     pos: f.player.pos, radius: 700 });
   assert.equal(n().mode, 'DISTURBED'); f.tick(8); assert.equal(n().mode, 'RECOVERING');
   f.tick(18.1); assert.equal(n().mode, 'QUIET');
+  assert.equal(n().surveyed, false, 'QUIET mode alone is not a settled formation');
+  // Let the actual fauna owner return the rays, with the observer out of range
+  // so physical approach cannot silently prepay the twelve-second survey.
+  f.player.pos.x = f.center.x + 900;
+  for (let i = 0; i < 180 && !nurseryShelterQualified(f.adults(), f.center, n()); i++) f.tick(1);
+  assert.ok(nurseryShelterQualified(f.adults(), f.center, n()));
+  assert.equal(n().watchSeconds, 0);
+  f.player.pos.x = f.center.x + 220;
   const before = f.state.player.credits;
-  f.tick(12.1); assert.equal(n().surveyed, true); assert.equal(f.state.player.credits, before);
+  f.tick(11.9); assert.equal(n().surveyed, false);
+  f.tick(.2); assert.equal(n().surveyed, true); assert.equal(f.state.player.credits, before);
   const saved = serializeAlienEcologyState(f.state); n().surveyed = false;
   deserializeAlienEcologyState(f.state, saved); assert.equal(n().surveyed, true);
   handleVeilNurseryEvent(f.owner, site, 'combat:fire', { ownerId: f.player.id, origin: f.player.pos });

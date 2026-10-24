@@ -903,6 +903,14 @@ export function createBroodEngine(deps = {}) {
           }
         }
 
+        // The brood mother walks at her authored speed. Flock separation would
+        // otherwise pin her inside the mite ball while she drops the tide.
+        if (def && def.births && dp > 1e-4) {
+          const walk = liveFamilySpeed[fam] * BROOD_DRAG_PER_S;
+          ax = (dxp / dp) * walk;
+          az = (dzp / dp) * walk;
+        }
+
         // -- integrate (semi-implicit Euler, the sim's shape)
         vx[i] = (vx[i] + ax * dt) * dragKeep;
         vz[i] = (vz[i] + az * dt) * dragKeep;

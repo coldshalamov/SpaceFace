@@ -1,6 +1,7 @@
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { recordContaminationKnowledge } from '../data/alienEcology.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
+import { nurseryShelterQualified } from './veilRayHabitat.js';
 
 export const VEIL_NURSERY_ID = 'veil_ray_nursery';
 const WATCH_SECONDS = 12;
@@ -144,15 +145,15 @@ export function tickVeilNursery(world, site, rec, fauna, player, dt) {
       `Disturbance${cause ? ` from ${cause}` : ''} is fading. Give the rays room to settle.`);
     if (state.world?.alienEcology?.sites?.[site.siteId]?.nursery !== n) return;
   }
-  const adults = fauna.filter(e => e.alive !== false && e.data?.ecology?.siteId === site.siteId
+  const adults = fauna.filter(e => e.alive !== false && e.hull > 0 && e.data?.ecology?.siteId === site.siteId
     && !e.data.ecology.aggregate);
   const speed = player?.vel ? Math.hypot(player.vel.x, player.vel.z) : Infinity;
   const watching = near && range(center, player.pos) >= 95 && speed <= 12 && !burning
-    && n.mode === 'QUIET' && adults.some(e => range(center, e.pos) < 450);
+    && n.mode === 'QUIET' && nurseryShelterQualified(adults, center, n);
   n.watchSeconds = watching ? Math.min(WATCH_SECONDS, n.watchSeconds + dt) : 0;
   if (n.watchSeconds >= WATCH_SECONDS && !n.surveyed) {
     n.surveyed = true;
-    recordContaminationKnowledge(state, site.sectorId, 'Veil-Ray Nursery: passive survey recorded; juveniles shelter behind adults inside the open mineral crescent.');
+    recordContaminationKnowledge(state, site.sectorId, 'Veil-Ray Nursery: passive survey recorded; juveniles shelter with adults inside the open mineral crescent.');
     world.bus?.emit('toast', { text: 'Veil-Ray nursery surveyed · the small membranes follow their elders. Observation logged; no specimens taken.', kind: 'info', ttl: 6 });
     world.bus?.emit('ecology:evidence', { sectorId: site.sectorId, siteId: site.siteId,
       evidenceId: 'veil_ray_nursery_passive_survey', text: 'Passive nursery observation: adults shelter one juvenile flock inside the mineral crescent.' });
