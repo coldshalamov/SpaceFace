@@ -71,6 +71,8 @@ import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propuls
 import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
+  TETHYS_ACTIVITY_SECTOR_ID,
+  activityActorSlotById,
 } from '../data/sectorActivityPockets.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
@@ -4768,10 +4770,26 @@ export const npcJobsRuntime = {
     const cutter = this._heliosStarterMinerRecordId != null
       && entry.worldRecordId === this._heliosStarterMinerRecordId;
     const slot = cutter ? 'helios_starter_cutter' : entity.data?.activityActorSlotId;
-    if (slot !== 'helios_starter_cutter' && slot !== 'choir_relief_attendant' && slot !== 'choir_relief_patient') return null;
+    const quietPair = slot === 'tethys_quiet_runner' || slot === 'tethys_quiet_keeper';
+    if (quietPair) {
+      const authored = activityActorSlotById(slot);
+      const id = authored && stableRecordId(this.state.meta?.seed || 1, TETHYS_ACTIVITY_SECTOR_ID,
+        RECORD_KIND.CONVOY, authored.worldRecordSlotId);
+      if (!id || entry.worldRecordId !== id || entity.data?.worldRecordId !== id
+        || entity.homeSectorId !== TETHYS_ACTIVITY_SECTOR_ID || entry.sectorId !== TETHYS_ACTIVITY_SECTOR_ID
+        || this.state.entities?.get(entry.entityId) !== entity || entity.alive === false
+        || entity.data?.jobId !== entry.job?.id || this._byId()[entry.job?.id] !== entry) return null;
+
+    } else if (slot !== 'helios_starter_cutter' && slot !== 'choir_relief_attendant' && slot !== 'choir_relief_patient') return null;
     const job = entry.job;
     if (!job || job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) return null;
-    const waypoint = this._ceresRealTargetWaypoint(job);
+    // Quiet keeper is a surveyor: use its own kernel route index instead of the Ceres
+    // hauler/miner-only waypoint adapter. Existing leases, FLEE and physical driver stay intact.
+    if (quietPair && (!Array.isArray(job.route) || job.route.length < 2
+      || !Number.isInteger(job.routeIndex) || job.routeIndex < 0 || job.routeIndex >= job.route.length)) return null;
+    const quietIndex = [NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(job.phase)
+      ? (job.routeIndex + 1) % job.route.length : job.routeIndex;
+    const waypoint = slot === 'tethys_quiet_keeper' ? job.route[quietIndex] : this._ceresRealTargetWaypoint(job);
     if (!waypoint?.pos) return null;
     const cutStop = slot === 'helios_starter_cutter' && this._heliosCutWaypoint(job);
     if (cutStop && cutStop.waypoint === waypoint) {

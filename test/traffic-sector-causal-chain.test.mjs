@@ -747,7 +747,7 @@ test('a Tethys cycle closes with one news line on the customs station, then re-a
   assert.equal(stories[0].sectorId, TETHYS);
   assert.equal(stories[0].sourceRef, 'traffic:sector-causal-chain');
   assert.equal(stories[0].text,
-    'A runner bolted the Tethys lane and dumped its load; the Quiet Cache keeps its own hours.');
+    'Tethys customs logs another tense watch; the Quiet Cache keeps its own hours.');
   assert.doesNotMatch(stories[0].text, /[a-z]_[a-z]|[a-z][A-Z]/, 'plain words, no internal ids');
 
   const wired = headlines.filter((h) => h.kind === 'tethys_quiet_handoff');

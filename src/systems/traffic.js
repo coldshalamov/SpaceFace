@@ -3093,6 +3093,7 @@ export const traffic = {
         if (!entity) continue;
         if (wasFresh) spawned += 1;
         this._stampAuthoredActivityEntity(entity, canonicalSpec.data, entry, sectorId, recordId);
+        this._initializeTethysShipment(entity, entry, wasFresh, record);
         this._assignActivityJob(entity, entry);
 
         let trafficRecord = prior.find((candidate) => candidate && candidate.id === entity.id);
