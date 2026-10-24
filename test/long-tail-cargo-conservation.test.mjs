@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import encounter, { runtime } from '../src/data/encounters/350-the-long-tail.js';
 import { spawnJettisonedCargoPod, lootShards } from '../src/systems/lootShards.js';
 import { traffic } from '../src/systems/traffic.js';
+import { authoredPayloadFileForEntity, authoredPayloadSlotForEntity } from '../src/render/partsLibrary.js';
 
 const FUEL = 'cmdty_fuel_cells';
 function harness(rng = 0.5) {
@@ -160,5 +161,17 @@ test('missing or unsafe legacy cargo cannot shed', () => {
   for (const cargo of [undefined, { [FUEL]: Number.MAX_VALUE }]) {
     const h = harness(); h.fire(); h.courier.data.cargo = cargo;
     delete h.courier.data.cargoManifest; h.tick(2); assert.equal(h.physical(), 5);
+  }
+});
+
+test('pending warm declares the actual jettisoned pod render body and slot', () => {
+  const h = harness(); h.fire();
+  const pods = h.state.entityList.filter(e => e.type === 'payload');
+  assert.equal(pods.length, 5);
+  for (const pod of pods) {
+    const file = authoredPayloadFileForEntity(pod);
+    assert.equal(file, 'places/place_cargo_pod_standard.glb');
+    assert.equal(authoredPayloadSlotForEntity(pod), 'place');
+    assert.ok(encounter.warmAssets.includes(file), `missing pending decode for ${file}`);
   }
 });
