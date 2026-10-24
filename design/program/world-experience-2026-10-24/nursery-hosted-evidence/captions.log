@@ -1,0 +1,90 @@
+{
+  "schema": "spaceface.ciCommandDiagnostic.v1",
+  "id": "check-caption-format-bridge",
+  "command": "npm run check:caption-format-bridge",
+  "ok": true,
+  "code": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 334,
+  "reason": "passed",
+  "classification": {
+    "category": "passed",
+    "confidence": "high",
+    "evidence": "command exited with code 0",
+    "flake": {
+      "status": "unknown",
+      "attemptsObserved": 1,
+      "passedAttempts": 0,
+      "failedAttempts": 0
+    }
+  },
+  "artifactPath": "scratch/check-ci-report/2026-10-24T19-18-26-747Z/check-caption-format-bridge.log",
+  "structured": null
+}
+--- stdout ---
+
+> spaceface@0.2.0-beta.1 check:caption-format-bridge
+> node --test test/caption-format-bridge-contract.test.mjs test/inf50-al-pr-13.test.mjs test/inf50-al-pr-15.test.mjs
+
+TAP version 13
+# Subtest: formatter preserves landed English punctuation and absent direction
+ok 1 - formatter preserves landed English punctuation and absent direction
+  ---
+  duration_ms: 0.701451
+  type: 'test'
+  ...
+# Subtest: formatter translates a non-directional base exactly once through the real runtime
+ok 2 - formatter translates a non-directional base exactly once through the real runtime
+  ---
+  duration_ms: 0.819735
+  type: 'test'
+  ...
+# Subtest: resolver adds raw text and authorship without changing legacy directional text
+ok 3 - resolver adds raw text and authorship without changing legacy directional text
+  ---
+  duration_ms: 0.37324
+  type: 'test'
+  ...
+# Subtest: real recipe bridge emits raw metadata and formats the bearing only once
+ok 4 - real recipe bridge emits raw metadata and formats the bearing only once
+  ---
+  duration_ms: 0.360838
+  type: 'test'
+  ...
+# Subtest: real recipe bridge preserves suppression, directional dedupe and clock rewind
+ok 5 - real recipe bridge preserves suppression, directional dedupe and clock rewind
+  ---
+  duration_ms: 0.323725
+  type: 'test'
+  ...
+# Subtest: real bridge localization uses the runtime pseudo path without raw placeholders
+ok 6 - real bridge localization uses the runtime pseudo path without raw placeholders
+  ---
+  duration_ms: 30.528759
+  type: 'test'
+  ...
+# Subtest: seed 4242: first-hour recipes do not use id-built captions
+ok 7 - seed 4242: first-hour recipes do not use id-built captions
+  ---
+  duration_ms: 1.28096
+  type: 'test'
+  ...
+# Subtest: seed 4242: a telegraph from 8 o'clock captions as 8 o'clock
+ok 8 - seed 4242: a telegraph from 8 o'clock captions as 8 o'clock
+  ---
+  duration_ms: 1.166281
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 227.796729
+
+--- stderr ---
+(empty)

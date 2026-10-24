@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 24 October 2026, 18:23 UTC.
+Updated: 24 October 2026, 19:56 UTC.
 
 All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
 
@@ -26,7 +26,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; PR59088cf8209 passes Camp41/Tail27; PR592 passes5. Both broader runs active/red; integration/acceptance open. Publication is not integration/acceptance.
+- State: OPEN; PR594 formation passes32; PR596 passes8 and PR592 passes9. Broader CI red or active; integration/acceptance open. Publication is not integration/acceptance.
 - Owner: publisher, root and exact feature owners.
 - Evidence: [PR590](https://github.com/coldshalamov/SpaceFace/pull/590); current checkpoint separates exact heads, passes and failures.
 - Next: follow terminal CI and attributable failures; preserve PR583 dependency review.
@@ -42,7 +42,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-VISUALS
 - Outcome: new inspected actual-work images and live game-camera acceptance.
-- State: OPEN; Press Camp source-model reconstruction is reviewed/published; textures, live camera and performance remain unverified.
+- State: OPEN; Nursery measured before/after source preview is reviewed; live camera, materials and performance remain unverified.
 - Owner: root visual review and exact feature owners.
 - Evidence: [Pitborn preview/PR582](https://github.com/coldshalamov/SpaceFace/pull/582), [measured chart](../world-experience-2026-10-24/hosted-custody-evidence/README.md).
 - Next: show meaningful new work; qualify new Camp binding workload and actual camera readability/lighting when permitted.
@@ -66,15 +66,15 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-LIVING-WORLD
 - Outcome: inhabited places, work, economy, history, relationships and consequences using actual assets/systems.
-- State: OPEN; Powered Camp departure/capture and inherited finite custody pass hosted tests; normal later-game Sker admission is observed, not a completed player route.
+- State: OPEN; Nursery formation/causal receipts pass32 hosted checks; Camp/Tail behavior is bounded evidence, not completed player routes.
 - Owner: root and current Camp source/review owners.
 - Evidence: [Tail/PR583](https://github.com/coldshalamov/SpaceFace/pull/583), [Camp/PR590](https://github.com/coldshalamov/SpaceFace/pull/590), checkpoint.
-- Next: advance Nursery disturbance/settling captions in existing helpers; qualify ordinary consequences.
+- Next: qualify Nursery formation and causal receipts through ordinary visits, then connected original-scope work.
 - Awaiting user: world acceptance; no routine choice.
 
 ## SF-SECTOR-COHERENCE
 - Outcome: coherent arrivals, ordinary visits, time/progression, choices, return and Save/Continue across sectors.
-- State: OPEN; Seed24 later-game Sker normal planner admits full-catalog camp at59.833s with native cast/voice. Configured admission is not human travel or sector acceptance.
+- State: OPEN; Nursery shelter geometry and survey coherence are tested; configured Camp admission remains distinct from human travel/sector acceptance.
 - Owner: root sector register and exact gameplay/story owners.
 - Evidence: sector experience register and build map; Camp/Tail proof boundaries.
 - Next: qualify published Camp visual binding and workload, then ordinary choices and Save consequences.

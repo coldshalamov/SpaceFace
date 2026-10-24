@@ -1,0 +1,40 @@
+{
+  "schema": "spaceface.ciCommandDiagnostic.v1",
+  "id": "check-bar-mission-readiness",
+  "command": "npm run check:bar:mission-readiness",
+  "ok": false,
+  "code": null,
+  "signal": "SIGKILL",
+  "timedOut": true,
+  "durationMs": 181606,
+  "reason": "timed out",
+  "classification": {
+    "category": "timeout",
+    "confidence": "high",
+    "evidence": "runner timeout elapsed before command completion",
+    "flake": {
+      "status": "unknown",
+      "attemptsObserved": 1,
+      "passedAttempts": 0,
+      "failedAttempts": 0
+    }
+  },
+  "artifactPath": "scratch/check-ci-report/2026-10-24T19-16-37-617Z/check-bar-mission-readiness.log",
+  "structured": null
+}
+--- stdout ---
+
+> spaceface@0.2.0-beta.1 check:bar:mission-readiness
+> node scripts/check-bar-mission-readiness-live.mjs
+
+[bar-probe-lifecycle] {"event":"fixture-start","epochMs":1792869401183,"elapsedMs":0.06152399999999858,"pid":3453}
+[bar-probe-lifecycle] {"event":"assertions-complete","epochMs":1792869582447,"elapsedMs":181263.902435}
+Bar mission readiness live OK: Bar offer chips, blocker, Accept + Track, and Mission Log handoff render on the default route.
+[bar-probe-lifecycle] {"event":"browser-close-start","epochMs":1792869582447,"elapsedMs":181264.130409}
+[bar-probe-lifecycle] {"event":"browser-close-end","epochMs":1792869582603,"elapsedMs":181420.395587,"completed":true}
+[bar-probe-lifecycle] {"event":"server-stop-request","epochMs":1792869582603,"elapsedMs":181420.543152}
+[bar-probe-lifecycle] {"event":"server-exit","epochMs":1792869582608,"elapsedMs":181425.470336,"pid":3461,"code":null,"signal":"SIGTERM"}
+[bar-probe-lifecycle] {"event":"server-close","epochMs":1792869582609,"elapsedMs":181425.649339,"pid":3461,"code":null,"signal":"SIGTERM"}
+
+--- stderr ---
+(empty)

@@ -1,0 +1,239 @@
+{
+  "schema": "spaceface.ciCommandDiagnostic.v1",
+  "id": "check-veil-ray-nursery-feedback",
+  "command": "npm run check:veil-ray-nursery-feedback",
+  "ok": true,
+  "code": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 3476,
+  "reason": "passed",
+  "classification": {
+    "category": "passed",
+    "confidence": "high",
+    "evidence": "command exited with code 0",
+    "flake": {
+      "status": "unknown",
+      "attemptsObserved": 1,
+      "passedAttempts": 0,
+      "failedAttempts": 0
+    }
+  },
+  "artifactPath": "scratch/check-ci-report/2026-10-24T19-30-09-757Z/check-veil-ray-nursery-feedback.log",
+  "structured": null
+}
+--- stdout ---
+
+> spaceface@0.2.0-beta.1 check:veil-ray-nursery-feedback
+> node --test test/veil-ray-nursery.test.mjs test/veil-ray-nursery-formation.test.mjs test/m24-move-the-nursery.test.mjs
+
+TAP version 13
+# Subtest: seed 4242: staged gentle substrate moves let the same animals re-home without towing them
+ok 1 - seed 4242: staged gentle substrate moves let the same animals re-home without towing them
+  ---
+  duration_ms: 1482.789555
+  type: 'test'
+  ...
+# Subtest: seed 4242: a violent move scatters living animals and quiet time plus save/reload cannot undo it
+ok 2 - seed 4242: a violent move scatters living animals and quiet time plus save/reload cannot undo it
+  ---
+  duration_ms: 473.279721
+  type: 'test'
+  ...
+# Subtest: seed 4242: world save/reload preserves in-flight substrate travel and the completed new home
+ok 3 - seed 4242: world save/reload preserves in-flight substrate travel and the completed new home
+  ---
+  duration_ms: 294.89214
+  type: 'test'
+  ...
+# Subtest: seed 4242: fast short moves and rushed stages scatter; invalid or duplicate requests do not move anything
+ok 4 - seed 4242: fast short moves and rushed stages scatter; invalid or duplicate requests do not move anything
+  ---
+  duration_ms: 44.141123
+  type: 'test'
+  ...
+# Subtest: FIX2 M24 seed 4242: ordinary Massline input tows the substrate gently or scatters it when rushed
+ok 5 - FIX2 M24 seed 4242: ordinary Massline input tows the substrate gently or scatters it when rushed
+  ---
+  duration_ms: 512.121408
+  type: 'test'
+  ...
+# Subtest: seed1 planner counterexample remains unchanged for the global cast; Nursery uses a bounded initial habitat
+ok 6 - seed1 planner counterexample remains unchanged for the global cast; Nursery uses a bounded initial habitat
+  ---
+  duration_ms: 18.699378
+  type: 'test'
+  ...
+# Subtest: real procedural tail and articulated membrane bounds clear real mineral ribs in settled layout
+ok 7 - real procedural tail and articulated membrane bounds clear real mineral ribs in settled layout
+  ---
+  duration_ms: 44.477686
+  type: 'test'
+  ...
+# {"measuredAdultPlanarRadius":23.5,"conservativeRadius":23.51}
+# Subtest: ordinary quiet steering remains sheltered over120 seconds with unchanged identities and no teleport
+ok 8 - ordinary quiet steering remains sheltered over120 seconds with unchanged identities and no teleport
+  ---
+  duration_ms: 1267.951126
+  type: 'test'
+  ...
+# {"seed":1,"seconds":120,"maxEnvelope":54.01430670940839,"minSeparation":47.32346310382099}
+# {"seed":1515,"seconds":120,"maxEnvelope":54.01430668902711,"minSeparation":47.192438221558646}
+# {"seed":4242,"seconds":120,"maxEnvelope":54.01430670467144,"minSeparation":47.80033161361818}
+# Subtest: legacy off-shelter adult positions converge through the actual owner without anchor migration
+ok 9 - legacy off-shelter adult positions converge through the actual owner without anchor migration
+  ---
+  duration_ms: 402.500645
+  type: 'test'
+  ...
+# Subtest: scan escape and recovery require twelve physically qualified quiet seconds, not the mode timer
+ok 10 - scan escape and recovery require twelve physically qualified quiet seconds, not the mode timer
+  ---
+  duration_ms: 213.17206
+  type: 'test'
+  ...
+# {"firstQualified":46.9,"surveyedAt":58.9}
+# Subtest: goal gates retain effective panic/capture and persistent relocation outcomes; other biomes are unchanged
+ok 11 - goal gates retain effective panic/capture and persistent relocation outcomes; other biomes are unchanged
+  ---
+  duration_ms: 2.12381
+  type: 'test'
+  ...
+# Subtest: death, active recovery and scattered ecology restore preserve outcomes rather than reset into formation
+ok 12 - death, active recovery and scattered ecology restore preserve outcomes rather than reset into formation
+  ---
+  duration_ms: 779.86046
+  type: 'test'
+  ...
+# Subtest: survey predicate counts actual positive-hull survivors and resets when one leaves the shelter
+ok 13 - survey predicate counts actual positive-hull survivors and resets when one leaves the shelter
+  ---
+  duration_ms: 17.678635
+  type: 'test'
+  ...
+# Subtest: taxonomy gates a bounded satellite; rematerialization preserves three adult identities and one visual flock
+ok 14 - taxonomy gates a bounded satellite; rematerialization preserves three adult identities and one visual flock
+  ---
+  duration_ms: 31.368139
+  type: 'test'
+  ...
+# Subtest: actual scan and weapons disturb, quiet recovery and passive survey are finite and once across ecology restore
+ok 15 - actual scan and weapons disturb, quiet recovery and passive survey are finite and once across ecology restore
+  ---
+  duration_ms: 386.182243
+  type: 'test'
+  ...
+# Subtest: nursery loss remains dead after reload and re-entry; a juvenile flock never replenishes adults
+ok 16 - nursery loss remains dead after reload and re-entry; a juvenile flock never replenishes adults
+  ---
+  duration_ms: 421.871127
+  type: 'test'
+  ...
+# Subtest: mineral ribs are seven actual native solids and retain their open mouth
+ok 17 - mineral ribs are seven actual native solids and retain their open mouth
+  ---
+  duration_ms: 124.903265
+  type: 'test'
+  ...
+# Subtest: nursery membranes articulate from ecology and one juvenile render batch respects motion/lifetime
+ok 18 - nursery membranes articulate from ecology and one juvenile render batch respects motion/lifetime
+  ---
+  duration_ms: 39.448524
+  type: 'test'
+  ...
+# Subtest: actual nursery stimulus and recovery explain one episode across repeats and Continue
+ok 19 - actual nursery stimulus and recovery explain one episode across repeats and Continue
+  ---
+  duration_ms: 281.454772
+  type: 'test'
+  ...
+# Subtest: nursery feedback requires present revealed adults and the nearby living player
+ok 20 - nursery feedback requires present revealed adults and the nearby living player
+  ---
+  duration_ms: 6.669713
+  type: 'test'
+  ...
+# Subtest: loss feedback never blames the player and relocation keeps its existing sole cue
+ok 21 - loss feedback never blames the player and relocation keeps its existing sole cue
+  ---
+  duration_ms: 164.992577
+  type: 'test'
+  ...
+# Subtest: quiet passive observation stays quiet until the existing single survey reward
+ok 22 - quiet passive observation stays quiet until the existing single survey reward
+  ---
+  duration_ms: 109.464126
+  type: 'test'
+  ...
+# Subtest: native consumed drive flare explains itself; stale force and requested input do not
+ok 23 - native consumed drive flare explains itself; stale force and requested input do not
+  ---
+  duration_ms: 69.599923
+  type: 'test'
+  ...
+# Subtest: biology fitting reveal and text receipts work with silent audio and reduced motion
+ok 24 - biology fitting reveal and text receipts work with silent audio and reduced motion
+  ---
+  duration_ms: 2.513009
+  type: 'test'
+  ...
+# Subtest: leaving the sector freezes the existing episode rather than running a feedback clock
+ok 25 - leaving the sector freezes the existing episode rather than running a feedback clock
+  ---
+  duration_ms: 4.28027
+  type: 'test'
+  ...
+# Subtest: episode latch precedes synchronous repeat-pulse subscribers
+ok 26 - episode latch precedes synchronous repeat-pulse subscribers
+  ---
+  duration_ms: 8.899604
+  type: 'test'
+  ...
+# Subtest: disturbance Save/Continue subscribers retain the latch before repeating a pulse
+ok 27 - disturbance Save/Continue subscribers retain the latch before repeating a pulse
+  ---
+  duration_ms: 1.312123
+  type: 'test'
+  ...
+# Subtest: recovery Save/Continue subscribers retain the latch and retire the old tick record
+ok 28 - recovery Save/Continue subscribers retain the latch and retire the old tick record
+  ---
+  duration_ms: 4.490028
+  type: 'test'
+  ...
+# Subtest: nursery receipts respect the existing quiet-HUD versus fight/hurt admission boundary
+ok 29 - nursery receipts respect the existing quiet-HUD versus fight/hurt admission boundary
+  ---
+  duration_ms: 5.818526
+  type: 'test'
+  ...
+# Subtest: drive receipt Save/Continue cannot carry the consumed burn or mutate its retired record
+ok 30 - drive receipt Save/Continue cannot carry the consumed burn or mutate its retired record
+  ---
+  duration_ms: 42.590654
+  type: 'test'
+  ...
+# Subtest: recovery waits for proximity and fitting reveal to return within the existing recovery window
+ok 31 - recovery waits for proximity and fitting reveal to return within the existing recovery window
+  ---
+  duration_ms: 3.389274
+  type: 'test'
+  ...
+# Subtest: recovery retains the latest actual cause after a combat-suppressed disturbance receipt
+ok 32 - recovery retains the latest actual cause after a combat-suppressed disturbance receipt
+  ---
+  duration_ms: 1.187665
+  type: 'test'
+  ...
+1..32
+# tests 32
+# suites 0
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3380.063865
+
+--- stderr ---
+(empty)

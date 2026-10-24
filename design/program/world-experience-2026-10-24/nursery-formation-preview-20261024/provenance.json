@@ -1,0 +1,445 @@
+{
+  "method": "Actual Three.js nursery builder triangles rendered by existing CPU raster helper",
+  "preview": "Source-model reconstruction, not live camera or final visual acceptance",
+  "sourceCommit": "eee0a811f56b9ea9d9de3b1b914fe3115e2f18e3",
+  "visualBlobs": {
+    "nursery": "75d84b1f6b13d8f42c32cf2ebb920fb9e2969cc3",
+    "fauna": "5cf8dd8bbcef9364726928f44e4412d39be2193f",
+    "palette": "0ccbde6794a9a27a26bdae68bf83efa2fb0907de"
+  },
+  "poseEvidenceBlob": "0f11511305c71f90ef524c0c9af8b7f8f6f813f6",
+  "poseSource": "One authorized paired actual tickAlienEcology capture; seed1 epoch0 tick726 time12.1",
+  "sourceLimits": "Exact selected public-module overlay over read-only canonical remainder; not full public graph",
+  "articulation": "Actual updateAuthoredMotion callback, reducedMotion=true at12.1; intentionally frozen rest articulation; no render animation history claimed",
+  "transforms": "Site-relative X/Z,Y0,yaw=-rot; no entity-radius scaling",
+  "material": "Actual source untextured tissue fallback factors; no skin preload. Vertex colors retained. CPU ambient/diffuse approximation; no textures, normal maps, roughness, metalness, native lighting or PBR reproduction. Source emissive*intensity retained then helper approximate contribution0.36.",
+  "views": "Matched top camera span440 center[-70,0,-65]; separate independently enlarged oblique detail crop span260",
+  "rows": {
+    "baseline": [
+      {
+        "key": "veil_ray_nursery:veil_ray:0",
+        "x": -59.0366214476544,
+        "z": -186.40368241967735,
+        "rot": 13.391075148020118,
+        "data": {
+          "strainId": "charon_grave",
+          "ecology": {
+            "siteId": "veil_ray_nursery",
+            "speciesId": "veil_ray",
+            "nurseryMode": "QUIET",
+            "phase": 4.364883487511771
+          }
+        }
+      },
+      {
+        "key": "veil_ray_nursery:veil_ray:1",
+        "x": -119.02996606839224,
+        "z": -95.03310356152724,
+        "rot": 10.773558842073465,
+        "data": {
+          "strainId": "charon_grave",
+          "ecology": {
+            "siteId": "veil_ray_nursery",
+            "speciesId": "veil_ray",
+            "nurseryMode": "QUIET",
+            "phase": 1.7473671815654508
+          }
+        }
+      },
+      {
+        "key": "veil_ray_nursery:veil_ray:2",
+        "x": -222.3957608078108,
+        "z": -46.186644030232856,
+        "rot": 11.576837076967744,
+        "data": {
+          "strainId": "charon_grave",
+          "ecology": {
+            "siteId": "veil_ray_nursery",
+            "speciesId": "veil_ray",
+            "nurseryMode": "QUIET",
+            "phase": 2.5506454164596457
+          }
+        }
+      },
+      {
+        "key": "veil_ray_nursery:juvenile-flock",
+        "x": -20.74359160912718,
+        "z": -65.32867617076408,
+        "rot": 13.384267883119643,
+        "data": {
+          "strainId": "charon_grave",
+          "ecology": {
+            "siteId": "veil_ray_nursery",
+            "speciesId": "veil_ray",
+            "nurseryMode": "QUIET",
+            "aggregate": true,
+            "visibleMembers": 8
+          }
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:0",
+        "x": 3.7674311717582896,
+        "z": 59.88160370569676,
+        "rot": 3.078760800517997,
+        "data": {
+          "veilNurseryRib": 0
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:1",
+        "x": -27.797762107191375,
+        "z": 53.17221475387123,
+        "rot": 3.623303527140228,
+        "data": {
+          "veilNurseryRib": 1
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:2",
+        "x": -51.3218556096308,
+        "z": 31.081620562388707,
+        "rot": 4.167846253762459,
+        "data": {
+          "veilNurseryRib": 2
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:3",
+        "x": -60,
+        "z": 0,
+        "rot": 4.71238898038469,
+        "data": {
+          "veilNurseryRib": 3
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:4",
+        "x": -51.3218556096308,
+        "z": -31.081620562388707,
+        "rot": 5.25693170700692,
+        "data": {
+          "veilNurseryRib": 4
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:5",
+        "x": -27.797762107191375,
+        "z": -53.17221475387123,
+        "rot": 5.801474433629151,
+        "data": {
+          "veilNurseryRib": 5
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:6",
+        "x": 3.7674311717582896,
+        "z": -59.88160370569676,
+        "rot": 6.346017160251382,
+        "data": {
+          "veilNurseryRib": 6
+        }
+      }
+    ],
+    "candidate": [
+      {
+        "key": "veil_ray_nursery:veil_ray:0",
+        "x": -28.294102861678766,
+        "z": -1.3287508051507757,
+        "rot": 6.769337488416131,
+        "data": {
+          "strainId": "charon_grave",
+          "ecology": {
+            "siteId": "veil_ray_nursery",
+            "speciesId": "veil_ray",
+            "nurseryMode": "QUIET",
+            "phase": 4.364883487511771
+          }
+        }
+      },
+      {
+        "key": "veil_ray_nursery:veil_ray:1",
+        "x": 13.223918889623747,
+        "z": -24.317562656084192,
+        "rot": 4.151821182468024,
+        "data": {
+          "strainId": "charon_grave",
+          "ecology": {
+            "siteId": "veil_ray_nursery",
+            "speciesId": "veil_ray",
+            "nurseryMode": "QUIET",
+            "phase": 1.7473671815654508
+          }
+        }
+      },
+      {
+        "key": "veil_ray_nursery:veil_ray:2",
+        "x": 13.04027610472258,
+        "z": 24.74994139502087,
+        "rot": 4.955099417371714,
+        "data": {
+          "strainId": "charon_grave",
+          "ecology": {
+            "siteId": "veil_ray_nursery",
+            "speciesId": "veil_ray",
+            "nurseryMode": "QUIET",
+            "phase": 2.5506454164596457
+          }
+        }
+      },
+      {
+        "key": "veil_ray_nursery:juvenile-flock",
+        "x": -9.903556298213516,
+        "z": -0.46539058109920006,
+        "rot": 6.767958414252631,
+        "data": {
+          "strainId": "charon_grave",
+          "ecology": {
+            "siteId": "veil_ray_nursery",
+            "speciesId": "veil_ray",
+            "nurseryMode": "QUIET",
+            "aggregate": true,
+            "visibleMembers": 8
+          }
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:0",
+        "x": 3.7674311717582896,
+        "z": 59.88160370569676,
+        "rot": 3.078760800517997,
+        "data": {
+          "veilNurseryRib": 0
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:1",
+        "x": -27.797762107191375,
+        "z": 53.17221475387123,
+        "rot": 3.623303527140228,
+        "data": {
+          "veilNurseryRib": 1
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:2",
+        "x": -51.3218556096308,
+        "z": 31.081620562388707,
+        "rot": 4.167846253762459,
+        "data": {
+          "veilNurseryRib": 2
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:3",
+        "x": -60,
+        "z": 0,
+        "rot": 4.71238898038469,
+        "data": {
+          "veilNurseryRib": 3
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:4",
+        "x": -51.3218556096308,
+        "z": -31.081620562388707,
+        "rot": 5.25693170700692,
+        "data": {
+          "veilNurseryRib": 4
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:5",
+        "x": -27.797762107191375,
+        "z": -53.17221475387123,
+        "rot": 5.801474433629151,
+        "data": {
+          "veilNurseryRib": 5
+        }
+      },
+      {
+        "key": "veil_ray_nursery:rib:6",
+        "x": 3.7674311717582896,
+        "z": -59.88160370569676,
+        "rot": 6.346017160251382,
+        "data": {
+          "veilNurseryRib": 6
+        }
+      }
+    ]
+  },
+  "counts": {
+    "baseline": [
+      {
+        "key": "veil_ray_nursery:veil_ray:0",
+        "root": "SF_VeilRay_Nursery_Adult",
+        "triangles": 2718
+      },
+      {
+        "key": "veil_ray_nursery:veil_ray:1",
+        "root": "SF_VeilRay_Nursery_Adult",
+        "triangles": 2718
+      },
+      {
+        "key": "veil_ray_nursery:veil_ray:2",
+        "root": "SF_VeilRay_Nursery_Adult",
+        "triangles": 2718
+      },
+      {
+        "key": "veil_ray_nursery:juvenile-flock",
+        "root": "SF_VeilRay_Nursery_Juvenile_Flock",
+        "triangles": 8832
+      },
+      {
+        "key": "veil_ray_nursery:rib:0",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:1",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:2",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:3",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:4",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:5",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:6",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      }
+    ],
+    "candidate": [
+      {
+        "key": "veil_ray_nursery:veil_ray:0",
+        "root": "SF_VeilRay_Nursery_Adult",
+        "triangles": 2718
+      },
+      {
+        "key": "veil_ray_nursery:veil_ray:1",
+        "root": "SF_VeilRay_Nursery_Adult",
+        "triangles": 2718
+      },
+      {
+        "key": "veil_ray_nursery:veil_ray:2",
+        "root": "SF_VeilRay_Nursery_Adult",
+        "triangles": 2718
+      },
+      {
+        "key": "veil_ray_nursery:juvenile-flock",
+        "root": "SF_VeilRay_Nursery_Juvenile_Flock",
+        "triangles": 8832
+      },
+      {
+        "key": "veil_ray_nursery:rib:0",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:1",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:2",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:3",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:4",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:5",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      },
+      {
+        "key": "veil_ray_nursery:rib:6",
+        "root": "SF_VeilRay_Fractured_Mineral_Rib",
+        "triangles": 108
+      }
+    ]
+  },
+  "image": {
+    "filename": "nursery-formation-source-comparison-20261024.jpg",
+    "sha256": "dbf28ae52689489fff456ecbb218f2082a729c85a13f7d61181d00d9ca8ce8e1",
+    "bytes": 204872,
+    "width": 1600,
+    "height": 1180,
+    "gitBlob": "f6aa177fafa816a3bc597dd4c8d60a88dbc045bc"
+  },
+  "poseSourceIdentities": {
+    "baseline": {
+      "src/systems/alienEcology.js": "a42b56ef2985aeeacf9d394a60ab6d7128045f8f",
+      "src/world/veilRayNursery.js": "00d013d0cf444b7ae4dadbaf653e245163ea9647"
+    },
+    "candidate": {
+      "src/systems/alienEcology.js": "5745ee24aafa134e7cea3fd6c8f12aa5ce7c1ffc",
+      "src/world/veilRayNursery.js": "a062e3c46f14ae13cb0804b51e8f474305c9ec3d",
+      "src/world/veilRayHabitat.js": "810f0a688ac6d9e8666504c00cc363d89955b446"
+    },
+    "dependencies": {
+      "src/data/alienFauna.js": "b3d0f8ad90e92cae238ae307ea1470d352201c78",
+      "src/data/discoveryPresentation.js": "cdf3625a45d1a28661ff608009d0a96420a1dfb3",
+      "src/systems/discoverySound.js": "21a063e4d432dc2378466535b13053344fcbfac7",
+      "src/data/discoveryAudio.js": "717263b84fdc1abc3a39cbb4f0fe848188f95f6b"
+    }
+  },
+  "rasterHelperSha256": "3054fb817f79830929a9c1dd267d460902eee2d37137b8778333ee7b602be330",
+  "palette": {
+    "strain": "charon_grave",
+    "tissue": "0x9aa08e",
+    "filament": "0xc94f3d",
+    "glow": "0xff9a4a"
+  },
+  "rootInspection": "Inspected clipping and text readability; common-scale top views preserve actual world separation. Separate detail is explicitly a crop; all adults remain fully visible.",
+  "compressionTrial": {
+    "webpQualities": [
+      {
+        "quality": 85,
+        "bytes": 104630
+      },
+      {
+        "quality": 75,
+        "bytes": 81480
+      },
+      {
+        "quality": 65,
+        "bytes": 76380
+      },
+      {
+        "quality": 55,
+        "bytes": 71162
+      },
+      {
+        "quality": 45,
+        "bytes": 65534
+      }
+    ],
+    "result": "No tested WebP reached48KiB. Full JPEG retained for clarity; no disk/storage claim."
+  }
+}
