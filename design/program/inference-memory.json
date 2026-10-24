@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "seed-wl-06",
-      "date": "2026-10-22",
-      "wf": "WF-09",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A hunter you have escaped twice names the streak. A fresh hunter does not.",
-      "fingerprint": "verb=hail,subject=warrant-streak,sector=hunter,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "98f84ffae9ae03d2e9ecccf9842f254a306df907",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-wl-10",
       "date": "2026-10-22",
       "wf": "WF-08",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "f88dea7356",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-25",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Circuit wave three defends a beacon. The clock clears it alive. Losing it cuts the purse and the run continues.",
+      "fingerprint": "verb=defend,subject=beacon,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "f559f37b31",
       "verification": "focused_green"
     }
   ],
