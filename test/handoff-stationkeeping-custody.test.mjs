@@ -5,7 +5,7 @@ import { spawnJettisonedCargoPod, enforceJettisonedCargoPodCap } from '../src/sy
 import { consumePhysicsCommand, resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
 import { authoredPayloadFileForEntity, authoredPayloadSlotForEntity } from '../src/render/partsLibrary.js';
 
-function harness() {
+function harness(layoutRandom = () => 0.5) {
   const state = { mode: 'flight', input: {}, simTime: 0, entities: new Map(), entityList: [] };
   let id = 0, present = true;
   const helpers = { spawnEntity(spec) {
@@ -14,12 +14,15 @@ function harness() {
   } };
   const seller = helpers.spawnEntity({ type: 'ship', hull: 100, pos: { x: 32, z: 0 }, data: {} });
   const buyer = helpers.spawnEntity({ type: 'ship', hull: 100, pos: { x: -32, z: 0 }, data: {} });
-  const player = helpers.spawnEntity({ type: 'ship', hull: 100, pos: { x: 132, z: 0 }, vel: { x: 0, z: 0 }, flags: {}, data: {} });
+  const player = helpers.spawnEntity({ type: 'ship', hull: 100, pos: { x: 140, z: 0 }, vel: { x: 0, z: 0 }, flags: {}, data: {} });
   state.playerId = player.id;
   const events = [], pods = [], live = { id: 'deliberate_handoff', shape: {}, ids: [seller.id, buyer.id], roles: {}, data: {},
     plan: { zoneCenter: { x: 0, z: 0 }, ships: [{ role: 'hauler', pos: { x: 0, z: 0 } }, { role: 'raider', pos: { x: 0, z: 0 } }] } };
-  const d = { now: () => state.simTime, stream: () => () => 0.5,
-    spawnShips: () => live.ids, aliveCount: () => 1,
+  const d = { now: () => state.simTime, stream: () => layoutRandom,
+    spawnShips: (_, ships) => {
+      for (const spec of ships) Object.assign((spec.role === 'hauler' ? seller : buyer).pos, spec.pos);
+      return live.ids;
+    }, aliveCount: () => 1,
     entsOf: (_, role) => [role === 'hauler' ? seller : buyer],
     spawnCargoPod: (_, spec) => { const p = spawnJettisonedCargoPod(state, spec, helpers); pods.push(p); return p; },
     say() {}, emit: (name, p) => events.push({ name, ...p }),
@@ -331,4 +334,20 @@ test('actual cargo-cap removal of unreceived original still interrupts trade', (
  h.tick(0);assert.equal(h.live.outcome,'take_taken');assert.equal(h.live.data.delivered,0);
  assert.equal(h.events.filter(e=>e.name==='rep'&&e.delta===-2).length,1);
  assert.equal(h.events.filter(e=>e.name==='grant').length,0);
+});
+
+for (const bearing of [0,.125,.25,.375,.5,.625,.75,.875]) test(`initial freight clears real hull envelopes at bearing ${bearing} and extreme lateral jitter`, () => {
+ let draw=0;const h=harness(()=>draw++===0?bearing:draw%2?0:1);
+ const axis=h.live.data.axis;
+ assert.ok(Math.abs(Math.hypot(h.buyer.pos.x-h.seller.pos.x,h.buyer.pos.z-h.seller.pos.z)-80)<1e-8);
+ for(const [i,p] of h.pods.entries()){
+  const dx=p.pos.x-h.seller.pos.x,dz=p.pos.z-h.seller.pos.z;
+  assert.ok(Math.abs(dx*axis.x+dz*axis.z-(22+i*8))<1e-8);
+  assert.ok(Math.abs(-dx*axis.z+dz*axis.x)<=2+1e-8);
+  assert.ok(Math.hypot(dx,dz)>=22-1e-8,'original pod outside radius18 hull + radius3 pod + margin1');
+  assert.ok(Math.hypot(p.pos.x-h.buyer.pos.x,p.pos.z-h.buyer.pos.z)>26,'no initial buyer receipt');
+  assert.equal(p.data.amount,2);assert.equal(p.data.ownerId,h.seller.id);
+  for(const other of h.pods.slice(i+1))assert.ok(Math.hypot(p.pos.x-other.pos.x,p.pos.z-other.pos.z)>=8-1e-8,'all original pods clear each other');
+ }
+ assert.equal(h.pods.length,4);
 });

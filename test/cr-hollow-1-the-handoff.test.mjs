@@ -83,7 +83,7 @@ test('the pairing: Quiet seller and MTS buyer nose-to-nose, contraband mid-line'
   assert.equal(buyer.factionId, 'faction_mts', 'the buyer is MTS — the pairing that should not be');
 
   const gap = Math.hypot(buyer.pos.x - seller.pos.x, buyer.pos.z - seller.pos.z);
-  assert.ok(gap < 80 && gap > 40, `nose-to-nose (gap=${gap.toFixed(0)})`);
+  assert.ok(Math.abs(gap - 80) < 1e-8, `clear transfer gap (gap=${gap.toFixed(0)})`);
   for (const ship of [seller, buyer]) {
     assert.equal(ship.data.ai.activity?.kind, 'loiter', 'parked for the deal');
     assert.equal(ship.data.ai.roe, 'hold_fire');

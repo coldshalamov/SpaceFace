@@ -1,5 +1,5 @@
-// 357 — THE HANDOFF (CR-HOLLOW braid: ships that should not be together, docked anyway).
-// A Quiet runner and an MTS mule sit nose-to-nose in a lawless pocket — sixty world-units
+// 357 — THE HANDOFF (CR-HOLLOW braid: ships that should not be together, holding off the lane).
+// A Quiet runner and an MTS mule hold off the lane in a lawless pocket — eighty world-units
 // of empty deck between them, contraband pods drifting the gap one slow crawl at a time.
 // The pods ARE the deal: stolen goods riding an unlogged manifest from seller to buyer.
 // Nothing is scripted to complete — pods physically drift onto the buyer's hull, get
@@ -32,8 +32,13 @@ export const trigger = deepFreeze({
   },
 });
 
-const DEAL_GAP_WU = 64;             // nose-to-nose: close enough to read docked, far enough to cut
+const DEAL_GAP_WU = 80;             // holding nearby: enough room for the original freight to clear both hulls
 const POD_COUNT = 4;
+// The actual mule skin fits radius 18; pods have radius 3. Keep 1 WU hull and
+// 2 WU pod-to-pod clearance at spawn, without moving any adopted native body.
+const POD_START_WU = 22;
+const POD_SPACING_WU = 8;
+const POD_LATERAL_JITTER_WU = 2;
 const POD_SPEED = 3.2;              // the conveyor crawl — a real drift, not a teleported stack
 const DELIVER_REACH_WU = 26;        // a pod this close to the buyer counts as received
 const PARLEY_WU = 210;              // walking up slow inside this ring opens the quiet offer
@@ -143,15 +148,17 @@ export const runtime = Object.freeze({
     // Alternating commodities so the line reads as two manifests, not one spill.
     live.data.pods = [];
     for (let i = 0; i < POD_COUNT; i++) {
-      // Spread along the seller's half of the gap — pods start clear of the buyer's
-      // receive reach and arrive over the next stretch of seconds, one crawl at a time.
-      const t = 0.10 + (i / Math.max(1, POD_COUNT - 1)) * 0.45;
+      // Four original pods occupy a clear, finite lane: 22/30/38/46 WU from seller.
+      // Perpendicular jitter cannot shrink the 8 WU longitudinal separation. The
+      // last pod starts at least 34 WU from buyer, outside the 26 WU receipt ring.
+      const along = POD_START_WU + i * POD_SPACING_WU;
+      const lateral = (rng() * 2 - 1) * POD_LATERAL_JITTER_WU;
       const pod = d.spawnCargoPod(live, {
         commodityId: i % 2 === 0 ? SELLER_COMMODITY : BUYER_COMMODITY,
         amount: 2,
         pos: {
-          x: seller.pos.x + (buyer.pos.x - seller.pos.x) * t + (rng() - 0.5) * 8,
-          z: seller.pos.z + (buyer.pos.z - seller.pos.z) * t + (rng() - 0.5) * 8,
+          x: seller.pos.x + axis.x * along - axis.z * lateral,
+          z: seller.pos.z + axis.z * along + axis.x * lateral,
         },
         vel: { x: axis.x * POD_SPEED, z: axis.z * POD_SPEED },
         ownerId: seller.id,
@@ -180,7 +187,7 @@ export const runtime = Object.freeze({
     live.data.delivered = 0;
     live.phase = 'offer';
     d.say(live, 'alert',
-      'LANE WATCH: two hulls parked nose-to-nose off the lane — cargo crawling the gap.',
+      'LANE WATCH: two hulls holding off the lane — cargo crawling the gap.',
       null, { primary: true, literal: true });
   },
 
@@ -409,7 +416,7 @@ export default defineEncounter(trigger, {
     passive: true,
   },
   bark: null,
-  telegraph: 'Two hulls sit nose-to-nose in the dark — a manifest crawling between them.',
+  telegraph: 'Two hulls hold off the lane in the dark — a manifest crawling between them.',
   deadlineS: DEAL_DEADLINE_S,
   aftermath: {
     flee: 'The pair scatter off the pocket. Whatever pods remain are finders\u2019 freight.',

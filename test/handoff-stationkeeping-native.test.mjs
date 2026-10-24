@@ -8,6 +8,12 @@ import { createSimulation } from '../src/core/sim.js';
 import { physics } from '../src/core/physics.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 import { spawnJettisonedCargoPod } from '../src/systems/lootShards.js';
+import { spawnBudget } from '../src/systems/spawnBudget.js';
+import { encounterDirector } from '../src/systems/encounterDirector.js';
+import { aiPorts } from '../src/systems/aiPorts.js';
+import { createTacticalAISystem, PRODUCTION_ENEMY_MIND_CONFIG } from '../src/systems/tacticalAI.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { runtime } from '../src/data/encounters/357-the-handoff.js';
 
 async function boot(passing) {
@@ -31,7 +37,11 @@ async function boot(passing) {
   const live = { id: 'native_handoff', shape: {}, ids: [seller.id, buyer.id], roles: {}, data: {},
     plan: { zoneCenter: { x: 0, z: 0 }, ships: [{ role: 'hauler', pos: {} }, { role: 'raider', pos: {} }] } };
   const d = { now: () => state.simTime, stream: () => () => .5,
-    spawnShips: () => live.ids, aliveCount: () => 1,
+    spawnShips: (_, ships) => {
+      // Apply authored initial spawn positions before Rapier adopts any bodies.
+      for (const spec of ships) Object.assign((spec.role === 'hauler' ? seller : buyer).pos, spec.pos);
+      return live.ids;
+    }, aliveCount: () => 1,
     entsOf: (_, role) => [role === 'hauler' ? seller : buyer],
     spawnCargoPod: (_, spec) => { const p = spawnJettisonedCargoPod(state, spec, sim.helpers); pods.push(p); return p; },
     say() {}, emit: (name, p) => events.push({ name, ...p }),
@@ -148,4 +158,102 @@ for (const passing of [true, false]) test(`native ${passing ? 'fly-through rejec
     assert.ok(h.received[0].native.every(n => n.relativeSpeed < .05 && n.relativeDisplacement < .02),
       'received native pods match buyer velocity and park immediately after next-tick command consumption, before collisions');
   } finally { h.close(); }
+});
+
+// Actual production archetypes/native geometry, separate from the radius-2 authority
+// fixture above. Forced authored admission is not natural ambient-frequency evidence.
+async function bootActual({ bearing = null, passing = false } = {}) {
+ const ai=createTacticalAISystem({config:{enemyMind:PRODUCTION_ENEMY_MIND_CONFIG}});
+ const systems=[spawnBudget,aiPorts,ai,flightV3,physics];
+ if(bearing===null)systems.push(encounterDirector);
+ const sim=createSimulation({seed:357,systems}),{state}=sim;
+ state.mode='flight';state.world.currentSectorId='sector_pallas_drift';
+ Object.assign(state.input,{moveX:0,moveZ:0,turnIntent:0,brake:!passing,boost:false,fire:false,assistMode:'drift'});
+ const playerSpec=makeShipEntitySpec('ship_kestrel',{isPlayer:true,team:0,pos:{x:passing?8860:9100,z:9080}});
+ if(passing)playerSpec.vel={x:60,z:0}; // initial spawn only; native flight owns later motion
+ const player=sim.spawn(playerSpec);state.playerId=player.id;
+ const events=[];for(const name of ['encounter:resolved','economy:grantCredits','faction:repDelta'])
+  sim.bus.on(name,p=>events.push({name,t:state.simTime,...p}));
+ let live;
+ if(bearing===null){
+  const result=sim.registry.get('encounterDirector').requestAuthoredEncounter({shapeId:'off_book_handoff',
+   encounterId:'real_cast_handoff',sectorId:'sector_pallas_drift',anchor:{x:9000,z:9000},
+   zoneType:'outlaw_zone',zoneRadius:500,force:true});
+  assert.equal(result.ok,true);live=Object.values(state.encounterDirector.live).find(l=>l.shapeId==='off_book_handoff');
+ }else{
+  let draw=0;const cast={};live={id:'clear_geometry',shape:{},ids:[],roles:{},data:{},
+   plan:{zoneCenter:{x:9000,z:9000},ships:[{role:'hauler',pos:{}},{role:'raider',pos:{}}]}};
+  const d={now:()=>0,stream:()=>()=>draw++===0?bearing:draw%2?0:1,
+   spawnShips:(_,specs)=>{for(const spec of specs){const e=sim.spawn(makeEnemySpawnSpec('mule_trader',1,spec.pos,
+    {factionId:spec.role==='hauler'?'faction_quiet':'faction_mts'}));e.team=2;cast[spec.role]=e;live.ids.push(e.id);}return live.ids;},
+   aliveCount:()=>1,entsOf:(_,role)=>[cast[role]],
+   spawnCargoPod:(_,spec)=>spawnJettisonedCargoPod(state,spec,sim.helpers),say(){},abort:(_,why)=>assert.fail(why)};
+  runtime.fire(d,live,state);
+ }
+ assert.ok(live);const ids=[live.data.sellerId,live.data.buyerId,...live.data.pods];
+ const originals=ids.map(id=>state.entities.get(id));
+ const phys=sim.registry.get('physics');assert.equal(await phys.prepareBackend(state),true);
+ return {sim,state,live,events,player,ids,originals,phys,
+  close(){phys._disableSg02DynamicAuthority();sim.dispose();}};
+}
+function sceneContacts(h){
+ const set=new Set(h.ids),rows=[];
+ for(const id of h.ids)for(const row of h.phys._sg02.sampleSolidContacts(id))
+  if(set.has(row.targetId))rows.push(row);
+ return rows;
+}
+for(const bearing of [0,.125,.25,.375,.5,.625,.75,.875])
+ test(`actual native hull/pod launch has no penetration at bearing ${bearing} and extreme jitter`,{timeout:45000},async t=>{
+  const h=await bootActual({bearing});
+  try{
+   const [seller,buyer,...pods]=h.originals;
+   assert.equal(seller.data.defId,'ship_mule');assert.equal(buyer.data.defId,'ship_mule');
+   assert.equal(seller.radius,18);assert.equal(buyer.radius,18);
+   assert.equal(pods.length,4);
+   for(const p of pods){assert.equal(p.radius,3);assert.equal(p.data.amount,2);
+    assert.ok(Math.hypot(p.pos.x-buyer.pos.x,p.pos.z-buyer.pos.z)>26);}
+   h.sim.step(1/60);
+   for(const actor of [seller,buyer]){
+    const rec=h.phys._sg02.records.get(actor.id);assert.equal(rec.entity,actor);
+    assert.ok(rec.colliders.length>0);
+    for(const c of rec.colliders){assert.equal(c.shapeType(),9,'actual measured convex hull, not radius-2 substitute');
+     const v=c.vertices();for(let i=0;i<v.length;i+=3)assert.ok(Math.hypot(v[i],v[i+2])<=18,'verified conservative planar hull envelope');}
+   }
+   const contacts=sceneContacts(h);
+   t.diagnostic(JSON.stringify({bearing,t:h.state.simTime,contacts:contacts.map(r=>({a:r.sourceId,b:r.targetId,separation:r.separation,impulse:r.normalImpulse}))}));
+   assert.equal(contacts.filter(r=>r.separation < -1e-4).length,0,'no initial native penetration between any original scene bodies');
+  }finally{h.close();}
+ });
+
+for(const passing of [false,true])test(`actual director/native ${passing?'pass':'hold'} finishes original clear manifest`,{timeout:45000},async t=>{
+ const h=await bootActual({passing});
+ try{
+  const snapshot=()=>({t:h.state.simTime,bodies:[h.player,...h.originals].map(e=>({id:e.id,x:e.pos.x,z:e.pos.z,owner:e.data?.ownerId}))});
+  const initial=snapshot();
+  let bondAt=null,terminalAt=null,accepted=null,terminal=null;
+  const launchContacts=[];
+  for(let i=0;i<6720;i++){
+   h.sim.step(1/60);
+   if(i<60)for(const r of sceneContacts(h))launchContacts.push({t:h.state.simTime,a:r.sourceId,b:r.targetId,separation:r.separation,impulse:r.normalImpulse});
+   if(h.live.data.custodyCommit&&bondAt===null){bondAt=h.state.simTime;accepted=snapshot();}
+   if(h.live.phase==='done'){terminalAt=h.state.simTime;terminal=snapshot();break;}
+  }
+  t.diagnostic(JSON.stringify({actualCast:true,passing,bondAt,terminalAt,outcome:h.live.outcome,initial,accepted,terminal,launchContacts}));
+  assert.equal(launchContacts.filter(r=>r.separation < -1e-4).length,0,'actual admitted scene has no launch penetration throughout first native second');
+  const [seller,buyer,...pods]=h.originals;
+  assert.ok(h.originals.every(e=>h.state.entities.get(e.id)===e),'original bodies remain');
+  assert.equal(h.live.outcome,passing?'deal_done':'contact_made');
+  const grants=h.events.filter(e=>e.name==='economy:grantCredits'&&e.reason==='handoff:quiet_lay');
+  const reps=h.events.filter(e=>e.name==='faction:repDelta'&&e.reason==='handoff_contact');
+  const receipts=h.events.filter(e=>e.name==='encounter:resolved'&&e.encounterId===h.live.id);
+  assert.equal(receipts.length,1);
+  if(passing){assert.equal(bondAt,null);assert.equal(grants.length,0);assert.equal(reps.length,0);assert.ok(pods.every(p=>p.data.ownerId===buyer.id));}
+  else{assert.ok(bondAt>=6);assert.ok(terminalAt>bondAt);
+   assert.deepEqual(grants.map(e=>e.amount),[60]);assert.deepEqual(reps.map(e=>e.delta),[2]);
+   assert.equal(pods.filter(p=>p.data.ownerId===h.player.id).length,1);
+   assert.equal(pods.filter(p=>p.data.ownerId===buyer.id).length,3);}
+  for(let i=0;i<120;i++)h.sim.step(1/60);
+  assert.equal(h.events.filter(e=>e.name==='economy:grantCredits'&&e.reason==='handoff:quiet_lay').length,passing?0:1);
+
+ }finally{h.close();}
 });
