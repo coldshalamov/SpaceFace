@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 
-## Current P08 recovery delivery checkpoint: 2026-10-24 22:20 UTC
+## Current P08 recovery delivery checkpoint: 2026-10-24 22:28 UTC
 
 All twelve goals remain OPEN. Draft [PR598](https://github.com/coldshalamov/SpaceFace/pull/598) now publishes the complete candidate recovery at `8ecf700ff7100e1f65d182bae32e746eb3bdb29d`, sole public parent `3bf67c9617e285561330a413472bd11a94bf2f7b`, tree `4b33a9c207f2860dbb1040e65001209eb5c2591c`. All59 recovery-only paths and exact blobs were verified. The package reconstructs67 intended text paths and44 original asset paths using six gzip/two XZ unique objects and35 raw entries. Full source/model Git persistence for this candidate is established. This is **not production installation, runtime integration, or campaign acceptance**.
 
@@ -12,7 +12,9 @@ Qualification remains layered:128 distinct author-run base-candidate cases (65+1
 
 PR597 remains1360f039 with20/20 hosted focused passes but terminal full failure20:50:32. Eight completed groups match actual-base failed headings/test names; candidate browser3 cancelled while its parent completed four failed probes, so ninth-group comparison is incomplete. Earlier Nursery32, coverage-only caption8 and Bar9 retain their separate full-red results.
 
-Next active work is a separate P08 prerequisite-guidance successor,16 local cases passed and independent review pending. The frozen v5 recovery remains unchanged. Finish that bounded player-facing guidance and review, preserve its exact delta, then qualify integration, ordinary earned traversal, complete Save/Continue and live performance without weakening guards. Existing holds, parked work, original scope and acceptance fields remain unchanged.
+The separate [prerequisite-guidance successor](../world-experience-2026-10-24/hundred-hand-guidance-successor/README.md) is now source-archived after19/19 author-run checks and independent static GREEN. It renders truthful progress for0–2 and3–4 validated evidence families, preserves exact command routing, and fixes the reproduced sparse-array validation failure. It is a read-only view: no eligibility, knowledge/discovery, graph, economy or receipt-owner mutation. The immutable17-case predecessor and missing-guidance/sparse failures remain preserved. Apply the final prompt replacement only to its sealed af81cc83 base, not over the17-case prompt. This archive does not alter PR598's frozen67-path recipe/index/restorer and is not automatically applied, installed or hosted-tested. Complete earned prerequisites, full Save/traversal, browser/PBR/performance and final acceptance remain open.
+
+Next: follow recovery-only CI and qualify a separately reviewed runtime integration without weakening ownership guards. Existing holds, parked work, original scope and acceptance fields remain unchanged.
 
 
 ## Current hosted successor and ordinary Sker admission: 2026-10-24 17:40 UTC
