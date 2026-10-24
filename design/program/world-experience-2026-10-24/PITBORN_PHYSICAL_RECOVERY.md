@@ -50,3 +50,12 @@ The portable test asserts outcome, actual positive collider gap, slow relative s
 Native qualification used1751modules:24overlays,15public owners,1public delta,1711archive fallbacks. Hosted full-checkout CI is required for coherent current-graph qualification; local success is not blanket repository health. Ordinary planner enrollment has focused coverage, but this unit has no full natural first-arrival, ambient-world, browser/game-camera/material or performance acceptance. Capture/control replacement uses focused scene tests and the current public transfer contract, not a new full shipjack native replay.
 
 The final native route uses direct kernel attachment API after flying into range, not a pointer/gesture tether input test. No new models, Save schema, law owner, shared AI/traffic/flight, attachment kernel, workflow or deployment changes. Draft for review, no merge/deploy.
+
+
+## Public presentation-fixture correction
+
+After the landed-upstream refresh, head f14e56367bc50831eaaddea5e7c9eb0d393cf148 ran the complete named gate:24/25 passed. The native rescue/Save file and23 existing focused cases passed; the added visual fixture failed because it called a private `entityInfoBlock` function not exported by the public worker module. The earlier local graph exposed that helper. This was a fixture integration defect, not evidence of a gameplay regression.
+
+The correction changes the test only. It snapshots the actual first recordSpawn and entity:spawned payloads, then uses exported `createSimHost`, a production host spawn, zero-step tick reply, structured clone and real `applySpawnInfos`. The production worker owns serialization; no private helper is exported or copied. All original first-publication, asset choice, absent gameplay flags, collider/body equivalence and ordinary-freight assertions remain. Worker shutdown and prior localStorage are restored after the test.
+
+The corrected24-case focused file passed locally against exact public worker9faf4a40f2a93001a0c5963fe1d1458bdf58d539 and readmodel9093064d6a11e4515e19ab3af50cc5ab3bda4b3d with mixed remaining dependencies. That is not a full current-public checkout claim. Hosted25-case qualification is reported separately in the PR body. No runtime, model, workflow, reward, physics or assertion weakening.

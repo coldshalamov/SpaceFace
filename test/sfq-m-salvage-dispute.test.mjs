@@ -382,30 +382,53 @@ test('stale owner, pod and controller generations cannot turn an old active line
   }
 });
 
-test('survivor capsule is bound before spawn publication and survives worker presentation', async () => {
+test('survivor capsule is bound before spawn publication and survives worker presentation', async (t) => {
   const { packagedPropSpec } = await import('../src/render/visualOverrides.js');
-  const { entityInfoBlock } = await import('../scripts/lib/simWorkerHost.mjs');
+  const { createSimHost } = await import('../scripts/lib/simWorkerHost.mjs');
   const { createReadModel, applySpawnInfos } = await import('../scripts/lib/simReadModel.mjs');
   const h = makeHarness();
   let eventPod = null, journalPod = null;
+  const snapshot = entity => structuredClone({ id: entity.id, type: entity.type,
+    alive: entity.alive, radius: entity.radius, data: entity.data });
   const core = h.sim.registry.get('core');
   const { createPresentationJournal } = await import('../src/core/presentationJournal.js');
   const journal = core.presentationJournal = createPresentationJournal();
   const recordSpawn = journal.recordSpawn;
   journal.recordSpawn = function (tick, entity) {
-    if (entity.data?.storyPropKind === 'm09_escape_pod') journalPod = structuredClone(entityInfoBlock(h.state, entity.id));
+    if (entity.data?.storyPropKind === 'm09_escape_pod') journalPod = snapshot(entity);
     return recordSpawn.call(this, tick, entity);
   };
   h.bus.on('entity:spawned', ({ entity }) => {
-    if (entity.data?.storyPropKind === 'm09_escape_pod') eventPod = structuredClone(entityInfoBlock(h.state, entity.id));
+    if (entity.data?.storyPropKind === 'm09_escape_pod') eventPod = snapshot(entity);
   });
   const live = fire(h);
   journal.recordSpawn = recordSpawn;
   assert.ok(journalPod, 'first recordSpawn carries the lifeboat identity');
   assert.ok(eventPod, 'first entity:spawned carries the lifeboat identity');
+  // Exercise the public worker API, which owns the private entity-info serializer.
+  const oldStorage = globalThis.localStorage;
+  const worker = createSimHost();
+  t.after(() => {
+    worker.shutdown();
+    if (oldStorage === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = oldStorage;
+  });
+  const { readFileSync } = await import('node:fs');
+  const scenarioContract = JSON.parse(readFileSync(
+    new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8'));
+  await worker.init({ profile: 'production', seed: SEED, scenarioContract });
+  const originalPod = ent(h, mOf(live).podId);
+  const workerPod = worker.host.runtime.spawn({
+    type: eventPod.type, pos: { ...originalPod.pos }, radius: eventPod.radius,
+    mass: originalPod.mass, physicsBody: structuredClone(originalPod.physicsBody),
+    data: structuredClone(eventPod.data),
+  });
+  const reply = structuredClone(await worker.tick({ steps: 0, dt: 1 / 60, seq: 1 }));
+  const spawnInfo = reply.spawnInfos.find(info => info.entityId === workerPod.id);
+  assert.ok(spawnInfo, 'actual worker spawn reply carries the survivor');
   const model = createReadModel();
-  applySpawnInfos(model, [structuredClone(eventPod)]);
-  for (const pod of [ent(h, mOf(live).podId), journalPod, eventPod, model.entities.get(eventPod.entityId)]) {
+  applySpawnInfos(model, [spawnInfo]);
+  for (const pod of [originalPod, journalPod, eventPod, spawnInfo, model.entities.get(workerPod.id)]) {
     assert.equal(pod.data.assetRef, 'asset.slice.civilian_pod');
     assert.equal(pod.radius, 5);
     assert.equal(pod.data.distressBeacon, undefined);
