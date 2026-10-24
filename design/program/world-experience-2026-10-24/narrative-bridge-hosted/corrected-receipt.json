@@ -1,0 +1,33 @@
+{
+  "schema": "spaceface-hosted-narrative-worker-entry-v1",
+  "pullRequest": 599,
+  "head": "c4e82b04adb615711de31e468652a56c963122b1",
+  "tree": "8419950b0a6a82d8464f685852c154dfef08c016",
+  "synthetic": "a454ea7836930a4f385ba0cf4ff08404ef47bc81",
+  "parent": "3bf67c9617e285561330a413472bd11a94bf2f7b",
+  "run": 40142235161,
+  "job": 121016249104,
+  "artifact": 12578758499,
+  "zipSha256": "3675db04ffc096eaf05649f3eca7126671cdf22dd0f1438eacc45c7d7257eeab",
+  "member": "2026-10-24T23-21-53-325Z/check-narrative-worker-entry.log",
+  "memberBytes": 8766,
+  "memberSha256": "f5f66fb57afd8345b28d67a7599714c6f29520d878d9afe8620c5b100d4f974b",
+  "memberGit": "4f330072152c147e8d5c3c950ad4dc95465040d0",
+  "tests": 31,
+  "passed": 31,
+  "failed": 0,
+  "skipped": 0,
+  "code": 0,
+  "timedOut": false,
+  "durationMs": 10364,
+  "scope": "Full public checkout, both production-host/registry/two-bridge/Save suites plus narrow contracts and real generator adjacent test. In-process host transport, not OS worker/browser or ordinary played traversal.",
+  "overallCI": "still running; static2 broader group failed9 pre-existing check names; no whole-run green claim",
+  "adjacentRuckus": {
+    "run": 40142235115,
+    "job": 121016188656,
+    "tests": 89,
+    "passed": 89,
+    "manifestCases": 16,
+    "proof": "c6dbc10240025cce5d95cb368b5ec8dc16f13c00"
+  }
+}
