@@ -1,5 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 
+## Io Love Letter Buoy service delivered: 2026-10-24 03:59 UTC
+
+Draft [PR570](https://github.com/coldshalamov/SpaceFace/pull/570) is verified open at `e74118222ce1c6f778c04b01340a85b19376a900`, with six paths, tree `ac3529dd91e351ae5e49f4d5dc2021e214fec9f6` and sole public parent `316eed66`. The publisher verified full remote bytes and blob hashes and owns exact-head CI monitoring.
+
+H4 now requires six sampled seconds within 90 WU of the original living buoy. Interruptions reset service; dead, replaced or foreign bodies and a second UI choice are rejected. The ninety-second deadline is unpaid. H4-only tagged, same-sector reuse of a free original buoy prevents creating another body on eligible repeat admission. Legacy untagged, pinned, foreign, scheduled and actively owned bodies remain untouched. A separate existing beacon despawnAt quiet-sweep defect was reproduced, but ineffective enrollment was not shipped; PR570 changes no shared core or cleanup behavior.
+
+All 44 independent cases passed: 25 focused and 19 existing. Native first-hear followed by forced repeat admission/service retained the same original object, ID and body handle, with two entities, exact heard/reseeded receipts, one kindness/tone change and zero credits, reputation or impacts. This is controlled re-admission, not fly-away/return, ordinary cooldown, full Save/Continue or visual acceptance. The constructor's existing Kessler asset is unchanged and its target-label consumer is verified; no lamp or audio-loop behavior is claimed.
+
+PR569's hosted fourteen-plus-one tests passed. Its standalone cadence gate was skipped after a parent-matching static-1 precheck; browser shard 3 was the only pending job at the latest owner report. Its publisher retains monitoring. A separate read-only preflight is inspecting the confirmed quiet-beacon deadline defect and exact ownership before edits, not claiming a shipped repair.
+
+All twelve goals remain OPEN. Existing recovery chains, ownership constraints, Archive's publication blocker and browser approval hold remain unchanged. No merge, deployment or new acceptance claim is implied.
+
 ## Pilgrim native-pose visual preserved: 2026-10-24 03:38 UTC
 
 The [Pilgrim native-pose review](../world-experience-2026-10-24/PILGRIM_NATIVE_POSE_REVIEW.md) now preserves the completed offline comparison of actual acceptance at 20 seconds and settlement at 33.0833 seconds from PR569's successful route. All seven shipping hashes remained unchanged; the three original Choir actors and player were alive with zero captured impacts. Recorded poses are reconstructed using the actual released Wasp and Choir Dart, with constructor-derived selectors and radii.
