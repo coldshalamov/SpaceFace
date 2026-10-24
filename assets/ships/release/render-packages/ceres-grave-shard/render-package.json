@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3072e53608b060edc7621622c29121cd7bebb009028c9d230396ba7c07585c0d",
+  "contentHash": "2b26cb8c2f4fedb03d08b67341de2473803e67216f4589847282c4065dc7572d",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-grave-shard.mesh.lod0-hook-nav-port.dynamic",
@@ -127,27 +127,27 @@
     {
       "bounds": {
         "max": [
-          12.464390754699707,
-          10.11181640625,
-          6.4546380043029785
+          11.29399299621582,
+          10.111820220947266,
+          6.4543046951293945
         ],
         "min": [
-          -13.1315336227417,
-          -1.5999574661254883,
-          -6.4546380043029785
+          -10.401681900024414,
+          -1.561348557472229,
+          -6.691418647766113
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e8f6f737328da3259a86d2675db5c978d251a6f64b5b016a62e41a7dbdacb87",
+      "geometryHash": "fdd3d855ad14f4e35a856f2e0c469e32e4e9cc6fd19a5ef930d9670ac3410afb",
       "id": "sf.render.ceres-grave-shard.mesh.collision-hull.primitive.0",
-      "indexCount": 900,
+      "indexCount": 876,
       "indexed": true,
       "materialHash": null,
       "materialPipelineKey": "non-render",
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.ceres-grave-shard.mesh.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 776
+      "vertexCount": 726
     },
     {
       "bounds": {
@@ -252,18 +252,18 @@
     {
       "bounds": {
         "max": [
-          12.464390754699707,
-          -0.5000708103179932,
-          -0.2826218903064728
+          11.264389991760254,
+          -0.5499731302261353,
+          3.317044734954834
         ],
         "min": [
-          -13.1315336227417,
-          -1.5999292135238647,
-          -4.691429615020752
+          6.968466758728027,
+          -1.250026822090149,
+          -6.69109582901001
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df67162a3985f5e79db85499468f1b971974e17cb3f8daaff1c6daef6c54bec9",
+      "geometryHash": "6b7e80d7e72b4be4d75f046d7ea5a140a6d1f806a000187377301ee414ed14c7",
       "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-deep.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -302,18 +302,18 @@
     {
       "bounds": {
         "max": [
-          10.879939079284668,
-          -0.1498461216688156,
+          9.380084991455078,
+          -0.2002357393503189,
           5.302122116088867
         ],
         "min": [
-          5.45149040222168,
-          -1.0751538276672363,
+          4.419915199279785,
+          -0.7247642874717712,
           -6.217466354370117
         ]
       },
       "drawMode": 4,
-      "geometryHash": "773f858a3b0e8cce0ba5eb033f7238307bb711c542d7b2b8ce271bacd75126e8",
+      "geometryHash": "1f8f98c52ae4c260158e0a23f23d6267e4fe8ff9acc6215eccc5618dc5b78fdd",
       "id": "sf.render.ceres-grave-shard.mesh.lod0-deadmetal-rust.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -402,18 +402,18 @@
     {
       "bounds": {
         "max": [
-          11.800520896911621,
-          6.450347900390625,
-          2.799443483352661
+          11.000805854797363,
+          6.439295768737793,
+          2.699711799621582
         ],
         "min": [
-          9.300373077392578,
-          -1.4503477811813354,
-          1.2013170719146729
+          9.101103782653809,
+          -0.6592959761619568,
+          1.3010939359664917
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6fda3638d5f7c0df7beb2c6f20bcea63f87f1035c3e6e44adb7286e9cfc9c0ec",
+      "geometryHash": "98635c9544dae28dfa96e4ab1c60514ed8876e55c91db55e20e63f6621880305",
       "id": "sf.render.ceres-grave-shard.mesh.lod0-mechanical.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -488,16 +488,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "20c0a4a553b7bc55836d9e9e01d471f385bc25d5b68f7f955a4cbdf5c7241af1",
+      "geometryHash": "ac6777a9be001d786c8bd45230c548c52a586cfb9d137af92b59065686f3c98c",
       "id": "sf.render.ceres-grave-shard.mesh.lod1-armor.primitive.0",
-      "indexCount": 180,
+      "indexCount": 174,
       "indexed": true,
       "materialHash": "9c65b27712aa444154045130c44cda89b7259176bc47e15338c0f7fa7ac8b721",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 80
+      "vertexCount": 78
     },
     {
       "bounds": {
@@ -577,27 +577,27 @@
     {
       "bounds": {
         "max": [
-          12.46419906616211,
-          -0.5031006932258606,
-          -0.28322529792785645
+          11.264230728149414,
+          -0.5524236559867859,
+          3.3167622089385986
         ],
         "min": [
-          -13.131738662719727,
-          -1.5967105627059937,
-          -4.688910961151123
+          6.97083854675293,
+          -1.2475764751434326,
+          -6.691176891326904
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d7c5ba7a738e8baacac185259e6639bc9a1ae7f253279cf09b40a465138e4ba1",
+      "geometryHash": "ce3f3d088f873ce2cde47f4bb6142837d9c6c0801161749b1a696738a420214d",
       "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-deep.primitive.0",
-      "indexCount": 504,
+      "indexCount": 522,
       "indexed": true,
       "materialHash": "f12d5d1d7c75ebaac322ee3188dcd8a242414362bce0078711101fb3082e1f07",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_deadmetal_deep",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-deep",
       "primitiveIndex": 0,
-      "vertexCount": 187
+      "vertexCount": 197
     },
     {
       "bounds": {
@@ -627,27 +627,27 @@
     {
       "bounds": {
         "max": [
-          10.88119888305664,
-          -0.15273702144622803,
-          5.303847789764404
+          9.381028175354004,
+          -0.20243620872497559,
+          5.301414966583252
         ],
         "min": [
-          5.452269554138184,
-          -1.0722630023956299,
-          -6.213778018951416
+          4.4182209968566895,
+          -0.7225802540779114,
+          -6.214504241943359
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b4d9f32949b6f05d269032274bca30f3b809d01e405402c2e937b4bb38d66f39",
+      "geometryHash": "1e6ba4df10013c5a06f31baffc1934bbf6465bb322fe3a45ca1edf35ecb06b9a",
       "id": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-rust.primitive.0",
-      "indexCount": 528,
+      "indexCount": 516,
       "indexed": true,
       "materialHash": "535b48d973a48bb8bf580e838af6611e7ea42ce1e88f7538245d8d834d2c8927",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_deadmetal_rust",
       "nodeId": "sf.render.ceres-grave-shard.mesh.lod1-deadmetal-rust",
       "primitiveIndex": 0,
-      "vertexCount": 194
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -727,18 +727,18 @@
     {
       "bounds": {
         "max": [
-          11.800520896911621,
-          6.450347900390625,
-          2.799443483352661
+          11.000805854797363,
+          6.439295768737793,
+          2.699711799621582
         ],
         "min": [
-          9.300373077392578,
-          -1.4503477811813354,
-          1.2013170719146729
+          9.101103782653809,
+          -0.6592959761619568,
+          1.3010939359664917
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba553875aee1fb9cc0542789aeea2a225b8c80aa18a07348223b56176d047d20",
+      "geometryHash": "931197fd5ad162189ed031f23b9ecc77b7165a66487bda1985c7a676d7d585ec",
       "id": "sf.render.ceres-grave-shard.mesh.lod1-mechanical.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -902,18 +902,18 @@
     {
       "bounds": {
         "max": [
-          12.461333274841309,
-          -0.5159900784492493,
-          -0.2861047387123108
+          11.261560440063477,
+          -0.5663546919822693,
+          3.3136348724365234
         ],
         "min": [
-          -13.120400428771973,
-          -1.584010124206543,
-          -4.679976463317871
+          6.979372024536133,
+          -1.2336454391479492,
+          -6.679561614990234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "463d4f88bfc0732fd16ad808a211ba728df12dc18f3eb5a141c624e474b5aeb5",
+      "geometryHash": "cb41484a61df9b9bea9ef2cc47937a0de10310ea895c2b29cf4c29f2cb9e511e",
       "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-deep.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -952,18 +952,18 @@
     {
       "bounds": {
         "max": [
-          10.873695373535156,
-          -0.16637983918190002,
+          9.373887062072754,
+          -0.2157265692949295,
           5.295353412628174
         ],
         "min": [
-          5.453862190246582,
-          -1.0586202144622803,
-          -6.214898586273193
+          4.4261155128479,
+          -0.7089229226112366,
+          -6.215020656585693
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2845aa99a0263e978b18c6b6f6ecd5e616b0248eaf52cd8880f1883fd95d4f22",
+      "geometryHash": "1cf84f547d98120b855256d124bfb9d03096852d53dac26ba0d1b8d3ad360023",
       "id": "sf.render.ceres-grave-shard.mesh.lod2-deadmetal-rust.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -1013,7 +1013,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e52cd8093f8a7f408f0252bae8b89579dfb82d2510fa6b94122781ff3731cf0",
+      "geometryHash": "8b9ff9ca74512f6c00086f2fd95e37c78126451c2d68deddef726e14cf030c0f",
       "id": "sf.render.ceres-grave-shard.mesh.lod2-hook-nav-port.primitive.0",
       "indexCount": 18,
       "indexed": true,
@@ -1052,18 +1052,18 @@
     {
       "bounds": {
         "max": [
-          11.800520896911621,
-          6.450347900390625,
-          2.799443483352661
+          11.000805854797363,
+          6.439295768737793,
+          2.699711799621582
         ],
         "min": [
-          9.300373077392578,
-          -1.4503477811813354,
-          1.2013170719146729
+          9.101103782653809,
+          -0.6592959761619568,
+          1.3010939359664917
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba553875aee1fb9cc0542789aeea2a225b8c80aa18a07348223b56176d047d20",
+      "geometryHash": "931197fd5ad162189ed031f23b9ecc77b7165a66487bda1985c7a676d7d585ec",
       "id": "sf.render.ceres-grave-shard.mesh.lod2-mechanical.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -3511,42 +3511,42 @@
       "sha256": "da6c99ca284b1f52dda6ab2003aaec7b45cc778024420ec8d70e95f967964c96"
     },
     "sourceGlb": {
-      "bytes": 297708,
-      "sha256": "0df85a334a2d505a828ea049f672e12cafacd18fc28e645a110576b3c569cf35",
+      "bytes": 297388,
+      "sha256": "4426bb7ff4ff83e4cca9eea181fe99f8b5dd3e34a611b98f0a60fac4b0449493",
       "uri": "place_ceres_grave_shard.glb"
     },
     "sourceManifest": {
-      "bytes": 272571,
-      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
+      "bytes": 273915,
+      "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 435004,
-    "sha256": "912e6fe529337685d78acf008b34c999342a4c0c6f1666b4d0b03f52f8ac8190",
+    "bytes": 433940,
+    "sha256": "bc18ba03621edb47cbc87cf7899c10a4fdbccfadad3ae6293144ef7589c7e8a4",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.33367395401000977,
-        4.256174087524414,
-        0
+        0.4461555480957031,
+        4.275318741798401,
+        -0.11855697631835938
       ],
       "max": [
-        12.464390754699707,
+        11.29399299621582,
         10.112305641174316,
-        6.4546380043029785
+        6.4543046951293945
       ],
       "min": [
-        -13.131738662719727,
-        -1.5999574661254883,
-        -6.4546380043029785
+        -10.401681900024414,
+        -1.5616681575775146,
+        -6.691418647766113
       ],
       "size": [
-        25.596129417419434,
-        11.712263107299805,
-        12.909276008605957
+        21.695674896240234,
+        11.673973798751831,
+        13.145723342895508
       ]
     },
     "hidden": [
@@ -4900,20 +4900,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_grave_shard.glb"
   },
-  "runtimeHash": "7a9de598d4edfce37cbab981ed5297eca2ce3fb7eaa50e1e609e2a70cfd41c14",
+  "runtimeHash": "3ab0a5a0572df83f892e3f18a8d8f7771ae27e86c2937acc5acf1fefde0be421",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          12.464390754699707,
+          11.29399299621582,
           10.112305641174316,
-          6.4546380043029785
+          6.4543046951293945
         ],
         "min": [
-          -13.131738662719727,
-          -1.5999574661254883,
-          -6.4546380043029785
+          -10.401681900024414,
+          -1.5616681575775146,
+          -6.691418647766113
         ]
       },
       "id": "sf.render.ceres-grave-shard.body",

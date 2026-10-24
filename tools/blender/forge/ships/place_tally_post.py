@@ -29,6 +29,7 @@ COLORS = {
     'hazard': '#9a7a1e',
     'glow_warm': '#ffdba6',
     'glow_amber': '#ffb345',   # the scale bars
+    'glow_amber.dim': '#c07a1a',   # dim ticks: a solid #ffb345 field blew out to a yellow slab
     'glow_cyan': '#6ee7e0',
     'glow_red': '#ff3a2a',
 }
@@ -62,14 +63,17 @@ def build():
               material='paint2', bevel=0.08)
 
     # === the scale bars on the lintel's TOP face — the top-view read ==============
-    # a strip of lit amber bars along the lintel top, like the needle row on a scale
+    # a dark readout bed carrying a row of thin lit ticks, like the needle row on a
+    # weigh scale: matte panel + dim ticks + one bright needle, not a solid lit slab
+    F.box(s, 'ScaleBed', (0, 0, GATE_H + 1.05), (2.0, 2 * GATE_W + 1.6, 0.14),
+          material='dark', bevel=0.02)
     s.detail = 1
     bars = []
     n = 9
     for i in range(n):
         y = -GATE_W + 1.2 + i * (2 * GATE_W - 2.4) / (n - 1)
-        bars.append(((0, y, GATE_H + 1.15), (1.5, 0.62, 0.28), 0.0))
-    F.boxes(s, 'ScaleBars', bars, 'glow_amber')
+        bars.append(((0, y, GATE_H + 1.16), (1.3, 0.3, 0.1), 0.0))
+    F.boxes(s, 'ScaleBars', bars, 'glow_amber.dim')
     s.detail = 0
     # centre index marker — the "needle" seat, brighter
     F.box(s, 'ScaleIndex', (0, 0, GATE_H + 1.2), (1.7, 1.1, 0.4), material='glow_amber',

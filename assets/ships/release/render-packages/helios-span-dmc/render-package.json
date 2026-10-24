@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5412ca3d3ca1984d39a43b33447083e95a28290a8fafdb06801e7a5affa0ff85",
+  "contentHash": "33e7a460df21d8c99142dbf765e6b0afe890cbb1c370e6b6c363614d5f0f400b",
   "dynamicGroups": [
     {
       "id": "sf.render.helios-span-dmc.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -5815,8 +5815,8 @@
       "uri": "helios_span_dmc.glb"
     },
     "sourceManifest": {
-      "bytes": 272571,
-      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
+      "bytes": 273915,
+      "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c",
       "uri": "pilots.json"
     }
   },
@@ -8423,7 +8423,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_span_dmc.glb"
   },
-  "runtimeHash": "d74301fb169cfb82d300fa24d2b71c9074a1308355725f61ff57803d2e49110b",
+  "runtimeHash": "b2850eeb9798ca43ed284b224577984ba3ad52c8e23632e2216ad79c2a826075",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

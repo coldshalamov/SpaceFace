@@ -186,12 +186,23 @@
     }
   ],
   "assetId": "sf.render.towline-odo-lod1",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.towline-odo-lod1.node.collision-towline-odo-core.collision",
+      "nodeId": "sf.render.towline-odo-lod1.node.collision-towline-odo-core",
+      "reference": "COLLISION_TOWLINE_ODO_CORE"
+    },
+    {
+      "id": "sf.render.towline-odo-lod1.node.collision-towline-odo-drum-bed.collision",
+      "nodeId": "sf.render.towline-odo-lod1.node.collision-towline-odo-drum-bed",
+      "reference": "COLLISION_TOWLINE_ODO_DRUM_BED"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "dd03917332031461b955911e520bf6843632b31dfeb381bf861cf4555554e791",
+  "contentHash": "59dfe001e9f31a74a03ddb16f89ab9ce594db51f774f3390bcedf9ab0bb75208",
   "dynamicGroups": [
     {
       "id": "sf.render.towline-odo-lod1.node.lod1-motion-towline-winch-armor.dynamic",
@@ -234,7 +245,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_TOWLINE_ODO_CORE",
       "nodeId": "sf.render.towline-odo-lod1.node.collision-towline-odo-core",
       "primitiveIndex": 0,
@@ -259,7 +270,7 @@
       "indexCount": 564,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_TOWLINE_ODO_DRUM_BED",
       "nodeId": "sf.render.towline-odo-lod1.node.collision-towline-odo-drum-bed",
       "primitiveIndex": 0,
@@ -659,7 +670,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_TOWLINE_ODO_CORE",
       "nodeName": "COLLISION_TOWLINE_ODO_CORE",
       "nodePath": [
@@ -708,7 +719,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_TOWLINE_ODO_DRUM_BED",
       "nodeName": "COLLISION_TOWLINE_ODO_DRUM_BED",
       "nodePath": [
@@ -1477,7 +1488,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "1259a8a57e92bb09712e3ba5675394f57f8e40b7212909a26c7af56997ad4fb0"
+      "sha256": "6bc0756de61ab528010e369554725c8059abcbf0a49169def56b9de32dc2c6a2"
     },
     "sourceGlb": {
       "bytes": 362076,
@@ -1485,8 +1496,8 @@
       "uri": "towline_odo_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 273915,
+      "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c",
       "uri": "pilots.json"
     }
   },
@@ -2147,7 +2158,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_odo_lod1.glb"
   },
-  "runtimeHash": "af496f836b7d582c7f2a8255e41079128ee7e2ba4903a254d61a400b417112de",
+  "runtimeHash": "fdc4a70da533e5aa333013f8c4c8a661d5e5086aec73992c648d95c2569306eb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

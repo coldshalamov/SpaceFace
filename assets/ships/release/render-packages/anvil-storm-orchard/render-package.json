@@ -439,7 +439,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "64051e30c963df5d39c8130c0b5777854c43630d15817d428bcbeb2810506326",
+  "contentHash": "c85fffb2edd841c5ab8c936ca8d280c41ad36ed86924d2f561533981387c9ac6",
   "dynamicGroups": [
     {
       "id": "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s0-port-warning.dynamic",
@@ -6360,8 +6360,8 @@
       "uri": "place_anvil_storm_orchard.glb"
     },
     "sourceManifest": {
-      "bytes": 272571,
-      "sha256": "df41d51fb9dd9b8030fadf18c757a4fceedd9be0dd636cd8271e725ed85441f7",
+      "bytes": 273915,
+      "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c",
       "uri": "pilots.json"
     }
   },
@@ -8478,7 +8478,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_anvil_storm_orchard.glb"
   },
-  "runtimeHash": "5f74999e78979d424667144b2bc8d744c5d389b0ec5e0d58194f08991894680d",
+  "runtimeHash": "4cb54288742b09f6be50ce27770efe90f7e974ae9d0d4bf97c1b1d150a0aaef5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -2159,8 +2159,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_ceres_grave_shard.glb",
-      "tris": 5768,
-      "bytes": 617024,
+      "tris": 5760,
+      "bytes": 615516,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2195,19 +2195,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -13.131738662719727,
-          -1.600000023841858,
-          -6.453981876373291
+          -10.401681900024414,
+          -1.561387538909912,
+          -6.691176891326904
         ],
         "max": [
-          12.464390754699707,
+          11.29399299621582,
           10.111859321594238,
           6.453981876373291
         ],
         "dimensionsM": [
-          25.596129417419434,
-          11.711859345436096,
-          12.907963752746582
+          21.695674896240234,
+          11.67324686050415,
+          13.145158767700195
         ]
       }
     },
@@ -2385,25 +2385,25 @@
       },
       "factionAccentVariants": {},
       "mount": "origin",
-      "tris": 9811,
-      "bytes": 861372,
+      "tris": 10107,
+      "bytes": 876300,
       "hooks": [],
       "sockets": [],
       "bounds": {
         "min": [
           -13.70592212677002,
           -7.900000095367432,
-          -9.115090370178223
+          -9.100000381469727
         ],
         "max": [
-          13.680741310119629,
+          13.67801284790039,
           10.5,
           9.100000381469727
         ],
         "dimensionsM": [
-          27.38666343688965,
+          27.38393497467041,
           18.40000009536743,
-          18.21509075164795
+          18.200000762939453
         ]
       },
       "note": "Forge rebuild: SP-07 flywheel â€” spoked wheel in a cradle cage, tow eyes fore/aft.",
@@ -2841,8 +2841,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_conveyor_truss.glb",
-      "tris": 4952,
-      "bytes": 740324,
+      "tris": 5048,
+      "bytes": 760988,
       "textureSize": 512,
       "note": "Forge rebuild: span-gauge bucket conveyor with drive house.",
       "hooks": [],
@@ -4446,8 +4446,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_trade_hub_free_overlay_v01.glb",
-      "tris": 20356,
-      "bytes": 1739016,
+      "tris": 20096,
+      "bytes": 1728368,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4460,19 +4460,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -60.77259826660156,
+          -60.773033142089844,
           13,
-          -51.12303161621094
+          -50.8581428527832
         ],
         "max": [
           57.77967071533203,
           39.385257720947266,
-          55.298919677734375
+          55.29829406738281
         ],
         "dimensionsM": [
-          118.5522689819336,
+          118.55270385742188,
           26.385257720947266,
-          106.42195129394531
+          106.15643692016602
         ]
       },
       "note": "Forge rebuild of the Free Frontier claim on the Helios hub: welded habitat pods, wall patch plates and a stern lean-to, lash trusses, cyan bands and slit lights. Ships/var file."
@@ -4556,8 +4556,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_tally_post.glb",
-      "tris": 5512,
-      "bytes": 603568,
+      "tris": 5810,
+      "bytes": 622348,
       "textureSize": 128,
       "tintable": {
         "hull": "Material_Hull",
@@ -4631,8 +4631,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_transponder_gate.glb",
-      "tris": 7380,
-      "bytes": 1036176,
+      "tris": 7428,
+      "bytes": 1047376,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
