@@ -19,6 +19,7 @@ import {
   CIRCUIT_BOSS_SEQUENCE,
   CIRCUIT_DESTINATIONS,
   CIRCUIT_STAGE_COUNT,
+  CIRCUIT_DEFEND_TICKS,
   CIRCUIT_SURVIVE_TICKS,
   CIRCUIT_TOTAL_ROUNDS,
   CIRCUIT_VIEW_AHEAD,
@@ -561,6 +562,36 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.ok(down, 'the kill line is spoken');
       assert.equal(down.payload.priority, NAMED_KILL_PRIORITY, 'the kill line speaks over a line that is already up');
       survivalAnnounce.destroy();
+    } else if (round.kind === 'defend') {
+      const beforeEnds = named(h.emitted, 'run:endRequested').length;
+      const spawned = tickUntil(h, () => [...h.state.entities.values()].some((entity) => entity
+        && entity.alive !== false && entity.data && entity.data.circuitBeacon), 40);
+      assert.ok(spawned, 'the beacon takes the field');
+      const beacon = [...h.state.entities.values()].find((entity) => entity && entity.data
+        && entity.data.circuitBeacon);
+      assert.equal(beacon.collides, true, 'the beacon is a body');
+      assert.ok(beacon.hull > 0 && beacon.hullMax > 0, 'the beacon can be destroyed');
+      assert.notEqual(beacon.physicsBody, false, 'the beacon is not the non-colliding ring mark');
+      const aimed = tickUntil(h, () => [...h.state.entities.values()].some((entity) => entity
+        && entity.alive !== false && entity.data && entity.data.ai
+        && entity.data.ai.focusTargetId === beacon.id), 120);
+      assert.ok(aimed, 'the pack re-aims at the beacon');
+      if (!(h.state.run.credits > 0)) {
+        h.bus.emit('run:awardRequested', { credits: 80, reason: 'circuit_purse' });
+      }
+      const creditsBefore = h.state.run.credits;
+      assert.ok(creditsBefore > 0, 'the purse can be cut');
+      beacon.alive = false;
+      h.state.entities.delete(beacon.id);
+      h.bus.emit('entity:destroyed', { id: beacon.id });
+      step(h, 2);
+      const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
+      assert.equal(receipt.completionKind, 'defend');
+      assert.equal(named(h.emitted, 'run:endRequested').length, beforeEnds, 'losing the beacon does not end the run');
+      const spent = named(h.emitted, 'run:spent').at(-1);
+      assert.ok(spent && spent.payload.credits > 0, 'a lost beacon cuts the purse');
+      assert.ok(spent.payload.credits <= creditsBefore);
+      assert.equal(h.state.run.credits, creditsBefore - spent.payload.credits);
     } else {
       clearCohortRound(h);
       const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
@@ -636,15 +667,31 @@ test('the surviving cohort carries into the next round and still has to be resol
   const survivorIds = new Set(survivalWave._cohort.keys());
   assert.equal(survivorIds.size, receipt.survivors, 'every survivor is still on the board');
   advanceFromDraft(h);
-  assert.equal(survivalWave._plannedBodies, lastPlan(h).swarm.killTarget + survivorIds.size);
+  assert.equal(lastPlan(h).swarm.circuit.kind, 'defend');
+  assert.equal(lastPlan(h).swarm.killTarget, 0, 'the beacon round is not a kill quota');
   assert.equal(survivalWave._carriedAdmitted, survivorIds.size,
+    'the survive survivors are carried into the beacon round');
+  reachActive(h);
+  const beforeDefend = clearedCount(h);
+  assert.ok(tickUntil(h, () => clearedCount(h) > beforeDefend, CIRCUIT_DEFEND_TICKS + 5),
+    'the beacon clock closes the round');
+  assert.equal(named(h.emitted, 'run:waveCleared').at(-1).payload.completionKind, 'defend');
+  assert.equal(named(h.emitted, 'run:waveCleared').at(-1).payload.tick, CIRCUIT_DEFEND_TICKS);
+  reachDraft(h);
+  const still = new Set(survivalWave._cohort.keys());
+  for (const id of survivorIds) assert.ok(still.has(id), 'a survivor of the clock is still in the room');
+  advanceFromDraft(h);
+  assert.equal(lastPlan(h).swarm.circuit.kind, 'boss');
+  assert.ok(lastPlan(h).swarm.killTarget > 0, 'the champion round is a quota again');
+  assert.equal(survivalWave._plannedBodies, lastPlan(h).swarm.killTarget + still.size);
+  assert.equal(survivalWave._carriedAdmitted, still.size,
     'the carried cohort is stamped as already admitted');
   reachActive(h);
-  assert.ok(survivalWave._admittedTotal >= survivorIds.size,
+  assert.ok(survivalWave._admittedTotal >= still.size,
     'carried bodies count once when the round goes active');
   const before = clearedCount(h);
   // Kill only the carried survivors: the new cohort still owes its quota.
-  for (const id of survivorIds) {
+  for (const id of still) {
     const entity = h.state.entities.get(id);
     if (entity) entity.alive = false;
     h.state.entities.delete(id);
@@ -788,7 +835,7 @@ test('Circuit boss rounds force their stage champion and wave ten suppresses the
     });
     assert.equal(plan.swarm.requireBoss, false, `wave ${wave} has no cadence champion`);
     assert.equal(plan.swarm.bossId, null);
-    const specialObjective = { 5: 'nodes', 7: 'hold', 9: 'collect', 11: 'commander', 13: 'reach' };
+    const specialObjective = { 3: 'defend', 5: 'nodes', 7: 'hold', 9: 'collect', 11: 'commander', 13: 'reach' };
     assert.equal(plan.objective.kind, wave === 2 || wave === 6 || wave === 10 || wave === 14
       ? 'survive' : (specialObjective[wave] || 'resolve_hostiles'));
   }

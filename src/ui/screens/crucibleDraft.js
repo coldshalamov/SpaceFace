@@ -660,6 +660,8 @@ export function circuitPanelLines(run) {
   } else if (round && circuit.status !== 'route' && circuit.status !== 'finale') {
     const objectiveLine = round.kind === 'survive'
       ? 'survive sixty seconds'
+      : round.kind === 'defend'
+        ? 'defend the beacon'
       : round.kind === 'boss'
         ? (boss ? boss.label : 'a champion')
         : round.kind === 'nodes'

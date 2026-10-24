@@ -38,7 +38,11 @@ import {
 } from '../data/swarmMode.js';
 import { validateCombatChoreography } from '../presentation/combatChoreography.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
-import { CIRCUIT_VIEW_AHEAD } from './survivalCircuit.js';
+import {
+  CIRCUIT_DEFEND_AIM_TICKS,
+  CIRCUIT_DEFEND_PURSE_CUT,
+  CIRCUIT_VIEW_AHEAD,
+} from './survivalCircuit.js';
 import {
   SURVIVAL_SPAWN_DISTANCE,
   levelForWave,
@@ -708,9 +712,77 @@ export const survivalWave = {
     return player.pos;
   },
 
+  /** One damageable friendly hull. Missing after it has spawned counts as death. */
+  _ensureDefendBeacon() {
+    if (this._defendBeaconId != null) return false;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function') return false;
+    const pos = this._playerPos() || { x: 0, z: 0 };
+    const entity = spawn({
+      type: 'beacon',
+      pos: { x: pos.x, z: pos.z + 70 },
+      vel: { x: 0, z: 0 },
+      radius: 7,
+      mass: 30,
+      collides: true,
+      physicsBody: true,
+      hull: 90,
+      hullMax: 90,
+      faction: 'player',
+      data: {
+        circuitBeacon: true,
+        scanLabel: 'Beacon',
+        friendly: true,
+        tetherable: false,
+        masslineTetherable: false,
+        ai: { role: 'hold' },
+      },
+    });
+    this._defendBeaconId = entity && entity.id != null ? entity.id : null;
+    return this._defendBeaconId != null;
+  },
+
+  _defendBeaconLost() {
+    const id = this._defendBeaconId;
+    if (id == null) return false;
+    const entities = this.state && this.state.entities;
+    const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    if (!entity || entity.alive === false) return true;
+    return Number.isFinite(entity.hull) && entity.hull <= 0;
+  },
+
+  _aimDefendPack(force) {
+    const id = this._defendBeaconId;
+    if (id == null || !this._cohort) return;
+    const restamp = force || (this._cursor % CIRCUIT_DEFEND_AIM_TICKS === 0);
+    for (const member of this._cohort.values()) {
+      const entity = member && member.entity;
+      if (!entity || entity.alive === false || entity.id === id) continue;
+      if (entity.data && entity.data.circuitBeacon) continue;
+      if (!entity.data) entity.data = {};
+      if (!entity.data.ai || typeof entity.data.ai !== 'object') entity.data.ai = {};
+      if (!restamp && entity.data.ai.focusTargetId === id) continue;
+      entity.data.ai.focusTargetId = id;
+      entity.data.ai.targetId = id;
+    }
+  },
+
+  _cutCircuitPurse(reason) {
+    const run = liveSurvivalRun(this.state);
+    const held = run && Number.isFinite(run.credits) ? run.credits : 0;
+    const cut = Math.min(held, CIRCUIT_DEFEND_PURSE_CUT);
+    if (!(cut > 0)) return;
+    this._emit('run:spendRequested', { credits: cut, reason });
+  },
+
   _tickCircuitObjective() {
     const spec = this._swarm && this._swarm.circuit;
     if (!spec) return;
+    if (spec.kind === 'defend') {
+      const spawned = this._ensureDefendBeacon();
+      this._aimDefendPack(spawned === true);
+      return;
+    }
     if (spec.kind === 'nodes') {
       for (const member of this._cohort.values()) {
         if (!member.circuitNode || !member.entity || !member.root || !member.entity.pos) continue;
@@ -1394,6 +1466,35 @@ export const survivalWave = {
       if (run.phase !== 'active') return;
       if (!playerIsAlive(this.state)) return;
       const specKind = this._swarm.circuit?.kind;
+      if (specKind === 'defend') {
+        if (this._defendBeaconId == null) return;
+        const dead = this._defendBeaconLost();
+        const timeUp = this._elapsedTicks() >= this._durationTicks;
+        if (!dead && !timeUp) return;
+        if (dead) this._cutCircuitPurse('circuit_beacon_lost');
+        const spec = this._swarm.circuit;
+        this._cleared = true;
+        this._active = false;
+        this._publishWaveProgress({ force: true });
+        this._emit(WAVE_CLEARED_SEAM, {
+          wave: this._wave,
+          completionKind: 'defend',
+          objectiveName: null,
+          killWord: dead ? 'Beacon lost' : null,
+          found: dead ? 0 : 1,
+          total: spec.need,
+          durationTicks: this._durationTicks,
+          requested: this._requestedTotal,
+          admitted: this._admittedTotal,
+          killed: this._resolved,
+          survivors: this._cohort.size,
+          disabledSurvivors: this._disabledCohortCount(),
+          starved: false,
+          tick: this._cursor,
+          runWave: run && Number.isInteger(run.wave) ? run.wave : this._wave,
+        });
+        return;
+      }
       if (specKind === 'nodes' || specKind === 'hold' || specKind === 'collect'
         || specKind === 'commander' || specKind === 'reach') {
         if (!this._circuitObjectiveMet()) return;
@@ -1506,6 +1607,7 @@ export const survivalWave = {
     this._bossIds = new Set();
     this._clearCircuitMark();
     this._clearCircuitCores();
+    this._defendBeaconId = null;
     this._coresFound = 0;
     // A capital champion's fight record never outlives its wave: terminal, surviving or
     // run-ended, the next wave (or teardown) starts from an empty fight ledger.
@@ -1583,7 +1685,8 @@ export const survivalWave = {
     // Circuit duration is an exact count of active 60 Hz updates. Subtracting accumulated
     // simTime seconds can leave tick 3,600 just below sixty seconds and delay the clear.
     // Use the same count for completion and the HUD; ordinary Swarm keeps its clock contract.
-    if (this._swarm?.circuit?.kind === 'survive') return Math.max(0, this._cursor);
+    const circuitKind = this._swarm?.circuit?.kind;
+    if (circuitKind === 'survive' || circuitKind === 'defend') return Math.max(0, this._cursor);
     return Math.max(0, Math.floor(this._elapsedSeconds() * 60 + 1e-9));
   },
 

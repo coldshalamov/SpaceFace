@@ -35,6 +35,12 @@ export const CIRCUIT_STAGE_COUNT = 4;
 export const CIRCUIT_ROUNDS_PER_STAGE = 4;
 export const CIRCUIT_TOTAL_ROUNDS = CIRCUIT_STAGE_COUNT * CIRCUIT_ROUNDS_PER_STAGE;
 export const CIRCUIT_SURVIVE_TICKS = 3600;
+/** Defend-the-beacon is shorter than survive: thirty seconds, then the round ends if the hull lives. */
+export const CIRCUIT_DEFEND_TICKS = 1800;
+/** How often the pack is pointed back at the beacon. New arrivals are aimed on the tick they exist. */
+export const CIRCUIT_DEFEND_AIM_TICKS = 45;
+/** Purse cut when the beacon dies. The spend request is clamped to what the run actually holds. */
+export const CIRCUIT_DEFEND_PURSE_CUT = 40;
 export const CIRCUIT_NODE_COUNT = 3;
 export const CIRCUIT_CORE_COUNT = 4;
 export const CIRCUIT_HOLD_TICKS = 600;
@@ -50,6 +56,7 @@ export const CIRCUIT_COMMANDER_NAME = promotedPilotIdentity(4242, 'circuit-comma
 
 /** Cohort slots that are a different contract. Local 2 stays survive. The last round stays the champion. */
 const CIRCUIT_SPECIAL_KIND = Object.freeze({
+  '1:3': 'defend',
   '2:1': 'nodes',
   '2:3': 'hold',
   '3:1': 'collect',
@@ -276,6 +283,7 @@ export function circuitRoundFor(run, wave, origin = null) {
     kind,
     bossId,
     surviveTicks: kind === 'survive' ? CIRCUIT_SURVIVE_TICKS : null,
+    defendTicks: kind === 'defend' ? CIRCUIT_DEFEND_TICKS : null,
     fight,
     pressureMul: scale.pressureMul,
     earnMul: scale.earnMul,

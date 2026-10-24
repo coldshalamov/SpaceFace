@@ -61,7 +61,7 @@ import {
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { normalizeThreatIds, swarmThreatPressureMult } from '../data/swarmThreats.js';
 import { CRUCIBLE_REEF_LAYOUT_ID, CRUCIBLE_SLALOM_WELL_COUNT } from '../data/survivalMutators.js';
-import { CIRCUIT_SURVIVE_TICKS, circuitBossFor } from './survivalCircuit.js';
+import { CIRCUIT_DEFEND_TICKS, CIRCUIT_SURVIVE_TICKS, circuitBossFor } from './survivalCircuit.js';
 
 // Binding ranges from spaceface.combatLabSetup.v1 (seed 1..0xffffffff, wave 1..999).
 // Authored recipes exist for template waves 1–10 per live arena. The thirty-wave
@@ -637,6 +637,11 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
     if (circuitRound.kind === 'survive') {
       swarm.killTarget = 0;
       swarm.durationTicks = CIRCUIT_SURVIVE_TICKS;
+    } else if (circuitRound.kind === 'defend') {
+      swarm.killTarget = 0;
+      swarm.durationTicks = CIRCUIT_DEFEND_TICKS;
+      swarm.circuit.defendTicks = CIRCUIT_DEFEND_TICKS;
+      swarm.circuit.need = CIRCUIT_DEFEND_TICKS;
     } else if (circuitRound.kind === 'nodes' || circuitRound.kind === 'hold'
       || circuitRound.kind === 'collect' || circuitRound.kind === 'commander'
       || circuitRound.kind === 'reach') {
@@ -665,7 +670,8 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
     return invalid([issue('swarm.concurrent', `swarm concurrency ${swarm.concurrent} exceeds 40`)]);
   }
   const surviveRound = !!circuitRound && circuitRound.kind === 'survive';
-  const specialKind = circuitRound && ['nodes', 'hold', 'collect', 'commander', 'reach'].includes(circuitRound.kind)
+  const defendRound = !!circuitRound && circuitRound.kind === 'defend';
+  const specialKind = circuitRound && ['defend', 'nodes', 'hold', 'collect', 'commander', 'reach'].includes(circuitRound.kind)
     ? circuitRound.kind : null;
   const plan = {
     id: `swarm:w${w}:${seed.toString(16)}`,
@@ -685,6 +691,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
       blockingRoles: [],
       cleanupTicks: SWARM_CLEANUP_TICKS,
       ...(surviveRound ? { durationTicks: CIRCUIT_SURVIVE_TICKS } : {}),
+      ...(defendRound ? { durationTicks: CIRCUIT_DEFEND_TICKS } : {}),
     },
     swarm,
     level: swarmLevel(w),
