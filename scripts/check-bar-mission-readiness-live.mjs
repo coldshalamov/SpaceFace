@@ -13,6 +13,10 @@ import { fileURLToPath } from 'node:url';
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { BINDINGS } from '../src/ui/bindings.js';
+import { createBarProbeLifecycle } from './lib/barProbeLifecycle.mjs';
+
+const lifecycle = createBarProbeLifecycle();
+lifecycle('fixture-start', { pid: process.pid });
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PROFILE_LAUNCH = process.argv.includes('--profile-launch');
@@ -524,13 +528,25 @@ try {
     'Mission Log should mark the Bar-accepted mission as the tracked row: ' + JSON.stringify(logReport));
   assert.deepEqual(issues.errorIssues(), [], 'bar live smoke should not record page errors');
 
+  lifecycle('assertions-complete');
   console.log('Bar mission readiness live OK: Bar offer chips, blocker, Accept + Track, and Mission Log handoff render on the default route.');
 } finally {
   try {
     await stopLaunchProfile();
   } finally {
-    try { if (browser) await browser.close(); }
-    finally { if (server && server.kill) server.kill(); }
+    try {
+      if (browser) {
+        lifecycle('browser-close-start');
+        let completed = false;
+        try { await browser.close(); completed = true; }
+        finally { lifecycle('browser-close-end', { completed }); }
+      }
+    } finally {
+      if (server && server.kill) {
+        lifecycle('server-stop-request');
+        server.kill();
+      }
+    }
   }
 }
 
@@ -608,6 +624,8 @@ function spawnProbeServer(port) {
     windowsHide: true,
     env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
   });
+  child.once('exit', (code, signal) => lifecycle('server-exit', { pid: child.pid, code, signal }));
+  child.once('close', (code, signal) => lifecycle('server-close', { pid: child.pid, code, signal }));
   let output = '';
   const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };
   child.stdout.on('data', capture);
@@ -624,6 +642,7 @@ async function waitForReachable(url, child) {
     if (await reachable(url)) return;
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
+  lifecycle('server-stop-request');
   child.kill();
   throw new Error('Dev server did not become reachable at ' + url);
 }
