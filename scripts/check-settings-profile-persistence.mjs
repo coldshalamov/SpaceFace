@@ -21,6 +21,8 @@ const firstRuntime = initSave(first);
 first.settings.uiScale = 1.45;
 first.settings.showDamageNumbers = false;
 first.settings.audio.master = 0.23;
+first.settings.audio.mono = true;
+first.settings.audio.nightMode = true;
 first.settings.video.motionReduce = true;
 first.settings.video.renderScale = 1.1;
 first.settings.accessibility.highContrast = true;
@@ -41,12 +43,16 @@ assert.equal(stored.settings.gameplay.autosaveIntervalS, 300, 'profile store sho
 assert.equal(stored.settings.gameplay.tutorialHints, false, 'profile store should persist tutorial preference');
 assert.equal(stored.settings.gameplay.difficulty, undefined, 'profile store must not globalize run difficulty');
 assert.equal(stored.settings.gameplay.physicsBackend, undefined, 'profile store must not persist runtime backend forks');
+assert.equal(stored.settings.audio.mono, true, 'profile store should persist mono audio');
+assert.equal(stored.settings.audio.nightMode, true, 'profile store should persist night mode');
 
 const booted = createGameState(22);
 initSave(booted);
 assert.equal(booted.settings.uiScale, 1.45, 'boot should load profile UI scale');
 assert.equal(booted.settings.showDamageNumbers, false, 'boot should load profile damage-number preference');
 assert.equal(booted.settings.audio.master, 0.23, 'boot should load profile audio');
+assert.equal(booted.settings.audio.mono, true, 'boot should load profile mono audio');
+assert.equal(booted.settings.audio.nightMode, true, 'boot should load profile night mode');
 assert.equal(booted.settings.video.motionReduce, true, 'boot should load profile accessibility-backed video');
 assert.equal(booted.settings.accessibility.highContrast, true, 'boot should load profile accessibility');
 assert.equal(booted.settings.controls.gamepad.deadzone, 0.31, 'boot should load profile controls');
@@ -66,7 +72,7 @@ booted.settings.gameplay.difficulty = 'veteran';
 save._restoreSettings({
   accessibility: { highContrast: false, flashReduce: false },
   video: { motionReduce: false, renderScale: 0.55 },
-  audio: { master: 0.9 },
+  audio: { master: 0.9, mono: false, nightMode: false },
   controls: { gamepad: { enabled: true, deadzone: 0.05, invertY: false }, touch: { enabled: true } },
   gameplay: { autosaveIntervalS: 60, tutorialHints: true, difficulty: 'veteran', physicsBackend: 'legacy' },
 });
@@ -76,6 +82,8 @@ assert.equal(booted.settings.accessibility.flashReduce, true, 'profile flash pre
 assert.equal(booted.settings.video.motionReduce, true, 'profile reduce-motion should override old save video');
 assert.equal(booted.settings.video.renderScale, 1.1, 'profile video preference should override old save video');
 assert.equal(booted.settings.audio.master, 0.23, 'profile audio should override old save audio');
+assert.equal(booted.settings.audio.mono, true, 'profile mono audio should override slot audio');
+assert.equal(booted.settings.audio.nightMode, true, 'profile night mode should override slot audio');
 assert.equal(booted.settings.controls.gamepad.deadzone, 0.31, 'profile controls should override old save controls');
 assert.equal(booted.settings.controls.touch.enabled, false, 'profile touch mode should override old save controls');
 assert.deepEqual(booted.settings.controls.bindings, { boost: ['ShiftRight'] },
@@ -87,7 +95,51 @@ assert.equal(booted.settings.gameplay.tutorialHints, false, 'profile tutorial pr
 assert.equal(booted.settings.gameplay.difficulty, 'veteran', 'save-slot difficulty should remain run-scoped');
 assert.equal(booted.settings.gameplay.physicsBackend, 'rapier-dynamic', 'restored settings must canonicalize physics backend');
 
-console.log('Settings profile persistence OK - accessibility/control preferences survive boot and old save loads without globalizing difficulty.');
+// With no profile override, slot settings survive the real serializer, JSON storage, and
+// settings restore owner. These additive v18 fields need no migration: missing legacy fields
+// retain the current defaults. Test false as well as true so truthy merges cannot pass.
+localStorage.clear();
+const defaults = createGameState(33).settings;
+const preferences = (settings) => ({
+  glassPreset: settings.glassPreset,
+  mono: settings.audio.mono,
+  nightMode: settings.audio.nightMode,
+});
+assert.deepEqual(preferences(defaults), { glassPreset: 'clean', mono: false, nightMode: false });
+for (const choices of [
+  { glassPreset: 'clean', mono: false, nightMode: false },
+  { glassPreset: 'hauler', mono: true, nightMode: false },
+  { glassPreset: 'fighter', mono: false, nightMode: true },
+  { glassPreset: 'hauler', mono: true, nightMode: true },
+]) {
+  const source = createGameState(44);
+  initSave(source);
+  source.settings.glassPreset = choices.glassPreset;
+  source.settings.audio.mono = choices.mono;
+  source.settings.audio.nightMode = choices.nightMode;
+  const disk = JSON.parse(JSON.stringify(save.serializeData()));
+  assert.deepEqual(preferences(disk.settings), choices, 'slot serializer must retain every choice');
+  source.settings.glassPreset = 'clean';
+  source.settings.audio.mono = !choices.mono;
+  source.settings.audio.nightMode = !choices.nightMode;
+  assert.deepEqual(preferences(disk.settings), choices, 'serialized settings must not alias live state');
+
+  const target = createGameState(55);
+  initSave(target);
+  target.settings.glassPreset = 'fighter';
+  target.settings.audio.mono = !choices.mono;
+  target.settings.audio.nightMode = !choices.nightMode;
+  save._restoreSettings(disk.settings);
+  assert.deepEqual(preferences(target.settings), choices, 'slot restore must retain explicit choices');
+  assert.deepEqual(preferences(save.serializeData().settings), choices, 'restored choices must reserialize');
+}
+const legacy = createGameState(66);
+initSave(legacy);
+save._restoreSettings({ audio: { master: 0.41 } });
+assert.deepEqual(preferences(legacy.settings), preferences(defaults), 'legacy slots retain additive defaults');
+assert.equal(legacy.settings.audio.master, 0.41, 'legacy slot audio still restores');
+
+console.log('Settings profile persistence OK - profile precedence, slot round trips, and legacy additive defaults.');
 
 function makeStorage() {
   const map = new Map();
