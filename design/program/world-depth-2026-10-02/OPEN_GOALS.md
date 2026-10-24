@@ -1,5 +1,19 @@
 <!-- LIFETIME: DURABLE -->
 
+## Orcus delivery, terminal CI and Archive successor: 2026-10-24 05:53 UTC
+
+PR569 remains open draft at `541d43b51adfff067b209510052210bc2cdb38cb`, following `52edcfd9`, with tree `424a21de7334cab1064d2b7f613238508f806368`. Its verified five-path Orcus delta preserves Pilgrim. Only encounter 916 changes among 219 captured outputs; the actual scheduler admission flag is corrected and tested. Hosted Orcus checks passed 40/40. Native controlled paths exercised a 6.1-second scanner result for 30 credits and a 471.865-WU withdrawal settling at 9.0833 seconds without credits, with original actors and no impacts. This is controlled admission after the first-hour preference, not natural frequency, full Continue or visual acceptance.
+
+Run 40064907508 ended FAILURE: eight matrix groups failed, browser shard 3 was cancelled near its thirty-minute cap, and the aggregate failed. Browser-1's confirm-dialog removal assertion differs from the parent despite unchanged probe/confirm source; that explicit probe does not exercise Orcus, but attribution is not proven. Browser-3 partial modal/station errors and flight categories differ in detail, with no complete ship-visual result. Do not describe all failures as baseline-matching. PR570 also ended overall FAILURE with hosted Io 25/25 and E1 25/25 passes; its additional flight SIGKILL has no completed parent pair. PR571's check/mobile runs ended FAILURE with hosted 12/12; completed failures match its parent, both browser-3 jobs were cancelled, and six mobile failures occurred before browser startup. These monitors are closed.
+
+Fresh master `0ebaf5d32603707ba765498e6c8c7b5c8eea2eb1` adds only the two-path UI119 GameOver/documentation change since `316eed66`. A separately owned read-only preflight is assessing existing PR558's startup repair together with PR569/570/571. It has no source or branch-write authority; do not duplicate that repair or integration lane.
+
+The separate Archive compact successor passed 17/17 checks (seven footer and ten append), against baseline four passes/three compact failures. One generator expression changes formatting while retaining all 219 parsed rows and order, including seventeen green and 202 red rows. The lazy CENSUS_JSON string API remains, with different whitespace. This is not a full remeasurement. Original frozen manifests remain unchanged, and the successor recovery plus immutable original backup reconstructs both exact outputs.
+
+Compact formatting has NOT solved publication. One compact-JSON write began at 05:22:23 UTC, stalled and was interrupted; its expected object still returned 404 at 05:25:33–35 and the isolated staging ref remained unchanged. No JavaScript attempt, retry, commit or ref update followed. The 47-path runtime union remains unpublished; its old tree hash is not a new successor tree. Small connector writes still work, so this is not a global GitHub denial. No further large writes or login probes are authorized.
+
+Both old-overlay pretty census files are now intentionally absent after verified recoverable eviction, not lost work or public omissions. Restore from the retained original archive before using that old overlay, or use the separately verified successor under its owner. The Pilgrim image is likewise retained in published GitHub and durable recovery despite local-cache eviction. All twelve goals, browser hold and existing ownership constraints remain OPEN. No new ledger, merge, deployment or schedule change is implied.
+
 ## Quiet-beacon retirement delivered and CI qualification: 2026-10-24 04:11 UTC
 
 Draft [PR571](https://github.com/coldshalamov/SpaceFace/pull/571) is verified open at `90e223cd9b555f7539f78235fbb37b4dd1ae479b`, with four paths (core system, existing quiet test, package and report), tree `4bc1a6aa98ebb85635bc529764e2ca69bd795eef` and sole public parent `316eed66`. The publisher verified full remote bytes and blob hashes and owns exact-head CI monitoring.
