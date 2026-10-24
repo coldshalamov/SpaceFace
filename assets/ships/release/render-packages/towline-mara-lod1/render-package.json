@@ -207,7 +207,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8e15dd4e59ff3ce11afd23c05cdd23f766f36c9aa0c1b21ff9f43bea0fa5165c",
+  "contentHash": "bfb7cfe90444b8700d610f318dad044d6d89c31d15a500f32eeb725a3fb6c7ff",
   "dynamicGroups": [
     {
       "id": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-port-livery.dynamic",
@@ -1549,8 +1549,8 @@
       "uri": "towline_mara_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 272571,
-      "sha256": "5462de19d4cc85a733ee4081d4d28f7a1519caadb4fc734cc6b357e80d33bfc4",
+      "bytes": 273915,
+      "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c",
       "uri": "pilots.json"
     }
   },
@@ -2252,7 +2252,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_mara_lod1.glb"
   },
-  "runtimeHash": "30543053f8d66fc135470fdf5f9dc7ecceded8f5c72be9f6034109b9484eddd6",
+  "runtimeHash": "a6fb8e9c73674e45a1e166bf7571f75a87dbad745f238ebd58bec3404de87a61",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

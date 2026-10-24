@@ -888,6 +888,7 @@ export const save = {
       ['rubric', () => this._callSerialize('rubric') || {}],
       ['ruckus', () => this._callSerialize('ruckus') || {}],
       ['ruud', () => this._callSerialize('ruud') || {}],
+      ['docket', () => this._callSerialize('docket') || {}],
       ['salvage', () => this._callSerialize('salvage') || {}],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
@@ -1051,6 +1052,7 @@ export const save = {
     data.rubric = this._callSerialize('rubric') || {};
     data.ruckus = this._callSerialize('ruckus') || {};
     data.ruud = this._callSerialize('ruud') || {};
+    data.docket = this._callSerialize('docket') || {};
     data.salvage = this._callSerialize('salvage') || {};
     yield 'serialize:salvage';
     data.survivorPod = this._callSerialize('survivorPod') || {};
@@ -1383,6 +1385,9 @@ export const save = {
     // saves load unchanged and a save without one is byte-identical to before.
     const bay = this.state.player.salvageBay;
     if (bay && bay.items && Object.keys(bay.items).length) out.salvageBay = { items: clonePlain(bay.items) };
+    // W-CAST-HANDS row 542 (Drift): the fractional sun-sublimation progress rides the cargo record
+    // as an OPTIONAL key (absent = nothing ever melted), so a save without one is byte-identical.
+    if (c.moisture && typeof c.moisture === 'object' && Object.keys(c.moisture).length) out.moisture = clonePlain(c.moisture);
     return out;
   },
 
@@ -6712,6 +6717,8 @@ export const save = {
       yield 'ruckus-restored';
       this._callDeserialize('ruud', data.ruud);
       yield 'ruud-restored';
+      this._callDeserialize('docket', data.docket);
+      yield 'docket-restored';
       this._callDeserialize('salvage', data.salvage);
       yield 'salvage-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
@@ -7433,6 +7440,10 @@ export const save = {
       // usedVolume is a cache: the cargo owner recomputes it from the items right after the restore.
       this.state.player.salvageBay = { items: clonePlain(c.salvageBay.items), usedVolume: 0 };
     } else if (Object.hasOwn(this.state.player, 'salvageBay')) delete this.state.player.salvageBay;
+    // Drift moisture-loss accumulator (row 542): restored or cleared with the cargo record, same
+    // optional-key law as salvageBay — a save that never melted leaves no key behind.
+    if (c.moisture && typeof c.moisture === 'object' && !Array.isArray(c.moisture)) cargo.moisture = clonePlain(c.moisture);
+    else if (Object.hasOwn(cargo, 'moisture')) delete cargo.moisture;
   },
 
   _restoreFlight(flight) {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "95df3ea516b7d11bb3bc3953b48459fe421b7a7207fe4420a3810c1033867bbf",
+  "contentHash": "f1901ab3d0c591a12c2fa58cb57338c54d9ce46e4e26a4957a96567b0ff4b507",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -238,7 +238,7 @@
     },
     "sourceManifest": {
       "bytes": 273915,
-      "sha256": "0917794bb3b2037e5df170b8f104aefdd6e03071a08c75badc519d7bba87737a",
+      "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c",
       "uri": "pilots.json"
     }
   },
@@ -347,7 +347,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_sedna_ringworld_arc.glb"
   },
-  "runtimeHash": "87415b936448297dec50cba09e8bb2281483e38cd34fbf9a8316ae3744b4e01c",
+  "runtimeHash": "456815e9e652433af837a5f5aa68b5cde807a49a7fd9d08acc90c8a326ef9173",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

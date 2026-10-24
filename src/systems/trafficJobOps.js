@@ -8,7 +8,7 @@ import { NPC_JOB_PHASE } from './npcJobs.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { makeShipEntitySpec } from './ships.js';
 import { STATION_CREW_ROLES } from '../economy/stationConditions.js';
-import { CERES_REFINERY_HAULER_SLOT_ID, CERES_SEAM_MINER_SLOT_ID, DOCK_RANGE, FREIGHTER_SHIP, MINER_FIELD_SPREAD_CAP, PASSENGER_LINER_ACTIVE_INCIDENT_STATUSES, PASSENGER_LINER_INCIDENT_MAX_AGE_S, PASSENGER_LINER_INVALIDATED_CAP, PASSENGER_LINER_RECEIPT_CAP, TRADE_INTERVAL_S, TRAFFIC_ROLES, compactStableIds, factionHullFor, isWorldSiteTrafficFallbackRole, lawPresenceRole, liveEntity, occupationalJobKind, passengerLinerLegIds, passengerLinerServiceForSector, priorityCourierServiceForSector, setIntent, stableTrafficKey, stationIdentity } from './traffic.js';
+import { CERES_REFINERY_HAULER_SLOT_ID, CERES_SEAM_MINER_SLOT_ID, DOCK_RANGE, FREIGHTER_SHIP, MINER_FIELD_SPREAD_CAP, PASSENGER_LINER_ACTIVE_INCIDENT_STATUSES, PASSENGER_LINER_INCIDENT_MAX_AGE_S, PASSENGER_LINER_INVALIDATED_CAP, PASSENGER_LINER_RECEIPT_CAP, TRADE_INTERVAL_S, TRAFFIC_ROLES, compactStableIds, factionHullFor, isWorldSiteTrafficFallbackRole, lawPresenceRole, liveEntity, occupationalJobKind, passengerLinerLegIds, passengerLinerServiceForSector, priorityCourierServiceForSector, setIntent, stableTrafficKey, stationIdentity, stationName } from './traffic.js';
 
 export const trafficJobOps = {
   // PQ-014 — natural NPC job assignment. Civilian traffic IS the natural producer for the three

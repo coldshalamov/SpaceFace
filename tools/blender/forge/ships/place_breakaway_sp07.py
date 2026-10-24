@@ -89,7 +89,11 @@ def build():
           bevel=0.08)
     F.work_lamp(s, 'ServiceLamp', (0.4, -2.0, 9.6), aim=(0.2, 0.3, -0.8), size=0.4,
                 lens='glow_warm')
-    F.beacon(s, 'CageStrobe', (-6.0, 0.0, 9.6), 'glow_amber', size=0.4)
+    # cage cross-tie at the -X end between the top rails — carries the strobe so it
+    # doesn't hover over the wheel bay
+    F.box(s, 'StrobeTie', (-6.0, 0.0, 8.10), (0.6, 15.6, 0.5), material='paint2',
+          bevel=0.03)
+    F.beacon(s, 'CageStrobe', (-6.0, 0.0, 8.33), 'glow_amber', size=0.4)
     return s
 
 

@@ -102,6 +102,13 @@ def build():
               material='paint2', bevel=0.06)
         F.box(s, f'ScanPaddleBEye{ex:+d}', (ex * 1.03, 4.5, 6.4), (0.08, 1.3, 0.9),
               material='glow_cyan', bevel=0.0)
+    # each paddle pair rides an inverted-T mast rooted in the sill — a post rising
+    # through the opening and a short crossarm threading both plates, so the heads
+    # read as mounted lane scanners instead of floating signs
+    for ey in (-1, 1):
+        F.beams(s, f'PaddleMast{ey:+d}', [((0, ey * 4.5, 0.7), (0, ey * 4.5, 6.4)),
+                                          ((-0.95, ey * 4.5, 6.4), (0.95, ey * 4.5, 6.4))],
+                0.14, material='gunmetal')
     # sill between the shoes closes the gate's rectangle
     F.box(s, 'PortalSill', (0, 0, 0.6), (0.7, 16.6, 0.5), material='dark', bevel=0.04)
     s.detail = 1

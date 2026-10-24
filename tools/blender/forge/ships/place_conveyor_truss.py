@@ -49,7 +49,12 @@ def build():
                     0.4, material='paint2')
             F.box(s, f'Foot{k}{e:+d}', (lx, e * 3.5, 0.4), (3.2, 1.4, 0.7),
                   material='paint2', bevel=0.06)
-        F.beams(s, f'LegBar{k}', [((lx, -3.4, 1.0), (lx, 3.4, 1.0))], 0.3,
+            # gusset block over each foot — the joint reads planted, never floating
+            for sx in (-1, 1):
+                F.box(s, f'LegShoe{k}{e:+d}{sx:+d}', (lx + sx * 1.1, e * 3.3, 0.62),
+                      (0.8, 0.8, 0.8), material='paint2', bevel=0.0)
+        # spreader bar ends land ON the pads (its ends used to hover ~0.25 over them)
+        F.beams(s, f'LegBar{k}', [((lx, -3.4, 0.78), (lx, 3.4, 0.78))], 0.3,
                 material='paint2')
 
     # --- walkway lamps — one per bay on the gallery side ----------------------------------------

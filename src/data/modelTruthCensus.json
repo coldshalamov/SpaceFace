@@ -27848,57 +27848,57 @@
     {
       "bounds": {
         "center": [
-          -0.01259,
+          -0.013955,
           1.3,
-          -0.007333
+          0
         ],
         "max": [
-          13.680741,
+          13.678013,
           10.500474,
           9.100424
         ],
         "min": [
           -13.705922,
           -7.900475,
-          -9.11509
+          -9.100424
         ],
         "size": [
-          27.386663,
+          27.383935,
           18.400949,
-          18.215514
+          18.200848
         ]
       },
-      "bytes": 543564,
+      "bytes": 373664,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_breakaway_sp07",
         "kind": "proxy",
         "outline": [
-          13.728381,
-          2.146766,
-          2.228865,
-          2.377125,
+          13.727555,
+          2.149099,
+          2.231617,
+          2.37671,
           0,
-          8.803816,
-          9.107766,
+          8.811003,
+          9.100435,
           0,
-          2.392795,
-          2.271046,
-          2.169612,
-          13.730194,
-          13.730147,
-          2.176649,
-          2.256949,
-          2.405405,
+          2.399113,
+          2.277182,
+          2.174315,
+          13.731242,
+          13.731242,
+          2.174358,
+          2.277182,
+          2.400854,
           0,
-          9.107766,
-          8.818427,
+          9.100435,
+          8.811003,
           0,
-          2.388582,
-          2.236424,
-          2.153841,
-          13.705431
+          2.382178,
+          2.231334,
+          2.149099,
+          13.703388
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -27907,9 +27907,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.01259,
+        0.013955,
         0,
-        0.007333
+        0
       ],
       "drawScale": 1,
       "family": "place",
@@ -28046,9 +28046,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.01259,
+        -0.013955,
         1.3,
-        -0.007333
+        0
       ],
       "proposedSkin": {
         "adopted": true,
@@ -28061,8 +28061,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.11772,
-            "bz": -0.147151,
+            "bx": -1.117652,
+            "bz": -0.147142,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.0375
@@ -28070,8 +28070,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.149881,
-            "bz": -0.062083,
+            "bx": -0.150061,
+            "bz": -0.062157,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.0375
@@ -28079,8 +28079,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.134134,
-            "bz": -0.102925,
+            "bx": -0.134316,
+            "bz": -0.103064,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.0375
@@ -28088,8 +28088,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.110446,
-            "bz": -0.143936,
+            "bx": -0.110425,
+            "bz": -0.143908,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.0375
@@ -28097,8 +28097,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.093585,
-            "bz": -0.710851,
+            "bx": -0.093663,
+            "bz": -0.711445,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.0375
@@ -28106,8 +28106,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.096891,
-            "bz": -0.735963,
+            "bx": 0.096812,
+            "bz": -0.735358,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.0375
@@ -28115,8 +28115,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.111241,
-            "bz": -0.144972,
+            "bx": 0.111561,
+            "bz": -0.145389,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.0375
@@ -28124,8 +28124,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.136923,
-            "bz": -0.105064,
+            "bx": 0.137328,
+            "bz": -0.105376,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.0375
@@ -28133,8 +28133,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.15164,
-            "bz": -0.062812,
+            "bx": 0.152002,
+            "bz": -0.062961,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.0375
@@ -28142,8 +28142,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 1.11787,
-            "bz": -0.14717,
+            "bx": 1.117957,
+            "bz": -0.147182,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.0375
@@ -28151,8 +28151,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 1.117866,
-            "bz": 0.14717,
+            "bx": 1.117957,
+            "bz": 0.147182,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.0375
@@ -28160,8 +28160,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.152182,
-            "bz": 0.063036,
+            "bx": 0.152006,
+            "bz": 0.062963,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.0375
@@ -28169,8 +28169,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.135991,
-            "bz": 0.104349,
+            "bx": 0.137328,
+            "bz": 0.105376,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.0375
@@ -28178,8 +28178,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.11188,
-            "bz": 0.145805,
+            "bx": 0.11165,
+            "bz": 0.145505,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.0375
@@ -28187,8 +28187,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.096891,
-            "bz": 0.735963,
+            "bx": 0.096812,
+            "bz": 0.735358,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.0375
@@ -28196,8 +28196,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.093744,
-            "bz": 0.712058,
+            "bx": -0.093663,
+            "bz": 0.711445,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.0375
@@ -28205,8 +28205,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.111027,
-            "bz": 0.144693,
+            "bx": -0.110702,
+            "bz": 0.14427,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.0375
@@ -28214,8 +28214,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.134634,
-            "bz": 0.103308,
+            "bx": -0.134297,
+            "bz": 0.10305,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.0375
@@ -28223,8 +28223,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.150426,
-            "bz": 0.062309,
+            "bx": -0.150061,
+            "bz": 0.062157,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.0375
@@ -28232,14 +28232,14 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.115824,
-            "bz": 0.146901,
+            "bx": -1.115655,
+            "bz": 0.146879,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.0375
           }
         ],
-        "silhouetteRadius": 13.730194,
+        "silhouetteRadius": 13.731242,
         "toleranceWu": 2
       },
       "reasons": [
@@ -28247,8 +28247,8 @@
       ],
       "shell": {
         "boundaryEdges": 166,
-        "inwardFaceFraction": 0.339,
-        "silhouetteRadius": 13.730194,
+        "inwardFaceFraction": 0.33375,
+        "silhouetteRadius": 13.731242,
         "sliceY": 0
       },
       "sockets": [
@@ -28281,13 +28281,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 9811,
+      "triangles": 10107,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_breakaway_sp07.glb",
       "worldSize": [
-        27.386663,
+        27.383935,
         18.400949,
-        18.215514
+        18.200848
       ]
     },
     {
@@ -28602,7 +28602,7 @@
             },
             {
               "path": "src/data/worldSiteAssetBindings.js",
-              "sha256": "1bf9a9c91ca15fae44a5dc8509af96e166cc298cedf2e5f1d1b874f39e9867de"
+              "sha256": "225c2bd48c02c1ecc899c892008b8f6649c21538448e21c986a5202ba2dbae2c"
             },
             {
               "path": "src/systems/worldSiteKernel.js",
@@ -28630,23 +28630,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "cd792be43cf14513c0881dc0848553dbb13d04eb1ab756d38ac7c37ae5c53ee0"
+              "sha256": "9e6e3073312f6f27b45415115ab96be8b3c516d8e283e601c86d4c46ce4fedc7"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "fae64b8ad56521194d0b1d4f662dc14af51238b45ccd5107a8c793dd05c2e1d6"
+              "sha256": "b1757b65a0be2260f484a00075ade5682ed2494ff0443e3d87a54a15189bf0ec"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "dde5ad1ea175137ae1e3b803bdf9b8fe60aed509b2af4a414e7789511af86f52"
+              "sha256": "2d93e9347917d0d2d29e50ed36fe0cb775fbc4febe1ed1a297c6c2748ae109ef"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd"
+              "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
-              "sha256": "beec6b08bd8102cc057b47fc29fc1e249682d7dd18bf144a9f33793977e6dd06"
+              "sha256": "8bcd692d63db447609ee552687243e191d0598fb545afcc31bd289e24b422d77"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -29154,7 +29154,7 @@
             },
             {
               "path": "src/data/worldSiteAssetBindings.js",
-              "sha256": "1bf9a9c91ca15fae44a5dc8509af96e166cc298cedf2e5f1d1b874f39e9867de"
+              "sha256": "225c2bd48c02c1ecc899c892008b8f6649c21538448e21c986a5202ba2dbae2c"
             },
             {
               "path": "src/systems/worldSiteKernel.js",
@@ -29182,23 +29182,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "cd792be43cf14513c0881dc0848553dbb13d04eb1ab756d38ac7c37ae5c53ee0"
+              "sha256": "9e6e3073312f6f27b45415115ab96be8b3c516d8e283e601c86d4c46ce4fedc7"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "fae64b8ad56521194d0b1d4f662dc14af51238b45ccd5107a8c793dd05c2e1d6"
+              "sha256": "b1757b65a0be2260f484a00075ade5682ed2494ff0443e3d87a54a15189bf0ec"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "dde5ad1ea175137ae1e3b803bdf9b8fe60aed509b2af4a414e7789511af86f52"
+              "sha256": "2d93e9347917d0d2d29e50ed36fe0cb775fbc4febe1ed1a297c6c2748ae109ef"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd"
+              "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
-              "sha256": "f31f40af0a50ec9e21acd943a64566430d8b9445eb5582ffb7bdce3770d01138"
+              "sha256": "7acf22fd7c46d0a863a3e53447dffd48586bb68c35901d312a12b392a618085e"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -29622,7 +29622,7 @@
             },
             {
               "path": "src/data/worldSiteAssetBindings.js",
-              "sha256": "1bf9a9c91ca15fae44a5dc8509af96e166cc298cedf2e5f1d1b874f39e9867de"
+              "sha256": "225c2bd48c02c1ecc899c892008b8f6649c21538448e21c986a5202ba2dbae2c"
             },
             {
               "path": "src/systems/worldSiteKernel.js",
@@ -29650,23 +29650,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "cd792be43cf14513c0881dc0848553dbb13d04eb1ab756d38ac7c37ae5c53ee0"
+              "sha256": "9e6e3073312f6f27b45415115ab96be8b3c516d8e283e601c86d4c46ce4fedc7"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "fae64b8ad56521194d0b1d4f662dc14af51238b45ccd5107a8c793dd05c2e1d6"
+              "sha256": "b1757b65a0be2260f484a00075ade5682ed2494ff0443e3d87a54a15189bf0ec"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "dde5ad1ea175137ae1e3b803bdf9b8fe60aed509b2af4a414e7789511af86f52"
+              "sha256": "2d93e9347917d0d2d29e50ed36fe0cb775fbc4febe1ed1a297c6c2748ae109ef"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd"
+              "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
-              "sha256": "a83259171c7635799437a2d93eaeddda86f075300af543c6f6f69d440cda3332"
+              "sha256": "e4215a663ac4be46f3cb41e6c748974f0376ce94cfe6961035bb5f6d1b2fbe6b"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -30126,7 +30126,7 @@
             },
             {
               "path": "src/data/worldSiteAssetBindings.js",
-              "sha256": "1bf9a9c91ca15fae44a5dc8509af96e166cc298cedf2e5f1d1b874f39e9867de"
+              "sha256": "225c2bd48c02c1ecc899c892008b8f6649c21538448e21c986a5202ba2dbae2c"
             },
             {
               "path": "src/systems/worldSiteKernel.js",
@@ -30154,23 +30154,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "cd792be43cf14513c0881dc0848553dbb13d04eb1ab756d38ac7c37ae5c53ee0"
+              "sha256": "9e6e3073312f6f27b45415115ab96be8b3c516d8e283e601c86d4c46ce4fedc7"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "fae64b8ad56521194d0b1d4f662dc14af51238b45ccd5107a8c793dd05c2e1d6"
+              "sha256": "b1757b65a0be2260f484a00075ade5682ed2494ff0443e3d87a54a15189bf0ec"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "dde5ad1ea175137ae1e3b803bdf9b8fe60aed509b2af4a414e7789511af86f52"
+              "sha256": "2d93e9347917d0d2d29e50ed36fe0cb775fbc4febe1ed1a297c6c2748ae109ef"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd"
+              "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
-              "sha256": "bb98f45460a95e09309a6041b7ba3dd425e9a9bea8d0625ff8db4741b97b6a24"
+              "sha256": "cf7188d340ff7f1c7714311410432e13312a0a1f25c7032d2b456d52be9ea9ad"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -35003,7 +35003,7 @@
           8.400003
         ]
       },
-      "bytes": 473888,
+      "bytes": 304836,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -35018,17 +35018,17 @@
           1.678621,
           0,
           0,
-          4.985001,
+          5.110324,
           7.157457,
           6.488556,
           14.109529,
           14.109529,
           6.488556,
           7.157457,
-          4.985001,
+          5.110324,
           0,
           0,
-          1.715058,
+          1.716124,
           0,
           5.301824,
           7.611586,
@@ -35193,8 +35193,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.145646,
-            "bz": -0.18981,
+            "bx": 0.149461,
+            "bz": -0.194781,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.0225
@@ -35256,8 +35256,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.145646,
-            "bz": 0.18981,
+            "bx": 0.149461,
+            "bz": 0.194781,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.0225
@@ -35265,8 +35265,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.009888,
-            "bz": 0.075105,
+            "bx": -0.009895,
+            "bz": 0.075158,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.0225
@@ -35316,7 +35316,7 @@
       ],
       "shell": {
         "boundaryEdges": 0,
-        "inwardFaceFraction": 0.39375,
+        "inwardFaceFraction": 0.3965,
         "silhouetteRadius": 14.189716,
         "sliceY": 0.049328
       },
@@ -35342,7 +35342,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 7758,
+      "triangles": 7908,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_conveyor_truss.glb",
       "worldSize": [
@@ -48563,7 +48563,7 @@
           11.005426
         ]
       },
-      "bytes": 446836,
+      "bytes": 280952,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -48585,7 +48585,7 @@
           0,
           0,
           3.520703,
-          5.112472,
+          5.112406,
           5.631886,
           5.517448,
           4.701755,
@@ -48658,6 +48658,14 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
+          "name": "Material_Emissive_Amber_dim",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
           "name": "Material_Emissive_Cyan",
           "role": "emissive"
         },
@@ -48720,8 +48728,8 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 29,
-      "nodes": 30,
+      "meshes": 31,
+      "nodes": 32,
       "note": null,
       "opening": null,
       "pivot": [
@@ -48803,8 +48811,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.24921,
-            "bz": 0.324777,
+            "bx": 0.249207,
+            "bz": 0.324773,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.0375
@@ -48871,8 +48879,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 172,
-        "inwardFaceFraction": 0.319,
+        "boundaryEdges": 182,
+        "inwardFaceFraction": 0.3125,
         "silhouetteRadius": 6.1174,
         "sliceY": 0
       },
@@ -48881,7 +48889,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 5512,
+      "triangles": 5810,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_tally_post.glb",
       "worldSize": [
@@ -49813,12 +49821,12 @@
       "bounds": {
         "center": [
           0,
-          6.640247,
+          6.640252,
           0
         ],
         "max": [
           1.129869,
-          13.280153,
+          13.280164,
           11.3
         ],
         "min": [
@@ -49828,11 +49836,11 @@
         ],
         "size": [
           2.259737,
-          13.279813,
+          13.279824,
           22.6
         ]
       },
-      "bytes": 566152,
+      "bytes": 395064,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -49987,7 +49995,7 @@
       "opening": null,
       "pivot": [
         0,
-        6.640247,
+        6.640252,
         0
       ],
       "proposedSkin": {
@@ -50078,8 +50086,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 105,
-        "inwardFaceFraction": 0.348,
+        "boundaryEdges": 107,
+        "inwardFaceFraction": 0.34725,
         "silhouetteRadius": 11.310606,
         "sliceY": 0.00034
       },
@@ -50097,12 +50105,12 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 11908,
+      "triangles": 11982,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_transponder_gate.glb",
       "worldSize": [
         2.259737,
-        13.279813,
+        13.279824,
         22.6
       ]
     },
@@ -50900,27 +50908,27 @@
     {
       "bounds": {
         "center": [
-          -1.496464,
-          26.191039,
-          2.08732
+          -1.496681,
+          26.191201,
+          2.220482
         ],
         "max": [
           57.779671,
-          39.383998,
-          55.301113
+          39.383942,
+          55.302311
         ],
         "min": [
-          -60.772598,
-          12.99808,
-          -51.126474
+          -60.773033,
+          12.99846,
+          -50.861347
         ],
         "size": [
-          118.552269,
-          26.385918,
-          106.427587
+          118.552704,
+          26.385482,
+          106.163657
         ]
       },
-      "bytes": 783040,
+      "bytes": 609156,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -50950,18 +50958,18 @@
           0,
           0,
           0,
-          60.171094
+          60.147604
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 7.220531,
+        "toleranceWu": 7.217712,
         "worstSize": null
       },
       "drawOffset": [
-        1.496464,
+        1.496681,
         0,
-        -2.08732
+        -2.220482
       ],
       "drawScale": 1,
       "family": "place",
@@ -50983,7 +50991,7 @@
         "lod2": true,
         "outlineDeltaWu": {},
         "overTolerance": false,
-        "toleranceWu": 4.813688
+        "toleranceWu": 4.811808
       },
       "materials": [
         {
@@ -51090,14 +51098,14 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -1.496464,
-        26.191039,
-        2.08732
+        -1.496681,
+        26.191201,
+        2.220482
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 7.220531,
+        "cellWu": 7.217712,
         "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 1,
@@ -51105,37 +51113,37 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -4.343123,
-            "bz": 0.571783,
+            "bx": -4.341435,
+            "bz": 0.571561,
             "id": "arm-23",
             "kind": "capsule",
-            "r": 0.654492
+            "r": 0.654236
           }
         ],
-        "silhouetteRadius": 60.171094,
-        "toleranceWu": 7.220531
+        "silhouetteRadius": 60.147604,
+        "toleranceWu": 7.217712
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1180,
-        "inwardFaceFraction": 0.41725,
-        "silhouetteRadius": 60.171094,
-        "sliceY": 12.99808
+        "boundaryEdges": 1178,
+        "inwardFaceFraction": 0.41425,
+        "silhouetteRadius": 60.147604,
+        "sliceY": 12.99846
       },
       "sockets": [],
       "solid": true,
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 20356,
+      "triangles": 20096,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/var_station_trade_hub_free_overlay_v01.glb",
       "worldSize": [
-        118.552269,
-        26.385918,
-        106.427587
+        118.552704,
+        26.385482,
+        106.163657
       ]
     },
     {
@@ -96321,35 +96329,33 @@
     {
       "bounds": {
         "center": [
-          -0.333674,
-          4.256174,
-          0
+          0.446156,
+          4.275319,
+          -0.118557
         ],
         "max": [
-          12.464391,
+          11.293993,
           10.112306,
-          6.454638
+          6.454305
         ],
         "min": [
-          -13.131739,
-          -1.599957,
-          -6.454638
+          -10.401682,
+          -1.561668,
+          -6.691419
         ],
         "size": [
-          25.596129,
-          11.712263,
-          12.909276
+          21.695675,
+          11.673974,
+          13.145723
         ]
       },
-      "bytes": 297708,
+      "bytes": 297388,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_ceres_grave_shard",
         "kind": "proxy",
         "outline": [
-          12.689397,
-          13.485257,
           0,
           0,
           0,
@@ -96357,13 +96363,15 @@
           0,
           0,
           0,
-          10.216994,
-          10.88854,
-          12.936218,
-          12.239117,
-          11.884079,
-          10.176799,
           0,
+          8.612346,
+          11.527873,
+          10.749552,
+          5.630594,
+          10.973579,
+          10.301956,
+          9.597748,
+          7.246322,
           0,
           0,
           0,
@@ -96380,9 +96388,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.333674,
+        -0.446156,
         0,
-        0
+        0.118557
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -96527,9 +96535,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.333674,
-        4.256174,
-        0
+        0.446156,
+        4.275319,
+        -0.118557
       ],
       "proposedSkin": {
         "adopted": true,
@@ -96542,77 +96550,77 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.442234,
-            "bz": -0.058221,
-            "id": "arm-0",
+            "bx": 0.16824,
+            "bz": -0.219255,
+            "id": "arm-8",
             "kind": "capsule",
-            "r": 0.016071
+            "r": 0.040148
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.438356,
-            "bz": -0.181573,
-            "id": "arm-1",
-            "kind": "capsule",
-            "r": 0.016071
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.258786,
-            "bz": -0.198574,
+            "bx": 0.291081,
+            "bz": -0.223354,
             "id": "arm-9",
             "kind": "capsule",
-            "r": 0.047628
+            "r": 0.053739
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.320629,
-            "bz": -0.132809,
+            "bx": 0.316642,
+            "bz": -0.131157,
             "id": "arm-10",
             "kind": "capsule",
-            "r": 0.050759
+            "r": 0.050111
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.407119,
-            "bz": -0.053598,
+            "bx": 0.182201,
+            "bz": -0.023987,
             "id": "arm-11",
             "kind": "capsule",
-            "r": 0.060304
+            "r": 0.026248
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.42629,
-            "bz": 0.056122,
+            "bx": 0.346695,
+            "bz": 0.045643,
             "id": "arm-12",
             "kind": "capsule",
-            "r": 0.016071
+            "r": 0.051155
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.385524,
-            "bz": 0.159689,
+            "bx": 0.303801,
+            "bz": 0.125838,
             "id": "arm-13",
             "kind": "capsule",
-            "r": 0.016071
+            "r": 0.048024
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.257796,
-            "bz": 0.197814,
+            "bx": 0.243531,
+            "bz": 0.186868,
             "id": "arm-14",
             "kind": "capsule",
-            "r": 0.047441
+            "r": 0.044741
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.142417,
+            "bz": 0.185602,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.03378
           }
         ],
-        "silhouetteRadius": 13.485257,
+        "silhouetteRadius": 11.527873,
         "toleranceWu": 2
       },
       "reasons": [
@@ -96620,8 +96628,8 @@
       ],
       "shell": {
         "boundaryEdges": 0,
-        "inwardFaceFraction": 0.3535,
-        "silhouetteRadius": 13.485257,
+        "inwardFaceFraction": 0.359,
+        "silhouetteRadius": 11.527873,
         "sliceY": 0
       },
       "sockets": [
@@ -96646,13 +96654,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 5768,
+      "triangles": 5760,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_ceres_grave_shard.glb",
       "worldSize": [
-        25.596129,
-        11.712263,
-        12.909276
+        21.695675,
+        11.673974,
+        13.145723
       ]
     },
     {

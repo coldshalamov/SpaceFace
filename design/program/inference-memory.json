@@ -114,45 +114,6 @@
   ],
   "units": [
     {
-      "id": "seed-wl-06",
-      "date": "2026-10-22",
-      "wf": "WF-09",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A hunter you have escaped twice names the streak. A fresh hunter does not.",
-      "fingerprint": "verb=hail,subject=warrant-streak,sector=hunter,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "98f84ffae9ae03d2e9ecccf9842f254a306df907",
-      "verification": "focused_green"
-    },
-    {
-      "id": "seed-wl-10",
-      "date": "2026-10-22",
-      "wf": "WF-08",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A repeat career close names the lap. The first circuit still reads the old line.",
-      "fingerprint": "verb=name,subject=career-lap,sector=career,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "47e649be4c92a7a53e44df7c3b59d1bfa28c16db",
-      "verification": "focused_green"
-    },
-    {
-      "id": "exp-01-helix-barks",
-      "date": "2026-10-22",
-      "wf": "WF-01",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Unmasked Helix ships answer in their own invoice voice: lawful interdiction, under orders, read the invoice first.",
-      "fingerprint": "verb=voice,subject=helix-barks,sector=helios,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "3b7d7fc2656d9fb9afcaaf503cac7c5fb3bc0f4e",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-enter-activity-wreck",
       "date": "2026-10-22",
       "wf": "WF-10",
@@ -1671,6 +1632,45 @@
       "references": [],
       "integration": "live",
       "commit": "f88dea7356",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-25",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Circuit wave three defends a beacon. The clock clears it alive. Losing it cuts the purse and the run continues.",
+      "fingerprint": "verb=defend,subject=beacon,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "f559f37b31",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-30",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Circuit wave fifteen escorts one unarmed freighter. Arrival clears the round. A loss cuts the purse and the run continues.",
+      "fingerprint": "verb=escort,subject=freighter,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "7bcdae72e7",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-31",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A route stop can open a derelict card. Salvage spends run credits and fits a part. Leave pays nothing. Either way the next stage fights.",
+      "fingerprint": "verb=salvage,subject=derelict,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "680b2d5e70",
       "verification": "focused_green"
     }
   ],

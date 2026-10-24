@@ -971,6 +971,17 @@ function entityOnOpeningTable(entity, state) {
   return radius > 0 && dx * dx + dz * dz <= radius * radius;
 }
 
+// The loading runway pin waits on a contact's packaged body committing on its mesh. A contact
+// with no mesh at all has nothing to commit: the opening composition never scheduled it (it
+// entered the runway envelope after the one-shot census, or a producer/renderer stamped it
+// _noMesh), and nothing builds meshes for it while the loading shell is up. Pinning it held the
+// gate until the 180 s initial-visuals timeout -> AUTHORED_VISUALS_UNAVAILABLE ("The starter
+// ship did not finish preparing"). Such a contact streams in on demand after the reveal like any
+// other late arrival.
+function startupContactHasMesh(entity) {
+  return !!(entity && entity._noMesh !== true && entity.mesh);
+}
+
 function startupAuthoredContactOnRunway(entity, state) {
   const distanceSq = playerPlanarDistanceSq(entity, state);
   if (!Number.isFinite(distanceSq)) return false;
@@ -9066,6 +9077,7 @@ export function authoredCriticalVisualReadiness(state) {
             || startupPayloadOwnsVeilPin(entity, state))
           && entity.alive !== false
           && !authoredOpeningFailedClosed(authoredAssetState(entity))
+          && startupContactHasMesh(entity)
           && startupAuthoredContactOnRunway(entity, state)
           ? FLIGHT_READY_ROLE.GLASS_ACTORS : null)
       || ((isCurrentGlass || (allowRuntimeActivityGate

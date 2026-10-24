@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cb5d09d007b406947e93a2eb6c3a38c9c5417fcf15c4fe15b588ed60e0d7308e",
+  "contentHash": "a10a9cfbccad7c1b73c78cc5c868f45490c29b57839ef8b3932788acd65ce7f9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -650,8 +650,8 @@
       "uri": "mothlight_lamp.glb"
     },
     "sourceManifest": {
-      "bytes": 272571,
-      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
+      "bytes": 273915,
+      "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c",
       "uri": "pilots.json"
     }
   },
@@ -884,7 +884,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/mothlight_lamp.glb"
   },
-  "runtimeHash": "7c2ea11ac1acca85500ce6e1a2f37e08a82e22bb0aab8ec76185c9d874ac0582",
+  "runtimeHash": "4018821966e745d76bb9ed1a53a1c46af1de92de2d020fb24a3efb5d1a2e9388",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -81,18 +81,22 @@ def build():
           bevel=0.0, rot=wall_rot)
 
     # --- fragments at the foot -----------------------------------------------------------------
+    # every plate's inner end bites into the wall's low +x rim — Frag0 tucks under it,
+    # Frag1/Frag2 rest on and embed into its top face — so torn plating still hangs off
+    # the wreck instead of floating beside it; Frag3 moved out of open space at the torn side
     for i, (c, sz, rot) in enumerate((
-            ((8.4, -3.4, -0.4), (4.4, 2.6, 0.5), 18),
-            ((10.6, 2.0, -0.7), (3.2, 2.0, 0.4), -35),
-            ((6.8, 4.8, -0.9), (2.4, 1.6, 0.35), 52),
-            ((-11.5, 3.4, -1.4), (3.0, 2.2, 0.4), 8))):
+            ((6.9, -3.4, -0.45), (4.4, 2.6, 0.5), 18),
+            ((9.4, -1.6, -0.75), (3.2, 2.0, 0.4), -35),
+            ((6.4, 4.8, -0.55), (2.4, 1.6, 0.35), 52),
+            ((8.6, 5.4, -1.05), (3.0, 2.2, 0.4), 8))):
         F.box(s, f'Frag{i}', c, sz, material='deadmetal.deep' if i % 2 else 'deadmetal.rust',
               bevel=0.05, rot_z=math.radians(rot))
 
     # --- tether mast staked to the shard (SOCKET_Tether_Massline sits on the live file) --------
-    F.beams(s, 'TetherLegA', [((9.5, -2.6, -1.4), (10.4, -2.2, 6.4))], 0.4,
+    # feet rest on the fallen Frag1 plate's face (its top sits at z ~-0.55 there)
+    F.beams(s, 'TetherLegA', [((9.3, -2.5, -0.62), (10.4, -2.2, 6.4))], 0.4,
             material='gunmetal')
-    F.beams(s, 'TetherLegB', [((11.6, -1.4, -1.4), (10.4, -2.2, 6.4))], 0.4,
+    F.beams(s, 'TetherLegB', [((10.8, -1.5, -0.62), (10.4, -2.2, 6.4))], 0.4,
             material='gunmetal')
     F.cylinder(s, 'TetherMast', (10.4, -2.2, 5.6), (10.4, -2.2, 9.6), 0.3,
                material='paint2', segments=10)

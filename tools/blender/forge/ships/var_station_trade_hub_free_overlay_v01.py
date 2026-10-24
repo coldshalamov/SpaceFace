@@ -50,16 +50,18 @@ PODS = (
 )
 
 # patch plates welded on the ring's outer wall and the terminal face. Centres sit at
-# r ~54.5 (thickness 1.0): the inner face embeds in the r54 wall so nothing floats, the
-# outer face lands ~55.0 just shy of the fender ribs at ~55.5.
+# r ~54.2 (thickness 1.0): the inner face sinks ~0.3 into the r54 wall so nothing reads
+# flush-but-floating, the outer face lands ~54.7 just shy of the fender ribs at ~55.5.
 SKIRTS = (
-    (160.0, 54.5, 22.0, 10.0, 8.0, 'paint.patch'),
-    (180.0, 54.55, 24.5, 12.0, 9.0, 'paint2'),
-    (200.0, 54.5, 21.0, 9.0, 7.0, 'paint.primer'),
-    (235.0, 54.45, 25.0, 10.0, 7.0, 'paint.patch'),
-    (300.0, 54.45, 23.5, 9.0, 8.0, 'paint2'),
-    (62.0, 54.5, 21.5, 10.0, 8.5, 'paint.patch'),
-    (118.0, 54.5, 23.0, 11.0, 7.5, 'paint.primer'),
+    (160.0, 54.2, 22.0, 10.0, 8.0, 'paint.patch'),
+    (180.0, 54.25, 24.5, 12.0, 9.0, 'paint2'),
+    (200.0, 54.2, 21.0, 9.0, 7.0, 'paint.primer'),
+    (235.0, 54.15, 25.0, 10.0, 7.0, 'paint.patch'),
+    (300.0, 54.15, 23.5, 9.0, 8.0, 'paint2'),
+    # azimuth 62 deg used to carry a plate here — removed: its inner face sat flush
+    # coplanar at r54.0 against the r54 wall (z-fight), a fender rib at az ~62.7 nearly
+    # swallowed it, and its bottom edge (z 17.25) hung below the ring's lower rim (z 19)
+    (118.0, 54.2, 23.0, 11.0, 7.5, 'paint.primer'),
 )
 
 
@@ -122,6 +124,12 @@ def build_pods(s):
         # a cyan claim band cut into every pod body
         F.band(s, f'Pod{k}', K.polar(r, a, tops[k][2] - h * 0.34), (0, 0, 1), 0.7, 'stripe')
         pod_windows(s, k, a, r, wt, tops[k][2])
+        # the three tallest tops get a warm slit so they don't read dead-black from the
+        # top-down camera — thin lit bars flush on the roof, no palette change
+        if k in (5, 2, 8):
+            ra_top = ra + 0.35 if style == 'stack' else ra
+            F.box(s, f'Pod{k}TopSlit', (tops[k][0], tops[k][1], tops[k][2] + 0.03),
+                  (1.4, 0.6, 0.1), material='glow_warm', rot_z=ra_top, bevel=0.0)
         # roof clutter: strapped crates and a drum — lashed ON the pod roof they stand on.
         # Keep the azimuth offset inside the pod's tangential half-width (~3 deg) so the
         # crate lands on the roof instead of hanging off it.
