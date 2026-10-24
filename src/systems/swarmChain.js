@@ -35,6 +35,7 @@ import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { validateRunState } from '../core/runState.js';
 import { styleCauseFromKill } from './survivalStyle.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { ownedSwarmLegendaryIds } from '../data/swarmDraft.js';
 import { createRewardDeathLedger } from '../combat/rewardEligibility.js';
 
 /** Seconds allowed between kills before the chain lapses. Fixed, so a player can learn it. */
@@ -61,6 +62,20 @@ export const SWARM_CHAIN_OVERDRIVE_RATE = 3;
 /** Player gun cooldown scale. 1 until this chain has opened its single overdrive window. */
 export function swarmChainFireRateScale() {
   return swarmChain._overdrive ? SWARM_CHAIN_OVERDRIVE_RATE : 1;
+}
+
+/**
+ * Chain Feeder (SEED-SW-09): the legendary feeds the live chain into player damage.
+ * +1% per chain point — chain 12 reads ×1.12, a broken chain reads 1. Only the run's
+ * own `swarm_legendary` ledger proves ownership, the same receipt the armory wrote.
+ */
+export const SWARM_CHAIN_FEEDER_STEP = 0.01;
+
+export function swarmChainDamageScale(state) {
+  const run = liveSwarmRun(state);
+  if (!run || !ownedSwarmLegendaryIds(run).includes('chain_feeder')) return 1;
+  const chain = Number.isFinite(swarmChain._chain) ? swarmChain._chain : 0;
+  return chain > 0 ? 1 + chain * SWARM_CHAIN_FEEDER_STEP : 1;
 }
 
 /** Chain values worth saying out loud. Milestones only — a line per kill would be noise. */

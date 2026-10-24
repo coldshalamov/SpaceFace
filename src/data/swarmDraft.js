@@ -265,6 +265,17 @@ export const SWARM_ROOM_LEGENDARIES = Object.freeze(SWARM_ROOM_LEGENDARIES_BASE.
     slotLabel: 'Legendary · lasts this run · uses no hardpoint',
     blurb: 'Every kill ignites whatever stood close to it — ships and brood alike.',
   }),
+  Object.freeze({
+    id: 'chain_feeder',
+    offerId: 'legendary_chain_feeder',
+    name: 'Chain Feeder',
+    verb: 'Chain Feeder',
+    price: 95,
+    fromWave: 4,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Your guns eat the kill chain: +1% damage per live chain point.',
+  }),
 ]));
 
 const LEGENDARY_BY_ID = new Map(SWARM_ROOM_LEGENDARIES.map((entry) => [entry.id, entry]));

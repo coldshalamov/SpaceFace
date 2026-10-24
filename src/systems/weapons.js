@@ -12,7 +12,7 @@ import { applyReflectedVelocity } from '../core/surfaceContact.js';
 // not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
 // projectile:hit/combat:damage are owned by physics + combat.
 import { WEAPONS } from '../data/weapons.js';
-import { swarmChainFireRateScale } from './swarmChain.js';
+import { swarmChainFireRateScale, swarmChainDamageScale } from './swarmChain.js';
 import { mothlightAllowsFire } from '../data/mothlight.js';
 import {
   modelTruthBoltRadius,
@@ -1338,7 +1338,8 @@ export const weapons = {
           tick: state.tick, continuous: true, dt },
         { scaleEnvironment: false });
     }
-    const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt;
+    const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt
+      * (e.id === state.playerId ? swarmChainDamageScale(state) : 1);
     const damageType = w.damageType || def.damageType || 'energy';
     const beamKey = `${String(e.id)}:${Number.isFinite(w.slotIndex) ? w.slotIndex : 0}`;
     const phase = this._beamFiringPrev.has(beamKey) ? 'update' : 'begin';
@@ -1684,7 +1685,10 @@ export const weapons = {
     const ttl = flight.ttl;
 
     const payloadScale = opts && Number.isFinite(opts.payloadScale) ? opts.payloadScale : 1;
-    const damage = ((w.dmg != null ? w.dmg : def.dmg) || 0) * payloadScale;
+    // Chain Feeder: the run's legendary feeds the live kill chain into the packet.
+    // Player guns only — NPC fire never reads the player's chain.
+    const feederScale = state && e.id === state.playerId ? swarmChainDamageScale(state) : 1;
+    const damage = ((w.dmg != null ? w.dmg : def.dmg) || 0) * payloadScale * feederScale;
     const damageType = w.damageType || def.damageType || 'kinetic';
     const data = {
       damage,
