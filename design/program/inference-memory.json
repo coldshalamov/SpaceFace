@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-machine-corridor",
-      "date": "2026-10-22",
-      "wf": "WF-03",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "Fauna in the Veil null corridor scatter where the pocket actually sits, including far from the sector origin.",
-      "fingerprint": "verb=scatter,subject=null-corridor,sector=veil,domain=wf-03",
-      "references": [],
-      "integration": "live",
-      "commit": "b0d0977f7839ec309d52249a77bac1270925020f",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-machine-containment",
       "date": "2026-10-22",
       "wf": "WF-03",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "b2be8191ce",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sc-03",
+      "date": "2026-10-24",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Hyperion's caved shaft draws the cold drill at the quest pin instead of a dead hulk.",
+      "fingerprint": "verb=show,subject=caved-shaft,sector=hyperion,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "818c347637",
       "verification": "focused_green"
     }
   ],
