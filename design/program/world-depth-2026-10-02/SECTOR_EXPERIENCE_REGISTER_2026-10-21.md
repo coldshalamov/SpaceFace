@@ -1,5 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 
+## Press Camp guard delivery and active capture qualification: 2026-10-24 17:14 UTC
+
+All twelve goals remain OPEN. [PR590](https://github.com/coldshalamov/SpaceFace/pull/590) publishes scene-local truthful consequences at `1bf564454881810647e54d766857e2eb6c2d4cbc`, sole public-master parent `dda5189bbefcc878dd4dcf61f42973a369530ae9`, tree `1a08d3be9a868432e711e2fd61d825fc169aad46`. Five exact paths are verified: scene358, focused/native tests, package gate and [report](https://github.com/coldshalamov/SpaceFace/blob/1bf564454881810647e54d766857e2eb6c2d4cbc/design/program/world-experience-2026-10-24/PRESS_CAMP_TRUTHFUL_CONSEQUENCES.md). [Run40115047781](https://github.com/coldshalamov/SpaceFace/actions/runs/40115047781) expects29 TAP tests and is pending; synthetic `8aef94f8f2bd80bc9e0830c234ddc4927a5d9775` has the candidate tree. No PR583 dependency or shared-runtime change is in this guard-only head.
+
+Missing/recycled actors no longer invent camp destruction,120-credit payment or captive liberation. Observed original death survives reap-before-tick; actor/generation/AI/activity/body/intent/ownership guards and a settlement latch prevent stale actions and duplicate effects. The destroyed-base route correctly retains520 combat bounty plus120 scene payment =640; breaking the garrison preserves the camp and three authored loot pods.
+
+Local27 focused and two native unchanged-envelope Save/load cases pass on the selected mixed graph. Garrison credits2341 remain2341 without scene grant; destroyed-base640 remains640 with exactly one120 scene grant. Initial original-source6/21 versus candidate21/21 failures and later fixture corrections remain historical evidence. Forced admission and injected combat.kill are not ordinary played combat or full world acceptance. **Physical escape in the published guard-only version remains0WU over10seconds and unaccepted.**
+
+The separate approved two-shared-file capture extension and physical departure work remain under their existing owners, not part of PR590's current head. An earlier-capture-subscriber probe reproduced stale force5371 and unchanged Save restoring owned flee; the revised selected-graph probe reports force0, null activity and false control flags before the subscriber, with unchanged early Save restoring owned neutral state. Exact before/after stdout and pins are being preserved; these results are not full-current-checkout or ordinary capture acceptance. Do not absorb or duplicate this writer.
+
+Exact guard-only local stdout, graph pins and the explicit zero-displacement result are preserved in [Press Camp guard evidence](../world-experience-2026-10-24/press-camp-evidence/guard-native-proof.json), Git blob `5ca5e8098ee42cc14e9f9d4bb1b461fa2f07aba2`, SHA256 `40e9bf76cb13b7290ff7b51ef9b92f3c791329dd4264c32f460e1350f4f1bd3d`. Separate capture-boundary baseline and candidate stdout/pins are independently raw-verified; that small proof is not a complete source backup. 
+
+PR582's current25/25 gate remains valid, but [run40112157007](https://github.com/coldshalamov/SpaceFace/actions/runs/40112157007) ended FAILURE17:10:45, browser3 cancelled17:10:39. Six comparable completed groups match actual80a base; base browser2/3/4 are incomplete. Other current hosted gate evidence remains separately linked above. Next: finish the active Press Camp departure/capture-control qualification and preserve its failed and final measurements, while publisher follows exact hosted heads. Live-browser hold, all acceptance boundaries and schedules remain unchanged.
+
+
 ## Current hosted component gates: 2026-10-24 16:57 UTC
 
 All twelve goals remain OPEN. Current hosted checks now pass: [PR582 a683e630](https://github.com/coldshalamov/SpaceFace/pull/582) **25/25**, [PR58390f59e71](https://github.com/coldshalamov/SpaceFace/pull/583) **27/27**, and [PR5846db87ee7](https://github.com/coldshalamov/SpaceFace/pull/584) **3/3**, including the actual Node factory import. Broader CI is still active/red; these results are not whole-repository, ordinary gameplay, visual or performance acceptance.

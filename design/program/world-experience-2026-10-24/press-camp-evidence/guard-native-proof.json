@@ -1,0 +1,74 @@
+{
+  "schema": "press-camp-guard-native-proof-v1",
+  "claim": "Guard-only scene358; selected canonical owner graph with exact source override, forced encounter admission and combat.kill. Not personally played or visual validation. Native final uses unchanged Save envelope including physics/checksum. Captive movement remains unimplemented (0WU).",
+  "sourceGit": "6b085d84f4e898e97c107d867f62390d7100472b",
+  "focusedGit": "fc7886431684a4d3cc6447213555b045003df338",
+  "nativeGit": "4ce54f8f679d6e7e432117bd89898d4554334d5c",
+  "focused": {
+    "exit": 0,
+    "stdout": "✔ missing or recycled base is not a destroyed camp: missing (39.30582ms)\n✔ missing or recycled base is not a destroyed camp: replaced_alive (4.439109ms)\n✔ missing or recycled base is not a destroyed camp: replaced_dead (3.45687ms)\n✔ actual killed and reaped base preserves one reward, replacement=false (5.108934ms)\n✔ actual killed and reaped base preserves one reward, replacement=true (3.539205ms)\n✔ does not free a foreign or unavailable captive: absent (3.148223ms)\n✔ does not free a foreign or unavailable captive: dead (3.27125ms)\n✔ does not free a foreign or unavailable captive: replaced (3.256727ms)\n✔ does not free a foreign or unavailable captive: captured (4.688641ms)\n✔ does not free a foreign or unavailable captive: player (3.768385ms)\n✔ does not free a foreign or unavailable captive: foreign_ai (2.911558ms)\n✔ does not free a foreign or unavailable captive: foreign_activity (2.260873ms)\n✔ does not free a foreign or unavailable captive: foreign_intent (2.904712ms)\n✔ does not free a foreign or unavailable captive: foreign_body (4.497156ms)\n✔ synchronous comms callback cannot settle twice (3.988153ms)\n✔ synchronous grant callback cannot settle twice (4.16198ms)\n✔ synchronous rep callback cannot settle twice (9.334951ms)\n✔ synchronous resolve callback cannot settle twice (2.473359ms)\n✔ real defeated garrison frees original captive, preserves camp and three authored loot pods (3.192477ms)\n✔ missing guard does not imply defeated garrison (2.069623ms)\n✔ cleanup cannot manufacture camp outcome: restoring (1.844433ms)\n✔ cleanup cannot manufacture camp outcome: stale_live (1.784385ms)\n✔ timeout cannot later claim a destruction reward (2.294386ms)\n✔ real lifecycle save:restoring prevents stale settlement (2.492782ms)\n✔ real lifecycle save:loaded prevents stale settlement (7.26737ms)\n✔ real lifecycle sector:exit prevents stale settlement (1.93197ms)\n✔ continuous sector crossing retains authentic camp outcome (2.388843ms)\nℹ tests 27\nℹ suites 0\nℹ pass 27\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 142.886261\n",
+    "stderr": ""
+  },
+  "native": {
+    "exit": 0,
+    "stdout": "{\"beforeContinue\":{\"moved\":0,\"alive\":true,\"ai\":{\"kind\":\"hail_hold\",\"reason\":\"press_camp:held\",\"anchor\":{\"x\":9234,\"z\":9220},\"leashRadius\":2600,\"preferredRange\":12,\"startedTick\":0,\"deadlineTick\":null,\"targetId\":null,\"routeId\":null,\"encounterId\":\"camp_test\"},\"intent\":null,\"forceFlee\":true}}\n{\"kind\":\"press_camp_native\",\"moved\":0,\"heldActivity\":\"press_camp:held\",\"outcomes\":[\"garrison_broken\"],\"grants\":[],\"credits\":2341,\"afterContinueCredits\":2341,\"simTime\":11.050000000000129,\"claim\":\"forced component admission, actual combat.kill, actual AI/flight/Rapier, unchanged-envelope Save/load; not human play or full current graph\"}\n✔ native defeated garrison preserves base; completed save cannot replay scene pay (1190.982559ms)\n{\"kind\":\"camp_burned_continue\",\"credits\":640,\"afterContinue\":640,\"grants\":[[120,\"press_camp:base_burned\"]],\"outcomes\":[\"base_destroyed\"]}\n✔ native original base kill survives body removal and Continue without replay (292.630255ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1568.623355\n",
+    "stderr": ""
+  },
+  "graph": {
+    "src/core/sim.js": {
+      "bytes": 9635,
+      "sha256": "80e43e41cb742f59b9018b9076be55f0392b6fb2bbd073915ab344070dbd803c",
+      "gitBlob": "a258ad2d120701e24d59ad6954c80411b6e71262"
+    },
+    "src/core/entity.js": {
+      "bytes": 11723,
+      "sha256": "7b815e797b8a34b362630b20dd502aa0b65869b5a464a141a4f42d703b039363",
+      "gitBlob": "f0a4c834866dffa3e30ad1336afd99e5f1074cba"
+    },
+    "src/systems/encounterDirector.js": {
+      "bytes": 262361,
+      "sha256": "0d15b7625f74ad7242565476d91f8000a8255f89b9b18fe8f8d306c7bd296067",
+      "gitBlob": "532df5ecc73f83ffd64c869d00b69f2f945c6a4e"
+    },
+    "src/systems/spawnBudget.js": {
+      "bytes": 11656,
+      "sha256": "e261ac61c2e548f5eb9e0a78c30dd6ecf1c2a3bf8b3647306d34df8a4529fc83",
+      "gitBlob": "92bed31d2fcfa620df19a9999ae51f3f69fba877"
+    },
+    "src/systems/combat.js": {
+      "bytes": 79416,
+      "sha256": "f19d29dbeab2a7b696994a7d30dd6189741d4298fb5c57373d5394bb3286076b",
+      "gitBlob": "882211c95e1af436c7c7a8f74460f3c1b30065be"
+    },
+    "src/systems/economy.js": {
+      "bytes": 291464,
+      "sha256": "33384c761d42f02d3d063b270b43e4cb93519226ebb2b433624fdb8617cc5227",
+      "gitBlob": "4cd19d2f4a1bf75ab382b0e3d7c5beb22bc693e3"
+    },
+    "src/systems/tacticalAI.js": {
+      "bytes": 59838,
+      "sha256": "bd3795ddb7a6671c22f03742c4cd3deee4819db9ecd2b86116777df360904788",
+      "gitBlob": "9e7f54f0b7addcb5c9ba04085b777fd0b30cc735"
+    },
+    "src/systems/flight.js": {
+      "bytes": 28534,
+      "sha256": "8c960034444089a41a77dc349f6a345f0ab6658c07eb0dbb8979523723e85970",
+      "gitBlob": "794390d34fb751a8c77f9ccc13105ffa2c63ddeb"
+    },
+    "src/systems/aiPorts.js": {
+      "bytes": 91046,
+      "sha256": "17653d9757484ddd3902e38c9e2a830246b1146e65fd848eb98952bf1d2385dc",
+      "gitBlob": "2c503f5c3952b269a6d581ee2ea810d7faeb2e6d"
+    },
+    "src/core/physics.js": {
+      "bytes": 114400,
+      "sha256": "cb6f4f9f8d8a522b40cb13144984809a7239a99cb73ea7baeaf23d3008c02656",
+      "gitBlob": "3e3bfccbecf74a3488a80baf69d71f27d78a93f5"
+    },
+    "src/save/saveSystem.js": {
+      "bytes": 491364,
+      "sha256": "9e0bf7e0c59486f6e9edde0546009240c3e3130b99f108aad810332624932889",
+      "gitBlob": "c79e451d10e626adabacdedc2dace002ed3eed77"
+    }
+  }
+}
