@@ -6,7 +6,7 @@ PR569 is now open draft at `8d2963383b45eea242b8182e9f01ce19137534d6`, following
 
 Do not infer player-facing route failure from PR558's six stale extracted mobile-fixture failures: they occur before browser execution. Existing PR471's fixture passes 20/20 in memory. Old desktop synthetic-merge missing modules are now present as placeholders in master, but ordinary whole-game readiness remains unproven. No sector or Continue acceptance follows from either correction.
 
-Handoff's outstanding post-contact trade is under read-only in-memory reproduction within scene 357. No implementation, shared lifecycle change or PR515 edit is claimed. All twelve goals remain OPEN, both continuation schedules remain unchanged, and Archive's publication block and existing ownership constraints remain in force.
+Handoff's outstanding post-contact trade now has a narrow implementation allocation for scene 357 and targeted tests/report. Immediate original bond/reward remains once-only while live NPC manifest tracking and the parked cast continue until actual completion or honest death, theft or deadline. Settled bonds must not become false withdrawals. No shared director/persistence edit or qualification is claimed. The derived compact Archive JavaScript was also recoverably evicted after reconstruction verification; regenerate it from the retained successor packet and original archive before use. All twelve goals remain OPEN, both continuation schedules remain unchanged, and Archive's publication block and existing ownership constraints remain in force.
 
 ## Orcus delivery, terminal CI and Archive successor: 2026-10-24 05:53 UTC
 

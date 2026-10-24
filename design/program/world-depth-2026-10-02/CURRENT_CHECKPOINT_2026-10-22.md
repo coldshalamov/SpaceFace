@@ -8,7 +8,7 @@ PR558's six mobile failures occur in stale extracted unit fixtures before browse
 
 The proposed current-master plus PR558/471/569/570/571 dependency union has thirty paths and package-only overlap, but no candidate exists. Public AGENTS §3 prohibits absorbing other open PRs; the narrow integration approval requested at 06:06 UTC remains pending. A routine continuation reminder is not approval. This is separate from the existing browser-document approval hold.
 
-Handoff's outstanding post-contact trade is under read-only in-memory reproduction within scene 357. No implementation, shared lifecycle change or PR515 edit is claimed. All twelve goals remain OPEN, both continuation schedules remain unchanged, and Archive's publication block and existing ownership constraints remain in force.
+Handoff's outstanding post-contact trade now has a narrow implementation allocation for scene 357 and targeted tests/report. Immediate original bond/reward remains once-only while live NPC manifest tracking and the parked cast continue until actual completion or honest death, theft or deadline. Settled bonds must not become false withdrawals. No shared director/persistence edit or qualification is claimed. The derived compact Archive JavaScript was also recoverably evicted after reconstruction verification; regenerate it from the retained successor packet and original archive before use. All twelve goals remain OPEN, both continuation schedules remain unchanged, and Archive's publication block and existing ownership constraints remain in force.
 
 ## Orcus delivery, terminal CI and Archive successor: 2026-10-24 05:53 UTC
 
