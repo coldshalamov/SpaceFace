@@ -964,6 +964,7 @@ function buildSky(sky) {
     depthWrite: false,
     fog: false,
     toneMapped: true,
+    dithering: true,
     uniforms: {
       uZenith: { value: new THREE.Color(sky.zenith) },
       uHorizon: { value: new THREE.Color(sky.horizon) },
@@ -985,6 +986,8 @@ function buildSky(sky) {
       uniform vec3 uGround;
       uniform float uSoftness;
       varying vec3 vDir;
+      #include <common>
+      #include <dithering_pars_fragment>
       void main() {
         // A camera framed on the ground only ever sees the lowest slice of the shell, so the
         // whole dusk transition has to happen inside it: uSoftness is the elevation the warm band
@@ -1004,6 +1007,9 @@ function buildSky(sky) {
         // flat wash. Every lit material in the scene goes through this; the sky has to as well.
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
+        // The stage draws straight to the 8-bit backbuffer, bypassing the bloom composite's
+        // POST_DITHER_LSB — without this chunk the smooth dusk gradient quantizes into steps.
+        #include <dithering_fragment>
       }
     `,
   });
