@@ -1150,7 +1150,7 @@ production units, and never build what they write.
 | 503 | W-COUPLING | Coupling you can see — filaments; panic, aggression and grief cascades (§34.2) | BUILD | OPEN |
 | 504 | W-PATHOLOGY | Pain loop, route-memory, host-shadow Husks (§34.2) | BUILD | OPEN — after 503 |
 | 505 | W-ONEOFFS | The ~35 one-offs mapped to a sector, a Book and the chart; a census test (§34.3) | BUILD | DONE devin-ten-oct22 (32918b94f6) |
-| 506 | W-SHIFT | The Orphaned Shift — twelve new machine-people, one per sitting (§34.3) | BUILD | OPEN — after 505 |
+| 506 | W-SHIFT | The Orphaned Shift — twelve new machine-people, one per sitting (§34.3) | BUILD | OPEN — after 505; 1/12 shipped: DOCKET / PX-14 (0a59973d4e + latch fix 11d0e3731c), Io Reach parcel-delivery encounter |
 | 507 | W-BLOOM-LOW | Bloom ladder T0–T2 — spore drift, Lantern cyst, Glassback, Wake eel, Bellows (§34.2) | BUILD | OPEN — landed-note 2026-10-23 (75e483cf01): roster + engine laws binding — massOnly/blastOnly/swells kill gates, wake-eel steering, hazard slow, cyst prime/burst, shard splash, per-family silhouettes; still open: telegraphs, counter lines, death throwables, wake-eel whip-when-held |
 | 508 | W-BLOOM-HIGH | Bloom ladder T3–T6 — Bristle ram, Furnace maw, Husks, Blind shepherd, Hive-hulk, Veil ray, Anchor beast, the Long Field (§34.2) | BUILD | OPEN — after 507 |
 | 512 | W-STATIONS | Fourteen faction station kits (§34.4) | ART | OPEN |
