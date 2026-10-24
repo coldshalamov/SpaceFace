@@ -14,3 +14,23 @@
 **Shots:** `ui-shots/polish122/compare-base-claimed-1280x540.png`, `compare-base-claimed-1280x720.png`, `crop-base-claimed-1280x540-foot.png`.
 
 **Checks:** type floor OK. Focused tests (wave-c4-base-kit, claim-specializations, claim-site-discovery-plates): 28/29; the 1 failure (#17 legacy outposts F6 migration) also fails on master.
+
+## Review rework (1366×600 regression)
+
+Code Work's review found the `(max-height:640px) and (min-width:1101px)` block buried the stored-output
+panel at 1366×600 (4 → 6). The cap is now `max-height:580px`, so 600-tall glass keeps master spacing.
+CSS only; no selector or ID changes.
+
+ui-bench base-claimed, 2 loads each (identical), `_assets-7c9ab`, merged onto origin/master:
+
+| Viewport | master BURIED | branch BURIED |
+|---|---|---|
+| 1280×540 | 6 | 4 |
+| 1920×540 | 6 | 4 |
+| 1366×600 | 4 | 4 |
+| 1280×600 | 4 | 4 |
+| 1101×640 | 6 | 6 |
+| 1280×720 | 6 | 6 |
+
+Tests: wave-c4-base-kit 1/1, claim-site-discovery-plates 1/1, claim-specializations 26/27 (F6 legacy
+migration fails on master too). Type floor OK. Shots: `ui-shots/polish122/{master,branch}-{1,2}/<size>/`.
