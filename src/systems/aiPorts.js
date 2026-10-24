@@ -17,7 +17,7 @@ import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrin
 import { mountFollowsAimAngle } from '../ai/fireDiscipline.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { authorizeAIEngagement, isHostileForAI, isOffensiveActionDef } from '../ai/engagementAuthority.js';
-import { isDynamicPhysicsBodyEntity, measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
+import { isDynamicPhysicsBodyEntity, measureThrusterAuthority, writePhysicsControl, writeOwnedPhysicsControl, cancelOwnedPhysicsControl, ensurePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
@@ -157,8 +157,15 @@ export const aiPorts = {
       listSquads: (tick) => this._listSquads(tick),
       liveListSquads: (tick) => this._listSquads(tick, { freezeResults: false }),
     });
+    this._maneuverActivityOwners = new WeakMap();
+    this._maneuverActivityRecords = new WeakMap();
+    this._maneuverEntryOwners = new WeakMap();
+    this._maneuverActivityReceipts = new WeakMap();
     this.helpers.aiManeuver = Object.freeze({
-      request: (request) => this._requestManeuver(request),
+      request: (request) => this._requestActivityManeuver(request),
+      claimActivity: (entity, activity, options) => this._claimManeuverActivity(entity, activity, options),
+      captureActivity: (entity) => this._captureManeuverActivity(entity),
+      cancelActivity: (lease) => this._cancelManeuverActivity(lease),
     });
     this.helpers.aiEncounter = Object.freeze({
       issue: (command) => this._issueEncounterCommand(command),
@@ -207,7 +214,11 @@ export const aiPorts = {
         this._diag.lastDropReason = 'entity_unavailable';
         continue;
       }
-      writePhysicsControl(entity, controlFromManeuver(entity, entry.request, dt, state));
+      if (!this._writeActivityManeuver(entity, entry, dt, state)) {
+        this._diag.droppedManeuvers++;
+        this._diag.lastDropReason = 'activity_lease_released';
+        continue;
+      }
       held.set(stableId(entry.request.entityId), entry);
       this._diag.flushedManeuvers++;
     }
@@ -225,7 +236,7 @@ export const aiPorts = {
       if (state.tick - entry.acceptedTick > index) { held.delete(key); continue; }
       const entity = getEntity(state, entry.request.entityId);
       if (!isLiveCraft(entity)) { held.delete(key); continue; }
-      writePhysicsControl(entity, controlFromManeuver(entity, entry.request, dt, state));
+      if (!this._writeActivityManeuver(entity, entry, dt, state)) held.delete(key);
     }
   },
 
@@ -234,6 +245,94 @@ export const aiPorts = {
       ...this._diag,
       pendingManeuvers: this._pendingManeuvers ? this._pendingManeuvers.size : 0,
     });
+  },
+
+
+  // Activity owners opt in; ordinary tactical requests carry no additional lease metadata.
+  _claimManeuverActivity(entity, activity, options = {}) {
+    const ai = entity && entity.data && entity.data.ai;
+    if (!entity || getEntity(this.state, entity.id) !== entity || !ai || ai.activity !== activity || !activity) return null;
+    ensurePhysicsBodySpec(entity);
+    const previous = this._maneuverActivityOwners.get(entity);
+    if (previous) this._cancelManeuverActivity(previous);
+    const lease = Object.freeze({});
+    this._maneuverActivityRecords.set(lease, { entity, generation: entity.occupantGeneration,
+      body: entity.physicsBody, ai, activity,
+      onCapture: typeof options?.onCapture === 'function' ? options.onCapture : null });
+    this._maneuverActivityOwners.set(entity, lease);
+    return lease;
+  },
+
+  // Capture snapshots the outgoing lease before title/helm commit, then releases only
+  // that owner's packets before capture subscribers can flush or serialize the hull.
+  _captureManeuverActivity(entity) {
+    const lease = entity && this._maneuverActivityOwners.get(entity);
+    const record = lease && this._maneuverActivityRecords.get(lease);
+    if (!record || !this._maneuverActivityCurrent(lease)) return null;
+    return () => {
+      if (this._maneuverActivityRecords.get(lease) !== record
+        || getEntity(this.state, entity.id) !== entity || entity.occupantGeneration !== record.generation
+        || entity.physicsBody !== record.body) return false;
+      const ownsActivity = this._maneuverActivityOwners.get(entity) === lease
+        && entity.data?.ai === record.ai && record.ai.activity === record.activity;
+      this._cancelManeuverActivity(lease);
+      // Title/helm commit already succeeded. A cleanup callback cannot roll it back
+      // or skip the other hull's release; the owned physics packet is already cancelled.
+      if (ownsActivity && record.onCapture) {
+        try { record.onCapture(); } catch (_) { return false; }
+      }
+      return true;
+    };
+  },
+
+  _maneuverActivityCurrent(lease) {
+    const record = lease && this._maneuverActivityRecords.get(lease);
+    const e = record && record.entity;
+    return !!e && this._maneuverActivityOwners.get(e) === lease && getEntity(this.state, e.id) === e && e.occupantGeneration === record.generation
+      && e.physicsBody === record.body && e.data
+      && e.data.ai === record.ai && record.ai.activity === record.activity;
+  },
+
+  _requestActivityManeuver(request) {
+    const accepted = this._requestManeuver(request);
+    if (!accepted) return accepted;
+    const entity = getEntity(this.state, request.entityId);
+    const lease = entity && this._maneuverActivityOwners.get(entity);
+    if (this._maneuverActivityCurrent(lease)) {
+      const entry = this._pendingManeuvers.get(stableId(request.entityId));
+      if (entry) this._maneuverEntryOwners.set(entry, lease);
+    }
+    return accepted;
+  },
+
+  _writeActivityManeuver(entity, entry, dt, state) {
+    const lease = this._maneuverEntryOwners.get(entry);
+    if (lease) {
+      if (!this._maneuverActivityCurrent(lease)) return false;
+      const receipt = writeOwnedPhysicsControl(entity, controlFromManeuver(entity, entry.request, dt, state));
+      this._maneuverActivityReceipts.set(lease, receipt);
+    } else {
+      writePhysicsControl(entity, controlFromManeuver(entity, entry.request, dt, state));
+    }
+    return true;
+  },
+
+  _cancelManeuverActivity(lease) {
+    const record = lease && this._maneuverActivityRecords.get(lease);
+    const entity = record && record.entity;
+    if (!entity || getEntity(this.state, entity.id) !== entity || entity.occupantGeneration !== record.generation
+      || entity.physicsBody !== record.body) return false;
+    const key = stableId(entity.id);
+    for (const entries of [this._pendingManeuvers, this._heldManeuvers]) {
+      const entry = entries && entries.get(key);
+      if (entry && this._maneuverEntryOwners.get(entry) === lease) entries.delete(key);
+    }
+    const receipt = this._maneuverActivityReceipts.get(lease);
+    if (receipt) cancelOwnedPhysicsControl(entity, receipt);
+    this._maneuverActivityReceipts.delete(lease);
+    if (this._maneuverActivityOwners.get(entity) === lease) this._maneuverActivityOwners.delete(entity);
+    this._maneuverActivityRecords.delete(lease);
+    return true;
   },
 
   _requestManeuver(request = {}) {
