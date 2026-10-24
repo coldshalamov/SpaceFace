@@ -1,5 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current startup repair and terminal consumer CI: 2026-10-24 14:55 UTC
+
+All twelve goals remain OPEN. The previously unassigned manifest investigation was approved, implemented and published by its exact owner; the earlier “no approved shared writer” statement is now historical.
+
+[Draft PR584](https://github.com/coldshalamov/SpaceFace/pull/584) is verified at `9fdc03d9da03d13726eb9312115486c283e328f0`, a proper public merge child of initial repair `4ec577514f871c401123b6cc78df5f4eb75e0f17` and current master `c564312e4466303e658b50b380cb3e08e7ce94f2`, tree `ddfd4a71b4238f2a8f5aea982093d2670b8d9501`. The initial head became conflicting after newer Wex registrations landed and had no CI run. The non-forced successor preserves Wex and all newer master work, with exact 233-init/180-update counts and narrow 3/3 qualification. Five remote files were verified. [Check40104569872](https://github.com/coldshalamov/SpaceFace/actions/runs/40104569872) and [RUCKUS40104569871](https://github.com/coldshalamov/SpaceFace/actions/runs/40104569871) are running; no hosted pass or full boot is claimed yet.
+
+The [startup repair](https://github.com/coldshalamov/SpaceFace/blob/9fdc03d9da03d13726eb9312115486c283e328f0/design/program/world-experience-2026-10-24/RUNTIME_MANIFEST_STARTUP_REPAIR.md) removes only dangling init/update references whose factories/composition exports were absent. DOCKET clock entries, prompt capabilities and all existing feature source remain intact. Planned shipbreaking, tender, outfit, disaster and workshop integrations remain OPEN, not cancelled or completed. Existing PR509/480 capability hunks and unrelated draft ancestry were not absorbed. The new reachable startup leaf contains two isolated tests; the third local check is the existing count/order case, not a third hosted leaf test.
+
+[PR582e70d49d6](https://github.com/coldshalamov/SpaceFace/pull/582) now has terminal FAILURE in [run40102946852](https://github.com/coldshalamov/SpaceFace/actions/runs/40102946852), completed14:49:16. Its intended 25-case gate never ran: zero passes/two file-load failures from the undefined manifest registration. Artifact12563478588 SHA256 `f1092206fc3e4a8f6841511b9f7e7a461615acae12952797e375b6f2c3e5ea6d`. All prior failing markers/command IDs match actual-parent run40101470760; the newly named gate adds the two import failures. Synthetic13c1c087 uses newer base719a82b and retains all seven owned files; its full tree is not claimed equal to the PR head. Historical46ea8158 hosted24/24 remains separate.
+
+[PR5839c645e68](https://github.com/coldshalamov/SpaceFace/pull/583) likewise ended FAILURE14:40:17 in [run40102222783](https://github.com/coldshalamov/SpaceFace/actions/runs/40102222783), with the same parent failure markers and its added gate's zero passes/two file-load failures before the intended14 tests. Local selected-graph13focused/seven native scenarios do not override these hosted results. PR584 is separate: neither consumer PR has been automatically merged, rebased or declared fixed by publication of the repair.
+
+The original startup recipe is independently raw-verified, while the public five-path successor preserves the complete package/registration/test/report reconciliation. Existing recovery lineage, images, failed evidence and goal acceptance fields remain intact. Next executable work is the hosted startup result and coherent current-checkout validation under the publisher, followed by the still-open native finite-manifest/predation gap through the authorized gameplay owner. Browser/integration holds, Archive publication limits and both continuation schedules remain unchanged. No merge into master, deployment or whole-game acceptance.
+
+
 ## Current connected choices and rescue silhouette: 2026-10-24 14:34 UTC
 
 All twelve goals and original twenty-concept/P00–P21 scope remain OPEN. This delta supersedes older current-state claims while retaining their dated evidence.
