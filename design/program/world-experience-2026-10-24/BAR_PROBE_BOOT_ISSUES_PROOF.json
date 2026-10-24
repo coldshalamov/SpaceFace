@@ -1,0 +1,32 @@
+{
+  "schema": "bar-initial-boot-issues-proof-v1",
+  "parentHead": "329d83958986f7499c9b633651545d6427913f8e",
+  "sourceBlobs": {
+    "scripts/check-bar-mission-readiness-live.mjs": "1ca17064dc70e6382601235004c21508082dc589",
+    "scripts/lib/barProbeLifecycle.mjs": "d62cd7d181a9a457ffc604cc0c9b3798032b9bf6",
+    "test/bar-probe-lifecycle.test.mjs": "6ad41f0888a8ed4d2b53eb4765dfa340c87a40a9"
+  },
+  "scope": "Added observability only. Existing initial runtime wait rejection emits one Node-side report of already-collected issues and rethrows the exact error object. Seven lifecycle milestones, waits, timers, timeouts, signals, assertions and cleanup behavior unchanged.",
+  "privacy": "Reports at most8 issues, bounded technical templates only. URL, arbitrary console text and additional collector metadata omitted. Collector data unchanged.",
+  "ownership": "Fresh complete79-open-PR changed-file census: only592 owns the3 exact paths.",
+  "execution": "RAM/stdin Node-only. Exact helper loaded via data URL and exact fixture source injected into test read. No browser or gameplay run.",
+  "positive": {
+    "exitCode": 0,
+    "stdout": "✔ seven bounded milestones carry independent wall and elapsed clocks (4.298686ms)\n✔ only bounded process and completion details are serialized (0.450494ms)\n✔ diagnostic clock and sink failures never throw or retry milestones (0.537825ms)\n✔ unavailable clock numbers become null rather than invented timing (0.299284ms)\n✔ fixture preserves assertions, success text and cleanup ordering without new waits (1.247445ms)\n✔ boot failure reports existing issues once and rethrows the identical error (1.316291ms)\n✔ boot report bounds issue count and text without modifying collector evidence (0.761958ms)\n✔ collector, field and sink failures cannot mask the original boot rejection (0.501144ms)\n✔ only the existing initial runtime wait gains a Node-side failure report (0.261083ms)\nℹ tests 9\nℹ suites 0\nℹ pass 9\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 20.762904\n"
+  },
+  "negativeControls": [
+    {
+      "mutation": "replace original rejection",
+      "exitCode": 1,
+      "summaryExcerpt": "✔ seven bounded milestones carry independent wall and elapsed clocks (3.085457ms)\n✔ only bounded process and completion details are serialized (0.389813ms)\n✔ diagnostic clock and sink failures never throw or retry milestones (0.996347ms)\n✔ unavailable clock numbers become null rather than invented timing (0.422918ms)\n✔ fixture preserves assertions, success text and cleanup ordering without new waits (0.792083ms)\n✖ boot failure reports existing issues once and rethrows the identical error (2.482035ms)\n✖ boot report bounds issue count and text without modifying collector evidence (1.181569ms)\n✖ collector, field and sink failures cannot mask the original boot rejection (0.766399ms)\n✔ only the existing initial runtime wait gains a Node-side failure report (0.288909ms)\nℹ tests 9\nℹ suites 0\nℹ pass 6\nℹ fail 3\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 22.463201\n"
+    },
+    {
+      "mutation": "remove issue count bound",
+      "exitCode": 1,
+      "summaryExcerpt": "✔ seven bounded milestones carry independent wall and elapsed clocks (4.197665ms)\n✔ only bounded process and completion details are serialized (0.514578ms)\n✔ diagnostic clock and sink failures never throw or retry milestones (1.08039ms)\n✔ unavailable clock numbers become null rather than invented timing (0.69097ms)\n✔ fixture preserves assertions, success text and cleanup ordering without new waits (1.028877ms)\n✔ boot failure reports existing issues once and rethrows the identical error (2.08411ms)\n✖ boot report bounds issue count and text without modifying collector evidence (9.574665ms)\n✔ collector, field and sink failures cannot mask the original boot rejection (0.451999ms)\n✔ only the existing initial runtime wait gains a Node-side failure report (0.665516ms)\nℹ tests 9\nℹ suites 0\nℹ pass 8\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 35.359115\n"
+    }
+  ],
+  "syntax": "All3 exact source strings passed node --check --input-type=module.",
+  "evidenceFormatting": "Negative-control outputs are labeled excerpts retaining test counts and timing values; omitted stack traces and internal tool metadata are not represented as verbatim full output.",
+  "limits": "No fix for boot failure and no historical phase attribution. Existing592 hosted run failed initial runtime wait; browser close completed about87ms, separately observed."
+}
