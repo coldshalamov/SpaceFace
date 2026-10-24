@@ -427,6 +427,14 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
   ${C} .gm-place-actions { gap:0 14px !important; }
 }
 
+/* a short wide window (1280x540): the collapsed dock's ten beads ran 374 px and the last lens
+   (Hazard) sank under the foot. Here the beads sit closer so the whole spine clears the band. */
+@media (max-height: 640px) and (min-width: 1101px) {
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-buttons { gap:6px !important; padding:2px 0; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-bank { gap:0 !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-btn.k-word { min-height:28px !important; }
+}
+
 /* the foot folds each answer to one line (word beside value) only where a quarter of the band holds
    both: below 1180 px a long value ("No destination set") ran on under the next station's word, so
    there the word stays over its value and the value keeps the whole track */
