@@ -61,7 +61,9 @@ import {
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { normalizeThreatIds, swarmThreatPressureMult } from '../data/swarmThreats.js';
 import { CRUCIBLE_REEF_LAYOUT_ID, CRUCIBLE_SLALOM_WELL_COUNT } from '../data/survivalMutators.js';
-import { CIRCUIT_DEFEND_TICKS, CIRCUIT_SURVIVE_TICKS, circuitBossFor } from './survivalCircuit.js';
+import {
+  CIRCUIT_DEFEND_TICKS, CIRCUIT_ESCORT_SPEED, CIRCUIT_SURVIVE_TICKS, circuitBossFor,
+} from './survivalCircuit.js';
 
 // Binding ranges from spaceface.combatLabSetup.v1 (seed 1..0xffffffff, wave 1..999).
 // Authored recipes exist for template waves 1–10 per live arena. The thirty-wave
@@ -642,6 +644,9 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
       swarm.durationTicks = CIRCUIT_DEFEND_TICKS;
       swarm.circuit.defendTicks = CIRCUIT_DEFEND_TICKS;
       swarm.circuit.need = CIRCUIT_DEFEND_TICKS;
+    } else if (circuitRound.kind === 'escort') {
+      swarm.killTarget = 0;
+      swarm.circuit.escortSpeed = CIRCUIT_ESCORT_SPEED;
     } else if (circuitRound.kind === 'nodes' || circuitRound.kind === 'hold'
       || circuitRound.kind === 'collect' || circuitRound.kind === 'commander'
       || circuitRound.kind === 'reach') {
@@ -671,7 +676,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   }
   const surviveRound = !!circuitRound && circuitRound.kind === 'survive';
   const defendRound = !!circuitRound && circuitRound.kind === 'defend';
-  const specialKind = circuitRound && ['defend', 'nodes', 'hold', 'collect', 'commander', 'reach'].includes(circuitRound.kind)
+  const specialKind = circuitRound && ['defend', 'escort', 'nodes', 'hold', 'collect', 'commander', 'reach'].includes(circuitRound.kind)
     ? circuitRound.kind : null;
   const plan = {
     id: `swarm:w${w}:${seed.toString(16)}`,

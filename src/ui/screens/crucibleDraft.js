@@ -662,6 +662,8 @@ export function circuitPanelLines(run) {
       ? 'survive sixty seconds'
       : round.kind === 'defend'
         ? 'defend the beacon'
+      : round.kind === 'escort'
+        ? 'escort the freighter'
       : round.kind === 'boss'
         ? (boss ? boss.label : 'a champion')
         : round.kind === 'nodes'

@@ -41,6 +41,15 @@ export const CIRCUIT_DEFEND_TICKS = 1800;
 export const CIRCUIT_DEFEND_AIM_TICKS = 45;
 /** Purse cut when the beacon dies. The spend request is clamped to what the run actually holds. */
 export const CIRCUIT_DEFEND_PURSE_CUT = 40;
+/** World units per second. Seventy units of lane is a few seconds, not a second player to fly. */
+export const CIRCUIT_ESCORT_SPEED = 18;
+/** Purse cut when the freighter dies. Clamped to the credits the run actually holds. */
+export const CIRCUIT_ESCORT_PURSE_CUT = 40;
+/** Lane offsets from the ship when the round starts. Both ends stay near the ship, inside the room. */
+export const CIRCUIT_ESCORT_LANE = Object.freeze({
+  startZ: 90,
+  endZ: 160,
+});
 export const CIRCUIT_NODE_COUNT = 3;
 export const CIRCUIT_CORE_COUNT = 4;
 export const CIRCUIT_HOLD_TICKS = 600;
@@ -62,6 +71,7 @@ const CIRCUIT_SPECIAL_KIND = Object.freeze({
   '3:1': 'collect',
   '3:3': 'commander',
   '4:1': 'reach',
+  '4:3': 'escort',
 });
 
 /** The room the live run relocated the player into, or the origin when the arena is unknown. */
@@ -284,6 +294,7 @@ export function circuitRoundFor(run, wave, origin = null) {
     bossId,
     surviveTicks: kind === 'survive' ? CIRCUIT_SURVIVE_TICKS : null,
     defendTicks: kind === 'defend' ? CIRCUIT_DEFEND_TICKS : null,
+    escortSpeed: kind === 'escort' ? CIRCUIT_ESCORT_SPEED : null,
     fight,
     pressureMul: scale.pressureMul,
     earnMul: scale.earnMul,

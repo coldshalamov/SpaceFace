@@ -65,6 +65,7 @@ export const OBJECTIVE_WORDS = Object.freeze({
   // SWARM-08 B5 — a Circuit survive round is a timed hold, and the word is the whole rule.
   survive: 'SURVIVE',
   defend: 'BEACON',
+  escort: 'ESCORT',
   nodes: 'NODES',
   hold: 'HOLD',
   collect: 'CORES',

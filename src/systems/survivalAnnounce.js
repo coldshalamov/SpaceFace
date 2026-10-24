@@ -240,6 +240,7 @@ export function waveOpeningLine(wave, plan) {
     const closing = !circuit ? 'Break the pack.'
       : circuit.kind === 'survive' ? 'Survive sixty seconds.'
         : circuit.kind === 'defend' ? 'Defend the beacon.'
+        : circuit.kind === 'escort' ? 'Escort the freighter.'
         : circuit.kind === 'nodes' ? 'Destroy the hive nodes.'
           : circuit.kind === 'hold' ? 'Hold the zone.'
             : circuit.kind === 'collect' ? 'Collect the cores.'

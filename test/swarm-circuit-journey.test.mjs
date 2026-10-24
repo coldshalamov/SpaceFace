@@ -592,6 +592,33 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.ok(spent && spent.payload.credits > 0, 'a lost beacon cuts the purse');
       assert.ok(spent.payload.credits <= creditsBefore);
       assert.equal(h.state.run.credits, creditsBefore - spent.payload.credits);
+    } else if (round.kind === 'escort') {
+      const beforeEnds = named(h.emitted, 'run:endRequested').length;
+      const spawned = tickUntil(h, () => [...h.state.entities.values()].some((entity) => entity
+        && entity.alive !== false && entity.data && entity.data.circuitEscort), 40);
+      assert.ok(spawned, 'the freighter takes the field');
+      const freight = [...h.state.entities.values()].find((entity) => entity && entity.data
+        && entity.data.circuitEscort);
+      assert.equal(freight.type, 'freighter');
+      assert.notEqual(freight.id, h.player.id, 'the freighter is not the player ship');
+      assert.equal(freight.data.unarmed, true);
+      assert.deepEqual(freight.data.weapons, []);
+      assert.equal(freight.collides, true);
+      assert.ok(freight.hull > 0 && Number.isFinite(freight.hullMax));
+      const laneStart = { x: freight.pos.x, z: freight.pos.z };
+      const fromShip = Math.hypot(laneStart.x - h.player.pos.x, laneStart.z - h.player.pos.z);
+      assert.ok(fromShip >= 80 && fromShip <= 120, 'the lane starts near the ship');
+      const before = clearedCount(h);
+      assert.ok(tickUntil(h, () => clearedCount(h) > before, 500), 'the freighter arrives');
+      const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
+      assert.equal(receipt.completionKind, 'escort');
+      const end = survivalWave._swarm.circuit.laneEnd;
+      assert.ok(Math.hypot(freight.pos.x - end.x, freight.pos.z - end.z) < 1, 'it finished on the lane');
+      const lane = Math.hypot(end.x - laneStart.x, end.z - laneStart.z);
+      assert.ok(lane > 40 && lane < 120, 'the lane stays a short crossing');
+      assert.equal(named(h.emitted, 'run:endRequested').length, beforeEnds, 'arrival does not end the run');
+      assert.equal(named(h.emitted, 'run:spent').filter((entry) => entry.payload
+        && entry.payload.reason === 'circuit_escort_lost').length, 0, 'a living freighter is not a fine');
     } else {
       clearCohortRound(h);
       const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
@@ -835,7 +862,9 @@ test('Circuit boss rounds force their stage champion and wave ten suppresses the
     });
     assert.equal(plan.swarm.requireBoss, false, `wave ${wave} has no cadence champion`);
     assert.equal(plan.swarm.bossId, null);
-    const specialObjective = { 3: 'defend', 5: 'nodes', 7: 'hold', 9: 'collect', 11: 'commander', 13: 'reach' };
+    const specialObjective = {
+      3: 'defend', 5: 'nodes', 7: 'hold', 9: 'collect', 11: 'commander', 13: 'reach', 15: 'escort',
+    };
     assert.equal(plan.objective.kind, wave === 2 || wave === 6 || wave === 10 || wave === 14
       ? 'survive' : (specialObjective[wave] || 'resolve_hostiles'));
   }
