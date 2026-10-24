@@ -71,9 +71,14 @@ export function swarmChainFireRateScale() {
  */
 export const SWARM_CHAIN_FEEDER_STEP = 0.01;
 
-export function swarmChainDamageScale(state) {
+/** Whether the live Swarm run's own modifier ledger owns `id`. The armory receipt is the proof. */
+export function swarmRunOwnsLegendary(state, id) {
   const run = liveSwarmRun(state);
-  if (!run || !ownedSwarmLegendaryIds(run).includes('chain_feeder')) return 1;
+  return !!run && ownedSwarmLegendaryIds(run).includes(id);
+}
+
+export function swarmChainDamageScale(state) {
+  if (!swarmRunOwnsLegendary(state, 'chain_feeder')) return 1;
   const chain = Number.isFinite(swarmChain._chain) ? swarmChain._chain : 0;
   return chain > 0 ? 1 + chain * SWARM_CHAIN_FEEDER_STEP : 1;
 }

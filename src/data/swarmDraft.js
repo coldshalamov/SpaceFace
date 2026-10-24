@@ -276,6 +276,17 @@ export const SWARM_ROOM_LEGENDARIES = Object.freeze(SWARM_ROOM_LEGENDARIES_BASE.
     slotLabel: 'Legendary · lasts this run · uses no hardpoint',
     blurb: 'Your guns eat the kill chain: +1% damage per live chain point.',
   }),
+  Object.freeze({
+    id: 'echo',
+    offerId: 'legendary_echo',
+    name: 'Echo',
+    verb: 'Echo',
+    price: 105,
+    fromWave: 4,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Every fifth shot from a fitted gun fires twice — no extra heat, no extra capacitor.',
+  }),
 ]));
 
 const LEGENDARY_BY_ID = new Map(SWARM_ROOM_LEGENDARIES.map((entry) => [entry.id, entry]));

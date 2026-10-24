@@ -12,7 +12,7 @@ import { applyReflectedVelocity } from '../core/surfaceContact.js';
 // not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
 // projectile:hit/combat:damage are owned by physics + combat.
 import { WEAPONS } from '../data/weapons.js';
-import { swarmChainFireRateScale, swarmChainDamageScale } from './swarmChain.js';
+import { swarmChainFireRateScale, swarmChainDamageScale, swarmRunOwnsLegendary } from './swarmChain.js';
 import { mothlightAllowsFire } from '../data/mothlight.js';
 import {
   modelTruthBoltRadius,
@@ -1647,13 +1647,25 @@ export const weapons = {
     this._attackMetrics.volleys += 1;
     this._attackMetrics.rootsEmitted += volley.emitted.length;
     this._attackMetrics.rootsSuppressed += volley.suppressed.length;
+    // Echo (SEED-SW-10): while the run owns the record, a fitted player gun duplicates
+    // every fifth emitted projectile — deterministic per gun (`w._echoShots`), identical
+    // trajectory, and never a second draw on heat or capacitor. Guns only: a thrown
+    // torpedo is not a "shot" and never doubles.
+    const echoOwned = e.id === state.playerId && !isMissile && swarmRunOwnsLegendary(state, 'echo');
     for (const root of volley.emitted) {
-      this._spawnProjectile(e, w, def, dir + root.offsetRad, tgt, isMissile, state, {
+      const spawnOpts = {
         payloadScale,
         attackRuntime: record,
         spec,
         liveRuntime: lineage,
-      });
+      };
+      this._spawnProjectile(e, w, def, dir + root.offsetRad, tgt, isMissile, state, spawnOpts);
+      if (echoOwned) {
+        w._echoShots = (w._echoShots || 0) + 1;
+        if (w._echoShots % 5 === 0) {
+          this._spawnProjectile(e, w, def, dir + root.offsetRad, tgt, isMissile, state, spawnOpts);
+        }
+      }
     }
   },
 
