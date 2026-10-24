@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-living-spill",
-      "date": "2026-10-22",
-      "wf": "WF-16",
-      "mode": "opportunity",
-      "verdict": "cut",
-      "reason": "A hard hit cracks spore catalyst and the unbroken lens into scoopable spill, and leaves iron ore and a gate handshake in the hold.",
-      "fingerprint": "verb=spill,subject=living-sample,sector=flight,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "0a0da0f78a8b06d2dd7c1593811d885c276e0e1b",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-corrosive-sample",
       "date": "2026-10-22",
       "wf": "WF-16",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "be1f92b6f2",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sw-37",
+      "date": "2026-10-24",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A brood mother walks and births mites from the wave reserve until she dies.",
+      "fingerprint": "verb=birth,subject=brood-mother,sector=circuit,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "e6d2a94e79",
       "verification": "focused_green"
     }
   ],
