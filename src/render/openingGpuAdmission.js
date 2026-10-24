@@ -1070,6 +1070,10 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     ? paceQueue.submit
     : null;
   const submitSerial = batchSubmit || paceSubmit;
+  // Only the known serial pacer's reservation guarantees a yielded task and GL drain.
+  // A custom batch.submit may not pace at all, so keep its caller-owned yield.
+  const touchAlreadyPaced = Boolean(paceSubmit
+    || (batchSubmit && paceQueue && batch.submit === paceQueue.submit));
   const submitAdmission = {
     ...(isActive ? { isActive } : {}),
     ...(options.urgent === true ? { urgent: true } : {}),
@@ -1232,7 +1236,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
         results.push({ compiled: compiled[index + offset] ?? null, touched, touchError });
       }
       if (!submitSerial && paceQueue) await paceQueue();
-      if (yieldToMain && index + touchBatchSize < ordered.length) await yieldToMain();
+      if (!touchAlreadyPaced && yieldToMain && index + touchBatchSize < ordered.length) await yieldToMain();
     }
   } else {
     for (let index = 0; index < ordered.length; index++) {
@@ -1264,7 +1268,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
         paceDebtMs = 0;
         paceDebtUnits = 0;
       }
-      if (yieldToMain && index < ordered.length - 1) await yieldToMain();
+      if (!touchAlreadyPaced && yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
   }
   touchMs = now() - touchStarted;

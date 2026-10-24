@@ -5,10 +5,17 @@ import { runInNewContext } from 'node:vm';
 import { devices } from 'playwright';
 
 const source = readFileSync(new URL('../scripts/probe-deployed-mobile.mjs', import.meta.url), 'utf8');
-const flightSource = source.slice(source.indexOf('  const waitForFlight = '), source.indexOf('\n  await waitForMenu();'));
+// Fail at a missing/misordered boundary instead of accidentally executing the probe.
+function fragment(startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  assert.ok(start >= 0 && end > start, `Missing probe fragment: ${startMarker} → ${endMarker}`);
+  return source.slice(start, end);
+}
+const flightSource = fragment('  const waitForFlight = ', '\n  await waitForMenu();');
 const state = (mode, loading = []) => ({ loading, alerts: [], runtime: { frame: { mode } } });
 
-async function replay(states, { errors = [], menuVisible = true, click = null, baseline = [] } = {}) {
+async function replay(states, { errors = [], menuVisible = true, click = null, baseline = [], route = 'continue' } = {}) {
   let now = 0, index = 0;
   const report = { observations: [], console: errors, continueClick: click,
     stages: [{ stage: 'continue-menu', simLaneEvents: baseline }] };
@@ -17,7 +24,7 @@ async function replay(states, { errors = [], menuVisible = true, click = null, b
     page: { waitForTimeout: async ms => { now += ms; } },
     snapshot: async () => states[Math.min(index++, states.length - 1)], visible: async () => menuVisible };
   const wait = runInNewContext(`${flightSource}\nwaitForFlight`, scope);
-  try { return { result: await wait('continue', 0), now, report }; }
+  try { return { result: await wait(route, 0), now, report }; }
   catch (error) { return { error, now, report }; }
 }
 
@@ -26,7 +33,7 @@ test('a pending all-menu restore keeps the original five-minute bound', async ()
   const pending = { ...state('menu'), flight: '0' };
   pending.runtime.frame = { mode: 'menu', tick: 0, playerId: null };
   const result = await replay([pending]);
-  assert.match(result.error.message, /within five minutes/);
+  assert.match(result.error.message, /did not observe an advancing simulation tick or simTime after reload/);
   assert.equal(result.now, 300000);
   assert.equal(result.report.observations.length, 150);
 });
@@ -43,7 +50,10 @@ test('a visible title beneath loading is pending; a witnessed return to menu fai
 test('playable flight and explicit startup failures retain their existing verdicts', async () => {
   const flight = state('flight');
   flight.flight = '1'; flight.runtime.post = { firstPlayableFrameAt: 123 };
-  const passed = await replay([state('menu'), flight]);
+  const menu = state('menu');
+  menu.runtime.frame.tick = 10;
+  flight.runtime.frame.tick = 11;
+  const passed = await replay([menu, flight]);
   assert.equal(passed.result, 4000);
   assert.equal(passed.error, undefined);
   const failed = await replay([state('menu')], { errors: [
@@ -51,6 +61,39 @@ test('playable flight and explicit startup failures retain their existing verdic
   ] });
   assert.match(failed.error.message, /startup-readiness failure/);
   assert.equal(failed.now, 2000);
+});
+
+test('Continue rejects frozen flight and accepts only observed tick or simTime advancement', async () => {
+  const frame = values => ({ ...state('flight'), flight: '1',
+    runtime: { frame: { mode: 'flight', ...values }, post: { firstPlayableFrameAt: 123 } } });
+  for (const values of [{ tick: 10, simTime: 5 }, {}, { tick: 'invalid', simTime: 'invalid' }]) {
+    const frozen = await replay([frame(values)]);
+    assert.match(frozen.error.message, /did not observe an advancing simulation/);
+    assert.equal(frozen.now, 300000);
+  }
+  for (const key of ['tick', 'simTime', 'time']) {
+    const advanced = await replay([frame({ [key]: 10 }), frame({ [key]: 11 })]);
+    assert.equal(advanced.error, undefined, `${key} must supply real advancing evidence`);
+    assert.equal(advanced.result, 4000);
+  }
+  const backwards = await replay([frame({ tick: 10 }), frame({ tick: 9 })]);
+  assert.match(backwards.error.message, /did not observe an advancing simulation/);
+  assert.equal(backwards.now, 300000);
+});
+
+test('advancing Continue still requires flight UI, cleared loading, and playable-frame evidence', async () => {
+  for (const missing of ['flight', 'loading', 'playable']) {
+    const states = [10, 11].map(tick => ({ ...state('flight'),
+      flight: missing === 'flight' ? '0' : '1', loading: missing === 'loading' ? ['Restoring'] : [],
+      runtime: { frame: { mode: 'flight', tick },
+        post: missing === 'playable' ? {} : { firstPlayableFrameAt: 123 } } }));
+    const result = await replay(states);
+    assert.match(result.error.message, /within five minutes/);
+    assert.equal(result.now, 300000);
+  }
+  const newGame = await replay([state('menu')], { route: 'new-game' });
+  assert.match(newGame.error.message, /New Game.*within five minutes/);
+  assert.equal(newGame.now, 300000);
 });
 
 test('a new post-click save rejection fails promptly with the existing hidden feedback', async () => {
@@ -76,11 +119,10 @@ test('requested iPhone touch profile is reported against effective runtime capab
   assert.doesNotMatch(source, /navigator\.maxTouchPoints\s*=|Object\.defineProperty\([^\n]*maxTouchPoints/,
     'the probe observes capabilities without manufacturing browser identity');
 
-  const start = source.indexOf('function recordMobileCapabilities(');
-  const end = source.indexOf('\n// Concrete GL failures', start);
+  const helper = fragment('function recordMobileCapabilities(', '\nconst MAX_RENDERER_ERROR_SAMPLES = ');
   const report = { mobileProfile: { requested: { hasTouch: true, isMobile: true }, effective: null, mismatches: [] },
     acceptance: { mobileCapabilities: 'pending' } };
-  runInNewContext(`${source.slice(start, end)}\nrecordMobileCapabilities`, { report })({
+  runInNewContext(`${helper}\nrecordMobileCapabilities`, { report })({
     touchPoints: 0, touchEvents: true, coarse: true, anyCoarse: true, mobileUserAgent: true,
     userAgent: 'iPhone UA', platform: 'iPhone', width: 390, height: 664, dpr: 3,
   });
@@ -113,7 +155,7 @@ test('historical save errors and unaccepted clicks cannot become a new Continue 
     startupObserver: { events: [{ type: 'save:error', reason: 'load_failed', at: 50 }] } };
   const pending = await replay([historical], { click, baseline });
   assert.equal(pending.now, 300000);
-  assert.match(pending.error.message, /within five minutes/);
+  assert.match(pending.error.message, /did not observe an advancing simulation tick or simTime after reload/);
   assert.equal(pending.report.continueRejection, undefined);
   const unaccepted = await replay([{ ...state('menu'), simLaneEvents: [...baseline, 'save:error'] }],
     { click: { ...click, isTrusted: false }, baseline });
@@ -347,14 +389,16 @@ test('Continue requires a delivered enabled public click before waiting for flig
   const start = source.indexOf('    const continueClick = ');
   const end = source.indexOf('    report.continueLaunchMs = ', start);
   const check = source.slice(start, end);
-  for (const receipt of [null, { action: 'newGame' }, { action: 'continue', disabled: true },
-    { action: 'continue', ariaDisabled: 'true' }]) {
+  for (const receipt of [null, { action: 'newGame', isTrusted: true }, { action: 'continue', disabled: true, isTrusted: true },
+    { action: 'continue', ariaDisabled: 'true', isTrusted: true },
+    { action: 'continue', disabled: false, ariaDisabled: null },
+    { action: 'continue', disabled: false, ariaDisabled: null, isTrusted: false }]) {
     const run = runInNewContext(`(async () => { ${check} })`, {
       report: {}, page: { evaluate: async () => receipt }, boundedBrowserRead: read => read(),
     });
     await assert.rejects(run(), /tap was not delivered to an enabled Continue control/);
   }
-  const receipt = { action: 'continue', disabled: false, ariaDisabled: null };
+  const receipt = { action: 'continue', disabled: false, ariaDisabled: null, isTrusted: true };
   const report = {};
   const run = runInNewContext(`(async () => { ${check} })`, {
     report, page: { evaluate: async () => receipt }, boundedBrowserRead: read => read(),
@@ -364,18 +408,142 @@ test('Continue requires a delivered enabled public click before waiting for flig
 });
 
 test('observed invalid draws fail renderer health independently of console emission', () => {
-  const start = source.indexOf('  const contextFailures = new Set();');
-  const end = source.indexOf('  // Persist diagnostics', start);
-  const health = source.slice(start, end);
+  const helpers = fragment('const MAX_RENDERER_ERROR_SAMPLES = ', '\nlet browser;');
+  const health = fragment('  const contextFailures = new Set();', '  // Persist diagnostics');
   for (const drawErrors of [{ invalidDraws: 3, witnesses: [] }, { witnesses: [{}] }]) {
     const report = { stages: [{ drawErrors }], observations: [], passed: true,
-      rendererErrorCount: 0, acceptance: { startupAndControls: 'passed' } };
-    const notes = [], process = {};
-    runInNewContext(health, { report, process, drawErrorProbe: true,
-      noteRendererError(text, source) { report.rendererErrorCount++; notes.push({ text, source }); } });
+      rendererErrorCount: 0, rendererErrors: [], acceptance: { startupAndControls: 'passed' } };
+    const process = {};
+    runInNewContext(helpers + '\n' + health, { report, process, drawErrorProbe: true,
+      activeRoute: 'continue', actorStage: 'continue-flight-controls' });
     assert.equal(report.acceptance.rendererHealth, 'failed');
     assert.equal(report.passed, false);
     assert.equal(process.exitCode, 1);
-    assert.equal(notes[0].source, 'draw-observer');
+    assert.equal(report.rendererErrorCount, 1);
+    assert.equal(report.rendererErrors[0].source, 'draw-observer');
+    assert.equal(report.rendererErrors[0].route, 'continue');
+    assert.equal(report.rendererErrors[0].actorStage, 'continue-flight-controls');
+    assert.match(report.rendererErrors[0].text, /INVALID_OPERATION/);
   }
+});
+
+// Public touch identity across boot-screen transitions.
+const uiSource = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+function targetFragment(text, startMarker, endMarker) {
+  const start = text.indexOf(startMarker), end = text.indexOf(endMarker, start + startMarker.length);
+  assert.ok(start >= 0 && end > start, `missing source boundary ${startMarker}`);
+  return text.slice(start, end);
+}
+function actor(page) {
+  return runInNewContext(`${targetFragment(source, '  const tapControl = ', "\n  page.on('crash'")}\ntapControl`, { page });
+}
+
+// This is an actor/API contract replay, not a browser renderer. It models Playwright's
+// locator hit-target guarantee, while executing the probe's actual function. The old raw
+// coordinate path has no such guarantee and dispatches to whatever is now underneath.
+function touchFixture({ beforeInput = () => {}, disabled = false } = {}) {
+  let attached = true, intercepted = false, box = { x: 20, y: 40, width: 100, height: 30 };
+  const delivered = [], options = [], resolutions = [];
+  const hit = (x, y) => attached && !intercepted && x >= box.x && x <= box.x + box.width
+    && y >= box.y && y <= box.y + box.height ? 'intended' : 'archive';
+  const control = {
+    first() { return this; },
+    async waitFor() {}, async scrollIntoViewIfNeeded() {},
+    async boundingBox() { const staleBox = { ...box }; beforeInput(fixture); return staleBox; },
+    async tap(opts) {
+      options.push(opts);
+      assert.notEqual(opts?.force, true, 'never bypass the hit target or enabled checks');
+      beforeInput(fixture);
+      if (!attached || intercepted || disabled) throw new Error('intended control is not actionable');
+      delivered.push(hit(box.x + box.width / 2, box.y + box.height / 2));
+    },
+  };
+  const page = { locator(selector) { resolutions.push(selector); return control; },
+    touchscreen: { async tap(x, y) { delivered.push(hit(x, y)); } } };
+  const fixture = { page, control, delivered, options, resolutions,
+    close() { intercepted = true; }, detach() { attached = false; },
+    move() { box = { ...box, x: 300 }; } };
+  return fixture;
+}
+function closeActualCinematic(fixture) {
+  const root = {};
+  const scope = { dismissed: false, autoDismissTimer: null, fadeRemovalTimer: null,
+    requestPointerDismissal() {}, teardownCinematic() {}, clearTimeout() {},
+    setTimeout: (_fn, delay) => { assert.equal(delay, 700); return 1; },
+    sessionStorage: { setItem() {} }, CINEMATIC_SEEN_KEY: 'seen',
+    showMainMenuWhenReady: () => fixture.close(),
+    cinematic: { removeEventListener() {}, classList: { add(name) {
+      assert.equal(name, 'is-closing'); fixture.close();
+    } } } };
+  const finalize = runInNewContext(`${targetFragment(uiSource, '      const finalizeCinematic = ',
+    '\n      const requestPointerDismissal = ')}\nfinalizeCinematic`, scope);
+  finalize.call(root);
+}
+
+test('cinematic auto-dismiss between locating and touch never activates Archive underneath', async () => {
+  const fixture = touchFixture({ beforeInput: closeActualCinematic });
+  await assert.rejects(actor(fixture.page)('#cinematic-splash .cine-begin'), /not actionable/);
+  assert.deepEqual(fixture.delivered, [], 'a disappearing intro cannot authorize another menu action');
+});
+
+test('detached target never sends stale coordinates to its replacement', async () => {
+  const fixture = touchFixture({ beforeInput: f => f.detach() });
+  await assert.rejects(actor(fixture.page)(fixture.control), /not actionable/);
+  assert.deepEqual(fixture.delivered, []);
+});
+
+test('moving control is resolved at its actionable location rather than its old center', async () => {
+  const fixture = touchFixture({ beforeInput: f => f.move() });
+  await actor(fixture.page)('menu-button');
+  assert.deepEqual(fixture.delivered, ['intended']);
+  assert.deepEqual(fixture.resolutions, ['menu-button']);
+});
+
+test('disabled controls remain non-actionable and propagate failure', async () => {
+  const fixture = touchFixture({ disabled: true });
+  await assert.rejects(actor(fixture.page)(fixture.control), /not actionable/);
+  assert.deepEqual(fixture.delivered, []);
+});
+
+test('tap keeps native locator actionability and the caller timeout without force', async () => {
+  const fixture = touchFixture();
+  await actor(fixture.page)('button', { timeout: 321 });
+  assert.equal(fixture.options[0]?.timeout, 321);
+  assert.equal(fixture.options[0]?.force, undefined);
+  assert.deepEqual(fixture.delivered, ['intended']);
+});
+
+function menuFixture({ inspectionCost = 0 } = {}) {
+  let now = 0, reads = 0;
+  const tapBudgets = [], report = { menuWaitObservations: [] };
+  const DateFixture = class extends Date { constructor() { super(now); } static now() { return now; } };
+  const scope = { Date: DateFixture, report, activeRoute: 'new-game', actorStage: 'boot-menu',
+    engine: 'fixture', out: '', console: { log() {} }, join: () => '', writeFile: async () => {},
+    boundedBrowserRead: read => read(),
+    page: { evaluate: async () => {
+      now += inspectionCost;
+      return ++reads === 1 ? { available: true, cinematicBeginVisible: true }
+        : { available: true, mainMenuVisible: true, newGameButtonVisible: true };
+    }, waitForTimeout: async ms => { now += ms; } },
+    tapControl: async (_selector, options) => {
+      tapBudgets.push(options?.timeout); now += options?.timeout ?? 20000;
+      throw new Error('cinematic detached during its ordinary auto-dismiss');
+    } };
+  const wait = runInNewContext(`${targetFragment(source, '  const inspectMenuState = ',
+    '\n  const waitForFlight = ')}\nwaitForMenu`, scope);
+  return { wait, tapBudgets, get now() { return now; } };
+}
+
+test('disappearing cinematic is a normal menu transition, not a failed New Game', async () => {
+  const fixture = menuFixture();
+  await fixture.wait();
+  assert.equal(fixture.now, 21000);
+  assert.deepEqual(fixture.tapBudgets, [20000]);
+});
+
+test('boot touch cannot create an action timeout beyond the original menu deadline', async () => {
+  const fixture = menuFixture({ inspectionCost: 179990 });
+  await assert.rejects(fixture.wait(), /within 180 seconds/);
+  assert.deepEqual(fixture.tapBudgets, [10]);
+  assert.ok(fixture.now <= 180001);
 });
