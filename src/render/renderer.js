@@ -23182,6 +23182,8 @@ export const render = {
     };
     warm.track = track;
 
+    // Hoisted so the outer catch can reach it (it was block-scoped inside the try).
+    let teardownWarm = null;
     try {
     // The procedural hulls a hostile draws while its authored package composes — Group:ship
     // linked inside the fight when a wave spawn presented before its boundary resolved. One
@@ -23294,7 +23296,7 @@ export const render = {
         }
       }
     };
-    const teardownWarm = () => {
+    teardownWarm = () => {
       unmarkBeginCoverage();
       warm.building = false;
       root.userData.warmBuilding = false;
@@ -23654,7 +23656,8 @@ export const render = {
     }
     } catch (error) {
       stormWarn('crucible-roster-warm-begin-failed', '[render] crucible roster warm begin failed', error);
-      teardownWarm();
+      if (teardownWarm) teardownWarm();
+      else { warm.building = false; root.userData.warmBuilding = false; }
       return null;
     }
     if (profile === 'opening') this._touchOpeningBargeFamilyUnderShell(root, warm);

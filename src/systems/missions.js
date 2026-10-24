@@ -1326,7 +1326,7 @@ function isZeroPayLandmarkMission(mission, rewardCr) {
     && rewardCr === 0);
 }
 
-function setPieceEventFields(value, transition = null) {
+export function setPieceEventFields(value, transition = null) {
   const cause = setPieceCauseOf(value);
   if (!cause) return {};
   const receipt = transition && transition.receipt || null;

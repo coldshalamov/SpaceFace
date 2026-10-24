@@ -35,8 +35,8 @@ function runAt(wave, fight = null) {
   };
 }
 
-test('seed 4242: later cohort slots name a different contract, and stage one does not', () => {
-  const expectKind = { 1: 'cohort', 2: 'survive', 3: 'cohort', 4: 'boss', 5: 'nodes', 6: 'survive', 7: 'hold', 8: 'boss', 9: 'collect', 10: 'survive', 11: 'commander', 12: 'boss', 13: 'reach', 14: 'survive', 15: 'cohort', 16: 'boss' };
+test('seed 4242: later cohort slots name a different contract, and stage one defends its beacon', () => {
+  const expectKind = { 1: 'cohort', 2: 'survive', 3: 'defend', 4: 'boss', 5: 'nodes', 6: 'survive', 7: 'hold', 8: 'boss', 9: 'collect', 10: 'survive', 11: 'commander', 12: 'boss', 13: 'reach', 14: 'survive', 15: 'escort', 16: 'boss' };
   for (const [wave, kind] of Object.entries(expectKind)) {
     const round = circuitRoundFor(runAt(Number(wave)), Number(wave));
     assert.equal(round.kind, kind, `wave ${wave}`);
@@ -46,7 +46,7 @@ test('seed 4242: later cohort slots name a different contract, and stage one doe
       assert.equal(plan.swarm.killTarget, 0, `${kind} does not end on a kill quota`);
       assert.equal(plan.swarm.boss, false, `${kind} is not a second champion`);
       const line = waveOpeningLine(Number(wave), plan);
-      assert.match(line, /Destroy the hive nodes|Hold the zone|Collect the cores|Assassinate|Reach the gate/);
+      assert.match(line, /Defend the beacon|Escort the freighter|Destroy the hive nodes|Hold the zone|Collect the cores|Assassinate|Reach the gate/);
     }
     if (kind === 'hold' || kind === 'reach') {
       const spot = kind === 'hold' ? round.zone : round.gate;
@@ -62,6 +62,12 @@ test('seed 4242: later cohort slots name a different contract, and stage one doe
   assert.match(panel.next, new RegExp(`assassinate ${CIRCUIT_COMMANDER_NAME}`));
   assert.equal(OBJECTIVE_WORDS.collect, 'CORES');
   assert.equal(OBJECTIVE_WORDS.nodes, 'NODES');
+  assert.equal(OBJECTIVE_WORDS.defend, 'BEACON');
+  assert.equal(OBJECTIVE_WORDS.escort, 'ESCORT');
+  const escortPanel = circuitPanelLines(runAt(14));
+  assert.match(escortPanel.next, /escort the freighter/);
+  const defendPanel = circuitPanelLines(runAt(2));
+  assert.match(defendPanel.next, /defend the beacon/);
 });
 
 test('seed 4242: elite and challenge raise pressure and purse, and the ordinary room remains', () => {
@@ -77,8 +83,9 @@ test('seed 4242: elite and challenge raise pressure and purse, and the ordinary 
     },
   };
   const choices = circuitChoicesFor(routeRun);
-  const plain = choices.filter((choice) => !choice.fight);
+  const plain = choices.filter((choice) => choice.kind === 'route' && !choice.fight);
   assert.equal(plain.length, 2);
+  assert.equal(choices.filter((choice) => choice.kind === 'event').length, 1);
   assert.equal(choices.filter((choice) => choice.fight === 'elite').length, 2);
   assert.equal(choices.filter((choice) => choice.fight === 'challenge').length, 2);
   const base = planWave({ seed: SEED, arenaId: 'lagrange_crucible', wave: 5, mode: 'swarm', circuitRound: circuitRoundFor(runAt(5), 5) });

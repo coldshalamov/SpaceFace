@@ -1385,6 +1385,9 @@ export const save = {
     // saves load unchanged and a save without one is byte-identical to before.
     const bay = this.state.player.salvageBay;
     if (bay && bay.items && Object.keys(bay.items).length) out.salvageBay = { items: clonePlain(bay.items) };
+    // W-CAST-HANDS row 542 (Drift): the fractional sun-sublimation progress rides the cargo record
+    // as an OPTIONAL key (absent = nothing ever melted), so a save without one is byte-identical.
+    if (c.moisture && typeof c.moisture === 'object' && Object.keys(c.moisture).length) out.moisture = clonePlain(c.moisture);
     return out;
   },
 
@@ -7437,6 +7440,10 @@ export const save = {
       // usedVolume is a cache: the cargo owner recomputes it from the items right after the restore.
       this.state.player.salvageBay = { items: clonePlain(c.salvageBay.items), usedVolume: 0 };
     } else if (Object.hasOwn(this.state.player, 'salvageBay')) delete this.state.player.salvageBay;
+    // Drift moisture-loss accumulator (row 542): restored or cleared with the cargo record, same
+    // optional-key law as salvageBay — a save that never melted leaves no key behind.
+    if (c.moisture && typeof c.moisture === 'object' && !Array.isArray(c.moisture)) cargo.moisture = clonePlain(c.moisture);
+    else if (Object.hasOwn(cargo, 'moisture')) delete cargo.moisture;
   },
 
   _restoreFlight(flight) {
