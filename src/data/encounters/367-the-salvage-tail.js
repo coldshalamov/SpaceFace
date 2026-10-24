@@ -249,6 +249,39 @@ export const runtime = Object.freeze({
     w.lastNow = now;
 
     const own = tails.get(live);
+    const freight = live.data.freightCargoCustody;
+    if (freight) {
+      const stillCurrent = () => state.encounterDirector?.live?.[live.id] === live
+        && state.mode === 'flight' && state.world.currentSectorId === live.sectorId;
+      if (!stillCurrent()) return;
+      stopTail(state, live, true);
+      live.offerConsumed = true;
+      w.phase = 'custody';
+      if (!w.custodyWaitStarted) {
+        w.custodyWaitStarted = true;
+        d.emit('encounter:waitStarted', { encounterId: live.id, reason: 'cargo_custody', deadlineAt: freight.deadlineAt });
+        if (live.phase === 'done' || !stillCurrent()) return;
+      }
+      if (!freight.terminal) return;
+      w.terminalPending = true;
+      if (freight.carrierDead) {
+        const prior = state.story?.depthProgramEncounters?.completed?.opening_hauler_raid;
+        const firstLost = !!prior && prior.outcome !== 'defended';
+        d.rep('faction_mts', firstLost ? -6 : -3, 'salvage_tail_lost');
+        if (live.phase === 'done' || !stillCurrent()) return;
+        d.emit('news:publish', {
+          text: 'FREIGHTER DOWN ON THE START CORRIDOR: the replacement lot has left the Mule. The cargo custody report records what survived.',
+          kind: 'incidents', source: 'watch-relay', sourceRef: `salvage_tail:${live.id}`,
+          eventId: `salvage_tail:${live.id}`,
+        });
+        if (live.phase === 'done' || !stillCurrent()) return;
+        releaseSquadToWorld(live);
+        return d.resolve(live, 'hauler_lost', { speak: true });
+      }
+      // A disabled/captured/recovered hull is not proof of victory over the original cast.
+      releaseSquadToWorld(live);
+      return d.resolve(live, 'interrupted', { speak: false });
+    }
     // Missing/replaced/captured occupants are interruptions, not evidence of destruction.
     if (!own || own.stopped || state.mode !== 'flight'
       || state.world.currentSectorId !== live.sectorId
@@ -337,6 +370,8 @@ export default defineEncounter(trigger, {
     twist: 'named',
     actor: 'faction_reach',
   },
+  predation: { enabled: true, engagementOwner: 'encounter', carrierRole: 'hauler',
+    raiderRole: 'raider', motive: 'revenge_raid', leashRadius: 2600 },
   motive: 'revenge_raid',
   engagementTrigger: 'authorized_hostile_spawn',
   factionId: 'faction_reach',
@@ -368,7 +403,7 @@ export default defineEncounter(trigger, {
   timeoutChoice: 'decline',
   receipts: {
     defended: 'THE TAIL IS BROKEN — the replacement-run captain and lot survived, and the corridor has a name for the escort now.',
-    hauler_lost: 'THE CORRIDOR LOST HER — the replacement lot is spillage on the start lane, and the watch channel is not polite about it.',
+    hauler_lost: 'THE CORRIDOR LOST HER — the cargo-custody report records what survived and where the replacement lot ended up.',
     tail_over: 'THE WATCH ENDED — the captain and her pursuers are still in the lane. No dock arrival or broken tail is confirmed.',
   },
 });

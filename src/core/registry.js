@@ -208,6 +208,10 @@ import { rookBooth } from '../systems/rookBooth.js';
 import { kesslerScale } from '../systems/kesslerScale.js';
 import { gateThreeWeir } from '../systems/gateThreeWeir.js';
 import { slateColumn } from '../systems/slateColumn.js';
+import { bouncer } from '../systems/bouncer.js';
+import { receipt } from '../systems/receipt.js';
+import { mop } from '../systems/mop.js';
+import { tallyho } from '../systems/tallyho.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -690,6 +694,10 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['kesslerScale', kesslerScale],
     ['gateThreeWeir', gateThreeWeir],
     ['slateColumn', slateColumn],
+    ['bouncer', bouncer],
+    ['receipt', receipt],
+    ['mop', mop],
+    ['tallyho', tallyho],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

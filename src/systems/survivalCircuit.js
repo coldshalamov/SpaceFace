@@ -16,6 +16,8 @@ import { SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
 import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
+import { WEAPONS } from '../data/weapons.js';
+import { SWARM_ROOM_LEGENDARIES } from '../data/swarmDraft.js';
 import { buildSlotList, fits, outfitBudgetBlocker } from './ships.js';
 
 export { SURVIVAL_BOSS_CIRCUIT, SURVIVAL_BOSS_CIRCUIT_LENGTH, SURVIVAL_LIVE_CIRCUIT_ARENAS };
@@ -63,6 +65,41 @@ export const CIRCUIT_EVENT = Object.freeze({
   label: 'Derelict signal',
   line: 'A derelict is broadcasting — salvage it or leave it.',
   salvageCost: 30,
+});
+
+/**
+ * Service stops sit beside the rooms. They are not arenas and they do not field a wave.
+ * Repair's cost is the armory weld price. Treasure's price is the legendary it sells.
+ */
+export const CIRCUIT_SERVICES = Object.freeze([
+  Object.freeze({
+    id: 'armory',
+    label: 'Armory',
+    line: 'Open the bench for this stage. Leave it and the wave is skipped.',
+  }),
+  Object.freeze({
+    id: 'repair',
+    label: 'Repair dock',
+    line: 'Top the hull for run credits. No wave is fought here.',
+    cost: 40,
+  }),
+  Object.freeze({
+    id: 'treasure',
+    label: 'Treasure',
+    line: 'Buy one seeded room legendary for its purse. No wave is fought here.',
+  }),
+]);
+
+/**
+ * SEED-SW-34 — the mystery box is a stage offer whose stage still fights: picking it commits
+ * an ordinary room where the run already stands and puts one sealed card on the service
+ * counter. The card's pull is seeded by run seed + stage, like every draft.
+ */
+export const CIRCUIT_MYSTERY = Object.freeze({
+  id: 'mystery_box',
+  label: 'Mystery box',
+  line: 'A sealed crate. Buy it and take one fitting the hull can mount; refuse and the stage fights anyway.',
+  cost: 40,
 });
 export const CIRCUIT_NODE_COUNT = 3;
 export const CIRCUIT_CORE_COUNT = 4;
@@ -218,9 +255,16 @@ export function circuitRecordIdentity(raw) {
     if (!isPlainObject(entry) || entry.stage !== stage) return null;
     if (stage === 1) {
       if (entry.arenaId !== raw.startArenaId || entry.nodeId !== raw.startArenaId) return null;
+    } else if (entry.nodeKind === 'service') {
+      const known = CIRCUIT_SERVICES.some((svc) => svc.id === entry.nodeId && entry.arenaId === entry.nodeId);
+      if (!known) return null;
+    } else if (entry.nodeId === CIRCUIT_MYSTERY.id) {
+      // The box stop keeps an ordinary room's arena; only its node is the crate.
+      if (typeof entry.arenaId !== 'string' || circuitArenaLabel(entry.arenaId) == null) return null;
     } else if (!CIRCUIT_DESTINATIONS[stage].some(dest =>
       dest.arenaId === entry.arenaId && dest.nodeId === entry.nodeId)) return null;
     const row = { stage, arenaId: entry.arenaId, nodeId: entry.nodeId };
+    if (entry.nodeKind === 'service') row.nodeKind = 'service';
     if (entry.fight === 'elite' || entry.fight === 'challenge') row.fight = entry.fight;
     route.push(row);
   }
@@ -246,6 +290,7 @@ export function normalizeCircuitState(raw) {
   } else if (clearedStages !== CIRCUIT_STAGE_COUNT || route.length !== CIRCUIT_STAGE_COUNT
     || raw.wonAtWave !== CIRCUIT_TOTAL_ROUNDS) return null;
   const card = circuitCardOf(raw, status, clearedStages);
+  const service = circuitServiceOf(raw, status, clearedStages);
   return {
     ...identity,
     clearedStages,
@@ -253,7 +298,17 @@ export function normalizeCircuitState(raw) {
     status,
     wonAtWave: raw.wonAtWave ?? null,
     ...(card ? { card } : {}),
+    ...(service ? { service } : {}),
   };
+}
+
+/** An open bench is only legal on the route it was offered for. */
+function circuitServiceOf(raw, status, clearedStages) {
+  if (status !== 'route' || !isPlainObject(raw.service)) return null;
+  const stage = clearedStages + 1;
+  const known = CIRCUIT_SERVICES.some((svc) => svc.id === raw.service.id);
+  if (!known || raw.service.stage !== stage) return null;
+  return { id: raw.service.id, stage };
 }
 
 /** A derelict card is only legal while the route is still owed. Anything else is stripped. */
@@ -348,6 +403,11 @@ export function circuitChoiceId(kind, { arenaId = null, wave = 0, revision = 1, 
   if (kind === 'event' || kind === 'salvage' || kind === 'leave') {
     return `circuit_${kind}_${CIRCUIT_EVENT.id}_w${w}_r${rev}`;
   }
+  if (kind === 'mystery') return `circuit_mystery_${CIRCUIT_MYSTERY.id}_w${w}_r${rev}`;
+  if (kind === 'service_done') return `circuit_service_done_w${w}_r${rev}`;
+  if (kind === 'service' && typeof arenaId === 'string' && arenaId) {
+    return `circuit_service_${arenaId}_w${w}_r${rev}`;
+  }
   if (kind === 'route' && typeof arenaId === 'string' && arenaId) {
     const suffix = fight === 'elite' || fight === 'challenge' ? `_${fight}` : '';
     return `circuit_route_${arenaId}${suffix}_w${w}_r${rev}`;
@@ -371,6 +431,30 @@ export function parseCircuitChoiceId(id) {
   const simple = /^circuit_(start|finish|overtime)_w(\d+)_r(\d+)$/.exec(id);
   if (simple) {
     return { kind: simple[1], arenaId: null, wave: Number(simple[2]), revision: Number(simple[3]) };
+  }
+  const mystery = /^circuit_mystery_([a-z0-9_]+)_w(\d+)_r(\d+)$/.exec(id);
+  if (mystery && mystery[1] === CIRCUIT_MYSTERY.id) {
+    return {
+      kind: 'mystery',
+      arenaId: null,
+      nodeId: mystery[1],
+      wave: Number(mystery[2]),
+      revision: Number(mystery[3]),
+    };
+  }
+  const done = /^circuit_service_done_w(\d+)_r(\d+)$/.exec(id);
+  if (done) {
+    return { kind: 'service_done', arenaId: null, wave: Number(done[1]), revision: Number(done[2]) };
+  }
+  const service = /^circuit_service_([a-z0-9_]+)_w(\d+)_r(\d+)$/.exec(id);
+  if (service && CIRCUIT_SERVICES.some((svc) => svc.id === service[1])) {
+    return {
+      kind: 'service',
+      arenaId: null,
+      serviceId: service[1],
+      wave: Number(service[2]),
+      revision: Number(service[3]),
+    };
   }
   const card = /^circuit_(event|salvage|leave)_([a-z0-9_]+)_w(\d+)_r(\d+)$/.exec(id);
   if (card && card[2] === CIRCUIT_EVENT.id) {
@@ -424,6 +508,29 @@ const CIRCUIT_SALVAGE_MODULES = Object.freeze([...MODULES]
  * The one fitting salvage will bolt on, or null when the hull has no open legal slot.
  * Same slot order and fit rule the armory uses. Deterministic: modules are sorted by id.
  */
+/**
+ * One legal room legendary for this stage, from the run seed. Null when every one is already
+ * owned or still gated. The order is the catalog order, so the same seed always pays the same row.
+ */
+export function circuitTreasurePick(seed, stage, wave, ownedIds = []) {
+  const owned = new Set(Array.isArray(ownedIds) ? ownedIds : []);
+  const legal = SWARM_ROOM_LEGENDARIES.filter((entry) => entry
+    && typeof entry.id === 'string'
+    && Number.isInteger(entry.fromWave)
+    && Number.isInteger(wave) && wave >= entry.fromWave
+    && !owned.has(entry.id)
+    && Number.isFinite(entry.price) && entry.price > 0);
+  if (legal.length === 0) return null;
+  const n = Math.abs(Math.trunc(Number(seed) || 0) + (Number.isInteger(stage) ? stage : 0) * 17);
+  const entry = legal[n % legal.length];
+  return {
+    id: entry.id,
+    offerId: entry.offerId,
+    name: entry.name,
+    price: entry.price,
+  };
+}
+
 export function circuitSalvageOffer(state) {
   const player = state && state.player;
   const ownedShips = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
@@ -447,6 +554,45 @@ export function circuitSalvageOffer(state) {
     }
   }
   return null;
+}
+
+/**
+ * SEED-SW-34 — the sealed crate's pull: one module or weapon the active hull can legally mount
+ * right now, chosen deterministically from the run seed and the stage. Same `fits` and capacity
+ * rules the armory's own rows use, so the box can never sell a fit the bench would refuse.
+ * Null when no slot is open and legal — the buyer is refunded, never charged for air.
+ */
+const CIRCUIT_MYSTERY_MODULES = Object.freeze([...MODULES, ...WEAPONS]
+  .filter((def) => def && typeof def.id === 'string' && !def.intrinsicHull && !def.swarmEarned
+    && !def.requiresTech && !def.exclusivity)
+  .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)));
+
+export function circuitMysteryOffer(state, seed, stage) {
+  const player = state && state.player;
+  const ownedShips = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const index = Number.isInteger(player && player.activeShipIndex) ? player.activeShipIndex : 0;
+  const owned = ownedShips[index];
+  if (!owned || typeof owned.defId !== 'string') return null;
+  const shipDef = CIRCUIT_SHIP_BY_ID.get(owned.defId);
+  if (!shipDef) return null;
+  const slots = buildSlotList(shipDef);
+  const fittings = Array.isArray(owned.fittings) ? owned.fittings.slice() : [];
+  while (fittings.length < slots.length) fittings.push(null);
+  const candidates = [];
+  for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
+    if (fittings[slotIndex]) continue;
+    const slot = slots[slotIndex];
+    for (const def of CIRCUIT_MYSTERY_MODULES) {
+      if (!fits(slot, def)) continue;
+      const prospective = fittings.slice();
+      prospective[slotIndex] = def.id;
+      if (outfitBudgetBlocker(shipDef, prospective)) continue;
+      candidates.push({ defId: def.id, slotIndex, name: def.name || def.id });
+    }
+  }
+  if (candidates.length === 0) return null;
+  const n = Math.abs(Math.trunc(Number(seed) || 0) + (Number.isInteger(stage) ? stage : 0) * 31);
+  return candidates[n % candidates.length];
 }
 
 /**
@@ -480,6 +626,19 @@ export function circuitChoicesFor(run) {
     if (circuit.card && circuit.card.id === CIRCUIT_EVENT.id) {
       return circuitEventAnswers(nextStage, wave, revision);
     }
+    if (circuit.service && circuit.service.id === 'armory') {
+      return [{
+        id: circuitChoiceId('service_done', { wave, revision }),
+        kind: 'service_done',
+        stage: circuit.service.stage,
+        arenaId: null,
+        fight: null,
+        label: 'Leave the bench',
+        line: 'The shopping stands. This stage is skipped — no wave.',
+        wave,
+        revision,
+      }];
+    }
     const destinations = CIRCUIT_DESTINATIONS[nextStage] || [];
     const rooms = destinations.flatMap((dest) => {
       const ordinary = {
@@ -506,7 +665,7 @@ export function circuitChoicesFor(run) {
         };
       })];
     });
-    return rooms.concat([{
+    const event = {
       id: circuitChoiceId('event', { wave, revision }),
       kind: 'event',
       stage: nextStage,
@@ -516,7 +675,36 @@ export function circuitChoicesFor(run) {
       line: CIRCUIT_EVENT.line,
       wave,
       revision,
-    }]);
+    };
+    const services = CIRCUIT_SERVICES.map((svc) => ({
+      id: circuitChoiceId('service', { arenaId: svc.id, wave, revision }),
+      kind: 'service',
+      serviceId: svc.id,
+      stage: nextStage,
+      arenaId: null,
+      fight: null,
+      label: svc.label,
+      line: svc.line,
+      wave,
+      revision,
+    }));
+    // SEED-SW-34 — the box travels as an ordinary route pick: committing it sets the stage's
+    // room to where the run already stands and records the stop on the route. The sealed card
+    // it sells rides the armory's own counter.
+    const mystery = {
+      id: circuitChoiceId('mystery', { wave, revision }),
+      kind: 'route',
+      node: 'mystery',
+      stage: nextStage,
+      arenaId: typeof run.arenaId === 'string' && run.arenaId ? run.arenaId : circuit.startArenaId,
+      nodeId: CIRCUIT_MYSTERY.id,
+      fight: null,
+      label: CIRCUIT_MYSTERY.label,
+      line: CIRCUIT_MYSTERY.line,
+      wave,
+      revision,
+    };
+    return rooms.concat([event], services, [mystery]);
   }
   if (circuit.status === 'finale') {
     return [
@@ -546,6 +734,16 @@ export function circuitChoicesFor(run) {
 }
 
 /**
+ * The stop a route entry recorded, when it is a service and not a room.
+ * Ordinary destinations carry their arenaId as nodeId and return null.
+ */
+export function circuitNodeFor(nodeId) {
+  if (typeof nodeId !== 'string' || !nodeId) return null;
+  if (nodeId === CIRCUIT_MYSTERY.id) return CIRCUIT_MYSTERY;
+  return CIRCUIT_SERVICES.find((svc) => svc.id === nodeId) || null;
+}
+
+/**
  * The route as four stage positions with completed/current/future state, plus the finale and
  * overtime flags. Null for ordinary Swarm. Pure.
  */
@@ -563,11 +761,12 @@ export function circuitRouteView(run) {
     else if (circuit.status === 'finale' || circuit.status === 'overtime' || circuit.status === 'completed') status = 'complete';
     const bossId = CIRCUIT_BOSS_SEQUENCE[stage - 1] || null;
     const boss = circuitBossFor(bossId);
+    const node = entry ? circuitNodeFor(entry.nodeId) : null;
     stages.push({
       stage,
       arenaId,
-      label: arenaId ? circuitArenaLabel(arenaId) : '—',
-      line: arenaId ? circuitArenaLine(arenaId) : null,
+      label: node ? node.label : (arenaId ? circuitArenaLabel(arenaId) : '—'),
+      line: node ? node.line : (arenaId ? circuitArenaLine(arenaId) : null),
       status: status === 'complete' && stage > circuit.clearedStages ? 'complete' : status,
       boss: boss ? { id: boss.id, label: boss.label, line: boss.line } : null,
     });

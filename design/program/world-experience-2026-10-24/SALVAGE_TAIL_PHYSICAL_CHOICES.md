@@ -1,3 +1,36 @@
+# Salvage Tail: finite cargo custody and captured-hull control
+
+## Current increment
+The authored Shadow/Bait scene now opts into the existing finite freight-custody owner without allowing that owner to replace authored pursuit before a real spill. Drive disable or death opens the existing original-manifest ledger and real recoverable pods. Original quantity is conserved through carrier cargo, player/NPC pickup, station recovery, delivery, loss and still-live pods. No second cargo writer or new Save schema is introduced.
+
+An early spill replaces the same decision key with a truthful choiceless cargo-custody wait, once; stale keys cannot commit an old Shadow/Bait choice. Scene settlement waits for the finite ledger instead of treating a spawned pod as an instant receipt. Terminal grades, once-only standing changes and the defended320/+7 path remain guarded. Cargo recovery does not restore the destroyed hauler or invent a defended story completion.
+
+Capturing the intact Mule preserves its remaining cargo. Capturing a recovering thief keeps unrelated owned cargo intact while the original secured freight returns to the existing finite custody path rather than being duplicated into vessel inventory. Restored recovery/escape records reacquire only their actual canonical owner's control lease. A player-owned hull is excluded from NPC pickup/escape.
+
+## Control ownership and commit ordering
+A bounded opaque activity lease in aiPorts binds actor reference, occupant generation, body, AI/activity and current lease identity. Only accepted maneuvers associated with that lease use existing owned physics receipts. Cancellation removes only matching pending/held entries and its own still-valid receipt; later foreign writes, impulses and physical coasting are preserved. Stale tagged entries copied into a flush are dropped rather than falling back to an unowned write. Ordinary untagged requests and O12 replay retain their existing path.
+
+The encounter owner snapshots its exact current freight lease before admission. Release occurs after successful ownership commit but before synchronous ship:captured subscribers; full transfer releases after cargo-swap success before ship:controlChanging. Failed and duplicate operations do not clear successor control. AI fields are cleared only when the exact recorded AI/activity remains; no global shutdown of owned-fleet AI, neutral teleport or copied private physics stamp.
+
+Open PR470/474 insert guards around the unchanged maneuver write site. Those guard semantics remain before the narrow leased-write wrapper; neither foreign branch is absorbed. Director PR515 lifecycle/restore routing and PR569 cadence hunks remain outside this patch.
+
+The final loss receipt neutrally points to the custody report, not a claim that all surviving freight is still spillage. This text-only correction produced scenebe3278fb and passed14/14 focused checks; the four shared runtime hashes remain unchanged.
+
+## Qualification and honest limits
+-14 focused Tail cases,9 focused finite-custody cases,10 activity-lease scenarios, one narrow actual transfer-API probe, four native capture/Save scenarios, and all seven existing native choice scenarios passed locally on an explicitly mixed dependency graph. The existing32 stock freight-custody cases also passed separately. These component counts are not a single full-current-checkout run.
+- Native capture routes use actual flight/physics, real proximity pickup, actual admitCapturedVessel through a narrow owner adapter, and real serialize/JSON/load. The component encounter is forced; drive disable is injected. Explicitly queued maneuver requests test cancellation. This is not ordinary played combat, a capture gesture, natural arrival, full ambient-sector, GPU/browser or performance acceptance.
+- Intact-Mule, physical-thief, restored-recovery and restored-escape cases preserve one owned hull and unrelated cargo, finite quantities and no premature reward. Capture subscribers serialize only after owned activity has been released. The separate full-transfer probe tests commit ordering with an injected cleanup adapter, not the entire authored capture route.
+- The old seven-scenario fixture initially failed its lost-Continue expectation of zero active records. With finite custody enabled, one conserved open record is intentional. The updated test requires no premature loss payment, advances actual ticks to the deadline, checks exactly one hauler_lost/-3, and checks a second terminal Save/load cannot replay it. The real Shadow/Bait pilot scenarios remain; terminal lethal-damage setup remains an injected combat-kernel qualification, not an ordinary victory claim.
+- Earlier hybrid observations identified stale queued NPC thrust after capture and inherited activity across Save. The bounded lease and pre-event commit hooks directly cover those failures. Source reconstruction is byte-pinned; historical tests are not silently relabeled current.
+
+## Hosted gate and publication
+The existing reachable check:salvage-tail-choices leaf now executes14 focused +9 custody tests and four standalone files, expected **27 TAP tests**, with internal native/API scenario counts kept distinct. Existing command relative order, classifications, workflows and prerequisites are unchanged. No local aggregate was run.
+
+Hosted qualification of this increment is pending. Previous headbc2cad passed14/14 TAP on run40109453670, but broader CI ended failure16:29:41 UTC and browser3 was cancelled. That result excludes this custody increment. Fresh public master is reconciled as the second parent of this successor, preserving landed factory fixes and all newer work; no master merge or deployment.
+
+## Historical physical-choice increment
+The material below describes the prior choice-only source and its original qualification. Its old unfinished-loss Save behavior is superseded by the finite custody contract above.
+
 # Salvage Tail: choices that alter the encounter
 
 ## Scope and retained stakes

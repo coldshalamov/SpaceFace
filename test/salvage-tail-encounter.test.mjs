@@ -264,11 +264,12 @@ test('salvage tail: terminal effects resist synchronous re-entry', () => {
 test('salvage tail: dead hauler without flight intent still waits for finite cargo custody', () => {
   const t = boot(), rows = record(t), l = liveOf(t, fire(t, 'custody').encounterId);
   const h = t.director.entsOf(l, 'hauler')[0];
-  l.data.freightCargoCustody = { terminal: false };
   h.alive = false; delete h.data.intent;
+  t.bus.emit('entity:killed', { id: h.id, killerId: t.director.entsOf(l, 'raider')[0].id, type: 'ship', pos: { ...h.pos } });
+  assert.ok(l.data.freightCargoCustody.pods.length > 0, 'the real custody owner opens a finite spill');
   for (let i = 0; i < 120; i++) t.sim.step();
   assert.equal(countOf(rows, 'encounter:resolved'), 0);
-  l.data.freightCargoCustody.terminal = true;
+  t.state.simTime = l.data.freightCargoCustody.deadlineAt + 1;
   for (let i = 0; i < 120; i++) t.sim.step();
   assert.equal(countOf(rows, 'encounter:resolved', 'hauler_lost'), 1);
   assert.equal(countOf(rows, 'faction:repDelta'), 1);
@@ -323,4 +324,15 @@ test('salvage tail: reused occupant cleanup leaves successor packets and holds u
     assert.deepEqual(packet, before, changed);
     assert.equal(r.data.ai.arrivalHoldUntil, hold, changed);
   }
+});
+
+test('salvage tail: an early finite spill retires unanswered choices in the real prompt adapter',()=>{
+ const prior=getPromptDeck(),cards=new Map();
+ setPromptDeck({offerDecision(spec){cards.set(spec.id,{...cards.get(spec.id),...spec});return true;},resolveDecision(id){return cards.delete(id);}});
+ const t=boot(),ui=createEncounterChoicePrompt({bus:t.bus});
+ try{
+ const l=liveOf(t,fire(t,'early-spill-ui').encounterId),key='encounter:'+l.id;assert.equal(cards.get(key).choices.length,3);
+ const mule=t.director.entsOf(l,'hauler')[0];mule.alive=false;t.bus.emit('entity:killed',{id:mule.id,killerId:t.director.entsOf(l,'raider')[0].id,type:'ship',pos:{...mule.pos}});
+ t.sim.runTicks(61);assert.ok(l.data.freightCargoCustody);assert.equal(cards.size,1);assert.deepEqual(cards.get(key).choices,[]);assert.equal(cards.get(key).deadlineAt,l.data.freightCargoCustody.deadlineAt);assert.equal(routeDigit([{...cards.get(key),seq:1}],key,'Digit1'),null);
+ }finally{ui.destroy();setPromptDeck(prior);}
 });
