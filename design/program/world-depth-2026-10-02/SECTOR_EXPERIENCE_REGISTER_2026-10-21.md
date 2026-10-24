@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Handoff Save qualification and next shipment: 2026-10-24 07:17 UTC
+
+Handoff now has published actual save/load and ordinary-pickup coverage in PR568 `34bc233d`. The hosted native gate passes 13/13, including the 60-credit wallet, original pod 4 accepted quantity 2 and no post-pickup resurrection after another save/load. Local 64 focused/13 native checks pass. This is bounded published-test evidence, not browser Continue, natural admission or full-scene acceptance.
+
+The next connected experience is Tethys checkpoint-day shipment custody. Its existing authored six units must remain distributed 3+3 rather than be reduced; public causal-chain source and Tethys data/tests are the assigned lane, with independent review. Source recovery is underway, so no finite-custody implementation or exploit finding is claimed yet. Existing traffic/director owners remain protected. The current checkpoint records CI and unchanged approval/recovery holds; all twelve goals stay OPEN.
+
 ## Clear launch delivered: 2026-10-24 06:53 UTC
 
 Handoff's four original cargo pods now launch clear of measured native hulls at eight bearings: an 80-WU actor gap, 22 + 8i axial offsets and at most 2 WU perpendicular jitter replace the overlapping placement. PR568 `b7483b10` publishes the six-path follow-up. Hold bonds at 6.10 seconds, then completes physical NPC receipt at 8.1167; pass completes at 14.1167 without reward. The narration now describes actual holding rather than nose-to-nose placement. Local 63/63 and native 12/12 pass.

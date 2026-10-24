@@ -1,5 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 
+## Handoff Save qualification and next shipment: 2026-10-24 07:17 UTC
+
+All twelve goals remain OPEN. PR568 `34bc233d` now publishes the five-path Save/copy follow-up; exact-head hosted native 13/13 qualifies actual save/load and pickup without resurrection, but not browser Continue or full-game acceptance. See the current checkpoint for the active CI qualifications.
+
+Next executable work is the assigned Tethys finite-shipment unit, preserving the authored six-unit 3+3 distribution, with independent review and no implementation result claimed yet. Additional persistence-owner paths require coordination. Integration absorption and browser approval holds remain separate and pending; reminders grant neither. Archive's two compact outputs are recoverably absent locally, not lost, and its remote delivery block remains open. Both schedules are unchanged.
+
 ## Clear launch delivered: 2026-10-24 06:53 UTC
 
 All twelve goals remain OPEN. PR568's clear-launch follow-up is published at `b7483b10139be75170258638c97c1aa714645a08`; local 63/63 and native 12/12 qualify measured-hull launch clearance, not full current-tree, Save, live-camera or whole-game acceptance. The current checkpoint and `HANDOFF_CLEAR_LAUNCH.md` hold the detailed evidence.

@@ -1,5 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
+## Handoff Save qualification and next shipment: 2026-10-24 07:17 UTC
+
+PR568 is verified open draft at `34bc233d3d44834e37490158d89aaa55b8398699`, following `b7483b10`. Its five-path Save/copy follow-up corrects the missed primary line and adds actual save/load plus ordinary pickup to the existing native gate. Local checks pass 64 focused and 13 native cases. Exact-head hosted native checks pass 13/13, including save/load, wallet 60, original pod 4 accepted quantity 2, and no resurrection after pickup and a subsequent save/load. This establishes execution of the published test, not browser Continue or full-game acceptance.
+
+Run 40072698731 remains publisher-owned and active: static 2 and browser 2/3 were pending at the latest report. Browser 1 has the same failed command set but earlier mission-launch failure and stationLife 404, not identical diagnostics. The prior b748 run was cancelled by its successor; hosted 51/12 passed and compatibility did not run after its prerequisite. No aggregate-green claim is made.
+
+The next connected unit is Tethys checkpoint-day finite shipment custody, preserving its explicitly authored six-unit 3+3 distribution. The assigned source owner and independent reviewer are recovering public source before implementation. Scope is `trafficCausalChainOps.js`, Tethys data/comments and targeted tests; no dirty traffic.js or shared-director edits, and any additional persistence-owner path needs coordination. This is not a proven-exploit claim, a nerf or a new scene.
+
+Both derived compact Archive outputs are intentionally absent after verified recoverable eviction; retain and use the original archive plus successor source, tests, manifest and restore script to regenerate them before local use. The remote publication block is unchanged. All twelve goals remain OPEN, the integration-absorption approval and separate browser hold remain pending, and routine reminders are not approval. Both continuation schedules are unchanged.
+
 ## Clear launch delivered: 2026-10-24 06:53 UTC
 
 PR568 is open draft at `b7483b10139be75170258638c97c1aa714645a08`, following `60c65426`. Its six-path clear-launch follow-up preserves the same four original pods while using an 80-WU actor gap, 22 + 8i axial offsets and at most 2 WU perpendicular jitter. Actual public measured native hulls clear eight bearings and first-second hold/pass checks. Independent local checks passed 63/63 plus native 12/12; the old baseline recorded 32 directed contacts, 30 negative gaps and a minimum gap of -2.1773968 WU. Hold bonds at 6.10 seconds and finishes at 8.1167; pass finishes at 14.1167 without reward. See `HANDOFF_CLEAR_LAUNCH.md` and its native evidence for the full record.
