@@ -128,7 +128,9 @@ test('production init + update order lengths match the live browser baseline', (
   // drone at Shepherd's Ring queues station-keeping impulses on the table clock.
   // (0a59973d4e also swept in uncommitted industrial/shipbreaking/salvage-outfit wiring
   // whose modules are not on master; that was dropped, so those owners are not counted.)
-  assert.equal(PRODUCTION_INIT_ORDER.length, 232);
+  // 232 -> 233 init: W-CAST-HANDS (row 542) registers wexTicket — the smell ticket at Helios
+  // Bay 7 is event-driven (sector sync + pickup:collected), so it never ticks.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 233);
   assert.equal(PRODUCTION_UPDATE_ORDER.length, 180);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
