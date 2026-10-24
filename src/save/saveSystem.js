@@ -1,3 +1,4 @@
+import { HUNDRED_HAND_MILE, HUNDRED_HAND_SAVE_KEYS, pristineHundredHandSaveSection, validHundredHandSaveSection, validateHundredHandSaveData, hundredHandCandidateEnabled } from '../data/hundredHandMile.js';
 import { validateNativeAttestationTables, compactNativeAttestationTables } from './nativeAttestationTables.js';
 import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
 // save system (ARCHITECTURE §4.5 + design/specs/11). Owns serialization: assembles a versioned
@@ -537,11 +538,13 @@ export const save = {
     // Registered during system init, before main installs its new-game bootstrap listener, so old
     // run work is invalidated synchronously at the route boundary.
     bus.on('game:new', (opts) => {
+      this._mileImportedKeys = new Set();
       this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
       this._epochOpenedByNew = true;
       this._beginRunEpoch('game:new');
     });
     bus.on('game:newGame', (opts) => {
+      this._mileImportedKeys = new Set();
       // Public New Game already opened the epoch on `game:new`. The live route now also emits
       // the legacy `game:newGame` alias so VFX/title listeners reset; a second bump would
       // orphan the autosave generation started by `game:new`.
@@ -889,7 +892,7 @@ export const save = {
       ['ruckus', () => this._callSerialize('ruckus') || {}],
       ['ruud', () => this._callSerialize('ruud') || {}],
       ['docket', () => this._callSerialize('docket') || {}],
-      ['salvage', () => this._callSerialize('salvage') || {}],
+      ['salvage', () => this._serializeMileSalvage()],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
       // stripped pod re-promotes as a live one.
@@ -968,6 +971,7 @@ export const save = {
       ['palletJack', () => this._callSerialize('palletJack')],
       ['secondRinse', () => this._callSerialize('secondRinse')],
       ['towlineTable', () => this._callSerialize('towlineTable')],
+      ...HUNDRED_HAND_SAVE_KEYS.map(key => [key, () => this._serializeMileOptional(key)]),
       ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
       ['provenance', () => this._serializeBoundedMemory('provenance')],
@@ -1018,6 +1022,30 @@ export const save = {
   },
 
   /** Build the `data` payload (plain JSON, deps-first key order). No mesh/THREE/Map/fn/Infinity. */
+  _serializeMileSalvage() {
+    this.registry?.get?.('hundredHandMileWorld')?.prepareSaveSnapshot?.();
+    const source = this.state.salvage;
+    if (!validateHundredHandSaveData({ salvage: source })) throw new Error('invalid_mile_source_custody');
+    const hasMile = Object.keys(source?.sources || {}).some(k => ['power', 'guide'].some(role => k === `salvage-point:${HUNDRED_HAND_MILE.siteId}:${role}-original`));
+    if (!hasMile) return this._callSerialize('salvage') || {};
+    const owner = this.registry?.get?.('salvage');
+    if (typeof owner?.serialize !== 'function') throw new Error('missing_mile_source_owner');
+    return owner.serialize();
+  },
+
+  _serializeMileOptional(key) {
+    const owner = this.registry?.get?.(key);
+    if (!owner) {
+      if (this._mileImportedKeys?.has(key)) throw new Error('missing_mile_custody_owner');
+      return undefined;
+    }
+    if (typeof owner.serialize !== 'function') throw new Error('missing_mile_serializer');
+    // Unlike the generic compatibility helper, custody errors cannot become absence.
+    const row = owner.serialize();
+    if (!validHundredHandSaveSection(key, row)) throw new Error('invalid_mile_custody');
+    return !this._mileImportedKeys?.has(key) && pristineHundredHandSaveSection(key, row) ? undefined : row;
+  },
+
   _serializeNativePhysics() {
     const nativePhysics = this._callSerialize('physics');
     if (nativePhysics == null) return nativePhysics;
@@ -1053,7 +1081,7 @@ export const save = {
     data.ruckus = this._callSerialize('ruckus') || {};
     data.ruud = this._callSerialize('ruud') || {};
     data.docket = this._callSerialize('docket') || {};
-    data.salvage = this._callSerialize('salvage') || {};
+    data.salvage = this._serializeMileSalvage();
     yield 'serialize:salvage';
     data.survivorPod = this._callSerialize('survivorPod') || {};
     yield 'serialize:survivorPod';
@@ -1160,6 +1188,11 @@ export const save = {
     yield 'serialize:secondRinse';
     data.towlineTable = this._callSerialize('towlineTable');
     yield 'serialize:towlineTable';
+    for (const key of HUNDRED_HAND_SAVE_KEYS) {
+      const row = this._serializeMileOptional(key);
+      if (row !== undefined) data[key] = row;
+      yield `serialize:${key}`;
+    }
     data.borrowedVoice = this._callSerialize('borrowedVoice');
     yield 'serialize:borrowedVoice';
     yield 'serialize:enemyMind';
@@ -1219,6 +1252,7 @@ export const save = {
     // H9: authoritative RNG continuation (seed + draw position). Restore must not reseed to zero.
     data.entropy = this._serializeEntropy();
     yield 'serialize:entropy';
+    if (!validateHundredHandSaveData(data)) throw new Error('invalid_mile_custody');
     return data;
   },
 
@@ -1381,6 +1415,12 @@ export const save = {
     const c = this.state.player.cargo || {};
     const out = { items: clonePlain(c.items || {}), capVolume: c.capVolume, capMass: c.capMass };
     if (Array.isArray(c.richLots) && c.richLots.length) out.richLots = clonePlain(c.richLots);
+    if (!validateHundredHandSaveData({ cargo: c })) throw new Error('invalid_mile_cargo_custody');
+    const cargoOwner = this.registry?.get?.('cargo');
+    if (c.hundredHandContributions?.length && typeof cargoOwner?.serializeHundredHandContributions !== 'function')
+      throw new Error('missing_mile_cargo_owner');
+    const contributions = cargoOwner?.serializeHundredHandContributions?.();
+    if (contributions?.length) out.hundredHandContributions = contributions;
     // Hull-burst overhaul slice D: the salvage bay rides the cargo record as an OPTIONAL key (absent = empty), so old
     // saves load unchanged and a save without one is byte-identical to before.
     const bay = this.state.player.salvageBay;
@@ -1546,6 +1586,7 @@ export const save = {
     if (settings && settings.gameplay && Object.prototype.hasOwnProperty.call(settings.gameplay, 'runtimeProfile')) {
       delete settings.gameplay.runtimeProfile;
     }
+    if (settings?.gameplay) delete settings.gameplay.hundredHandMileCandidate;
     stampIronmanLatch(settings, this.state && this.state.simTime);
     return settings;
   },
@@ -1559,6 +1600,7 @@ export const save = {
       migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
     ));
     if (!profile) return false;
+    if (profile.gameplay) delete profile.gameplay.hundredHandMileCandidate;
     this.state.settings = sanitizeRestoredSettings(mergePlain(this.state.settings, profile));
     return true;
   },
@@ -3867,13 +3909,15 @@ export const save = {
         }
         capture.index++;
         const serializerStarted = workNowMs();
-        capture.data[key] = read();
+        const captured = read();
+        if (!HUNDRED_HAND_SAVE_KEYS.includes(key) || captured !== undefined) capture.data[key] = captured;
         const serializerMs = workNowMs() - serializerStarted;
         capture.serializerTimings.push({ key, ms: serializerMs });
         if (serializerMs > AUTOSAVE_HARD_SLICE_MS && !capture.slowSerializer) {
           capture.slowSerializer = key;
         }
       }
+      if (!validateHundredHandSaveData(capture.data)) throw new Error('invalid_mile_custody');
     } catch (error) {
       capture.captureEndedAtMs = workNowMs();
       console.error('[save] autosave capture failed', error);
@@ -6775,6 +6819,8 @@ export const save = {
       this._callDeserialize('secondRinse', data.secondRinse);
       yield 'second-rinse-restored';
       this._callDeserialize('towlineTable', data.towlineTable);
+      this._mileImportedKeys = new Set(HUNDRED_HAND_SAVE_KEYS.filter(key => Object.hasOwn(data, key)));
+      for (const key of HUNDRED_HAND_SAVE_KEYS) this._callDeserialize(key, data[key]);
       yield 'towline-table-restored';
       this._callDeserialize('borrowedVoice', data.borrowedVoice);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
@@ -6924,6 +6970,7 @@ export const save = {
       this.registry.get('secondRinse')?.afterContinue?.();
       yield 'after-continue-secondRinse';
       this.registry.get('towlineTable')?.afterContinue?.();
+      for (const key of HUNDRED_HAND_SAVE_KEYS) this.registry.get(key)?.afterContinue?.();
       yield 'after-continue-towlineTable';
       this.registry.get('borrowedVoice')?.afterContinue?.();
       yield 'after-continue-applied';
@@ -7430,6 +7477,7 @@ export const save = {
 
   _restoreCargo(c) {
     const cargo = this.state.player.cargo;
+    this.registry?.get?.('cargo')?.restoreHundredHandContributions?.(c?.hundredHandContributions);
     if (!c) return;
     cargo.items = c.items || {};
     if (typeof c.capVolume === 'number') cargo.capVolume = c.capVolume;
@@ -7789,6 +7837,7 @@ export const save = {
   },
 
   _restoreSettings(d) {
+    const mileCandidate = this.state.settings?.gameplay?.hundredHandMileCandidate;
     if (!d) return;
     // Deep-merge so new nested defaults absent from an old save survive (forward-compat).
     const saveSettings = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
@@ -7831,6 +7880,10 @@ export const save = {
         && restored.accessibility) {
         restored.accessibility.haptics = 'full';
       }
+    }
+    if (restored.gameplay) {
+      delete restored.gameplay.hundredHandMileCandidate;
+      if (typeof mileCandidate === 'boolean') restored.gameplay.hundredHandMileCandidate = mileCandidate;
     }
     this.state.settings = restored;
     // Under the whole-sim lane, state.settings is main-owned and NOT mirrored:
@@ -8001,6 +8054,8 @@ export const save = {
     for (; spawnIndex < end; spawnIndex++) {
       if (spawnIndex > startIndex && nowMs() - sliceStart >= RESTORE_YIELD_SLICE_MS) break;
       const saved = savedList[spawnIndex];
+      if ((saved?.data?.persistenceOwner === 'hundredHandMileWorld' || saved?.data?.hundredHandMileConvoy === true || saved?.data?.hundredHandMileCrew === true)
+        && !hundredHandCandidateEnabled(state)) continue;
       if (!saved || typeof saved !== 'object') continue;
       const spec = clonePlain(saved);
       delete spec._isPlayer;
@@ -8558,6 +8613,7 @@ function hasRestorablePlayer(data) {
 function normalizeRestorableData(data) {
   if (!data || typeof data !== 'object') return { ok: false, reason: 'no_data' };
   if (!hasRestorablePlayer(data)) return { ok: false, reason: 'no_player' };
+  if (!validateHundredHandSaveData(data)) return { ok: false, reason: 'invalid_mile_custody' };
   // Validate the new custody section on the detached candidate, before restore side effects.
   try {
     const orchard = readOrchardSaveSection(data.sites);
