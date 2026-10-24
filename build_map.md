@@ -494,6 +494,10 @@ units; open the door below only when the owner names the campaign.
 - **3D objects look like toys next to real ships** → **§13D** `--id PQ-193` leaves `.03`–`.05`. Bar and
   hitch-collision law: [`design/program/GRAPHICS_3D_CAMPAIGN.md`](./design/program/GRAPHICS_3D_CAMPAIGN.md)
   (operator [`GRAPHICS_3D_GOAL.txt`](./design/program/GRAPHICS_3D_GOAL.txt)). Not `PQ-129`, not a quality cut.
+- **Make it feel real / attention to detail everywhere** → **§1O** — the attention
+  program: law [`design/program/ATTENTION_PROGRAM.md`](./design/program/ATTENTION_PROGRAM.md),
+  units [`design/program/ATTENTION_LEDGER.md`](./design/program/ATTENTION_LEDGER.md).
+  Claim by ledger row; every gate needs 3 consecutive approvals.
 - **Asteroid Works unreadable / undrivable / ugly** → [`design/ASTEROID_WORKS_DESIGN_LAW.md`](./design/ASTEROID_WORKS_DESIGN_LAW.md),
   [`ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md), `--id PQ-130`; the
   procedural stand-ins → [`ASTEROID_WORKS_ART_CAMPAIGN.md`](./design/program/ASTEROID_WORKS_ART_CAMPAIGN.md),
@@ -1183,7 +1187,7 @@ production units, and never build what they write.
 | 539 | W-CULL | The Cull ladder — ten leagues, Ma Sprocket, Clatter (§34.7) | BUILD | OPEN — after 519 and 541 |
 | 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | DONE devin-ten-oct22 (0749dfe36e) |
 | 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | DONE devin-25-oct22 |
-| 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | OPEN — 1/7 wired: Wex smell ticket at Helios Bay 7 (72b4a4f84b) |
+| 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | DONE — 7/7 wired: Wex ticket (72b4a4f84b), Drift moisture (afce9e08c5), Rook booth (37043e0e0d), Kessler scale (e4d6921764), Gate 3 weir Hale+Dree (3a6c76b334), Slate column (25aecdb578) |
 | 543 | W-FACES | Canon, new and culture portrait pools (§34.8) | ART | OPEN |
 | 544 | W-ECONOMY | Economy re-pace — travel ≤50 %, a play-changing purchase every 15–25 minutes, pay by the tonne (§34.9) | BUILD | OPEN |
 | 545 | W-CAMERA | The camera follows the weight (§34.9) | BUILD | OPEN |
@@ -1192,6 +1196,25 @@ production units, and never build what they write.
 | 548 | W-AUDIT | The fifty-point A-list audit, repeated after each phase (§34.9) | FIX | OPEN |
 | 549 | W-RECEIPTS | Receipts within a budget; save migrations; flat save growth (§34.9) | BUILD | DONE devin-25-oct22 |
 | 550 | W-ARSENAL | The arsenal: keep, merge or move ~20 physics tools (`design/expansion/05_ASSET_ROSTER.md` §7.3) (§34.9) | BUILD | OPEN — story-mode table applied 2026-10-22 (7 tools + the concussion bomb carry `retiredInto`, off the shop and research, owned copies keep working; final homes in 05 §7.3); remaining: the Crucible draft (swarm seam) and the Line-head moves (wait on §7.1 heads) |
+
+### O. The attention program — 50x detail pass (owner direction 2026-10-24)
+
+Law: [`design/program/ATTENTION_PROGRAM.md`](design/program/ATTENTION_PROGRAM.md). Units:
+[`design/program/ATTENTION_LEDGER.md`](design/program/ATTENTION_LEDGER.md) — one row per
+player-reachable surface. Each unit runs catalog → three persona drafts → tribunal →
+implement, and every artifact needs three consecutive subagent approvals (the 3× rule).
+Claim rows by editing the ledger, not this table.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 551 | ATT-SEED | Attention program scaffolding: program law + coverage ledger + dossier phase | PLAN | DONE — this section |
+| 552 | ATT-DOSSIER-A | Four evidence dossiers (first hour, audio/feel, world memory, economy/failure) → `design/program/attention/` | ANALYZE | IN PROGRESS — first-hour landed; three running |
+| 553 | ATT-E01 | Onboarding rail + first hour (minutes 0-60): rail texture, tier-0 life, guided beat, ambient traffic (dossier-first-hour directions 1-3,7) | BUILD | OPEN |
+| 554 | ATT-V01 | Comms/bark density: per-sector bark banks so ambient life registers outside the rail | BUILD | OPEN |
+| 555 | ATT-T02 | Station life: named regulars, rumors, overheard plots on the most-docked stations | BUILD | OPEN |
+| 556 | ATT-S13 | Wreck/debris fields: named dead, salvage notes, kill-marks across the wreck surfaces | BUILD | OPEN |
+| 557 | ATT-H01/H02 | Hull markings: stencils and wear on starter hulls; kill tallies and owner names on traffic variants | ART | OPEN |
+| 558 | ATT-E04 | Secrets layer: easter eggs, coded barks, ritual sights that reward poking | BUILD | OPEN |
 
 ### Landed rows index (consolidated 2026-10-15)
 

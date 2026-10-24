@@ -50,7 +50,7 @@ import {
   EVOLUTION_OFFER_KIND,
   evolutionOffersFor,
 } from '../data/survivalEvolutions.js';
-import { CIRCUIT_STAGE_COUNT, circuitChoicesFor, circuitFor, circuitStateError, parseCircuitChoiceId } from './survivalCircuit.js';
+import { CIRCUIT_EVENT, CIRCUIT_STAGE_COUNT, circuitChoicesFor, circuitFor, circuitStateError, parseCircuitChoiceId } from './survivalCircuit.js';
 import {
   runModifierRecord,
   summarizeRunBuild,
@@ -861,9 +861,11 @@ export const survivalDraft = {
         return false;
       }
       if (offerId == null && circuit && (circuit.status === 'route' || circuit.status === 'finale')) {
-        this._notice = circuit.status === 'route'
-          ? 'Choose a destination before launching.'
-          : 'Finish the Circuit or enter Overtime.';
+        this._notice = circuit.card
+          ? CIRCUIT_EVENT.line
+          : circuit.status === 'route'
+            ? 'Choose a destination before launching.'
+            : 'Finish the Circuit or enter Overtime.';
         this._emit('run:draftPickRejected', { wave: run.wave, offerId: null, reason: 'circuit_choice_owed' });
         this._refreshOffers(run);
         return false;
@@ -941,6 +943,31 @@ export const survivalDraft = {
       return;
     }
     if (kind === 'finish') return; // run:endRequested follows; run:ended resets this surface
+    if (kind === 'event') {
+      this._notice = CIRCUIT_EVENT.line;
+      this._refreshOffers(run);
+      return;
+    }
+    if (kind === 'salvage') {
+      const applied = this._applyCircuitSalvage(payload && payload.salvage);
+      if (!applied.ok) {
+        this._emit('run:awardRequested', {
+          credits: CIRCUIT_EVENT.salvageCost,
+          reason: 'circuit_derelict_refund',
+        });
+        this._notice = 'The salvage would not fit. The purse was returned.';
+      } else {
+        const name = payload && payload.salvage && payload.salvage.name;
+        this._notice = `Salvage fitted — ${name || 'a part'}.`;
+      }
+      this._refreshOffers(run);
+      return;
+    }
+    if (kind === 'leave') {
+      this._notice = 'Left the derelict. The stage fight is set.';
+      this._refreshOffers(run);
+      return;
+    }
     const circuit = circuitFor(run);
     this._notice = kind === 'start'
       ? `Circuit entered — stage 1 of ${CIRCUIT_STAGE_COUNT}. Pick a destination after each stage.`
@@ -1866,6 +1893,50 @@ export const survivalDraft = {
       this._emit('run:modifierChosen', resolved);
     }
     this._emit('run:draftResolved', resolved);
+  },
+
+  /**
+   * Bolt the derelict's fitting through the same grant-then-fit the shelf uses.
+   * The card is not a shelf offer, so a stale shelf snapshot does not block it.
+   */
+  _applyCircuitSalvage(offer) {
+    if (!offer || typeof offer.defId !== 'string' || !Number.isInteger(offer.slotIndex)) {
+      return { ok: false, reason: 'no_offer' };
+    }
+    const ships = this._ships();
+    if (!ships || typeof ships.grantModule !== 'function' || typeof ships.fitModule !== 'function') {
+      return { ok: false, reason: 'no_ships_owner' };
+    }
+    const def = MODULE_DEF_BY_ID.get(offer.defId);
+    if (!def) return { ok: false, reason: 'unknown_module' };
+    if (typeof ships.moduleFitBlocker === 'function') {
+      const blocker = ships.moduleFitBlocker({ slotIndex: offer.slotIndex, def });
+      if (blocker) return { ok: false, reason: blocker.reason || 'fit_refused' };
+    }
+    const player = this.state && this.state.player;
+    const inventory = (player && player.moduleInventory) || [];
+    const before = new Set(inventory.map((item) => item && item.instanceId));
+    if (!ships.grantModule({ defId: offer.defId, reason: 'circuit:derelict' })) {
+      return { ok: false, reason: 'grant_refused' };
+    }
+    let instance = null;
+    for (let i = inventory.length - 1; i >= 0; i -= 1) {
+      const item = inventory[i];
+      if (item && item.defId === offer.defId && !before.has(item.instanceId)) {
+        instance = item;
+        break;
+      }
+    }
+    if (!instance || instance.instanceId == null) {
+      this._dropGranted(inventory, before);
+      return { ok: false, reason: 'grant_missing' };
+    }
+    const fitted = ships.fitModule({ slotIndex: offer.slotIndex, instanceId: instance.instanceId });
+    if (!fitted) {
+      this._dropGranted(inventory, before);
+      return { ok: false, reason: 'fit_refused' };
+    }
+    return { ok: true, reason: null };
   },
 
   /**

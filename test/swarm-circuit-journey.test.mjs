@@ -19,6 +19,7 @@ import {
   CIRCUIT_BOSS_SEQUENCE,
   CIRCUIT_DESTINATIONS,
   CIRCUIT_STAGE_COUNT,
+  CIRCUIT_DEFEND_TICKS,
   CIRCUIT_SURVIVE_TICKS,
   CIRCUIT_TOTAL_ROUNDS,
   CIRCUIT_VIEW_AHEAD,
@@ -561,6 +562,63 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.ok(down, 'the kill line is spoken');
       assert.equal(down.payload.priority, NAMED_KILL_PRIORITY, 'the kill line speaks over a line that is already up');
       survivalAnnounce.destroy();
+    } else if (round.kind === 'defend') {
+      const beforeEnds = named(h.emitted, 'run:endRequested').length;
+      const spawned = tickUntil(h, () => [...h.state.entities.values()].some((entity) => entity
+        && entity.alive !== false && entity.data && entity.data.circuitBeacon), 40);
+      assert.ok(spawned, 'the beacon takes the field');
+      const beacon = [...h.state.entities.values()].find((entity) => entity && entity.data
+        && entity.data.circuitBeacon);
+      assert.equal(beacon.collides, true, 'the beacon is a body');
+      assert.ok(beacon.hull > 0 && beacon.hullMax > 0, 'the beacon can be destroyed');
+      assert.notEqual(beacon.physicsBody, false, 'the beacon is not the non-colliding ring mark');
+      const aimed = tickUntil(h, () => [...h.state.entities.values()].some((entity) => entity
+        && entity.alive !== false && entity.data && entity.data.ai
+        && entity.data.ai.focusTargetId === beacon.id), 120);
+      assert.ok(aimed, 'the pack re-aims at the beacon');
+      if (!(h.state.run.credits > 0)) {
+        h.bus.emit('run:awardRequested', { credits: 80, reason: 'circuit_purse' });
+      }
+      const creditsBefore = h.state.run.credits;
+      assert.ok(creditsBefore > 0, 'the purse can be cut');
+      beacon.alive = false;
+      h.state.entities.delete(beacon.id);
+      h.bus.emit('entity:destroyed', { id: beacon.id });
+      step(h, 2);
+      const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
+      assert.equal(receipt.completionKind, 'defend');
+      assert.equal(named(h.emitted, 'run:endRequested').length, beforeEnds, 'losing the beacon does not end the run');
+      const spent = named(h.emitted, 'run:spent').at(-1);
+      assert.ok(spent && spent.payload.credits > 0, 'a lost beacon cuts the purse');
+      assert.ok(spent.payload.credits <= creditsBefore);
+      assert.equal(h.state.run.credits, creditsBefore - spent.payload.credits);
+    } else if (round.kind === 'escort') {
+      const beforeEnds = named(h.emitted, 'run:endRequested').length;
+      const spawned = tickUntil(h, () => [...h.state.entities.values()].some((entity) => entity
+        && entity.alive !== false && entity.data && entity.data.circuitEscort), 40);
+      assert.ok(spawned, 'the freighter takes the field');
+      const freight = [...h.state.entities.values()].find((entity) => entity && entity.data
+        && entity.data.circuitEscort);
+      assert.equal(freight.type, 'freighter');
+      assert.notEqual(freight.id, h.player.id, 'the freighter is not the player ship');
+      assert.equal(freight.data.unarmed, true);
+      assert.deepEqual(freight.data.weapons, []);
+      assert.equal(freight.collides, true);
+      assert.ok(freight.hull > 0 && Number.isFinite(freight.hullMax));
+      const laneStart = { x: freight.pos.x, z: freight.pos.z };
+      const fromShip = Math.hypot(laneStart.x - h.player.pos.x, laneStart.z - h.player.pos.z);
+      assert.ok(fromShip >= 80 && fromShip <= 120, 'the lane starts near the ship');
+      const before = clearedCount(h);
+      assert.ok(tickUntil(h, () => clearedCount(h) > before, 500), 'the freighter arrives');
+      const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
+      assert.equal(receipt.completionKind, 'escort');
+      const end = survivalWave._swarm.circuit.laneEnd;
+      assert.ok(Math.hypot(freight.pos.x - end.x, freight.pos.z - end.z) < 1, 'it finished on the lane');
+      const lane = Math.hypot(end.x - laneStart.x, end.z - laneStart.z);
+      assert.ok(lane > 40 && lane < 120, 'the lane stays a short crossing');
+      assert.equal(named(h.emitted, 'run:endRequested').length, beforeEnds, 'arrival does not end the run');
+      assert.equal(named(h.emitted, 'run:spent').filter((entry) => entry.payload
+        && entry.payload.reason === 'circuit_escort_lost').length, 0, 'a living freighter is not a fine');
     } else {
       clearCohortRound(h);
       const receipt = named(h.emitted, 'run:waveCleared').at(-1).payload;
@@ -574,9 +632,11 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       assert.equal(after.status, 'route');
       assert.equal(after.clearedStages, wave / 4);
       const choices = circuitChoicesFor(h.state.run);
-      assert.equal(choices.filter((entry) => !entry.fight).length, 2, 'each stage offers two ordinary destinations');
-      assert.equal(choices.length, 6, 'elite and challenge sit beside them and can be refused');
-      const choice = choices.find((entry) => !entry.fight);
+      const rooms = choices.filter((entry) => entry.kind === 'route' && !entry.fight);
+      assert.equal(rooms.length, 2, 'each stage offers two ordinary destinations');
+      assert.equal(choices.filter((entry) => entry.kind === 'route').length, 6, 'elite and challenge sit beside them and can be refused');
+      assert.equal(choices.filter((entry) => entry.kind === 'event').length, 1, 'one event card sits beside the rooms');
+      const choice = rooms[0];
       const applied = choose(h, choice.id);
       assert.equal(applied.accepted, true, applied.reason);
       assert.equal(h.state.run.arenaId, choice.arenaId, 'the destination is installed before the next plan');
@@ -636,15 +696,31 @@ test('the surviving cohort carries into the next round and still has to be resol
   const survivorIds = new Set(survivalWave._cohort.keys());
   assert.equal(survivorIds.size, receipt.survivors, 'every survivor is still on the board');
   advanceFromDraft(h);
-  assert.equal(survivalWave._plannedBodies, lastPlan(h).swarm.killTarget + survivorIds.size);
+  assert.equal(lastPlan(h).swarm.circuit.kind, 'defend');
+  assert.equal(lastPlan(h).swarm.killTarget, 0, 'the beacon round is not a kill quota');
   assert.equal(survivalWave._carriedAdmitted, survivorIds.size,
+    'the survive survivors are carried into the beacon round');
+  reachActive(h);
+  const beforeDefend = clearedCount(h);
+  assert.ok(tickUntil(h, () => clearedCount(h) > beforeDefend, CIRCUIT_DEFEND_TICKS + 5),
+    'the beacon clock closes the round');
+  assert.equal(named(h.emitted, 'run:waveCleared').at(-1).payload.completionKind, 'defend');
+  assert.equal(named(h.emitted, 'run:waveCleared').at(-1).payload.tick, CIRCUIT_DEFEND_TICKS);
+  reachDraft(h);
+  const still = new Set(survivalWave._cohort.keys());
+  for (const id of survivorIds) assert.ok(still.has(id), 'a survivor of the clock is still in the room');
+  advanceFromDraft(h);
+  assert.equal(lastPlan(h).swarm.circuit.kind, 'boss');
+  assert.ok(lastPlan(h).swarm.killTarget > 0, 'the champion round is a quota again');
+  assert.equal(survivalWave._plannedBodies, lastPlan(h).swarm.killTarget + still.size);
+  assert.equal(survivalWave._carriedAdmitted, still.size,
     'the carried cohort is stamped as already admitted');
   reachActive(h);
-  assert.ok(survivalWave._admittedTotal >= survivorIds.size,
+  assert.ok(survivalWave._admittedTotal >= still.size,
     'carried bodies count once when the round goes active');
   const before = clearedCount(h);
   // Kill only the carried survivors: the new cohort still owes its quota.
-  for (const id of survivorIds) {
+  for (const id of still) {
     const entity = h.state.entities.get(id);
     if (entity) entity.alive = false;
     h.state.entities.delete(id);
@@ -788,7 +864,9 @@ test('Circuit boss rounds force their stage champion and wave ten suppresses the
     });
     assert.equal(plan.swarm.requireBoss, false, `wave ${wave} has no cadence champion`);
     assert.equal(plan.swarm.bossId, null);
-    const specialObjective = { 5: 'nodes', 7: 'hold', 9: 'collect', 11: 'commander', 13: 'reach' };
+    const specialObjective = {
+      3: 'defend', 5: 'nodes', 7: 'hold', 9: 'collect', 11: 'commander', 13: 'reach', 15: 'escort',
+    };
     assert.equal(plan.objective.kind, wave === 2 || wave === 6 || wave === 10 || wave === 14
       ? 'survive' : (specialObjective[wave] || 'resolve_hostiles'));
   }
@@ -871,7 +949,8 @@ test('presentation names survive rounds, stages, route progress and the finale',
   const panel = circuitPanelLines(run);
   assert.equal(panel.heading, 'The Circuit');
   assert.match(panel.status, /Choose where stage 2 fights/);
-  assert.deepEqual(panel.choices.filter((c) => !c.fight).map((c) => c.kind), ['route', 'route']);
+  assert.deepEqual(panel.choices.filter((c) => c.kind === 'route' && !c.fight).map((c) => c.kind), ['route', 'route']);
+  assert.equal(panel.choices.filter((c) => c.kind === 'event').length, 1);
   assert.equal(panel.choices.filter((c) => c.fight === 'elite').length, 2);
   assert.equal(panel.choices.filter((c) => c.fight === 'challenge').length, 2);
   const names = panel.choices.map((c) => c.label);
@@ -1064,9 +1143,11 @@ test('both destinations at every boundary are authored arenas with their own law
       const first = circuitChoicesFor(run);
       const second = circuitChoicesFor(run);
       assert.deepEqual(first, second, 'identical state yields identical descriptors');
-      assert.equal(first.filter((entry) => !entry.fight).length, 2);
-      assert.equal(first.length, 6);
-      const choice = first.find((entry) => entry.arenaId === dest.arenaId && !entry.fight);
+      const rooms = first.filter((entry) => entry.kind === 'route' && !entry.fight);
+      assert.equal(rooms.length, 2);
+      assert.equal(first.filter((entry) => entry.kind === 'route').length, 6);
+      assert.equal(first.length, 7);
+      const choice = first.find((entry) => entry.kind === 'route' && entry.arenaId === dest.arenaId && !entry.fight);
       assert.ok(choice, `${dest.arenaId} is offered at stage ${stage}`);
       assert.equal(choice.line, dest.line);
       const wave = run.wave + 1;
@@ -1227,12 +1308,12 @@ test('Circuit choice controls are native buttons and activate through the draft-
       bus: { emit: (event, payload) => emitted.push({ event, payload }) },
     }, choices);
     assert.equal(list.children.length, choices.length);
-    assert.equal(choices.filter((choice) => !choice.fight).length, 2);
+    assert.equal(choices.filter((choice) => choice.kind === 'route' && !choice.fight).length, 2);
     for (const [index, item] of list.children.entries()) {
       const button = item.children[0];
       assert.equal(button.tag, 'button');
       assert.equal(button.type, 'button', 'a real button keeps native Enter/Space activation');
-      assert.equal(button.dataset.circuitChoice, 'route');
+      assert.equal(button.dataset.circuitChoice, choices[index].kind);
       assert.equal(button.title, choices[index].line);
       assert.ok(button.textContent.length > 0, 'the destination name is visible');
       assert.equal(item.children[1].tag, 'span');

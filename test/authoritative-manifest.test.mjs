@@ -124,15 +124,24 @@ test('production init + update order lengths match the live browser baseline', (
   // restore / yard scan ticks on the calendar clock.
   // 230 -> 231 init / 178 -> 179 update: GOLD-CREW (row 446) registers crew — recruit scan,
   // perk writes, banter, loyalty, and injury recovery tick on the calendar clock.
-  // 231 -> 238 init / 179 -> 184 update: five playable industrial experience owners,
-  // plus event-only yard browser and salvage outfit prompt adapters.
-  // 238 -> 239 init / 184 -> 185 update: W-SHIFT (row 506) registers docket — the parcel
+  // 231 -> 232 init / 179 -> 180 update: W-SHIFT (row 506) registers docket — the parcel
   // drone at Shepherd's Ring queues station-keeping impulses on the table clock.
-  // 239 -> 240 init: W-CAST-HANDS (row 542) registers wexTicket — the smell ticket at Helios
+  // (0a59973d4e also swept in uncommitted industrial/shipbreaking/salvage-outfit wiring
+  // whose modules are not on master; that was dropped, so those owners are not counted.)
+  // 232 -> 233 init: W-CAST-HANDS (row 542) registers wexTicket — the smell ticket at Helios
   // Bay 7 is event-driven (sector sync + pickup:collected), so it never ticks.
-  // Remove orphan registrations only; DOCKET and the new event-only Wex ticket remain.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 233);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 180);
+  // 233 -> 234 init / 180 -> 181 update: W-CAST-HANDS registers moistureLoss (row 542),
+  // on top of the manifest hotfix that dropped the undefined shipbreaking/salvage wiring.
+  // 234 -> 235 init / 181 -> 182 update: W-CAST-HANDS registers rookBooth — the pad's
+  // wreck census is a seconds-scale read of settled bodies; same calendar clock.
+  // 235 -> 236 init / 182 -> 183 update: W-CAST-HANDS registers kesslerScale — the
+  // weigh-slip plate census joins the post-physics salvage cluster on the calendar clock.
+  // 236 -> 237 init / 183 -> 184 update: W-CAST-HANDS registers gateThreeWeir — Hale and
+  // Dree's cordon census sweeps for entries on the same clock.
+  // 237 -> 238 init / 184 -> 185 update: W-CAST-HANDS registers slateColumn — the
+  // weld-spike ledger's proximity read joins the same clock (row 542 complete).
+  assert.equal(PRODUCTION_INIT_ORDER.length, 238);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 185);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));
@@ -398,4 +407,14 @@ test('authoritativeIdentityEqual detects profile and order drift', () => {
 test('every production update-order system has exactly one declared clock', () => {
   const violations = validateSystemClockDeclarations();
   assert.deepEqual(violations, [], `clock declaration violations: ${violations.join('; ')}`);
+});
+
+test('every manifest id resolves to a real node factory or presentation platform system', async () => {
+  // Regression: 0a59973d4e referenced ids/constants with no module on master and crashed boot.
+  const { getNodeSystemFactoryTable } = await import('../src/runtime/nodeSystemFactoryTable.js');
+  const table = getNodeSystemFactoryTable();
+  const has = (id) => (table instanceof Map ? table.has(id) : Object.hasOwn(table, id));
+  const ids = new Set([...PRODUCTION_INIT_ORDER, ...PRODUCTION_UPDATE_ORDER]);
+  const missing = [...ids].filter((id) => !has(id) && !PRESENTATION_PLATFORM_IDS.includes(id));
+  assert.deepEqual(missing, []);
 });

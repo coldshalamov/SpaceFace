@@ -39,7 +39,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
   'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   'masslineImpactDamage', 'lootShards', 'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens', 'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads', 'terrainAnchors', 'jettisonImpulse', 'volatileExposure', 'mining',
-  'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
+  'fieldDepletion', 'cargo', 'fragileCargo', 'moistureLoss', 'economy', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
   'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake',
   // Nemesis packet: the arc engine (nemesis) decides and schedules, the encounter host
@@ -49,7 +49,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
-  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'wexTicket', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod',
+  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'wexTicket', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn',
   // (the eight faction-signature owners above already init at line 41 — the earlier
   // duplicate block here was a merge artifact; init ids are unique)
   'recoveryEncounter', 'factions',
@@ -121,13 +121,13 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
   // NXB-008: exposure-driven volatile cargo state; its own 15-tick gate limits the pass,
   // so it runs on the full-rate table clock beside lootShards/fragileCargo.
-  'volatileExposure', 'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'automation', 'asteroidSites',
+  'volatileExposure', 'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'moistureLoss', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'crafting', 'economy', 'intervention', 'world',
   'heistFacilities',
   'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'stationServices',
   'difficultyDirector', 'gateControlDirector',
-  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
+  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn', 'recoveryEncounter',
   'factions',
   // §34 rows 513/515/516/526/530: these five tick real per-step work — the sweep-ring
   // sensor model, formation lock, coupler snap, flag-flip/lien dwell, and pylon claims all
@@ -327,6 +327,17 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // §34 rows 520–523: tide/audit/gray all step on the 600 s world day; the only
   // sub-day work is a cheap same-sector scaffold check — 2 Hz is plenty.
   'worldPressure',
+  // row 542 Drift's hook: ice sublimates in sun; a seconds-scale drip is calendar work,
+  // not a per-frame pass. Appended last so every existing cohort index stays put.
+  'moistureLoss',
+  // row 542 Rook's hook: the pad census reads settled wrecks on the 2 Hz pass.
+  'rookBooth',
+  // row 542 Kessler's hook: the weigh-slip plate reads settled pods on the 2 Hz pass.
+  'kesslerScale',
+  // row 542 Hale+Dree's hook: the Gate 3 weir census sweeps for cordon entries on the 2 Hz pass.
+  'gateThreeWeir',
+  // row 542 Slate's hook: the column's proximity read is a seconds-scale census.
+  'slateColumn',
 ]);
 
 /**

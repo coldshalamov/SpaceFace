@@ -191,6 +191,11 @@ import { ruckus } from '../systems/ruckus.js';
 import { ruud } from '../systems/ruud.js';
 import { docket } from '../systems/docket.js';
 import { wexTicket } from '../systems/wexTicket.js';
+import { moistureLoss } from '../systems/moistureLoss.js';
+import { rookBooth } from '../systems/rookBooth.js';
+import { kesslerScale } from '../systems/kesslerScale.js';
+import { gateThreeWeir } from '../systems/gateThreeWeir.js';
+import { slateColumn } from '../systems/slateColumn.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -427,6 +432,11 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['ruud', ruud],
     ['docket', docket],
     ['wexTicket', wexTicket],
+    ['moistureLoss', moistureLoss],
+    ['rookBooth', rookBooth],
+    ['kesslerScale', kesslerScale],
+    ['gateThreeWeir', gateThreeWeir],
+    ['slateColumn', slateColumn],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

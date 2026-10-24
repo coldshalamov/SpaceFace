@@ -1,4 +1,10 @@
-# Restore importable production runtime composition
+# Isolated startup gate after the landed manifest repair
+
+PR585 landed the orphan-registration correction at03fb16fd792001ce5abc668711d5611e28a9972d and added a real Node-factory membership regression. PR586 subsequently landed the split-identifier and warm-teardown runtime fixes atb683b23ce299fe7dd746da9547c34d1cac5aff05. This draft now preserves those changes and every newer master file. It does not reapply or duplicate the landed runtime repair.
+
+Remaining scope is three files only: the two-test isolated pure-import regression, its reachable package check leaf, and this historical evidence report. Current master9a88f14bdbc35797de4bb1bb589ff0004e6a41a6 manifest c45fd45034f05d6338b02cd98f08556b0277e5ae and full manifest test a73362a1af0d24a917945936e3914ae6179cb8d2 (238 init/185 update plus the factory test) are retained byte-for-byte. The earlier233/180 observations below describe the historical c564312e graph, not current counts or current acceptance. Fresh hosted results are reported in the PR body; upstream authors' boot claims are not substituted for our validation.
+
+## Historical repair and qualification
 
 The public DOCKET commit 0a59973d4ed45040cd05e77ba8a129fec7cecd64 also added unrelated shipbreaking-yard, tender, outfit, disaster and workshop registrations without their factories or composition exporter. On master 719a82b85c07417e8661460147ed3977031ceb57, importing the pure manifest fails with ReferenceError at line 59.
 
