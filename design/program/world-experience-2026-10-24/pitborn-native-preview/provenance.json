@@ -1,0 +1,26 @@
+{
+  "kind": "Measured native physics trajectory; not game-camera capture or visual acceptance",
+  "sceneBlob": "557c71463cab778899f335474bf4118ed6fdf027",
+  "nativePacket": "Original complete native evidence is retained separately; samples.json is the exact whitelisted plotting input.",
+  "nativePacketSha256": "23966efd7c2d56d9200bcaa271ca461402c8d0942c44542a8a6bd31d610f2c96",
+  "inputs": "packet.measuredSamples; packet.terminal.poses. Player/pod only sampled at ten-second intervals. Tender shown only at terminal measured point. Original wreck at (0,0).",
+  "limits": "Forced component admission, fixture pilot deliberately holds tether until about100s. Mixed archive graph. Straight connectors between samples, not continuous exact path. Point symbols not scaled hulls. One real low-speed player/pod contact, trauma0. No invented tender path.",
+  "reproduce": "python3 -B render.py samples.json pitborn-trajectory.webp",
+  "review": "Actual pixels inspected. Portable script rerendered in RAM from included samples and reproduced the exact original image bytes. Not game-camera or visual acceptance.",
+  "files": {
+    "render.py": {
+      "bytes": 3853,
+      "sha256": "b45946626b59b66b0cd468c4d9442c156da637b15d0d385fffb9ebb4db52a3dd"
+    },
+    "samples.json": {
+      "bytes": 9376,
+      "sha256": "03b5996d0480390e4d29a8e5fcc10083ff739af42d201d46e9c05a8692d1eea8"
+    },
+    "pitborn-trajectory.webp": {
+      "bytes": 13982,
+      "sha256": "036676d09f59b4795fab68336d211b8d5a2ff0ba0d94d979743d20b7b7abc69d"
+    }
+  },
+  "sourceCommit": "46ea815817f706c61b5aca77ccc23af144fd9405",
+  "originalRenderScriptSha256": "25bd4fc2d8c647917bb09730028a350aba9d45db0e8f3d40fa04d890aa151ce3"
+}

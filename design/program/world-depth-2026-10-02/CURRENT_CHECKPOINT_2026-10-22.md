@@ -1,5 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current physical recovery and presentation: 2026-10-24 13:47 UTC
+
+All twelve goals remain OPEN, including the original [twenty-concept map](TWENTY_CONCEPT_MAP.json), [P00–P21 implementation scope](IMPLEMENTATION.md) and [build map](../../../build_map.md). This checkpoint supersedes older current-state/next-operation claims without erasing historical evidence or acceptance requirements.
+
+[Draft PR582](https://github.com/coldshalamov/SpaceFace/pull/582), head `46ea815817f706c61b5aca77ccc23af144fd9405`, publishes five scoped files over public parent `372b696716fbacf304185e4afa75117e16acaf08`. Pitborn no longer calls a distant pod recovered or a finite wreck worked merely because 180 seconds elapsed. Original tender propulsion, original-pod ownership and low-speed physical handoff now govern recovery; a genuinely transporting player can still win after fallback starts. NPC pickup pays nothing and retains the lawful claim and all 13 wreck units. Final scene `557c7146` passes 23 focused checks and one native test; hosted CI is pending, not green. The [feature report](https://github.com/coldshalamov/SpaceFace/blob/46ea815817f706c61b5aca77ccc23af144fd9405/design/program/world-experience-2026-10-24/PITBORN_PHYSICAL_RECOVERY.md) preserves exact source, regression failures and qualification limits.
+
+Final native evidence uses real Wasp/player flight, Rapier bodies and kernel tether, but forced component admission and a fixture pilot. Original pod transport is 1477.233 WU; handoff at 190.083333 seconds gives the original 260-credit/+4 receipt once and releases the intact 13-unit pool. Actual completed Save/load retains the receipt without replay. One low-speed player/pod contact has zero trauma; no contact-free claim. Natural Vesta admission from ordinary sector entry is the current active investigation, not yet proof. Pointer/gesture tether input, full current graph, ordinary visits, live camera and performance remain open.
+
+The [new measured Pitborn trajectory](../world-experience-2026-10-24/pitborn-native-preview/README.md) is pixel-reviewed and now preserved with portable source, public input samples and provenance. Exact RAM rerender reproduces the original 13,982-byte WebP. Ten-second player/pod samples have straight connectors; only the tender terminal point is shown. This is not a game-camera capture, model render or new asset. The full source recovery and final native/plot artifacts have independent raw-byte verification; no recovery artifact substitutes for the runtime PR.
+
+[PR580](https://github.com/coldshalamov/SpaceFace/pull/580) is now at `c770f20ff92d86f8cdc1c59f0f58f22266d0d451`, with bounded repair-work presentation delivered through actual event/consumer ownership. Its hosted focused gate passes 32 checks. Broad CI remains pending as of 13:47 UTC; do not reuse the prior 32103806 run's terminal result as this successor's result. Cue surface expiry is bounded to 0.45 seconds, detached particles to less than 0.837 seconds; no GPU visual acceptance is claimed. Earlier Hawser departure, Wasp textured review and terminal historical CI evidence remain below.
+
+Owners retain their exact paths: Pitborn scene/test/native owner continues ordinary-admission qualification; publishers own CI; this handoff changes review artifacts and registers only, not game branches. Browser-document refresh and integration absorption of PR558/471/570/571 remain separately held. Archive large-object publication remains unresolved; small GitHub delivery works. Both continuation schedules remain unchanged. No merge, deployment, whole-sector or whole-game acceptance is implied.
+
+
 ## Current delivery and visual review: 2026-10-24 12:57 UTC
 
 All twelve goals remain OPEN. This section supersedes dated current-state/next-operation claims below without removing historical evidence, acceptance fields or the original [twenty-concept map](TWENTY_CONCEPT_MAP.json), [P00–P21 implementation scope](IMPLEMENTATION.md) and [build map](../../../build_map.md).
