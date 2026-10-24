@@ -1,5 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current qualification correction: 2026-10-24 06:16 UTC
+
+PR569 is now open draft at `8d2963383b45eea242b8182e9f01ce19137534d6`, following `541d43b5`, tree `3a6c8eb8669925a446cd2788f620dd11fe011503`. The four-path follow-up repairs probe identity/settlement observation, not production UI. Tests pass 6/6 versus baseline 1/6; independent in-memory actual confirm/motion supersession and Tab/Enter/replacement checks pass. Hosted modal behavior remains unknown; publisher-owned run 40069473633 is still active.
+
+PR558's six mobile failures occur in stale extracted unit fixtures before browsers, not an observed active-route or game-Continue failure. The unchanged public probe gives 12/18 with its old fixture; existing PR471's fixture gives 20/20 in memory, so no duplicate repair is needed. The old PR558 desktop synthetic merge lacks recipeCaptions/trailerScore and cannot finish main import/readiness. Current master supplies both placeholders, which is not proof that the whole game works.
+
+The proposed current-master plus PR558/471/569/570/571 dependency union has thirty paths and package-only overlap, but no candidate exists. Public AGENTS §3 prohibits absorbing other open PRs; the narrow integration approval requested at 06:06 UTC remains pending. A routine continuation reminder is not approval. This is separate from the existing browser-document approval hold.
+
+Handoff's outstanding post-contact trade is under read-only in-memory reproduction within scene 357. No implementation, shared lifecycle change or PR515 edit is claimed. All twelve goals remain OPEN, both continuation schedules remain unchanged, and Archive's publication block and existing ownership constraints remain in force.
+
 ## Orcus delivery, terminal CI and Archive successor: 2026-10-24 05:53 UTC
 
 PR569 remains open draft at `541d43b51adfff067b209510052210bc2cdb38cb`, following `52edcfd9`, with tree `424a21de7334cab1064d2b7f613238508f806368`. Its verified five-path Orcus delta preserves Pilgrim. Only encounter 916 changes among 219 captured outputs; the actual scheduler admission flag is corrected and tested. Hosted Orcus checks passed 40/40. Native controlled paths exercised a 6.1-second scanner result for 30 credits and a 471.865-WU withdrawal settling at 9.0833 seconds without credits, with original actors and no impacts. This is controlled admission after the first-hour preference, not natural frequency, full Continue or visual acceptance.

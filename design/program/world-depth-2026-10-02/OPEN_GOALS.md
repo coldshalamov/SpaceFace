@@ -1,5 +1,13 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current qualification correction: 2026-10-24 06:16 UTC
+
+PR569 is now open draft at `8d2963383b45eea242b8182e9f01ce19137534d6`, following `541d43b5`, tree `3a6c8eb8669925a446cd2788f620dd11fe011503`. The four-path follow-up repairs probe identity/settlement observation, not production UI. Tests pass 6/6 versus baseline 1/6; independent in-memory actual confirm/motion supersession and Tab/Enter/replacement checks pass. Hosted modal behavior remains unknown; publisher-owned run 40069473633 is still active.
+
+The thirty-path dependency-integration proposal remains uncreated and awaits the specific approval required by public AGENTS §3 before absorbing open PRs. Keep that pending operation separate from the browser-document approval hold; a scheduled continuation is not approval. Existing PR471 already supplies the passing extracted mobile fixture, so do not create a competing fix or interpret stale pre-browser fixture failures as actual Continue failures.
+
+Handoff's outstanding post-contact trade is under read-only in-memory reproduction within scene 357. No implementation, shared lifecycle change or PR515 edit is claimed. All twelve goals remain OPEN, both continuation schedules remain unchanged, and Archive's publication block and existing ownership constraints remain in force.
+
 ## Orcus delivery, terminal CI and Archive successor: 2026-10-24 05:53 UTC
 
 PR569 remains open draft at `541d43b51adfff067b209510052210bc2cdb38cb`, following `52edcfd9`, with tree `424a21de7334cab1064d2b7f613238508f806368`. Its verified five-path Orcus delta preserves Pilgrim. Only encounter 916 changes among 219 captured outputs; the actual scheduler admission flag is corrected and tested. Hosted Orcus checks passed 40/40. Native controlled paths exercised a 6.1-second scanner result for 30 credits and a 471.865-WU withdrawal settling at 9.0833 seconds without credits, with original actors and no impacts. This is controlled admission after the first-hour preference, not natural frequency, full Continue or visual acceptance.
