@@ -1,5 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 
+## Handoff native correction published and hosted: 2026-10-24 01:13 UTC
+
+This supersedes the previous unpublished-motion status. Draft [PR568](https://github.com/coldshalamov/SpaceFace/pull/568) is verified open at `8ee99a339585d029bb11c44485c5890915050f7c`, following `34e88d275571b4cf86ae5b76b8fdd1a3a0a33ca8`, with tree `201b1937a575dd69b174b144ae15c937281debc3` and five cumulative paths. The native-motion source, tests, package wiring and report are now published.
+
+Exact-head hosted focused tests passed 28/28 (exit 0, 667 ms), and hosted native tests passed 2/2 (exit 0, 2,890 ms). The publisher verified both artifact digests and archive CRCs. This establishes fixture execution against the current public tree, improving on historical local dependency overlays. The native fixture still uses synthetic radius-2 carriers: production hull geometry, live visuals, full Continue and performance remain unaccepted. Overall run 40046631613 was still in progress at the fresh 01:13 UTC read, with other groups already failed; the publisher owns terminal monitoring. The broad build is not green.
+
+The newly delivered native-result visualization shows recorded final player/pod positions only. It explicitly uses different scales and omits NPC positions that were not recorded. It is a measured-result chart, not game models, live gameplay or visual acceptance. Its already-verified image, reproduction and provenance were recovered after the interruption without duplicate upload. The publisher likewise resumed its existing task after the environment restart and inspected the real remote outcome rather than republishing code.
+
+The residual remains OPEN: contact_made teardown stops later buyer stamps and leaves original seller-owned pod 5 outstanding. The existing lifecycle/save API cannot preserve an immediate durable contact receipt while continuing save-safe remaining work solely within this encounter. Route further work through build_map §1.8 Transactions/jobs/progression and PQ149.03, coordinated with the existing lifecycle/save owners and the single DEMO_READINESS §6 ledger. The proposed D250 entry was withdrawn because existing PR554 already uses D250 for unrelated missing startup imports. No replacement ID is reserved, no ledger/source change is made here, and Handoff text must not be appended to that unrelated item.
+
+All twelve goals remain OPEN. Archive's two-object publication block, recovery chain and browser approval hold remain unchanged. No competing queue, merge, deployment or new user-action requirement is implied.
+
 ## Native Handoff motion correction and delivery evidence: 2026-10-24 00:44 UTC
 
 PR567 remains open draft at `a24a85737c0f84ea91c7fd14a793bda5cec24f32`, with five cumulative paths including the published prewarm correction and offline comparison image. Its current-head focused hosted gate passed 18/18; combined independent local checks passed 23/23. Overall run 40043030758 ended FAILURE, including browser shard 3's job-cap cancellation. Completed named failures matched the inspected parent; no attributable regression was established. PR566 at `6359f0f9` also ended overall FAILURE: access guidance passed 20/20 hosted, while the margin gate remained local 11/11 and did not run hosted.
