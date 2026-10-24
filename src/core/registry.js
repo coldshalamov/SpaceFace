@@ -204,6 +204,7 @@ import { ruud } from '../systems/ruud.js';
 import { docket } from '../systems/docket.js';
 import { wexTicket } from '../systems/wexTicket.js';
 import { moistureLoss } from '../systems/moistureLoss.js';
+import { rookBooth } from '../systems/rookBooth.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -682,6 +683,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['docket', docket],
     ['wexTicket', wexTicket],
     ['moistureLoss', moistureLoss],
+    ['rookBooth', rookBooth],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

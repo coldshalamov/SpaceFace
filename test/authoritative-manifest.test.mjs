@@ -133,8 +133,10 @@ test('production init + update order lengths match the live browser baseline', (
   // 240 -> 241 init / 185 -> 186 update: W-CAST-HANDS registers moistureLoss — Drift's
   // sun-sublimation drip is real elapsed-seconds work, so it joins both orders on the
   // calendar clock (appended last; no existing cohort index moves).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 241);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 186);
+  // 241 -> 242 init / 186 -> 187 update: W-CAST-HANDS registers rookBooth — the pad's
+  // wreck census is a seconds-scale read of settled bodies; same calendar clock.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 242);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 187);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));
