@@ -1,36 +1,42 @@
 import { getPromptDeck } from './promptDeck.js';
 
+// Admission is synchronous but may reenter via HUD claims; resolution may publish a newer offer.
+// Keep same-ID updates in place, and dispatch only after an accepted card survives resolution.
+
 // Event-only adapter over the existing decision deck; receipts use the receipt lane.
 export const lastShiftPrompt = {
   name: 'lastShiftPrompt',
   init(ctx) {
-    this.bus = ctx.bus; this._deckId = 'last-shift:evidence'; this._subs = []; this._active = null;
+    this.bus = ctx.bus; this._deckId = 'last-shift:evidence'; this._subs = []; this._active = null; this._epoch = 0; this._destroyed = false;
     this._subs.push(ctx.bus.on('lastShift:offer', row => this.offer(row)));
     for (const event of ['sector:exit', 'dock:docked', 'save:restoring', 'save:loaded', 'game:load', 'game:new', 'game:newGame']) {
       this._subs.push(ctx.bus.on(event, () => this.clear()));
     }
   },
   offer(row) {
+    if (this._destroyed) return false;
     if (!row?.canArchive && !row?.canReturnRecorder) { this.clear(); return false; }
     const choices = [];
     if (row.canArchive) choices.push({ id: 'archive', label: `FILE ${row.clueIds.length}/3 SOURCES`, title: 'Publish only the facts already read. No extra payout.' });
     if (row.canReturnRecorder) choices.push({ id: 'return', label: 'RETURN ORIGINAL RECORDER', title: 'Give the actual towed recorder to this berth; keep its evidence, surrender its hardware value.' });
     choices.push({ id: 'leave', label: 'KEEP INVESTIGATING', cancel: true });
-    const token = {}, allowed = new Set(choices.map(choice => choice.id)); this._active = token;
+    const token = { accepted: false }, epoch = ++this._epoch, allowed = new Set(choices.map(choice => choice.id)); this._active = token;
     const accepted = getPromptDeck()?.offerDecision({ id: this._deckId, kind: 'info', sender: 'LAST SHIFT — SOURCE REGISTER',
       statusFlag: `${row.clueIds.length}/3 SOURCES · ${row.recorderReturned ? 'ORIGINAL RETURNED' : 'PARTIAL REPORTS ALLOWED'}`,
       headline: 'What the wreck can prove', detail: row.text, choices,
       onChoose: id => {
-        if (this._active !== token || !allowed.has(id)) return false;
-        this.clear();
+        if (this._active !== token || !token.accepted || !allowed.has(id)) return false;
+        const clearedEpoch = this.clear();
+        if (this._epoch !== clearedEpoch || this._destroyed) return false;
         if (id === 'archive') this.bus.emit('lastShift:archive', { revision: row.revision });
         if (id === 'return') this.bus.emit('lastShift:returnRecorder', { revision: row.revision });
         return true;
       } }) || false;
     if (!accepted && this._active === token) this._active = null;
-    return accepted;
+    token.accepted = !!accepted && this._active === token && this._epoch === epoch;
+    return token.accepted;
   },
-  clear() { this._active = null; getPromptDeck()?.resolveDecision(this._deckId); },
+  clear() { const epoch = ++this._epoch; this._active = null; getPromptDeck()?.resolveDecision(this._deckId); return epoch; },
   newGame() { this.clear(); },
-  destroy() { this.newGame(); for (const off of this._subs || []) off(); },
+  destroy() { this._destroyed = true; this.newGame(); for (const off of this._subs || []) off(); },
 };

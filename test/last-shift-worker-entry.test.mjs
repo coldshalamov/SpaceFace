@@ -61,3 +61,71 @@ test('port adds only nine intended commands and preserves every existing public 
  assert.deepEqual([...KNOWN_UNFORWARDED_BUS_EVENTS].sort(),PUBLIC_KNOWN.sort());
  assert.equal(MAIN_TO_SIM_BUS_EVENTS.has('game:started'),false);assert.equal(KNOWN_UNFORWARDED_BUS_EVENTS.has('game:started'),false);
 });
+
+// Synchronous deck admission and HUD-release reentrancy contracts.
+
+const promptCases = [
+ {name:'Last Shift', adapter:lastShiftPrompt, event:'lastShift:offer', command:'lastShift:archive', choice:'archive', row:{revision:1,clueIds:['fairlead'],text:'Read evidence',canArchive:true}, payload:{revision:2}},
+ {name:'Ilex', adapter:ilexArkPrompt, event:'ilexArk:offer', command:'ilexArk:accept', choice:'accept', row:{revision:1,canAccept:true}, payload:{revision:2}},
+ {name:'Towline', adapter:towlineTablePrompt, event:'towlineTable:offer', command:'towlineTable:assist', choice:'assist', row:{revision:1,name:'Mara',memberId:'mara',targetId:42,canAssist:true}, payload:{memberId:'mara',revision:2,targetId:42}}
+];
+function reentrantPromptFixture(c) {
+ const bus=createBus(), prompt={...c.adapter}, events=[], cards=[];
+ const deck={offerDecision(s){cards.push(s);return true;},resolveDecision(){return true;}};
+ setPromptDeck(deck);prompt.init({bus});bus.on(c.command,p=>events.push(p));
+ return {bus,prompt,events,cards,deck,offer(revision=1){return prompt.offer({...c.row,revision});},close(){deck.resolveDecision=()=>true;prompt.destroy();setPromptDeck(null);}};
+}
+for(const c of promptCases){
+ test(c.name+' rejects retained choice when resolution synchronously accepts a newer offer',()=>{
+  const h=reentrantPromptFixture(c);try{h.offer();const old=h.cards.at(-1);let fired=false;
+   h.deck.resolveDecision=()=>{if(!fired){fired=true;h.offer(2);}return true;};
+   assert.equal(old.onChoose(c.choice),false);assert.deepEqual(h.events,[]);
+   assert.equal(old.onChoose(c.choice),false);assert.equal(h.cards.at(-1).onChoose(c.choice),true);
+   assert.deepEqual(h.events,[c.payload]);assert.equal(h.cards.at(-1).onChoose(c.choice),false);
+  }finally{h.close();}
+ });
+ test(c.name+' cancels command when lifecycle or destroy reenters resolution',()=>{
+  for(const event of ['game:load','game:new','game:newGame','save:restoring','save:loaded','dock:docked','sector:exit','destroy']){
+   const h=reentrantPromptFixture(c);try{h.offer();const old=h.cards.at(-1);let fired=false;
+    h.deck.resolveDecision=()=>{if(!fired){fired=true;if(event==='destroy')h.prompt.destroy();else h.bus.emit(event);}return true;};
+    assert.equal(old.onChoose(c.choice),false,event);assert.deepEqual(h.events,[],event);
+   }finally{h.close();}
+  }
+ });
+ test(c.name+' does not dispatch before offer acceptance or let rejected outer offer invalidate accepted inner card',()=>{
+  const h=reentrantPromptFixture(c);try{let nesting=false,early;
+   h.deck.offerDecision=s=>{h.cards.push(s);if(nesting)return true;early=s.onChoose(c.choice);nesting=true;h.offer(2);return false;};
+   assert.equal(h.offer(),false);assert.equal(early,false);assert.deepEqual(h.events,[]);
+   assert.equal(h.cards[0].onChoose(c.choice),false);assert.equal(h.cards.at(-1).onChoose(c.choice),true);assert.deepEqual(h.events,[c.payload]);
+  }finally{h.close();}
+ });
+ test(c.name+' null, rejected, destroyed and unrendered choices stay inert without rebuilding same-ID offers',()=>{
+  const h=reentrantPromptFixture(c);try{let resolves=0;h.deck.resolveDecision=()=>{resolves++;return true;};
+   h.offer();const first=h.cards.at(-1);h.offer(2);assert.equal(resolves,0);assert.equal(first.onChoose(c.choice),false);
+   const second=h.cards.at(-1);assert.equal(second.onChoose('__proto__'),false);
+   assert.equal(second.onChoose(c.choice==='archive'?'return':c.choice==='accept'?'finish':'deliver'),false);
+   assert.equal(h.prompt.offer(null),false);assert.equal(second.onChoose(c.choice),false);
+   h.deck.offerDecision=s=>{h.cards.push(s);return false;};assert.equal(h.offer(),false);assert.equal(h.cards.at(-1).onChoose(c.choice),false);
+   h.prompt.destroy();const count=h.cards.length;assert.equal(h.offer(),false);assert.equal(h.cards.length,count);assert.deepEqual(h.events,[]);
+  }finally{h.close();}
+ });
+}
+
+for(const c of promptCases){
+ test(c.name+' accepted outer offer stays stale after a newer accepted offer or lifecycle during admission',()=>{
+  for(const interrupt of ['offer','game:load','destroy']){
+   const h=reentrantPromptFixture(c);try{let nesting=false;
+    h.deck.offerDecision=s=>{h.cards.push(s);if(!nesting){nesting=true;if(interrupt==='offer')h.offer(2);else if(interrupt==='destroy')h.prompt.destroy();else h.bus.emit(interrupt);}return true;};
+    assert.equal(h.offer(),false);assert.equal(h.cards[0].onChoose(c.choice),false);assert.deepEqual(h.events,[]);
+    if(interrupt==='offer'){assert.equal(h.cards.at(-1).onChoose(c.choice),true);assert.deepEqual(h.events,[c.payload]);}
+   }finally{h.close();}
+  }
+ });
+ test(c.name+' destroy rejects offers emitted synchronously by resolution; absent deck cannot arm callbacks',()=>{
+  const h=reentrantPromptFixture(c);try{h.offer();const old=h.cards.at(-1),count=h.cards.length;let result;
+   h.deck.resolveDecision=()=>{result=h.offer(2);return true;};h.prompt.destroy();
+   assert.equal(result,false);assert.equal(h.cards.length,count);assert.equal(old.onChoose(c.choice),false);assert.deepEqual(h.events,[]);
+  }finally{h.close();}
+  const absent=reentrantPromptFixture(c);try{setPromptDeck(null);assert.equal(absent.offer(),false);assert.deepEqual(absent.events,[]);}finally{absent.close();}
+ });
+}
