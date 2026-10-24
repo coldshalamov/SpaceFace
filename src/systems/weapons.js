@@ -1713,6 +1713,8 @@ export const weapons = {
       maxDistance: range,
       flightDistance: flight.flightDistance,
     };
+    // Attribution: a packet the chain fed names the legendary that fed it.
+    if (feederScale > 1 && data.damagePacket) data.damagePacket.scalingSource = 'swarm_chain_feeder';
     if (opts && opts.attackRuntime) data.attackRuntime = opts.attackRuntime;
     if (opts && opts.spec) {
       const resolved = resolvePayload(opts.spec, {
