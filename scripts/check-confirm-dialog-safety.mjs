@@ -116,15 +116,25 @@ async function openConfirm(page, opts) {
 
     const mod = await import('/src/ui/confirm.js');
     window.__sfConfirmResult = 'pending';
-    mod.confirm(confirmOpts).then((value) => { window.__sfConfirmResult = value; });
+    const pending = mod.confirm(confirmOpts);
+    const originalDialog = document.querySelector('#sf-confirm-root .sf-confirm');
+    if (!originalDialog) throw new Error('confirm did not mount the dialog being observed');
+    pending.then((value) => {
+      // Snapshot this dialog at settlement, not whichever boot dialog exists on a later poll.
+      window.__sfConfirmResult = {
+        result: value,
+        focusRestored: document.activeElement === opener,
+        dialogOpen: originalDialog.isConnected,
+      };
+    });
 
     await new Promise((resolve) => requestAnimationFrame(resolve));
     await new Promise((resolve) => setTimeout(resolve, 180));
 
-    const dialog = document.querySelector('#sf-confirm-root .sf-confirm');
+    const dialog = originalDialog;
     const active = document.activeElement;
     return {
-      open: !!(dialog && mod.isConfirmOpen()),
+      open: !!(dialog.isConnected && mod.isConfirmOpen()),
       role: dialog && dialog.getAttribute('role'),
       modal: dialog && dialog.getAttribute('aria-modal'),
       labelledBy: dialog && dialog.getAttribute('aria-labelledby'),
@@ -142,11 +152,7 @@ async function openConfirm(page, opts) {
 
 async function waitForConfirmResult(page) {
   await page.waitForFunction(() => window.__sfConfirmResult !== 'pending', null, { timeout: CONFIRM_RESULT_TIMEOUT_MS });
-  return page.evaluate(() => ({
-    result: window.__sfConfirmResult,
-    focusRestored: document.activeElement && document.activeElement.id === 'sf-confirm-probe-opener',
-    dialogOpen: !!document.querySelector('#sf-confirm-root .sf-confirm'),
-  }));
+  return page.evaluate(() => window.__sfConfirmResult);
 }
 
 async function focusedConfirmRole(page) {
