@@ -16,9 +16,9 @@ import { measuredSkinAllowedFor } from '../data/collisionProxyManifests.js';
 // then only re-checks Infinity-ttl movers whose POSE was already published in preStep. Skip the
 // walk when short-lived lanes are empty, no shipLike carries despawnAt, and no wreck/asteroid
 // lane holds a finite ttl/despawnAt deadline (C8). Dirty-wake: any projectile/fx/bomb/charge/
-// pickup/mine/snare/payload on a lane, a shipLike despawnAt, or a timed wreck/loose asteroid
-// restores the full clocks path. Different angle from held pose-rematch / sleeping-clocks /
-// compact-skip.
+// pickup/mine/snare/payload on a lane, a shipLike/beacon despawnAt, or a timed wreck/loose
+// asteroid restores the full clocks path. Different angle from held pose-rematch /
+// sleeping-clocks / compact-skip.
 let LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = true;
 export function setLifetimeSweepQuietClocksSkipForBench(enabled) {
   LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = enabled !== false;
@@ -71,6 +71,20 @@ function laneHasFiniteDeadline(lane) {
 function timedWreckOrAsteroidDeadline(index) {
   if (!index || index.__spacefaceEntityIndexV1 !== true || index.ready !== true) return false;
   return laneHasFiniteDeadline(index.wrecks) || laneHasFiniteDeadline(index.asteroids);
+}
+
+
+// Story beacons can retire in an otherwise quiet scene. They have no dedicated typed
+// lane; radarContacts includes them but excludes the potentially large asteroid field.
+// Keep this after existing wake guards, and admit only the existing absolute deadline.
+function beaconHasDespawnAt(index) {
+  const contacts = index && index.radarContacts;
+  if (!contacts || contacts.length === 0) return false;
+  for (let i = 0; i < contacts.length; i++) {
+    const e = contacts[i];
+    if (e && e.alive && e.type === 'beacon' && e.data && e.data.despawnAt != null) return true;
+  }
+  return false;
 }
 
 
@@ -721,12 +735,13 @@ export const core = {
       ? index.movables
       : list;
     // Quiet short-lived-lane clocks skip: when no projectile/fx/ordnance/pickup clocks exist and
-    // no shipLike carries despawnAt, the movable walk only re-checks Infinity-ttl ships whose
-    // POSE preStep already published. Skip the walk; dirty publish + corpse compact still run.
+    // no shipLike, wreck/asteroid or beacon deadline requires work, the movable walk only
+    // re-checks Infinity-ttl movers. Skip it; dirty publish + corpse compact still run.
     const skipQuietClocks = LIFETIME_SWEEP_QUIET_CLOCKS_SKIP
       && shortLivedClockLanesEmpty(index)
       && !shipLikeHasDespawnAt(index)
-      && !timedWreckOrAsteroidDeadline(index);
+      && !timedWreckOrAsteroidDeadline(index)
+      && !beaconHasDespawnAt(index);
     if (!skipQuietClocks) {
       for (let i = 0; i < clocks.length; i++) {
         const e = clocks[i];
