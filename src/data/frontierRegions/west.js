@@ -180,7 +180,7 @@ const REGION_NYX = freezeRegion({
       {
         id: 'station_nyx_march',
         pos: { x: -880, z: 540 },
-        archetypeGlb: 'place_station_blackmarket',
+        archetypeGlb: 'place_claim_outpost_fence',
         landmark: true,
       },
     ],
