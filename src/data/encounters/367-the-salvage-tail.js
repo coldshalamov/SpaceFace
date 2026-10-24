@@ -1,10 +1,11 @@
-// 367 — THE SALVAGE TAIL. The opening raid's second chapter. The mule captain who survived
-// the corridor is running it again with the replacement lot — and the cutter that took her
-// once is shadowing her for round two. The world remembers the first fight, and this one
+// 367 — THE SALVAGE TAIL. The opening raid's second chapter: a replacement fuel lot
+// runs the corridor under a Reach tail. The first raid's recorded outcome may have been
+// a loss, so continuity belongs to the cargo run, not an invented surviving captain. The world remembers the first fight, and this one
 // asks for a decision instead of a reflex: fly cover until the raider commits, peel off and
 // sell the bait, or leave her to the lane. The gate is the memory: this beat cannot fire
 // unless the opening raid actually happened in this save.
 import { deepFreeze, defineEncounter } from './catalog.js';
+import { ensurePhysicsBodySpec } from '../../core/physicsAuthority.js';
 
 export const encounterOrder = 367;
 export const trigger = deepFreeze({
@@ -39,6 +40,118 @@ function releaseSquadToWorld(live) {
 const COMMIT_S = 26;          // shadow window before the cutter stops being careful
 const TAIL_DEADLINE_S = 150;
 
+
+const tails = new WeakMap();
+const BAIT_SLIP_S = 3;
+
+// Temporary control of original occupants, never a persistent traffic job.
+function sameActor(state, live, item) {
+  const e = item.actor;
+  return state.entities.get(e.id) === e && e.occupantGeneration === item.generation
+    && e.physicsBody === item.body && e.data?.ai === item.ai
+    && !e.flags?.persistent && e.id !== state.playerId
+    && e.data.ai.encounterId === live.id && e.data.ai.encounterRole === item.role
+    && e.data.ai.sectorId === live.sectorId
+    && live.roles[e.id] === item.role && live.ids.includes(e.id);
+}
+function releaseFireHold(state, own) {
+  for (const item of own.raiders) {
+    const e = item.actor;
+    if (state.entities.get(e.id) !== e || e.occupantGeneration !== item.generation
+      || e.physicsBody !== item.body || e.data?.ai !== item.ai || item.ai.arrivalHoldUntil !== item.hold) continue;
+    if (item.previousHold === undefined) delete item.ai.arrivalHoldUntil;
+    else item.ai.arrivalHoldUntil = item.previousHold;
+  }
+}
+function stopTail(state, live, custody = false) {
+  const own = tails.get(live);
+  if (!own || own.stopped) return;
+  own.stopped = true;
+  releaseFireHold(state, own);
+  const e = own.mule.actor;
+  if (state.entities.get(e.id) === e && e.occupantGeneration === own.mule.generation
+    && e.physicsBody === own.mule.body && e.data?.ai === own.mule.ai
+    && e.data?.intent === own.intent) {
+    own.intent.moveX = own.intent.moveZ = 0;
+    if (custody || own.previousIntent === undefined) delete e.data.intent;
+    else e.data.intent = own.previousIntent;
+  }
+  for (const off of own.off) if (typeof off === 'function') off();
+  own.off.length = 0;
+}
+function commitTail(d, state, live, own, reason) {
+  if (own.committed || own.stopped || live.data.tail.terminalPending) return;
+  own.committed = true;
+  releaseFireHold(state, own);
+  for (const item of own.raiders) {
+    if (sameActor(state, live, item) && item.actor.alive) {
+      (item.actor.data.combat ||= {}).targetId = own.mule.actor.id;
+    }
+  }
+  live.data.tail.phase = 'run';
+  if (!live.data.tail.chosen) {
+    live.data.tail.chosen = 'unanswered';
+    live.offerConsumed = true;
+    // The same decision becomes an honest choiceless watch, not an ignored live button.
+    d.emit('encounter:waitStarted', {
+      encounterId: live.id, reason: 'tail_committed', deadlineAt: live.deadlineAt,
+    });
+  }
+  if (own.stopped || live.phase === 'done') return;
+  if (reason !== 'bait' && reason !== 'decline') d.say(live, 'danger',
+    reason === 'damage'
+      ? 'RAIDER: Forget the stalk — take the lot!'
+      : 'RAIDER: Enough shadowing. Take the replacement lot!',
+    null, { literal: true });
+}
+function beginTail(d, state, live, hauler) {
+  const snapshot = (actor, role) => {
+    ensurePhysicsBodySpec(actor);
+    return { actor, role, generation: actor.occupantGeneration,
+      body: actor.physicsBody, ai: actor.data.ai };
+  };
+  const own = {
+    mule: snapshot(hauler, 'hauler'),
+    raiders: d.entsOf(live, 'raider').map(e => snapshot(e, 'raider')),
+    previousIntent: hauler.data.intent,
+    intent: { moveX: 0, moveZ: 0.22, boost: false, fire: false,
+      turnIntent: 0, aimAngle: hauler.rot, assistMode: 'assisted' },
+    commitAt: live.startedAt + COMMIT_S, committed: false, stopped: false, off: [],
+  };
+  tails.set(live, own);
+  hauler.data.intent = own.intent;
+  for (const item of own.raiders) {
+    item.previousHold = item.ai.arrivalHoldUntil;
+    item.hold = Math.max(own.commitAt, Number(item.previousHold) || 0);
+    item.ai.arrivalHoldUntil = item.hold;
+  }
+  if (d.bus?.on) {
+    own.off.push(d.bus.on('encounter:resolved', p => {
+      if (p?.encounterId === live.id) stopTail(state, live);
+    }));
+    for (const event of ['save:restoring', 'sector:exit', 'game:exitToMenu', 'game:new']) {
+      own.off.push(d.bus.on(event, () => stopTail(state, live)));
+    }
+    own.off.push(d.bus.on('ship:controlChanging', p => {
+      if ([own.mule, ...own.raiders].some(item => state.entities.get(item.actor.id) === item.actor
+        && item.actor.occupantGeneration === item.generation && item.actor.physicsBody === item.body
+        && (p?.toId === item.actor.id || p?.fromId === item.actor.id))) stopTail(state, live, true);
+    }));
+    own.off.push(d.bus.on('ship:captured', p => {
+      if ([own.mule, ...own.raiders].some(item => state.entities.get(item.actor.id) === item.actor
+        && item.actor.occupantGeneration === item.generation && item.actor.physicsBody === item.body
+        && p?.targetId === item.actor.id && item.actor.flags?.persistent
+        && p.vesselId === item.actor.data?.vesselId)) stopTail(state, live, true);
+    }));
+    own.off.push(d.bus.on('combat:damage', p => {
+      if (!(p?.amount > 0) || p.attackerId === p.targetId) return;
+      if ([own.mule, ...own.raiders].some(item => item.actor.id === p.targetId
+        && sameActor(state, live, item))) commitTail(d, state, live, own, 'damage');
+    }));
+  }
+  return own;
+}
+
 export const runtime = Object.freeze({
   fire(d, live, state) {
     live.deadlineAt = d.now() + TAIL_DEADLINE_S;
@@ -51,7 +164,7 @@ export const runtime = Object.freeze({
 
     const hauler = d.entsOf(live, 'hauler')[0];
     if (hauler) {
-      // The same captain, the same lot, one more run: the replacement cargo is the stake.
+      // Another corridor run: the replacement cargo is the stake.
       const qty = 5 + Math.round(d.stream(live, 'cargo')() * 4);
       const hdata = hauler.data || (hauler.data = {});
       hdata.jobKind = 'hauler';
@@ -83,61 +196,47 @@ export const runtime = Object.freeze({
       (data.combat || (data.combat = {})).targetId = null; // committed only after the fork
     }
 
+    beginTail(d, state, live, hauler);
     live.phase = 'conflict';
     d.say(live, 'alert',
-      'MTS MULE: You again — small lane. Replacement lot is aboard and something is shadowing me again. I remember last time. Your call how this one goes.',
+      'MTS MULE: The first raid is on the watch record. Replacement fuel cells aboard, and a Reach pack is stalking this run. Cover my burn or let me sell the bait?',
       null, { literal: true, primary: true });
-    d.offerChoices(live, ['shadow', 'bait', 'decline'], 'decline', live.deadlineAt);
+    d.offerChoices(live, ['shadow', 'bait', 'decline'], 'decline', live.startedAt + COMMIT_S);
   },
 
   choose(d, live, state, choiceId) {
     const w = live.data.tail || (live.data.tail = { phase: 'offer', t: 0, chosen: null });
-    if (w.chosen) return;
+    if (w.chosen || w.terminalPending) return;
     const hauler = d.entsOf(live, 'hauler')[0];
     if (!hauler) return;
 
+    const own = tails.get(live);
+    if (!own || own.stopped || !sameActor(state, live, own.mule)) return;
     if (choiceId === 'shadow') {
-      // Cover until the commit: raiders open on her, and she holds course because you said so.
       w.chosen = 'shadow';
-      w.phase = 'run';
-      w.t = 0;
-      for (const raider of d.entsOf(live, 'raider')) {
-        const data = raider.data || (raider.data = {});
-        (data.combat || (data.combat = {})).targetId = hauler.id;
-      }
+      w.phase = 'shadow';
       d.say(live, 'info',
-        'MTS MULE: Copy cover. I hold course and speed — you make their commit expensive.',
+        'MTS MULE: Copy cover. Holding a steady burn. Stay with me until they open fire; shooting first breaks their stalk.',
         null, { literal: true });
       return;
     }
-
     if (choiceId === 'bait') {
-      // Sell the helplessness: the raiders sprint, she drifts wide, you own their rear.
       w.chosen = 'bait';
-      w.phase = 'run';
-      w.t = 0;
-      for (const raider of d.entsOf(live, 'raider')) {
-        const data = raider.data || (raider.data = {});
-        (data.combat || (data.combat = {})).targetId = hauler.id;
-      }
+      own.slipUntil = d.now() + BAIT_SLIP_S;
+      own.intent.moveX = 0.5;
+      own.intent.moveZ = 0;
+      own.intent.assistMode = 'newtonian';
+      commitTail(d, state, live, own, 'bait');
       d.say(live, 'info',
-        'MTS MULE: …you are leaving? Fine. FINE. Drifting helpless, like you want. Make it count.',
+        'MTS MULE: Selling the bait. Brief side burn, then engines idle. They are coming for my lot — peel round behind them.',
         null, { literal: true });
       return;
     }
-
     if (choiceId === 'decline') {
-      // The lane keeps its own score. The raid is already happening — the world does not
-      // wait for consent; declining only means she runs it alone.
       w.chosen = 'decline';
-      w.phase = 'run';
-      w.t = 0;
-      for (const raider of d.entsOf(live, 'raider')) {
-        const data = raider.data || (raider.data = {});
-        (data.combat || (data.combat = {})).targetId = hauler.id;
-      }
+      commitTail(d, state, live, own, 'decline');
       d.say(live, 'bark',
-        'MTS MULE: Understood. See you on the next run — or not.',
+        'MTS MULE: Understood. Keeping my burn. See you on the next run — or not.',
         null, { literal: true });
     }
   },
@@ -145,15 +244,33 @@ export const runtime = Object.freeze({
   tick(d, live, state, now) {
     if (live.phase === 'done') return;
     const w = live.data.tail || (live.data.tail = { phase: 'offer', t: 0, chosen: null });
+    if (w.terminalPending) return;
     const step = Math.max(0, now - (w.lastNow == null ? now : w.lastNow));
     w.lastNow = now;
+
+    const own = tails.get(live);
+    // Missing/replaced/captured occupants are interruptions, not evidence of destruction.
+    if (!own || own.stopped || state.mode !== 'flight'
+      || state.world.currentSectorId !== live.sectorId
+      || [own.mule, ...own.raiders].some(item =>
+        !sameActor(state, live, item)
+        && !(item.actor.alive === false && !item.actor.flags?.persistent
+          && item.actor.occupantGeneration === item.generation && item.actor.data?.ai === item.ai
+          && (state.entities.get(item.actor.id) === item.actor || !state.entities.has(item.actor.id))))
+      || (own.mule.actor.alive !== false && own.mule.actor.data?.intent !== own.intent)) {
+      stopTail(state, live, true);
+      releaseSquadToWorld(live);
+      return d.resolve(live, 'interrupted', { speak: false });
+    }
+    if (own.slipUntil != null && now >= own.slipUntil) own.intent.moveX = 0;
+    if (!own.committed && now >= own.commitAt) commitTail(d, state, live, own, 'elapsed');
 
     const custody = live.data.freightCargoCustody;
     const custodyOpen = !!(custody && custody.terminal !== true);
     const haulerAlive = d.aliveCount(live, 'hauler') > 0;
     const raidersAlive = d.aliveCount(live, 'raider') > 0;
 
-    // Round one's grade follows the captain: lose her twice and the corridor knows why.
+    // The first lot's recorded outcome grades a second loss; it does not prove captain identity.
     const firstLost = !!(state.story && state.story.depthProgramEncounters
       && state.story.depthProgramEncounters.completed
       && state.story.depthProgramEncounters.completed.opening_hauler_raid
@@ -161,56 +278,51 @@ export const runtime = Object.freeze({
 
     if (!haulerAlive) {
       if (custodyOpen) return;
+      w.terminalPending = true;
       d.rep('faction_mts', firstLost ? -6 : -3, 'salvage_tail_lost');
+      if (own.stopped || live.phase === 'done') return;
       d.emit('news:publish', {
         text: firstLost
-          ? 'THE CORRIDOR LOST HER TWICE: the mule captain who survived the first raid went down with the replacement lot. The lane keeps what it takes.'
+          ? 'SECOND LOT LOST: after the first raid went against the convoy, the replacement run lost its hauler too. The lane keeps what it takes.'
           : 'FREIGHTER DOWN ON THE START CORRIDOR: the replacement lot never reached the dock. The watch channel has nothing polite to say.',
         kind: 'incidents', source: 'watch-relay', sourceRef: `salvage_tail:${live.id}`,
         eventId: `salvage_tail:${live.id}`,
       });
+      if (own.stopped || live.phase === 'done') return;
+      stopTail(state, live);
       releaseSquadToWorld(live);
       return d.resolve(live, 'hauler_lost', { speak: true });
     }
 
     if (!raidersAlive) {
       if (custodyOpen) return;
+      w.terminalPending = true;
       d.grant(320, 'salvage_tail:defended');
+      if (own.stopped || live.phase === 'done') return;
       d.rep('faction_mts', 7, 'salvage_tail_defended');
+      if (own.stopped || live.phase === 'done') return;
       d.emit('comms:log', {
         from: 'MTS MULE',
-        text: 'Twice now. Twice you have been the reason I make this dock. The lot is yours to skim and the station will hear the whole thing.',
+        text: 'The tail is broken. This replacement lot is still aboard, and the station will hear about your cover.',
         kind: 'encounter',
       });
+      if (own.stopped || live.phase === 'done') return;
       d.emit('news:publish', {
-        text: 'THE CORRIDOR HOLDS: the twice-raided mule made her dock under escort. The station pays for captains it keeps, and it keeps this one.',
+        text: 'THE CORRIDOR HOLDS: the replacement-run mule survived its pursuers under escort. The lot is still aboard; the station paid for the cover.',
         kind: 'incidents', source: 'watch-relay', sourceRef: `salvage_tail:${live.id}`,
         eventId: `salvage_tail:${live.id}`,
       });
+      if (own.stopped || live.phase === 'done') return;
       if (haulerAlive && d.entsOf(live, 'hauler')[0].data) d.entsOf(live, 'hauler')[0].data.despawnAt = now + 20;
+      stopTail(state, live);
       releaseSquadToWorld(live);
       return d.resolve(live, 'defended', { speak: false });
     }
 
-    if (w.phase === 'offer' && now - live.startedAt >= COMMIT_S) {
-      // The stalk does not wait forever: no answer reads as an answer.
-      d.say(live, 'danger',
-        'RAIDER: She is stalling. Take her — the escort never showed.',
-        null, { literal: true });
-      const hauler = d.entsOf(live, 'hauler')[0];
-      if (hauler) {
-        for (const raider of d.entsOf(live, 'raider')) {
-          const data = raider.data || (raider.data = {});
-          (data.combat || (data.combat = {})).targetId = hauler.id;
-        }
-      }
-      w.phase = 'run';
-      w.chosen = w.chosen || 'unanswered';
-    }
-
     if (now >= live.deadlineAt) {
-      // The tail ends: raiders break off hungry, the captain keeps her lot, the corridor
-      // keeps its rumor. Everything alive stays alive.
+      w.terminalPending = true;
+      // This local watch ends, not the world fight. No offscreen victory or stolen cargo.
+      stopTail(state, live);
       releaseSquadToWorld(live);
       return d.resolve(live, 'tail_over', { speak: false });
     }
@@ -230,7 +342,7 @@ export default defineEncounter(trigger, {
   factionId: 'faction_reach',
   context: 'encounter',
   title: 'THE SALVAGE TAIL',
-  primaryLine: 'MTS MULE: Replacement lot aboard, and something is shadowing me again. Your call how this one goes.',
+  primaryLine: 'MTS MULE: Replacement lot aboard, and a Reach pack is shadowing this run. Your call how this one goes.',
   squad: {
     anchorArchetype: 'corsair_raider',
     archetypes: ['corsair_raider', 'reaver_pirate'],
@@ -255,8 +367,8 @@ export default defineEncounter(trigger, {
   ],
   timeoutChoice: 'decline',
   receipts: {
-    defended: 'THE TAIL IS BROKEN — the twice-raided captain made her dock, and the corridor has a name for the escort now.',
+    defended: 'THE TAIL IS BROKEN — the replacement-run captain and lot survived, and the corridor has a name for the escort now.',
     hauler_lost: 'THE CORRIDOR LOST HER — the replacement lot is spillage on the start lane, and the watch channel is not polite about it.',
-    tail_over: 'THE TAIL SLIPPED — the raider broke off hungry and the captain kept her lot this time. Next run is nobody\'s promise.',
+    tail_over: 'THE WATCH ENDED — the captain and her pursuers are still in the lane. No dock arrival or broken tail is confirmed.',
   },
 });
