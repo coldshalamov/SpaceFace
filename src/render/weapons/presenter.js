@@ -74,6 +74,15 @@ const HIT_LIGHT_BY_VARIANT = Object.freeze({
   disruptor: Object.freeze([2.0, 12]),
   'continuous-beam': Object.freeze([1.6, 12]),
   'vector-mine': Object.freeze([2.6, 14]),
+  filament: Object.freeze([1.7, 12]),
+  'field-ring': Object.freeze([2.8, 16]),
+  'filament-latch': Object.freeze([2.2, 13]),
+  'well-collar': Object.freeze([2.0, 14]),
+  wedge: Object.freeze([2.9, 17]),
+  'sticky-charge': Object.freeze([2.6, 15]),
+  'primer-arc': Object.freeze([2.3, 14]),
+  'cooker-seam': Object.freeze([2.8, 16]),
+  'driver-slug': Object.freeze([2.5, 15]),
 });
 
 // Heavy dialects outrank skirmish fire for the 2-slot weapon light pool.
@@ -403,9 +412,9 @@ export class WeaponVfxPresenter {
         this.lights.spawn({
           x: world.x, y, z: world.z,
           color: hitShield ? '#5fd0ff' : recipe.muzzle.lightColor,
-          intensity: hitLight[0] * (hitShield ? 1.15 : 1) * a11y.eventLightPeakScale,
-          distance: hitLight[1],
-          life: 0.1,
+          intensity: hitLight[0] * (hitShield ? 1.2 : 1.28) * a11y.eventLightPeakScale,
+          distance: hitLight[1] * 1.12,
+          life: 0.14,
           priority: hitPriority,
         });
       }
