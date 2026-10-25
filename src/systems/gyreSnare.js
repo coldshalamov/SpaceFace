@@ -41,7 +41,7 @@ import { environmentMaterialOf } from '../data/environmentMaterials.js';
 import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
 import {
   MATTER_REFUSAL, explainRefusal, createCaptureLedger, memberRef, grownRadius, launchPlan, burstPlan,
-  makeBody, mergeBodies, mergeImpulse, solidInertia,
+  makeBody, mergeBodies, mergeImpulse, solidInertia, springAccel,
 } from '../matter/aggregateMass.js';
 import {
   matterRefusal, matterMass, matterRadius, matterIsDynamic, hasProtectedContent,
@@ -1312,13 +1312,9 @@ export const gyreSnare = {
     // Spring → orbit slot, damped vs ship frame so the ball tracks the ship.
     const shipVx = finite(player.vel && player.vel.x);
     const shipVz = finite(player.vel && player.vel.z);
-    let ax = (tx - core.pos.x) * D.holdSpringK - (finite(core.vel && core.vel.x) - shipVx) * D.holdDamping;
-    let az = (tz - core.pos.z) * D.holdSpringK - (finite(core.vel && core.vel.z) - shipVz) * D.holdDamping;
-    const a2 = ax * ax + az * az;
-    if (a2 > D.holdMaxAccel * D.holdMaxAccel) {
-      const s = D.holdMaxAccel / Math.sqrt(a2);
-      ax *= s; az *= s;
-    }
+    const spring = springAccel(core.pos.x, core.pos.z, finite(core.vel && core.vel.x), finite(core.vel && core.vel.z),
+      tx, tz, shipVx, shipVz, D.holdSpringK, D.holdDamping, D.holdMaxAccel, this._springScratch || (this._springScratch = { ax: 0, az: 0 }));
+    const ax = spring.ax, az = spring.az;
     // The authored body carries the real clump mass (grown on every absorb via
     // syncDerivedPhysicsMass), so impulse = a·m·dt produces the authored Δv regardless of how
     // big the ball has become — the lash holds a 2400 t clump as surely as a 6 t pebble.
@@ -1759,8 +1755,11 @@ export const gyreSnare = {
     // The heave grades by payload like the pull distance already does: a capped
     // moon takes the longer bow (+3 ticks ≈ 150 ms) while a pebble keeps the
     // snappy ~100 ms draw — the fantasy's biggest throw visibly loads.
-    rt.launchWindupTotal = D.launchWindupTicks
-      + Math.round(D.launchWindupTicksMass * Math.min(1, rt.clumpMass / D.maxClumpMass));
+    // One plan for the whole throw (src/matter/aggregateMass.js): the coil, the commanded speed, the
+    // impact scale and the recoil all come from the same object the preview reads, so the line the
+    // pilot sees and the burst that executes cannot disagree.
+    const plan = launchPlan(rt.clumpMass, D);
+    rt.launchWindupTotal = plan.windupTicks;
     rt.launchWindup = rt.launchWindupTotal;
     rt.launchCarry = 0;
     // The aim freezes at the RELEASE edge — the slingshot read. The ball doesn't fly
@@ -1794,8 +1793,7 @@ export const gyreSnare = {
     // pebble — heavy reads heavy in the ARC, not just growl/recoil. Computed HERE,
     // off the frozen ballMass, so provenance/kill-credit magnitude sees the real
     // thrown Δv and the burst just consumes it.
-    rt.launchSpeedEff = D.launchSpeed
-      * (1 - D.launchMassPenalty * Math.min(1, rt.ballMass / D.maxClumpMass));
+    rt.launchSpeedEff = plan.speed;
     // The katamari lumps are part of the thrown payload — freeze the ledger so the glass
     // clump overlay keeps riding the ball through its whole flight instead of shedding at OFF.
     rt.ballMembers = rt.members.slice();
@@ -1803,10 +1801,7 @@ export const gyreSnare = {
     rt.ballAbsorbs = rt.totalAbsorbed;
     // The ball becomes a weapon: authored impact scale + provenance for kill credit + a
     // bounded flight so the map doesn't keep it forever.
-    const scale = Math.min(
-      D.launchImpactScaleMax,
-      D.launchImpactScaleBase + rt.clumpMass / D.launchImpactScalePerMass,
-    );
+    const scale = plan.impactScale;
     core.data = core.data || {};
     if (core.physicsBody !== false) {
       // physicsBody===false is an authored opt-out — materializing a record here
@@ -2907,46 +2902,37 @@ export const gyreSnare = {
         const wz = player.pos.z + rt.launchDir.z * (D.mawDist - pullWu);
         const shipVx = finite(player.vel && player.vel.x);
         const shipVz = finite(player.vel && player.vel.z);
-        let ax = (wx - core.pos.x) * D.launchWindupSpringK
-          - (finite(core.vel && core.vel.x) - shipVx) * D.launchWindupDamping;
-        let az = (wz - core.pos.z) * D.launchWindupSpringK
-          - (finite(core.vel && core.vel.z) - shipVz) * D.launchWindupDamping;
-        const wa2 = ax * ax + az * az;
-        const wCap = D.launchWindupMaxAccel || D.holdMaxAccel;
-        if (wa2 > wCap * wCap) {
-          const s = wCap / Math.sqrt(wa2);
-          ax *= s; az *= s;
-        }
+        const coil = springAccel(core.pos.x, core.pos.z, finite(core.vel && core.vel.x), finite(core.vel && core.vel.z),
+          wx, wz, shipVx, shipVz, D.launchWindupSpringK, D.launchWindupDamping,
+          D.launchWindupMaxAccel || D.holdMaxAccel, this._springScratch || (this._springScratch = { ax: 0, az: 0 }));
+        const ax = coil.ax, az = coil.az;
         const mass = entityMass(core);
         queuePhysicsImpulse(core, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
       } else if (core && core.alive !== false && rt.launchLeft > 0) {
         const mass = entityMass(core);
-        let lateralImpulse = 0;
+        let lateralX = 0, lateralZ = 0;
         if (rt.launchLeft === D.launchTicks) {
-          // The coil's residual AFT-velocity is repaid by the burst — the effective
-          // launch speed is a FLOOR on launch-direction flight speed: an aft-moving
-          // ball still lands at pace (a heavy draw can't undercook the read), while
-          // forward residual — e.g. the ship translating into the throw — keeps
-          // riding. Δv floor semantics, not a hard cap: a moving ship bowls hotter.
-          const fwd = finite(core.vel && core.vel.x) * rt.launchDir.x
-            + finite(core.vel && core.vel.z) * rt.launchDir.z;
-          rt.launchCarry = Math.max(0, -fwd);
-          rt.launchFwd = fwd;
-          // Strip the hold orbit's sideways motion in the carrier's moving frame.
-          // Do this once at release into flight: later collisions must still deflect
-          // the ball, and deliberate ship strafing must carry into the throw.
-          const relativeVx = finite(player.vel && player.vel.x) - finite(core.vel && core.vel.x);
-          const relativeVz = finite(player.vel && player.vel.z) - finite(core.vel && core.vel.z);
-          lateralImpulse = mass * (-rt.launchDir.z * relativeVx + rt.launchDir.x * relativeVz);
-          // launchSpeedEff was frozen in _launch off ballMass — the burst just
-          // repays coil carry on top of it.
+          // The burst's impulse plan (src/matter/aggregateMass.js burstPlan — the SAME function the
+          // preview integrates from). The coil's residual AFT-velocity is repaid by the burst: the
+          // effective launch speed is a FLOOR on launch-direction flight speed, so an aft-moving ball
+          // still lands at pace while forward residual — the ship translating into the throw — keeps
+          // riding (Δv floor semantics, not a hard cap: a moving ship bowls hotter). The hold orbit's
+          // sideways motion is stripped once, in the carrier's frame, so later collisions still
+          // deflect the ball and deliberate strafing carries into the throw.
+          const burst = burstPlan({
+            mass, dir: rt.launchDir, coreVel: core.vel, refVel: player.vel,
+            speed: rt.launchSpeedEff, ticks: D.launchTicks,
+          });
+          rt.launchCarry = burst.carry;
+          rt.launchFwd = burst.fwd;
+          lateralX = burst.lateral.x; lateralZ = burst.lateral.z;
         }
-        // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = vEff.
+        // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = vEff + carry.
         const j = ((rt.launchSpeedEff + rt.launchCarry) * mass) / D.launchTicks;
         queuePhysicsImpulse(core, {
-          x: rt.launchDir.x * j - rt.launchDir.z * lateralImpulse,
+          x: rt.launchDir.x * j + lateralX,
           y: 0,
-          z: rt.launchDir.z * j + rt.launchDir.x * lateralImpulse,
+          z: rt.launchDir.z * j + lateralZ,
         }, this._evidence(state.tick));
         rt.launchLeft -= 1;
         if (rt.launchLeft === D.launchTicks - 1) {
@@ -2996,7 +2982,7 @@ export const gyreSnare = {
           // Newton: throwing a small moon pushes back. A mass-scaled counter-Δv
           // (capped 18 wu/s — a capital throw lands ~7% of cruise, a pebble ~2 —
           // a nudge, not a knockback) physically sells the heave.
-          const recoilDv = Math.min(18, 2 + rt.ballMass / 200);
+          const recoilDv = launchPlan(rt.ballMass, D).recoilDv;
           const shipMass = entityMass(player);
           queuePhysicsImpulse(player, {
             x: -rt.launchDir.x * recoilDv * shipMass, y: 0, z: -rt.launchDir.z * recoilDv * shipMass,

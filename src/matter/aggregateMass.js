@@ -237,6 +237,25 @@ export function burstPlan(p) {
   };
 }
 
+// ── the spring that holds and coils a core ───────────────────────────────────────────────────────
+
+/**
+ * Acceleration of a body sprung to a target and damped against a carrier's velocity, with a ceiling:
+ * a = K·(target − x) − c·(v − v_carrier), |a| ≤ maxAccel. One formula for the hold slot and the
+ * launch coil, shared by execution and the forecast so the two cannot drift apart.
+ */
+export function springAccel(px, pz, vx, vz, tx, tz, cvx, cvz, springK, damping, maxAccel, out) {
+  let ax = (tx - px) * springK - (vx - cvx) * damping;
+  let az = (tz - pz) * springK - (vz - cvz) * damping;
+  const a2 = ax * ax + az * az;
+  if (a2 > maxAccel * maxAccel) {
+    const k = maxAccel / Math.sqrt(a2);
+    ax *= k; az *= k;
+  }
+  out.ax = ax; out.az = az;
+  return out;
+}
+
 // ── the capture ledger: a reserved transaction ──────────────────────────────────────────────────
 
 /** Generation-safe reference to a body: the id plus the occupant generation that proves identity. */
