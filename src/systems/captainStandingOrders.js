@@ -106,6 +106,24 @@ export function syncCaptainStandingOrders(host, info, board) {
   const state = host.state;
   if (!board?.slots || !info?.id) return false;
   let changed = false;
+  // Reconcile only unaccepted relief offers whose remembered cause is positively obsolete.
+  // Roster eviction is bounded forgetting, not evidence of death; unknown rows stay intact.
+  // Accepted contracts live in missions.active and retain their recorded terms.
+  const roster = state.traffic?.captainRoster || [];
+  const currentSlots = board.slots.filter(offer => {
+    if (offer?.source !== 'captainStandingOrder' || offer.cause?.tag !== 'remembered_captain') return true;
+    const captainId = offer.cause.captainId;
+    if (!captainId) return true;
+    const captain = roster.find(row => row.id === captainId);
+    if (captain?.alive === false) return false;
+    const cycle = state.missions.captainOrderCycles?.[captainId]?.cycle;
+    const prefix = `captain-order:${hash32(captainId).toString(36)}:`;
+    const suffix = typeof offer.id === 'string' && offer.id.startsWith(prefix) ? offer.id.slice(prefix.length) : '';
+    // Only a known, older native cycle can be superseded; malformed/foreign identities are not proof.
+    return !(Number.isSafeInteger(cycle) && /^(0|[1-9]\d*)$/.test(suffix)
+      && Number.isSafeInteger(Number(suffix)) && Number(suffix) < cycle);
+  });
+  if (currentSlots.length !== board.slots.length) { board.slots = currentSlots; changed = true; }
   const candidates = [];
   for (const captain of state.traffic?.captainRoster || []) {
     const orderState = state.missions.captainOrderCycles?.[captain.id];
@@ -140,11 +158,15 @@ export function syncCaptainStandingOrders(host, info, board) {
       cause: { tag: 'standing_client', standingOrderId: row.id },
     });
   }
-  for (const offer of candidates.slice(0, 3)) {
+  // Existing valid rows consume capacity, including saved legacy extras. Never trim earned
+  // rows just to meet the admission limit, and never let an ineligible early client starve later ones.
+  let standingCount = board.slots.filter(offer => offer?.source === 'captainStandingOrder').length;
+  for (const offer of candidates) {
+    if (standingCount >= 3) break;
     if (board.slots.some(row => row?.id === offer.id)
       || state.missions.active?.some(mission => mission?.giverId === offer.giverId)
       || state.missions.receipts?.some(receipt => receipt?.sourceOfferId === offer.id)) continue;
-    board.slots.push(offer); changed = true;
+    board.slots.push(offer); standingCount++; changed = true;
   }
   return changed;
 }
