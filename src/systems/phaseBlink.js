@@ -15,6 +15,31 @@ import {
 const NEARBY = [];
 const SOLIDS = new Set(['asteroid', 'station']);
 
+// The sample ring is 96. A world's center sits hundreds of units past its skin,
+// so the ring never sees the body that owns the point. Read the exclusion
+// circle off the planet entity itself.
+function planetOwnsPoint(other, entity, x, z) {
+  if (!other || other === entity || other.alive === false || other.type !== 'planet') return false;
+  if (other.collides === false) return false;
+  const ox = finite(other.pos && other.pos.x);
+  const oz = finite(other.pos && other.pos.z);
+  const bodyR = finite(other.radius, finite(other.physicsBody && other.physicsBody.radius, 0));
+  if (!(bodyR > 0)) return false;
+  const selfR = finite(entity && entity.radius, 14) * 0.55;
+  const dx = ox - x;
+  const dz = oz - z;
+  return dx * dx + dz * dz < (bodyR + selfR) * (bodyR + selfR);
+}
+
+function planetBlocks(state, entity, x, z) {
+  const list = state && state.entityList;
+  if (!Array.isArray(list)) return false;
+  for (let i = 0; i < list.length; i += 1) {
+    if (planetOwnsPoint(list[i], entity, x, z)) return true;
+  }
+  return false;
+}
+
 /** A wreck is a wall only when the spawn stamped a live collider. Marker wrecks
  *  (no physics body, or a sensor/ghost) are scenery the hull already flies through.
  *  Ships stay phased through — the step is how you cross a fighter, not a hulk. */
@@ -55,9 +80,10 @@ function toast(bus, text) {
   }
 }
 
-/** True when a station, a rock, or a solid wreck owns this point. Ships are phased through. */
+/** True when a world, a station, a rock, or a solid wreck owns this point. Ships are phased through. */
 export function phaseBlinkBlocked(state, entity, x, z) {
   if (!state) return false;
+  if (planetBlocks(state, entity, x, z)) return true;
   const nearby = queryNearbyEntities(state, { x, z }, 96, NEARBY) || NEARBY;
   const selfR = finite(entity && entity.radius, 14) * 0.55;
   for (let i = 0; i < nearby.length; i += 1) {
