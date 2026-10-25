@@ -427,7 +427,7 @@ const CORE_SECTORS = [
         // Cathedral approach. The named dead belong to the place, not the memorial feed.
         id: 'poi_ceres_vigil',
         type: 'beacon', name: 'Cathedral Vigil', factionId: 'faction_dmc',
-        pos: { x: 380, z: 2640 }, landmarkGlb: 'place_worklight_tower', visualRadius: 9,
+        pos: { x: 980, z: 2190 }, landmarkGlb: 'place_worklight_tower', visualRadius: 9,
         discoveryPlate: { title: 'Cathedral Vigil',
           body: 'A worklight tower parked on the Cathedral approach, lamps pointed in, power cell swapped on a schedule nobody ordered. Under the mounting plate someone welded two names from the Second Measure\u2019s manifest — Okafor, Breen — because the shipbreak\u2019s own tally reads only tonnage.' } },
       {

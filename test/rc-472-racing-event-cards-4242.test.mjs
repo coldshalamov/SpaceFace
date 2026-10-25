@@ -5,8 +5,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
-import { RACE_LEVELS, courseForLevel, practiceContractForLevel, raceContractById, raceLevelById,
-  racingOfferFor, racingSeedFor, storyContracts } from '../src/data/raceLevels.js';
+import { RACE_LEVELS, RACING_CIRCUITS, circuitContracts, courseForLevel, practiceContractForLevel,
+  raceContractById, raceLevelById, racingOfferFor, racingSeedFor } from '../src/data/raceLevels.js';
 import { raceBoardScreen, runContract } from '../src/ui/screens/raceBoard.js';
 import { takeRacingLaunch } from '../src/ui/racingLaunch.js';
 import { rememberRacingResult } from '../src/ui/racingControls.js';
@@ -147,10 +147,10 @@ const startButton = (root) => findButtons(root).find((b) => b.textContent === 'S
 const startPanel = (root) => findAll(root, (n) => n.getAttribute?.('aria-label') === 'Selected event')[0];
 const expectedEventIds = () => {
   const ids = [];
-  for (const level of RACE_LEVELS) {
+  for (const level of RACING_CIRCUITS) {
     const practice = practiceContractForLevel(level.id);
     if (practice) ids.push(practice.id);
-    for (const row of storyContracts().filter((r) => r.levelId === level.id)) ids.push(row.id);
+    for (const row of circuitContracts().filter((r) => r.levelId === level.id)) ids.push(row.id);
   }
   return ids;
 };
@@ -354,7 +354,7 @@ test('seed 4242: cup mode offers only the current heat, spends its ticket on lau
   const b = mountBoard(h.ctx, { fit: { ...FIT, raceMode: 'cup' }, storage });
   try {
     const cards = eventCards(b.root);
-    assert.deepEqual(cards.map((card) => card.dataset.contractId), RACE_LEVELS.map((level) => practiceContractForLevel(level.id).id));
+    assert.deepEqual(cards.map((card) => card.dataset.contractId), RACING_CIRCUITS.map((level) => practiceContractForLevel(level.id).id));
     assert.equal(raceBoardScreen._selectedContractId, CUP_HEATS[0].contractId);
     assert.equal(startButton(b.root).disabled, false);
     const locked = pickButtons(b.root).find((btn) => btn.dataset.action === CUP_HEATS[2].contractId);

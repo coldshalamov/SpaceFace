@@ -56,6 +56,24 @@ The light row is also part of identity, but it never replaces the shape.
 | Massline / cable | Both endpoints, tension, travelling load and retained body momentum | Core/sheath colour change at the loaded line, local endpoint light |
 | Solid matter / cargo | Opaque lit body, silhouette, tumbling and material identity | No halo as the object; contact light supports it |
 
+## Hit-reaction chain
+
+Every confirmed contact should answer in this order, within one or two frames:
+
+1. **Contact truth** — the real surface point, normal/approach, target and receipt.
+2. **Contact light** — the authored family light through the event or weapon pool.
+3. **Contact geometry** — family fan/slit/ribs plus one short reflected ping on an
+   unshielded hull. The ping is presentation; it never claims a damage bounce.
+4. **Physical answer** — solver impulse/torque and the one hitstun law; concussive loads
+   cross the tumble threshold, while lighter hits still produce a visible hull rock.
+5. **Visual answer** — `shipMicroMotion` hull roll/pitch/yaw and local contact yield. The
+   weapon family sets the multipliers: concussive > explosive > kinetic > thermal >
+   induction > coherent. The player's authored heading is never replaced.
+6. **Aftermath** — cooling marks, residue, debris or a status that outlives the flash.
+
+If any stage is missing, the action reads as a sticker rather than an event. If any stage
+invents force or damage, it is a bug even when it looks good.
+
 ## Adding a family
 
 1. Read the receipt and name the family and verb. If the event does not exist, build the gameplay

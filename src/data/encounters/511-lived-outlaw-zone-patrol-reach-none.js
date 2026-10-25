@@ -97,6 +97,13 @@ const spec = {
       "verb": "say",
       "line": "The casket has a serial someone still loves.",
       "channel": "info",
+      "next": "a2x"
+    },
+    {
+      "id": "a2x",
+      "verb": "say",
+      "line": "The patrol checks its own mirror twice before it checks your hold.",
+      "channel": "info",
       "next": "p2"
     },
     {

@@ -67,3 +67,10 @@ beside the raider. Asserts wing `combat:fire` ≥1, a wing damage packet on the 
 wing packets on non-players, zero `npc_piracy`/`hostile_fire` incidents, player survives, and
 the wing exits on designed terms (the test drops hull to the scripted ≤30% threshold once the
 fire evidence is in so `_stepRaidWing` owns the exit).
+
+Complete-with-evidence (devin-expu audit 2026-10-25): landed acc83ababd + dbfe5da7c5 +
+f175abc66d (+16 review rounds, 3 successive clean). `x02-raid-wing` 14/14 and
+`x02-raid-wing-live-fire-4242` 1/1 green today — the wing fires live on the real boot and exits
+on designed terms. Audit residual (nothing on the rail shoots; no flee-at-hull) fully closed;
+all three drafts proposed the same wing mechanism the plan synthesized — no remaining named
+sub-scope.

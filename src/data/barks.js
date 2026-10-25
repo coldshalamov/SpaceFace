@@ -41,17 +41,17 @@ import { topUpBarkSituationCells } from './barkSituationFill.js';
 // The code faction ids with a voice corpus, exported for validators/consumers.
 // Appended ids keep earlier indices stable: the generated line_*.wav corpus is indexed by
 // BARK_FACTIONS order × situation × line.
-export const BARK_FACTIONS = [
+export const BARK_FACTIONS = Object.freeze([
   'faction_scn', 'faction_mts', 'faction_dmc', 'faction_reach',
   'faction_quiet', 'faction_choir', 'faction_free', 'faction_vael',
   'faction_archive', 'faction_fulfillment', 'faction_pitborn',
   'faction_understory', 'faction_verge_layers', 'faction_helix',
-];
+]);
 
 // The core situations every faction is guaranteed to cover.
-export const BARK_SITUATIONS = [
+export const BARK_SITUATIONS = Object.freeze([
   'scan', 'warn', 'demand-cargo', 'attack', 'flee', 'reinforce', 'taunt', 'patrol-greeting',
-];
+]);
 
 // Event situations: every faction covers these too, but they fire on a moment, not a contact
 // state — same precedent as HULL_RECOGNITION below. They are deliberately NOT in BARK_SITUATIONS:
@@ -60,6 +60,9 @@ export const BARK_SITUATIONS = [
 export const BARK_EVENT_SITUATIONS = Object.freeze(['distress']);
 
 // Corpus: BARKS[factionId][situation] = [lines...]. Each array is non-empty.
+// Authoring rule: APPEND at cell end only — delivered voice WAVs are named by positional
+// corpus index (deliveredBarkWavRelPath), so a mid-array insert or reorder renumbers the
+// whole shipped WAV set downstream of it. Same rule as barkSituationFill.js.
 export const BARKS = {
   // ── Concord — procedural / bureaucratic ────────────────────────────────────
   faction_scn: {

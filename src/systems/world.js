@@ -205,6 +205,7 @@ import {
 } from '../world/dressingTable.js';
 import { markAuxRowDirty } from '../world/auxRowJournal.js';
 import { stampSolidDressing } from '../world/solidDressing.js';
+import { racingCorridorSceneryShift } from '../world/racingCorridor.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
   materializeAlienEcology,
@@ -3026,7 +3027,7 @@ export const world = {
       const local = poi.pos
         ? { x: poi.pos.x, z: poi.pos.z }
         : { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
-      const pos = this._toGlobal(local, sector.id);
+      let pos = this._toGlobal(local, sector.id);
       if (!disc.pois[poi.id]) disc.pois[poi.id] = { discovered: false, identified: false };
       // Static Atlas rows may delegate their physical representation to a durable runtime owner.
       // Keep the discovery identity here, but never create a second marker entity beside that owner.
@@ -3115,6 +3116,17 @@ export const world = {
         })
         : null;
       const spawnRadius = solidPlan ? solidPlan.radius : visualRadius;
+      const fleetCount = Math.max(0, Math.min(24, Math.trunc(Number(poi.bandLandmarkFleet) || 0)));
+      // AL-RACE-2: incidental solid scenery shifts rigidly off a temporary circuit's
+      // corridor — the marker and any attached fleet move as one body, so a ring like
+      // the Quiessence still reads as the fleet it is. Gates keep their authored
+      // clearance (RF-02); runtime-owned native sites leave this loop above and never
+      // move. Only a session-registered sector object answers the shift.
+      if (solidPlan || poi.collides === true || fleetCount > 0) {
+        const sceneryShift = racingCorridorSceneryShift(this.state, sector.id, pos,
+          Math.max(spawnRadius, fleetCount > 0 ? 280 : 0));
+        if (sceneryShift) pos = { x: pos.x + sceneryShift.x, z: pos.z + sceneryShift.z };
+      }
       const keepLive = fullPresence
         ? poiMustStayLiveActor(poi, activityObjectSlotId)
         : (!!activityObjectSlotId || poi.collides === true);
@@ -3165,7 +3177,6 @@ export const world = {
       // these sector-owned actors give the existing scanner and Band routes real identities.
       // They are becalmed hulks the player can see, so they take real measured-skin fixed
       // bodies (solid below) — no combatants, no signal-path change, but no fly-through either.
-      const fleetCount = Math.max(0, Math.min(24, Math.trunc(Number(poi.bandLandmarkFleet) || 0)));
       if (fleetCount > 0 && poi.flavorTargetRef) {
         const hullFleetData = (shipIndex) => ({
           poi: true,

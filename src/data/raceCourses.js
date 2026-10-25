@@ -149,3 +149,222 @@ export function raceBandForElapsed(elapsedS, course) {
   if (t <= caps[1]) return 'standard';
   return 'finish';
 }
+
+// ── RF-02 authored-circuit validation ─────────────────────────────────────────
+// Pure geometry/envelope checks for the authored circuits in raceLevels.js. The
+// validator never modifies the course; it returns { ok, errors: [{ code, gateIndex?,
+// bodyId? }] } with exact diagnostic codes so the launch owner can surface the
+// authoring failure instead of a bare false. Solids are supplied in the same
+// coordinate frame as course.gates (sector-local for authored courses).
+const RF02_EPS = 1e-6;
+
+const rfFinite = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.z);
+const rfDist = (a, b) => Math.hypot(b.x - a.x, b.z - a.z);
+const rfUnit = (a, b) => {
+  const len = rfDist(a, b);
+  return len > RF02_EPS ? { x: (b.x - a.x) / len, z: (b.z - a.z) / len, len } : null;
+};
+const rfTurnAngle = (uIn, uOut) => {
+  if (!uIn || !uOut) return 0;
+  const dot = Math.max(-1, Math.min(1, uIn.x * uOut.x + uIn.z * uOut.z));
+  return Math.acos(dot);
+};
+const rfClosestOnSegment = (pos, a, b) => {
+  const u = rfUnit(a, b);
+  if (!u) return { x: a.x, z: a.z, distance: rfDist(pos, a) };
+  const s = Math.max(0, Math.min(u.len, (pos.x - a.x) * u.x + (pos.z - a.z) * u.z));
+  const x = a.x + u.x * s, z = a.z + u.z * s;
+  return { x, z, distance: Math.hypot(pos.x - x, pos.z - z) };
+};
+/** Union occupancy: true when some point inside the aperture disc clears every
+ * intruding body by `reach`. The per-solid strip test answers "is there a channel
+ * beside this one rock"; this answers the question the hull actually asks. The
+ * scan is anchored on the gate center so a free line through the middle can
+ * never fall between samples; a free sliver thinner than the scan step is
+ * treated as unthreadable, which is the conservative call for authored gates. */
+const rfGateThreads = (gate, aperture, intruders, reach) => {
+  const step = Math.max(6, reach / 4);
+  const span = Math.ceil(aperture / step);
+  for (let kx = -span; kx <= span; kx++) {
+    const ox = kx * step;
+    for (let kz = -span; kz <= span; kz++) {
+      const oz = kz * step;
+      if (ox * ox + oz * oz > aperture * aperture) continue;
+      const x = gate.x + ox, z = gate.z + oz;
+      let clear = true;
+      for (const s of intruders) {
+        if (Math.hypot(x - s.x, z - s.z) < s.r + reach - RF02_EPS) { clear = false; break; }
+      }
+      if (clear) return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * RF-02 validation of one authored circuit.
+ *   course   — { gates: [{x,z}], gateRadiusWU, kind?, boostGateIndex? }
+ *   options  — {
+ *     hullRadiusWU      — fitted hull radius (default 32); gate radius must exceed it
+ *     profile           — resolved propulsion profile { reverseAccel|maxBrakeAccel,
+ *                         strafeAccel|maxAccel, maxYawRate, boostSpeedMult }
+ *     referenceSpeedsWU — { turn: 60, straight: 120 } pacing references
+ *     solids            — materialized statics [{ x, z, radius, id }] in course coords
+ *     grid              — { backWU, halfWidthWU } override for the start-grid strip
+ *     branchGraph       — optional [{ from, to }] branch edges between gate indices
+ *     expectClosed      — force closure requirement even without kind === 'circuit'
+ *   }
+ * Returns { ok, errors: [{ code, gateIndex?, bodyId? }] }; ok === errors.length === 0.
+ */
+export function validateRacingCircuit(course, options = {}) {
+  const errors = [];
+  const push = (code, gateIndex, bodyId) => {
+    const row = { code };
+    if (Number.isInteger(gateIndex)) row.gateIndex = gateIndex;
+    if (bodyId != null) row.bodyId = bodyId;
+    errors.push(row);
+  };
+  const gates = course && Array.isArray(course.gates) ? course.gates : null;
+  if (!course || typeof course !== 'object' || !gates || gates.length < 4) {
+    return { ok: false, errors: [{ code: 'invalid_course' }] };
+  }
+  const hullRadiusWU = Number.isFinite(options.hullRadiusWU) && options.hullRadiusWU > 0
+    ? options.hullRadiusWU : 32;
+  const gateRadius = Number(course.gateRadiusWU);
+  if (!Number.isFinite(gateRadius) || gateRadius <= hullRadiusWU + RF02_EPS) {
+    push('invalid_gate_radius');
+  }
+  const aperture = Number.isFinite(gateRadius) && gateRadius > 0 ? gateRadius : 0;
+  const profile = options.profile || {};
+  const brake = Math.min(Number(profile.reverseAccel || profile.maxBrakeAccel) || 60, 140);
+  const lateral = Number(profile.strafeAccel || profile.maxAccel) || 60;
+  const boostSpeedMult = Number.isFinite(profile.boostSpeedMult) && profile.boostSpeedMult > 1
+    ? profile.boostSpeedMult : 1.6;
+  const refs = options.referenceSpeedsWU || {};
+  const refTurn = Number.isFinite(refs.turn) && refs.turn > 0 ? refs.turn : 60;
+  const refStraight = Number.isFinite(refs.straight) && refs.straight > 0 ? refs.straight : 120;
+  const solids = Array.isArray(options.solids) ? options.solids : [];
+  const n = gates.length;
+  const brakeDistance = (v0, v1) => Math.max(0, (v0 * v0 - v1 * v1) / (2 * Math.max(1, brake)));
+
+  // Per-gate finiteness.
+  for (let i = 0; i < n; i++) {
+    if (!rfFinite(gates[i])) push('non_finite_gate', i);
+  }
+  const closed = rfFinite(gates[0]) && rfFinite(gates[n - 1]) && rfDist(gates[0], gates[n - 1]) <= 1;
+  const mustClose = course.kind === 'circuit' || options.expectClosed === true;
+  if (mustClose && !closed) push('missing_closure');
+
+  // Segment validity.
+  for (let i = 0; i + 1 < n; i++) {
+    if (!rfFinite(gates[i]) || !rfFinite(gates[i + 1])) continue;
+    const len = rfDist(gates[i], gates[i + 1]);
+    if (len < RF02_EPS) push('degenerate_segment', i);
+    else if (aperture > 0 && len < aperture * 2 - RF02_EPS) push('short_leg', i);
+  }
+
+  // Seam integrity: exactly one repeated start at index n-1, aligned with the opening leg.
+  if (closed) {
+    for (let i = 1; i <= n - 2; i++) {
+      if (!rfFinite(gates[i])) continue;
+      if (rfDist(gates[i], gates[0]) <= 1) push('duplicate_seam', i);
+      else if (i !== n - 2 && rfFinite(gates[n - 2]) && rfDist(gates[i], gates[n - 2]) <= 1) {
+        push('duplicate_seam', i);
+      }
+    }
+    const approach = rfUnit(gates[n - 2], gates[n - 1]);
+    const opening = rfUnit(gates[0], gates[1]);
+    if (approach && opening && rfTurnAngle(approach, opening) > Math.PI / 12) {
+      push('misaligned_seam', n - 1);
+    }
+  }
+
+  // Turn feasibility: curvature sets the corner speed; reverse thrust sets braking room.
+  for (let i = 1; i <= n - 2; i++) {
+    const uIn = rfUnit(gates[i - 1], gates[i]);
+    const uOut = rfUnit(gates[i], gates[i + 1]);
+    if (!uIn || !uOut) continue;
+    const turn = rfTurnAngle(uIn, uOut);
+    if (turn < 0.1) continue;
+    const radius = Math.max(18, aperture * 0.65) / Math.max(0.2, Math.tan(Math.min(2.8, turn) / 2));
+    const cornerSpeed = Math.max(26, Math.sqrt(lateral * radius));
+    if (turn >= (150 * Math.PI) / 180) {
+      // A reversal must leave room to kill essentially all approach speed.
+      if (uIn.len < brakeDistance(refStraight, Math.min(30, cornerSpeed))) push('infeasible_reversal', i);
+      continue;
+    }
+    const approach = turn >= (60 * Math.PI) / 180 ? refTurn : refStraight;
+    if (approach > cornerSpeed && uIn.len < brakeDistance(approach, cornerSpeed)) {
+      push('insufficient_braking', i);
+    }
+  }
+
+  // Static clearance: a gate admits the hull when one side of the aperture still
+  // carries a full-body channel; the grid is the hold strip behind the start line.
+  // `reach` is the hull radius plus the same body margin the strip check prices in.
+  const hullReach = hullRadiusWU + 4;
+  for (let i = 0; i < n; i++) {
+    if (!rfFinite(gates[i]) || aperture <= 0) break;
+    let intruders = null;
+    for (const solid of solids) {
+      const r = Number(solid && (solid.radiusWU ?? solid.radius)) || 0;
+      if (!rfFinite(solid) || r <= 0) continue;
+      const d = rfDist(solid, gates[i]);
+      if (aperture + d - r < 2 * hullRadiusWU + 8 - RF02_EPS) push('blocked_gate', i, solid.id);
+      if (d - r < aperture + hullReach + RF02_EPS) {
+        (intruders || (intruders = [])).push({ x: solid.x, z: solid.z, r, d, id: solid.id });
+      }
+    }
+    // A wall needs no single offender: two or more bodies can overlap their
+    // clearance so no point inside the aperture still fits the hull. The per-solid
+    // strip check above cannot see that union, so ask the question directly.
+    // (One intruder alone can never union-block without already failing the strip.)
+    if (intruders && intruders.length >= 2 && !rfGateThreads(gates[i], aperture, intruders, hullReach)) {
+      intruders.sort((a, b) => (a.d - a.r) - (b.d - b.r));
+      push('blocked_gate', i, intruders[0].id);
+    }
+  }
+  if (rfFinite(gates[0]) && rfFinite(gates[1])) {
+    const u0 = rfUnit(gates[0], gates[1]);
+    const gridBack = Number.isFinite(options.grid?.backWU) ? options.grid.backWU : 240;
+    const gridHalf = Number.isFinite(options.grid?.halfWidthWU)
+      ? options.grid.halfWidthWU : hullRadiusWU + 24;
+    const gridTail = u0 ? { x: gates[0].x - u0.x * gridBack, z: gates[0].z - u0.z * gridBack } : gates[0];
+    for (const solid of solids) {
+      const r = Number(solid && (solid.radiusWU ?? solid.radius)) || 0;
+      if (!rfFinite(solid) || r <= 0) continue;
+      if (rfClosestOnSegment(solid, gridTail, gates[0]).distance < gridHalf + r - RF02_EPS) {
+        push('blocked_grid', 0, solid.id);
+      }
+    }
+  }
+
+  // Declared branches must resolve to two distinct interior gates, entry before rejoin.
+  const branchEdges = Array.isArray(options.branchGraph?.edges)
+    ? options.branchGraph.edges
+    : (Array.isArray(options.branchGraph) ? options.branchGraph : []);
+  const lastInterior = closed ? n - 2 : n - 1;
+  for (const edge of branchEdges) {
+    const from = Array.isArray(edge) ? edge[0] : edge && edge.from;
+    const to = Array.isArray(edge) ? edge[1] : edge && edge.to;
+    if (!Number.isInteger(from) || !Number.isInteger(to)
+        || from < 1 || to < 1 || from > lastInterior || to > lastInterior || from >= to) {
+      push('invalid_branch', Number.isInteger(from) ? from : undefined);
+    }
+  }
+
+  // Boost gate exit room only when the course declares one.
+  const boostGate = Number.isInteger(course.boostGateIndex) ? course.boostGateIndex
+    : (Number.isInteger(options.boostGateIndex) ? options.boostGateIndex : null);
+  if (boostGate != null) {
+    if (boostGate < 1 || boostGate + 1 > lastInterior) {
+      push('invalid_branch', boostGate);
+    } else if (rfFinite(gates[boostGate]) && rfFinite(gates[boostGate + 1])) {
+      const exitLen = rfDist(gates[boostGate], gates[boostGate + 1]);
+      const boostExit = refStraight * boostSpeedMult;
+      if (exitLen < brakeDistance(boostExit, refStraight)) push('insufficient_boost_exit', boostGate);
+    }
+  }
+
+  return { ok: errors.length === 0, errors };
+}

@@ -1,5 +1,5 @@
 // Local circuit progression. No campaign credits, faction standing or gameplay authority.
-import { RACE_LEVELS, medalForCourseTime, practiceContractForLevel, raceContractById } from '../data/raceLevels.js';
+import { RACE_LEVELS, RACING_CIRCUITS, medalForCourseTime, practiceContractForLevel, raceContractById } from '../data/raceLevels.js';
 import { RACING_PERSONALITIES } from '../ai/racingDriver.js';
 import { NEW_GAME_STARTERS } from '../data/newGameDefaults.js';
 import { RACING_COSMETICS, racingCosmeticFor, racingCosmeticUnlocked } from '../data/racingCosmetics.js';
@@ -22,7 +22,9 @@ const POINTS = Object.freeze([6, 3, 1]);
 const COUNT_LIMIT = 1000000, writeStatus = new WeakMap();
 const count = value => Number.isInteger(value) && value >= 0 && value <= COUNT_LIMIT;
 const serial = value => Number.isSafeInteger(value) && value >= 0;
-const knownLevel = value => RACE_LEVELS.some(row => row.id === value);
+// AL-RACE-2: recognition, medals and rival history whitelist the full nine-course
+// catalog; the cup roster alone stays pinned to the original three (CUP_HEATS).
+const knownLevel = value => RACING_CIRCUITS.some(row => row.id === value);
 const knownDifficulty = value => RACING_DIFFICULTIES.some(row => row.id === value);
 let cup = null, nextCupId = 1, continuationRead = false;
 const validDifficulty = value => RACING_DIFFICULTIES.some(row => row.id === value) ? value : 'club';
@@ -128,7 +130,7 @@ function readCareer(storage) {
     if (Object.keys(rivals).length) career.rivals = rivals;
     const medals = {};
     if (data.medals && typeof data.medals === 'object' && !Array.isArray(data.medals)) {
-      for (const level of RACE_LEVELS) {
+      for (const level of RACING_CIRCUITS) {
         const row = data.medals[level.id];
         if (!row || !['Gold', 'Silver', 'Bronze'].includes(row.medal)) continue;
         if (!Number.isFinite(row.elapsedS) || row.elapsedS <= 0 || row.elapsedS > 36000) continue;

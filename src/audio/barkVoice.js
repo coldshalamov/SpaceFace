@@ -9,10 +9,11 @@ import { SAMPLE_MANIFEST } from './sampleLibrary.js';
 import { detectPitchHz, decodePcmWav } from './themeCompose.js';
 
 export const BARK_VOICE_SEED = 15804;
-// Authored count follows the BARKS table. PULSE-08 tops every core cell to 12
-// (14 factions x 8 situations). Distress is event-only and is not in this count.
+// Authored count follows the BARKS table. PULSE-08 tops every core cell to >=12
+// (14 factions x 8 situations + the former dead fill tails, live since D254).
+// Distress is event-only and is not in this count.
 // The pin exists so unauthored corpus drift fails loudly.
-export const BARK_CORPUS_TARGET = 1344;
+export const BARK_CORPUS_TARGET = 1399;
 
 export const BARK_RECIPE_ID = 'sfx_bark_radio';
 
@@ -87,7 +88,7 @@ export const FACTION_VOICE_REGISTERS = Object.freeze({
     formants: [350, 800, 1900],
   }),
   // Deep factions (K1 route). f0 sits ≥5 Hz from every other register so the blind-listen
-  // identifier (tolerance <3 Hz) can never cross-name two houses.
+  // identifier (tolerance <2.5 Hz) can never cross-name two houses.
   faction_archive: register('faction_archive', 'Archive', {
     // Monastic librarian: low, slow, dry — a voice that files you while it talks.
     sampleId: 'bark_archive', f0: 102, pitch: 0.85, rate: 0.82,
@@ -133,7 +134,7 @@ export const MECHANIC_VOICE_REGISTER = register('mechanic', 'Mechanic', {
 });
 
 // The instructor: the first-hour tutorial voice. Low, clean, unhurried — a dispatcher register a
-// stranger can tell apart blind from the thirteen faction registers and the mechanic (least noise and drive in
+// stranger can tell apart blind from the faction registers and the mechanic (least noise and drive in
 // the set; the bandpass sits high enough to stay soft over the comms bed).
 export const INSTRUCTOR_VOICE_REGISTER = register('instructor', 'Instructor', {
   sampleId: 'bark_instructor', f0: 118, pitch: 0.92, rate: 0.96,
@@ -364,9 +365,16 @@ export function identifyRegisterFromSpeech(speech = {}) {
   return bestDist < 8 ? best : null;
 }
 
-/** Pipeline delivery path: one WAV per corpus row, written by generate-bark-voice.mjs --all. */
+/** Pipeline delivery path: one WAV per corpus row, written by generate-bark-voice.mjs --all.
+ *  Four-digit padding keeps lexicographic order = row order now that the corpus exceeds 999. */
 export function deliveredBarkWavRelPath(index, registerId) {
-  const n = String(Number(index) || 0).padStart(3, '0');
+  if (!Number.isInteger(index) || index < 0 || index > 9999) {
+    throw new Error(`deliveredBarkWavRelPath index must be an integer 0-9999, got ${index}`);
+  }
+  if (typeof registerId !== 'string' || !/^[A-Za-z0-9_-]+$/.test(registerId)) {
+    throw new Error(`deliveredBarkWavRelPath registerId must be a safe filename segment, got ${registerId}`);
+  }
+  const n = String(index).padStart(4, '0');
   return `assets/audio/voice/line_${n}_${registerId}.wav`;
 }
 
@@ -382,6 +390,10 @@ export function enumerateDeliveredBarkWavs() {
 
 export const BARK_UTTERANCE_SECONDS = 1.05;
 export const REGISTER_CALLSIGN_SECONDS = 0.7;
+// Delivered corpus artifacts are normalized to a fixed length; the player hears each row's
+// authored speech.durationS instead (pinned by pq-158-04), so this shapes only the
+// byte-verified acceptance corpus.
+export const DELIVERED_WAV_SECONDS = 1.4;
 
 class VoiceBiquad {
   constructor(type, f0, q, sr) {
@@ -512,7 +524,7 @@ export function identifyRegisterFromPcm(pcm, sampleRate = 32000) {
       best = factionId;
     }
   }
-  return bestDist < 3 ? best : null;
+  return bestDist < 2.5 ? best : null;
 }
 
 /** Decode a WAV and name the register. Never reads the filename. */

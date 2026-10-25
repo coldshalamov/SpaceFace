@@ -97,6 +97,13 @@ const spec = {
       "verb": "say",
       "line": "The visor has a serial someone still loves.",
       "channel": "info",
+      "next": "a2x"
+    },
+    {
+      "id": "a2x",
+      "verb": "say",
+      "line": "Someone on the civilian band is already praying for the caller by count, not by name.",
+      "channel": "info",
       "next": "p2"
     },
     {

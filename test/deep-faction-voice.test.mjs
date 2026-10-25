@@ -103,7 +103,7 @@ test('resolveBarkVoice maps each deep faction to its own register with a shipped
     seen.add(register.f0);
   }
   // Registers are distinguishable: no two deep houses share a fundamental, and none collides
-  // with an existing house (blind-identification tolerance is <3 Hz).
+  // with an existing house (blind-identification tolerance is <2.5 Hz).
   assert.equal(seen.size, DEEP.length);
   const all = BARK_FACTIONS.map((id) => FACTION_VOICE_REGISTERS[id].f0).sort((a, b) => a - b);
   for (let i = 1; i < all.length; i++) {

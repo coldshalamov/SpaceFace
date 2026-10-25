@@ -97,6 +97,13 @@ const spec = {
       "verb": "say",
       "line": "The kettle has a serial someone still loves.",
       "channel": "info",
+      "next": "a2x"
+    },
+    {
+      "id": "a2x",
+      "verb": "say",
+      "line": "The wreck still wears paint under the burn. Somebody keeps choosing not to cut there.",
+      "channel": "info",
       "next": "p2"
     },
     {

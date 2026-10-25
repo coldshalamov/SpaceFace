@@ -3827,7 +3827,15 @@ export const onboarding = {
       }
     }
     // A raider that somehow drifts clear restages near the wall — retry, never a wall.
-    if (Math.hypot(raider.pos.x - player.pos.x, raider.pos.z - player.pos.z) > 3000) {
+    // A morale-broken raider is the same failed attempt: it cannot be slammed, and leaving
+    // a 33-hull fugitive circling forever strands the lesson. Restage it like the drift case.
+    const raiderAi = raider.data && raider.data.ai;
+    const raiderFled = raider.alive === false
+      ? false
+      : raiderAi && (raiderAi.fsm === 'flee'
+        || (raiderAi.activity && raiderAi.activity.kind === ActivityKind.DISENGAGE));
+    if ((raiderFled && !towLatched)
+      || Math.hypot(raider.pos.x - player.pos.x, raider.pos.z - player.pos.z) > 3000) {
       this._respawnRaidRaider('He ran. Follow the diamond and latch him.');
     }
   },

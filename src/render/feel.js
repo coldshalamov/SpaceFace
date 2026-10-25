@@ -191,6 +191,10 @@ export const COLLISION_DELTA_V_FLOOR = 8;     // WU/s — bar B9's own floor; be
 export const COLLISION_DELTA_V_REF = 150;     // WU/s — reference slam; curve reaches its ceiling here
 export const HS_IMPACT_MIN = 0.016;           // s — ~one rendered frame at the deltaV floor
 export const HS_IMPACT_MAX = 0.09;            // s — slam ceiling; well under HS_CAPITAL_KILL
+// A heavy contact is a beat, not a camera wobble: hold the rendered frame for at most
+// three frames at 60 Hz. The simulation never pauses; only the camera's presentation clock
+// is frozen. Motion-reduce and photo mode already bail above.
+export const HS_CAMERA_HOLD_MAX = 0.05;
 export const COLLISION_HITSTOP_COOLDOWN = 0.18; // s of real frame time between armed collision beats
 // F9 — the rope's joke is three bodies agreeing. A player-caused release whose contact chain
 // reaches a THIRD distinct body earns exactly one extra dip, long enough to see the chain land.
@@ -1698,6 +1702,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     if (mr) return;
 
     this._trigger(pending.hsDur, pending.fov, 0, null);
+    this._holdCameraBeat(pending.hsDur);
     const ctrl = this.state.render && this.state.render.cameraCtrl;
     if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(pending.trauma);
     // Directed kick rides the SAME armed beat — the cooldown above rate-limits it identically, so
@@ -1773,10 +1778,19 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // Heavy contacts bite with a 1–2 frame hit-stop; _trigger keeps the longer of any dip already
     // running and stacks the FOV punch. Rhythmic ticks (hsDur = 0) only punch the FOV.
     this._trigger(crunch.hsDur || 0, Math.max(0, crunch.fov * fovScale), 0, null);
+    this._holdCameraBeat(crunch.hsDur);
     const ctrl = this.state.render && this.state.render.cameraCtrl;
     if (crunch.trauma * traumaScale > 0 && ctrl && typeof ctrl.addTrauma === 'function') {
       ctrl.addTrauma(crunch.trauma * traumaScale);
     }
+  },
+
+  /** Freeze the presentation camera for the contact beat; never the simulation clock. */
+  _holdCameraBeat(seconds) {
+    if (!(Number.isFinite(seconds) && seconds > 0)) return false;
+    const ctrl = this.state && this.state.render && this.state.render.cameraCtrl;
+    if (!ctrl || typeof ctrl.hold !== 'function') return false;
+    return ctrl.hold(Math.min(HS_CAMERA_HOLD_MAX, seconds)) !== false;
   },
 
   // Arm a punch. `vigCls` selects which vignette gradient ('hit'|'death'|null).

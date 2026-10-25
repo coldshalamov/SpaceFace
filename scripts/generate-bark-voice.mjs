@@ -10,6 +10,12 @@
 //   node scripts/generate-bark-voice.mjs --check
 //   node scripts/generate-bark-voice.mjs --catalog
 //   node scripts/generate-bark-voice.mjs --all
+//   node scripts/generate-bark-voice.mjs --all --check
+//
+// --all writes every corpus line plus the runtime representative clips (bark_* registers,
+// mechanic, instructor) and the blind callsigns. --all --check byte-verifies all of them and
+// audits the whole voice tree for stray files the pipeline no longer owns (npm run
+// check:bark-voice-corpus); --all --prune deletes strays instead of only failing on them.
 
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +23,9 @@ import path from 'node:path';
 
 import {
   BARK_CORPUS_TARGET,
+  BARK_VOICE_SEED,
   BARK_UTTERANCE_SECONDS,
+  DELIVERED_WAV_SECONDS,
   MECHANIC_LINES,
   MECHANIC_VOICE_REGISTER,
   FACTION_VOICE_REGISTERS,
@@ -25,6 +33,7 @@ import {
   INSTRUCTOR_VOICE_REGISTER,
   BLIND_REGISTER_CLIPS,
   countBarkCorpus,
+  deliveredBarkWavRelPath,
   enumerateBarkPipeline,
   enumerateMechanicPipeline,
   resolveBarkVoice,
@@ -34,6 +43,7 @@ import {
 } from '../src/audio/barkVoice.js';
 import { encodeWavPcm16, THEME_SAMPLE_RATE } from '../src/audio/themeCompose.js';
 import { BARKS, BARK_FACTIONS } from '../src/data/barks.js';
+import { auditExpectedTree } from './lib/treeAudit.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = path.join(ROOT, 'assets', 'audio', 'voice');
@@ -43,6 +53,14 @@ const argv = process.argv.slice(2);
 const checkOnly = argv.includes('--check');
 const catalogOnly = argv.includes('--catalog');
 const writeAll = argv.includes('--all');
+// --prune deletes flagged strays instead of failing on them; only meaningful with --all,
+// and only ever deletes files the pipeline provably does not own under voice/. It is
+// disabled under --check so the verify-only mode never mutates the tree.
+const pruneStrays = argv.includes('--prune') && !checkOnly;
+if (argv.includes('--prune') && (!writeAll || checkOnly)) {
+  console.error('--prune only applies to --all without --check');
+  process.exit(2);
+}
 
 function wavFromPcm(pcm) {
   return encodeWavPcm16(pcm, SR);
@@ -89,27 +107,29 @@ const mechanic = enumerateMechanicPipeline();
 
 if (corpus !== BARK_CORPUS_TARGET || pipeline.length !== BARK_CORPUS_TARGET) {
   console.error(`bark corpus ${corpus} / pipeline ${pipeline.length}, expected ${BARK_CORPUS_TARGET}`);
-  process.exitCode = 1;
+  process.exit(1); // fail fast — rendering the full job set against a drifted corpus is wasted work
 }
 
 if (catalogOnly) {
-  console.log(`PQ-158.04 catalog seed=${15804} lines=${pipeline.length} mechanic=${mechanic.length}`);
+  console.log(`PQ-158.04 catalog seed=${BARK_VOICE_SEED} lines=${pipeline.length} mechanic=${mechanic.length}`);
   for (const row of pipeline) {
     console.log(`${row.factionId}\t${row.situation}\t${row.speech.f0}\t${row.speech.rate}\t${row.caption}`);
   }
   process.exit(process.exitCode || 0);
 }
 
-const jobs = writeAll
+// --all covers the corpus rows AND the runtime representative clips (bark_* register files,
+// mechanic, instructor), so a lone `--all --check` is a complete voice-tree audit.
+const jobs = (writeAll
   ? pipeline.map((row, i) => ({
-    file: path.join(OUT_DIR, `line_${String(i).padStart(3, '0')}_${row.registerId}.wav`),
-    rel: `assets/audio/voice/line_${String(i).padStart(3, '0')}_${row.registerId}.wav`,
+    file: path.join(ROOT, deliveredBarkWavRelPath(i, row.registerId)),
+    rel: deliveredBarkWavRelPath(i, row.registerId),
     resolved: row,
-    seconds: 1.4,
+    seconds: DELIVERED_WAV_SECONDS,
   }))
-  : representativeJobs();
+  : []).concat(representativeJobs());
 
-mkdirSync(OUT_DIR, { recursive: true });
+if (!checkOnly) mkdirSync(OUT_DIR, { recursive: true });
 const mismatches = [];
 for (const job of jobs) {
   const bytes = wavFromPcm(renderBarkUtterancePcm(job.resolved, { sampleRate: SR, seconds: job.seconds }));
@@ -123,7 +143,7 @@ for (const job of jobs) {
 }
 
 const blindDir = path.join(OUT_DIR, 'blind');
-mkdirSync(blindDir, { recursive: true });
+if (!checkOnly) mkdirSync(blindDir, { recursive: true });
 for (const clip of BLIND_REGISTER_CLIPS) {
   const register = FACTION_VOICE_REGISTERS[clip.factionId];
   const pcm = renderRegisterCallsignPcm(register, { sampleRate: SR });
@@ -137,13 +157,27 @@ for (const clip of BLIND_REGISTER_CLIPS) {
   }
 }
 
+// Stray audit: --all fails on any stray WAV in the voice tree — stale line_* names, a renamed
+// register's old bark_* clip, or an orphan under voice/blind/. It runs in write mode too: a
+// renumber leaves orphans at the point of cause, not at the next --check. Scoped to .wav so
+// OS debris (Thumbs.db, .gitkeep) isn't counted as corpus drift; expected paths are
+// OUT_DIR-relative so a future nested delivered layout audits correctly.
+if (writeAll) {
+  const expected = new Set(jobs.map((j) => path.relative(OUT_DIR, j.file).replace(/\\/g, '/')));
+  for (const c of BLIND_REGISTER_CLIPS) expected.add(`blind/${path.basename(c.file)}`);
+  for (const rel of auditExpectedTree(OUT_DIR, expected, { prune: pruneStrays, extensions: /\.wav$/i })) {
+    if (pruneStrays) console.log(`pruned stray assets/audio/voice/${rel}`);
+    else mismatches.push(`stray assets/audio/voice/${rel}`);
+  }
+}
+
 if (mismatches.length) {
   console.error(`bark voice tree does not match the pipeline (${mismatches.length}):`);
   for (const m of mismatches) console.error(`  ${m}`);
   process.exitCode = 1;
 } else {
   console.log(
-    `PQ-158.04 seed=15804 corpus=${pipeline.length}/${BARK_CORPUS_TARGET} `
+    `PQ-158.04 seed=${BARK_VOICE_SEED} corpus=${pipeline.length}/${BARK_CORPUS_TARGET} `
     + `registers=${Object.keys(FACTION_VOICE_REGISTERS).length} mechanic=${mechanic.length} `
     + `wavs=${jobs.length} blind=${BLIND_REGISTER_CLIPS.length}${checkOnly ? ' (verified)' : ''}`,
   );

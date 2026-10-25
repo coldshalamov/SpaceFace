@@ -19,6 +19,7 @@ import {
 } from '../scripts/lib/releasePackaging.mjs';
 import { RENDER_PACKAGE_PILOTS } from '../src/render/renderPackageManifest.js';
 import { SAMPLE_MANIFEST } from '../src/audio/sampleLibrary.js';
+import { BLIND_REGISTER_CLIPS, enumerateDeliveredBarkWavs } from '../src/audio/barkVoice.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -49,6 +50,86 @@ test('release copy map ships the authored audio tree used by the sample manifest
       `sample ${entry.file} must live under the shipped assets/audio root`,
     );
   }
+});
+
+test('audio copy exclusions omit exactly the acceptance corpus — never a runtime-fetched file', async () => {
+  // The stale-prefix guard only fires on under-matching; an over-matching exclude (e.g.
+  // 'voice/') would silently strip shipped bark_* clips while the receipt stays valid.
+  // Pin the omission set to exactly the delivered corpus + blind fixtures.
+  const plans = await createReleaseCopyPlans({ root: ROOT });
+  const audio = plans.find((p) => p.mapping.source === 'assets/audio');
+  assert.ok(audio, 'assets/audio copy plan missing');
+  const expected = new Set([
+    ...enumerateDeliveredBarkWavs().map((r) => r.file.replace('assets/audio/', '')),
+    ...BLIND_REGISTER_CLIPS.map((c) => c.file.replace('assets/audio/', '')),
+  ]);
+  const omitted = new Set(audio.omissions.map((o) => o.path));
+  assert.deepEqual(omitted, expected);
+  for (const o of audio.omissions) assert.equal(o.reason, 'exclude', `${o.path} omission is untagged`);
+  for (const entry of SAMPLE_MANIFEST.values()) {
+    assert.ok(
+      !omitted.has(entry.file.replace('assets/audio/', '')),
+      `runtime-fetched sample ${entry.file} is excluded from the retail bundle`,
+    );
+  }
+});
+
+test('copy exclude drops the prefixed files, ships siblings, and fails loud on bad rules', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-copy-exclude-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const web = join(root, 'build', 'web');
+  const source = join(root, 'media');
+  await mkdir(join(source, 'drop'), { recursive: true });
+  await writeFile(join(source, 'keep.wav'), 'keep');
+  await writeFile(join(source, 'drop', 'omit.wav'), 'omit');
+  await writeFile(join(source, 'line_0000_x.wav'), 'tail');
+
+  const mappings = [{ source: 'media', destination: 'media', exclude: ['drop/', 'line_'] }];
+  const plans = await createReleaseCopyPlans({ root, mappings });
+  assert.equal(plans.length, 1);
+  assert.equal(plans[0].omissions.length, 2);
+  for (const o of plans[0].omissions) assert.equal(o.reason, 'exclude', `${o.path} untagged`);
+
+  await copyReleaseRuntimeTrees({ root, webRoot: web, mappings });
+  assert.ok(existsSync(join(web, 'media', 'keep.wav')), 'sibling file must ship');
+  assert.equal(existsSync(join(web, 'media', 'drop', 'omit.wav')), false, 'dir-prefix file must not ship');
+  assert.equal(existsSync(join(web, 'media', 'line_0000_x.wav')), false, 'raw-prefix file must not ship');
+  assert.equal(existsSync(join(web, 'media', 'drop')), false, 'a fully-excluded dir must not materialize empty');
+
+  const receipt = await createReleaseBuildReceipt({ root, webRoot: web, mappings });
+  const copy = receipt.copies.find((c) => c.source === 'media');
+  assert.equal(copy.exact, true, 'excluded files must be attributed, not diffed');
+  assert.equal(copy.omittedFileCount, 2);
+
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: 'x' }] }),
+    /must be a non-empty array/,
+    'a non-array exclude is an authoring error, not a silent no-op',
+  );
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: [] }] }),
+    /must be a non-empty array/,
+    'an empty exclude is an authoring error, not a silent no-op',
+  );
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: ['nomatch/'] }] }),
+    /matches nothing under media/,
+    'a stale exclude must fail rather than silently pin nothing',
+  );
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: [42] }] }),
+    /non-empty strings/,
+    'a non-string entry must not silently become a "42" prefix',
+  );
+  await assert.rejects(
+    createReleaseCopyPlans({
+      root,
+      mappings: [{ source: 'media', destination: 'media', projection: RENDER_PACKAGE_SOURCE_PROJECTION, exclude: ['drop/'] }],
+      pilots: [],
+    }),
+    /cannot combine projection with exclude/,
+    'projection+exclude is fail-loud, not live-but-untested semantics',
+  );
 });
 
 test('release build lock serializes candidates and recovers only dead owners', async (t) => {

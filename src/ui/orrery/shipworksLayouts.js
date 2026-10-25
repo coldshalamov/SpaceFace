@@ -1245,6 +1245,14 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
 @media (min-width:901px) and (max-width:1100px) and (max-height:640px) {
   ${D}.orr-sw--jig { grid-template-rows:minmax(0, 1fr) !important; }
 }
+/* 901-1100 x 461-640 (960x540): the stage is ~160px tall and the centred verb row takes its
+   foot, so a column of three two-line cards (Cargo · Weapon · Mining) ran down onto TAKE THE
+   HITCH TO THE RANGE. One-line cards, as at <=460 tall: each column stands in half the height. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) and (hover:hover) {
+  ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { display:flex !important; align-items:baseline !important; gap:0 8px !important;
+    line-height:15px !important; padding-block:1px !important; }
+  ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy :is(b, em) { display:inline !important; line-height:15px !important; }
+}
 /* 1280×720 / 1366×768 desktop: Range / Record / Paint own a foot inside the main
    column, leaving the schematic its own height above it instead of pinning to the viewport. */
 @media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {

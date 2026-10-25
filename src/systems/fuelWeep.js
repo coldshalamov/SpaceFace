@@ -42,7 +42,8 @@ export function stepFuelWeep(host, dt, state) {
     }
     return out;
   }
-  if (book.weeping) {
+  // A dry tank still has an open hull. Only a repair or a berth (rate 0) seals it.
+  if (book.weeping && !(rate > 0)) {
     book.weeping = false;
     out.sealed = true;
     if (host.bus && typeof host.bus.emit === 'function') {

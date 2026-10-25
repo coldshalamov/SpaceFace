@@ -1,6 +1,6 @@
 // Read-only recognition for the circuit board, including visits from adventure flight.
 import { el } from './kit/index.js';
-import { RACE_LEVELS } from '../data/raceLevels.js';
+import { RACING_CIRCUITS } from '../data/raceLevels.js';
 import { CUP_HEATS, RACING_DIFFICULTIES, RACING_RIVALS, readRacingCareer,
   racingRecognitionStatus } from '../systems/racingCareer.js';
 import { racingTakedownReceipts } from '../missions/racingOpponents.js';
@@ -38,7 +38,7 @@ export function renderRacingRecognition(storage) {
     const row = career.rivals?.[rival.id];
     let note = 'Not yet met on the grid.';
     if (row) {
-      const course = RACE_LEVELS.find(level => level.id === row.lastLevelId)?.name;
+      const course = RACING_CIRCUITS.find(level => level.id === row.lastLevelId)?.name;
       const difficulty = RACING_DIFFICULTIES.find(level => level.id === row.lastDifficulty)?.name;
       const last = row.lastOutcome === 'retired' ? 'Rival retired'
         : Number.isFinite(row.lastGapS) ? `${Math.abs(row.lastGapS).toFixed(2)}s ${row.lastOutcome}`

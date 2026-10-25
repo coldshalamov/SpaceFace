@@ -55,9 +55,9 @@ test('three authored circuits reuse real terrain and are not the lane chord', ()
   assert.equal(near(veil.gates, -900, -1900, 450), true);
 });
 
-test('five contracts lock the stern camera and practice does not; offers omit faction', () => {
+test('six contracts lock the stern camera and practice does not; offers omit faction', () => {
   const stories = storyContracts();
-  assert.equal(stories.length, 5);
+  assert.equal(stories.length, 6);
   const levels = new Set(stories.map((row) => row.levelId));
   assert.equal(levels.size, 3);
   for (const row of stories) {

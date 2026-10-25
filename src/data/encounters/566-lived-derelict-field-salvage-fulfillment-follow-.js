@@ -97,6 +97,13 @@ const spec = {
       "verb": "say",
       "line": "The dent has a serial someone still loves.",
       "channel": "info",
+      "next": "a2x"
+    },
+    {
+      "id": "a2x",
+      "verb": "say",
+      "line": "DISPATCH counts the hulks aloud, and skips the same one every time.",
+      "channel": "info",
       "next": "p2"
     },
     {

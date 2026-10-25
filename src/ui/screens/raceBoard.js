@@ -4,7 +4,7 @@ import { injectDeckplate } from '../deckplate/index.js';
 import { injectRaceBoardLayouts } from '../orrery/raceBoardLayouts.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { confirm } from '../confirm.js';
-import { RACE_LEVELS, courseForLevel, practiceContractForLevel, raceContractById, raceLevelById, racingOfferFor, racingSeedFor, storyContracts } from '../../data/raceLevels.js';
+import { RACING_CIRCUITS, courseForLevel, practiceContractForLevel, raceContractById, raceLevelById, racingOfferFor, racingSeedFor, circuitContracts } from '../../data/raceLevels.js';
 import { readRaceRecords, raceRecordKey, normalizeSteeringView, STEERING_VIEWS, activeRaceMission } from '../../systems/racingSteer.js';
 import { armRacingContract, stageRacingLaunch } from '../racingLaunch.js';
 import { setSteeringView, lastRacingResult } from '../racingControls.js';
@@ -29,7 +29,10 @@ const inFlight=ctx=>ctx?.state?.mode==='flight';
 export async function runContract(ctx, contractId, level, fit, confirmLaunch = confirm) {
   if(!ctx?.bus)return false;
   const temporary=isRacingCorridorSession(ctx.state);
-  if(inFlight(ctx)&&!temporary&&fit.raceMode==='time-trial'&&ctx.state.world?.currentSectorId===level.sectorId){
+  // AL-RACE-2: sector circuits skip the in-sector campaign shortcut entirely —
+  // they only exist inside their staged temporary session.
+  if(inFlight(ctx)&&!temporary&&fit.raceMode==='time-trial'&&level.temporaryOnly!==true
+    &&ctx.state.world?.currentSectorId===level.sectorId){
     // The arm can resolve on a worker rpc ack — a promise is not an acceptance result.
     const result=await armRacingContract(ctx,contractId,{...fit,allowEnterSector:false});
     if(result?.ok&&!result.reused){pop(ctx);return true;}
@@ -46,7 +49,12 @@ export async function runContract(ctx, contractId, level, fit, confirmLaunch = c
   if(!ok)return false;
   const cupFields=fit.raceMode==='cup'?stageRacingCupHeat(contractId,fit):{};
   if(!cupFields){ctx.bus.emit('toast',{text:'Continue the current cup heat or end the cup first.',kind:'info',ttl:3});return false;}
-  if(!stageRacingLaunch(contractId,{...fit,...cupFields})){releaseRacingCupHeat(cupFields);return false;}
+  const staged=stageRacingLaunch(contractId,{...fit,...cupFields});
+  if(!staged||staged.ok===false){
+    releaseRacingCupHeat(cupFields);
+    if(staged?.reason==='time_trial_only')ctx.bus.emit('toast',{text:'Select Time trial to fly this circuit.',kind:'info',ttl:4});
+    return false;
+  }
   ctx.bus.emit('game:new',{seed:racingSeedFor(contractId),racingSession:true,starter:fit.starter,racingDrive:fit.drive,
     racingLivery:readRacingCareer(storageOf()).liveryId||'factory'});
   return true;
@@ -59,7 +67,7 @@ export const raceBoardScreen={
     rootEl.setAttribute('aria-label','Racing circuits');this._root=rootEl;
     const title=el('header','k-title');
     title.append(el('p','k-sentence','CIRCUITS / FLIGHT'),el('h1','k-display k-t-title','Thread the needle.'),
-      el('p','k-sentence',`${RACE_LEVELS.length} circuits with the same ships and drives you fly in adventure. ${BINDINGS.steeringView.label} switches chase / overhead in free flight; mission locks return your preferred view when they end.`));
+      el('p','k-sentence',`${RACING_CIRCUITS.length} circuits with the same ships and drives you fly in adventure. ${BINDINGS.steeringView.label} switches chase / overhead in free flight; mission locks return your preferred view when they end.`));
     rootEl.appendChild(title);
     const tools=el('div','race-board-tools');
     const restored=restoreRacingCup(storageOf());
@@ -163,20 +171,23 @@ export const raceBoardScreen={
       }
       rootEl.appendChild(receipt);
     }
-    const records=readRaceRecords(storageOf()),ghosts=listRacingGhosts(storageOf()),stories=storyContracts();
+    const records=readRaceRecords(storageOf()),ghosts=listRacingGhosts(storageOf()),stories=circuitContracts();
     const modeRow=RACING_MODES.find(row=>row.id===fit.raceMode);
     // One selectable entry per authored contract, in level order. Cup mode lists practices
-    // only and keeps the existing next-heat eligibility rule.
+    // only and keeps the existing next-heat eligibility rule. The six sector circuits are
+    // Time-trial-only: Pack race and Cup can select the card to read it, never launch it.
     const entries=[];
-    for(const level of RACE_LEVELS){
+    for(const level of RACING_CIRCUITS){
       const course=courseForLevel(level.id);
       if(!course)continue;
       const contracts=[practiceContractForLevel(level.id),
         ...(fit.raceMode==='cup'?[]:stories.filter(row=>row.levelId===level.id))].filter(Boolean);
       for(const row of contracts){
         const offer=racingOfferFor(row.id);
-        const eligible=!!offer&&(fit.raceMode!=='cup'||level.id===CUP_HEATS[continuing?cup.nextHeat:0]?.levelId);
-        entries.push({contractId:row.id,level,course,contract:row,offer,eligible});
+        const timeTrialOnly=level.temporaryOnly===true;
+        const eligible=!!offer&&!(timeTrialOnly&&fit.raceMode!=='time-trial')
+          &&(fit.raceMode!=='cup'||level.id===CUP_HEATS[continuing?cup.nextHeat:0]?.levelId);
+        entries.push({contractId:row.id,level,course,contract:row,offer,eligible,timeTrialOnly});
       }
     }
     this._entries=entries;
@@ -208,6 +219,7 @@ export const raceBoardScreen={
       startStatus.textContent=!entry?'Select an event to start.'
         :current?'A race is active. Finish it before starting another.'
         :entry.eligible?'Ready to start.'
+        :entry.timeTrialOnly?'Select Time trial to fly this circuit.'
         :'Cup heats run in order. Finish the current heat to open this one.';
       start.disabled=!!current||!!this._launching||!entry||!entry.eligible;
     };
@@ -220,14 +232,14 @@ export const raceBoardScreen={
     this._selectControls=selectControls;
     const grid=el('div','race-board-grid');
     const select=contractId=>{this._selectedContractId=contractId;applySelection();};
-    for(const [index,level] of RACE_LEVELS.entries()){
+    for(const [index,level] of RACING_CIRCUITS.entries()){
       const course=courseForLevel(level.id);
       if(!course)continue;
       for(const entry of entries.filter(e=>e.level===level)){
-        const {contractId,contract:row,offer,eligible}=entry;
+        const {contractId,contract:row,offer,eligible,timeTrialOnly}=entry;
         const card=el('section','race-board-course dp-plate');
         card.dataset.contractId=contractId;
-        card.append(el('p','k-sentence',`CIRCUIT 0${index+1} · ${course.courseName}`),el('h2','k-t-sub',row.title));
+        card.append(el('p','k-sentence',`CIRCUIT ${String(index+1).padStart(2,'0')} · ${course.courseName}`),el('h2','k-t-sub',row.title));
         const map=createRacingMap(course.gates,`${row.title} on ${level.name}, start and finish`);
         if(map)card.appendChild(map.element);
         card.append(el('p','k-sentence',level.blurb),
@@ -246,7 +258,9 @@ export const raceBoardScreen={
           &&(fit.raceMode==='time-trial'?!key.includes(':pack-'):key.endsWith(`:pack-${fit.raceDifficulty}`))).map(([,time])=>time):[];
         const best=fitTimes.length?Math.min(...fitTimes):null;
         card.appendChild(el('p','k-sentence',`${row.laps} ${row.laps===1?'lap':'laps'} · ${row.practice?'view optional':'chase view required'} · ${Number.isFinite(best)?`best across fits ${formatRaceTime(best)}`:'no clean fit record yet'}`));
-        if(fit.raceMode==='cup'&&!eligible){
+        if(timeTrialOnly&&fit.raceMode!=='time-trial'){
+          card.appendChild(el('p','k-sentence','Select Time trial to fly this circuit.'));
+        }else if(fit.raceMode==='cup'&&!eligible){
           const heatIndex=CUP_HEATS.findIndex(heat=>heat.levelId===level.id);
           card.appendChild(el('p','k-sentence',heatIndex>=0&&heatIndex<(cup?.nextHeat||0)
             ?`Cup heat ${heatIndex+1} of ${CUP_HEATS.length} — already finished.`

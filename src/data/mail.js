@@ -854,6 +854,68 @@ export const MAIL_LETTERS = Object.freeze([
     body: 'Her last inspection before the loss is a matter of record. It reads like a warning and a eulogy. Whatever the hull is now, it was loved in paperwork once.',
     triggers: [E('dock:docked'), BEAT(5)],
   },
+
+  // ── ATT U-09 remainder — second tranche across the same kinds ─────────────────────
+  {
+    id: 'mail_slate_02', kind: 'cast', from: 'Slate',
+    subject: 'The plate, again',
+    body: 'I stamped your hull plate once and word is you fly it like a dare now. The weld holds because I made it hold. Stop testing my signature.',
+    triggers: [DEED('stunt'), DAY(7)],
+  },
+  {
+    id: 'mail_senna_02', kind: 'cast', from: '"Dustwife" Senna',
+    subject: 'Another name stayed wrong',
+    body: 'Two more hulls went on the wrong side of my list this month. Yours keeps refusing to stay written. I have started keeping your page in a different drawer.',
+    triggers: [DEED('pod_rescued'), DAY(9)],
+  },
+  {
+    id: 'mail_question_02', kind: 'cast', from: 'The Question',
+    subject: 'An answer, partial',
+    body: 'You answered the last thing that asked by outlasting it. That was not an answer. It was evidence. The question remains open.',
+    triggers: [DEED('hunter_disabled')],
+  },
+  {
+    id: 'mail_job_union_01', kind: 'job', from: 'Salvage Assessors Local',
+    subject: 'Certified adjuster wanted',
+    body: 'Wrecks need a pilot who photographs before they strip. The union pays for the photograph and looks away from the stripping. Rate card attached.',
+    triggers: [E('encounter:resolved'), STAT('missionsDone', 5)],
+  },
+  {
+    id: 'mail_spam_21', kind: 'spam', from: 'Concord Rest Registry',
+    subject: 'UNLICENSED IDLE TIME FOUND',
+    body: 'Our auditors detected four minutes of unbilled calm in your last berth stay. License your leisure or return the minutes. Appeals processed in order of despair.',
+    triggers: [E('dock:docked'), DAY(10)],
+  },
+  {
+    id: 'mail_spam_22', kind: 'spam', from: 'Vigilance Mutual',
+    subject: 'YOUR ESCAPE POD IS UNDERINSURED',
+    body: 'The pod you will never admit you need is covered for only half a rescue. Upgrade to whole-rescue coverage before the math becomes personal.',
+    triggers: [E('player:death'), DAY(3)],
+  },
+  {
+    id: 'mail_fan_16', kind: 'fan', from: 'The relief watch',
+    subject: 'You slowed down',
+    body: 'Third watch saw a ship reduce speed for a drifting pod instead of logging it as debris. The watch does not clap. The watch wrote this anyway.',
+    triggers: [DEED('pod_rescued'), DAY(4)],
+  },
+  {
+    id: 'mail_hate_16', kind: 'hate', from: 'A toll keeper\'s sister',
+    subject: 'The gate you broke',
+    body: 'He kept that gate eleven years and knew every hull by its lighting. You left him a job with no gate in it. I hope the cargo was worth a man\'s whole shape.',
+    triggers: [DEED('base_destroyed')],
+  },
+  {
+    id: 'mail_bill_16', kind: 'bill', from: 'Notary of Transit',
+    subject: 'Witnessing fee',
+    body: 'An officer witnessed your last assessment and countersigned the paperwork. The countersignature is a service. Services are billed. Attached.',
+    triggers: [E('law:fineAssessed'), DAY(2)],
+  },
+  {
+    id: 'mail_crew_16', kind: 'crew', from: 'The navigator\'s apprentice',
+    subject: 'Her margin notes',
+    body: 'Captain Vols wrote routes in the chart margins in pencil, so the ship could change its mind. If your Tessera still has the charts, page sixty-one is hers.',
+    triggers: [E('jump:arrive'), BEAT(4)],
+  },
 ]);
 
 export default { MAIL_LETTERS, MAIL_KINDS, MAIL_EVENT_NAMES, MAIL_DAY_S };
