@@ -13,6 +13,8 @@ import { requireCapitalBossEncounter } from '../src/data/encounters/capital-boss
 import { validateCapitalBossEncounter } from '../src/data/encounters/capital-boss/validate.js';
 import { createDamageRouter } from '../src/combat/damage.js';
 import { createCombatCatalog } from '../src/combat/runtime.js';
+import { CAPITAL_PLATE_FULL_PULL, capitalPlateUnderLine } from '../src/combat/capitalPlates.js';
+import { capitalBossReadouts, createCapitalBossOverlay } from '../src/presentation/capitalBossPresentation.js';
 
 const DT = 1 / 60;
 const SEED = 4242;
@@ -67,18 +69,24 @@ function tick(h, n = 1) {
   for (let i = 0; i < n; i += 1) { h.state.tick += 1; h.state.simTime += DT; h.capSys.update(DT); }
 }
 
-// A live player latch on the boss at an authored plate anchor, with an arbitrary
-// line tension — the same records the tear check reads in production.
+// A live player latch on the boss, the pilot holding it out along the bearing of `anchor`
+// (boss-local), with the raw line force a given fraction of a starter hull's full-burn pull —
+// the same records the tear check reads in production. A capital is roped at its centre of
+// mass, so targetAnchorLocal is {0,0} exactly as tetherGameplay creates it; and the HUD's
+// tensionEstimate is pinned near its live ~1e-3 to prove the tear never reads it.
 function latchAt(h, anchor, tension = 0.9) {
   if (!h.state.combat.attachments) h.state.combat.attachments = { byId: {}, nextId: 1 };
   const att = {
     id: 'att_plate_test', defId: 'tether_standard',
     ownerId: h.player.id, targetId: h.boss.id, state: 'active',
-    targetAnchorLocal: { x: anchor.x, z: anchor.z }, lastTension: 0,
+    targetAnchorLocal: { x: 0, z: 0 }, lastTension: tension * CAPITAL_PLATE_FULL_PULL,
   };
   h.state.combat.attachments.byId[att.id] = att;
+  const len = Math.hypot(anchor.x, anchor.z) || 1;
+  h.player.pos.x = h.boss.pos.x + (anchor.x / len) * 120;
+  h.player.pos.z = h.boss.pos.z + (anchor.z / len) * 120;
   if (!h.player.tether) h.player.tether = {};
-  h.player.tether.tensionEstimate = tension;
+  h.player.tether.tensionEstimate = 0.0005;
   if (h.state.player && h.state.player !== h.player) h.state.player.tether = h.player.tether;
   return att;
 }
@@ -127,6 +135,8 @@ test('a held line inside the plate radius tears it after 30 ticks and spawns a t
   assert.equal(cut.length, 1, 'the old line is cut');
   assert.equal(created.length, 1, 'the line is re-latched through the sanctioned create');
   assert.equal(created[0].targetId, slab[0].id, 'the line moves to the torn slab');
+  assert.ok(h.emitted.some((e) => e.event === 'toast' && /^You tear .+'s battery housing free\.$/.test(e.payload.text)),
+    'the rope tear names itself');
   // The cover the plate was paying for drops the moment it tears.
   assert.equal((h.boss.data.capitalPlateCover || {}).subsystem_weapon, undefined);
   tick(h, 40);
@@ -145,6 +155,54 @@ test('below holdTension or latched off-anchor, the plate never tears', () => {
   tick(h, 45);
   assert.equal(plateRec(h, 'battery_housing').attached, true, 'off-anchor latch holds');
   assert.equal(plateSpawns(h).length, 0);
+});
+
+test('review: every spawnable plate is reachable by a starter hull line on a COM-roped capital', () => {
+  // Measured full main burn on a 420-mass body (scripts/probe-tether-visual-drive.mjs):
+  // ship_mule ~2930 is the weakest starter pull. Every rope-tearable plate must sit at or under it.
+  const STARTER_FULL_BURN_FLOOR = 2900;
+  for (const id of BOSS_IDS) {
+    const spec = requireCapitalBossEncounter(id);
+    const R = spec.actors[0].radius;
+    const boss = { pos: { x: 0, z: 0 }, rot: 0.7, radius: R };
+    for (const p of spec.plates) {
+      assert.ok(p.holdTension * CAPITAL_PLATE_FULL_PULL <= STARTER_FULL_BURN_FLOOR,
+        `${id}/${p.id}: holdTension ${p.holdTension} needs more than a starter's full burn`);
+      // Hold the line out along the plate's world bearing: it must read as under the line.
+      const ax = p.anchor.x * R, az = p.anchor.z * R;
+      const c = Math.cos(boss.rot), s = Math.sin(boss.rot);
+      const wx = ax * c - az * s, wz = ax * s + az * c;
+      const len = Math.hypot(wx, wz) || 1;
+      const owner = { pos: { x: (wx / len) * 150, z: (wz / len) * 150 } };
+      assert.equal(capitalPlateUnderLine(p, boss, owner), true, `${id}/${p.id} reachable by bearing`);
+      // The opposite side of the hull never hauls on it.
+      const away = { pos: { x: -owner.pos.x, z: -owner.pos.z } };
+      assert.equal(capitalPlateUnderLine(p, boss, away), false, `${id}/${p.id} not from the far side`);
+    }
+  }
+});
+
+test('review: the overlay draws the PLATE/HOLD read while the line hauls on a plate', () => {
+  const h = bootScoreFight(TOLLMAN);
+  const anchor = plateAnchorLocal(h, 'battery_housing');
+  latchAt(h, anchor, 0.9);
+  tick(h, 3);
+  const readouts = capitalBossReadouts(h.state, []);
+  const rd = readouts.find((r) => r && r.plateHold);
+  assert.ok(rd, 'the readout names the plate under the line');
+  assert.equal(rd.plateHold.label, 'battery housing');
+  assert.ok(Math.abs(rd.plateHold.tension - 0.9) < 1e-9, 'the read shows the same pull the tear check uses');
+  const texts = [];
+  const ctx2d = new Proxy({}, { get: (t, k) => (k === 'fillText' ? (s) => texts.push(s)
+    : k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true; } });
+  const canvas = { width: 100, height: 100, getContext: () => ctx2d };
+  const overlay = createCapitalBossOverlay({ canvas, bus: createBus(),
+    worldToScreen: (p) => ({ x: p.x, y: p.z }), clockForFight: () => 0 });
+  const feed = [...rd.plates];
+  feed.hold = rd.plateHold;
+  overlay.plateAnchors(feed);
+  overlay.draw();
+  assert.ok(texts.some((s) => /^PLATE 0\.9 t \/ HOLD 0\.8 t$/.test(s)), `PLATE/HOLD drawn: ${texts.join('|')}`);
 });
 
 test('while the plate holds, the covered subsystem takes no subsystem damage and hull still drops', () => {

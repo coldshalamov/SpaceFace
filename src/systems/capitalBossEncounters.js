@@ -2,6 +2,7 @@ import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js'
 import { LAST_ARGUMENT } from '../data/lastArgument.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
+import { capitalPlatePull, capitalPlateUnderLine } from '../combat/capitalPlates.js';
 import { spawnSwarmCapitalBallast } from '../missions/capitalBossSpawn.js';
 import { createCapitalBossFight,restoreCapitalBossFight,rebindCapitalBossFight,
   bindCapitalBossWing,stepCapitalBossFight,validFightId } from '../combat/capitalBossScore.js';
@@ -262,14 +263,12 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       try { specs = requireCapitalBossEncounter(r.encounterId).plates; } catch (_) { specs = null; }
       return Array.isArray(specs) ? specs.find((p) => p && p.id === plateId) || null : null;
     },
-    // targetAnchorLocal is raw WU-local ({x,z}); authored anchors are normalized xradius —
-    // the same space SUBSYSTEM_DEFS volumes use.
+    // A capital is roped at its centre of mass, so the latch contact point names no plate; the
+    // plate under the line is the one facing the pilot (src/combat/capitalPlates.js).
     _plateLatchNear(plateSpec, boss, attachment) {
-      if(!plateSpec || !boss || !attachment || !attachment.targetAnchorLocal) return false;
-      const br = Math.max(1, Number(boss.radius) || 20);
-      const dx = Number(attachment.targetAnchorLocal.x) - plateSpec.anchor.x * br;
-      const dz = Number(attachment.targetAnchorLocal.z) - plateSpec.anchor.z * br;
-      return (dx * dx + dz * dz) <= plateSpec.radius * plateSpec.radius;
+      if(!plateSpec || !boss || !attachment) return false;
+      const owner = ctx.state.entities && ctx.state.entities.get(attachment.ownerId);
+      return capitalPlateUnderLine(plateSpec, boss, owner);
     },
     _plateAnchorWorld(plateSpec, boss) {
       const br = Math.max(1, Number(boss && boss.radius) || 20);
@@ -301,7 +300,9 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(!boss || boss.alive === false || !boss.pos) { this._stampPlateCover(r, boss); return; }
       this._stampPlateCover(r, boss);
       const attachment = this._playerAttachmentOn(boss.id, state);
-      const tension = Number(state.player && state.player.tether && state.player.tether.tensionEstimate) || 0;
+      // Raw line force as a fraction of a starter hull's full-burn pull — never tensionEstimate,
+      // which is load against the near-unbreakable break rating and never leaves ~1e-3.
+      const tension = capitalPlatePull(attachment);
       for (const rec of r.plates) {
         if(!rec || !rec.attached) continue;
         const spec = this._plateSpec(r, rec.id);
@@ -352,8 +353,17 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
         const svc = this._attachmentService();
         if(svc) {
           svc.cut(attachment.id, attachment.ownerId, 'capital_plate_tear');
-          svc.create({ defId: 'tether_standard', ownerId: attachment.ownerId, targetId: plate.id });
+          // Both ends at centre of mass — the same anchors a player latch on a dynamic wreck uses.
+          svc.create({ defId: 'tether_standard', ownerId: attachment.ownerId, targetId: plate.id,
+            sourceWorld: player && player.pos ? { x: player.pos.x, y: 0, z: player.pos.z } : undefined,
+            targetWorld: { x: plate.pos.x, y: 0, z: plate.pos.z } });
         }
+        // The rope tear names itself in the boss toast lane, the same receipt the act shed gets.
+        const name = (requireCapitalBossEncounter(r.encounterId).score || {}).name || 'the boss';
+        ctx.bus.emit('toast', {
+          text: `You tear ${name}'s ${spec.label} free.`,
+          kind: 'info', ttl: 4, channel: 'capitalBoss',
+        });
       }
       this._stampPlateCover(r, boss);
       ctx.bus.emit('capitalBoss:plateTorn', {

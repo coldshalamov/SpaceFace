@@ -1,6 +1,7 @@
 // Renderer-only adapter: no simulation writes, private animation loop, or Three.js dependency.
 // A transparent overlay canvas and the host camera's XZ->pixel projection are the only ports.
 import {requireCapitalBossEncounter} from '../data/encounters/capital-boss.js';
+import {capitalPlatePull,capitalPlateUnderLine} from '../combat/capitalPlates.js';
 const TAU=Math.PI*2;
 /** Closed outlines, error <= 0.5 WU for authored dimensions. Lane ends remain rounded. */
 export function capitalShapeOutlines(shape) {
@@ -95,15 +96,16 @@ export function capitalBossReadouts(state,out) {
     const br=Math.max(1,Number(boss.radius)||20);
     const rot=Number(boss.rot)||0;
     const cosR=Math.cos(rot),sinR=Math.sin(rot);
-    // The latch contact point + live tension mirror the fight owner's tear check, so the
-    // readout never disagrees with the rope.
+    // The plate-under-line bearing + raw line pull are the fight owner's own tear read
+    // (src/combat/capitalPlates.js), so the readout never disagrees with the rope.
     const attachments=state.combat&&state.combat.attachments&&state.combat.attachments.byId;
-    const tension=Number(state.player&&state.player.tether&&state.player.tether.tensionEstimate)||0;
     let latch=null;
     if(attachments){
      for(const aid in attachments){const a=attachments[aid];
       if(a&&a.state==='active'&&a.ownerId===state.playerId&&a.targetId===boss.id){latch=a;break;}}
     }
+    const tension=capitalPlatePull(latch);
+    const latchOwner=latch&&state.entities&&state.entities.get?state.entities.get(latch.ownerId):null;
     let cellN=0;
     for(let pi=0;pi<plateSpecs.length;pi+=1){
      const pspec=plateSpecs[pi];
@@ -116,13 +118,10 @@ export function capitalBossReadouts(state,out) {
      if(!cell){cell={id:null,label:'',x:0,z:0,radius:0};platesOut[cellN]=cell;}
      cellN+=1;
      cell.id=pspec.id;cell.label=pspec.label||pspec.id;cell.x=px;cell.z=pz;cell.radius=pspec.radius;
-     if(latch&&latch.targetAnchorLocal){
-      const dx=Number(latch.targetAnchorLocal.x)-lx,dz=Number(latch.targetAnchorLocal.z)-lz;
-      if(dx*dx+dz*dz<=pspec.radius*pspec.radius){
-       plateHold.strainTicks=rec.strainTicks|0;plateHold.holdTension=pspec.holdTension;
-       plateHold.tension=tension;plateHold.label=cell.label;plateHold.x=px;plateHold.z=pz;
-       readout.plateHold=plateHold;
-      }
+     if(latch&&!readout.plateHold&&capitalPlateUnderLine(pspec,boss,latchOwner)){
+      plateHold.strainTicks=rec.strainTicks|0;plateHold.holdTension=pspec.holdTension;
+      plateHold.tension=tension;plateHold.label=cell.label;plateHold.x=px;plateHold.z=pz;
+      readout.plateHold=plateHold;
      }
     }
     platesOut.length=cellN;
@@ -188,6 +187,8 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
   plateAnchors(list){
    anchors.length=0;
    if(Array.isArray(list))for(let i=0;i<list.length;i++)anchors.push(list[i]);
+   // The live PLATE/HOLD record rides the feed list; without this the read never drew.
+   anchors.hold=list&&list.hold||null;
   },
   draw(){
   if(warnings.size===0&&anchors.length===0){if(!blank){ctx.clearRect(0,0,canvas.width,canvas.height);blank=true;}return;}
