@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-fauna-yank",
-      "date": "2026-10-22",
-      "wf": "WF-05",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "Towing a suture mite off its seam and letting go leaves it defensive.",
-      "fingerprint": "verb=yank,subject=suture-mite,sector=ceres,domain=wf-05",
-      "references": [],
-      "integration": "live",
-      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-fauna-exhale",
       "date": "2026-10-22",
       "wf": "WF-01",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "5c0734cd9b",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sc-12",
+      "date": "2026-10-25",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Phoebe's shrine sits in a hollow sphere of sixty crystal fragments.",
+      "fingerprint": "verb=show,subject=sphere,sector=phoebe,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "1af8e31616be8da51e3c1937adaa619a5a7ecb46",
       "verification": "focused_green"
     }
   ],
