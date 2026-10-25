@@ -143,21 +143,25 @@ export const EVERYDAY_SPACE_KIT_UNUSED_MODELS = Object.freeze([]);
 // resolves these ids from this map. They are not dressing models: ordinary
 // sectors must not scatter a world-gap or a ringworld arc.
 export const POSTCARD_LANDMARK_PLACE_FILE_BY_ID = Object.freeze({
+  place_haumea_fracture_mouth: 'places/place_haumea_fracture_mouth.glb',
   place_hush_gap: 'places/place_hush_gap.glb',
   place_hyperion_caved_shaft: 'places/place_hyperion_caved_shaft.glb',
   place_io_reach_wreck: 'places/place_io_reach_wreck.glb',
   place_nyx_false_gate: 'places/place_nyx_false_gate.glb',
   place_orcus_signal_plinth: 'places/place_orcus_signal_plinth.glb',
+  place_phoebe_shard_sphere: 'places/place_phoebe_shard_sphere.glb',
   place_sedna_ringworld_arc: 'places/place_sedna_ringworld_arc.glb',
   place_triton_aperture_monolith: 'places/place_triton_aperture_monolith.glb',
 });
 
 export const POSTCARD_LANDMARK_RELEASE_URL_BY_ID = Object.freeze({
+  place_haumea_fracture_mouth: 'assets/ships/release/parts/places/place_haumea_fracture_mouth.glb',
   place_hush_gap: 'assets/ships/release/parts/places/place_hush_gap.glb',
   place_hyperion_caved_shaft: 'assets/ships/release/parts/places/place_hyperion_caved_shaft.glb',
   place_io_reach_wreck: 'assets/ships/release/parts/places/place_io_reach_wreck.glb',
   place_nyx_false_gate: 'assets/ships/release/parts/places/place_nyx_false_gate.glb',
   place_orcus_signal_plinth: 'assets/ships/release/parts/places/place_orcus_signal_plinth.glb',
+  place_phoebe_shard_sphere: 'assets/ships/release/parts/places/place_phoebe_shard_sphere.glb',
   place_sedna_ringworld_arc: 'assets/ships/release/parts/places/place_sedna_ringworld_arc.glb',
   place_triton_aperture_monolith: 'assets/ships/release/parts/places/place_triton_aperture_monolith.glb',
 });

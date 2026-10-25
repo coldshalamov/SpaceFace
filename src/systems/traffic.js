@@ -2928,7 +2928,7 @@ export const traffic = {
     const liveIds = this.state.traffic.freighters
       .map((record) => record && record.id)
       .filter((id) => liveEntity(this.state, id));
-    this._active = [...new Set(liveIds)];
+    this._active = [...new Set(this._retainLiveOwnedIds(liveIds))];
   },
 
   _rehydrateCeresActivityEntity(entity, canonicalSpec, entry, recordId) {
@@ -3126,7 +3126,7 @@ export const traffic = {
     const liveIds = this.state.traffic.freighters
       .map((record) => record && record.id)
       .filter((id) => liveEntity(this.state, id));
-    this._active = [...new Set(liveIds)];
+    this._active = [...new Set(this._retainLiveOwnedIds(liveIds))];
     return spawned;
   },
 
@@ -4099,6 +4099,18 @@ export const traffic = {
     this._stampNamedLaneContact(ent, contact);
   },
 
+  // _active also tracks recordless owned bodies (ending-cast pickets, service hulls) the
+  // freighter roster doesn't know. Every roster rebuild folds the still-live ones back in —
+  // dropping them would pull their arrival holds out of the release sweep and out of the
+  // hard-enter cleanup while the bodies are still alive.
+  _retainLiveOwnedIds(ids) {
+    for (const id of this._active || []) {
+      if (id == null || ids.includes(id)) continue;
+      if (liveEntity(this.state, id)) ids.push(id);
+    }
+    return ids;
+  },
+
   _pruneDead() {
     this._ensureState();
     const list = this.state.traffic.freighters || [];
@@ -4113,7 +4125,7 @@ export const traffic = {
       if (!e || !e.alive) list.splice(i, 1);
       else aliveIds.push(rec.id);
     }
-    this._active = aliveIds;
+    this._active = this._retainLiveOwnedIds(aliveIds);
   },
 
   // Allocation-free mirror of shouldAmbientHaulerPlan -> shouldOwnerThink from

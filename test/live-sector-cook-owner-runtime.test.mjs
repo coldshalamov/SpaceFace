@@ -715,6 +715,8 @@ function preflightFixture() {
     createSlicedYield: () => async () => {},
     waitForOpeningCompositionSettled: () => opening.promise,
     waitForAuthoredUpgradeQueueIdle: async () => ({ idle: true }),
+    // startupPacing device-scaled budget; the fixture pins the desktop-scale window.
+    openingGateBudgetMs: () => 20000,
   });
   return { ...f, opening, preflight: evaluate(preflightCode, f.owner, f.values) };
 }

@@ -25,7 +25,7 @@ Row format: `id | surface | what the player sees | register | sanctioned detail 
 | S-10 | Ashfall Reach | raider territory, rust + sodium | raider poetry, blade culture | totem wrecks, challenge barks, graffiti | open |
 | S-11 | Asteroid fields (all sectors) | rocks + seams | geology + claim culture | graffiti (exists), claim marks, micro-props | open |
 | S-12 | Landmarks | candle fleet, cathedral, skerris throne | monumental, mournful | lore plaques, memorial arrays, pilgrim traffic | open |
-| S-13 | Debris/wreck fields | dead hulks, scraps | aftermath | named dead, salvage notes, kill-marks | open |
+| S-13 | Debris/wreck fields | dead hulks, scraps | aftermath | named dead, salvage notes, kill-marks | done 2026-10-24 |
 | S-14 | Frontier regions (14: Hyperion Cut, Dione Lane, Eris Margin, Eunomia Gulf, Haumea Rift, Kepler Scar, Nereid Shoal, Nyx March, Orcus Shadow, Phoebe Echo, Proteus Well, Rhea Cinder, Sedna Dark, Triton Wake — src/data/frontierRegions/) | far reaches | raw frontier | region dressing, reach flavor, isolation texture — splittable per region when claimed | open |
 | S-15 | The Bolus (viscera interior + The Swallowed Rib station — sector_the_bolus) | swallowed interior, organic | viscera palette, biology industry | organ dressing, rib-station texture, harvest flavor | open |
 

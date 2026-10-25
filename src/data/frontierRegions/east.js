@@ -133,6 +133,15 @@ export const EAST_SECTORS = Object.freeze([
     pois: Object.freeze([
       Object.freeze({ id: 'poi_nereid_wreck', type: 'wreck', name: 'Ice-Hull Wreck' }),
       Object.freeze({
+        id: 'poi_nereid_shoal_memorial',
+        type: 'beacon',
+        name: 'Shoal Ledger Marker',
+        discoveryPlate: Object.freeze({
+          title: 'Shoal Ledger Marker',
+          body: "The shoal salvors' own marker, set by law — the rime kept the count, the marker keeps the names: O. Ferro, K. Ferro, and the apprentice nobody carded. Cut lines on the holds say they were opened after the crew were already ice.",
+        }),
+      }),
+      Object.freeze({
         id: 'poi_nereid_cache',
         type: 'cache',
         name: 'Shoal Cache',
@@ -290,6 +299,15 @@ export const EAST_SECTORS = Object.freeze([
         name: 'Wake-Runner Hull',
       }),
       Object.freeze({
+        id: 'poi_triton_wake_memorial',
+        type: 'beacon',
+        name: 'Wake-Bell Marker',
+        discoveryPlate: Object.freeze({
+          title: 'Wake-Bell Marker',
+          body: 'A bell buoy with its clapper pulled, tuned to sit silent on the wake drift. The plate names only the captain — Reva Ils; the wake does not give the other three back. Kill-marks line the spine like stitching, too regular to be rock.',
+        }),
+      }),
+      Object.freeze({
         id: 'poi_triton_watcher',
         type: 'anomaly',
         name: 'The Tide-Locked Watcher',
@@ -373,6 +391,11 @@ export const EAST_ANCHORS = Object.freeze({
         pos: Object.freeze({ x: 1280, z: 720 }),
         landmarkGlb: 'place_dead_hulk',
         landmark: true,
+      }),
+      Object.freeze({
+        id: 'poi_nereid_shoal_memorial',
+        pos: Object.freeze({ x: 1160, z: 780 }),
+        landmarkGlb: 'place_nav_buoy',
       }),
       Object.freeze({
         id: 'poi_nereid_cache',
@@ -497,6 +520,11 @@ export const EAST_ANCHORS = Object.freeze({
         id: 'poi_triton_wreck',
         pos: Object.freeze({ x: 1080, z: 720 }),
         landmarkGlb: 'place_dead_hulk',
+      }),
+      Object.freeze({
+        id: 'poi_triton_wake_memorial',
+        pos: Object.freeze({ x: 960, z: 790 }),
+        landmarkGlb: 'place_nav_buoy',
       }),
       Object.freeze({
         id: 'poi_triton_watcher',

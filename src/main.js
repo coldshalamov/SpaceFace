@@ -53,6 +53,7 @@ import {
   waitForOpeningFirstPicture,
   holdOpeningPresentationUntilPaint,
 } from './render/pipelineReadiness.js';
+import { authoredVisualBudgetMs, openingGateBudgetMs } from './render/startupPacing.js';
 import { releaseUiStage } from './render/uiStage.js';
 import { SCENARIO_47A_CONTRACT_PATH } from './data/scenarios/47aLiveScene.js';
 
@@ -61,12 +62,14 @@ import { SCENARIO_47A_CONTRACT_PATH } from './data/scenarios/47aLiveScene.js';
 const SF_DEBUG = typeof __SPACEFACE_PRODUCTION__ !== 'undefined'
   ? !__SPACEFACE_PRODUCTION__
   : debugRuntimeEnabled();
-const INITIAL_AUTHORED_VISUAL_TIMEOUT_MS = 180000;
+// Device-scaled (startupPacing.js): a handset streams the opening payload over one radio and
+// decodes it on a slow CPU, so the same fail-closed ceilings are met several times over.
+const INITIAL_AUTHORED_VISUAL_TIMEOUT_MS = authoredVisualBudgetMs(180000);
 // One bounded second window before declaring startup failure. Staging pipelines keep
 // running between waits, so a transient stall (host contention, driver-variant compile
 // burst) resolves inside a short retry; a persistent stall still fails quickly. Kept
 // short so the app-side worst case stays inside the route's own load bound.
-const AUTHORED_VISUAL_RETRY_TIMEOUT_MS = 30000;
+const AUTHORED_VISUAL_RETRY_TIMEOUT_MS = openingGateBudgetMs(30000);
 
 function debugRuntimeEnabled() {
   const env = typeof process !== 'undefined' && process.env ? process.env : null;
@@ -686,7 +689,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
           const physicsSystem = registry.get('physics');
           if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return true;
           physicsPrep = Promise.resolve()
-            .then(() => physicsSystem.prepareBackend(state, { reset: true, initTimeoutMs: 20000 }));
+            .then(() => physicsSystem.prepareBackend(state, { reset: true, initTimeoutMs: openingGateBudgetMs() }));
         }
         try {
           // Same outer bound the Continue gate runs (main.js ~1052): prepareBackend's
@@ -695,8 +698,8 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
           return await Promise.race([
             physicsPrep,
             new Promise((_, reject) => setTimeout(
-              () => reject(new Error('physics backend preparation timed out after 20000ms')),
-              20000,
+              () => reject(new Error(`physics backend preparation timed out after ${openingGateBudgetMs()}ms`)),
+              openingGateBudgetMs(),
             )),
           ]);
         } catch (error) {
@@ -730,7 +733,9 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
 
 async function waitForRequiredOpeningPicture(state, isActive) {
   try {
-    const budgetMs = state.run?.kind === 'survival' ? INITIAL_AUTHORED_VISUAL_TIMEOUT_MS : 20000;
+    const budgetMs = state.run?.kind === 'survival'
+      ? INITIAL_AUTHORED_VISUAL_TIMEOUT_MS
+      : openingGateBudgetMs();
     return await waitForOpeningFirstPicture(state, budgetMs, { isActive });
   } catch (cause) {
     const error = new GameStartReadinessError('GPU_RESIDENCY_UNAVAILABLE', 'gpu-resources',
@@ -830,8 +835,8 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     // prepare is idempotent (joins _sg02Init mid-settle, re-mints only when torn
     // down); never {reset:true} — that would dispose a live owner mid-restore.
     continuePhysicsPrep = Promise.resolve(continuePhysicsPrep)
-      .then(() => physicsSystem.prepareBackend(state, { initTimeoutMs: 20000 }),
-        () => physicsSystem.prepareBackend(state, { initTimeoutMs: 20000 }));
+      .then(() => physicsSystem.prepareBackend(state, { initTimeoutMs: openingGateBudgetMs() }),
+        () => physicsSystem.prepareBackend(state, { initTimeoutMs: openingGateBudgetMs() }));
     continuePhysicsPrep.catch(() => {});
   }
   try {
@@ -952,7 +957,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
           let physicsPrepError = null;
           const physicsReady = await Promise.race([
             continuePhysicsPrep.catch((err) => { physicsPrepError = err || null; return false; }),
-            new Promise((resolve) => setTimeout(() => resolve(false), 20000)),
+            new Promise((resolve) => setTimeout(() => resolve(false), openingGateBudgetMs())),
           ]);
           if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
           if (physicsReady === false) {

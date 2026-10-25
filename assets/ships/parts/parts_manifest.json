@@ -9675,6 +9675,19 @@
           2.619999885559082
         ]
       }
+    },
+    {
+      "id": "wholeship_thimble_recorder",
+      "category": "wholeships",
+      "file": "wholeships/thimble_recorder.glb",
+      "bytes": 370008,
+      "tris": 2640,
+      "triangleMetric": "lod0",
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Tow_Eye"
+      ],
+      "mount": "origin"
     }
   ],
   "runtimeSlots": {

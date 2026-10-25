@@ -1,3 +1,4 @@
+import { LAST_SHIFT } from '../data/lastShift.js';
 // Continue-route sector recipe manifest. The save system's speculative prepare resolves the
 // newest envelope during menu dwell and names the saved sector — and that sector's authored
 // recipe is fully enumerable before a single spawnEntity fires its decode kick: catalog
@@ -484,6 +485,16 @@ export const ACE_MEMORY_META_KEYS = new Set([
 // boxed residue-cover flag shared across a single enumeration.
 
 function collectEnterSpawnerPropStubs(src, sector, out, coverBareMissionWrecks) {
+  const recorderStatus = src.world?.lastShift?.bodies?.recorder?.status;
+  if (sector.id === LAST_SHIFT.sectorId
+    && !['destroyed', 'salvaged', 'returned'].includes(recorderStatus)) {
+    // Decode-only package stub, never an original wreck/custody actor. The renderer's
+    // wreck runway selects generic aftermath before packagedPropSpec; this explicit prop
+    // instead warms the exact URL::pod that the recorder's admission will request.
+    out.placeStubs.push({ type: 'prop', alive: true, radius: 5,
+      data: { packagedPropFile: 'wholeships/thimble_recorder.glb', packagedPropSlot: 'pod',
+        packagedPropRadius: 4.4 } });
+  }
   // Aftermath wreck markers serialize the victim's full visual identity (defId + the same
   // visual fields its own admission read, faction kit, fracture piece) and _spawnForSector
   // rematerializes them at save:loaded — the stub resolves through the same wreckPackagedFile

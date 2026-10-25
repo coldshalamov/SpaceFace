@@ -3601,6 +3601,36 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "f364d4d2455f6d78bae25b7c3f3984f441ac9e397396e4fc65bfe3e46cdf8654",
     "sourceUrl": "assets/ships/release/parts/places/place_orcus_signal_plinth.glb"
+  },
+  {
+    "assetId": "sf.render.haumea-fracture-mouth",
+    "expectedContentHash": "83df59b4608d0d6f6ce3cd21da34fd4fa2c226f01824899c33a6a3b7e79ec959",
+    "key": "haumea-fracture-mouth",
+    "metadataUrl": "assets/ships/release/render-packages/haumea-fracture-mouth/render-package.json",
+    "runtimeAssetId": "place_haumea_fracture_mouth",
+    "slot": "place",
+    "sourceSha256": "d64d1e66e14e6fe5270a9dca9ced39616c53ad542d10bed06bafd15d36fcad0d",
+    "sourceUrl": "assets/ships/release/parts/places/place_haumea_fracture_mouth.glb"
+  },
+  {
+    "assetId": "sf.render.phoebe-shard-sphere",
+    "expectedContentHash": "9d2f7ad0f912270cb35c90ae30d881a86c029d2a12333b6fcd526f8819a678c5",
+    "key": "phoebe-shard-sphere",
+    "metadataUrl": "assets/ships/release/render-packages/phoebe-shard-sphere/render-package.json",
+    "runtimeAssetId": "place_phoebe_shard_sphere",
+    "slot": "place",
+    "sourceSha256": "59a22977b1fc3872bb79d10580f96c3f498d114f06f0cb2545932cceaf84ffee",
+    "sourceUrl": "assets/ships/release/parts/places/place_phoebe_shard_sphere.glb"
+  },
+  {
+    "assetId": "sf.render.thimble-recorder",
+    "expectedContentHash": "41b7a76161ca526db09f3cf54545c37c8e6b4b84b3594267d6476816dcfbb303",
+    "key": "thimble-recorder",
+    "metadataUrl": "assets/ships/release/render-packages/thimble-recorder/render-package.json",
+    "runtimeAssetId": "SF_PROP_THIMBLE_RECORDER",
+    "slot": "pod",
+    "sourceSha256": "5ca41debe7cc66efd0df473905a2032c398f9186c1a35fa54671a3859b43a8ff",
+    "sourceUrl": "assets/ships/release/parts/wholeships/thimble_recorder.glb"
   }
 ];
 

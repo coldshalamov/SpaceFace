@@ -663,7 +663,7 @@ test('the live geometry admission queue drains nearest-deadline-first', () => {
   const queueStart = RENDERER_SOURCE.indexOf('this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({');
   assert.ok(queueStart >= 0, 'the live geometry admission queue must exist');
   const queueBlock = RENDERER_SOURCE.slice(queueStart, queueStart + 3800);
-  assert.match(queueBlock, /priorityOf:\s*\(entity\)\s*=>/,
+  assert.match(queueBlock, /priorityOf:\s*\(entity/,
     'the queue must grade pending roots instead of draining strict FIFO');
   assert.match(queueBlock, /entityIsExplicitRenderFocus\(entity, state\)/,
     'explicit focus (player, target, forced roots) must outrank every deadline');
@@ -672,7 +672,7 @@ test('the live geometry admission queue drains nearest-deadline-first', () => {
   const queueSource = readFileSync(new URL('../src/render/liveGeometryAdmission.js', import.meta.url), 'utf8');
   assert.match(queueSource, /priorityOf/,
     'the queue itself must accept a grading function');
-  assert.match(queueSource, /pending\.splice\(bestIndex, 1\)/,
+  assert.match(queueSource, /pending\.splice\(pending\.indexOf\(best\), 1\)/,
     'each drain round must pick the best pending entry, not the oldest');
 });
 
