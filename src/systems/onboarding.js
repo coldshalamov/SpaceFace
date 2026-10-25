@@ -3675,12 +3675,18 @@ export const onboarding = {
       ? this.state.entities.get(wingId) : null;
     const wingIdIsForeign = !!(occupant && (!occupant.data
       || occupant.data.onboardingRaidWing !== true));
+    // X-02 review round 10: an UNSET slot is no wing either. ids.wing stays undefined on the
+    // clinic stage (and if the wing spawn ever fails), so a shapeless receipt — no dead id, or
+    // an uncredited raider kill — would equal it by absence: undefined === undefined latching
+    // wingDone or silently counting a "wing stray" the beat never staged. A null slot is the
+    // same non-wing. Only a recorded id may close or credit the wing.
+    const wingRecorded = wingId != null;
     // X-02: the wing's own death ends its part — never a restage, never a beat result.
-    if (payload.id === wingId && !wingIdIsForeign) { raid.wingDone = true; return; }
+    if (wingRecorded && payload.id === wingId && !wingIdIsForeign) { raid.wingDone = true; return; }
     if (payload.id !== raid.ids.raider) return;
     // X-02 v3: a stray wing round into the towed raider converges like a gun kill — silently,
     // because "the raider broke off" is not what the player did.
-    if (!wingIdIsForeign && (payload.killerId === wingId || payload.ownerId === wingId)) {
+    if (wingRecorded && !wingIdIsForeign && (payload.killerId === wingId || payload.ownerId === wingId)) {
       raid.strayKills = (raid.strayKills | 0) + 1;
       if (raid.strayKills >= 2) {
         this._beatDone(beat);

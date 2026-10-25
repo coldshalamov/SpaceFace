@@ -408,4 +408,17 @@ test('X-02 a recycled wing id is not honored by the kill receipt', () => {
   wing3.alive = false;
   h3.bus.emit('entity:killed', { id: raid3.ids.wing, killerId: 1, pos: { x: 0, z: 0 } });
   assert.equal(raid3.wingDone, true, 'the stamped wing corpse still closes its own slot');
+  // An UNSET slot is no wing either (round 10): the clinic stage leaves ids.wing undefined,
+  // so a shapeless receipt — no dead id — never latches wingDone, and an uncredited raider
+  // death takes the designed bark path rather than silently counting a "wing stray" the
+  // beat never staged.
+  const h4 = rig({ clinic: true });
+  const raid4 = stage(h4);
+  assert.equal(raid4.ids.wing == null, true, 'the clinic never records a wing id');
+  h4.bus.emit('entity:killed', { id: raid4.ids.raider, pos: { x: 0, z: 0 } });
+  assert.equal(raid4.strayKills | 0, 0, 'a kill with no killer is not a wing stray');
+  assert.ok(h4.said.some((s) => s.text === 'the raider broke off'), 'the uncredited bark plays');
+  h4.bus.emit('entity:killed', { pos: { x: 0, z: 0 } });
+  assert.equal(raid4.wingDone == null || raid4.wingDone === false, true,
+    'a receipt with no dead id never closes the wing slot');
 });
