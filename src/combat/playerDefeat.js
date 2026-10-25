@@ -428,10 +428,18 @@ const MASSLINE_SNAP_KINDS = new Set([
   'massline_tumble_impact',
 ]);
 const SWING_RUNG_ID = 'swing_do_not_pull';
+// X-09 (plan-approved rows): the only causes a real Range rung actually teaches. A weapon kill,
+// a contact-caused ram or throw, a hazard, or an unreadable cause stays silent — no rung teaches
+// surviving gunfire and an offer with no drill behind it is a lie.
+const DEFEAT_RUNG_ROWS = Object.freeze([
+  { label: 'arena impact', sources: Object.freeze(['self', 'environment']), rungId: 'stopping_takes_room', lead: 'Came in hot.' },
+  { label: 'hull ram', sources: Object.freeze(['self', 'environment']), rungId: 'slip_a_gap', lead: 'Clipped a hull.' },
+]);
 
-function swingRangeRow() {
+// Exported for the X-09 miss-robustness seam: a rung id with no rail row returns null, never throws.
+export function rangeRow(id) {
   const rows = Array.isArray(RANGE_RAIL_ROWS) ? RANGE_RAIL_ROWS : [];
-  const row = rows.find((entry) => entry && entry.id === SWING_RUNG_ID);
+  const row = rows.find((entry) => entry && entry.id === id);
   if (!row || rangeRungIndex(row.id) < 0) return null;
   return row;
 }
@@ -459,17 +467,37 @@ export function isSlackLineSnapDeath(lethal) {
   return false;
 }
 
-export function defeatRangeOffer(state, lethal) {
-  if (!isSlackLineSnapDeath(lethal)) return null;
+// Per-rung gate: the session string marks the lesson offered this run; the profile hint
+// (player.hints is save-durable) keeps a second run of the same cause silent across saves.
+function rungOfferedBefore(state, rungId) {
   const ui = state && state.ui;
-  if (ui && ui.deathRangeOfferedRung) return null;
-  const row = swingRangeRow();
+  if (ui && ui.deathRangeOfferedRung === rungId) return true;
+  const hints = state && state.player && state.player.hints;
+  return !!(hints && hints['deathRung:' + rungId] === true);
+}
+
+function rangeOfferFor(rungId, lead) {
+  const row = rangeRow(rungId);
   if (!row) return null;
   return {
     rungId: row.id,
     once: true,
-    line: `The Range can teach ${sentenceCase(row.rule)}.`,
+    line: `${lead ? lead + ' ' : ''}The Range can teach ${sentenceCase(row.rule)}.`,
   };
+}
+
+export function defeatRangeOffer(state, lethal, read = {}) {
+  if (isSlackLineSnapDeath(lethal)) {
+    if (rungOfferedBefore(state, SWING_RUNG_ID)) return null;
+    return rangeOfferFor(SWING_RUNG_ID);
+  }
+  const sourceKind = read && read.sourceKind;
+  for (const rule of DEFEAT_RUNG_ROWS) {
+    if (read.physicalLabel !== rule.label || !rule.sources.includes(sourceKind)) continue;
+    if (rungOfferedBefore(state, rule.rungId)) continue;
+    return rangeOfferFor(rule.rungId, rule.lead);
+  }
+  return null;
 }
 
 export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
@@ -528,11 +556,14 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     pos: playerEntity && playerEntity.pos ? { x: playerEntity.pos.x, z: playerEntity.pos.z } : null,
     recovery,
   };
-  const offer = defeatRangeOffer(state, lethal);
+  const offer = defeatRangeOffer(state, lethal, { physicalLabel, sourceKind: source.kind });
   if (offer) {
     receipt.rangeOffer = offer;
     if (!state.ui || typeof state.ui !== 'object') state.ui = {};
     state.ui.deathRangeOfferedRung = offer.rungId;
+    const player = state.player || (state.player = {});
+    const hints = player.hints || (player.hints = {});
+    hints['deathRung:' + offer.rungId] = true;
   }
   return receipt;
 }

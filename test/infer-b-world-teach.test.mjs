@@ -22,6 +22,7 @@ import { formatOfflineReceiptLine } from '../src/ui/automationPayoff.js';
 import {
   buildDefeatReceipt,
   isSlackLineSnapDeath,
+  rangeRow,
 } from '../src/combat/playerDefeat.js';
 import { RANGE_RAIL_ROWS, rangeRungIndex } from '../src/ui/screens/range.js';
 import { deathRangeOfferText, gameOverScreen } from '../src/ui/screens/gameOver.js';
@@ -378,4 +379,85 @@ test('TEACH-08 the death screen shows the swing offer and does not open the Rang
   assert.equal(combatEls.rangeOffer.textContent, '');
   assert.equal(deathRangeOfferText(combat), '');
   assert.ok(!combatPushed.includes('range'));
+});
+
+// X-09 (plan rows 2–3): only the causes a real Range rung teaches get a lesson. Self-caused
+// impacts read as the rung they deserve; anything a contact did to you stays silent.
+test('X-09 an arena impact offers stopping_takes_room with the exact line, once', () => {
+  const state = defeatState();
+  const lethal = { origin: { kind: 'terrain_collision' }, result: VITALS };
+  const first = buildDefeatReceipt(state, state.entities.get(1), null, lethal);
+  assert.ok(first.rangeOffer);
+  assert.equal(first.rangeOffer.rungId, 'stopping_takes_room');
+  assert.equal(first.rangeOffer.line, 'Came in hot. The Range can teach Stopping takes room.');
+  const second = buildDefeatReceipt(state, state.entities.get(1), null, lethal);
+  assert.equal(second.rangeOffer, undefined, 'the same cause never offers twice');
+});
+
+test('X-09 a self-caused hull ram offers slip_a_gap once', () => {
+  const state = defeatState();
+  const lethal = { origin: { kind: 'collision_craft' }, result: VITALS };
+  const first = buildDefeatReceipt(state, state.entities.get(1), state.playerId, lethal);
+  assert.ok(first.rangeOffer);
+  assert.equal(first.rangeOffer.rungId, 'slip_a_gap');
+  assert.equal(first.rangeOffer.line, 'Clipped a hull. The Range can teach Slip the gap.');
+  const second = buildDefeatReceipt(state, state.entities.get(1), state.playerId, lethal);
+  assert.equal(second.rangeOffer, undefined);
+});
+
+test('X-09 contact-caused deaths stay silent', () => {
+  const state = defeatState();
+  const ram = buildDefeatReceipt(state, state.entities.get(1), 9, {
+    origin: { kind: 'collision_craft', id: 9 }, result: VITALS,
+  });
+  assert.equal(ram.rangeOffer, undefined, 'a contact that ran you down is outplay, not carelessness');
+  const thrown = buildDefeatReceipt(state, state.entities.get(1), 9, {
+    origin: { kind: 'massline_throw', id: 9 }, result: VITALS,
+  });
+  assert.equal(thrown.rangeOffer, undefined, 'a contact thrown mass gives no lesson');
+});
+
+test('X-09 per-rung gating orders independent rows correctly', () => {
+  const state = defeatState();
+  const terrain = { origin: { kind: 'terrain_collision' }, result: VITALS };
+  const snap = masslineSnapLethal();
+  const terrainFirst = buildDefeatReceipt(state, state.entities.get(1), null, terrain);
+  assert.equal(terrainFirst.rangeOffer.rungId, 'stopping_takes_room');
+  const snapAfter = buildDefeatReceipt(state, state.entities.get(1), 9, snap);
+  assert.equal(snapAfter.rangeOffer.rungId, 'swing_do_not_pull', 'a different rung still offers');
+
+  const state2 = defeatState();
+  const snapFirst = buildDefeatReceipt(state2, state2.entities.get(1), 9, snap);
+  assert.equal(snapFirst.rangeOffer.rungId, 'swing_do_not_pull');
+  const terrainAfter = buildDefeatReceipt(state2, state2.entities.get(1), null, terrain);
+  assert.equal(terrainAfter.rangeOffer.rungId, 'stopping_takes_room');
+});
+
+test('X-09 the profile hint survives a session wipe', () => {
+  const state = defeatState();
+  const terrain = { origin: { kind: 'terrain_collision' }, result: VITALS };
+  assert.ok(buildDefeatReceipt(state, state.entities.get(1), null, terrain).rangeOffer);
+  // Same profile, new session: state.ui resets but player.hints is save-durable.
+  state.ui = {};
+  const second = buildDefeatReceipt(state, state.entities.get(1), null, terrain);
+  assert.equal(second.rangeOffer, undefined, 'player.hints keeps the lesson offered');
+  assert.equal(state.player.hints['deathRung:stopping_takes_room'], true);
+});
+
+test('X-09 a missing rung row returns null without throwing', () => {
+  assert.equal(rangeRow('not_a_real_rung'), null);
+  assert.equal(rangeRow(undefined), null);
+});
+
+test('X-09 the death screen renders the terrain line without opening the Range', () => {
+  const state = defeatState();
+  const receipt = buildDefeatReceipt(state, state.entities.get(1), null, {
+    origin: { kind: 'terrain_collision' }, result: VITALS,
+  });
+  state.combat = { lastPlayerDefeat: receipt };
+  const pushed = [];
+  const els = showDeath(state, pushed);
+  assert.equal(els.rangeOffer.hidden, false);
+  assert.equal(els.rangeOffer.textContent, 'Came in hot. The Range can teach Stopping takes room.');
+  assert.ok(!pushed.includes('range'));
 });
