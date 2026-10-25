@@ -189,6 +189,8 @@ export function readDying(state, entityOrId) {
   if (!rec || rec.ruptured === true) return null;
   const killedAt = entity.data && entity.data.killedAt;
   if (killedAt !== rec.killedAt) return null;
+  const markerId = entity.data && entity.data.markerId;
+  if (rec.markerId != null && markerId != null && markerId !== rec.markerId) return null;
   if (!(simNow(state) < rec.ruptureAt)) return null;
   return rec;
 }
@@ -214,4 +216,23 @@ export function isCombatant(state, entityOrId) {
 /** Irreversibly dying: no target bracket, no combat affordances, rupture is scheduled. */
 export function isIrreversiblyDying(state, entityOrId) {
   return lifecycleOf(state, entityOrId) === LIFECYCLE.DYING;
+}
+
+/**
+ * Seconds from now until the dying hull of `victimId` ruptures, else `fallbackS`. Audio and
+ * presenters use it to land the boom on the rupture instead of a fixed fuse. Pure read of the
+ * runtime mirror; never below `fallbackS` and never above the window cap.
+ */
+export function dyingFuseS(state, victimId, fallbackS = 0) {
+  const runtime = state && state[DYING_RUNTIME_KEY];
+  const byId = runtime && runtime.byWreckId;
+  if (!byId || victimId == null) return fallbackS;
+  const now = simNow(state);
+  for (const key of Object.keys(byId)) {
+    const rec = byId[key];
+    if (rec && rec.victimId === victimId && rec.ruptured !== true) {
+      return Math.max(fallbackS, Math.min(DYING_WINDOW_LAW.maxS + 0.5, rec.ruptureAt - now));
+    }
+  }
+  return fallbackS;
 }

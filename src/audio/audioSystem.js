@@ -124,6 +124,7 @@ import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPo
 import { entityNeedsExactAudio } from './audioActiveSet.js';
 import { bindOutputDeviceFollow, planDeviceChange, planSinkRebind } from './outputDeviceFollow.js';
 import { heatLevelFor } from '../systems/heat.js';
+import { dyingFuseS } from '../combat/lifecycle.js';
 import {
   createSampleRuntime,
   resolveSampleBinding,
@@ -4788,7 +4789,9 @@ export const audio = {
     // Feature 13 — the reactor-overload tell. Every hull death opens a ~0.4 s runaway whine while
     // the blast waits behind it; capitals already held their boom for 400 ms, small hulls now
     // land on the same beat so the whine always resolves INTO the explosion.
-    const overloadDelayS = 0.40;
+    // Packet 08: a decisive kill's successor hull fails for a mass-shaped window before it ruptures;
+    // the boom lands on that rupture (lifecycle.dyingFuseS), never on the fixed fuse.
+    const overloadDelayS = dyingFuseS(this.state, p.id, 0.40);
     if (ctx) {
       this.play('sfx_reactor_overload', {
         position: p.pos,
@@ -4818,10 +4821,10 @@ export const audio = {
         this.play(CAPITAL_PREDET_RECIPE, { position: pos2, startTime: ctx.currentTime + 0.20, gain: 0.55, rate: 1.08, critical: killedByPlayer });
       }
       // Play the main capital explosion in 400ms
-      this.play('sfx.killCapital', { position: p.pos, startTime: ctx.currentTime + 0.40, gain: 1.0, critical: killedByPlayer });
+      this.play('sfx.killCapital', { position: p.pos, startTime: ctx.currentTime + overloadDelayS, gain: 1.0, critical: killedByPlayer });
       if (killedByPlayer) {
         this.play('sfx_kill_confirm', {
-          position: p.pos, startTime: ctx.currentTime + 0.42, gain: 0.72, critical: true,
+          position: p.pos, startTime: ctx.currentTime + overloadDelayS + 0.02, gain: 0.72, critical: true,
           // SWARM-06: the kill chain lifts the confirm's pitch a step at a time — the run's
           // climb is audible in the reward voice itself. Zero chain reads exactly 1.
           rate: swarmKillPitch(rt && rt._swarmChain),

@@ -31,7 +31,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics', 'latchNine',
   'aiPorts', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'hullBurst', 'mines', 'bombs', 'emergentPrimitives', 'environmentMaterials', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'gyreSnare', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
+  'uniqueLootAbilities', 'fields', 'gyreSnare', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks', 'dyingHull',
   // Packet 09 (Three Capitals): the score system validates helpers.routeCombatDamage /
   // getCombatCapabilities at init, so it initialises after the combat kernel installs them.
   'capitalBossEncounters',
@@ -116,7 +116,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
   'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'physics', 'reactiveMatter', 'latchNine', 'combat',
-  'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
+  'combatOutcome', 'aftermathWrecks', 'dyingHull', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'shipjack', 'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
   // NXB-008: exposure-driven volatile cargo state; its own 15-tick gate limits the pass,
@@ -440,6 +440,8 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket',
   // Combat island: damage/attachment/custody owners at combat cadence.
   'combat', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
+  // dyingHull: the failure interval's rupture is scheduled in sim ticks, once per fixed step.
+  'dyingHull',
   'lineProgression',
   // rockCore: flail chain constraint must resolve on the 60 Hz step (5-link stability proof).
   'rockCore',

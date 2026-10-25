@@ -760,6 +760,13 @@ const KINETIC_SPALL_VARIANTS = new Set(['autocannon', 'railgun', 'siege-lance', 
 // (audioSystem._onKilled already delays the capital boom by 400 ms; small kills now match).
 const OVERLOAD_FLARE_S = 0.4;
 const PENDING_DETONATION_POOL = 12;
+// Packet 08 - a decisive kill's successor wreck fails for a bounded, mass-shaped window
+// (src/systems/dyingHull.js) before it ruptures; the held detonation waits for that rupture and
+// only falls back to its own timer this long after the scheduled rupture if the event never lands.
+const DYING_HOLD_SLACK_S = 0.35;
+const DYING_TRAIL_CADENCE_S = 0.034;
+const DYING_TRAIL_CADENCE_REDUCED_S = 0.07;
+const DYING_TRAIL_CAP = 12;
 
 // Feature 19 gate transit sweep: seven cyan streaks marching bow→stern over ~0.55 s while the
 // ship crosses the throat — the "light sweeps the hull" read without a full-screen flash.
@@ -1378,13 +1385,15 @@ export const vfx = {
       this._pendingDetonations.push({
         active: false, at: 0, sputterAt: 0,
         p: null, classId: null, radius: 0, cause: null,
-        x: 0, z: 0,
+        x: 0, z: 0, wreckId: null,
       });
     }
     // Quiet settled flight: empty pending-detonation pool still walked all 12
     // slots every tick. Latch after first empty observe; wake on schedule
     // (_scheduleDetonation clears the latch). Soft-GPU fps not claimed.
     this._pendingDetonationsQuietEmpty = false;
+    // Packet 08: smoke/vent trail state for hulls in their failure window (cap = the detonation pool).
+    this._dyingHulls = [];
     // Transit sweep (feature 19): a fixed count of cyan streaks marching bow→stern over ~0.55 s
     // while the ship passes the gate throat. Scalar fields only — the render loop must not allocate.
     this._transitSweepT = -1;
@@ -2693,6 +2702,11 @@ export const vfx = {
     // spawn + spall compose is the single heaviest tail — so they ride the presentation
     // tier's per-frame drain instead of the sim tick.
     add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._forgetMomentumSinkEntity(p); this._markEntityCacheDirty(); this._onKilled(p); this._onChainEntityKilled(p); }, { presentation: true });
+    // Packet 08: the kill's successor hull fails for a window, then ruptures once. The sim owns
+    // the schedule; presentation only holds the already-queued death explosion for it.
+    add('dyingHull:begin', (p) => this._onDyingHullBegin(p), { presentation: true });
+    add('dyingHull:ruptured', (p) => this._onDyingHullRuptured(p), { presentation: true });
+    add('dyingHull:lost', (p) => this._onDyingHullLost(p), { presentation: true });
     add('entity:destroyed', (p) => {
       clearTumbleCadenceFor(p);
       this._forgetMomentumSinkEntity(p);
@@ -5749,6 +5763,7 @@ export const vfx = {
     rec.active = true;
     rec.at = now + OVERLOAD_FLARE_S;
     rec.sputterAt = now + OVERLOAD_FLARE_S * 0.5;
+    rec.wreckId = null;
     rec.p = p;
     rec.classId = classId;
     rec.radius = scaledRadius;
@@ -5814,8 +5829,16 @@ export const vfx = {
       }
       if (now >= rec.at) {
         rec.active = false;
-        const payload = rec.p;
+        let payload = rec.p;
         rec.p = null;
+        // A held (dying-hull) detonation whose rupture event never landed still blows where the
+        // hull actually is now, not where it was killed.
+        if (rec.wreckId != null) {
+          const wreck = this._ent(rec.wreckId);
+          if (wreck && wreck.pos) payload = this._dyingBlastPayload(payload, wreck.pos, wreck.vel, null);
+          this._removeDyingTrail(rec.wreckId);
+          rec.wreckId = null;
+        }
         this._queueExplosion(payload, rec.classId, rec.radius, rec.cause);
       } else {
         anyActive = true;
@@ -5824,9 +5847,150 @@ export const vfx = {
     if (!anyActive) this._pendingDetonationsQuietEmpty = true;
   },
 
+  /**
+   * Packet 08 - the kill opened an ordinary 0.4 s overload window; the sim now says the successor
+   * hull will fail for `windowS` instead. Re-time the held detonation to the scheduled rupture and
+   * start the smoke/vent trail on the real wreck. No new explosion path: the same queued death
+   * explosion simply waits for the hull to arrive at its rupture.
+   */
+  _onDyingHullBegin(p) {
+    if (!p || p.wreckId == null) return;
+    const rec = this._pendingDetonationFor(p.victimId);
+    if (rec) {
+      rec.at = (Number.isFinite(p.ruptureAt) ? p.ruptureAt : rec.at) + DYING_HOLD_SLACK_S;
+      rec.sputterAt = rec.at; // the static kill-site spit is replaced by a trail that follows the hull
+      rec.wreckId = p.wreckId;
+      this._pendingDetonationsQuietEmpty = false;
+    }
+    const list = this._dyingHulls || (this._dyingHulls = []);
+    if (list.length >= DYING_TRAIL_CAP) list.shift();
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : (this._t || 0);
+    list.push({
+      wreckId: p.wreckId,
+      victimId: p.victimId,
+      startedAt: Number.isFinite(p.killedAt) ? p.killedAt : now,
+      ruptureAt: Number.isFinite(p.ruptureAt) ? p.ruptureAt : now + OVERLOAD_FLARE_S,
+      windowS: Math.max(0.1, Number(p.windowS) || OVERLOAD_FLARE_S),
+      tier: p.tier || 'light',
+      acc: 0,
+      sputters: 0,
+    });
+  },
+
+  _onDyingHullRuptured(p) {
+    if (!p) return;
+    this._removeDyingTrail(p.wreckId);
+    const rec = this._pendingDetonationFor(p.victimId);
+    if (rec) {
+      const payload = this._dyingBlastPayload(rec.p, p.pos, p.vel, p.direction);
+      const classId = rec.classId, radius = rec.radius, cause = rec.cause;
+      rec.active = false;
+      rec.p = null;
+      rec.wreckId = null;
+      this._queueExplosion(payload, classId, radius, cause);
+      return;
+    }
+    // The pooled slot was recycled under a massacre: the rupture still gets its one explosion.
+    const victim = { mass: p.mass, radius: p.radius, victimClass: null, type: 'ship', presentation: { cause: p.cause } };
+    const death = resolveDeathPresentationClass(victim);
+    const payload = this._dyingBlastPayload({ id: p.victimId, type: 'ship', radius: p.radius, mass: p.mass }, p.pos, p.vel, p.direction);
+    this._queueExplosion(payload, death.classId, scaleDeathExplosionRadius(p.radius, death.tier), death.cause);
+  },
+
+  _onDyingHullLost(p) {
+    if (!p) return;
+    this._removeDyingTrail(p.wreckId);
+    const rec = this._pendingDetonationFor(p.victimId);
+    // The world the hold described is gone (teardown) or the body was destroyed by something that
+    // owns its own explosion: release the hold without a second blast.
+    if (rec) { rec.active = false; rec.p = null; rec.wreckId = null; }
+  },
+
+  _pendingDetonationFor(victimId) {
+    if (victimId == null || !this._pendingDetonations) return null;
+    for (let i = 0; i < this._pendingDetonations.length; i++) {
+      const slot = this._pendingDetonations[i];
+      if (slot.active && slot.p && slot.p.id === victimId) return slot;
+    }
+    return null;
+  },
+
+  _removeDyingTrail(wreckId) {
+    const list = this._dyingHulls;
+    if (!list || wreckId == null) return;
+    for (let i = list.length - 1; i >= 0; i--) if (list[i].wreckId === wreckId) list.splice(i, 1);
+  },
+
+  /** The kill payload re-seated on the hull's CURRENT motion so the burst starts where it is. */
+  _dyingBlastPayload(base, pos, vel, direction) {
+    const src = base && typeof base === 'object' ? base : {};
+    const presentation = src.presentation && typeof src.presentation === 'object' ? src.presentation : {};
+    const at = pos && Number.isFinite(pos.x) ? { x: pos.x, z: pos.z } : (src.pos || null);
+    const tv = vel && Number.isFinite(vel.x) ? { x: vel.x, y: 0, z: vel.z } : (presentation.targetVelocity || null);
+    const dir = direction && Number.isFinite(direction.x) ? { x: direction.x, z: direction.z } : presentation.direction;
+    return {
+      ...src,
+      pos: at,
+      presentation: { ...presentation, position: at, targetVelocity: tv, direction: dir },
+    };
+  },
+
+  /**
+   * Smoke and venting from the failing hull itself, scaled to how far through the failure it is.
+   * Reuses the wounded-ship damage smoke (critical band) on the real wreck body, plus two hot
+   * nozzle sputters off the stern. Reduced motion keeps the location + state cue (sparser trail,
+   * no sputter streaks).
+   */
+  _updateDyingHulls(dt) {
+    const list = this._dyingHulls;
+    if (!list || !list.length || !this._scene) return;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : (this._t || 0);
+    const reduced = this._isReduced();
+    const cadence = reduced ? DYING_TRAIL_CADENCE_REDUCED_S : DYING_TRAIL_CADENCE_S;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const d = list[i];
+      const wreck = this._ent(d.wreckId);
+      if (!wreck || wreck.alive === false || !wreck.pos || now > d.ruptureAt + DYING_HOLD_SLACK_S) {
+        list.splice(i, 1);
+        continue;
+      }
+      const progress = Math.max(0, Math.min(1, (now - d.startedAt) / d.windowS));
+      d.acc += dt;
+      if (d.acc >= cadence) {
+        d.acc = 0;
+        // wounded (<40%) at the start of the window, "death's door" by the end
+        this._emitDamageSmoke(wreck, 0.22 * (1 - progress), cadence);
+      }
+      const due = d.sputters === 0 ? progress >= 0.12 : d.sputters === 1 ? progress >= 0.55 : false;
+      if (due) {
+        d.sputters++;
+        if (!reduced) this._emitDyingSputter(wreck);
+      }
+    }
+  },
+
+  /** A damaged nozzle spitting hot streaks off the stern of a hull that has lost thrust authority. */
+  _emitDyingSputter(wreck) {
+    const r = Math.max(2, wreck.radius || 4);
+    const heading = Number.isFinite(wreck.rot) ? wreck.rot : 0;
+    const bx = -Math.cos(heading), bz = -Math.sin(heading);
+    this._c0.set('#ff9a3c'); this._c1.set('#3a1c08');
+    for (let k = 0; k < 3; k++) {
+      const a = Math.atan2(bz, bx) + (k - 1) * 0.55;
+      const sp = 14 + k * 5;
+      const dx = Math.cos(a), dz = Math.sin(a);
+      this._spawnProjectileTrailStreak(
+        wreck.pos.x + bx * r * 0.7, 0.4, wreck.pos.z + bz * r * 0.7,
+        0.16, 0.10, 0.75, 0.9, '#ffb35c',
+        dx * sp + (wreck.vel ? wreck.vel.x * 0.6 : 0), dz * sp + (wreck.vel ? wreck.vel.z * 0.6 : 0), dx, dz,
+      );
+    }
+  },
+
   _resetPendingDetonations() {
     if (!this._pendingDetonations) return;
-    for (const rec of this._pendingDetonations) { rec.active = false; rec.p = null; }
+    for (const rec of this._pendingDetonations) { rec.active = false; rec.p = null; rec.wreckId = null; }
+    if (this._dyingHulls) this._dyingHulls.length = 0;
     this._pendingDetonationsQuietEmpty = false;
     this._transitSweepT = -1;
     this._transitSweepSpawned = 0;
@@ -12988,6 +13152,7 @@ export const vfx = {
       sub.planetSkim = 0;
     }
     this._updatePendingDetonations();
+    this._updateDyingHulls(dt);
     this._updateTransitSweep(dt);
     sub.explosions = this._explosions.update(dt, this._explosionEmitter) > 0 ? 1 : 0;
     this._explosionRupture?.update(Number.isFinite(this.state?.simTime) ? this.state.simTime : this._t, this.state?.settings);

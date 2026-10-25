@@ -156,8 +156,11 @@ test('production init + update order lengths match the live browser baseline', (
   // restock and drift-home ride the clock; judging is event-driven (member 11).
   // 248 -> 249 init / 194 -> 195 update: W-SHIFT registers gravedigger — the
   // race, the bury, and the pit ride the same clock (member 12 — the roster).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 249);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 195);
+  // 249 -> 250 init / 195 -> 196 update: Controlled Chaos packet 08 registers dyingHull — the
+  // bounded failure interval between a decisive kill and its single rupture, right after
+  // aftermathWrecks, on the table clock.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 250);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 196);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

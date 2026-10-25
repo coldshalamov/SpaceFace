@@ -78,6 +78,7 @@ import { countermeasures } from '../systems/countermeasures.js';
 import { combat } from '../systems/combat.js';
 import { combatOutcome } from '../systems/combatOutcome.js';
 import { aftermathWrecks } from '../systems/aftermathWrecks.js';
+import { dyingHull } from '../systems/dyingHull.js';
 import { uniqueWrecks } from '../systems/uniqueWrecks.js';
 import { uniqueLootAbilities } from '../systems/uniqueLootAbilities.js';
 import { titlesSystem } from '../systems/titles.js';
@@ -362,6 +363,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['combat', combat],
     ['combatOutcome', combatOutcome],
     ['aftermathWrecks', aftermathWrecks],
+    ['dyingHull', dyingHull],
     // Packet 09: production construction lives in capitalBossRuntime (shared with the browser
     // registry) so Node runs the identical observe/spawnWing ports.
     ['capitalBossEncounters', capitalBossEncounters],

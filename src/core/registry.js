@@ -83,6 +83,7 @@ import { countermeasures } from '../systems/countermeasures.js';
 import { combat } from '../systems/combat.js';
 import { combatOutcome } from '../systems/combatOutcome.js';
 import { aftermathWrecks } from '../systems/aftermathWrecks.js';
+import { dyingHull } from '../systems/dyingHull.js';              // Packet 08: the failure interval between a decisive kill and its single rupture
 import { uniqueWrecks } from '../systems/uniqueWrecks.js';
 import { uniqueLootAbilities } from '../systems/uniqueLootAbilities.js';
 import { titlesSystem } from '../systems/titles.js';
@@ -613,6 +614,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['combat', combat],
     ['combatOutcome', combatOutcome],
     ['aftermathWrecks', aftermathWrecks],
+    ['dyingHull', dyingHull],
     ['uniqueWrecks', uniqueWrecks],
     ['titles', titlesSystem],
     ['wingMorale', wingMorale],
@@ -864,6 +866,11 @@ export function createRegistry(ctx) {
   // events and live forceFlee flags; it never mutates combat, AI, economy, cargo, or reputation.
   // aftermathWrecks runs after combatOutcome: it observes the same live kill seam, records only
   // named-zone wreck markers, and materializes them as salvageable wreck entities on sector entry.
+  // dyingHull runs immediately after aftermathWrecks: it marks the kill's own successor wreck 'dying' for a
+  // bounded mass-shaped window (src/combat/lifecycle.js), queues two finite physics impulses, then ruptures it
+  // once. It never touches kill credit, loot or run counts (combat.kill() settled those on the kill tick), is
+  // gated on combatFlag('tumbleFling') (legacy47a OFF), is NOT in the sf-sim curated list, and its runtime mirror
+  // (state.dyingHullRuntime) is never serialized - the gyreSnare recipe.
   // titles observes durable NPC combat holds and reduces the cross-faction Thunderchild title
   // before wingMorale reads its nearby-allies aura on the same entity:killed event.
   // wingMorale is the squad-cohesion observer: leader loss marks surviving squadmates to flee,
