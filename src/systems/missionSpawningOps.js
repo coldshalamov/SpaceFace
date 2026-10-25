@@ -7,6 +7,7 @@ import { deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { hash32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { spawnReckoning } from '../missions/reckoningRuntime.js';
 import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { CLEAN_CYLINDER } from '../data/cleanCylinder.js';
 import { pointContaminationAt } from '../data/alienEcology.js';
@@ -834,6 +835,7 @@ export const missionSpawningOps = {
     } else if (PHYSICAL_TYPE_SET.has(m.type)) {
       this._spawnPhysicalTargetsFor(m, nextRng, px, pz);
     }
+    spawnReckoning(this, m);
     if (m.targetEntityIds.length) this.bus.emit('mission:updated', { missionId: m.id });
   },
 

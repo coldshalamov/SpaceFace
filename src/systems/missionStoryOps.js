@@ -20,6 +20,7 @@ import { passengerBeatLine } from '../data/barks.js';
 import { MISSION_TUNING, STORY_BEATS, STORY_BRANCH_INTRO_TAG } from '../data/missions.js';
 import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMissionRuntime.js';
 import { snapshotWorkingBattlefield } from './workingBattlefieldRuntime.js';
+import { snapshotReckoning } from '../missions/reckoningRuntime.js';
 import { getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
 import { CONTRACT_47A_B0_BODY, THREAD_B_FRAGMENT_ID } from '../data/narrative.js';
 import { forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
@@ -1455,6 +1456,7 @@ export const missionStoryOps = {
     for (const m of this.state.missions.active) {
       if (m.needsTargets && m.destSectorId === sectorId) {
         if (m.params?.workingBattlefield) snapshotWorkingBattlefield(this, m);
+        snapshotReckoning(this, m);
         for (const id of m.targetEntityIds || []) {
           const entity = this.state.entities.get(id);
           if (!entity || entity.id === this.state.playerId) continue;
@@ -2144,6 +2146,7 @@ export const missionStoryOps = {
     const active = source.map((a) => {
       if (a.params?.cleanCylinder) this._snapshotCleanCylinder(a);
       if (a.params?.workingBattlefield) snapshotWorkingBattlefield(this, a);
+      snapshotReckoning(this, a);
       const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, _swarmClockParkedAt, _swarmClockDeadline, ...rest } = a;
       const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
       // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active

@@ -3,6 +3,7 @@
 // encounterDirector owns encounters, and aftermathWrecks owns battle residue.
 
 import { hash32 } from '../../core/rng.js';
+import { reckoningCallbacks } from './reckoningCallbacks.js';
 import {
   BRANCH_HEADLINE_VERBS as LIVE_BRANCH_HEADLINE_VERBS,
   PQ032_BEAT_SET_PIECES,
@@ -376,8 +377,13 @@ function buildDeepReachOperationOffer(options) {
   const op = getDeepReachOperation(options.elroyOutcome, options.branch);
   const assetKey = String(options.assetId).replace(/[^a-zA-Z0-9_-]/g, '_');
   const storyTag = `campaign47a:b7:${op.outcome}:${op.id}:${assetKey}`;
+  const callbacks = options.state ? reckoningCallbacks(options.state) : [];
+  const names = { b1_cut: 'cut plate', b1_ram: 'wreck hammer', b2_crew: 'rescued tug',
+    b3_tow_in: 'recovered core', b3_sling_in: 'slung core', b6_drone: 'drone shield',
+    b6_trader: 'trader ballast', b6_outpost: 'outpost cover' };
   const params = {
     assetId: options.assetId,
+    ...(options.state ? { reckoning: { rows: callbacks, bodies: {} } } : {}),
     fValue: 2.1,
     taskTime: 90,
     physicalVerb: op.physicalVerb,
@@ -398,7 +404,8 @@ function buildDeepReachOperationOffer(options) {
     // same always-acceptable floor as the B1–B3 contracts. Ordinary offers keep their
     // risk-tier reputation ladders.
     reward_cr: 2200, collateral_cr: 0, riskTier: 4, minRep: -149, time_limit_s: 0, distance: 5200,
-    params, title: op.label.toUpperCase(), expiresAtEpoch: epoch + 2,
+    params, title: callbacks.length ? `ASHFALL: ${callbacks.map(row => names[row.id]).join(', ')}`.toUpperCase() : op.label.toUpperCase(),
+    expiresAtEpoch: epoch + 2,
     campaign47aBeat: 7, source: 'campaign47a.deep_reach',
   }, 7, options);
 }
