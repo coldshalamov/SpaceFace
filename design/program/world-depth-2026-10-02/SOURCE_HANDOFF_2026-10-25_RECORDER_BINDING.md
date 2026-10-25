@@ -1,10 +1,10 @@
 <!-- LIFETIME: DURABLE -->
 # Last Shift recorder: source and asset handoff
-Updated: 25 October 2026, 04:49 UTC.
+Updated: 25 October 2026, 05:03 UTC.
 
 This is a source-only checkpoint. All twelve goals in [OPEN_GOALS.md](OPEN_GOALS.md) remain OPEN. It preserves the [implementation roster](IMPLEMENTATION.md), [original twenty concepts](TWENTY_CONCEPT_MAP.json) and existing build-map scope; it is not a new queue or acceptance declaration. Prior [recovery guidance](SOURCE_HANDOFF_2026-10-25_RECOVERY_GUIDANCE.md) and its original attempts remain intact.
 
-Current source checkpoint: [published return-feedback follow-on](#recorder-return-feedback-published-follow-on-25-october-2026-0449-utc). The original binding checkpoint below remains historical evidence.
+Current source checkpoint: [published Ceres filed-report conversation](#ceres-filed-report-conversation-published-follow-on-25-october-2026-0503-utc). The original binding checkpoint below remains historical evidence.
 
 ## Verified recorder-binding publication
 - Open draft [PR602](https://github.com/coldshalamov/SpaceFace/pull/602).
@@ -64,3 +64,17 @@ Existing held operations remain held: the 847KB partsLibrary upload, distinct fa
 - The narrow feedback unit is complete as source implementation/publication, not as a completed game goal. All twelve goals remain OPEN. Ordinary physical return, live camera, performance, master integration and final acceptance remain unfinished.
 - Next connected increment is Ceres local-consequence inspection. Doss already acknowledges the archive at Helios; do not duplicate that acknowledgement or introduce a second counter. Ceres bar hooks are under ownership review, not implemented. Continue original-recorder physical return and ordinary return/Save/Continue qualification without replacing bodies or seeding custody.
 - Existing publication and browser holds remain unchanged. No held payload, CI result export, PR-body change, merge or deployment is included.
+
+## Ceres filed-report conversation: published follow-on (25 October 2026, 05:03 UTC)
+- Current candidate commit: `b51c850dd51bcedbb0a2ae4dc9cf8a6d2c892634`; tree `cbcc42837e44d1660aab097815e218020d3d3e0a`; sole parent `bb43ba003abd5e1dc8788b67091a8336e8a36a22`. Draft PR602 remains open. Prior recorder assets, binding and return feedback remain preserved.
+- Exactly four changed paths: `src/data/lastShift.js`, blob `b0b3b7878c51e6f5fe87cd7a801d56083e2cf9cb`; `src/ui/station/barContacts.js`, blob `176cd540b2b39440fc29717aa2d97e6072feb181`; `test/last-shift-local-report.test.mjs`, blob `abb5da087d9697530af25672ea80ac76bfce6aff`; `package.json`, blob `45445b2ce30d00fd379f97d7ddcd4e767dd798cc`. The package change appends the new local-report test to the existing narrative-worker check.
+- After a valid explicit archive filing, the existing Ceres Refinery host offers an optional conversation about that filed report. First arrival and unfiled discovery do not announce or unlock a public finding. Existing host identity, greetings, local work, rumors and choices are preserved; Helios/Doss acknowledgement is not duplicated.
+- The conversation retains the authored partial/full certainty of the last filed account. Newly read but unfiled clues and later physical return do not silently upgrade it. Physical return is validated separately and distinguishes this refinery from another receiving archive. The presenter grants no evidence, receipt, custody, cargo, reward or completion.
+- Final focused local qualification: 13/13 new local-report tests and 19/19 existing tests passed, natural exit 0, on the exact bb43 source graph plus these changes; pinned dependency maps had zero mismatches. The initial empty-pool fixture assumption was corrected to the existing restore normalization. A malformed-array crash was fixed, and the overstrict ordering guard was relaxed for otherwise valid legacy receipts. Earlier attempts remain preserved. This is not an aggregate suite, live-play or whole-sector acceptance.
+- Repeated conversation, elapsed simulation time, configured revisit/contact regeneration and actual-owner serialized restoration retain the filed report and independently validated physical-return status without new rewards. These are bounded local checks, not a personally piloted full Save/Continue route.
+- Integrated on the draft candidate and published: YES. Merged into master or accepted: NO. The existing bar screen's 1–3 hint limitation remains owned by PR544; this increment does not change `screens/bar.js` or establish live UI acceptance.
+- Next: qualify the ordinary original-recorder physical return and revisit/Save/Continue experience, including discoverability of the optional Ceres report through the existing bar UI. Preserve active UI ownership and all held operations. All twelve goals remain OPEN.
+
+Sector-register delta: this extends the [existing Ceres sector account](https://github.com/coldshalamov/SpaceFace/blob/ca676244557c11ab2769087f85f0afb077527547/design/program/world-depth-2026-10-02/SECTOR_EXPERIENCE_REGISTER_2026-10-21.md), whose historical register blob `f1f3c139542cf5aa0ddfbeda369aafa503db1264` remains unchanged. This is an evidence append, not an edit to that register or a new plan/queue. Routing remains original SF20-18 / P03 wreck evidence and adjacent P07 station life. Crews want to understand the tow lanes; no new safety guarantee, history, reputation or economy is invented. One/two-source filings retain uncertainty; the authored three-source account supports deliberate cargo release and rejects the unsupported pirate-strike rumor. A stale selection revalidates the current receipt. The account remains until an actual new filing changes it; elapsed time alone creates no consequence. No model or placement changes are included. Full-sector acceptance remains open.
+
+The next Borrowed Sun dynamic station/faction/context mismatch unit is proposed and under reproduction only, not implemented or published. It does not displace ordinary recorder-return or Ceres acceptance work.

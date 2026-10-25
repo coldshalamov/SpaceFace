@@ -1,6 +1,6 @@
 # Expansion continuation: restart and failure recovery
 
-Current source pointer (25 October 2026, 04:49 UTC): read [SOURCE_HANDOFF_2026-10-25_RECORDER_BINDING.md](SOURCE_HANDOFF_2026-10-25_RECORDER_BINDING.md) and the compact [OPEN_GOALS.md](OPEN_GOALS.md). Current candidate: bb43ba003abd, with narrow return feedback implemented and published; Ceres local-consequence inspection is next, not yet implemented. All twelve goals remain OPEN. Historical checkpoints and acceptance/reviewer fields remain preserved; verify current ownership and permissions before resuming. No merge, deployment or held-operation retry is authorized by this pointer.
+Current source pointer (25 October 2026, 05:03 UTC): read [SOURCE_HANDOFF_2026-10-25_RECORDER_BINDING.md](SOURCE_HANDOFF_2026-10-25_RECORDER_BINDING.md) and the compact [OPEN_GOALS.md](OPEN_GOALS.md). Current candidate: b51c850dd51b, with narrow return feedback and the optional Ceres filed-report conversation implemented and published; ordinary physical return, revisit/Save/Continue and live UI qualification remain open. Borrowed Sun dynamic station/faction/context mismatch work is proposed/under reproduction only, not implemented. All twelve goals remain OPEN. Historical checkpoints and acceptance/reviewer fields remain preserved; verify current ownership and permissions before resuming. No merge, deployment or held-operation retry is authorized by this pointer.
 
 
 This procedure was requested on 8 October 2026 after repeated status reports replaced
