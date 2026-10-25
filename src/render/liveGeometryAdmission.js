@@ -25,7 +25,7 @@ const newStatsResult = () => ({
   drainStage: 'idle',
 });
 
-export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatch, yieldToMain, isActive, isUrgent, onReady, onError, priorityOf }) {
+export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatch, yieldToMain, isActive, isUrgent, onReady, onError, priorityOf, priorityContext }) {
   const pending = [];
   // Stats memo: the pending ids/types arrays are queue-membership data, so a
   // per-frame stats() call can serve the last build until the queue mutates.
@@ -71,11 +71,11 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
   let drainStage = 'idle';
   const statsResult = newStatsResult();
 
-  const entryPriority = (entry) => {
+  const entryPriority = (entry, context) => {
     if (typeof priorityOf !== 'function') return 0;
     let value;
     try {
-      value = Number(priorityOf(entry.entity, entry.root));
+      value = Number(priorityOf(entry.entity, entry.root, context));
     } catch (_) {
       return 0;
     }
@@ -93,23 +93,49 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
   const entryNotUrgent = (entry) => !entryUrgent(entry);
 
   const pickNextWhere = (predicate) => {
-    let bestIndex = -1;
+    // The scan re-grades every waiting entry on each pick; the priority context
+    // (the renderer's admission env — player, camera, glass extents) is
+    // pick-stable, so it is derived once here rather than per entry.
+    let context;
+    if (typeof priorityContext === 'function') {
+      try { context = priorityContext(); } catch (_) { context = undefined; }
+    }
+    let best = null;
     let bestPriority = Infinity;
     let bestSequence = Infinity;
-    for (let index = 0; index < pending.length; index++) {
+    for (let index = 0; index < pending.length;) {
       const entry = pending[index];
-      if (!predicate(entry)) continue;
-      const priority = entryPriority(entry);
-      if (priority < bestPriority
-          || (priority === bestPriority && entry.sequence < bestSequence)) {
-        bestIndex = index;
-        bestPriority = priority;
-        bestSequence = entry.sequence;
+      // An entry that went inactive while queued (owner despawned, the run left
+      // flight) can never complete — settle it exactly like runEntry's inactive
+      // bail so its waiter resolves and the dedupe latch releases instead of
+      // carrying a dead root through every pick.
+      if (typeof entry.active === 'function') {
+        let stillActive = true;
+        try { stillActive = !!entry.active(); } catch (_) { stillActive = true; }
+        if (!stillActive) {
+          pendingSeq++;
+          pending.splice(index, 1);
+          admissions.delete(entry.root);
+          skippedCount++;
+          entry.resolve(false);
+          continue;
+        }
       }
+      if (predicate(entry)) {
+        const priority = entryPriority(entry, context);
+        if (priority < bestPriority
+            || (priority === bestPriority && entry.sequence < bestSequence)) {
+          best = entry;
+          bestPriority = priority;
+          bestSequence = entry.sequence;
+        }
+      }
+      index++;
     }
-    if (bestIndex < 0) return null;
+    if (!best) return null;
     pendingSeq++;
-    return pending.splice(bestIndex, 1)[0];
+    pending.splice(pending.indexOf(best), 1);
+    return best;
   };
 
   const runEntry = async (entry) => {
