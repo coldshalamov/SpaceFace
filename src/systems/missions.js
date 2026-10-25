@@ -4784,7 +4784,14 @@ export const missions = {
       const voice = convoyClientVoice(m, 'failed', this._stationName(m && m.destStationId));
       if (voice) return voice.text;
     }
-    if (reason === 'target_lost') return 'The mark was destroyed before you closed in near ' + dest + '. The contract is void — deposit refunded, no standing lost.';
+    if (reason === 'target_lost') {
+      // The deposit comes back only when one was charged. A writ with no stake
+      // must not tell the pilot the money returned.
+      const tail = m && m.collateral_cr > 0
+        ? 'The contract is void — deposit refunded, no standing lost.'
+        : 'The contract is void — no standing lost.';
+      return 'The mark was destroyed before you closed in near ' + dest + '. ' + tail;
+    }
     if (reason === 'deadline') return 'Deadline missed near ' + dest + '. The board has already marked the lane cold.';
     if (reason === 'abandoned') return 'Contract abandoned. Progress was cleared from the board and the client will remember the gap.';
     if (reason === 'escort_abandoned') return 'Escort contract voided. The convoy was left outside acceptable coverage.';
@@ -5646,15 +5653,25 @@ export const missions = {
     // Presentation last: the debrief popup and toast may fail without un-settling anything above.
     this._settleOptional('failure debrief', () => this._emitMissionDebrief(m, 'failed', reason || 'failed'));
     // A mutated failure is not a scolding: the toast says what the situation turned INTO.
-    // A voided contract is not a scolding either: it says the job is gone and the deposit is back.
+    // A voided contract is not a scolding: the job is gone. Name the deposit only
+    // when one was charged and is being returned.
     if (mutation) {
       this.bus.emit('toast', { text: mutation.toastText, kind: 'warn', ttl: 5 });
     } else if (voided) {
       const causeLabel = m.params && m.params.externalCauseLabel;
-      this.bus.emit('toast', {
-        text: reason === 'failed_external' && causeLabel
+      const depositBack = m.collateral_cr > 0;
+      let text;
+      if (reason === 'failed_external' && causeLabel) {
+        text = depositBack
           ? `Contract void: ${m.title} — ${causeLabel}; deposit refunded.`
-          : `Contract void: the mark for ${m.title} was destroyed — deposit refunded.`,
+          : `Contract void: ${m.title} — ${causeLabel}.`;
+      } else {
+        text = depositBack
+          ? `Contract void: the mark for ${m.title} was destroyed — deposit refunded.`
+          : `Contract void: the mark for ${m.title} was destroyed.`;
+      }
+      this.bus.emit('toast', {
+        text,
         kind: 'warn',
         ttl: 5,
       });
