@@ -103,11 +103,13 @@ export function observeStuntWitnesses(state) {
   for(const root of j.roots.values()) {
     if(root.actorId!==state.playerId||tick<root.tick||tick>root.tick+480||root.truncated)continue;
     let episode=own.episodes[root.id];
-    if(!episode) { if(Object.keys(own.episodes).length>=LIMITS.episodes)continue;episode=own.episodes[root.id]={rootId:root.id,rootTick:root.tick,observers:{}}; }
+    // observers/targets bags are keyed by record-derived identities (worldRecordId/life ids) —
+    // null-prototype so a corrupted '__proto__'-class id writes an own key instead of polluting.
+    if(!episode) { if(Object.keys(own.episodes).length>=LIMITS.episodes)continue;episode=own.episodes[root.id]={rootId:root.id,rootTick:root.tick,observers:Object.create(null)}; }
     const source=state.entities.get(root.sourceId);
     if(!source?.alive||bodyLife(source,state)?.id!==root.sourceLife)continue;
     for(const {entity:observer,profile} of observers) {
-      const row=episode.observers[profile.identity] ||= {...profile,sourceTicks:0,transferTicks:0,payoffTicks:0,targets:{},firstSeen:tick};
+      const row=episode.observers[profile.identity] ||= {...profile,sourceTicks:0,transferTicks:0,payoffTicks:0,targets:Object.create(null),firstSeen:tick};
       if(row.lifeId!==profile.lifeId)continue;
       const seesSource=canSee(state,observer,profile,source,[player.id]);
       const seesActor=canSee(state,observer,profile,player,[source.id]);
