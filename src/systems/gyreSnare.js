@@ -46,6 +46,8 @@ import {
 import {
   matterRefusal, matterMass, matterRadius, matterIsDynamic, hasProtectedContent,
 } from '../matter/aggregateEligibility.js';
+import { planMeal, applyMeal } from '../matter/aggregateCapture.js';
+import { stashLifetime, restoreLifetime } from '../matter/aggregateLifetime.js';
 
 const D = GYRE_SNARE;
 const TICKS_PER_S = 60; // sim tick -> simTime ratio shared by the provenance hold
@@ -563,72 +565,7 @@ export const gyreSnare = {
   },
 
   _restoreLifetime(e, futureOnly = false) {
-    // Stashed at snag: a freed (non-launched) core resumes its authored deadlines
-    // instead of living forever as stasis residue.
-    if (!e || !e.data) return;
-    // 'in' not '!== undefined': an absent authored despawnAt stashes undefined and
-    // must restore ABSENT (and still consume the stash key) — otherwise every freed
-    // core that had no authored deadline carries a dead residue key forever.
-    if ('gyrePrevDespawnAt' in e.data) {
-      // '!(v > 0)' not '== null': a serialized stash that was non-finite at
-      // write round-trips as null, and a legacy/foreign 0 stash is the same
-      // absent contract — restoring despawnAt = 0 would be an insta-kill, not
-      // an authored deadline.
-      if (!(e.data.gyrePrevDespawnAt > 0)) {
-        if (!futureOnly) delete e.data.despawnAt; // absent authored → restore absent
-        // futureOnly: a foreign owner's own deadline (if any) wins — leave it.
-        delete e.data.gyrePrevDespawnAt;
-      } else {
-        // futureOnly (hand-back): the body's CURRENT owner keeps its deadline. Restore
-        // the authored stash only when nothing else set one AND it's still in the
-        // future — resurrecting a stale stash assassinates an adopted body on the next
-        // lifetime sweep, and clobbering a live launch deadline would cut a still-
-        // flying overflow ball's flight short.
-        const now = this.state && this.state.simTime;
-        // A non-finite now can't prove the stash is stale — treat unprovable
-        // as unfresh and skip the restore rather than writing a possibly-past
-        // deadline into a body we can't sweep honestly anyway.
-        if (futureOnly && (e.data.despawnAt != null
-          || !Number.isFinite(now)
-          || e.data.gyrePrevDespawnAt <= now)) {
-          delete e.data.gyrePrevDespawnAt;
-        } else {
-          e.data.despawnAt = e.data.gyrePrevDespawnAt;
-          delete e.data.gyrePrevDespawnAt;
-        }
-      }
-    }
-    // 'in' not '!== undefined': an absent authored ttl stashes undefined and must
-    // restore ABSENT (e.ttl = undefined) — otherwise a released body keeps the
-    // Infinity the snag planted instead of round-tripping as authored.
-    if ('gyrePrevTtl' in e.data) {
-      // The countdown channel is RELATIVE — frozen at snag, it can't go stale like an
-      // absolute despawnAt. Resuming it under futureOnly is the honest authored state:
-      // an adopter keeping the body strips deadlines itself, and a released hand-back
-      // must not leave immortal debris. A non-positive stash restores nothing.
-      if (futureOnly) {
-        // Same current-owner guard as the despawnAt branch: a foreign owner that
-        // assigns its own finite ttl keeps it — the snag only planted Infinity, so a
-        // finite e.ttl here is owner-set and wins. Infinity still restores authored.
-        // An absent OR non-positive stash restores nothing — and must not leave the
-        // snag's planted Infinity behind either (immortal debris): delete instead.
-        if (!(e.data.gyrePrevTtl > 0)) {
-          if (!Number.isFinite(e.ttl)) delete e.ttl;
-        } else if (!Number.isFinite(e.ttl)) {
-          e.ttl = e.data.gyrePrevTtl;
-        }
-        delete e.data.gyrePrevTtl;
-      } else {
-        // Same '!(v > 0)' absent contract as the despawnAt branch: a null or
-        // non-positive stash (absent authored, or a serialized non-finite that
-        // round-tripped as 0 before the write-side normalization) restores
-        // ABSENT — writing e.ttl = 0 would decrement a corpse deadline into
-        // the body and kill it on the next lifetime tick.
-        if (!(e.data.gyrePrevTtl > 0)) delete e.ttl;
-        else e.ttl = e.data.gyrePrevTtl;
-        delete e.data.gyrePrevTtl;
-      }
-    }
+    restoreLifetime(e, futureOnly, this.state && this.state.simTime);
   },
 
   _clearCoreMark() {
@@ -1277,13 +1214,8 @@ export const gyreSnare = {
     // fail the absent check on restore, and insta-kill the body. Absent and
     // non-finite authored values stash as null (deadline-free), positive
     // finite values stash verbatim.
-    best.data.gyrePrevDespawnAt = Number.isFinite(best.data.despawnAt) ? best.data.despawnAt : null;
-    best.data.gyrePrevTtl = Number.isFinite(best.ttl) ? best.ttl : null;
-    delete best.data.despawnAt;
-    // Acknowledged foreign-field ride: `ttl` belongs to the lifetime sweep, outside
-    // the declared data.* namespace — stashed and restored symmetrically on both
-    // the drop and the future-only hand-back so the sweep's own contract resumes.
-    best.ttl = Infinity;
+    stashLifetime(best); // both channels (aggregateLifetime.js): `ttl` belongs to the lifetime sweep, so
+    // it is stashed and restored symmetrically on the drop and the future-only hand-back alike.
     if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') this.helpers.markEntityVisualChanged(best);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.snagged, {
@@ -1618,90 +1550,36 @@ export const gyreSnare = {
   },
 
   _mergeMeal(state, rt, core, e, dx, dz, dist, ticket) {
-    const em = entityMass(e);
-    const er = entityRadius(e);
-    const massBefore = rt.clumpMass;
-    rt.clumpMass = massBefore + em;
+    // The merge itself is the shared seam (src/matter/aggregateCapture.js): plan everything off the
+    // core's pre-merge state, then perform it through the physics membrane and the entity remover.
+    // The knock is a declared EXTERNAL-tool impulse — the lash is what holds the ball — and the
+    // grown inertia is one number for the meal's angular momentum and the physics rebuild.
+    const plan = planMeal(core, e, { mass: rt.clumpMass, radius: rt.clumpRadius }, { dx, dz, dist }, D, D.maxClumpRadius, this._planScratch || (this._planScratch = {}));
+    const em = plan.em;
+    const er = plan.er;
+    const nx = plan.nx;
+    const nz = plan.nz;
+    rt.clumpMass = plan.mass;
     // Ingestion is whole-body: if the meal cannot fit it stays alive with all its mass.
-    rt.clumpRadius = grownRadius(rt.clumpRadius, er, 1, D.maxClumpRadius);
+    rt.clumpRadius = plan.radius;
     // Each member keeps its actual surface and approach so the clump is visibly made
     // from what the player collected. The member ceiling stops further ingestion.
     rt.totalAbsorbed += 1;
-    const nx = dist > 1e-4 ? -dx / dist : 0;
-    const nz = dist > 1e-4 ? -dz / dist : 0;
     // The gulp direction is a per-tick channel; the full ledger remains the payload.
     rt.absorbDir.x = nx; rt.absorbDir.z = nz;
     // Publish carries the tick's BIGGEST meal (last-write used to under-grade a
     // wreck-then-pebble batch — every per-meal channel grades on its own em/er
     // locals, only this publish ledger needed the max).
     rt.absorbRadius = Math.max(rt.absorbRadius || 0, er);
-    // Katamari knock: the ball physically flinches off the meal's approach — a
-    // mass-scaled shove so a wreck visibly rocks the tether (a pebble is a tap,
-    // and a heavier ball shrugs more since Δv = impulse/mass). The hold spring
-    // recovers it in ~half a second — a rock, never a displacement.
-    // The grown clump's inertia — hoisted so the meal's angular momentum below
-    // and the physics rebuild at the bottom of the absorb agree on it.
-    const newInertia = Math.max(8, Math.round(rt.clumpMass * rt.clumpRadius * rt.clumpRadius * 0.4));
-    if (dist > 1e-4) {
-      // Mass-proportional impulse alone shrugs to nothing at the fantasy's
-      // climax (40 t into 2400 t ≈ 0.05 wu/s) — a Δv floor keeps big meals
-      // felt on big balls without touching the pebble branch.
-      // Speed-graded: a 200 wu/s inbound wreck should rock the tether harder
-      // than a drifter — closing speed along the approach axis, clamped so a
-      // railgun-fast meal can't detonate the hold spring (≤2.5× the authored).
-      const relX = finite(e.vel && e.vel.x) - finite(core.vel && core.vel.x);
-      const relZ = finite(e.vel && e.vel.z) - finite(core.vel && core.vel.z);
-      const closing = Math.max(0, relX * (dx / dist) + relZ * (dz / dist));
-      const speedK = 1 + Math.min(1.5, closing / Math.max(1, D.absorbKnockSpeedRef));
-      const knock = Math.max(em * D.absorbKnockPerMass, entityMass(core) * D.absorbKnockFloor) * speedK;
-      queuePhysicsImpulse(core,
-        { x: (dx / dist) * knock,
-          y: 0,
-          z: (dz / dist) * knock },
-        this._evidence(state.tick));
-      // The meal's ANGULAR momentum lands too — a spiraling feed doesn't die
-      // spinless at the merge. Δω = L/I with L ≈ m·v_t·d, the lever arm being
-      // the CONTACT distance (the meal struck at dist, not at clumpRadius).
-      // v_t is the relative velocity projected on the funnel's OWN co-rotating
-      // tangent (dz,−dx)/dist — the same axis the pull lanes corkscrew on — so a
-      // meal arriving WITH the vortex deposits +angVel (the +0.55 tumble servo
-      // target's sense) instead of counter-spinning against the chirality it
-      // was fed on. Capped so a railgun meal quickens, not spins out.
-      const tangential = relX * (dz / dist) - relZ * (dx / dist);
-      const dOmega = Math.max(-0.5, Math.min(0.5, em * tangential * dist / newInertia));
-      if (Math.abs(dOmega) > 1e-3) {
-        queuePhysicsTorqueImpulse(core, { x: 0, y: newInertia * dOmega, z: 0 }, this._evidence(state.tick));
-      }
-    }
     if (rt.members.length < D.maxAbsorbRecords) {
       rt.members.push({ type: e.type, material: environmentMaterialOf(e),
         typeId: e.data?.typeId || null, mass: em, radius: er, nx, nz });
     }
-    if (this.helpers.removeEntity) this.helpers.removeEntity(e.id);
-    else e.alive = false;
-    // The meal is gone from the world: the core is authoritative now. Commit the ticket.
-    rt.capture.commit(ticket);
-    // Grow the AUTHORED body record (mass/inertia/radius + revision bump → the physics owner
-    // rebuilds the ball with the new spec). A one-tick writePhysicsBodyResponse would revert
-    // on the next pass; this is the real katamari — the rapier body genuinely gains mass and
-    // a bigger collider, which also keeps the skin-touch absorb threshold honest.
-    // `=== false` is an authored opt-out — the same guard _launch carries.
-    if (core.physicsBody !== false) {
-      syncDerivedPhysicsMass(
-        core,
-        rt.clumpMass,
-        newInertia,
-        rt.clumpRadius,
-      );
-    }
-    // The clump's HEART visibly grows too: entity.radius is what the motion presenters scale
-    // the core's mesh off — keep it in step with the physics record so growth is visceral.
-    if (!finite(core.radius) || core.radius < rt.clumpRadius) {
-      core.radius = rt.clumpRadius;
-      if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') {
-        this.helpers.markEntityVisualChanged(core);
-      }
-    }
+    applyMeal({
+      helpers: this.helpers, evidence: this._evidence(state.tick), ledger: rt.capture,
+      markVisual: this.helpers && typeof this.helpers.markEntityVisualChanged === 'function'
+        ? this.helpers.markEntityVisualChanged : null,
+    }, core, e, plan, ticket);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.absorbed, {
         id: e.id, coreId: core.id, victimId: e.id, victimType: e.type, mass: em,
@@ -1837,9 +1715,41 @@ export const gyreSnare = {
     rt.ballMembers = rt.members.slice();
     rt.ballClumpRadius = rt.clumpRadius;
     rt.ballAbsorbs = rt.totalAbsorbed;
+    this._armBall(state, core, {
+      impactScale: plan.impactScale, magnitude: rt.clumpMass * rt.launchSpeedEff,
+      clumpRadius: rt.clumpRadius, absorbs: rt.ballAbsorbs, members: rt.ballMembers,
+      weaponId: WEAPON_ID, tag: 'gyre_launch', clearMark: 'gyreCore',
+    });
+    if (this.bus) {
+      this.bus.emit(GYRE_EVENTS.launched, {
+        id: core.id, coreId: core.id, mass: rt.clumpMass, radius: rt.clumpRadius,
+        // The honest speed at the release edge is launchSpeedEff (post-mass-penalty);
+        // carry isn't known until the burst, so the authored floor would lie.
+        speed: rt.launchSpeedEff, dir: { x: dir.x, z: dir.z }, members: rt.members.length,
+        // members is the bounded VFX-ledger count (≤28) — the honest absorb total
+        // rides beside it so consumers don't silently under-report past the cap.
+        absorbs: rt.totalAbsorbed,
+        tick: state.tick,
+      });
+    }
+    // The kinetic payoff (shake + Newton kick + the launch crack itself) does NOT land
+    // here — it rides the first burst tick in update() so the biggest beat hits the
+    // moment the coil RELEASES the ball, not while it's still winding back. The crack's
+    // recipe attack is 1 ms: emitted here it would fire a beat early, against the design.
+  },
+
+  /**
+   * Arm a body as a thrown aggregate: the weapon payload (authored impact scale), the kill-credit
+   * provenance, a bounded flight, the serializable meta shadow and a seat in the watch ledger. One
+   * seam for Gyre's own release and for an aggregate another owner (the Pull collector) throws, so a
+   * thrown knot has exactly one lifecycle: watch, retire, hand-back, save, boundary sweep.
+   * spec = { impactScale, magnitude, clumpRadius, absorbs, members, weaponId, tag, clearMark }.
+   */
+  _armBall(state, core, spec) {
+    const rt = this._rt;
     // The ball becomes a weapon: authored impact scale + provenance for kill credit + a
     // bounded flight so the map doesn't keep it forever.
-    const scale = plan.impactScale;
+    const scale = spec.impactScale;
     core.data = core.data || {};
     if (core.physicsBody !== false) {
       // physicsBody===false is an authored opt-out — materializing a record here
@@ -1857,7 +1767,7 @@ export const gyreSnare = {
       // authored-spec write must invalidate or the resolved spec reads stale.
       core.physicsBody.revision = Math.max(0, Math.trunc(finite(core.physicsBody.revision))) + 1;
     }
-    delete core.data.gyreCore;
+    delete core.data[spec.clearMark || 'gyreCore'];
     // Launch stamps its own TTL. The authored-lifetime stashes ride on the ball so an
     // adoption hand-back can restore them — symmetric with the drop contract; a boundary
     // sweep drops them as old-timeline residue.
@@ -1865,10 +1775,10 @@ export const gyreSnare = {
     core.data.despawnAt = (Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60) + D.ballTtlS;
     recordImpulseProvenance(core, {
       actorId: state.playerId,
-      weaponId: WEAPON_ID,
-      tag: 'gyre_launch',
+      weaponId: spec.weaponId,
+      tag: spec.tag,
       appliedTick: state.tick | 0,
-      magnitude: rt.clumpMass * rt.launchSpeedEff,
+      magnitude: spec.magnitude,
     });
     holdImpulseProvenance(core, (state.tick | 0) + Math.round(D.launchProvenanceHoldS * TICKS_PER_S), state.tick | 0);
     // Serializable shadow of the WeakMap record: a save:loaded ball keeps despawnAt +
@@ -1876,16 +1786,16 @@ export const gyreSnare = {
     // kill credit from this meta. holdUntilSim rides despawnAt, the flight's outer bound.
     core.data.gyreLaunchMeta = {
       actorId: state.playerId == null ? null : state.playerId,
-      weaponId: WEAPON_ID,
-      tag: 'gyre_launch',
-      magnitude: rt.clumpMass * rt.launchSpeedEff,
+      weaponId: spec.weaponId,
+      tag: spec.tag,
+      magnitude: spec.magnitude,
       holdUntilSim: core.data.despawnAt,
-      clumpRadius: rt.clumpRadius,
+      clumpRadius: spec.clumpRadius,
       // The absorb ledger serializes too — a re-adopted ball republishes its real
       // ×N and the glass-clump overlay rebuilds its lumps instead of collapsing to
       // the bare collider silhouette.
-      absorbs: rt.ballAbsorbs,
-      members: rt.ballMembers ? rt.ballMembers.slice() : null,
+      absorbs: spec.absorbs,
+      members: spec.members ? spec.members.slice() : null,
     };
     // Watch every launched id, not just the newest: a second launch or a save-load
     // that keeps the entity alive would otherwise orphan gyreLaunched + weapon scale
@@ -1893,22 +1803,37 @@ export const gyreSnare = {
     // freshly-pushed pre-mark ball would read as one and evict itself.
     this._trackBall(core.id);
     if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') this.helpers.markEntityVisualChanged(core);
+  },
+
+  /**
+   * Take a thrown aggregate from another owner (the Pull collector). The caller has already decided
+   * and paid; this stamps the flight, mirrors it for the HUD/glass and watches it. The burst itself is
+   * the caller's. Returns the launch plan the caller should execute, or null.
+   */
+  adoptThrownAggregate(core, spec) {
+    const state = this.state;
+    const rt = this._rt;
+    if (!state || !rt || !core || core.alive === false || !core.pos) return null;
+    const plan = launchPlan(spec.mass, spec.tuning || D);
+    const members = Array.isArray(spec.members) ? spec.members.slice() : [];
+    rt.ballId = core.id;
+    rt.ballMass = spec.mass;
+    rt.ballMembers = members;
+    rt.ballClumpRadius = spec.radius;
+    rt.ballAbsorbs = spec.absorbs | 0;
+    this._armBall(state, core, {
+      impactScale: plan.impactScale, magnitude: spec.mass * plan.speed, clumpRadius: spec.radius,
+      absorbs: rt.ballAbsorbs, members, weaponId: spec.weaponId || WEAPON_ID, tag: spec.tag || 'gyre_launch',
+      clearMark: spec.clearMark || 'gyreCore',
+    });
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.launched, {
-        id: core.id, coreId: core.id, mass: rt.clumpMass, radius: rt.clumpRadius,
-        // The honest speed at the release edge is launchSpeedEff (post-mass-penalty);
-        // carry isn't known until the burst, so the authored floor would lie.
-        speed: rt.launchSpeedEff, dir: { x: dir.x, z: dir.z }, members: rt.members.length,
-        // members is the bounded VFX-ledger count (≤28) — the honest absorb total
-        // rides beside it so consumers don't silently under-report past the cap.
-        absorbs: rt.totalAbsorbed,
-        tick: state.tick,
+        id: core.id, coreId: core.id, mass: spec.mass, radius: spec.radius, speed: plan.speed,
+        dir: spec.dir ? { x: spec.dir.x, z: spec.dir.z } : { x: 1, z: 0 }, members: members.length,
+        absorbs: rt.ballAbsorbs, tick: state.tick, source: spec.source || 'external',
       });
     }
-    // The kinetic payoff (shake + Newton kick + the launch crack itself) does NOT land
-    // here — it rides the first burst tick in update() so the biggest beat hits the
-    // moment the coil RELEASES the ball, not while it's still winding back. The crack's
-    // recipe attack is 1 ms: emitted here it would fire a beat early, against the design.
+    return plan;
   },
 
   _finishLaunch(state) {
