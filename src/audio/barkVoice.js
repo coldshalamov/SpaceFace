@@ -450,11 +450,12 @@ function mulberry32(seed) {
  * only. Never reads sim RNG.
  */
 export function renderBarkUtterancePcm(resolved, options = {}) {
-  const sr = options.sampleRate || 32000;
-  const dur = options.seconds == null
+  const sr = Number.isFinite(options.sampleRate) && options.sampleRate > 0 ? options.sampleRate : 32000;
+  const rawDur = options.seconds == null
     ? (resolved && resolved.speech && resolved.speech.durationS) || BARK_UTTERANCE_SECONDS
     : options.seconds;
-  const n = Math.max(1, Math.round(Number(dur) * sr));
+  const dur = Number.isFinite(Number(rawDur)) && Number(rawDur) > 0 ? Number(rawDur) : BARK_UTTERANCE_SECONDS;
+  const n = Math.max(1, Math.round(dur * sr));
   const out = new Float64Array(n);
   if (!resolved || !resolved.speech) return out;
   const f0 = Number(resolved.speech.f0);
@@ -492,8 +493,9 @@ export function renderBarkUtterancePcm(resolved, options = {}) {
 /** Isolated pitch callsign: a stranger hears the register's fundamental, no radio hash. */
 export function renderRegisterCallsignPcm(register, options = {}) {
   const f0 = Number(register && register.f0);
-  const sr = options.sampleRate || 32000;
-  const seconds = options.seconds == null ? REGISTER_CALLSIGN_SECONDS : options.seconds;
+  const sr = Number.isFinite(options.sampleRate) && options.sampleRate > 0 ? options.sampleRate : 32000;
+  const rawSeconds = options.seconds == null ? REGISTER_CALLSIGN_SECONDS : options.seconds;
+  const seconds = Number.isFinite(Number(rawSeconds)) && Number(rawSeconds) > 0 ? Number(rawSeconds) : REGISTER_CALLSIGN_SECONDS;
   const n = Math.max(1, Math.round(seconds * sr));
   const pcm = new Float64Array(n);
   if (!(f0 > 0)) return pcm;
