@@ -273,6 +273,7 @@ export const mining = {
     this._beamPegged = false;
     this._pulsePeggedS = 0;
     this._ventCarry = 0;
+    this._ventCarryCommodityId = null;
     this._heatEmitPct = -1;
     this._noiseImpulseAt = -Infinity;
     this._ventTaught = false;
@@ -929,6 +930,10 @@ export const mining = {
     // X-07: the fraction a pulse earned carries to the next vent. A rhythm pulse on a common rock
     // banks ~1.3 u, so flooring each vent alone paid 0 and left holding the peg ahead of the
     // rhythm; carried, the rhythm's ~+65% lands in the hold as the plan numbers say.
+    // The carry is ore of one commodity: a silicate fraction never cashes as a rarer ore.
+    const id = commodityId || 'cmdty_silicate';
+    if (this._ventCarryCommodityId !== id) this._ventCarry = 0;
+    this._ventCarryCommodityId = id;
     const rawU = pulseOre * BEAM_VENT_BONUS_MAX * depth + (this._ventCarry || 0);
     const bonusU = Math.floor(rawU + 1e-9);
     this._ventCarry = Math.max(0, rawU - bonusU);
@@ -936,7 +941,6 @@ export const mining = {
     this._ventTaught = true;
     const rock = targetId != null ? this.state.entities.get(targetId) : null;
     const pos = rock && rock.pos ? { x: rock.pos.x, z: rock.pos.z } : (player.pos ? { x: player.pos.x, z: player.pos.z } : null);
-    const id = commodityId || 'cmdty_silicate';
     const accepted = this._giveCargo(id, bonusU, player.id);
     const rejected = Math.max(0, bonusU - accepted);
     let spilled = 0;
@@ -972,6 +976,7 @@ export const mining = {
     this._beamPegged = false;
     this._pulsePeggedS = 0;
     this._ventCarry = 0;
+    this._ventCarryCommodityId = null;
     this._heatEmitPct = -1;
     if (!beam) return;
     beam.heat = 0;

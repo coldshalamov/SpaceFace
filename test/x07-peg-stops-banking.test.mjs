@@ -175,6 +175,24 @@ test('X-07 on a common rock the rhythm out-earns holding the peg (plan ~+65% vs 
   assert.ok(rhythm.vents >= 5, 'most rhythm pulses cash a vent the player sees');
 });
 
+// X-07 review 4: the carry is ore of one commodity — a silicate remainder never cashes as rarer ore.
+test('X-07 the vent carry never crosses commodities', () => {
+  const h = bootBeam();
+  const beam = h.mining._beamRuntime(h.player);
+  beam.heat = beam.heatMax;
+  h.mining._ventCarry = 0.95; h.mining._ventCarryCommodityId = 'cmdty_silicate';
+  h.mining._pulseOre = 0.2; h.mining._pulseTargetId = h.asteroid.id; h.mining._pulseCommodityId = 'cmdty_iron';
+  assert.equal(h.mining._resolveVent(), null, 'a silicate remainder does not top up an iron vent');
+  assert.equal(h.mining._ventCarryCommodityId, 'cmdty_iron');
+  assert.ok(h.mining._ventCarry > 0 && h.mining._ventCarry < 0.2, 'only the iron fraction carries');
+  beam.heat = beam.heatMax;
+  h.mining._ventCarry = 0.95; h.mining._ventCarryCommodityId = 'cmdty_silicate';
+  h.mining._pulseOre = 0.2; h.mining._pulseCommodityId = 'cmdty_silicate';
+  const paid = h.mining._resolveVent();
+  assert.ok(paid && paid.qty === 1 && paid.commodityId === 'cmdty_silicate', 'same ore carries and pays once');
+  assert.ok(h.mining._ventCarry < 1, 'the paid unit leaves the carry');
+});
+
 test('X-07 the CLEAN CUT word holds for 1.2 s then the seam word returns', () => {
   const hud = Object.create(miningHud);
   hud.init({ state: {}, helpers: {}, bus: null });
