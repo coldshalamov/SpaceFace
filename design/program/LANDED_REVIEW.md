@@ -1,6 +1,4 @@
 
-| R-d13289f | d13289ff70 | board 464+450 (adopted codex-bm30-oct23): ten sector law machines, six wonder sites, landmark background, interdiction bearing HUD | Re-check the retirement contract: killMachinesForSector returns ONLY the law machine for the ten thin sectors, and sectorWonder:secured shuts down a machine only when the receipt's machineId matches the manifest consequence payload — confirm a spoofed or cross-sector receipt cannot retire a live machine | OPEN |
-
 | R-5da188c | 5da188cfe0 | board 430 (adopted): set-piece Clips collector, authored-place replay, ten score phrases | Re-check the collector bounds: a 30 s clip is never manufactured from short footage (MAX_SEALED 2, MAX_PENDING 3), a duplicate marker id is refused, and the marker→seal path never touches the sim — only reads the existing pose tape and mix window | OPEN |
 
 | R-bfea032 | bfea03251b | board 436 (adopted): station life presenter + scheduled bay traffic | Re-check speech etiquette and lifecycle: competingUntil suppresses PA under barkDirector/tutorial/caption traffic, the shift bell requires a real watch-key change, hide() parks the clock without losing elapsed time, and nothing under ui/station or render/ writes sim state | OPEN |
