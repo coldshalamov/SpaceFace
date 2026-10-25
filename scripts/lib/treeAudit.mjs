@@ -20,5 +20,5 @@ export function auditExpectedTree(dir, expectedRels, opts = {}) {
     }
   };
   walk(dir, '');
-  return flagged;
+  return flagged.sort(); // deterministic ordering — stray lists shouldn't vary by filesystem
 }

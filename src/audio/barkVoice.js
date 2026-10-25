@@ -347,7 +347,9 @@ export function factionRegistersAreDistinct() {
   return new Set(sigs).size === sigs.length;
 }
 
-/** Blind listen: name the faction from f0/rate/filter, never from the label. */
+/** Blind listen: name the faction from f0/rate/filter, never from the label.
+ *  Faction-register input only — non-faction registers (instructor sits inside pitborn's
+ *  tolerance; mechanic/maera share neighborhoods) can misname rather than return null. */
 export function identifyRegisterFromSpeech(speech = {}) {
   const f0 = Number(speech.f0);
   const rate = Number(speech.rate);
@@ -505,7 +507,9 @@ export function renderRegisterCallsignPcm(register, options = {}) {
   return pcm;
 }
 
-/** Name a faction from unlabeled PCM. Never reads the filename or the register label. */
+/** Name a faction from unlabeled PCM. Never reads the filename or the register label.
+ *  Faction-register input only — non-faction registers (instructor sits inside pitborn's
+ *  tolerance; mechanic/maera share neighborhoods) can misname rather than return null. */
 export function identifyRegisterFromPcm(pcm, sampleRate = 32000) {
   const f0 = detectPitchHz(
     pcm,
