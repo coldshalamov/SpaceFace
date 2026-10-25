@@ -60,6 +60,9 @@ export const THROW_CREDIT_HOLD_TICKS = 240;
 // X-08 — the repo's standing "that was a throw" floor (RAID_THROW_MIN_SPEED_WU, onboarding.js).
 // A set-down below it carries no credit.
 export const THROW_CREDIT_MIN_SPEED_WU = 25;
+// X-08 review — a massline:throw's own tether:released echo arrives on the reconcile pass (same
+// tick, the next, or the deferred-echo flush after it); inside this window it is the same release.
+const THROW_RELEASE_ECHO_TICKS = 2;
 // INF-027: post-tumble stabilization window. Long enough to read as its own beat (the ship
 // damps spin and thrusts weakly with no guns), short enough to never be helpless. Sim-time
 // stamped on entity data so save/load cannot strand or skip it.
@@ -305,8 +308,12 @@ export const tumbleStates = {
     const vel = victim.vel || {};
     if (Math.hypot(vel.x || 0, vel.z || 0) < THROW_CREDIT_MIN_SPEED_WU) return;
     const tick = state.tick | 0;
+    // A massline:throw cut echoes tether:released from the tether reconcile a tick or two later;
+    // that echo is the same release and keeps the throw's own record. An OLDER held throw (the
+    // rock was thrown, caught again and cut anew) is a fresh release and earns a fresh hold.
     const existing = readRecentImpulseProvenance(victim, tick, 0);
-    if (existing && existing.tag === THROW_PROVENANCE_TAG) return;
+    if (existing && existing.tag === THROW_PROVENANCE_TAG && existing.actorId === state.playerId
+      && tick - existing.appliedTick <= THROW_RELEASE_ECHO_TICKS) return;
     recordImpulseProvenance(victim, {
       actorId: state.playerId,
       weaponId: THROW_PROVENANCE_WEAPON,

@@ -430,3 +430,27 @@ test('X-08 constants: the throw floor matches the standing 25 wu/s and the hold 
   assert.equal(THROW_CREDIT_MIN_SPEED_WU, 25);
   assert.equal(THROW_CREDIT_HOLD_TICKS, 240);
 });
+
+test('X-08 review: a throw\'s own tether:released echo keeps its record; a later re-cut earns a fresh hold', () => {
+  x08WithFlags(() => {
+    const h = x08Harness();
+    const throwTick = h.state.tick;
+    x08Throw(h);
+    h.thrown.vel = { x: 90, z: 0 };
+    h.state.tick += 1; // reconcile echo of the same cut
+    h.bus.emit('tether:released', { targetId: h.thrown.id });
+    const echoed = x08Read(h.thrown, h.state.tick);
+    assert.equal(echoed.appliedTick, throwTick, 'the echo is the same release, not a second stamp');
+    assert.equal(echoed.holdUntilTick, throwTick + THROW_CREDIT_HOLD_TICKS);
+    // Caught again and cut loose 200 ticks later: the new release holds 240 ticks from ITS cut.
+    h.state.tick = throwTick + 200;
+    h.thrown.vel = { x: 40, z: 0 };
+    h.bus.emit('tether:released', { targetId: h.thrown.id });
+    const recut = x08Read(h.thrown, h.state.tick);
+    assert.equal(recut.appliedTick, throwTick + 200);
+    assert.equal(recut.holdUntilTick, throwTick + 200 + THROW_CREDIT_HOLD_TICKS,
+      'a re-cut inside the old hold is not short-changed to the old throw\'s expiry');
+    h.state.tick = throwTick + 300; // past the first throw's hold, inside the re-cut's
+    assert.equal(x08Read(h.thrown, h.state.tick)?.actorId, h.player.id);
+  });
+});
