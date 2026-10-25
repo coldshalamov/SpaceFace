@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-machine-nursery",
-      "date": "2026-10-22",
-      "wf": "WF-09",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "Recovering the Cinder Nursery recorder does not wipe a fault already on your standing.",
-      "fingerprint": "verb=preserve,subject=nursery-recorder,sector=charon,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-veil-wreck",
       "date": "2026-10-22",
       "wf": "WF-15",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "e3711912bc",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-pilgrim-call",
+      "date": "2026-10-25",
+      "wf": "WF-13",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A Pilgrim Spine plays its own call.",
+      "fingerprint": "verb=hear,subject=pilgrim-spine,sector=io,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "ec222ba6a9691eebfb501aa902072cf2dd2b1d2f",
       "verification": "focused_green"
     }
   ],
