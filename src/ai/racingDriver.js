@@ -26,7 +26,11 @@ const idle = () => ({ moveX: 0, moveZ: 0, turnIntent: 0, brake: true, boost: fal
 
 export function createRacingDriver(personality, difficulty = 'club') {
   return { personality, difficulty: RACING_DIFFICULTIES[difficulty] ? difficulty : 'club',
-    recovering: false, recoveries: 0, laneWU: 0, lastGate: -1, lastLap: -1, anchorLaps: [] };
+    recovering: false, recoveries: 0, laneWU: 0, lastGate: -1, lastLap: -1, anchorLaps: [],
+    // AL-RACE-1: real rope swings and physical contact recovery. `anchor` is the live
+    // heat-owned latch (attachment id included); `anchorUses` is the per-race log;
+    // `contactRecovery` is an ordinary rejoin-in-progress, never a pose edit.
+    anchor: null, anchorUses: [], contactRecovery: null, lastContactRecovery: null };
 }
 
 /** Curvature sets the crossing speed; finite reverse thrust sets the braking distance. */
@@ -42,8 +46,101 @@ export function racingCornerSpeed(gates, index, aperture, profile, personality) 
   return Math.max(26, Math.sqrt(lateral * radius) * personality.corner);
 }
 
+// ---- Rival physical anchors (AL-RACE-1) ----------------------------------------------
+// The steering math only ever publishes ordinary flight inputs; racingOpponents owns the
+// canonical attachment record (create/cut/telemetry) and passes the live anchor context in
+// explicitly — racingDriverIntent is shared with crossing cargo drivers, which get none.
+
+/**
+ * Pick the next anchor a rival may commit to. `candidates` are already ordered by that
+ * rival's stable preference list; a candidate holds {anchorId,targetId,gateIndex,pos,line,
+ * reservedBy}. Enter only on the served checkpoint's legal approach side, within the
+ * authored entry window; `inReach` reports whether the standard tether can reach now.
+ */
+export function selectRacingAnchor(driver, { entity, params, gates, candidates = [], rivalId = null, reachWU = 330 } = {}) {
+  if (!driver || driver.anchor || driver.contactRecovery || !entity?.pos || !Array.isArray(gates) || !gates.length) return null;
+  const next = Math.max(0, params?.nextGate | 0);
+  for (const anchor of candidates) {
+    if (!anchor || anchor.gateIndex !== next) continue;
+    if (anchor.reservedBy != null && anchor.reservedBy !== rivalId) continue;
+    if (!anchor.pos || !Number.isFinite(anchor.pos.x) || !Number.isFinite(anchor.pos.z)) continue;
+    const gate = gates[anchor.gateIndex], from = gateApproach(gates, anchor.gateIndex);
+    if (!gate || !from) continue;
+    const plane = (entity.pos.x - gate.x) * from.nx + (entity.pos.z - gate.z) * from.nz;
+    const entryBack = Math.max(40, Number(anchor.line && anchor.line.entryBackWU) || 180);
+    if (plane > 0 || plane < -entryBack) continue;
+    const distance = Math.hypot(anchor.pos.x - entity.pos.x, anchor.pos.z - entity.pos.z);
+    return Object.assign({}, anchor, { plane, distance, inReach: distance <= reachWU });
+  }
+  return null;
+}
+
+/**
+ * Where a roped rival steers: while the served checkpoint is still outstanding, an
+ * inside-biased approach point bounded by the aperture; once the checkpoint has crossed
+ * legally, the ordinary next-gate approach point so the rope exit merges onto the racing
+ * line. Returns null when no live swing should steer.
+ */
+export function racingAnchorIntent(driver, { params, gates, aperture = 80, laneWU = 0 } = {}) {
+  const anchor = driver && driver.anchor;
+  if (!anchor || !anchor.pos || !Array.isArray(gates) || !gates.length) return null;
+  const next = Math.max(0, params?.nextGate | 0);
+  if (next === anchor.gateIndex && (params?.lap | 0) <= (anchor.lapAtAttach | 0)) {
+    const gate = gates[anchor.gateIndex], from = gateApproach(gates, anchor.gateIndex);
+    if (!gate || !from) return null;
+    const anchorLateral = (anchor.pos.x - gate.x) * -from.nz + (anchor.pos.z - gate.z) * from.nx;
+    const lat = clamp(anchorLateral, -aperture * 0.55, aperture * 0.55);
+    return { phase: 'approach',
+      x: gate.x + from.nx * 24 - from.nz * lat, z: gate.z + from.nz * 24 + from.nx * lat };
+  }
+  const gate = gates[next], from = gateApproach(gates, next);
+  if (!gate || !from) return null;
+  return { phase: 'exit',
+    x: gate.x + from.nx * 30 - from.nz * laneWU, z: gate.z + from.nz * 30 + from.nx * laneWU };
+}
+
+/**
+ * Should the live latch be cut? 'complete' once the served checkpoint has crossed and the
+ * craft is releaseAheadWU down the outgoing leg; 'recovery' when a miss or a contact
+ * recovery takes priority; 'timeout' past the authored hold ceiling; 'attachment_lost'
+ * when the canonical record is gone or no longer active. Null means keep holding.
+ */
+export function racingAnchorReleaseReason(driver, { entity, params, gates, now = 0, attachmentAlive = true } = {}) {
+  const anchor = driver && driver.anchor;
+  if (!anchor || !entity?.pos) return null;
+  if (!attachmentAlive) return 'attachment_lost';
+  if (driver.contactRecovery || driver.recovering) return 'recovery';
+  const line = anchor.line || {};
+  const maxHold = Number(line.maxHoldS) > 0 ? Number(line.maxHoldS) : 4;
+  if (Number.isFinite(now) && now - (Number(anchor.attachedAtS) || 0) > maxHold) return 'timeout';
+  const next = Math.max(0, params?.nextGate | 0);
+  if (next !== anchor.gateIndex || (params?.lap | 0) > (anchor.lapAtAttach | 0)) {
+    const gate = gates[anchor.gateIndex];
+    const outGate = gates[(anchor.gateIndex + 1) % gates.length] || gate;
+    if (!gate || !outGate) return 'timeout';
+    const dx = outGate.x - gate.x, dz = outGate.z - gate.z;
+    const length = Math.hypot(dx, dz) || 1;
+    const ahead = ((entity.pos.x - gate.x) * dx + (entity.pos.z - gate.z) * dz) / length;
+    if (ahead >= (Number(line.releaseAheadWU) || 60)) return 'complete';
+  }
+  return null;
+}
+
+/**
+ * Open an ordinary rejoin run after a real set-piece hit: the craft flies back inside the
+ * corridor under its own power and the run closes only after twelve straight ticks inside
+ * the usable width with velocity aligned to the leg. No pose edits, no pace changes.
+ */
+export function beginRacingContactRecovery(driver, { gateIndex = 0, now = 0, tick = 0, cause = 'contact' } = {}) {
+  if (!driver) return null;
+  const recovery = { gateIndex: gateIndex | 0, enteredAtS: Number(now) || 0, enteredTick: tick | 0,
+    alignedTicks: 0, recoveredAtS: null, cause: String(cause || 'contact') };
+  driver.contactRecovery = recovery;
+  return recovery;
+}
+
 /** `nearby` contains actual bodies, never a scripted leader or a pace beacon. */
-export function racingDriverIntent(driver, { entity, params, gates, nearby = [], dt = 1 / 60, held = false }) {
+export function racingDriverIntent(driver, { entity, params, gates, nearby = [], dt = 1 / 60, held = false, anchorContext = null }) {
   if (!entity?.pos || held || !gates?.length || params.nextGate >= gates.length) return idle();
   const next = Math.max(0, params.nextGate | 0), lap = params.lap | 0;
   const gate = gates[next], from = gateApproach(gates, next);
@@ -90,12 +187,63 @@ export function racingDriverIntent(driver, { entity, params, gates, nearby = [],
   }
   const laneStep = 42 * Math.max(0, dt);
   driver.laneWU += clamp(targetLane - driver.laneWU, -laneStep, laneStep);
+  const top = (Number(profile.combatSpeed || profile.maxSpeed) || 180)
+    * RACING_DIFFICULTIES[driver.difficulty] * personality.pace;
   const approachOffset = driver.recovering ? -Math.max(125, radius * 5) : 30;
   const target = { x: gate.x + from.nx * approachOffset - from.nz * driver.laneWU,
     z: gate.z + from.nz * approachOffset + from.nx * driver.laneWU };
-  // Mira alone takes the Quarry Hook. Other rivals keep the ordinary racing line.
+  // Rope-owning swing: the tether turns the craft, so the throttle stays open and the
+  // steering point comes from the anchor record — still ordinary flight input either way.
+  let freeRun = false;
+  let recoveryCap = Infinity;
+  const anchorCandidate = !driver.anchor && anchorContext && anchorContext.candidate
+    && anchorContext.candidate.pos ? anchorContext.candidate : null;
+  if (driver.contactRecovery && !driver.recovering) {
+    // Physical rejoin after a set-piece hit: steer onto the current leg's usable centerline
+    // at a modest speed until hull and velocity line up for a short settle.
+    const recovery = driver.contactRecovery;
+    const a = next > 0 ? gates[next - 1] : { x: from.x, z: from.z };
+    const b = gates[next];
+    const legX = b.x - a.x, legZ = b.z - a.z, legLength = Math.hypot(legX, legZ) || 1;
+    const ux = legX / legLength, uz = legZ / legLength;
+    const along = clamp(((entity.pos.x - a.x) * ux + (entity.pos.z - a.z) * uz) / legLength, 0, 1);
+    const px = a.x + legX * along, pz = a.z + legZ * along;
+    const offLine = Math.hypot(entity.pos.x - px, entity.pos.z - pz);
+    const corridorWU = Math.max(30, aperture - 14);
+    const legAligned = speed > 8 ? (velocity.x * ux + velocity.z * uz) / speed : 0;
+    recovery.alignedTicks = (offLine <= corridorWU && legAligned >= 0.9) ? (recovery.alignedTicks | 0) + 1 : 0;
+    if (recovery.alignedTicks >= 12) {
+      driver.lastContactRecovery = recovery;
+      driver.contactRecovery = null;
+    } else {
+      const aheadWU = Math.min(160, Math.max(70, speed * 0.9));
+      const t2 = clamp(along + aheadWU / legLength, 0, 1);
+      if (t2 < 1) {
+        target.x = a.x + legX * t2; target.z = a.z + legZ * t2;
+      } else {
+        target.x = gate.x + from.nx * 25 - from.nz * driver.laneWU;
+        target.z = gate.z + from.nz * 25 + from.nx * driver.laneWU;
+      }
+      recoveryCap = Math.max(64, top * 0.55);
+    }
+  } else if (driver.anchor && driver.anchor.pos) {
+    const aim = racingAnchorIntent(driver, { params, gates, aperture, laneWU: driver.laneWU });
+    if (aim) { target.x = aim.x; target.z = aim.z; freeRun = true; }
+  } else if (anchorCandidate) {
+    // Pre-latch approach: bias the line toward the anchor's side, bounded by the aperture,
+    // so the tether can reach before the checkpoint — still a legal crossing line.
+    const from2 = gateApproach(gates, anchorCandidate.gateIndex), gate2 = gates[anchorCandidate.gateIndex];
+    if (from2 && gate2 && anchorCandidate.gateIndex === next) {
+      const anchorLateral = (anchorCandidate.pos.x - gate2.x) * -from2.nz + (anchorCandidate.pos.z - gate2.z) * from2.nx;
+      const lat = clamp(anchorLateral, -aperture * 0.55, aperture * 0.55);
+      target.x = gate2.x + from2.nx * approachOffset - from2.nz * lat;
+      target.z = gate2.z + from2.nz * approachOffset + from2.nx * lat;
+    }
+  }
+  // Mira alone takes the Quarry Hook — legacy decorative latch, kept only for the
+  // pure-driver path where no physical anchor context is supplied.
   let anchor = null;
-  if (personality.id === 'mira' && !driver.recovering) {
+  if (anchorContext == null && personality.id === 'mira' && !driver.recovering) {
     const hook = quarryHookBody(nearby);
     if (hook) {
       const hx = hook.pos.x - entity.pos.x, hz = hook.pos.z - entity.pos.z;
@@ -114,14 +262,12 @@ export function racingDriverIntent(driver, { entity, params, gates, nearby = [],
   }
   const dx = target.x - entity.pos.x, dz = target.z - entity.pos.z;
   const distance = Math.hypot(dx, dz) || 1;
-  const top = (Number(profile.combatSpeed || profile.maxSpeed) || 180)
-    * RACING_DIFFICULTIES[driver.difficulty] * personality.pace;
   const brake = Math.min(Number(profile.reverseAccel || profile.maxBrakeAccel) || 60,
     Number(profile.strafeAccel || profile.maxAccel) || 60) * 0.58;
   const corner = racingCornerSpeed(gates, next, aperture, profile, personality);
   const approachSpeed = Math.sqrt(corner * corner + 2 * brake * Math.max(0, -plane - 35));
-  const targetSpeed = Math.min(top, approachSpeed, driver.recovering ? 70 : Infinity,
-    trafficSpeed, Math.max(30, distance * 1.6));
+  const targetSpeed = Math.min(top, freeRun ? top : approachSpeed, driver.recovering ? 70 : Infinity,
+    trafficSpeed, Math.max(30, distance * 1.6), recoveryCap);
   let vx = dx / distance * targetSpeed + escapeX, vz = dz / distance * targetSpeed + escapeZ;
   const requestedSpeed = Math.hypot(vx, vz);
   if (requestedSpeed > top) { vx *= top / requestedSpeed; vz *= top / requestedSpeed; }
