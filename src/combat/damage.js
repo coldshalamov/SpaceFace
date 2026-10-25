@@ -187,6 +187,12 @@ export function createDamageRouter(context, statusService, options = {}) {
     if (!packet.flags.ignoreFriendlyFire && attacker && attacker.id !== target.id && attacker.team != null && target.team != null && attacker.team === target.team && !(attackerIsPlayer && !targetIsOwnDevice) && !npcCrossfireAdmits(state, attacker, target, origin) && !npcGrudgeAdmits(state, attacker, target, origin)) {
       return rejected('friendly_fire', input, packet);
     }
+    // X-02 v4: the onboarding wing's rounds touch only the player while its raid beat is live —
+    // any packet aimed at a bystander is rejected, so no stray piracy and no traffic damage.
+    if (attacker && attacker.data?.onboardingRaidWing === true && state?.onboarding?.raid?.active
+      && !state?.onboarding?.raid?.wingDone && target.id !== state.playerId) {
+      return rejected('onboarding_wing_ward', input, packet);
+    }
     if (!(rawTotal > 0) && !(packet.heat > 0) && !packet.statuses.length && !hasImpulse(packet.impulse)) return rejected('empty_packet', input, packet);
 
     const runtime = ensureCombatant(state, target, catalog);

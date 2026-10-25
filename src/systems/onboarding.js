@@ -3527,6 +3527,11 @@ export const onboarding = {
     if (wing && wing.data && wing.data.ai && !raid.wingDone
       && wing.data.ai.roe !== 'weapons_free') {
       wing.data.ai.roe = 'weapons_free';
+      // The wing's lesson target is the pilot holding the tow — pin it through the sanctioned
+      // flag and seed the live activity/combat targets so the decide pass engages the player.
+      wing.data.ai.forcePlayerTarget = true;
+      if (wing.data.ai.activity && typeof wing.data.ai.activity === 'object') wing.data.ai.activity.targetId = this.state.playerId;
+      wing.data.combat = { ...(wing.data.combat || {}), targetId: this.state.playerId };
       this.bus.emit('comms:popup', {
         sender: "Claim Jumper's Wing",
         text: 'Hands off his boat.',

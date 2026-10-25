@@ -1075,6 +1075,10 @@ export const lawSecurity = {
 
     const targetProtected = target.id === state.playerId || isLawful(target) || isProtectedCivilian(target);
     if (!targetProtected || isLawful(attacker)) return;
+    // X-02 v4: the onboarding wing's lesson rounds on the player are not a law case while the
+    // raid beat is current — no hostile_fire incident, no dispatch. Normal law resumes after it.
+    if (attacker.data?.onboardingRaidWing === true && target.id === state.playerId
+      && state.onboarding?.raid?.active && !state.onboarding?.raid?.wingDone) return;
     const jurisdiction = protectedStationAt(state, target) || ceresDistressJurisdiction(state, target);
     if (jurisdiction) this._openIncident(attacker, target, jurisdiction,
       target.id === state.playerId || isLawful(target) ? 'hostile_fire' : 'npc_piracy');

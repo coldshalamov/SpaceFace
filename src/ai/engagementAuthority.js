@@ -422,6 +422,12 @@ export function isHostileForAI(state, self, other) {
   const selfAi = selfData ? selfData.ai : null;
   const otherAi = otherData ? otherData.ai : null;
 
+  // X-02 v4: the Claim Jumper's wing is authorized against the player while its raid beat is
+  // live — without this, engagementAuthority refuses every shot 'target_not_hostile'.
+  if (selfData && selfData.onboardingRaidWing === true
+    && state?.onboarding?.raid?.active && !state?.onboarding?.raid?.wingDone
+    && other.id === state.playerId) return true;
+
   // An authored predation role owns this actor's complete automatic hostility set while it is
   // standing by, telegraphing, or active. Existing retaliation/security flags must not let the
   // same raider peel off onto the player or another neutral before the bounded objective clears.
