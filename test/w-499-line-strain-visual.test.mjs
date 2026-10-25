@@ -90,9 +90,16 @@ test('cold within-class tow and arcade routes never borrow permanent over-class 
   assert.equal(line.overClass, false); assert.equal(line.heat, 0);
   assert.match(lineStrainWords(f.state, line, f.target).detail, /WITHIN CLASS/);
   f.state.lineProgression.classIndex = 8; f.state.lineProgression.winchHeat = 1; f.state.lineProgression.overClass = true;
-  f.state.run = { kind: 'survival', phase: 'running' };
-  const arcade = readLineVisualProfile(f.state);
-  assert.equal(arcade.classIndex, 1); assert.equal(arcade.heat, 0); assert.equal(arcade.overClass, false);
+  for (const kind of ['survival', 'lab', 'sandbox']) {
+    f.state.run = { kind, phase: 'running' };
+    const arcade = readLineVisualProfile(f.state);
+    assert.equal(arcade.classIndex, 1, `${kind} borrows no saved class`);
+    assert.equal(arcade.heat, 0, `${kind} borrows no saved winch heat`);
+    assert.equal(arcade.overClass, false);
+  }
+  f.state.run = { kind: 'adventure', phase: 'inactive' };
+  const resumed = readLineVisualProfile(f.state);
+  assert.equal(resumed.classIndex, 8, 'an adventure read keeps the saved class');
 });
 
 test('actual cable owner transports saved heat into its coloured sheath material and coverage', () => {

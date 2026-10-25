@@ -4,7 +4,10 @@ const WIDTH_FIELDS = Object.freeze(['coreHalfWidth', 'sheathHalfWidth', 'collarC
 /** Presentation reads the saved class and live winch, never derives a new progression value. */
 export function readLineVisualProfile(state, out = {}) {
   const bag = state?.lineProgression;
-  const arcade = state?.run?.kind === 'survival' && state.run.phase !== 'inactive';
+  // Ephemeral scored runs (Crucible survival, Combat Lab, sandbox) hold a borrowed state
+  // and never read the career ladder — the same kinds _campaignSaveSuppressed seals.
+  const kind = state?.run?.kind;
+  const arcade = (kind === 'survival' || kind === 'lab' || kind === 'sandbox') && state.run.phase !== 'inactive';
   const permanent = !arcade && !state?.survival?.active && !state?.gauntlet?.active && !state?.racing?.active;
   const cls = lineClassForIndex(permanent ? bag?.classIndex : 1);
   const active = !!state?.player?.tether?.active;
