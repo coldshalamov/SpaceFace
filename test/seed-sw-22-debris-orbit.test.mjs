@@ -82,6 +82,60 @@ test('the ring claims at most four existing rocks, never conjures, frees spent s
   assert.ok(ring.has('r6'), 'the last real rock was claimed');
 });
 
+test('held, towed, and already-latched rocks are never claimed', () => {
+  // The same law the mop sweep obeys: a body mid-hand is somebody's property, not ring
+  // material. NPC job lines ride on data flags; the client's latch/lock rides on
+  // state.player; any live kernel clamp already names its target.
+  const owner = {
+    id: 'player', type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 8,
+    team: 'player', data: { weapons: [{ defId: DEF.id }] },
+  };
+  const towed = { ...rock('r_towed', 40, 0), data: { npcTowedByJobId: 'job:w1' } };
+  const latched = { ...rock('r_latched', 45, 0), flags: { tethered: true } };
+  const massline = { ...rock('r_massline', 50, 0), data: { npcMasslineLatch: true } };
+  const clientTether = rock('r_client', 55, 0);
+  const clientBeam = rock('r_beam', 60, 0);
+  const preLatched = rock('r_pre', 65, 0);
+  const looseA = rock('r_loose_a', 70, 0);
+  const looseB = rock('r_loose_b', 75, 0);
+  const list = [owner, towed, latched, massline, clientTether, clientBeam, preLatched, looseA, looseB];
+  const entities = new Map(list.map((e) => [e.id, e]));
+  const state = {
+    tick: 5, simTime: 0, playerId: 'player', entities,
+    entityList: list, entityIndex: null, spatialHash: null,
+    player: { tether: { active: true, targetId: 'r_client' }, miningTargetId: 'r_beam' },
+    combat: { attachments: { byId: { att_x: { id: 'att_x', state: 'active', targetId: 'r_pre' } } } },
+  };
+  const live = new Map();
+  let nextAtt = 0;
+  const attachments = {
+    create: (spec) => {
+      const id = `att_${++nextAtt}`;
+      const att = { id, defId: spec.defId, ownerId: spec.ownerId, targetId: spec.targetId, state: 'active' };
+      live.set(id, att);
+      return { ok: true, attachment: att };
+    },
+    get: (id) => live.get(id) || null,
+    breakAttachment: (id) => { const a = live.get(id); if (a) a.state = 'broken'; },
+  };
+  const host = Object.assign(Object.create(weapons), {
+    state,
+    helpers: { getEntity: (id) => entities.get(id) || null },
+    bus: { emit: () => {} },
+    _orbitRings: new Map(),
+    _byId: new Map([[DEF.id, DEF]]),
+    _entityGetter: (id) => entities.get(id) || null,
+    _attachmentsService: () => attachments,
+  });
+  weapons._tickDebrisOrbit.call(host, 1 / 60, state);
+  const ring = host._orbitRings.get('player');
+  assert.equal(ring.size, 2, 'only the two truly loose rocks claimed');
+  assert.ok(ring.has('r_loose_a') && ring.has('r_loose_b'));
+  for (const held of ['r_towed', 'r_latched', 'r_massline', 'r_client', 'r_beam', 'r_pre']) {
+    assert.ok(!ring.has(held), `${held} is held — never a ring rock`);
+  }
+});
+
 test('unprofiled loose bodies are lent the tether-anchor profile before latching', () => {
   // The real kernel refuses targets with zero tether sockets; 'debris'/'rock'/'cargo_pod'
   // bodies have no entry in DEFAULT_COMBAT_PROFILE_BY_TYPE, so the claim must stamp the

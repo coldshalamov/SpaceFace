@@ -49,7 +49,7 @@ import {
   compileAttackSpec,
   mergeWeaponView,
 } from '../combat/attackSpec.js';
-import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
+import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, queueProjectileContinuation } from '../core/physicsAuthority.js';
 import { queryPhysicalBodies, deliverPhysicalImpulseDetailed, deliverPhysicalImpulse, deliverPhysicalAcceleration, schedulePhysicalBlast } from '../combat/physicalEffects.js';
 import { isEnvironmentalBody } from '../core/physicalResponse.js';
 import { clearEmergentRay, launchEmergent, setEmergentRay } from './emergentPrimitives.js';
@@ -1917,8 +1917,15 @@ export const weapons = {
         const hostiles = live.spec && live.spec.trajectory && live.spec.trajectory.afterBounceSteer
           ? collectAttackCandidates(state, point, steerRange, scratch, projectile.ownerId, projectile.team)
           : null;
-        applyReflectedVelocity(projectile,
-          steerAfterBounce(reflected, point, live.spec, hostiles, live.runtime.visitedTargets));
+        // The bolt is a Rapier-owned dynamic body: a bare vel mirror dies in the post-step
+        // readback. Queue the outgoing leg through the same continuation membrane a surface
+        // ricochet uses — the entity mirror updates now, the real body turns next step.
+        const outgoing = steerAfterBounce(reflected, point, live.spec, hostiles, live.runtime.visitedTargets);
+        queueProjectileContinuation(projectile, {
+          velocity: outgoing,
+          yaw: Math.atan2(outgoing.z, outgoing.x),
+          tick: Number.isInteger(state.tick) ? state.tick : 0,
+        });
         requestAttackContinue(projectile);
         const owner = state.entities && projectile.ownerId != null
           ? state.entities.get(projectile.ownerId) : null;
@@ -2307,6 +2314,12 @@ export const weapons = {
     if (!this._orbitRings) this._orbitRings = new Map();
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
     const attachments = this._attachmentsService();
+    // Held ids: the client's live latch and beam lock ride on state.player where no entity
+    // flag is ever stamped, and every active kernel attachment names a target that is already
+    // spoken for — a second clamp on a towed or held hull is theft, not salvage (the same law
+    // the mop sweep obeys). Claims minted this tick join the set so two ring ships cannot take
+    // the same rock in one pass.
+    const engaged = this._debrisOrbitEngagedIds(state);
     for (const ship of ships) {
       if (!ship || ship.type !== 'ship' || ship.alive === false) continue;
       const def = this._fittedDef(ship, 'wpn_debris_orbit_s');
@@ -2339,6 +2352,13 @@ export const weapons = {
         if (!rock || rock.alive === false || rock.id === ship.id) continue;
         if (!DEBRIS_ORBIT_ROCK_TYPES.has(rock.type)) continue;
         if (ring.has(rock.id)) continue;
+        // A body mid-hand is not loose debris: NPC job lines ride on the data flags, the
+        // client's latch/lock and every live kernel clamp ride on the engaged-id set.
+        const rd = rock.data || {};
+        const rf = rock.flags || {};
+        if (rf.tethered === true || rd.tethered === true || rd.npcMasslineLatch === true) continue;
+        if (rd.npcTowedByJobId != null) continue;
+        if (engaged.has(rock.id)) continue;
         const dx = rock.pos.x - ship.pos.x, dz = rock.pos.z - ship.pos.z;
         const dist = Math.hypot(dx, dz);
         if (!(dist > 0) || dist > captureR) continue;
@@ -2358,6 +2378,7 @@ export const weapons = {
         });
         if (!created || created.ok !== true) continue;
         ring.set(rock.id, created.attachment.id);
+        engaged.add(rock.id);
         // One tangential nudge: the clamp then does the orbiting — velocity is handed to the
         // latched body through the same impulse authority every other weapon uses, once.
         if (speed > 0) {
@@ -2377,6 +2398,28 @@ export const weapons = {
   _attachmentsService() {
     const kernel = getCombatKernel(this.ctx);
     return kernel && kernel.attachments ? kernel.attachments : null;
+  },
+
+  // Ids the ring must never claim: the client's own live latch and salvage-beam lock (mirrored
+  // on state.player, never stamped on the body) plus every active kernel attachment's target —
+  // a rock already on a line belongs to that line however the line was made.
+  _debrisOrbitEngagedIds(state) {
+    const ids = new Set();
+    const player = state && state.player;
+    if (player) {
+      const tether = player.tether;
+      if (tether && tether.active && tether.targetId != null) ids.add(tether.targetId);
+      if (player.miningTargetId != null) ids.add(player.miningTargetId);
+    }
+    const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+    if (byId) {
+      for (const attachment of Object.values(byId)) {
+        if (attachment && attachment.state === 'active' && attachment.targetId != null) {
+          ids.add(attachment.targetId);
+        }
+      }
+    }
+    return ids;
   },
 
   _fittedDef(ship, defId) {
@@ -2412,14 +2455,21 @@ export const weapons = {
           const dx = owner.pos.x - p.pos.x, dz = owner.pos.z - p.pos.z;
           const dist = Math.hypot(dx, dz) || 1;
           const speed = Math.hypot(p.vel.x, p.vel.z) || 1;
-          p.vel.x = dx / dist * speed;
-          p.vel.z = dz / dist * speed;
-          p.rot = Math.atan2(p.vel.z, p.vel.x);
+          // The bolt is a Rapier-owned dynamic body and `bullet` kind gets no guided-velocity
+          // mirror, so a direct vel write dies in the next post-step readback — the return leg
+          // would never fly. Queue the redirect through the projectile continuation membrane
+          // the ricochet path uses: the entity mirror updates now, the real body turns at the
+          // start of the next physics step.
+          queueProjectileContinuation(p, {
+            velocity: { x: dx / dist * speed, z: dz / dist * speed },
+            yaw: Math.atan2(dz, dx),
+            tick: Number.isInteger(state.tick) ? state.tick : 0,
+          });
           arc.phase = 'return';
           arc.passX = owner.pos.x;
           arc.passZ = owner.pos.z;
-          arc.dirX = p.vel.x / speed;
-          arc.dirZ = p.vel.z / speed;
+          arc.dirX = dx / dist;
+          arc.dirZ = dz / dist;
         }
       } else if (arc.phase === 'return') {
         const along = (p.pos.x - arc.passX) * arc.dirX + (p.pos.z - arc.passZ) * arc.dirZ;
