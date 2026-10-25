@@ -1,0 +1,310 @@
+{
+  "kind": "new side-by-side exported-package CPU evidence",
+  "currentCommit": "878409729c815a17e9959e488f715e89d2dd0cc2",
+  "currentEntity": {
+    "id": 947,
+    "occupantGeneration": 219,
+    "selectorHash": 1287714325,
+    "bankIndex": 1
+  },
+  "recoveredStatus": "local retained artifact; not integrated in current master; not a newly authored model",
+  "recoveredMetadataSha256": "bc5489f83a3a92d0354e0a50f37d18039fa8f93122a5d7b4e14ba6f334b14e73",
+  "renders": [
+    {
+      "name": "current",
+      "evidence": {
+        "blender": "4.3.2",
+        "engine": "Cycles CPU",
+        "samples": 32,
+        "denoise": false,
+        "visibleMeshes": 28,
+        "triangles": 4956,
+        "images": [
+          {
+            "name": "forge_machinery_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "colorSpace": "sRGB"
+          },
+          {
+            "name": "forge_machinery_normal",
+            "size": [
+              512,
+              512
+            ],
+            "colorSpace": "Non-Color"
+          },
+          {
+            "name": "forge_machinery_orm",
+            "size": [
+              512,
+              512
+            ],
+            "colorSpace": "Non-Color"
+          },
+          {
+            "name": "forge_panel_albedo",
+            "size": [
+              1024,
+              1024
+            ],
+            "colorSpace": "sRGB"
+          },
+          {
+            "name": "forge_panel_normal",
+            "size": [
+              1024,
+              1024
+            ],
+            "colorSpace": "Non-Color"
+          },
+          {
+            "name": "forge_panel_orm",
+            "size": [
+              1024,
+              1024
+            ],
+            "colorSpace": "Non-Color"
+          }
+        ],
+        "camera": {
+          "position": [
+            25.0,
+            -33.0,
+            25.0
+          ],
+          "target": [
+            0,
+            0,
+            0.4
+          ],
+          "orthoScale": 46
+        },
+        "lighting": "neutral world plus two area lights; no game lighting",
+        "ao": "Authored AO retained in importer settings socket but NOT applied to shading; no base-color multiplication"
+      },
+      "maps": [
+        {
+          "name": "forge_panel_normal",
+          "width": 1024,
+          "height": 1024,
+          "ktxBytes": 29332,
+          "rgbaSha256": "9cfb60d57542ff1203368ec0c011357124aeeedb0b5efb6c14d02dc58dae7998",
+          "pngBytes": 36134
+        },
+        {
+          "name": "forge_panel_orm",
+          "width": 1024,
+          "height": 1024,
+          "ktxBytes": 21717,
+          "rgbaSha256": "805280b6c64caf247d5d12ca034fd5eacf552aaca0ec5467b5b94bbc84feb93c",
+          "pngBytes": 19857
+        },
+        {
+          "name": "forge_panel_albedo",
+          "width": 1024,
+          "height": 1024,
+          "ktxBytes": 22990,
+          "rgbaSha256": "73038b9e4edd38fb68126eafdb92b9f46e1120afaae55fdfe928ed3ddb562090",
+          "pngBytes": 23073
+        },
+        {
+          "name": "forge_machinery_normal",
+          "width": 512,
+          "height": 512,
+          "ktxBytes": 5381,
+          "rgbaSha256": "ce8ec25d60c9e4a84d3d3d40cd1700ef0645b3d564139024aedae2b529c84f8f",
+          "pngBytes": 8455
+        },
+        {
+          "name": "forge_machinery_orm",
+          "width": 512,
+          "height": 512,
+          "ktxBytes": 13407,
+          "rgbaSha256": "77de2342cfef1188fa52c8f3603a339f70dd9ecc706516fc560d2db1cf3537d7",
+          "pngBytes": 17331
+        },
+        {
+          "name": "forge_machinery_albedo",
+          "width": 512,
+          "height": 512,
+          "ktxBytes": 10835,
+          "rgbaSha256": "8b5c86c40b9574461270a12858cabd7f84ea316cbf64055885a6bf9b3918ef6d",
+          "pngBytes": 6243
+        }
+      ],
+      "rawSha256": "d4df5f01d5afce0b79dcda38267ae8e50085f2b43ccff95a94e1f4a82913df23",
+      "rawBytes": 279720
+    },
+    {
+      "name": "recovered",
+      "evidence": {
+        "blender": "4.3.2",
+        "engine": "Cycles CPU",
+        "samples": 32,
+        "denoise": false,
+        "visibleMeshes": 9,
+        "triangles": 5975,
+        "images": [
+          {
+            "name": "forge_machinery_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "colorSpace": "sRGB"
+          },
+          {
+            "name": "forge_machinery_normal",
+            "size": [
+              512,
+              512
+            ],
+            "colorSpace": "Non-Color"
+          },
+          {
+            "name": "forge_machinery_orm",
+            "size": [
+              512,
+              512
+            ],
+            "colorSpace": "Non-Color"
+          },
+          {
+            "name": "forge_panel_albedo",
+            "size": [
+              1024,
+              1024
+            ],
+            "colorSpace": "sRGB"
+          },
+          {
+            "name": "forge_panel_normal",
+            "size": [
+              1024,
+              1024
+            ],
+            "colorSpace": "Non-Color"
+          },
+          {
+            "name": "forge_panel_orm",
+            "size": [
+              1024,
+              1024
+            ],
+            "colorSpace": "Non-Color"
+          }
+        ],
+        "camera": {
+          "position": [
+            7.0,
+            -9.0,
+            10.0
+          ],
+          "target": [
+            0,
+            0,
+            0.4
+          ],
+          "orthoScale": 9.5
+        },
+        "lighting": "neutral world plus two area lights; no game lighting",
+        "ao": "Authored AO retained in importer settings socket but NOT applied to shading; no base-color multiplication"
+      },
+      "maps": [
+        {
+          "name": "forge_panel_normal",
+          "width": 1024,
+          "height": 1024,
+          "ktxBytes": 35770,
+          "rgbaSha256": "fbfb8cd895d8f408ab12859fb50ecbe54e1cd60dcec1c6d6c571ec883edb1b46",
+          "pngBytes": 40730
+        },
+        {
+          "name": "forge_panel_orm",
+          "width": 1024,
+          "height": 1024,
+          "ktxBytes": 29743,
+          "rgbaSha256": "a38d3356f96e73305e8fa750b0520823a5c5539d34fb8899d4c73b4123b7c86a",
+          "pngBytes": 32265
+        },
+        {
+          "name": "forge_panel_albedo",
+          "width": 1024,
+          "height": 1024,
+          "ktxBytes": 23880,
+          "rgbaSha256": "ed0a3507821a73c6065b7b788951bc4e6ebaa20b569ea8026b40ee8e1a2b0e7c",
+          "pngBytes": 25691
+        },
+        {
+          "name": "forge_machinery_normal",
+          "width": 512,
+          "height": 512,
+          "ktxBytes": 5381,
+          "rgbaSha256": "ce8ec25d60c9e4a84d3d3d40cd1700ef0645b3d564139024aedae2b529c84f8f",
+          "pngBytes": 8455
+        },
+        {
+          "name": "forge_machinery_orm",
+          "width": 512,
+          "height": 512,
+          "ktxBytes": 13407,
+          "rgbaSha256": "77de2342cfef1188fa52c8f3603a339f70dd9ecc706516fc560d2db1cf3537d7",
+          "pngBytes": 17331
+        },
+        {
+          "name": "forge_machinery_albedo",
+          "width": 512,
+          "height": 512,
+          "ktxBytes": 10835,
+          "rgbaSha256": "8b5c86c40b9574461270a12858cabd7f84ea316cbf64055885a6bf9b3918ef6d",
+          "pngBytes": 6243
+        }
+      ],
+      "rawSha256": "a0218fcba0b6bf6bf26be9d6a550b2c7b2b6dacb321488a4377898b047f3ad7a",
+      "rawBytes": 533208
+    }
+  ],
+  "limits": "Independent studio cameras/fits, not common world scale or measured pose. No game-renderer/live lighting/post/acceptance. AO not applied. No geometry/material assignment/factor changes; meshopt/KTX2 decoded in RAM. LOD0 only. No model or script files allocated.",
+  "image": {
+    "bytes": 52941,
+    "sha256": "bd77f5506809823e8ad1a0ac73a431ea3c3d846f4c57589db8bc5fc88a1f1f82"
+  },
+  "lightingParameters": {
+    "current": [
+      [
+        -5,
+        -12,
+        22,
+        3000,
+        18
+      ],
+      [
+        10,
+        12,
+        15,
+        2000,
+        14
+      ]
+    ],
+    "recovered": [
+      [
+        -3,
+        -5,
+        8,
+        900,
+        6
+      ],
+      [
+        4,
+        5,
+        6,
+        600,
+        5
+      ]
+    ],
+    "rowFormat": "x,y,z,power,area size"
+  }
+}
