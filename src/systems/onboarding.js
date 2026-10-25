@@ -2068,6 +2068,8 @@ export const onboarding = {
     const ob = this.state.onboarding;
     if (!ob || ob.beatDoneAt[beat.key] != null) return;
     ob.beatDoneAt[beat.key] = this.state.simTime || 0;
+    // X-02: the lesson landing releases the wing — it runs rather than fading out.
+    if (beat.key === 'raid') this._stepRaidWing();
     this._maybeStartRescueBeat(beat.key);
     if (beat.key === 'choice' || BEATS.indexOf(beat) === CHOICE_BEAT_INDEX) {
       this._finish();
@@ -3350,7 +3352,7 @@ export const onboarding = {
     if (!raid || !this.helpers || !this.helpers.spawnEntity) return;
     const player = st.entities && st.entities.get(st.playerId);
     if (!player || !player.pos) return;
-    this._removeRaidActors();
+    this._removeRaidActors({ wing: opts.wing });
     // Reuse the rescue wall's bearing so the release line reads: raider between the player and
     // the big rock, the hauler dressed just off the raider's beam.
     const wall = st.onboarding.rescue && st.onboarding.rescue.ids
@@ -3389,9 +3391,43 @@ export const onboarding = {
       raiderSpec.data.ai = {
         ...(raiderSpec.data.ai || {}),
         passive: true, roe: 'hold_fire', spawnContext: 'onboarding_raid', motive: 'crippled',
+        // X-02: the wing answers for its crew — same squad marks the raider an own-wingmate
+        // under fireDiscipline, so the wing's pulse never finds the tow.
+        squadId: 'claim_jumper_wing',
       };
       const raider = this.helpers.spawnEntity(raiderSpec);
       raid.ids.raider = raider && raider.id != null ? raider.id : null;
+    }
+    // X-02 — the Claim Jumper's wing. It stages off the tow on every non-clinic stage,
+    // holds fire until the line latches, and once it has fled or died it never returns
+    // (raid.wingDone). A kept slot (gun-kill/drift restage) is not re-spawned.
+    if (!clinic && !raid.wingDone && raid.ids.wing == null) {
+      const wingSpec = makeEnemySpawnSpec('wasp_swarmer', 1, at(480, -0.6), { startedTick: st.tick });
+      if (wingSpec) {
+        wingSpec.name = "Claim Jumper's Wing";
+        wingSpec.hull = wingSpec.hullMax = 60;
+        wingSpec.shield = wingSpec.shieldMax = 0;
+        wingSpec.shieldRegenRate = 0;
+        wingSpec.data = wingSpec.data || {};
+        wingSpec.data.onboarding = true;
+        wingSpec.data.onboardingRaidWing = true;
+        // Its resolved kit keeps only the pulse mount — defanged in place so a hit stings
+        // and never shoves the tow (impulsePerHit 0). Combat reads defId/dmg/rof at fire time.
+        const mounts = Array.isArray(wingSpec.data.weapons) ? wingSpec.data.weapons : [];
+        const pulse = mounts.find((w) => w && w.defId === 'wpn_pulse_laser_s');
+        if (pulse) {
+          pulse.dmg = 2; pulse.rof = 2; pulse.impulsePerHit = 0;
+          wingSpec.data.weapons = [pulse];
+        } else {
+          wingSpec.data.weapons = [];
+        }
+        wingSpec.data.ai = {
+          ...(wingSpec.data.ai || {}),
+          roe: 'hold_fire', spawnContext: 'onboarding_raid', squadId: 'claim_jumper_wing',
+        };
+        const wing = this.helpers.spawnEntity(wingSpec);
+        raid.ids.wing = wing && wing.id != null ? wing.id : null;
+      }
     }
     // A throw-target rock right downrange of the raider: the tow pass distance stays short
     // and readable, and the thrown body always has a solid near its release line.
@@ -3431,12 +3467,22 @@ export const onboarding = {
     raid.lastWhipAt = null;
   },
 
-  _removeRaidActors() {
+  // opts.wing: 'keep' leaves the live wing armed as it stands (gun-kill/drift restage);
+  // 'disarm' leaves it but puts it back on hold_fire (player-death restage); anything
+  // else — including the bare call _finish/_teardown make — removes every slot.
+  _removeRaidActors(opts = {}) {
     const raid = this.state && this.state.onboarding && this.state.onboarding.raid;
     if (!raid || !raid.ids) return;
     const player = this.state && this.state.player;
     for (const slot of Object.keys(raid.ids)) {
       const id = raid.ids[slot];
+      if (slot === 'wing' && (opts.wing === 'keep' || opts.wing === 'disarm')) {
+        if (opts.wing === 'disarm' && id != null && this.state.entities) {
+          const wing = this.state.entities.get(id);
+          if (wing && wing.data && wing.data.ai) wing.data.ai.roe = 'hold_fire';
+        }
+        continue;
+      }
       if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
         this.helpers.removeEntity(id);
       }
@@ -3451,6 +3497,19 @@ export const onboarding = {
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !ob || !beat || beat.key !== 'raid') return;
     if (payload.targetId !== raid.ids.raider) return;
+    // X-02: the wing holds its fire until the tow actually starts — the first latch on the
+    // raider is the trigger it answers for.
+    const wing = this._raidActor('wing');
+    if (wing && wing.data && wing.data.ai && !raid.wingDone) {
+      wing.data.ai.roe = 'weapons_free';
+      this.bus.emit('comms:popup', {
+        sender: "Claim Jumper's Wing",
+        text: 'Hands off his boat.',
+        category: 'hostile',
+        ttl: 5,
+      });
+      this._sayTutorial("Keep swinging. He can't hold aim.");
+    }
     this._onBeatEvent('raid:latched', payload);
   },
 
@@ -3494,7 +3553,21 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !ob || !beat || beat.key !== 'raid' || !payload) return;
+    // X-02: the wing's own death ends its part — never a restage, never a beat result.
+    if (payload.id === raid.ids.wing) { raid.wingDone = true; return; }
     if (payload.id !== raid.ids.raider) return;
+    // X-02 v3: a stray wing round into the towed raider converges like a gun kill — silently,
+    // because "the raider broke off" is not what the player did.
+    if (payload.killerId === raid.ids.wing || payload.ownerId === raid.ids.wing) {
+      raid.strayKills = (raid.strayKills | 0) + 1;
+      if (raid.strayKills >= 2) {
+        this._beatDone(beat);
+        this._emitMilestone('momentumKill', { cause: 'stray', beat: 'raid' });
+      } else {
+        this._respawnRaidRaider(null);
+      }
+      return;
+    }
     const credited = payload.killerId === this.state.playerId || payload.ownerId === this.state.playerId;
     if (!credited) { this._respawnRaidRaider('the raider broke off'); return; }
     const now = this.state.simTime || 0;
@@ -3514,10 +3587,10 @@ export const onboarding = {
     this._emitMilestone('momentumKill', { cause: 'guns', beat: 'raid' });
   },
 
-  _respawnRaidRaider(line) {
+  _respawnRaidRaider(line, opts = {}) {
     const raid = this._raid();
     if (!raid) return;
-    this._spawnRaidCast();
+    this._spawnRaidCast({ wing: opts.wing || 'keep' });
     if (line) {
       this.state.onboarding.beatAction = line;
       this._sayTutorial(line);
@@ -3530,7 +3603,37 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !beat || beat.key !== 'raid') return;
-    this._respawnRaidRaider('Back in one piece. Latch the raider. Swing him into the rock.');
+    // The wing survives the restage but stands down until the next first latch.
+    this._respawnRaidRaider('Back in one piece. Latch the raider. Swing him into the rock.',
+      { wing: 'disarm' });
+  },
+
+  // X-02 — the wing fights until the tow teaches its lesson or its own hull says enough:
+  // the beat ending, or hull at 30%, tells it to run through the ordinary flee/egress path.
+  // It is staged hostile, not morale-immune, so the same doctrine and egress rules apply.
+  _stepRaidWing() {
+    const raid = this._raid();
+    if (!raid || raid.wingDone) return;
+    const wing = this._raidActor('wing');
+    if (!wing) return;
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    const beatDone = !!(ob && ob.beatDoneAt && ob.beatDoneAt.raid != null)
+      || (beat && beat.key !== 'raid');
+    const lowHull = wing.hullMax > 0 && (wing.hull / wing.hullMax) <= 0.30;
+    if (!beatDone && !lowHull) return;
+    raid.wingDone = true;
+    if (wing.data && wing.data.ai) {
+      wing.data.ai.forceFlee = true;
+      wing.data.ai.roe = 'hold_fire';
+    }
+    this.bus.emit('comms:popup', {
+      sender: "Claim Jumper's Wing",
+      text: "Not for his cut. I'm gone.",
+      category: 'hostile',
+      ttl: 5,
+    });
+    this._sayTutorial("He's running. Let him.");
   },
 
   _resolveRaidDone() {
@@ -3538,6 +3641,7 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !beat || beat.key !== 'raid') return;
+    this._stepRaidWing();
     const raider = this._raidActor('raider');
     if (!raider) return; // kill handling is event-driven (_onRaidKilled)
     const player = this.state.entities && this.state.entities.get(this.state.playerId);

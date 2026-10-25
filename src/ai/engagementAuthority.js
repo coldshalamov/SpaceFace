@@ -177,7 +177,8 @@ export function authorizeAIEngagement({
       || ((wanted || recentlyDamaged)
         && (ai.engagementTrigger === 'wanted_status' || ai.engagementTrigger === 'player_attack'))
     );
-    const scenarioCounterplay = is47aScavengerCounterplayAuthorized(state, self, target);
+    const scenarioCounterplay = is47aScavengerCounterplayAuthorized(state, self, target)
+      || isOnboardingRaidWingAuthorized(state, self, target);
     if (!lawfulEnforcement && !scenarioCounterplay) return denied('station_protection');
   }
 
@@ -201,6 +202,21 @@ export function authorizeAIEngagement({
  * cross that outer 200-WU seam, and only after the player's explicit refusal plus the exact
  * authored no-fire deadline. Moving back into the inner sanctuary restores ordinary protection.
  */
+/**
+ * X-02 — the Claim Jumper's wing is a staged hostile inside the starter protection radius.
+ * As narrow as the 47-A bridge: the ONE authored raid actor, only while its beat is live,
+ * only against the player it is staged for, and never once it has been told to run.
+ */
+export function isOnboardingRaidWingAuthorized(state, self, target) {
+  if (!state || !self || !target || target.id !== state.playerId) return false;
+  const raid = state.onboarding && state.onboarding.raid;
+  if (!raid || !raid.active || !raid.ids) return false;
+  if (self.id !== raid.ids.wing) return false;
+  const ai = self.data && self.data.ai;
+  if (!ai || ai.forceFlee === true) return false;
+  return !!(self.data && self.data.onboardingRaidWing);
+}
+
 export function is47aScavengerCounterplayAuthorized(state, self, target) {
   if (!state || !self || !target || target.id !== state.playerId || !target.pos
     || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) return false;

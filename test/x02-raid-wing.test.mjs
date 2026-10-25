@@ -1,0 +1,168 @@
+// X-02 (row 560): the Claim Jumper's wing — a staged hostile that holds fire until the latch,
+// answers for its crew, and runs at 30% hull or when the lesson lands.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { createBus } from '../src/core/eventBus.js';
+import { mulberry32, hash32 } from '../src/core/rng.js';
+import { onboarding, BEATS } from '../src/systems/onboarding.js';
+import { authorizeAIEngagement, isOnboardingRaidWingAuthorized } from '../src/ai/engagementAuthority.js';
+
+let nextId = 500;
+function rig({ clinic = false } = {}) {
+  const player = {
+    id: 1, type: 'ship', alive: true, team: 0,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 8, hull: 140, hullMax: 140,
+    data: { ai: {} },
+  };
+  const entities = new Map([[1, player]]);
+  const state = {
+    mode: 'flight', playerId: 1, simTime: 0, tick: 0, meta: { seed: 4242 }, rng: mulberry32(4242),
+    player: { hints: {}, tether: { active: false } },
+    input: { aimAngle: 0, fireGroup: 0, actions: {} },
+    entities,
+    entityList: [player],
+    world: { currentSectorId: 'sector_helios_prime' },
+    onboarding: {
+      active: true, finished: false, currentBeat: 0,
+      beatDoneAt: {}, pace: clinic
+        ? { swing: { clinicOpenedAtS: 1, clinicLesson: 'raid' } } : { swing: {} },
+      raid: { active: true, ids: {}, gunKills: 0, strayKills: 0 },
+      rescue: { ids: {} },
+    },
+    settings: { gameplay: {} }, ui: {},
+    missions: { active: [] },
+    factions: {},
+  };
+  const spawned = [];
+  const removed = [];
+  const bus = createBus();
+  const comms = [];
+  const said = [];
+  bus.on('comms:popup', (p) => comms.push(p));
+  const helpers = {
+    hash32, mulberry32, voice: { say: (p) => { said.push(p); return true; } },
+    spawnEntity(spec) {
+      const e = { id: nextId++, alive: true, ...spec, data: spec.data || {}, pos: { ...spec.pos } };
+      entities.set(e.id, e); state.entityList.push(e); spawned.push(e);
+      return e;
+    },
+    removeEntity(id) {
+      const e = entities.get(id);
+      if (e) { e.alive = false; removed.push(id); }
+    },
+  };
+  const ob = { ...onboarding };
+  ob.init({ state, bus, helpers, registry: { get: () => null } });
+  // Find the raid beat index (key 'raid') and stand the rail on it.
+  const beatIdx = (ob.constructor === onboarding.constructor) && null;
+  return { state, bus, ob, spawned, removed, comms, said, entities };
+}
+
+function setRaidBeat(h) {
+  h.state.onboarding.currentBeat = BEATS.findIndex((b) => b.key === 'raid');
+  return h.state.onboarding.currentBeat;
+}
+
+function stage(h, opts) {
+  setRaidBeat(h);
+  h.ob._spawnRaidCast(opts || {});
+  return h.state.onboarding.raid;
+}
+
+test('X-02 a normal stage spawns one wing on hold_fire; a clinic stage spawns none', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wing = h.entities.get(raid.ids.wing);
+  assert.ok(wing, 'the wing stages beside the tow');
+  assert.equal(wing.data.ai.roe, 'hold_fire');
+  assert.equal(wing.data.onboardingRaidWing, true);
+  assert.equal(wing.data.ai.squadId, 'claim_jumper_wing');
+  const raider = h.entities.get(raid.ids.raider);
+  assert.equal(raider.data.ai.squadId, 'claim_jumper_wing', 'wingmate stamp is shared');
+  assert.equal(wing.hullMax, 60);
+  assert.equal(wing.data.weapons.length, 1);
+  const pulse = wing.data.weapons[0];
+  assert.equal(pulse.defId, 'wpn_pulse_laser_s');
+  assert.equal(pulse.dmg, 2);
+  assert.equal(pulse.rof, 2);
+  assert.equal(pulse.impulsePerHit, 0);
+
+  const c = rig({ clinic: true });
+  const craid = stage(c);
+  assert.equal(craid.ids.wing == null, true, 'the clinic keeps its unarmed tableau');
+});
+
+test('X-02 the bridge: before the latch the wing is denied; after it the player at (0,0) is legal', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wing = h.entities.get(raid.ids.wing);
+  const player = h.entities.get(1);
+  // The bridge itself: the wing record exists but fire is held — the AUTHORITY denial to pin
+  // is the pre-latch roe, and the bridge gate's other conditions.
+  assert.equal(authorizeAIEngagement({ state: h.state, self: wing, target: player }).ok !== true, true,
+    'hold_fire refuses before the latch');
+  // A different hostile at the same spot is still denied by station protection.
+  const impostor = h.ob.helpers && null;
+  const stranger = { id: 777, type: 'ship', alive: true, team: 1, pos: { x: 200, z: 0 },
+    data: { onboardingRaidWing: false, ai: { roe: 'weapons_free', motive: 'raid',
+      engagementTrigger: 'provoked', zoneId: 'helios', approachTelegraph: 'shown' } } };
+  h.entities.set(777, stranger);
+  const out = authorizeAIEngagement({ state: h.state, self: stranger, target: player });
+  assert.equal(out.ok !== true, true, 'a different hostile at the same spot is still denied');
+  // After the latch: roe goes free and the bridge admits the wing specifically.
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  assert.equal(wing.data.ai.roe, 'weapons_free');
+  assert.equal(isOnboardingRaidWingAuthorized(h.state, wing, player), true);
+  assert.ok(h.comms.some((c) => c.text === 'Hands off his boat.'), 'the wing speaks for its crew');
+});
+
+test('X-02 at 18 hull the wing flees, disarms, and the bridge closes behind it', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wing = h.entities.get(raid.ids.wing);
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  wing.hull = 18;
+  h.ob._stepRaidWing();
+  assert.equal(raid.wingDone, true);
+  assert.equal(wing.data.ai.forceFlee, true);
+  assert.equal(wing.data.ai.roe, 'hold_fire');
+  assert.equal(isOnboardingRaidWingAuthorized(h.state, wing, h.entities.get(1)), false,
+    'a fleeing wing may not fire');
+  assert.ok(h.comms.some((c) => c.text === "Not for his cut. I'm gone."), 'the exit speaks once');
+});
+
+test('X-02 restages keep the wing id; after wingDone no wing respawns', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wingId = raid.ids.wing;
+  h.ob._respawnRaidRaider('Another one, then. Latch him this time.');
+  assert.equal(h.state.onboarding.raid.ids.wing, wingId, 'a gun-kill restage keeps the wing');
+  // After wingDone the slot stays empty even on a full respawn.
+  h.state.onboarding.raid.wingDone = true;
+  h.ob._spawnRaidCast({ wing: 'respawn' });
+  assert.equal(h.state.onboarding.raid.ids.wing == null, true, 'fled or dead, it never returns');
+});
+
+test('X-02 a wing kill ends its part without completing or restaging the beat', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wingId = raid.ids.wing;
+  h.bus.emit('entity:killed', { id: wingId, killerId: 1, pos: { x: 0, z: 0 } });
+  assert.equal(raid.wingDone, true);
+  assert.equal(h.state.onboarding.raid.ids.raider != null, true, 'the tow stays staged');
+  assert.equal(h.removed.includes(wingId), false, 'no restage delete either');
+});
+
+test('X-02 a wing stray into the towed raider converges like a gun kill', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wingId = raid.ids.wing;
+  h.bus.emit('entity:killed', { id: raid.ids.raider, killerId: wingId, pos: { x: 0, z: 0 } });
+  assert.equal(h.state.onboarding.raid.strayKills, 1, 'the stray is counted, not narrated');
+  const raider2 = h.state.onboarding.raid.ids.raider;
+  assert.ok(raider2 != null, 'the beat restages for the stray');
+  h.bus.emit('entity:killed', { id: raider2, killerId: wingId, pos: { x: 0, z: 0 } });
+  assert.equal(h.state.onboarding.raid.strayKills, 2);
+  assert.notEqual(h.state.onboarding.beatDoneAt.raid, null, 'the second stray resolves the beat');
+});
