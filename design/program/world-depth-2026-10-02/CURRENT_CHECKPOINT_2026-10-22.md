@@ -1,5 +1,13 @@
 <!-- LIFETIME: DURABLE -->
 
+## Current Ceres/Tally delivery: 2026-10-25 01:23 UTC
+
+All twelve goals remain OPEN. [PR602](https://github.com/coldshalamov/SpaceFace/pull/602) now publishes dcdc6e62d35cd95c3ff2b1e405e5585aedf56412, tree555ca211002272a36665dca03098a1be46eb4149, sole ffe94715 parent. The scoped Tally guidance successor adds ten paths; accepted source/readable receipt are linked in the [recovery checkpoint](../world-experience-2026-10-25/tally-warning-recovery/README.md). Local3 and independent63 assertions are not hosted passes. New main40150336392, RUCKUS40150336382 and mobile40150336343 remain active; synthetic5bfcb36e uses87840972 and exact candidate tree.
+
+Prior ffe Last Shift native1/narrative49/RUCKUS89 passed, but main40148120623 failed01:18:43. Seven completed groups match actual-parent failed names; browser2 additionally reports unattributed cold-open unresolvedActorIds evidence_spindle_47a/civilian_pod and browser3 cancelled. PR5995ce remains published with49/89 passes but main40144107069 failed00:17:40; eight groups match actual786 parent, browser3 incomplete. No blanket baseline equivalence or overall-green claim.
+
+The [actual ID-selected wreck view](../world-experience-2026-10-25/last-shift-wreck-preview/README.md) is an inspected exported-package Cycles CPU studio render of existing cockpit wreck selected by947, not a custom fairlead or captured scene. Original maps except authored AO; no live lighting/performance acceptance. Exact warning raw logs are preserved privately after public raw upload denial; no retry or workaround, and readable evidence is labeled separately. Source/publication owners retain their paths; next action is exact-head hosted qualification, not further speculative polish. Complete earned travel, Save/Continue and final sector acceptance remain open.
+
 ## Current narrative guards and P08 preparation: 2026-10-24 23:48 UTC
 
 All twelve goals remain OPEN. [Final reviewed preparation bundle](../world-experience-2026-10-24/P08-normal-integration-prep/final/README.md) preserves source map8327dcea, final package71de22cc, serial runner385df0c7, exact-nine-path ignore rule59d4b394, documentation2a0f35d6 and shared runtime/authoring I/O packetd54edb87. Historical source map1fd6eaff and unsafe parallel package86df5d30 remain evidence only, explicitly not shipping.

@@ -1,0 +1,7 @@
+# Tally warning: scoped recovery checkpoint
+
+Draft [PR602](https://github.com/coldshalamov/SpaceFace/pull/602) publishes successor dcdc6e62d35cd95c3ff2b1e405e5585aedf56412, tree555ca211002272a36665dca03098a1be46eb4149, sole parent ffe947153fed6b0132ff514a0b475d2dcd1ab223. The ten incremental paths include the accepted source packet and readable receipt. [Report](https://github.com/coldshalamov/SpaceFace/blob/dcdc6e62d35cd95c3ff2b1e405e5585aedf56412/design/program/world-experience-2026-10-25/TALLY_TOW_GUIDANCE.md).
+
+Source packet3c894724ab9a0fc75fdfa23f8329009f99707c7e and readable receipt86978d66f26a318f88a55567ede1d42796be03b2 are preserved unchanged here. Raw baseline/success output is retained in separately verified private recovery, not published here. The denied public raw upload was not retried or routed around; this readable receipt is not a substitute claim of complete public raw evidence.
+
+Three author-run local cases and independent63 assertions are local evidence, not hosted successor success. New main40150336392, RUCKUS40150336382 and mobile40150336343 are active. Synthetic5bfcb36e4d4246e47a16d98ef9588a85511c0946 has actual878409729c815a17e9959e488f715e89d2dd0cc2 base and the same candidate tree. Previous ffe native1/narrative49/RUCKUS89 are historical: its main run40148120623 failed01:18:43; seven comparable groups match parent failed names, browser2 has additional unattributed cold-open unresolved actors and browser3 cancelled. No full-green, Save/Continue, flown-campaign or live visual acceptance is claimed.

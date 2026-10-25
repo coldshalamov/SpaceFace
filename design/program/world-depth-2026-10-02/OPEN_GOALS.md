@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 24 October 2026, 23:48 UTC.
+Updated: 25 October 2026, 01:23 UTC.
 
 All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
 
@@ -26,10 +26,10 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; PR599 prompt guards published at5ce922ab, new49/89 gates pending; prior c4e31/89 passes are historical. PR598 preserves P08 recovery, not runtime integration or acceptance.
+- State: OPEN; PR602 Tally successor dcdc6e62 published, new gates pending. Prior59949/89 and6021/49/89 pass but full CI failed. PR598 is P08 recovery, not runtime acceptance.
 - Owner: publisher, root and exact feature owners.
 - Evidence: [PR599](https://github.com/coldshalamov/SpaceFace/pull/599); checkpoint separates exact heads, passes and failures.
-- Next: qualify exact-head PR599 CI; P08 large writes remain stopped: one success, one uncertain, three unattempted.
+- Next: qualify exact-head PR602 CI; P08 large writes remain stopped: one success, one uncertain, three unattempted.
 - Awaiting user: existing publication holds; no repeated approval cards.
 
 ## SF-RECOVER
