@@ -12,7 +12,7 @@ import { createProductionCapitalBossEncounters } from '../src/systems/capitalBos
 import { requireCapitalBossEncounter } from '../src/data/encounters/capital-boss.js';
 import { validateCapitalBossEncounter } from '../src/data/encounters/capital-boss/validate.js';
 import { createDamageRouter } from '../src/combat/damage.js';
-import { createCombatCatalog } from '../src/combat/runtime.js';
+import { createCombatCatalog, ensureCombatant } from '../src/combat/runtime.js';
 import { CAPITAL_PLATE_FULL_PULL, capitalPlateUnderLine } from '../src/combat/capitalPlates.js';
 import { capitalBossReadouts, createCapitalBossOverlay } from '../src/presentation/capitalBossPresentation.js';
 import { wreckPackagedFile } from '../src/render/visualFactory.js';
@@ -100,6 +100,10 @@ const plateAnchorLocal = (h, plateId) => {
 const fightRec = (h) => h.state.capitalBossEncounters.fights[h.fightId];
 const plateRec = (h, id) => fightRec(h).plates.find((p) => p.id === id);
 const plateSpawns = (h) => h.spawned.filter((e) => e.data && e.data.capitalPlate);
+const bossSubsystemHp = (h, id) => {
+  const row = ensureCombatant(h.state, h.boss, createCombatCatalog()).subsystems[id];
+  return row ? row.health : NaN;
+};
 
 test('validator law: all authored capital bosses carry two lawful plates', () => {
   for (const id of [...BOSS_IDS, 'capital_boss_last_argument']) {
@@ -212,12 +216,13 @@ test('while the plate holds, the covered subsystem takes no subsystem damage and
   tick(h, 3);
   // The fight owner stamps the cover the moment the fight is live.
   assert.equal((h.boss.data.capitalPlateCover || {}).subsystem_weapon, true);
-  if (!h.boss.data.subsystems) h.boss.data.subsystems = {};
-  h.boss.data.subsystems.subsystem_weapon = { integrity: 1 };
+  // Read the live combat runtime row the router writes (a data.subsystems stub is never touched).
+  const hp0 = bossSubsystemHp(h, 'subsystem_weapon');
+  assert.ok(hp0 > 0, 'the boss carries a live weapon subsystem');
   const hull0 = h.boss.hull;
   h.helpers.routeCombatDamage({ attackerId: h.player.id, targetId: h.boss.id,
     packet: { channels: { kinetic: 40 }, hit: { subsystemId: 'subsystem_weapon' } }, origin: 'test' });
-  assert.equal(h.boss.data.subsystems.subsystem_weapon.integrity, 1,
+  assert.equal(bossSubsystemHp(h, 'subsystem_weapon'), hp0,
     'the covered subsystem takes nothing');
   assert.ok(h.boss.hull < hull0, 'the plate sends the hit to hull');
 });
@@ -330,4 +335,34 @@ test('review 2: plate cover drops when the fight ends or detaches', () => {
   assert.ok(h2.boss.data.capitalPlateCover);
   h2.bus.emit('capitalBoss:detach', { fightId: h2.fightId });
   assert.equal(h2.boss.data.capitalPlateCover, null, 'a detached fight leaves no cover behind');
+});
+
+test('review 3: tear the plate, sling its slab back, and the bared subsystem takes the hit', () => {
+  const created = [];
+  const svc = { cut() {}, create: (spec) => { created.push(spec); return { ok: true, attachment: { id: 'att_slab' } }; } };
+  const h = bootScoreFight(TOLLMAN, { attachmentService: svc });
+  const weaponHp = () => bossSubsystemHp(h, 'subsystem_weapon');
+  const whipHit = (slabId) => h.helpers.routeCombatDamage({
+    attackerId: h.player.id, targetId: h.boss.id,
+    packet: { channels: { kinetic: 40 }, hit: { subsystemId: 'subsystem_weapon' },
+      source: { kind: 'massline_whip', entityId: slabId } },
+    origin: { kind: 'massline_whip', impactorId: slabId },
+  });
+  // Before the tear the same whip impact is eaten by the plate.
+  tick(h, 3);
+  const hp0 = weaponHp();
+  assert.ok(hp0 > 0, 'the boss carries a live weapon subsystem');
+  whipHit(null);
+  assert.equal(weaponHp(), hp0, 'the bolted plate covers the weapon');
+  latchAt(h, plateAnchorLocal(h, 'battery_housing'), 0.9);
+  tick(h, 40);
+  const slab = plateSpawns(h)[0];
+  assert.ok(slab, 'the plate tore into a slab');
+  assert.equal(created.at(-1).targetId, slab.id, 'the line is latched on the slab');
+  assert.equal((h.boss.data.capitalPlateCover || {}).subsystem_weapon, undefined, 'cover dropped');
+  const hull0 = h.boss.hull;
+  whipHit(slab.id);
+  assert.ok(weaponHp() < hp0,
+    'the slab whipped into the boss lands subsystem damage on the now-uncovered weapon');
+  assert.ok(h.boss.hull < hull0, 'and the hull still takes its share');
 });
