@@ -718,6 +718,26 @@ html body #screens #sf-automation.au-orrery .au-next-meta { font-size: 12px; }
   html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta { grid-auto-flow: row; grid-template-columns: 10ch 20ch 10ch; row-gap: 2px; }
 }
 html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-content: start; padding-top: 2px; }
+/* polish134: 761–1100 wide and ≤580 tall (960×540): the stacked head (gauge, strip, rail) and a
+   three-row board card pushed DEPLOYED DRONES onto the bottom bracket, so the fold cut a header
+   in half. The head tightens, the board's cost rides beside its button again, and the body fades
+   out over its last 24px so the fold reads as a scroll edge, not a clipped line. */
+@media (min-width: 761px) and (max-width: 1100px) and (max-height: 580px) {
+  html body #screens #sf-automation.au-orrery .au-head { padding: 12px 26px 4px; gap: 4px; }
+  html body #screens #sf-automation.au-orrery .au-income { padding: 0 2px; row-gap: 2px; }
+  html body #screens #sf-automation.au-orrery .au-command { grid-template-columns: minmax(340px, 1.2fr) minmax(0, 1.8fr); }
+  html body #screens #sf-automation.au-orrery .au-next-row { flex-wrap: nowrap; justify-content: space-between; }
+  html body #screens #sf-automation.au-orrery .au-next-meta { flex: 0 1 auto; }
+  html body #screens #sf-automation.au-orrery .au-body { padding-bottom: 28px;
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent); }
+  html body #screens #sf-automation.au-orrery .au-metric .v { white-space: nowrap; }
+}
+/* polish134: under ~860 wide the 340px board column left the stats too narrow, so NET FLOW broke
+   as "0 / cr/min"; the stat gutters tighten and columns size to their values, keeping the board. */
+@media (min-width: 761px) and (max-width: 860px) and (max-height: 580px) {
+  html body #screens #sf-automation.au-orrery .au-summary { grid-template-columns: repeat(4, auto); column-gap: 12px; }
+}
 /* ≤760 wide desktop window: the 270px board column, the five-node strip beside the gauge and
    the one-line purchase rungs only fit from 761px, so below it the strip names ran into the next
    ring, the board's cost sat on its sentence and the rung stats printed under THROTTLE. The strip
