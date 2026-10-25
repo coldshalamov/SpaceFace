@@ -156,8 +156,14 @@ test('production init + update order lengths match the live browser baseline', (
   // restock and drift-home ride the clock; judging is event-driven (member 11).
   // 248 -> 249 init / 194 -> 195 update: W-SHIFT registers gravedigger — the
   // race, the bury, and the pit ride the same clock (member 12 — the roster).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 249);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 195);
+  // 249 -> 257 init / 195 -> 200 update: the pro-experiences packet lands its
+  // authored registration (feature INTEGRATION contracts): shipbreakingYard +
+  // its browser driver beside the towline pair, rigWorkshop with them,
+  // salvageTender + industrialDisasters before physics, salvageOutfits after
+  // borrowedVoice — the three event-only prompts (tender/outfits) and the
+  // yard browser init-only as glass/presentation.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 257);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 200);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

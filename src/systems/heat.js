@@ -423,6 +423,14 @@ export const heat = {
     // Law names the physical fact; this listener is the only path that writes player.heat.
     bus.on('law:impoundRecovered', (p) => this._onImpoundRecovered(p));
 
+    // RC-CHASE (row 462) — breaking observation of the bounty sweep is the physical escape.
+    // Law names the fact; this listener is the only path that writes player.heat for it.
+    bus.on('law:wantedSweepEscaped', (p) => this._onSweepEscaped(p));
+
+    // RC-CHASE — paying the warrant's named station sponsor settles the hunt. Law names the
+    // settlement; this listener is the only path that writes player.heat for it.
+    bus.on('law:sponsorSettled', (p) => this._onSponsorSettled(p));
+
     // Settling the posted bounty is the honest door out of the hunt: economy owns the ledger
     // and emits bounty:cleared; the heat owner translates the payment into visible cooling.
     bus.on('bounty:cleared', (p) => this._onBountyPaid(p));
@@ -695,6 +703,27 @@ export const heat = {
     if (!player || wantedTierFor(player.heat) !== WANTED_TIER.IMPOUND) return;
     if (method === 'steal') this._dropOneLevel('stole ship back');
     else this._setHeat(0, 'impound bill settled');
+  },
+
+  // RC-CHASE — the sweep's own escape verb: the suspect was seen by every posted sweep ship and
+  // then broke their observation for the contact window (or jumped the sector after being
+  // seen). One level drops the bounty band to scan-tier; the zone clock decays the rest.
+  _onSweepEscaped(payload) {
+    if (!payload || payload.accepted !== true || payload.source !== 'lawSecurity') return;
+    if (payload.method !== 'sweep_break') return;
+    const player = this.state && this.state.player;
+    if (!player || wantedTierFor(player.heat) !== WANTED_TIER.BOUNTY) return;
+    this._dropOneLevel('broke the sweep');
+  },
+
+  // RC-CHASE — the sponsor settlement: paying the warrant's named station ends the hunt the
+  // same way breaking a net ends nets — one tier, physically settled.
+  _onSponsorSettled(payload) {
+    if (!payload || payload.accepted !== true || payload.source !== 'lawSecurity') return;
+    if (payload.method !== 'sponsor_pay') return;
+    const player = this.state && this.state.player;
+    if (!player || wantedTierFor(player.heat) !== WANTED_TIER.BOUNTY) return;
+    this._dropOneLevel('paid the sponsor');
   },
 
   // Paying the bounty cools the hunt proportionally — enough to see the WANTED band drop (and

@@ -289,10 +289,12 @@ export const BRANCH_HEADLINE_VERBS = Object.freeze(Object.fromEntries(
 ));
 
 export const MISSION_TYPES = [
-  { type:'vessel_recovery',riskTierRange:[0,4],chainable:false,
+  // BLACK FLAG authored entries only (blackFlagMissions posts them from the ledger); the mix
+  // never rolls one — structural zero like capital_boss/authored_set_piece above.
+  { type:'vessel_recovery',riskTierRange:[0,4],chainable:false,proceduralWeight:0,
     completionEvent:'shipjack:settled (exact vessel returned intact to claimant)',
     rewardFormula:'receiving yard quote; mission records standing',timeFormula:'no deadline',taskTime:120,
-    failureCondition:'target destroyed or sold; registry and salvage persist',constraints:{physicalVerb:'recover'} },
+    failureCondition:'target destroyed or sold; registry and salvage persist',constraints:{authoredOnly:true,physicalVerb:'recover'} },
   {
     type: 'cargo_delivery', riskTierRange: [0, 4], chainable: true,
     completionEvent: 'cargo.delivered',

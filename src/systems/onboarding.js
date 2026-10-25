@@ -3500,11 +3500,18 @@ export const onboarding = {
       if (slot === 'wing' && (opts.wing === 'keep' || opts.wing === 'disarm')) {
         if (opts.wing === 'disarm' && id != null && this.state.entities) {
           const wing = this.state.entities.get(id);
-          if (wing && wing.data && wing.data.ai) {
+          // The same stamp gate _raidActor, _onRaidKilled, and the bare removal path below
+          // enforce: entity ids recycle through freeIds, so a kept slot can name a foreign
+          // hull wearing the routed wing's old id — it keeps its own orders and never takes
+          // a stand-down the beat never authored.
+          if (wing && wing.data && wing.data.onboardingRaidWing === true && wing.data.ai) {
             // A wing that already left honestly keeps its exit record through the restage —
             // restamping its FLEE/DISENGAGE as a LOITER would park a routed hull mid-field
-            // instead of letting it finish running. A merely disengaged wing stands down.
-            if (!this._raidWingExited(wing)) {
+            // instead of letting it finish running. wingDone is the same retirement: the
+            // scripted 'onboarding_raid:withdrawn' DISENGAGE is no _raidWingExited shape, but
+            // a wing the beat already released must finish running all the same. A merely
+            // disengaged wing stands down.
+            if (!raid.wingDone && !this._raidWingExited(wing)) {
               wing.data.ai.roe = 'hold_fire';
               // Stand the wing down with its record, not just its guns: a live 'onboarding_raid:'
               // ATTACK_RUN would keep overriding the squad's FOCUS and the silent hull would keep
@@ -3664,12 +3671,29 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !ob || !beat || beat.key !== 'raid' || !payload) return;
+    // X-02 review round 9: entity ids recycle through freeIds, and the wing keeps its slot
+    // after it leaves (wingDone guards the respawn), so a bare raid.ids.wing match is not
+    // proof. A live occupant of that id without the stamp is a foreign hull — its death is
+    // not the wing's receipt and its kills are not wing strays. An EMPTY slot still honors
+    // the match: a same-tick-swept wing body and a despawned killer leave no occupant, and
+    // those receipts are the only honest close the slot gets.
+    const wingId = raid.ids.wing;
+    const occupant = wingId != null && this.state.entities
+      ? this.state.entities.get(wingId) : null;
+    const wingIdIsForeign = !!(occupant && (!occupant.data
+      || occupant.data.onboardingRaidWing !== true));
+    // X-02 review round 10: an UNSET slot is no wing either. ids.wing stays undefined on the
+    // clinic stage (and if the wing spawn ever fails), so a shapeless receipt — no dead id, or
+    // an uncredited raider kill — would equal it by absence: undefined === undefined latching
+    // wingDone or silently counting a "wing stray" the beat never staged. A null slot is the
+    // same non-wing. Only a recorded id may close or credit the wing.
+    const wingRecorded = wingId != null;
     // X-02: the wing's own death ends its part — never a restage, never a beat result.
-    if (payload.id === raid.ids.wing) { raid.wingDone = true; return; }
+    if (wingRecorded && payload.id === wingId && !wingIdIsForeign) { raid.wingDone = true; return; }
     if (payload.id !== raid.ids.raider) return;
     // X-02 v3: a stray wing round into the towed raider converges like a gun kill — silently,
     // because "the raider broke off" is not what the player did.
-    if (payload.killerId === raid.ids.wing || payload.ownerId === raid.ids.wing) {
+    if (wingRecorded && !wingIdIsForeign && (payload.killerId === wingId || payload.ownerId === wingId)) {
       raid.strayKills = (raid.strayKills | 0) + 1;
       if (raid.strayKills >= 2) {
         this._beatDone(beat);

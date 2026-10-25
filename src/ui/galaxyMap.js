@@ -1,3 +1,4 @@
+import { getSalvageTenderMapMarkers, filterSalvageTenderMapContacts } from '../features/salvageTender/readModel.js';
 import { playerBearingLetter } from '../core/playerCompass.js';
 import { stationServiceGaps } from './dockArrival.js';
 import { factionBerthStatusLine } from './dockArrival.js';
@@ -1624,6 +1625,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
     }
   }
   for (const mark of wreckEcologyMarkers(state, sid)) markers.push(mark);
+  markers.push(...getSalvageTenderMapMarkers(state, sid));
   return markers;
 }
 
@@ -2392,7 +2394,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     level: 'local',
     sectorId,
     player: player ? { id: player.id, x: player.pos.x, z: player.pos.z, rot: player.rot || 0 } : null,
-    contacts,
+    contacts: filterSalvageTenderMapContacts(state, contacts),
     ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
     bearings: discoveryBearingReadouts(state, sectorId),
     rumorCorroborations: frontierRumorCorroborations(state, sectorId),

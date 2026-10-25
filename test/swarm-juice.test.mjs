@@ -645,7 +645,13 @@ test('the shared stinger never stacks: a boss-down stinger holds off the resolve
     'inside the stinger window the lower stinger-class cues wait');
   advance(h, 0.6);
   h.bus.emit('audio:cue', { id: SWARM_MOMENT_CUES.clearResolve, gain: 0.55 });
-  assert.equal(plays.length, 2, 'once the swell has rung out the chord plays');
+  // The resolve voices its chord with an authored link grace note (sfx_stunt_link rides the
+  // same cue on the stunt grid) — count the stinger-family chords, not every voice: the boss
+  // stinger plus exactly one resolve, and the two held cues stayed dropped.
+  assert.deepEqual(
+    plays.map((p) => p.recipeId).filter((r) => r === 'sfx_moment_stinger' || r === 'sfx_promotion_chord'),
+    ['sfx_moment_stinger', 'sfx_promotion_chord'],
+    'once the swell has rung out the chord plays — and never twice');
   ear.destroy();
   swarmJuice.destroy();
 });

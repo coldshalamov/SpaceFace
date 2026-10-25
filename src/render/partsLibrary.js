@@ -1,3 +1,4 @@
+import { salvageTenderWholeShipVisual, salvageTenderRequiresAuthoredHull } from '../features/salvageTender/readModel.js';
 import { isOrchardFrame, isOrchardPod, orchardPlaceTransform, orchardCatalogRows, ORCHARD_FRAME_FILE, ORCHARD_POD_FILE } from '../data/anvilOrchardIdentity.js';
 import { recordOrchardAuthoredSource } from './anvilOrchardVisuals.js';
 // LAST_ARGUMENT_INTEGRATION_V1
@@ -1378,6 +1379,7 @@ const REQUIRED_WHOLE_SHIP_ASSET_REFS = Object.freeze(new Set([
  * kit cannot substitute while those bodies decode. Traffic-role maps still win over defId, so
  * Helios Lark/Span/Cradle stay on courier/hauler/miner. */
 export function requiresProductionWholeShipForEntity(entity) {
+  if (salvageTenderRequiresAuthoredHull(entity)) return true;
   if (isKilnbackEntity(entity) || isScissorwakeEntity(entity) || isTowlineCrewEntity(entity)) return true;
   if (isIlexArkEntity(entity)) return true;
   if (isRedKiteEntity(entity)) return true;
@@ -2221,6 +2223,8 @@ export function wholeShipHullPlacement(record) {
 
 /** Pure presentation selection hook used by composition and focused asset checks. */
 export function wholeShipVisualForEntity(entity, options = {}) {
+  const tender = salvageTenderWholeShipVisual(entity);
+  if (tender) return tender;
   if (isLastArgument(entity)) return liveWholeShipSelection(LAST_ARGUMENT_SPEC.file, LAST_ARGUMENT_SPEC.assetId, 'last_argument');
   if (isPalletJackEntity(entity)) return liveWholeShipSelection('wholeships/pallet_jack.glb','SF_SHIP_PALLET_JACK','pallet_jack');
   if (isMothlightTender(entity)) return liveWholeShipSelection('wholeships/mothlight.glb','SF_SHIP_MOTHLIGHT_TENDER','mothlight');
@@ -6128,6 +6132,11 @@ function warnUnresolvedStationPlaceId(entity, id, rescue) {
 }
 
 function placeFileForEntity(entity) {
+  // The runaway crucible uses this measured Forge body in physics as well.
+  // Keep its beacon simulation identity; presentation is an authored machine.
+  if (entity?.data?.storyPropKind === 'runaway_kiln') return 'wholeships/kilnback.glb';
+  // The pilgrimage bell is salvaged machinery, with a real flared bell body.
+  if (entity?.data?.storyPropKind === 'eighth_bell') return 'places/place_aftermath_deb_ore_freighter_drive_bell.glb';
   if (isOrchardFrame(entity)) return ORCHARD_FRAME_FILE;
   if(isLatchActor(entity))return LATCH_PLACE_FILE;
   if(isTallyThreeAssessor(entity))return TALLY_THREE_PLACE_FILE;

@@ -12,10 +12,10 @@ export const DISCHARGE_CAPACITY = 48;
  * the floor only ever thickens, so close zoom keeps its authored cross-section exactly.
  */
 export const SOURCE_MIN_STRIP_PX = 2.4;
-export const IMPACT_MIN_STRIP_PX = 3.0;
+export const IMPACT_MIN_STRIP_PX = 4.0;
 /** Whole-footprint floors (width x reach, pixels) so a hit/muzzle still reads at the wide camera. */
 export const SOURCE_MIN_WIDTH_PX = 9, SOURCE_MIN_LENGTH_PX = 44;
-export const IMPACT_MIN_WIDTH_PX = 12, IMPACT_MIN_LENGTH_PX = 46;
+export const IMPACT_MIN_WIDTH_PX = 16, IMPACT_MIN_LENGTH_PX = 60;
 
 /**
  * Working heat of the strips (instance attribute `iPivot.w`). The legacy surface shader multiplies
@@ -25,8 +25,8 @@ export const IMPACT_MIN_WIDTH_PX = 12, IMPACT_MIN_LENGTH_PX = 46;
  * brightest thing in the hit.
  */
 export const SOURCE_HEAT = 0.82;
-export const IMPACT_HEAT = 0.92;
-export const IMPACT_RING_HEAT = 0.58;
+export const IMPACT_HEAT = 1.0;
+export const IMPACT_RING_HEAT = 0.64;
 /** Muzzles that are not the player's own run this much cooler so a crowded fight cannot stack its bloom. */
 export const BYSTANDER_SOURCE_HEAT_SCALE = 0.72;
 
@@ -69,12 +69,12 @@ const SHIELD_CYAN = new THREE.Color(0x9fe8ff);
  * `ribs` adds crossing panel seams (shield contact); hull gouges leave them off.
  */
 const IMPACT_BEATS = Object.freeze({
-  kinetic: Object.freeze({ style: 3, color: BRASS, blades: 3, spread: 0.46, reach: 1.0, bladeWidth: 0.24, ring: 0.85, ringWidth: 0.30, ribs: 0 }),
-  coherent: Object.freeze({ style: 4, color: PALE, blades: 2, spread: 0.18, reach: 1.45, bladeWidth: 0.15, ring: 0.60, ringWidth: 0.13, ribs: 0 }),
-  propulsion: Object.freeze({ style: 1, color: THERMAL, blades: 3, spread: 0.60, reach: 0.80, bladeWidth: 0.30, ring: 1.05, ringWidth: 0.36, ribs: 0 }),
-  induction: Object.freeze({ style: 4, color: VIOLET, blades: 4, spread: 0.66, reach: 1.05, bladeWidth: 0.19, ring: 0.72, ringWidth: 0.15, ribs: 2 }),
-  metric: Object.freeze({ style: 1, color: SHIELD_CYAN, blades: 3, spread: 0.52, reach: 0.90, bladeWidth: 0.24, ring: 1.00, ringWidth: 0.30, ribs: 2 }),
-  reactive: Object.freeze({ style: 0, color: THERMAL, blades: 2, spread: 0.82, reach: 0.58, bladeWidth: 0.46, ring: 0.48, ringWidth: 0.38, ribs: 0 }),
+  kinetic: Object.freeze({ style: 3, color: BRASS, blades: 3, spread: 0.46, reach: 1.22, bladeWidth: 0.27, ring: 0.92, ringWidth: 0.34, ribs: 0 }),
+  coherent: Object.freeze({ style: 4, color: PALE, blades: 2, spread: 0.18, reach: 1.72, bladeWidth: 0.18, ring: 0.66, ringWidth: 0.15, ribs: 0 }),
+  propulsion: Object.freeze({ style: 1, color: THERMAL, blades: 3, spread: 0.60, reach: 1.05, bladeWidth: 0.34, ring: 1.12, ringWidth: 0.40, ribs: 0 }),
+  induction: Object.freeze({ style: 4, color: VIOLET, blades: 4, spread: 0.66, reach: 1.30, bladeWidth: 0.23, ring: 0.82, ringWidth: 0.18, ribs: 2 }),
+  metric: Object.freeze({ style: 1, color: SHIELD_CYAN, blades: 3, spread: 0.52, reach: 1.16, bladeWidth: 0.28, ring: 1.08, ringWidth: 0.34, ribs: 2 }),
+  reactive: Object.freeze({ style: 0, color: THERMAL, blades: 2, spread: 0.82, reach: 0.74, bladeWidth: 0.52, ring: 0.56, ringWidth: 0.42, ribs: 0 }),
 });
 const DEFAULT_BEAT = IMPACT_BEATS.kinetic;
 
@@ -171,7 +171,7 @@ export class WeaponDischargePool {
     slot.angle=Math.atan2(pose.az,pose.ax);
     slot.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
     const ip=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
-    slot.width=Math.max(.6,flash.size0,ip*IMPACT_MIN_WIDTH_PX);slot.length=Math.max(1.6,flash.size1*1.8,ip*IMPACT_MIN_LENGTH_PX);
+    slot.width=Math.max(.8,flash.size0,ip*IMPACT_MIN_WIDTH_PX);slot.length=Math.max(2.2,flash.size1*2.15,ip*IMPACT_MIN_LENGTH_PX);
     slot.opacity=Math.min(1,flash.opacity0/1.2);
     slot.source=null;slot.variant=variant;
     slot.targetId=pose.targetId!=null?pose.targetId:null;

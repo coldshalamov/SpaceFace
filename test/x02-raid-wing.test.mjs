@@ -7,6 +7,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { mulberry32, hash32 } from '../src/core/rng.js';
 import { onboarding, BEATS } from '../src/systems/onboarding.js';
 import { authorizeAIEngagement, isOnboardingRaidWingAuthorized } from '../src/ai/engagementAuthority.js';
+import { stepEgressExits } from '../src/ai/egressExit.js';
 
 let nextId = 500;
 function rig({ clinic = false } = {}) {
@@ -325,4 +326,134 @@ test('X-02 review: a recycled wing id is never armed or removed', () => {
   h.ob._removeRaidActors();
   assert.equal(h.removed.includes(wingId), false, 'a foreign hull is never removed');
   assert.equal(raid.ids.wing, null);
+});
+
+// X-02 review round 7 (difficultyDirector seam): a pin-release hold is 300 s and built to
+// lapse — but stepEgressExits retires ANY fleeing hull ≥960 WU out after a 12 s fade. On a
+// live-beat wing that despawn is silent (no entity:killed, wingDone never set) and
+// raid.ids.wing keeps blocking every keep/disarm restage: the beat loses its staged
+// antagonist for good on a hold designed to expire. The same identity gate the other seams
+// read exempts the live-beat hull — and releases a stamp already placed — while a wingDone
+// exit still takes the bound.
+test('X-02 a pacing-pinned wing off-field is never egress-despawned mid-beat', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wing = h.entities.get(raid.ids.wing);
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  h.state.tick = 15;            // EGRESS_SCAN_TICKS boundary
+  h.state.simTime = 100;
+  // The pin-release shape: forceFlee + a far-future private hold, hull already off-field.
+  wing.data.ai.forceFlee = true;
+  wing.data.ai.moraleFleeReason = 'pacing_pin_release';
+  wing.data.ai._pacingFleeUntil = 400;
+  wing.pos.x = 4000;
+  stepEgressExits(h.state, [wing], h.bus);
+  assert.equal(wing.data.despawnAt == null, true, 'no despawn deadline on a live-beat wing');
+  assert.equal(wing.alive, true);
+  // A stamp landed before the exemption (a save recorded mid-hold) releases the same way —
+  // the bound can never retire this hull while the beat still owns it.
+  wing.data.despawnAt = 112;
+  wing.data._egressExitAt = 112;
+  stepEgressExits(h.state, [wing], h.bus);
+  assert.equal(wing.data.despawnAt == null, true, 'a stale stamp releases on the live-beat wing');
+  assert.equal(wing.data._egressExitAt == null, true);
+  // The hold expiring on a still-resident hull is what re-presses the armed run.
+  delete wing.data.ai.forceFlee;
+  delete wing.data.ai._pacingFleeUntil;
+  delete wing.data.ai.moraleFleeReason;
+  assert.equal(isOnboardingRaidWingAuthorized(h.state, wing, h.entities.get(1)), true,
+    'a survived hold re-opens the fire bridge');
+  // Once the beat owns the exit (wingDone) the exemption ends: the same fleeing hull at the
+  // same spot takes the ordinary despawn deadline — the bound still bounds the designed exit.
+  wing.hull = 18;
+  h.ob._stepRaidWing();
+  assert.equal(raid.wingDone, true);
+  stepEgressExits(h.state, [wing], h.bus);
+  assert.ok(Number.isFinite(wing.data.despawnAt), 'a wingDone hull still takes the egress bound');
+});
+
+// X-02 review round 9: the kill receipt honored raid.ids.wing by id alone, but entity ids
+// recycle through freeIds — once the wing's exit despawns it, a later spawn can wear the id.
+// A foreign occupant must not close the slot with its own death, and its kills are not wing
+// strays converging the beat. An empty slot (the real wing swept or despawned) still honors
+// the match — those receipts are the only honest close the slot gets.
+test('X-02 a recycled wing id is not honored by the kill receipt', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wingId = raid.ids.wing;
+  // The wing left honestly and a foreign hull inherited its id.
+  raid.wingDone = true;
+  h.entities.set(wingId, { id: wingId, type: 'ship', alive: true, team: 1,
+    pos: { x: 9, z: 9 }, data: { ai: { roe: 'weapons_free' } } });
+  // The foreign hull's kill on the towed raider is uncredited — the ordinary restage bark,
+  // not a silent wing stray.
+  h.bus.emit('entity:killed', { id: raid.ids.raider, killerId: wingId, pos: { x: 0, z: 0 } });
+  assert.equal(raid.strayKills | 0, 0, 'a foreign hull wearing the id is not a wing stray');
+  assert.ok(h.said.some((s) => s.text === 'the raider broke off'), 'the uncredited bark plays');
+  assert.equal(h.state.onboarding.beatDoneAt.raid == null, true, 'no stray beat resolution');
+  // And a stranger dying on the recycled id never passes for the wing's own receipt: a wing
+  // that vanished without its honest exit keeps the slot open for a restage rather than
+  // latching done off a foreign corpse.
+  const h2 = rig();
+  const raid2 = stage(h2);
+  h2.entities.set(raid2.ids.wing, { id: raid2.ids.wing, type: 'ship', alive: true, team: 1,
+    pos: { x: 9, z: 9 }, data: { ai: {} } });
+  h2.bus.emit('entity:killed', { id: raid2.ids.wing, killerId: 1, pos: { x: 0, z: 0 } });
+  assert.equal(raid2.wingDone == null || raid2.wingDone === false, true,
+    'a stranger on the recycled id never closes the wing slot');
+  // The real wing's own receipt still lands: the stamped body — dead or alive — is honored.
+  const h3 = rig();
+  const raid3 = stage(h3);
+  const wing3 = h3.entities.get(raid3.ids.wing);
+  wing3.alive = false;
+  h3.bus.emit('entity:killed', { id: raid3.ids.wing, killerId: 1, pos: { x: 0, z: 0 } });
+  assert.equal(raid3.wingDone, true, 'the stamped wing corpse still closes its own slot');
+  // An UNSET slot is no wing either (round 10): the clinic stage leaves ids.wing undefined,
+  // so a shapeless receipt — no dead id — never latches wingDone, and an uncredited raider
+  // death takes the designed bark path rather than silently counting a "wing stray" the
+  // beat never staged.
+  const h4 = rig({ clinic: true });
+  const raid4 = stage(h4);
+  assert.equal(raid4.ids.wing == null, true, 'the clinic never records a wing id');
+  h4.bus.emit('entity:killed', { id: raid4.ids.raider, pos: { x: 0, z: 0 } });
+  assert.equal(raid4.strayKills | 0, 0, 'a kill with no killer is not a wing stray');
+  assert.ok(h4.said.some((s) => s.text === 'the raider broke off'), 'the uncredited bark plays');
+  h4.bus.emit('entity:killed', { pos: { x: 0, z: 0 } });
+  assert.equal(raid4.wingDone == null || raid4.wingDone === false, true,
+    'a receipt with no dead id never closes the wing slot');
+});
+
+// X-02 closing review: the player-death disarm restage read entities.get(raid.ids.wing)
+// without the stamp gate _raidActor, _onRaidKilled, and the bare removal path all enforce —
+// a foreign hull wearing the recycled id took the stand-down it never earned, and a
+// scripted-exit wing had its 'onboarding_raid:withdrawn' DISENGAGE restamped to a parked
+// LOITER. The seam now reads the same occupant proof and the same retirement as every
+// other wing path.
+test('X-02 the disarm restage reads the wing stamp — a foreign hull keeps its orders', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wingId = raid.ids.wing;
+  // The wing routed and its id was recycled before the player-death restage.
+  raid.wingDone = true;
+  const stranger = { id: wingId, type: 'ship', alive: true, team: 1, pos: { x: 9, z: 9 },
+    data: { ai: { roe: 'weapons_free', huntPlayer: true }, combat: { targetId: 42 } } };
+  h.entities.set(wingId, stranger);
+  h.bus.emit('player:death');
+  assert.equal(stranger.data.ai.roe, 'weapons_free', 'a foreign hull is never stood down');
+  assert.equal(stranger.data.ai.activity == null, true, 'no authored LOITER on a stranger');
+  assert.equal(stranger.data.ai.huntPlayer, true, 'a foreign pin is not the beat\'s to clear');
+  assert.equal(stranger.data.combat.targetId, 42, 'a foreign target keeps its lock');
+  // The stamped wing's own scripted exit survives the same restage — no LOITER restamp
+  // parks a hull the beat already released.
+  const h2 = rig();
+  const raid2 = stage(h2);
+  const wing2 = h2.entities.get(raid2.ids.wing);
+  wing2.hull = 18;
+  h2.ob._stepRaidWing();
+  assert.equal(raid2.wingDone, true);
+  assert.equal(wing2.data.ai.activity && wing2.data.ai.activity.reason, 'onboarding_raid:withdrawn');
+  h2.bus.emit('player:death');
+  assert.equal(wing2.data.ai.activity.reason, 'onboarding_raid:withdrawn',
+    'the scripted DISENGAGE keeps its record through the restage');
+  assert.equal(wing2.data.ai.roe, 'hold_fire');
 });

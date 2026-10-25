@@ -746,5 +746,187 @@ export default defineFlavorPack({
         { id: 'lp_03', text: 'The ping log disagrees with the paperwork. The equipment cage stopped reconciling the two.' },
       ],
     },
+    // S-14 remainder: the nine undressed regions' own scan-lore bindings — one entry
+    // per new field-edge POI, three-plus fragments each in the region's register.
+    {
+      id: 'kepler_price_post',
+      displayName: 'Price Post',
+      location: { sectorId: 'sector_kepler_scar', poiId: 'poi_kepler_price_post' },
+      lines: [
+        { id: 'kpp_01', text: 'A tally post where the Bazaar\u2019s cutters mark rock already spoken for — hull codes, strip counts, favors.' },
+        { id: 'kpp_02', text: 'The stall that owns a stone changes shift to shift. The chalk keeps the last honest answer.' },
+        { id: 'kpp_03', text: 'On the Scar, a price is not a number. It is a name you owe.' },
+      ],
+    },
+    {
+      id: 'kepler_tow_marks',
+      displayName: 'Tow Marks',
+      location: { sectorId: 'sector_kepler_scar', poiId: 'poi_kepler_tow_marks' },
+      lines: [
+        { id: 'ktm_01', text: 'Drag-marks and scorch tallies on the seam\u2019s quiet face. One line per late payer.' },
+        { id: 'ktm_02', text: 'The enforcers keep their ledger where the radiation fog eats paint slowest.' },
+        { id: 'ktm_03', text: 'Every mark ends under the carrier\u2019s belly. None of them end anywhere else.' },
+      ],
+    },
+    {
+      id: 'nyx_dark_lantern',
+      displayName: 'Dark Lantern',
+      location: { sectorId: 'sector_nyx_march', poiId: 'poi_nyx_dark_lantern' },
+      lines: [
+        { id: 'nlp_01', text: 'A lantern that burns backwards. Lit means the lane is watched; dark means run it.' },
+        { id: 'nlp_02', text: 'The runners who keep it have never once answered for the schedule.' },
+        { id: 'nlp_03', text: 'On the March, the honest signal is the one that says nothing.' },
+      ],
+    },
+    {
+      id: 'nyx_forged_stakes',
+      displayName: 'Forged Stakes',
+      location: { sectorId: 'sector_nyx_march', poiId: 'poi_nyx_forged_stakes' },
+      lines: [
+        { id: 'nfs_01', text: 'Claim stakes filed under a registry that exists nowhere else.' },
+        { id: 'nfs_02', text: 'The Fence stakes rock the way it files manifests — forged, tidy, honored.' },
+        { id: 'nfs_03', text: 'Everyone who needs the lane honors the line. That is the whole registry.' },
+      ],
+    },
+    {
+      id: 'orcus_measure_stake',
+      displayName: 'Measure Stake',
+      location: { sectorId: 'sector_orcus_shadow', poiId: 'poi_orcus_measure_stake' },
+      lines: [
+        { id: 'oms_01', text: 'A Vael survey stake — an instrument, not a claim mark.' },
+        { id: 'oms_02', text: 'Its tally counts scans in a notation older than the Shadow Cache.' },
+        { id: 'oms_03', text: 'The count increments when nothing is watching it. In the Shadow, that is most of the time.' },
+      ],
+    },
+    {
+      id: 'orcus_shepherd_tag',
+      displayName: 'Shepherd\u2019s Tag',
+      location: { sectorId: 'sector_orcus_shadow', poiId: 'poi_orcus_shepherd_tag' },
+      lines: [
+        { id: 'ost_01', text: 'A herder\u2019s tag on the shadow debris\u2019 lead rock. The flock was never driven home.' },
+        { id: 'ost_02', text: 'It names the flock, the driver, and a delivery bearing that ends at the signal\u2019s throat.' },
+        { id: 'ost_03', text: 'The Broken Shepherd\u2019s last job is still posted. The flock is still waiting.' },
+      ],
+    },
+    {
+      id: 'rhea_assay_board',
+      displayName: 'Scorch Assay Board',
+      location: { sectorId: 'sector_rhea_cinder', poiId: 'poi_rhea_assay_board' },
+      lines: [
+        { id: 'rab_01', text: 'Scorched assays pinned in sale order. You buy the read, then the rock.' },
+        { id: 'rab_02', text: 'The top pin has been re-hung so often the board reads as a price history.' },
+        { id: 'rab_03', text: 'On the Cinder, the assay is worth more than the claim it condemns.' },
+      ],
+    },
+    {
+      id: 'rhea_escort_tally',
+      displayName: 'Escort Tally',
+      location: { sectorId: 'sector_rhea_cinder', poiId: 'poi_rhea_escort_tally' },
+      lines: [
+        { id: 'ret_01', text: 'Hauler marks in one column, escort marks in a shorter one.' },
+        { id: 'ret_02', text: 'The desk files it under weather. The haulers file it under reasons to carry guns.' },
+        { id: 'ret_03', text: 'Every scratch is a run somebody made alone. The column keeps growing.' },
+      ],
+    },
+    {
+      id: 'phoebe_struck_face',
+      displayName: 'Struck Face',
+      location: { sectorId: 'sector_phoebe_echo', poiId: 'poi_phoebe_struck_face' },
+      lines: [
+        { id: 'psf_01', text: 'Test-strike scars in a pattern that is almost a scale.' },
+        { id: 'psf_02', text: 'Stones that answer wrong get culled from the song. The face remembers the culls.' },
+        { id: 'psf_03', text: 'The shrine tunes the seam the way a tuner pulls strings — by breaking the wrong ones.' },
+      ],
+    },
+    {
+      id: 'phoebe_listener_post',
+      displayName: 'Listener\u2019s Post',
+      location: { sectorId: 'sector_phoebe_echo', poiId: 'poi_phoebe_listener_post' },
+      lines: [
+        { id: 'plp_01', text: 'Two columns on the keeper\u2019s post: those who came to listen, those who came to take.' },
+        { id: 'plp_02', text: 'The second column is longer. Both columns get visited.' },
+        { id: 'plp_03', text: 'The shrine does not stop the takers. It writes them down.' },
+      ],
+    },
+    {
+      id: 'nereid_rime_board',
+      displayName: 'Rime Board',
+      location: { sectorId: 'sector_nereid_shoal', poiId: 'poi_nereid_rime_board' },
+      lines: [
+        { id: 'nrb_01', text: 'Claim-lines scratched through the same rime that keeps the salvors\u2019 count.' },
+        { id: 'nrb_02', text: 'A line holds until the ice grows over it. That is the shoal\u2019s whole filing period.' },
+        { id: 'nrb_03', text: 'The board is older than the claim desk. The ice honors both.' },
+      ],
+    },
+    {
+      id: 'nereid_independent_flag',
+      displayName: 'Independent Flag',
+      location: { sectorId: 'sector_nereid_shoal', poiId: 'poi_nereid_independent_flag' },
+      lines: [
+        { id: 'nif_01', text: 'A hand-sewn flag, one of a dozen the ice crews fly under the Collective\u2019s cut.' },
+        { id: 'nif_02', text: 'The colors are filed at the Shoal Claim desk and nowhere else.' },
+        { id: 'nif_03', text: 'On the shoal a flag is a signature, not a flag.' },
+      ],
+    },
+    {
+      id: 'proteus_strip_marks',
+      displayName: 'Strip Marks',
+      location: { sectorId: 'sector_proteus_well', poiId: 'poi_proteus_strip_marks' },
+      lines: [
+        { id: 'psm_01', text: 'Violet strip-paint in the same hand as the Funnel\u2019s guide strips.' },
+        { id: 'psm_02', text: 'A stone wearing the violet is a stone you are invited not to assay.' },
+        { id: 'psm_03', text: 'The den marks its rock in the same color it marks its throats.' },
+      ],
+    },
+    {
+      id: 'proteus_bearer_post',
+      displayName: 'Bearer Post',
+      location: { sectorId: 'sector_proteus_well', poiId: 'poi_proteus_bearer_post' },
+      lines: [
+        { id: 'pbp_01', text: 'Bearer cases stage here before the funnel run. The chalk marks who is owed.' },
+        { id: 'pbp_02', text: 'No names, no cargo, only the count — the only part the den files as evidence.' },
+        { id: 'pbp_03', text: 'The lock opens for the strip-lights, not for hands.' },
+      ],
+    },
+    {
+      id: 'triton_drift_log',
+      displayName: 'Drift Log Buoy',
+      location: { sectorId: 'sector_triton_wake', poiId: 'poi_triton_drift_log' },
+      lines: [
+        { id: 'tdl_01', text: 'A telemetry buoy logging how fast the dead metal still travels.' },
+        { id: 'tdl_02', text: 'Eighty million years after departure, the debris is still arriving somewhere.' },
+        { id: 'tdl_03', text: 'The lab files its drift tables quarterly. The wake files nothing.' },
+      ],
+    },
+    {
+      id: 'triton_abandoned_survey',
+      displayName: 'Abandoned Survey',
+      location: { sectorId: 'sector_triton_wake', poiId: 'poi_triton_abandoned_survey' },
+      lines: [
+        { id: 'tas_01', text: 'Half a survey grid: stake holes, one bearing line, no completion stamp.' },
+        { id: 'tas_02', text: 'The team filed the seam as measured. The instruments that disagreed were filed as equipment.' },
+        { id: 'tas_03', text: 'In the Wake, an unfinished survey is a finished answer.' },
+      ],
+    },
+    {
+      id: 'sedna_buoy_ledger',
+      displayName: 'Buoy Ledger',
+      location: { sectorId: 'sector_sedna_dark', poiId: 'poi_sedna_buoy_ledger' },
+      lines: [
+        { id: 'sbl_01', text: 'Buoy numbers and dark dates. The recovery notes all read the same: left in place.' },
+        { id: 'sbl_02', text: 'The unlit lane\u2019s casualties get a tally post, not a rescue.' },
+        { id: 'sbl_03', text: 'The count grows at a rate the post files as seasonal.' },
+      ],
+    },
+    {
+      id: 'sedna_survey_etch',
+      displayName: 'Survey Etch',
+      location: { sectorId: 'sector_sedna_dark', poiId: 'poi_sedna_survey_etch' },
+      lines: [
+        { id: 'sse_01', text: 'Grid lines, sample flags, a return date three seasons old.' },
+        { id: 'sse_02', text: 'The post keeps etching rock for a crew it has stopped expecting.' },
+        { id: 'sse_03', text: 'The alternative is admitting nobody is coming. The etching continues.' },
+      ],
+    },
   ],
 });

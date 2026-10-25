@@ -113,6 +113,11 @@ import {
   sharedPlayerStoreAvailable,
   sharedPlayerStoreCapability,
 } from './sharedPlayerStore.js';
+import { shipbreakingYardSavePlanEntry, serializeShipbreakingYardSteps,
+  restoreShipbreakingYardSteps, afterContinueShipbreakingYard } from '../features/shipbreakingYard/save.js';
+import { captureIndustrialDisasters, restoreIndustrialDisasters } from '../features/industrialDisasters/saveAdapter.js';
+import { rigWorkshopSavePlanEntry, captureRigWorkshopSaveSlot,
+  restoreRigWorkshopSaveSlot } from '../features/rigWorkshop/integration.js';
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
@@ -891,6 +896,9 @@ export const save = {
       ['ruud', () => this._callSerialize('ruud') || {}],
       ['docket', () => this._callSerialize('docket') || {}],
       ['salvage', () => this._callSerialize('salvage') || {}],
+      // Pro-experience outfit table: sits beside salvage so coherent pools and settlement
+      // receipts persist before economy/world/entities capture (feature INTEGRATION.md §3).
+      ['salvageOutfits', () => this._callSerialize('salvageOutfits')],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
       // stripped pod re-promotes as a live one.
@@ -906,9 +914,15 @@ export const save = {
       ['kineticLeague', () => this._callSerialize('kineticLeague')],
       ['mercyService', () => this._callSerialize('mercyService')],
       ['wreckCourt', () => this._callSerialize('wreckCourt')],
+      // Industrial-disaster crisis state must land before world/entities/native physics —
+      // a save between impulse submission and solve has to preserve that impulse.
+      ['industrialDisasters', () => captureIndustrialDisasters({ state: this.state, registry: this.registry })],
       ['world', () => this._callSerialize('world') || {}],
       ['entities', () => this._serializeEntities()],
       ['combat', () => serializeCombatState(state)],
+      // Rig Workshop: this same slot immediately after the combat slot in both capture
+      // lanes (feature integration.js) — persistent machine identity rides the envelope.
+      rigWorkshopSavePlanEntry(this.registry),
       // SG-02 world snapshot (solver warm-start, islands, contacts) — entity scalars alone
       // cannot rebuild a bit-identical world, and reload determinism hinges on it.
       ['physics', () => this._serializeNativePhysics()],
@@ -969,6 +983,7 @@ export const save = {
       ['palletJack', () => this._callSerialize('palletJack')],
       ['secondRinse', () => this._callSerialize('secondRinse')],
       ['towlineTable', () => this._callSerialize('towlineTable')],
+      shipbreakingYardSavePlanEntry(this),
       ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
       ['provenance', () => this._serializeBoundedMemory('provenance')],
@@ -1059,6 +1074,8 @@ export const save = {
     data.docket = this._callSerialize('docket') || {};
     data.salvage = this._callSerialize('salvage') || {};
     yield 'serialize:salvage';
+    data.salvageOutfits = this._callSerialize('salvageOutfits');
+    yield 'serialize:salvageOutfits';
     data.survivorPod = this._callSerialize('survivorPod') || {};
     yield 'serialize:survivorPod';
     data.economy = this._callSerialize('economy') || {};
@@ -1076,11 +1093,15 @@ export const save = {
     data.mercyService = this._callSerialize('mercyService');
     data.wreckCourt = this._callSerialize('wreckCourt');
     yield 'serialize:physical-play';
+    data.industrialDisasters = captureIndustrialDisasters({ state, registry: this.registry });
+    yield 'serialize:industrialDisasters';
     data.world = this._callSerialize('world') || {};
     yield 'serialize:world';
     data.entities = this._serializeEntities();
     yield 'serialize:entities';
     data.combat = serializeCombatState(state);
+    captureRigWorkshopSaveSlot(data, this.registry);
+    yield 'serialize:rigWorkshop';
     yield 'serialize:combat';
     // SG-02 world snapshot: the Rapier solver's private state (contact warm starts, island
     // sleep) is what entity scalars cannot rebuild — restore adopts it when the backend resets.
@@ -1164,6 +1185,7 @@ export const save = {
     yield 'serialize:secondRinse';
     data.towlineTable = this._callSerialize('towlineTable');
     yield 'serialize:towlineTable';
+    yield* serializeShipbreakingYardSteps(this, data);
     data.borrowedVoice = this._callSerialize('borrowedVoice');
     yield 'serialize:borrowedVoice';
     yield 'serialize:enemyMind';
@@ -6728,6 +6750,10 @@ export const save = {
       yield 'docket-restored';
       this._callDeserialize('salvage', data.salvage);
       yield 'salvage-restored';
+      // Pro-experience outfit table: normalize records only here — post-restore outfit job
+      // rebinding waits for the feature's own save:loaded subscription (INTEGRATION.md §3).
+      this._callDeserialize('salvageOutfits', data.salvageOutfits);
+      yield 'salvage-outfits-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
       // listener must already see durable pod records (stripped stays stripped, oxygen keeps
       // its clock). Absent key (pre-pod saves) → deserialize seeds an empty table.
@@ -6815,6 +6841,16 @@ export const save = {
       this._applySavedVitals(savedPlayer);
       yield 'pre-sector-enter';
 
+      // Industrial-disaster crisis restores after player/economy, before enterSector —
+      // live bodies wait for save:loaded (feature saveAdapter contract). An invalid
+      // section refuses the whole restore through the existing verdict path.
+      const industrialDisastersVerdict = restoreIndustrialDisasters(
+        data.industrialDisasters, { state, registry: this.registry });
+      if (!industrialDisastersVerdict.ok) {
+        throw new Error(`industrialDisasters restore refused: ${industrialDisastersVerdict.reason || 'invalid save section'}`);
+      }
+      yield 'industrial-disasters-restored';
+
       // 9. regenerate the saved sector's contents around the player.
       // world.deserialize already restored durable world.records and cleared residency bags.
       // enterSector → _applyResidencyPlan rematerializes FULL/REDUCED from records exactly once.
@@ -6875,6 +6911,10 @@ export const save = {
         applyFrameOrigin(state, loadedOrigin);
       }
 
+      // Shipbreaking-yard records restore before saved entities/combat are rebuilt —
+      // hydration stays suspended until exact originals exist again (feature save contract).
+      yield* restoreShipbreakingYardSteps(this, data);
+
       // 10. restore persistent saved actors after sector regeneration, which despawns non-player
       // entities from the previous live sector. Spawn order (and therefore ids/entityList order)
       // is identical to the monolithic call — the batch window only inserts presentation
@@ -6914,6 +6954,11 @@ export const save = {
       // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
       yield* this._restoreCombatSteps(data.combat, entityIdRemap);
       yield 'combat-ledger-restored';
+      // Rig Workshop: after persistent entity ids and the combat ledger are remapped,
+      // before deferred native reconciliation / save:loaded. Corrupt or conflicting
+      // machine identity throws into the session rollback path (feature integration).
+      restoreRigWorkshopSaveSlot(data, this.registry, entityIdRemap);
+      yield 'rig-workshop-restored';
       // Each afterContinue re-derives session state from the restored world —
       // splitting the run lets a dense save's per-system reconciles paint between.
       this.registry.get('lastShift')?.afterContinue?.();
@@ -6932,6 +6977,8 @@ export const save = {
       yield 'after-continue-secondRinse';
       this.registry.get('towlineTable')?.afterContinue?.();
       yield 'after-continue-towlineTable';
+      afterContinueShipbreakingYard(this);
+      yield 'after-continue-shipbreakingYard';
       this.registry.get('borrowedVoice')?.afterContinue?.();
       yield 'after-continue-applied';
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
@@ -7860,6 +7907,9 @@ export const save = {
     this.state.nav = restored;
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('nav:waypoint', restored.waypoint || null);
+      if (restored.autopilot && restored.autopilot.status === 'rendezvous-replot') {
+        this.bus.emit('toast', { text: 'Replot the recovery course — the saved burn was chasing a moving ship.', kind: 'info', ttl: 4 });
+      }
     }
   },
 
@@ -9183,12 +9233,18 @@ function sanitizeNavState(nav, opts) {
     waypoint: sanitizeNavWaypoint(source.waypoint, opts),
     autopilot: sanitizeNavAutopilot(source.autopilot, opts),
   };
+  // A rendezvous capture is a mid-maneuver snapshot: every local marker in it was authored
+  // against the moving ship's position at capture time. The replot record retires the whole
+  // local-fix block with it — a stale waypoint/route would aim the next burn at wreckage.
+  if (out.autopilot && out.autopilot.status === 'rendezvous-replot') {
+    out.route = null; out.autoTravel = false; out.waypoint = null;
+  }
   // The route follower's executor (src/systems/routeFollower.js) rides along with the route it is
   // following, so a cross-sector trip resumes at the leg it reached instead of orphaning. The key is
   // OMITTED when there is nothing to persist, so the default nav shape stays byte-identical — several
   // suites deep-equal a whole nav against a literal with no executor key
   // (test/unified-map-professional.test.mjs:203, scripts/check-sectorSim.mjs:205).
-  const executor = sanitizeNavExecutor(source.executor, route);
+  const executor = sanitizeNavExecutor(source.executor, out.route);
   if (executor) out.executor = executor;
   return out;
 }
@@ -9311,6 +9367,21 @@ function sanitizeNavWaypoint(waypoint, opts) {
 
 function sanitizeNavAutopilot(autopilot, opts) {
   const source = autopilot && typeof autopilot === 'object' && !Array.isArray(autopilot) ? autopilot : {};
+  // A rendezvous is a live-body burn: velocity-matched against a moving ship whose motion the
+  // envelope cannot resume. Captured or restored, it disengages to a replot record rather than
+  // becoming a fixed-point course to stale coordinates (BLACK FLAG save contract).
+  const status = navString(source.status);
+  if (source.rendezvous === true || (status && status.startsWith('rendezvous-'))) {
+    return {
+      active: false,
+      rendezvous: true,
+      target: null,
+      targetEntityId: null,
+      label: navString(source.label) || '',
+      status: 'rendezvous-replot',
+      arrivalRadius: Number.isFinite(source.arrivalRadius) ? Math.max(12, Math.min(500, source.arrivalRadius)) : 36,
+    };
+  }
   const target = sanitizeNavPos(source.target);
   const out = {
     active: !!target && source.active === true,

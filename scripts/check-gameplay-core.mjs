@@ -2135,10 +2135,14 @@ function checkDrillOreTierReqIsStablePerOre() {
       for (let r = 0; r < field[c].length; r++) {
         const tile = field[c][r];
         if (!tile || tile.type !== 'vein' || !tile.ore) continue;
+        // Rich seams are authored one drill tier above the ore's base gate
+        // (drill.js veinTile: 3x yield, +1 tier, capped at MK4) — the gate is
+        // still a pure function of (ore, rich), never free-stamped per tile.
+        const expectedTier = Math.min(4, drillTierReqForOre(tile.ore) + (tile.rich ? 1 : 0));
         assert.equal(
           tile.tierReq,
-          drillTierReqForOre(tile.ore),
-          `${tile.ore} at col ${c} row ${r} in ${asteroidId} should use ore-based tier gate`,
+          expectedTier,
+          `${tile.ore}${tile.rich ? ' (rich)' : ''} at col ${c} row ${r} in ${asteroidId} should use ore-based tier gate`,
         );
       }
     }
@@ -2154,11 +2158,12 @@ function checkClaimRefineryOutputsCanonicalCommodities() {
   claims.init(ctx);
   state.player.cargo.capVolume = 100;
   state.player.cargo.capMass = 100;
-  addCargo(state, 'cmdty_silicate', 2);
-  claims._tickRefinery({ _refineAcc: 0 }, 2);
+  addCargo(state, 'cmdty_silicate', 3);
+  claims._tickRefinery({ _refineAcc: 0 }, 3);
 
   assert.equal(state.player.cargo.items.cmdty_silicate, undefined, 'claim refinery should consume silicate');
-  assert.equal(state.player.cargo.items.cmdty_polymers, 1, 'claim refinery should grant a canonical output commodity');
+  assert.equal(state.player.cargo.items.cmdty_purified_silica, 1,
+    'claim refinery should grant the canonical row-402 book output (sr_fuse_silica: 3 silicate -> 1 purified silica)');
 }
 
 function checkSaveScrubsTransientFlightState() {

@@ -11,6 +11,7 @@ import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { applyWorldObjectSelection } from './worldObjectInteraction.js';
 import { createHudCombatLock } from './hudCombatLock.js';
+import { racingTakedownText } from './racingRecognition.js';
 
 // These leaf properties also reflect to attributes. Rewriting a settled reading still
 // wakes DOM observers and style work, so only publish an actual change.
@@ -43,6 +44,9 @@ export function mountRacingHud({ root, bus, state, screens }) {
   };
   const view = button(`View ${BINDINGS.steeringView.label}`,()=>toggleSteeringView(state,bus));
   const reset = button('Recover',()=>bus?.emit?.('race:reset',{}));
+  // AL-HF-04: instant restart is a time-trial-only verb; the missions owner still decides
+  // eligibility (tether, mode refusal toasts) — the button just exposes the key's reach.
+  const restart = button('Restart',()=>bus?.emit?.('race:restart',{source:'hud'}));
   const board = button('Circuits',()=>screens?.pushScreen?.('raceBoard'));
   board.title = 'Routes, local best times and last result';
   const leave = button('Leave run',()=>bus?.emit?.('race:abort',{}));
@@ -110,6 +114,15 @@ export function mountRacingHud({ root, bus, state, screens }) {
   listen('race:launchFailed',()=>releaseRacingCupHeat());
   listen('race:armed',()=>{ pulse=''; lastTick=-Infinity; });
   listen('mission:updated',()=>{lastTick=-Infinity;});
+  // A player-attributed takedown is a fact/result — the shared receipt floor voices it.
+  listen('race:takedown',p=>{
+    const raceId = missionId ?? activeAuthoredRace(state)?.id;
+    if(raceId==null||p?.missionId!==raceId)return;
+    const text=racingTakedownText(p);
+    if(!text)return;
+    bus?.emit?.('toast',{text,kind:'info',ttl:3});
+    live.textContent=text;
+  });
 
   return {
     frame(liveState) {
@@ -137,6 +150,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       if(view.getAttribute('aria-pressed')!==pressed)view.setAttribute('aria-pressed',pressed);
       setProperty(view, 'title', lock?'This section temporarily requires the chase camera.':'Toggle chase / overhead camera');
       setProperty(reset, 'hidden', !authored);setProperty(leave, 'hidden', !authored);
+      setProperty(restart, 'hidden', !authored || race?.params?.raceMode !== 'time-trial');
       setProperty(select, 'hidden', true);selection=null;setProperty(courseCue, 'textContent', '');
       setProperty(mapHost, 'hidden', !authored);setProperty(readings, 'hidden', !authored);
       if(!authored){if(missionId!==null){missionId=null;map=null;mapHost.replaceChildren();}return;}

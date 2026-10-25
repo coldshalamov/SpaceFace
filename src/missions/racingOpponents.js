@@ -433,7 +433,7 @@ export function createRacingOpponents({ state, bus, helpers }) {
       if (row.status === 'racing' && !anchorLive) noteShutterTakedown(row, entity, now);
       const takedownHeld = Number.isFinite(row.resumeAt) && now < row.resumeAt;
       entity.data.intent = racingDriverIntent(row.driver, { entity, params: row.params, gates: heat.gates,
-        nearby: queryNearbyEntities(state, entity.pos, 350, nearby), dt,
+        nearby: queryNearbyEntities(state, entity.pos, 350, nearby), dt, now,
         held: held || row.status !== 'racing' || takedownHeld,
         anchorContext: anchorLive ? { candidate: row.anchorCandidate } : undefined });
     }

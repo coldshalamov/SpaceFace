@@ -329,6 +329,15 @@ if (!process.argv.includes('--forward-set') && !process.argv.includes('--markdow
 // why a literal scan missed it. Sim-side subscription was verified at the same
 // sites the literal census lists.
 const DYNAMIC_FORWARD = [
+  { type: 'rigWorkshop:choose', emitters: ['src/features/rigWorkshop/presentation.js'], note: 'dual-realm public physical workshop choice adapter' },
+  { type: 'shipbreakingYard:action', emitters: ['src/features/shipbreakingYard/browser.js'], note: 'dual-realm public yard choice adapter' },
+  ...['salvageTender:action', 'salvageTender:inspect'].map(type => ({
+    type, emitters: ['src/features/salvageTender/integration.js'], note: 'dual-realm public tender prompt adapter',
+  })),
+  { type: 'salvageOutfits:choose', emitters: ['src/features/salvageOutfits/integration.js'], note: 'dual-realm public salvage outfit terms adapter' },
+  ...['industrialDisasters:command', 'industrialDisasters:requirePresentation', 'industrialDisasters:presentationReady'].map(type => ({
+    type, emitters: ['src/features/industrialDisasters/workerAdapter.js'], note: 'validated industrial request port; normally uses direct laneBusEmit, bus fallback remains lane-safe',
+  })),
   ...['orbital-gallery:retry', 'orbital-gallery:next', 'orbital-gallery:leave',
     'kinetic-league:retry', 'kinetic-league:next', 'kinetic-league:leave'].map(type => ({
     type, emitters: ['src/ui/physicsVenues.js'], note: 'public venue instrument dynamic dispatch',

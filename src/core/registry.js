@@ -50,6 +50,8 @@ import { towlineTable } from '../systems/towlineTable.js';
 import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
 import { borrowedVoice } from '../systems/borrowedVoice.js';
 import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
+import { createProExperienceSystemEntries } from '../features/proExperienceSystems.js';
+import { createShipbreakingYardBrowserEntries } from '../features/shipbreakingYard/browser.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity, lawWitnessesNear } from '../systems/lawSecurity.js';
 import { setDeadDropWitnessSource } from '../systems/boreDeadDrop.js';
@@ -307,6 +309,8 @@ const chronicler = createChronicler({
  */
 export const TEARDOWN_DEPENDENCIES = Object.freeze([
   Object.freeze(['vfx', 'render']),
+  Object.freeze(['shipbreakingYardBrowser', 'render']),
+  Object.freeze(['salvageTender', 'render']),
 ]);
 
 function uniqueSystemsInOrder(systems) {
@@ -609,6 +613,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['towlineTablePrompt', towlineTablePrompt],
     ['borrowedVoice', borrowedVoice],
     ['borrowedVoicePrompt', borrowedVoicePrompt],
+    ...createProExperienceSystemEntries(),
+    ...createShipbreakingYardBrowserEntries(),
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],
@@ -1587,6 +1593,7 @@ export function createRegistry(ctx) {
       try {
         return runRenderUpdatePhase({
           state,
+          bus: ctx.bus,
           render,
           vfx,
           feel,

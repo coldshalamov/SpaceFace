@@ -6,7 +6,11 @@
 // rope is held, and the hard hold ceiling. The standard tether's own reach,
 // spring, capture and break behavior stay in the combat attachment authority.
 const RIVAL_LINE = Object.freeze({ entryBackWU: 180, releaseAheadWU: 60, maxHoldS: 4 });
-const anchor = (id, name, gateIndex) => Object.freeze({ id, name, gateIndex, rivalLine: RIVAL_LINE });
+// Per-anchor override: a swing pays only when its geometry matches the apex it serves —
+// a tight hairpin wants the rope held farther down the outgoing leg than a sweeper does.
+// Falls back to RIVAL_LINE fieldwise so a partial override still reads the shared shape.
+const anchor = (id, name, gateIndex, line = null) => Object.freeze({ id, name, gateIndex,
+  rivalLine: line ? Object.freeze({ ...RIVAL_LINE, ...line }) : RIVAL_LINE });
 const rivalAnchors = (mira, rook, sable) => Object.freeze({
   mira: Object.freeze(mira), rook: Object.freeze(rook), sable: Object.freeze(sable),
 });
@@ -44,8 +48,8 @@ export const RACING_SET_PIECES = Object.freeze({
   }),
   circuit_veil_wash: Object.freeze({
     anchors: Object.freeze([
-      anchor('cold_wake_anchor', 'Cold Wake Anchor', 3),
-      anchor('orchard_slingshot', 'Orchard Slingshot', 6),
+      anchor('cold_wake_anchor', 'Cold Wake Anchor', 3, { entryBackWU: 220, releaseAheadWU: 180, maxHoldS: 7 }),
+      anchor('orchard_slingshot', 'Orchard Slingshot', 6, { entryBackWU: 220, releaseAheadWU: 180, maxHoldS: 7 }),
     ]),
     rivalAnchors: rivalAnchors(
       ['cold_wake_anchor', 'orchard_slingshot'],

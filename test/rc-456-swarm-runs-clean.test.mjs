@@ -7,6 +7,7 @@
 // does), the run's own copy ("One hostile", "+10 cr"), and the seed-4242 proof that round 1
 // resolves into round 2 when its quota actually dies.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
@@ -280,6 +281,23 @@ test('One hostile, not One hostiles', () => {
   const plural = bootSurvivalAnnounce({ stored: 3, tick: 300 });
   assert.equal(plural.lines.length, 1);
   assert.equal(plural.lines[0].payload.text, 'Inbound surge. Three hostiles on approach.');
+});
+
+test('the round slam and boss-down sit inside the frame, not clipped at its edge', () => {
+  // The C1 pass caught the ROUND label clipped at the screen edge. Both beats animate with
+  // sf-sj-slam, whose keyframes hold translateX(-50%) — the layer's own centring idiom, which
+  // only centres a left:50% box. A full-width (left:0;right:0) box under it rides -50vw after
+  // the `both` fill, so the centred title lands half off the left edge. Pin the contract:
+  // every rule that takes the slam keyframes anchors at left:50% with its own resting
+  // translateX(-50%) (animation:none under reduced motion still centres), never left:0;right:0.
+  const src = readFileSync(new URL('../src/ui/swarmJuiceHud.js', import.meta.url), 'utf8');
+  const rules = src.match(/\.sf-sj__[a-z]+[^{]*\{[^}]*animation:sf-sj-slam[^}]*\}/g) || [];
+  assert.ok(rules.length >= 2, 'the slam keyframes drive at least the slam and boss-down rules');
+  for (const rule of rules) {
+    assert.match(rule, /left:50%/, `slam-animated rule must anchor at left:50% — ${rule.slice(0, 60)}`);
+    assert.match(rule, /transform:translateX\(-50%\)/, `slam-animated rule needs the resting centre — ${rule.slice(0, 60)}`);
+    assert.doesNotMatch(rule, /right:0/, `a full-width box under translateX(-50%) is clipped — ${rule.slice(0, 60)}`);
+  }
 });
 
 test('a run credit chip reads +N cr', () => {

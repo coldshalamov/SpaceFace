@@ -12,6 +12,7 @@ import {
 import { SweptSurfaceBatch } from '../src/render/forceLanguage/sweptSurfaceBatch.js';
 import { createTransientVfxMaterial } from '../src/render/combat/transientVfxMaterials.js';
 import { ExplosionRupture } from '../src/render/combat/explosionRupture.js';
+import { ForceParticleFlow } from '../src/render/vfx/forceParticleFlow.js';
 
 function wellBody() {
   const values = new Float32Array(36);
@@ -87,6 +88,24 @@ test('transient buckets use closed event volumes while smoke keeps its density f
   glow.dispose();
   ring.dispose();
   smoke.dispose();
+});
+
+test('affected bodies receive body-local aura parcels and a real contact light', () => {
+  const flow = new ForceParticleFlow(null, { capacity: 12 });
+  const environment = {
+    count: 1,
+    records: [{ x: 4, z: 2, radius: 6, strength: 1, vx: 0, vz: 0, material: 0 }],
+  };
+  const emitted = flow.emit({
+    kind: 'well', x: 0, z: 0, radius: 60, count: 6, life: 0.6, environment,
+  });
+  assert.ok(emitted > 0);
+  const aura = flow.inspect().aura;
+  assert.ok(aura > 0, 'a third of the parcels become body-local aura motes');
+  assert.equal(flow.contactLight.active, true, 'the aura requests a real pooled contact light');
+  assert.ok(flow.contactLight.range >= 56);
+  assert.ok(flow.contactLight.intensity > 3);
+  flow.dispose();
 });
 
 test('destruction publishes the same closed carrier through its existing instance contract', () => {

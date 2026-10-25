@@ -5,6 +5,23 @@ import { CUP_HEATS, RACING_DIFFICULTIES, RACING_RIVALS, readRacingCareer,
   racingRecognitionStatus } from '../systems/racingCareer.js';
 import { racingTakedownReceipts } from '../missions/racingOpponents.js';
 
+/** One-line takedown receipt for toasts and the recognition board; null for foreign payloads. */
+export function racingTakedownText(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const name = typeof payload.name === 'string' && payload.name
+    ? payload.name
+    : (typeof payload.rivalId === 'string' ? payload.rivalId : null);
+  const lost = Number(payload.lostS);
+  const place = typeof payload.setPieceName === 'string' && payload.setPieceName
+    ? payload.setPieceName
+    : (typeof payload.shutter === 'string' && payload.shutter ? payload.shutter : null);
+  if (!name || !place) return null;
+  // The set-piece-impact receipts carry no authored lostS — the cost is the physical rejoin —
+  // so they voice the crash without fabricating a figure (they used to render 'lost NaNs').
+  if (!Number.isFinite(lost)) return `Takedown · ${name} into the ${place}.`;
+  return `Takedown · ${name} lost ${lost.toFixed(2)}s in the ${place}.`;
+}
+
 export function renderRacingRecognition(storage) {
   const career = readRacingCareer(storage), section = el('section', 'race-board-result dp-glass');
   section.setAttribute('aria-label', 'Local circuit recognition');
@@ -40,8 +57,8 @@ export function renderRacingRecognition(storage) {
     }
   }
   for (const row of racingTakedownReceipts()) {
-    section.appendChild(el('p', 'k-sentence',
-      `Takedown · ${row.name} lost ${Number(row.lostS).toFixed(2)}s in the ${row.shutter}.`));
+    const line = racingTakedownText(row);
+    if (line) section.appendChild(el('p', 'k-sentence', line));
   }
   return section;
 }

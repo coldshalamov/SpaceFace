@@ -60,6 +60,21 @@ export function stepEgressExits(state, shipLikeList = null, bus = null) {
       if (ours) { delete data.despawnAt; delete data._egressExitAt; }
       continue;
     }
+    // X-02: while its raid beat is live the Claim Jumper's wing is a staged tutorial actor —
+    // the same identity gate lawSecurity's withdrawal loop, the damage ward, and
+    // pirateDisengage's wingBeat read. A difficultyDirector pin-release or a wingMorale
+    // scatter is a TEMPORARY hold built to lapse so the hull re-presses; a despawn here is
+    // silent (no kill receipt, wingDone never set) and raid.ids.wing keeps blocking every
+    // later restage, so the beat would lose its authored antagonist for good on a hold
+    // designed to expire. Any stamp already placed releases the same way. Once the beat owns
+    // the exit (wingDone — the scripted DISENGAGE or an adopted honest rout) the exemption
+    // ends and this bound still retires the fleeing hull.
+    if (data.onboardingRaidWing === true
+      && state.onboarding?.raid?.active && !state.onboarding?.raid?.wingDone
+      && entity.id === state.onboarding?.raid?.ids?.wing) {
+      if (ours) { delete data.despawnAt; delete data._egressExitAt; }
+      continue;
+    }
     if (ours || data.despawnAt != null) continue;
     if (ai.moraleImmune === true) continue;
     // Arena/survival cells are finite: a retreating cell must stay reachable or a round strands.

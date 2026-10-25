@@ -147,6 +147,26 @@ export const EAST_SECTORS = Object.freeze([
         name: 'Shoal Cache',
         hidden: true,
       }),
+      // ATTENTION S-14 (7/14) — shoal bookkeeping in ice: the salvors' rime board,
+      // and the independents' flag flying under the Collective cut.
+      Object.freeze({
+        id: 'poi_nereid_rime_board',
+        type: 'beacon',
+        name: 'Rime Board',
+        discoveryPlate: Object.freeze({
+          title: 'Rime Board',
+          body: 'A standing board on the ice field\u2019s rim where the salvors scratch claim-lines through the same rime that keeps their count. A line holds until the ice grows over it, which is the shoal\u2019s whole idea of a filing period.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_nereid_independent_flag',
+        type: 'beacon',
+        name: 'Independent Flag',
+        discoveryPlate: Object.freeze({
+          title: 'Independent Flag',
+          body: 'A hand-sewn claim flag on the common seam\u2019s edge, one of a dozen the ice crews fly under the Collective\u2019s cut. The colors are filed at the Shoal Claim desk and nowhere else — on the shoal, a flag is a signature, not a flag.',
+        }),
+      }),
     ]),
   }),
 
@@ -223,6 +243,26 @@ export const EAST_SECTORS = Object.freeze([
         id: 'poi_proteus_buoy',
         type: 'beacon',
         name: 'Well Range Buoy',
+      }),
+      // ATTENTION S-14 (11/14) — the den's own marks: violet strip-paint on the
+      // metallic seam, and the post where bearer cases stage before the funnel run.
+      Object.freeze({
+        id: 'poi_proteus_strip_marks',
+        type: 'beacon',
+        name: 'Strip Marks',
+        discoveryPlate: Object.freeze({
+          title: 'Strip Marks',
+          body: 'Violet strip-paint on the metallic seam\u2019s rim, same hand and color as the Funnel\u2019s guide strips. The strips mark rock the den\u2019s runners have already spoken for; a stone wearing the violet is a stone you are invited not to assay.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_proteus_bearer_post',
+        type: 'beacon',
+        name: 'Bearer Post',
+        discoveryPlate: Object.freeze({
+          title: 'Bearer Post',
+          body: 'A lock-post at the crystalline seam\u2019s edge where bearer cases stage before the funnel run. The chalk beside it marks who is owed — no names, no cargo, only the count, which is the only part the den files as evidence.',
+        }),
       }),
     ]),
   }),
@@ -331,6 +371,26 @@ export const EAST_SECTORS = Object.freeze([
           body: 'A research platform in the Archive’s colors, set down in the Wake where the instruments disagree with one another. Its signal slips in and out of lock — a lab logging something it cannot show. Triangulate before you close range.',
         }),
       }),
+      // ATTENTION S-14 (14/14) — the wake's instruments: a drift buoy the field lab
+      // parked on the debris seam, and a survey that was never finished.
+      Object.freeze({
+        id: 'poi_triton_drift_log',
+        type: 'beacon',
+        name: 'Drift Log Buoy',
+        discoveryPlate: Object.freeze({
+          title: 'Drift Log Buoy',
+          body: 'A field-lab telemetry buoy parked at the wake-debris seam\u2019s rim, logging how fast the dead metal still travels. Eighty million years after departure the debris is still arriving somewhere; the buoy takes the measurement personally.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_triton_abandoned_survey',
+        type: 'derelict',
+        name: 'Abandoned Survey',
+        discoveryPlate: Object.freeze({
+          title: 'Abandoned Survey',
+          body: 'Half a survey grid scratched into the exotic seam — stake holes, one bearing line, no completion stamp. The team that started it filed the seam as measured; the instruments that disagreed were filed as equipment.',
+        }),
+      }),
     ]),
   }),
 ]);
@@ -402,6 +462,20 @@ export const EAST_ANCHORS = Object.freeze({
         pos: Object.freeze({ x: -1420, z: -280 }),
         landmarkGlb: 'place_debris_chunk',
       }),
+      Object.freeze({
+        // ATTENTION S-14 — f_nereid_1 rim (center 420,-640, r440).
+        id: 'poi_nereid_rime_board',
+        pos: Object.freeze({ x: 484, z: -576 }),
+        landmarkGlb: 'place_tally_post',
+        visualRadius: 9,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_nereid_2 rim (center -920,380, r400).
+        id: 'poi_nereid_independent_flag',
+        pos: Object.freeze({ x: -856, z: 444 }),
+        landmarkGlb: 'place_claim_mark',
+        visualRadius: 5,
+      }),
     ]),
   }),
 
@@ -460,6 +534,20 @@ export const EAST_ANCHORS = Object.freeze({
         id: 'poi_proteus_buoy',
         pos: Object.freeze({ x: 320, z: -980 }),
         landmarkGlb: 'place_lane_beacon',
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_proteus_1 rim (center 680,-420, r460).
+        id: 'poi_proteus_strip_marks',
+        pos: Object.freeze({ x: 740, z: -364 }),
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_proteus_2 rim (center -1080,-640, r380).
+        id: 'poi_proteus_bearer_post',
+        pos: Object.freeze({ x: -1016, z: -576 }),
+        landmarkGlb: 'place_cold_locker',
+        visualRadius: 11,
       }),
     ]),
   }),
@@ -544,6 +632,20 @@ export const EAST_ANCHORS = Object.freeze({
         // The lab's instrument mast. The inspection platform this first named has a release GLB but no
         // production source or parts-manifest row, so the atlas gate could not resolve it (D193).
         landmarkGlb: 'place_sensor_mast',
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_triton_3 rim (center -980,-380, r420).
+        id: 'poi_triton_drift_log',
+        pos: Object.freeze({ x: -916, z: -316 }),
+        landmarkGlb: 'place_nav_buoy',
+        visualRadius: 10,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_triton_2 rim (center 940,280, r400).
+        id: 'poi_triton_abandoned_survey',
+        pos: Object.freeze({ x: 876, z: 344 }),
+        landmarkGlb: 'place_ash_pin',
+        visualRadius: 6,
       }),
     ]),
   }),
