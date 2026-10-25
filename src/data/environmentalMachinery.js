@@ -8,6 +8,7 @@ import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { ANVIL_ORCHARD } from './anvilOrchard.js';
 import { seasonalWeatherPhase, SEASONAL_WEATHER_CYCLE } from './seasonalWeather.js';
+import { SECTOR_PHYSICAL_LAW_SPECS } from './sectorPhysicalLaws.js';
 
 export const CINDER_SLUICE_SITE_ID = 'world_site_ceres_cinder_sluice';
 export const CINDER_SLUICE_SECTOR_ID = 'sector_ceres_belt';
@@ -758,7 +759,9 @@ export const HYPERION_YARD_WINCH = buildKillMachine({
 // baler, the Rift fissure cracker, and the CR-FEED machines. Per-sector slices come from
 // killMachinesForSector; this is the census the runtime uses to retire fields and anvils when a
 // sector deactivates or a machine is absent.
+export const SECTOR_LAW_MACHINES = Object.freeze(SECTOR_PHYSICAL_LAW_SPECS.map(buildKillMachine));
 export const ALL_KILL_MACHINES = Object.freeze([
+  ...SECTOR_LAW_MACHINES,
   ...KILL_MACHINES,
   STARTER_FIELD_MACHINE,
   SKER_SCRAP_BALER,
@@ -780,6 +783,8 @@ export const ALL_KILL_MACHINE_BY_ID = Object.freeze(Object.fromEntries(
 ));
 
 export function killMachinesForSector(sectorId) {
+  const rule = SECTOR_LAW_MACHINES.find(machine => machine.sectorId === sectorId);
+  if (rule) return [rule];
   if (sectorId === KILL_MACHINE_SECTOR_ID) return KILL_MACHINES;
   if (sectorId === STARTER_FIELD_SECTOR_ID) return Object.freeze([STARTER_FIELD_MACHINE]);
   if (sectorId === SKER_SCRAP_BALER_SECTOR_ID) return Object.freeze([SKER_SCRAP_BALER]);

@@ -25,6 +25,7 @@
 //    each layer's visual repeat distance is >= ~25 screens of flight.
 import * as THREE from 'three';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import { withSectorLandmark } from './sectorLandmarkBackground.js';
 import {
   resolveBackgroundComposition,
   resolveBackgroundStructure,
@@ -3528,7 +3529,7 @@ export class SpaceBackground {
     this._requestSkyPlate(visualProfile);
     this.backgroundComposition = resolveBackgroundComposition(visualProfile);
     this.backgroundStructure = resolveBackgroundStructure(visualProfile);
-    this.deepFieldRecipe = resolveDeepFieldStructureRecipe(this.backgroundStructure);
+    this.deepFieldRecipe = withSectorLandmark(resolveDeepFieldStructureRecipe(this.backgroundStructure), id);
     this._structureCoverage = estimatePhenomenonCoverage(this.backgroundStructure);
     const targetNebulaOpacity = Math.max(0, Math.min(0.45,
       Number(visualProfile && visualProfile.background && visualProfile.background.nebulaOpacity) || 0));
