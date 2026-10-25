@@ -15,7 +15,7 @@ const SEED = 4242;
 const RUN = {
   id: 'first_trade_1_0', source: 'firstTradeContract',
   destSectorId: 'sector_ceres_belt', stationId: 'station_helios',
-  terms: { paysCr: 760 }, status: 'active',
+  reward_cr: 760, status: 'active', // live shape: accepted missions carry reward_cr, not terms
 };
 
 function rig(withRun = true) {
@@ -23,6 +23,7 @@ function rig(withRun = true) {
   state.mode = 'flight';
   state.missions.active = withRun ? [{ ...RUN }] : [];
   state.world.currentSectorId = 'sector_helios_prime';
+  state.world.previousSectorId = 'sector_helios_prime';
   state.onboarding = { active: false, finished: true };
   const raw = createBus();
   const emitted = [];
@@ -86,10 +87,15 @@ test('X-04 arrival names the worklight lead-in once; no run means silence', () =
   const none = rig(false);
   none.bus.emit('jump:arrive', { sectorId: 'sector_ceres_belt' });
   assert.equal(none.hints('firstGateArrive').length, 0);
+  const wrongLeg = rig();
+  wrongLeg.state.world.previousSectorId = 'sector_io_reach'; // a Ceres entry off the out-run
+  wrongLeg.bus.emit('jump:arrive', { sectorId: 'sector_ceres_belt' });
+  assert.equal(wrongLeg.hints('firstGateArrive').length, 0, 'only the Helios leg names the Flare Rack');
 });
 
 test('X-04 completion names the pay and the kept home toll, once', () => {
-  const h = rig();
+  const h = rig(false); // live order: missions.js removes the run from active before emitting
+  h.state.world.currentSectorId = 'sector_ceres_belt';
   h.bus.emit('mission:completed', { source: 'firstTradeContract', missionId: 'first_trade_1_0', rewardCr: 760 });
   const line = h.hints('firstTradePaid');
   assert.equal(line.length, 1);

@@ -99,3 +99,16 @@ test('X-01 the 344 defended comms keeps the pinned line and names the bay', () =
   assert.match(src, /Hazard pay transferred\./);
   assert.match(src, /in your bay/);
 });
+
+test('X-01 a cash-in that leaves leftovers does not re-offer the dock hint at the berth', () => {
+  const h = rig();
+  h.state.onboarding = { active: true, finished: false };
+  h.bus.emit('salvage:changed', { used: 3 }); // munitions filled during the rail — deferred
+  h.state.onboarding = { active: false, finished: true };
+  // Dock at helios: the cash-in pays the lawful lots and leaves restricted leftovers in the bay.
+  h.bus.emit('salvage:bayCashedIn', { units: 4, credits: 220 });
+  h.bus.emit('salvage:changed', { used: 3, cashIn: true });
+  assert.equal(h.emitted.filter((e) => e.event === 'hud:firstUse' && e.payload.verbId === 'firstSalvageCashIn').length, 1);
+  assert.equal(h.emitted.filter((e) => e.event === 'hud:firstUse' && e.payload.verbId === 'firstSalvageBay').length, 0,
+    'the berth just paid — "Dock to cash it" must not follow the cash-in');
+});

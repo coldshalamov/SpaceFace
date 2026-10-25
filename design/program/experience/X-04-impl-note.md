@@ -10,3 +10,6 @@ accept ends the rail. `jumpAbortText` credits refusal now ends "Earn it at a doc
 Re-pins (deliberate): `jump-verb-notice.test.mjs` :38 and :267 gain the remedy suffix.
 Tests: new x04-first-gate-toll-line 6/6; jump-verb-notice 14/14; keep-green 34/35 —
 the first-session-places relighting miss is the same pre-existing director drift.
+Review fixes: `_runOriginSectorId` falls back to the contract's board station (missions.js
+removes the run before emitting, so home reads 246 not Ceres's 194); accepted missions read
+`reward_cr` not `terms`; the Ceres arrival line only speaks on the Helios leg.

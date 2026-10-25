@@ -750,7 +750,7 @@ export const onboarding = {
       if (run && payload.gateTo === run.destSectorId) {
         const out = gateTollFor(this._sectorById(run.destSectorId)) || 0;
         const home = gateTollFor(this._sectorById(this._runOriginSectorId(run))) || 0;
-        const pay = Number(run.terms && run.terms.paysCr) || FIRST_TRADE_CONTRACT.terms.paysCr;
+        const pay = Number(run.reward_cr) || FIRST_TRADE_CONTRACT.terms.paysCr;
         this._showHint('firstGateToll', `Toll ${out} out, ${home} home. The run pays ${pay}. Jump.`, payload);
         if (!this.state.player.hints) this.state.player.hints = {};
         this.state.player.hints.firstGate = true;
@@ -763,6 +763,9 @@ export const onboarding = {
     bus.on('jump:arrive', (p) => {
       const run = this._firstTradeRun();
       if (!run || !p || p.sectorId !== run.destSectorId) return;
+      // Only the Helios leg reads this way — the Flare Rack lead-in is the out-run, not a
+      // return or a later Ceres entry.
+      if ((this.state.world && this.state.world.previousSectorId) !== this._runOriginSectorId(run)) return;
       this._showHint('firstGateArrive', 'Ceres. Follow the Flare Rack to the refinery.', {});
     });
 
@@ -779,6 +782,7 @@ export const onboarding = {
     // on the fill and on the cash-in. _showHint defers while the rail owns the voice, so a 344
     // kill inside the rail speaks on the next post-rail fill or dock.
     bus.on('salvage:changed', (p) => {
+      if (p && p.cashIn) return;
       if ((p && p.used | 0) > 0) this._showHint('firstSalvageBay', firstUseLine('firstSalvageBay'), {});
     });
     bus.on('salvage:bayCashedIn', (p) => {
@@ -1928,9 +1932,12 @@ export const onboarding = {
   },
 
   // The board station's sector is where the run started — the "gate home" toll is priced there.
+  // At mission:completed the run is already off the active list (missions.js removes before
+  // emitting), so a null run falls back to the contract's own board station before the
+  // player's current sector — quoting the Ceres-side toll as "home" would read 194, not 246.
   _runOriginSectorId(run) {
     if (run && run.originSectorId) return run.originSectorId;
-    const stationId = run && run.stationId;
+    const stationId = (run && run.stationId) || FIRST_TRADE_CONTRACT.stationId;
     if (stationId) {
       const home = SECTORS.find((s) => s && Array.isArray(s.stations)
         && s.stations.some((st) => st && st.id === stationId));
@@ -1945,7 +1952,7 @@ export const onboarding = {
     // last cost named at the moment the player has the purse for it.
     if (payload && payload.source === FIRST_TRADE_CONTRACT_SOURCE) {
       const run = this._firstTradeRun();
-      const pay = Number(payload.rewardCr) || (run && Number(run.terms && run.terms.paysCr)) || FIRST_TRADE_CONTRACT.terms.paysCr;
+      const pay = Number(payload.rewardCr) || Number(run && run.reward_cr) || FIRST_TRADE_CONTRACT.terms.paysCr;
       const home = gateTollFor(this._sectorById(this._runOriginSectorId(run))) || 0;
       this._showHint('firstTradePaid', `Paid ${pay}. Keep ${home} for the gate home.`, {});
     }
