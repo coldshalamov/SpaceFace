@@ -244,6 +244,9 @@ export const DRIFT_AUCTION_RUNTIME = Object.freeze({
     const dudIndex = Math.floor(rng() * 3);
     live.vars.crates = [];
     const angles = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3];
+    // Crate index is not a lot index. When the dud sits in the middle, both
+    // other crates are even, and i % 2 stamps both of them with the first load.
+    let realLot = 0;
     for (let i = 0; i < 3; i += 1) {
       const crate = d.spawnProp(live, {
         type: 'beacon',
@@ -264,7 +267,12 @@ export const DRIFT_AUCTION_RUNTIME = Object.freeze({
       live.ids.push(crate.id);
       live.roles[crate.id] = 'crate';
       const dud = i === dudIndex;
-      const lot = dud ? DUD_LOT : REAL_LOTS[i % REAL_LOTS.length];
+      let lot;
+      if (dud) lot = DUD_LOT;
+      else if (dudIndex === 1) {
+        lot = REAL_LOTS[realLot];
+        realLot += 1;
+      } else lot = REAL_LOTS[i % REAL_LOTS.length];
       live.vars.crates.push({
         id: crate.id, index: i, dud,
         commodityId: lot.commodityId, amount: lot.amount, label: lot.label,

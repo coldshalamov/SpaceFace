@@ -59,10 +59,18 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   // during authoring. Omitting this small JSON subtree rejects otherwise valid GLBs.
   Object.freeze({ source: 'assets/ships/motions', destination: 'assets/ships/motions' }),
   Object.freeze({ source: 'assets/portraits', destination: 'assets/portraits' }),
-  // The entire authored audio tree ships: SAMPLE_MANIFEST sfx, generated bark voice lines, and
-  // music beds are all fetched from assets/audio/** at runtime (sampleLibrary.js, barkVoice.js).
+  // The authored audio tree ships: SAMPLE_MANIFEST sfx, bark_* register clips, and music beds
+  // are all fetched from assets/audio/** at runtime (sampleLibrary.js, barkVoice.js).
   // Omitting it silently degrades the retail build to synth-only voices.
-  Object.freeze({ source: 'assets/audio', destination: 'assets/audio' }),
+  // Excluded: voice/line_* (the byte-pinned delivered corpus — acceptance artifacts verified on
+  // disk by pq-158 tests, never fetched; ~120 MiB) and voice/blind/ (unlabeled check fixtures).
+  // 'voice/line_' is deliberately a RAW prefix (no trailing slash): delivered names are
+  // line_NNNN_<register>.wav at the top level, so the prefix matches the filename stem itself.
+  Object.freeze({
+    source: 'assets/audio',
+    destination: 'assets/audio',
+    exclude: Object.freeze(['voice/line_', 'voice/blind/']),
+  }),
   // Runtime plume/RCS masks are loaded through template paths in vfx.js. Copy only this manifest-
   // governed subtree; the labelled FX reference sheets in assets/fx/ remain authoring-only.
   Object.freeze({ source: 'assets/fx/thruster', destination: 'assets/fx/thruster' }),
@@ -171,12 +179,24 @@ export async function createReleaseCopyPlans({
       destination: safeRelativePath(rawMapping?.destination, 'release copy destination'),
     };
     const projection = mapping.projection || 'exact';
+    // Cheap authoring guards first: a malformed mapping must fail before the expensive
+    // render-package omission walk (GLB hashing, runtime-table rebuild).
+    if (projection !== 'exact' && projection !== RENDER_PACKAGE_SOURCE_PROJECTION) {
+      throw new Error(`unknown release copy projection ${projection}`);
+    }
+    if (mapping.exclude != null && (!Array.isArray(mapping.exclude) || mapping.exclude.length === 0)) {
+      throw new Error(`release copy exclude for ${mapping.source} must be a non-empty array`);
+    }
+    if (mapping.exclude != null && projection === RENDER_PACKAGE_SOURCE_PROJECTION) {
+      throw new Error(`release copy ${mapping.source} cannot combine projection with exclude — the overlap semantics are untested; split the tree instead`);
+    }
     await assertNoSymlinkPath(projectRoot, mapping.source, 'release copy source');
     const omissions = projection === RENDER_PACKAGE_SOURCE_PROJECTION
       ? await renderPackageSourceOmissions(projectRoot, mapping, pilots)
       : [];
-    if (projection !== 'exact' && projection !== RENDER_PACKAGE_SOURCE_PROJECTION) {
-      throw new Error(`unknown release copy projection ${projection}`);
+    if (mapping.exclude != null) {
+      omissions.push(...await collectExcludedOmissions(projectRoot, mapping));
+      omissions.sort((a, b) => lexicalCompare(a.path, b.path));
     }
     plans.push({ mapping, projection, omissions });
   }
@@ -342,6 +362,42 @@ function digestFileRecords(inputFiles) {
   return { files, bytes, digest: hash.digest('hex') };
 }
 
+/** Normalized exclusion prefixes for a mapping: dir-form entries ('x/') keep their slash so
+ *  they only match inside the directory; other entries stay raw path prefixes. Shared by the
+ *  planner and the asset-reachability audit so both read the same exclusion semantics. */
+export function releaseCopyExcludePrefixes(mapping) {
+  const exclude = mapping?.exclude ?? [];
+  if (!Array.isArray(exclude)) {
+    throw new Error(`release copy exclude for ${mapping?.source} must be a non-empty array`);
+  }
+  return exclude.map((entry) => {
+    if (typeof entry !== 'string' || entry.length === 0) {
+      throw new Error(`release copy exclude entries must be non-empty strings, got ${JSON.stringify(entry)}`);
+    }
+    const rel = safeRelativePath(entry.replace(/\/+$/, ''), 'release copy exclude');
+    return entry.endsWith('/') ? `${rel}/` : rel;
+  });
+}
+
+async function collectExcludedOmissions(projectRoot, mapping) {
+  const prefixes = releaseCopyExcludePrefixes(mapping);
+  const matches = (rel) => prefixes.some((prefix) => rel.startsWith(prefix));
+  const sourceRoot = resolveContained(projectRoot, mapping.source, 'release copy source');
+  const files = [];
+  await walk(sourceRoot, sourceRoot, files, new Set(), matches);
+  const matched = new Set();
+  for (const f of files) {
+    for (const prefix of prefixes) if (f.path.startsWith(prefix)) matched.add(prefix);
+  }
+  for (const prefix of prefixes) {
+    if (!matched.has(prefix)) {
+      throw new Error(`release copy exclude '${prefix}' matches nothing under ${mapping.source} — stale rule or renamed tree`);
+    }
+  }
+  for (const f of files) f.reason = 'exclude';
+  return files;
+}
+
 async function renderPackageSourceOmissions(projectRoot, mapping, pilots) {
   const sourcePrefix = `${safeRelativePath(mapping.source, 'release copy source').replace(/\/$/, '')}/`;
   const seen = new Set();
@@ -421,6 +477,7 @@ async function renderPackageSourceOmissions(projectRoot, mapping, pilots) {
     }
 
     omissions.push({
+      reason: 'render-package-projection',
       path: sourceRecord.path,
       bytes: sourceRecord.bytes,
       sha256: sourceRecord.sha256,
@@ -469,6 +526,9 @@ async function copyProjectedDir(sourceRoot, destinationRoot, directory, excluded
     if (excluded.has(rel)) continue;
     if (entry.isSymbolicLink()) throw new Error(`release copy refuses symbolic link ${source}`);
     const destination = join(destinationRoot, ...rel.split('/'));
+    // Directory recursion passes destinationRoot, not destination: a dir's own destination is
+    // only ever created by a file's mkdir(dirname) below, so a fully-excluded directory never
+    // materializes empty (pinned by the m6 exclude fixture).
     if (entry.isDirectory()) await copyProjectedDir(sourceRoot, destinationRoot, source, excluded);
     else if (entry.isFile()) {
       await mkdir(dirname(destination), { recursive: true });
@@ -477,7 +537,7 @@ async function copyProjectedDir(sourceRoot, destinationRoot, directory, excluded
   }
 }
 
-async function walk(base, directory, files, exclude) {
+async function walk(base, directory, files, exclude, include) {
   const entries = await readdir(directory, { withFileTypes: true });
   entries.sort((a, b) => lexicalCompare(a.name, b.name));
   for (const entry of entries) {
@@ -486,10 +546,11 @@ async function walk(base, directory, files, exclude) {
     if (exclude.has(rel)) continue;
     if (entry.isSymbolicLink()) throw new Error(`release receipt refuses symbolic link ${absolute}`);
     if (entry.isDirectory()) {
-      await walk(base, absolute, files, exclude);
+      await walk(base, absolute, files, exclude, include);
       continue;
     }
     if (!entry.isFile()) continue;
+    if (typeof include === 'function' && !include(rel)) continue;
     const info = await stat(absolute);
     const sha256 = createHash('sha256').update(await readFile(absolute)).digest('hex');
     files.push({ path: rel, bytes: info.size, sha256 });
@@ -504,7 +565,7 @@ function normalizeRel(value) {
   return String(value || '').split(sep).join('/').replace(/^\.\//, '');
 }
 
-function safeRelativePath(value, label) {
+export function safeRelativePath(value, label) {
   const clean = String(value ?? '').replace(/\\/g, '/');
   const segments = clean.split('/');
   if (!clean || clean.startsWith('/') || /^[a-z][a-z\d+.-]*:/i.test(clean) || clean.includes('\0')

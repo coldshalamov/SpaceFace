@@ -1,0 +1,191 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  BARKS, BARK_FACTIONS, BARK_SITUATIONS, BARK_EVENT_SITUATIONS, barkFor,
+  HULL_RECOGNITION, hullRecognitionBarkFor,
+  HISTORY_RECOGNITION, historyBarkFor,
+  BAR_GREETING_BARKS, barGreetingBarkFor,
+  BAR_APPROACH_BARKS, barApproachBarkFor,
+  SECTOR_GREETING_BARKS, sectorGreetingBarkFor,
+  WITNESS_CRIME_BARKS, witnessCrimeBarkFor,
+  PURSUIT_BARKS, pursuitBarkFor,
+  SURRENDER_BARKS, surrenderBarkFor,
+  ESCAPE_TAUNT_BARKS, escapeTauntBarkFor,
+  podHuntBarkFor,
+  ORE_FLOOD_BARKS, oreFloodBarkFor,
+  dockDeedBarkFor,
+  rivalScavengerLineFor,
+  witnessSeamLineFor,
+  lawStepBarkFor,
+  passengerBeatLine,
+  TUMBLE_RAKE_BARKS, tumbleRakeBarkFor,
+} from '../src/data/barks.js';
+import { BARK_SITUATION_FILL, BARK_CELL_MIN, topUpBarkSituationCells } from '../src/data/barkSituationFill.js';
+import { resolveBarkVoice, resolveVoiceRegister, identifyRegisterFromPcm, FACTION_VOICE_REGISTERS } from '../src/audio/barkVoice.js';
+import { resolveFactionSting, resolveSectorBed } from '../src/audio/themeMatrix.js';
+
+// D254: the fill reservoir used to be capped at BARK_CELL_MIN=12 appends, leaving ~55 authored
+// tail lines unreachable. The cap is gone — every line in BARK_SITUATION_FILL must land in the
+// live merged cell, and no touched cell may end under the floor.
+
+const SITUATION_KEYS = [...BARK_SITUATIONS, ...BARK_EVENT_SITUATIONS];
+
+test('the fill table holds no dead keys — every faction id and situation key is live', () => {
+  // A fill cell under a misspelled faction or a non-live situation key is dead space of the
+  // exact D254 class: authored, iterated by nobody, caught by no reachability count.
+  for (const factionId of Object.keys(BARK_SITUATION_FILL)) {
+    assert.ok(BARK_FACTIONS.includes(factionId), `fill faction '${factionId}' is not a live BARK_FACTIONS id`);
+    for (const situation of Object.keys(BARK_SITUATION_FILL[factionId])) {
+      assert.ok(SITUATION_KEYS.includes(situation), `fill key ${factionId}/${situation} is not a live situation`);
+      const cell = BARK_SITUATION_FILL[factionId][situation];
+      assert.ok(
+        Array.isArray(cell) && cell.every((l) => typeof l === 'string' && l.trim().length > 0 && l === l.trim()),
+        `fill cell ${factionId}/${situation} is not an array of trimmed non-empty strings — authored content the mutator silently skips`,
+      );
+      // The mutator dedupes against `seen`, so an authored repeat inside one cell is silently
+      // dropped — dead authored weight no consumer can reach, the exact D254 class.
+      assert.equal(
+        new Set(cell).size,
+        cell.length,
+        `fill cell ${factionId}/${situation} holds a duplicate line — silently deduped dead authored weight`,
+      );
+    }
+  }
+  // The same dead-space class on the base side: a BARKS pack keyed under a non-live faction
+  // id is iterated by nobody — countBarkCorpus, enumerateBarkPipeline, and the mutator all
+  // key off BARK_FACTIONS.
+  assert.deepEqual(
+    Object.keys(BARKS).filter((k) => !BARK_FACTIONS.includes(k)),
+    [],
+    'BARKS holds a pack under a non-live faction id',
+  );
+});
+
+test('every fill line is reachable in the merged BARKS cell', () => {
+  let fillLineCount = 0;
+  for (const factionId of BARK_FACTIONS) {
+    const pack = BARKS[factionId];
+    const fill = BARK_SITUATION_FILL[factionId];
+    if (!pack || !fill) continue;
+    for (const situation of SITUATION_KEYS) {
+      const extra = fill[situation];
+      const cell = pack[situation];
+      if (!Array.isArray(extra) || extra.length === 0) continue;
+      assert.ok(Array.isArray(cell), `${factionId}/${situation}: fill exists but no live cell`);
+      fillLineCount += extra.length;
+      // Tail-equality, not membership: `includes` also passes when the mutator's `seen` dedupe
+      // silently dropped a fill line that duplicates a base line — dead authored weight of the
+      // exact D254 class. Fill must land verbatim at the cell's tail.
+      assert.deepEqual(
+        cell.slice(cell.length - extra.length),
+        extra,
+        `${factionId}/${situation}: fill must land verbatim at the cell tail — a deduped, dropped, or reordered fill line is silent dead weight`,
+      );
+    }
+  }
+  assert.ok(fillLineCount > 0, 'fill corpus is non-empty (test is measuring real lines)');
+});
+
+test('no touched cell ends under the BARK_CELL_MIN floor', () => {
+  // topUp is idempotent on the already-merged corpus — a second run appends nothing and
+  // reports only cells that remain under the floor after all fill is consumed.
+  const underFloor = topUpBarkSituationCells(BARKS, BARK_FACTIONS, BARK_SITUATIONS, BARK_EVENT_SITUATIONS);
+  assert.deepEqual(underFloor, []);
+});
+
+test('every live cell meets the floor directly — not just via the mutator report', () => {
+  // The floor contract belongs to the corpus itself, so assert it straight off BARKS for
+  // every faction × situation rather than trusting the mutator's own report.
+  const under = [];
+  for (const factionId of BARK_FACTIONS) {
+    const pack = BARKS[factionId];
+    assert.ok(pack, `${factionId} missing from BARKS`);
+    // A pack key outside the situation set is the same dead-space class as a dead fill key:
+    // authored, iterated by nobody — e.g. a typo'd `attacks:` cell.
+    assert.deepEqual(
+      Object.keys(pack).filter((k) => !SITUATION_KEYS.includes(k)),
+      [],
+      `${factionId} pack holds keys no consumer iterates`,
+    );
+    for (const situation of SITUATION_KEYS) {
+      const cell = pack[situation];
+      assert.ok(Array.isArray(cell), `${factionId}/${situation} is missing or not an array`);
+      assert.ok(
+        cell.every((l) => typeof l === 'string' && l === l.trim() && l.length > 0),
+        `${factionId}/${situation} holds a padded or non-string line — caption text must be exactly its trimmed self`,
+      );
+      assert.equal(
+        new Set(cell).size, cell.length,
+        `${factionId}/${situation} holds a duplicate line — authored dead weight that reads as additive`,
+      );
+      if (cell.length < BARK_CELL_MIN) {
+        under.push(`${factionId}/${situation} (${cell.length})`);
+      }
+    }
+  }
+  assert.deepEqual(under, []);
+});
+
+test('deep cell indices past the old cap resolve to authored lines', () => {
+  // A cell longer than the old 12-cap proves its tail is live; barkFor must return the exact
+  // line at every index, including the former dead zone.
+  let deepCells = 0;
+  for (const factionId of BARK_FACTIONS) {
+    const pack = BARKS[factionId];
+    const fill = BARK_SITUATION_FILL[factionId];
+    if (!pack || !fill) continue;
+    for (const situation of SITUATION_KEYS) {
+      const cell = pack[situation];
+      if (!Array.isArray(fill[situation]) || !Array.isArray(cell) || cell.length <= BARK_CELL_MIN) continue;
+      deepCells += 1;
+      for (let i = 0; i < cell.length; i += 1) {
+        assert.equal(barkFor(factionId, situation, i), cell[i], `${factionId}/${situation}[${i}] not selectable`);
+      }
+    }
+  }
+  assert.ok(deepCells > 0, 'expected merged cells deeper than the old cap');
+});
+
+test('prototype-keyed ids take the documented fallback at every selector — never a crash or an inherited member', () => {
+  // 'toString'/'constructor'/'__proto__' are valid strings a hostile or corrupted factionId can
+  // carry; every corpus lookup must answer with its contracted fallback, not an Object.prototype
+  // member, a TypeError, or the literal text "undefined". Guards are Object.hasOwn throughout.
+  for (const key of ['toString', 'constructor', '__proto__']) {
+    assert.ok(BARKS.faction_free.scan.includes(barkFor(key, 'scan', 0)), `barkFor(${key}) must speak faction_free`);
+    assert.ok(BARKS.faction_scn.scan.includes(barkFor('faction_scn', key, 0)),
+      `barkFor(faction_scn, ${key}) must fall back to the scan cell, not adopt a prototype member`);
+    // The selector replaces {ship}/{class} tokens on the way out — compare post-replacement.
+    const expectedHull = HULL_RECOGNITION.faction_free.map((l) => l.replace(/\{ship\}/g, 'that hull').replace(/\{class\}/g, 'hull'));
+    assert.ok(expectedHull.includes(hullRecognitionBarkFor(key, 0, {})), `hullRecognitionBarkFor(${key}) must speak faction_free`);
+    assert.ok(BAR_GREETING_BARKS.faction_free.any.includes(barGreetingBarkFor(key, key, 0)), `barGreetingBarkFor(${key}) must speak faction_free.any`);
+    assert.ok(BAR_APPROACH_BARKS.faction_free.includes(barApproachBarkFor(key, 0)), `barApproachBarkFor(${key}) must speak faction_free`);
+    // kills>0 qualifies the 'kills' family — a prototype key must still reach faction_free,
+    // not return '' and silently eat the line on the live scan path.
+    const expectedHistory = HISTORY_RECOGNITION.faction_free.kills.map((l) =>
+      l.replace(/\{ship\}/g, 'that hull').replace(/\{kills\}/g, '2').replace(/\{captain\}/g, 'the captain'));
+    assert.ok(expectedHistory.includes(historyBarkFor(key, { hasHistory: true, kills: 2 }, 0)), `historyBarkFor(${key}) must speak faction_free`);
+    assert.equal(sectorGreetingBarkFor(key, 0), null, `sectorGreetingBarkFor(${key}) must return null for an unknown sector`);
+    assert.equal(lawStepBarkFor(key), null, `lawStepBarkFor(${key}) must return null for an unknown event`);
+    assert.equal(passengerBeatLine(key, 0), '', `passengerBeatLine(${key}) must return '' for an unknown kind`);
+    assert.ok(WITNESS_CRIME_BARKS.faction_free.includes(witnessCrimeBarkFor(key, 0)), `witnessCrimeBarkFor(${key}) must speak faction_free`);
+    assert.ok(PURSUIT_BARKS.faction_free.includes(pursuitBarkFor(key, 0)), `pursuitBarkFor(${key}) must speak faction_free`);
+    assert.ok(SURRENDER_BARKS.faction_free.includes(surrenderBarkFor(key, 0)), `surrenderBarkFor(${key}) must speak faction_free`);
+    assert.ok(ESCAPE_TAUNT_BARKS.faction_free.includes(escapeTauntBarkFor(key, 0)), `escapeTauntBarkFor(${key}) must speak faction_free`);
+    assert.equal(podHuntBarkFor(key, key, 0), null, `podHuntBarkFor(${key}) must return null for an unknown key`);
+    const expectedOre = ORE_FLOOD_BARKS.working.map((l) => l.replace(/\{ore\}/g, 'iron'));
+    assert.ok(expectedOre.includes(oreFloodBarkFor(key, 0, 'iron')), `oreFloodBarkFor(${key}) must speak the working register`);
+    assert.equal(dockDeedBarkFor(key, 0, { deed: 'x' }), null, `dockDeedBarkFor(${key}) must return null for an unknown tone`);
+    assert.equal(rivalScavengerLineFor(key, 0), '', `rivalScavengerLineFor(${key}) must return '' for an unknown kind`);
+    assert.equal(witnessSeamLineFor(key, 5), null, `witnessSeamLineFor(${key}) must return null for an unknown tracker`);
+    assert.equal(resolveVoiceRegister(key).id, FACTION_VOICE_REGISTERS.faction_free.id, `resolveVoiceRegister(${key}) must fall back to faction_free`);
+    assert.equal(resolveBarkVoice({ factionId: key, situation: 'scan', line: 'x' }).registerId, 'faction_free', `resolveBarkVoice(${key}) must fall back to faction_free`);
+    assert.equal(resolveFactionSting(key), null, `resolveFactionSting(${key}) must return null`);
+    assert.match(resolveSectorBed(key).id, /^bed_/, `resolveSectorBed(${key}) must take the hashed-bed path`);
+  }
+  assert.equal(identifyRegisterFromPcm(null), null, 'identifyRegisterFromPcm(null) must return null, not throw');
+  assert.equal(identifyRegisterFromPcm([]), null, 'identifyRegisterFromPcm([]) must return null, not throw');
+  // Index selectors wrap negatives into range like pickIndex — lines[-1] must never be null.
+  assert.ok(TUMBLE_RAKE_BARKS.includes(tumbleRakeBarkFor(-1)), 'tumbleRakeBarkFor(-1) must wrap into the corpus');
+  assert.ok(SECTOR_GREETING_BARKS.sector_helios_prime.includes(sectorGreetingBarkFor('sector_helios_prime', -2)),
+    'sectorGreetingBarkFor(-2) must wrap into the sector cell');
+});

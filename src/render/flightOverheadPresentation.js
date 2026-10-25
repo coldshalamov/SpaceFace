@@ -46,16 +46,22 @@ export function createFlightOverheadPresentation(scene) {
         light.intensity = 0;
         return;
       }
-      const rot = mesh.rotation && Number.isFinite(mesh.rotation.y)
-        ? mesh.rotation.y
-        : (Number.isFinite(entity.rot) ? entity.rot : 0);
+      const meshYaw = mesh.rotation && Number.isFinite(mesh.rotation.y) ? mesh.rotation.y : null;
       const radius = Number.isFinite(entity.radius) && entity.radius > 0 ? entity.radius : 6;
       const aft = radius * 0.82;
-      light.position.set(
-        mesh.position.x - Math.cos(rot) * aft,
-        1.35,
-        mesh.position.z - Math.sin(rot) * aft,
-      );
+      // Root yaw is minus the heading. Three.js local +X is forward, so aft is
+      // (-cos yaw, +sin yaw). A bare sim heading still uses (-cos, -sin).
+      let aftX;
+      let aftZ;
+      if (meshYaw != null) {
+        aftX = -Math.cos(meshYaw) * aft;
+        aftZ = Math.sin(meshYaw) * aft;
+      } else {
+        const heading = Number.isFinite(entity.rot) ? entity.rot : 0;
+        aftX = -Math.cos(heading) * aft;
+        aftZ = -Math.sin(heading) * aft;
+      }
+      light.position.set(mesh.position.x + aftX, 1.35, mesh.position.z + aftZ);
       light.color.setRGB(sample.r, sample.g, sample.b);
       light.intensity = sample.intensity * (flashReduce ? 0.22 : 0.85);
       light.distance = 18 + radius * 1.4;

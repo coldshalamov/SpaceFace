@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "b7020035c027d347f9e2e58c2dc8464a330f6e728b38665982830f193e626df2",
+    "authoritativeHash": "2e14459059d11fdd8927440f52471fdb2f341827f3107cdc48d3b9cfcddf16ce",
     "authoritativeHashByReloadAt": {
-      "60": "b7020035c027d347f9e2e58c2dc8464a330f6e728b38665982830f193e626df2",
-      "600": "b7020035c027d347f9e2e58c2dc8464a330f6e728b38665982830f193e626df2"
+      "60": "2e14459059d11fdd8927440f52471fdb2f341827f3107cdc48d3b9cfcddf16ce",
+      "600": "2e14459059d11fdd8927440f52471fdb2f341827f3107cdc48d3b9cfcddf16ce"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -267,6 +267,9 @@
     "Reload60 and reload600 retain deterministic continuation. Acceptance bounds, repeat minimum, input tape and event families are unchanged.",
     "2026-10-23 state-shape-only drift: RC-MARKET-PLAY core (1a89fcd20e) added five empty economy containers (auditorPenn, coldChain, convoyShares, forwardSlips, podIntakeReceipts). Bisect pins it there; parent c25ee0770d reproduces the prior hash.",
     "Paired snapshots (inspect --tick 720) differ only in those five empty leaves; metrics, trace counts and event families are identical for both controllers. HEAD 087a1dc2f2 reproduces the new hash at repeat 5 with reload parity.",
-    "The prior authoritativeHash (reload60 and reload600) was 310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f; reload60 and reload600 both reproduce the new hash."
+    "The prior authoritativeHash (reload60 and reload600) was 310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f; reload60 and reload600 both reproduce the new hash.",
+    "2026-10-25 deliberate re-record over 86656026fe..HEAD, paired with the legacy-leg re-record. Same landed causes: 5a3c1298f0 mission leaves, save bumps to v21, dda2c2cc96 row-482 retune (dmg 8->5, packet x5/8, warden regen 8.984->46.865).",
+    "Paired v3 final snapshots differ in 30 leaves: meta.version 18->21, giverId/clientId nulls, 27 pulse dmg/packet leaves (fewer bolts in flight at reload-60), warden shield mid-regen. ZERO pos/vel/rot diffs; reload-60 and reload-600 hash identically.",
+    "The prior authoritativeHash (reload60 and reload600) was b7020035c027d347f9e2e58c2dc8464a330f6e728b38665982830f193e626df2."
   ]
 }

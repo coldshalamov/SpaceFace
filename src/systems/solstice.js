@@ -511,7 +511,9 @@ export function createSolstice() {
                 radius: 4,
                 mass: 1,
                 data: {
-                  commodity: 'cmdty_ore_rare',
+                  // The scoop reads kind and commodityId. Phosphor Crystal is the light crystal.
+                  kind: 'ore',
+                  commodityId: 'cmdty_crystal_lumin',
                   amount: 2,
                   pickupRole: 'crystal',
                   homeSectorId: C.sectorId,

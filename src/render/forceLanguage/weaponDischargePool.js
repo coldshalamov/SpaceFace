@@ -12,10 +12,10 @@ export const DISCHARGE_CAPACITY = 48;
  * the floor only ever thickens, so close zoom keeps its authored cross-section exactly.
  */
 export const SOURCE_MIN_STRIP_PX = 2.4;
-export const IMPACT_MIN_STRIP_PX = 4.0;
+export const IMPACT_MIN_STRIP_PX = 5.0;
 /** Whole-footprint floors (width x reach, pixels) so a hit/muzzle still reads at the wide camera. */
 export const SOURCE_MIN_WIDTH_PX = 9, SOURCE_MIN_LENGTH_PX = 44;
-export const IMPACT_MIN_WIDTH_PX = 16, IMPACT_MIN_LENGTH_PX = 60;
+export const IMPACT_MIN_WIDTH_PX = 22, IMPACT_MIN_LENGTH_PX = 86;
 
 /**
  * Working heat of the strips (instance attribute `iPivot.w`). The legacy surface shader multiplies
@@ -103,6 +103,7 @@ export class WeaponDischargePool {
       alive:false,role:SURFACE_ROLE.SOURCE,kind:IMPACT_KIND.HULL,
       age:0,life:0,x:0,y:0,z:0,angle:0,pitch:0,width:0,length:0,opacity:1,
       source:null,variant:null,ownerId:null,targetId:null,attached:false,slant:0,
+      approachX:NaN,approachZ:NaN,
       tr:1,tg:1,tb:1,priority:0,seed:0,beat:0,cadence:Infinity,pxw:0,
       // Retained target-local anchor of an attached impact. x/y/z/angle/pitch hold the DRAWN world pose.
       lx:0,ly:0,lz:0,langle:0,lpitch:0,heatScale:1,
@@ -171,12 +172,14 @@ export class WeaponDischargePool {
     slot.angle=Math.atan2(pose.az,pose.ax);
     slot.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
     const ip=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
-    slot.width=Math.max(.8,flash.size0,ip*IMPACT_MIN_WIDTH_PX);slot.length=Math.max(2.2,flash.size1*2.15,ip*IMPACT_MIN_LENGTH_PX);
+    slot.width=Math.max(1.0,flash.size0,ip*IMPACT_MIN_WIDTH_PX);slot.length=Math.max(2.8,flash.size1*2.35,ip*IMPACT_MIN_LENGTH_PX);
     slot.opacity=Math.min(1,flash.opacity0/1.2);
     slot.source=null;slot.variant=variant;
     slot.targetId=pose.targetId!=null?pose.targetId:null;
     slot.attached=pose.attached===true;
     slot.slant=Number.isFinite(pose.slant)?pose.slant:0;
+    slot.approachX=Number.isFinite(pose.approachX)?pose.approachX:NaN;
+    slot.approachZ=Number.isFinite(pose.approachZ)?pose.approachZ:NaN;
     slot.tr=Number.isFinite(flash.r)?flash.r:1;
     slot.tg=Number.isFinite(flash.g)?flash.g:1;
     slot.tb=Number.isFinite(flash.b)?flash.b:1;
@@ -435,6 +438,21 @@ export class WeaponDischargePool {
     // hairline. It is a tapered blade (never a disc or card) and it cools with the same envelope,
     // so the eye gets one bright anchor to hang the slit, fan and ring on at the chase camera.
     this._strip(s,lean*.25,0,.04,length*.2,w*(shield?.30:.36),1,0,0,0,-1,0);
+    // A hard hull contact sheds one bright ping along the reflected approach. This is a
+    // short outward spark path after the hit, not a claim that the shot bounced with damage.
+    if (!shield && Number.isFinite(s.approachX) && Number.isFinite(s.approachZ)) {
+      const nx = Math.cos(s.angle), nz = Math.sin(s.angle);
+      const dot = s.approachX * nx + s.approachZ * nz;
+      const rx = s.approachX - 2 * dot * nx;
+      const rz = s.approachZ - 2 * dot * nz;
+      if (Math.hypot(rx, rz) > 1e-5) {
+        const ping = Math.atan2(rz, rx);
+        this._strip(s, ping - .05, 0, .04, length * (.50 + salt(s.seed, 41) * .12),
+          w * (.075 + salt(s.seed, 42) * .02), 1, 0, w * .07, 0, -1, 0);
+        this._strip(s, ping + .13, 0, .03, length * (.20 + salt(s.seed, 43) * .08),
+          w * .040, 1, 0, -w * .08, 0, -1, 0);
+      }
+    }
     for(let k=0;k<beat.blades;k++){
       const fan=beat.blades===1?0:(k/(beat.blades-1)-.5)*2;
       const reach=(.42+.58*salt(s.seed,k))*beat.reach;

@@ -1,6 +1,6 @@
 // Spawn-time scenery for explicitly temporary circuit flights. Campaign sector objects
 // are never registered, and no actor is deleted or moved after it enters the world.
-import { RACE_LEVELS } from '../data/raceLevels.js';
+import { RACING_CIRCUITS } from '../data/raceLevels.js';
 import { RACING_CIRCUIT_LAYOUTS } from '../data/racingCircuitLayouts.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -8,7 +8,9 @@ import { hash32 } from '../core/rng.js';
 
 const sessions = new WeakMap();
 const registeredSectors = new WeakMap();
-const levels = new Map(RACE_LEVELS.map(level => [level.sectorId, level]));
+// AL-RACE-2: the corridor serves the whole nine-course catalog, not only the
+// original three. One circuit lives in each sector, so sectorId still keys the map.
+const levels = new Map(RACING_CIRCUITS.map(level => [level.sectorId, level]));
 const finitePoint = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
@@ -44,12 +46,19 @@ function closestOnSegment(pos, a, b) {
 
 /** Includes the approach behind the grid as well as every closing/lap segment. */
 export function racingCorridorPlan(sectorId) {
-  const level = levels.get(sectorId), layout = RACING_CIRCUIT_LAYOUTS[sectorId];
-  if (!level || !layout) return null;
-  const course = level.course, origin = sectorGlobalOrigin(sectorId);
-  const gates = course.gates.map(p => ({ x: p.x + origin.x, z: p.z + origin.z }));
+  const level = levels.get(sectorId);
+  const layout = level && (level.layout || RACING_CIRCUIT_LAYOUTS[sectorId]);
+  const course = level && level.course;
+  // No plan for an unusable course: fewer than two gates leaves no first leg and
+  // no grid line, and a non-finite authored gate would poison every keepout and
+  // the skirt reach. The sector falls back to its normal field arranger instead.
+  if (!level || !layout || !course || !Array.isArray(course.gates)) return null;
+  const origin = sectorGlobalOrigin(sectorId);
+  const gates = course.gates.filter(finitePoint)
+    .map(p => ({ x: p.x + origin.x, z: p.z + origin.z }));
+  if (gates.length < 2) return null;
   const segments = gates.slice(1).map((b, i) => ({ a: gates[i], b }));
-  const first = segments[0], length = Math.hypot(first.b.x - first.a.x, first.b.z - first.a.z);
+  const first = segments[0], length = Math.hypot(first.b.x - first.a.x, first.b.z - first.a.z) || 1;
   const grid = {
     x: first.a.x - (first.b.x - first.a.x) / length * 240,
     z: first.a.z - (first.b.z - first.a.z) / length * 240,
@@ -57,7 +66,7 @@ export function racingCorridorPlan(sectorId) {
   return {
     sectorId, courseId: course.courseId, layout, origin, gates, segments,
     keepouts: [...segments, { a: grid, b: gates[0] }],
-    halfWidthWU: course.gateRadiusWU + layout.hullRadiusWU,
+    halfWidthWU: (Number(course.gateRadiusWU) || 90) + (Number(layout.hullRadiusWU) || 32),
     grid,
   };
 }
@@ -92,6 +101,22 @@ function outsidePoint(plan, original, radius, salt) {
     + plan.halfWidthWU + radius + 160;
   const angle = (hash32(String(salt)) >>> 0) / 4294967296 * Math.PI * 2;
   return { x: plan.origin.x + Math.cos(angle) * reach, z: plan.origin.z + Math.sin(angle) * reach };
+}
+
+/** AL-RACE-2 — a rigid nudge for seeded solid scenery. Seeded POI markers and attached
+ * fleets (e.g. the Quiessence ring) translate as one body so their formation survives;
+ * authored positions and runtime-owned native sites never pass through here. Returns
+ * the {x,z} offset that takes the point clear of the corridor, or null when no session
+ * covers this sector object or the point already clears. */
+export function racingCorridorSceneryShift(state, sectorId, pos, radius = 0) {
+  if (!finitePoint(pos) || !Number.isFinite(radius) || radius < 0) return null;
+  const session = sessions.get(state);
+  const sector = state.world?.sectors?.[sectorId];
+  if (!session || registeredSectors.get(sector) !== session) return null;
+  const plan = session.plans.get(sectorId);
+  if (!plan || clearsRacingCorridor(plan, pos, radius)) return null;
+  const moved = outsidePoint(plan, pos, radius, `${sectorId}:scenery`);
+  return { x: moved.x - pos.x, z: moved.z - pos.z };
 }
 
 /** Solid table props also use this membrane; kit/aftermath rows bypass the field arranger. */
@@ -150,6 +175,12 @@ export function createRacingCorridorArranger(sector, options = {}) {
       radius: Math.max(24, Number(poi.placeTargetRadius) || Number(poi.visualRadius) || (poi.runtimeOwner ? 100 : 24)),
     });
   }
+  // Already-global authored activity marks enter as reservations BEFORE the first
+  // movable rock — same contract as the campaign arranger. Ceres is a racing
+  // sector now: without this a banked scatter rock could land on a bound mark.
+  for (const r of options.reservations || []) {
+    if (finitePoint(r?.pos) && Number.isFinite(r.radius)) peers.push({ pos: { ...r.pos }, radius: r.radius });
+  }
   const stats = { placed: 0, moved: 0, skirts: 0 };
   const peerClear = (pos, radius) => peers.every(row => Math.hypot(pos.x - row.pos.x, pos.z - row.pos.z) >= radius + row.radius + 8);
   const reserve = (pos, radius) => { if (finitePoint(pos) && Number.isFinite(radius)) peers.push({ pos: { ...pos }, radius }); };
@@ -157,15 +188,28 @@ export function createRacingCorridorArranger(sector, options = {}) {
     profile: plan.layout,
     keepouts: plan.keepouts,
     createField(fdef) {
-      const legs = plan.layout.fields[fdef.id] || plan.segments.map((_, i) => i);
+      // A layout may skip a field id, carry an empty leg list, or lack the fields
+      // map entirely — every one of those banks all legs rather than indexing
+      // nothing or a missing entry. Legs that cannot index a segment (negative,
+      // fractional, out of range) drop out instead of reading segments[-1].
+      const authoredLegs = plan.layout.fields ? plan.layout.fields[fdef.id] : null;
+      const inRange = (leg) => Number.isInteger(leg) && leg >= 0 && leg < plan.segments.length;
+      const authored = Array.isArray(authoredLegs) ? authoredLegs.filter(inRange) : [];
+      const legs = authored.length ? authored : plan.segments.map((_, i) => i);
       return {
         place(original, bodyRadius, slotIndex) {
           const radius = asteroidColliderRadius(fdef.type, bodyRadius);
           const seed = hash32(fdef.id, slotIndex, original.x, original.z) >>> 0;
-          for (let attempt = 0; attempt < 96; attempt++) {
-            const leg = legs[(slotIndex + Math.floor(attempt / 8)) % legs.length] % plan.segments.length;
+          // slotIndex | 0 guards non-integer callers but a negative still indexes
+          // legs[-1] — plan.segments[undefined] then throws on destructure. Wrap
+          // through a positive modulo; non-negative indices are bit-identical to
+          // the old ordering. An empty leg list banks nothing and falls through
+          // to the exterior fallback instead of dividing by zero.
+          const wrap = (i) => ((i % legs.length) + legs.length) % legs.length;
+          for (let attempt = 0; attempt < 96 && legs.length; attempt++) {
+            const leg = legs[wrap((slotIndex | 0) + Math.floor(attempt / 8))];
             const { a, b } = plan.segments[leg];
-            const length = Math.hypot(b.x - a.x, b.z - a.z);
+            const length = Math.hypot(b.x - a.x, b.z - a.z) || 1;
             const t = 0.12 + (((seed % 65521) / 65521 + attempt * 0.381966) % 1) * 0.76;
             const side = ((slotIndex + attempt) & 1) ? -1 : 1;
             const depth = plan.layout.shoulderWU + ((seed >>> 16) % 97) / 97 * plan.layout.edgeDepthWU

@@ -72,11 +72,11 @@ test('every manifest sample exists on disk as a valid PCM WAV', () => {
 
 test('no orphan wav files drift outside the manifest', () => {
   const manifestFiles = new Set([...SAMPLE_MANIFEST.values()].map((e) => e.file.replaceAll('\\', '/')));
-  // The eight blind register clips are PQ-158.04 acceptance fixtures (barkVoice exports their
+  // The blind register clips are PQ-158.04 acceptance fixtures (barkVoice exports their
   // table; only the naming bench reads them), not runtime cue samples. They are still tracked
   // here so an untracked wav dropped into assets/audio fails this guard.
   const blindFiles = new Set(BLIND_REGISTER_CLIPS.map((c) => c.file.replaceAll('\\', '/')));
-  assert.ok(blindFiles.size >= 8, `blind register clip table must cover eight registers, got ${blindFiles.size}`);
+  assert.ok(blindFiles.size >= 8, `blind register clip table must cover at least eight registers, got ${blindFiles.size}`);
   for (const file of blindFiles) {
     assert.ok(existsSync(path.join(ROOT, file)), `blind register clip "${file}" is missing`);
   }

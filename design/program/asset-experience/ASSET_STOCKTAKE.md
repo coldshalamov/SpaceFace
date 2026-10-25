@@ -2,28 +2,28 @@
 
 This snapshot inventories every file under assets/ and the external runtime-support roots named by the release packager. It connects assets to existing canonical ownership, runtime maps, package readiness, and lightweight GLB structure. It is descriptive; current manifests and checks remain authoritative.
 
-Generated: 2026-10-16T15:58:13.703Z.
+Generated: 2026-10-25T15:15:15.173Z.
 
 ## What is available
 
 | Surface | Current result |
 |---|---|
-| Asset tree | 12,273 files; 5291.8 MiB |
-| GLB metadata | 2,360 inspected; 2,360 JSON chunks parsed; 0 with missing external resources |
+| Asset tree | 13,273 files; 5384.5 MiB |
+| GLB metadata | 2,379 inspected; 2,379 JSON chunks parsed; 0 with missing external resources |
 | Source parts | 197 tracked rows; 122 runtime-slot entries |
-| Released asset rows | 354 source-to-release rows |
-| Render-package routes | 353 pilots; 353 metadata and payload pairs present |
-| Direct runtime refs | 963 assets; 963 retail-routable |
+| Released asset rows | 363 source-to-release rows |
+| Render-package routes | 362 pilots; 362 metadata and payload pairs present |
+| Direct runtime refs | 982 assets; 982 retail-routable |
 | External runtime roots | src/data/scenarios (12), vendor/addons/libs (9) |
-| Classification coverage | 12,273 files labeled; 0 unclassified; 2,987 need a more specific route or lifecycle label |
+| Classification coverage | 13,273 files labeled; 0 unclassified; 3,957 need a more specific route or lifecycle label |
 
 ### Existing checks on this snapshot
 
 | Check | Result |
 |---|---|
 | check:asset-status | PASS — ok blocked asset tracked: wholeship_pelican (wholeships/pelican.glb) — Accessory-only export missing a Material_Hull body ok blocked asset tracked: wholeship_wasp (wholeships/wasp.glb) — Accessory-only export missing a Material_Hull body ok every runtimeSlots entry has a parts[] entry (197 parts tracked) Asset status OK: 197 parts tracked, 2 blocked, 0 reachable from runtime, 0 ambiguous. |
-| check:asset-reachability | PASS — 963/963 routable, 0 issues |
-| render-package coverage | PASS — skip assets/ships/release/kestrel/kestrel_reference.glb (no slot, and directory "kestrel_reference.glb" has no slot mapping) render-package coverage: all 353 release assets packaged |
+| check:asset-reachability | PASS — 982/982 routable, 0 issues |
+| render-package coverage | PASS — skip assets/ships/release/kestrel/kestrel_reference.glb (no slot, and directory "kestrel_reference.glb" has no slot mapping) render-package coverage: all 362 release assets packaged |
 
 The package and reachability checks answer file and routing questions. They do not establish visual acceptance. GLB inspection read only each GLB JSON chunk and never opened a renderer; every asset row therefore keeps visualAcceptance at not_assessed.
 
@@ -33,9 +33,9 @@ Every file has a path family and a classification. needs_triage means no stronge
 
 | Family | Files and direct routes | First reuse | Upgrade when |
 |---|---|---|---|
-| assets/ships, assets/works, assets/models, assets/places, assets/characters, assets/wreck-court, assets/reactive-matter, assets/spectrum (5,154, 4200.8 MiB) | 808 mapped; 353 package routes; 1215 need triage | Compose a playable job from the existing hull, station, worksite, asset-bank and aftermath owners. Use registered motion banks for actor state. | Add or repair the smallest silhouette, collider, interaction anchor or readable state the live scene cannot supply. |
-| assets/ui, assets/portraits, assets/brand, assets/intro, assets/store (1,290, 103.1 MiB) | 26 mapped; 0 package routes; 1264 need triage | Use ORRERY surfaces, portrait and faction registries, Codex plates, existing icons, fonts and screen backdrops. | Repair a real live-screen gap or stale derivative; keep controls usable when optional media is absent. |
-| assets/audio (609, 48.1 MiB) | 141 mapped; 0 package routes; 468 need triage | Connect existing arrival, work, impact, comms, voice and music assets to the scene action and its aftermath. | Add only a missing causal transition or voice line; preserve speech priority and sound settings. |
+| assets/ships, assets/works, assets/models, assets/places, assets/characters, assets/wreck-court, assets/reactive-matter, assets/spectrum (5,183, 4211.3 MiB) | 826 mapped; 362 package routes; 1215 need triage | Compose a playable job from the existing hull, station, worksite, asset-bank and aftermath owners. Use registered motion banks for actor state. | Add or repair the smallest silhouette, collider, interaction anchor or readable state the live scene cannot supply. |
+| assets/ui, assets/portraits, assets/brand, assets/intro, assets/store (1,299, 103.1 MiB) | 26 mapped; 0 package routes; 1273 need triage | Use ORRERY surfaces, portrait and faction registries, Codex plates, existing icons, fonts and screen backdrops. | Repair a real live-screen gap or stale derivative; keep controls usable when optional media is absent. |
+| assets/audio (1,571, 130.3 MiB) | 142 mapped; 0 package routes; 1429 need triage | Connect existing arrival, work, impact, comms, voice and music assets to the scene action and its aftermath. | Add only a missing causal transition or voice line; preserve speech priority and sound settings. |
 | assets/background, assets/cinematics (43, 151.5 MiB) | 29 mapped; 0 package routes; 11 need triage | Reuse the sector sky, surface and intro media that already orient the player and establish the place. | Correct a visible scale, depth, repetition or story-state mismatch in its actual route. |
 | assets/fx, assets/vfx (26, 0.3 MiB) | 0 mapped; 0 package routes; 26 need triage | Use the existing renderer and VFX owners for readable thrust, impact, fracture and environmental response. | Add the missing causal cue while preserving authored quality and reduced-motion behavior. |
 | assets/third_party, assets/reference, assets/concept, assets/animation-references, assets/incubator (5,148, 788.1 MiB) | 0 mapped; 0 package routes; 0 need triage | Keep donor art, editable sources, release output and evidence attached to their current purpose and provenance. | Promote a specific needed component through its existing manifest and runtime owner. |
@@ -71,9 +71,9 @@ The parts manifest marks 2 source GLBs blocked: wholeship_pelican at assets/ship
 
 The source lifecycle field has a token on 15 of 197 rows: integration_candidate 12, blocked 2, accepted 1. The other 182 rows have no lifecycle token. That field describes source-process status and does not override release rows, package routing, or gameplay maps; a missing token is not a failure verdict.
 
-There are 1997 GLBs with no exact current-use or package URL in the inspected maps. They are candidates for reuse or dynamic-loader tracing, not confirmed orphans: ID-built paths and procedural selection are not ruled out by string search. Each JSON row carries known owners and selection status for targeted follow-up.
+There are 2007 GLBs with no exact current-use or package URL in the inspected maps. They are candidates for reuse or dynamic-loader tracing, not confirmed orphans: ID-built paths and procedural selection are not ruled out by string search. Each JSON row carries known owners and selection status for targeted follow-up.
 
-Classification counts: runtime 1,004, release 731, source 2,033, reference 4,939, evidence 579, legacy 0, needs_triage 2,987.
+Classification counts: runtime 1,023, release 740, source 2,035, reference 4,939, evidence 579, legacy 0, needs_triage 3,957.
 
 ## Missing assets and interpretation
 

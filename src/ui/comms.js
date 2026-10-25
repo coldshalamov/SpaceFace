@@ -6,9 +6,9 @@
 //                   ambient (not for the player). The ones that ARE for the player don't name them.
 //                   Mirrors the alerts.js pattern (queue, raise, fade). Closable entries; the comms key
 //                   opens a scrollable backlog so the player can re-read what they missed.
-//   2. GRAFFITI   — listens to `graffiti:show{ line, where }`. 'bulkhead' = a line that appears on
-//                   the player's own HUD (their ship's interior). airlock/shipyard/etc. = lines the
-//                   station hub surfaces (rendered there via a DOM hook the hub queries).
+//   2. GRAFFITI   — listens to `graffiti:show{ line, where }`. 'bulkhead' = a line that stays on
+//                   the player's own ship. Any other place is scratched where the player can read
+//                   it, including while the dock is open.
 //   3. ENDGAME    — A/B live on the Ashfall board; C/D/E use short contextual confirmations.
 //                   five choices (A–E). Emits `ui:endgameChoose{ choice }`.
 //   4. EPILOGUE   — one restrained outcome card after a final disposition or sandbox continuation.
@@ -28,6 +28,117 @@ import { createCommsTrace } from './effects/commsTrace.js';
 import { openingInstructionSolo } from './hudAttention.js';
 
 const COMMS_STYLE_ID = 'sf-comms-style';
+const PLACE_GRAFFITI_HOLD_MS = 8000;
+
+/** Flight shows both lines. A dock keeps the place line and hides the ship's bulkhead. A menu hides both. */
+export function placeGraffitiDisplay(visible, docked) {
+  return {
+    bulkhead: visible ? 'block' : 'none',
+    airlock: (visible || docked) ? '' : 'none',
+  };
+}
+
+/**
+ * Bulkhead lines stay on the ship. Every other place (airlock, yard, clearing)
+ * is painted on its own readout, above the dock screen, and remembered on
+ * state.ui.graffiti for a later reader. The two surfaces never share a node.
+ */
+export function mountPlaceGraffiti(bus, state, parent) {
+  const bulkhead = document.createElement('div');
+  bulkhead.className = 'sf-bulkhead';
+  bulkhead.id = 'sf-bulkhead';
+  bulkhead.setAttribute('aria-hidden', 'true');
+  const bulkheadLine = document.createElement('div');
+  bulkheadLine.className = 'sf-bulkhead__line';
+  bulkhead.appendChild(bulkheadLine);
+
+  const airlock = document.createElement('div');
+  airlock.className = 'sf-airlock';
+  airlock.id = 'sf-airlock';
+  airlock.setAttribute('aria-hidden', 'true');
+  airlock.setAttribute('aria-live', 'polite');
+  const airlockLine = document.createElement('div');
+  airlockLine.className = 'sf-airlock__line';
+  airlock.appendChild(airlockLine);
+
+  parent.appendChild(bulkhead);
+  parent.appendChild(airlock);
+
+  let hideTimer = 0;
+  let alive = true;
+  let showing = null;
+  const pending = [];
+
+  function rememberPlace(p) {
+    if (!state.ui) state.ui = {};
+    if (!state.ui.graffiti) state.ui.graffiti = [];
+    const key = p.where + ':' + p.line;
+    if (state.ui.graffiti.some((g) => (g.where + ':' + g.line) === key)) return;
+    state.ui.graffiti.push({ line: p.line, where: p.where, beat: p.beat, author: p.author });
+    while (state.ui.graffiti.length > 8) state.ui.graffiti.shift();
+  }
+
+  function samePlace(a, b) {
+    return !!a && !!b && a.line === b.line && a.where === b.where;
+  }
+
+  function pumpPlace() {
+    if (!alive || showing || pending.length === 0) return;
+    const next = pending.shift();
+    showing = next;
+    airlockLine.textContent = next.line;
+    airlock.classList.add('sf-airlock--visible');
+    airlock.setAttribute('aria-hidden', 'false');
+    airlock.setAttribute('aria-label', next.where + ' graffiti: ' + next.line);
+    hideTimer = setTimeout(() => {
+      hideTimer = 0;
+      if (!alive) return;
+      showing = null;
+      if (pending.length) {
+        pumpPlace();
+        return;
+      }
+      airlock.classList.remove('sf-airlock--visible');
+      airlock.setAttribute('aria-hidden', 'true');
+    }, PLACE_GRAFFITI_HOLD_MS);
+  }
+
+  function showPlace(p) {
+    rememberPlace(p);
+    const next = { line: p.line, where: p.where || 'airlock' };
+    if (samePlace(showing, next) || samePlace(pending[pending.length - 1], next)) return;
+    pending.push(next);
+    pumpPlace();
+  }
+
+  const onShow = (p) => {
+    if (!p || !p.line) return;
+    if (p.where === 'bulkhead') {
+      bulkheadLine.textContent = p.line;
+      bulkhead.classList.add('sf-bulkhead--visible');
+      bulkhead.setAttribute('aria-label', 'Bulkhead graffiti: ' + p.line);
+      bulkhead.setAttribute('aria-hidden', 'false');
+      return;
+    }
+    showPlace(p);
+  };
+  const off = bus.on('graffiti:show', onShow);
+
+  function destroy() {
+    if (!alive) return;
+    alive = false;
+    if (hideTimer) clearTimeout(hideTimer);
+    hideTimer = 0;
+    showing = null;
+    pending.length = 0;
+    if (typeof off === 'function') off();
+    else if (bus && typeof bus.off === 'function') bus.off('graffiti:show', onShow);
+    bulkhead.remove();
+    airlock.remove();
+  }
+
+  return { bulkhead, airlock, bulkheadLine, airlockLine, destroy };
+}
 
 // category → accent color + label prefix. Most are NOT addressed to the player.
 const CATEGORY_STYLE = {
@@ -380,47 +491,9 @@ export function createComms(ctx) {
   listen('ui:toggleComms', toggleBacklog);
   listen('ui:closeComms', closeBacklog);
 
-  // ── 3. Bulkhead graffiti (player's own ship interior — shown on the HUD) ─────────────────
-  // Appended to #ui-root (NOT #hud): createHud() does `root.innerHTML = ''` on #hud which would
-  // wipe anything appended there before it runs. ui-root is stable. The bulkhead is a full-overlay
-  // narrative element positioned over the ship interior, not a HUD gauge, so ui-root is the right parent.
-  const bulkhead = document.createElement('div');
-  bulkhead.className = 'sf-bulkhead';
-  bulkhead.id = 'sf-bulkhead';
-  bulkhead.setAttribute('aria-hidden', 'true');
-  bulkhead.innerHTML = '<div class="sf-bulkhead__line"></div>';
-  document.getElementById('ui-root').appendChild(bulkhead);
-  const bulkheadLine = bulkhead.querySelector('.sf-bulkhead__line');
-  let bulkheadHideT = 0;
-
-  listen('graffiti:show', (p) => {
-    if (!p || !p.line) return;
-    if (p.where === 'bulkhead') {
-      // bulkhead graffiti is persistent (it's on the player's ship); it stays until replaced.
-      bulkheadLine.textContent = p.line;
-      bulkhead.classList.add('sf-bulkhead--visible');
-      bulkhead.setAttribute('aria-label', 'Bulkhead graffiti: ' + p.line);
-      bulkheadHideT = 0; // never auto-hide; the player lives with it
-    } else {
-      // airlock/shipyard/clearing/chain_dest: surfaced at the dock hub. We stash the latest on
-      // state so the station hub can read it (it mounts after dock). Also briefly flash it as a
-      // toast-style graffiti readout so the player sees it even mid-flight (e.g. on a docked hub).
-      stashAirlockGraffiti(p);
-    }
-  });
-
-  function stashAirlockGraffiti(p) {
-    if (!state.ui) state.ui = {};
-    if (!state.ui.graffiti) state.ui.graffiti = [];
-    // dedupe by line+where within the current stash
-    const key = p.where + ':' + p.line;
-    if (state.ui.graffiti.some((g) => (g.where + ':' + g.line) === key)) return;
-    state.ui.graffiti.push({ line: p.line, where: p.where, beat: p.beat, author: p.author });
-    // keep the stash short
-    while (state.ui.graffiti.length > 8) state.ui.graffiti.shift();
-  }
-
-  // expose a reader for the station hub (it imports nothing from here; it reads state.ui.graffiti)
+  // Bulkhead stays on the ship. Place lines (airlock, yard, clearing) paint on their
+  // own readout above the dock. Both mount on #ui-root, not #hud: createHud() wipes #hud.
+  const placeGraffiti = mountPlaceGraffiti(bus, state, document.getElementById('ui-root'));
 
   // ── 4. Contextual ending confirmations. Contract endings A/B remain board rows. ──────────
   function presentPhysicalChoice(
@@ -551,10 +624,13 @@ export function createComms(ctx) {
     sweep();
   }
 
-  // hide comms surfaces when not in flight (menu/dock keeps the backlog accessible)
+  // Hide the flight feed on the menu. A dock keeps the place line up.
   function setFlightVisibility(visible) {
     feed.style.display = visible ? 'flex' : 'none';
-    bulkhead.style.display = visible ? 'block' : 'none';
+    const docked = !!(state.ui && state.ui.docked);
+    const graffitiDisplay = placeGraffitiDisplay(visible, docked);
+    placeGraffiti.bulkhead.style.display = graffitiDisplay.bulkhead;
+    placeGraffiti.airlock.style.display = graffitiDisplay.airlock;
     traceHost.style.display = visible ? '' : 'none';
     if (!visible) commsTrace.update({ live: false });
     if (!visible) closeBacklog();
@@ -605,7 +681,7 @@ export function createComms(ctx) {
     traceHost.remove();
     backlogBtn.remove();
     backlogView.remove();
-    bulkhead.remove();
+    placeGraffiti.destroy();
   }
 
   return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, destroy, endingEpilogue, pirateParleyPrompt, sectorLawPresenter, signalInvestigationPrompt, recoveryEncounterPrompt, contactHailPrompt, commsRadial };
@@ -831,6 +907,15 @@ function injectCommsCss() {
   .sf-bulkhead__line { font-family:var(--mono); font-size:clamp(12px, 1.2vw, 13px); letter-spacing:.06em;
     color:#b9c4d6; text-transform:uppercase; text-shadow:0 0 12px rgba(0,0,0,.85), 0 1px 2px #000;
     transform:rotate(-1.5deg); }
+  /* Place lines sit above the dock screen (#screens is z-index 100) and do not take clicks. */
+  .sf-airlock { position:absolute; left:50%; bottom:14%; transform:translateX(-50%); z-index:140;
+    pointer-events:none; opacity:0; transition:opacity .4s ease; max-width:min(520px, 84vw); text-align:center; }
+  .sf-airlock--visible { opacity:1; }
+  body.ui-modal-open .sf-airlock--visible { opacity:1; }
+  .sf-airlock__line { font-family:var(--mono); font-size:clamp(13px, 1.5vw, 16px); letter-spacing:.08em;
+    color:#d7deea; text-transform:uppercase; text-shadow:0 0 16px rgba(0,0,0,.9), 0 1px 2px #000; }
+  @media (prefers-reduced-motion: reduce) { .sf-airlock { transition:none; } }
+  html.sf-reduce-motion .sf-airlock { transition:none; }
   @media (max-width: 760px) { .sf-bulkhead { left:18px; right:18px; top:auto; bottom:150px; max-width:none; } .sf-bulkhead__line { font-size:12px; letter-spacing:.06em; }
     #ui-root > #sf-comms { width:260px; top:88px; }
     .sf-comm-backlog-btn { top:12px; }

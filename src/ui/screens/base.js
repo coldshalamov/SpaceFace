@@ -500,10 +500,11 @@ html.sf-reduce-motion #screens .orr-base #sf-base .orr-base__cand::after { trans
   #screens .orr-base #sf-base .base-spec .effect, #screens .orr-base #sf-base .base-spec .risk { line-height:1.3; }
   #screens .orr-base #sf-base .base-foot { padding:8px 40px 12px; }
 }
-/* Short wide glass (1101+ wide, ≤580 tall: 1280×540; capped below 600 so 1366×600 keeps the stored-output panel clear): the three identity cards sit side by side, so the
-   build verbs land 4px under the foot band at scroll 0. Close the stack a little more and slim the band
-   so every BUILD verb clears it; Build module stays one scroll down. */
-@media (max-height:580px) and (min-width:1101px) {
+/* Short desktop glass (761+ wide, ≤580 tall: 960×540, 1280×540; capped below 600 so 1366×600 keeps the stored-output panel clear): the three identity cards sit side by side, so the
+   card verbs (CLEAR SITE STORAGE · ACTIVE) land under the foot band at scroll 0 (half-hidden at 960, where
+   the card lines wrap). Close the stack a little more and slim the band so every verb clears it; Build
+   module stays one scroll down. */
+@media (max-height:580px) and (min-width:761px) {
   #screens .orr-base #sf-base { gap:2px; }
   #screens .orr-base #sf-base .base-plan { padding:2px 0 2px 22px; }
   #screens .orr-base #sf-base .base-foot { margin-top:14px; padding-inline:40px; padding-block:6px 10px; }

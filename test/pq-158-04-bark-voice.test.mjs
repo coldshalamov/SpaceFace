@@ -1,7 +1,7 @@
 // test/pq-158-04-bark-voice.test.mjs — PQ-158.04 leaf gate.
 //
-// DONE WHEN: all 271 lines through the pipeline; subtitles; determinism untouched.
-// Seed 15804. Eight faction registers + mechanic. Directed synthetic voice, no recorded actors.
+// DONE WHEN: every corpus line through the pipeline (BARK_CORPUS_TARGET-pinned); subtitles; determinism untouched.
+// Seed 15804. Fourteen faction registers + mechanic. Directed synthetic voice, no recorded actors.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,8 +35,9 @@ import {
   deliveredBarkWavRelPath,
   BLIND_REGISTER_CLIPS,
   BARK_UTTERANCE_SECONDS,
+  DELIVERED_WAV_SECONDS,
 } from '../src/audio/barkVoice.js';
-import { decodePcmWav } from '../src/audio/themeCompose.js';
+import { decodePcmWav, encodeWavPcm16, THEME_SAMPLE_RATE } from '../src/audio/themeCompose.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MEASURE_SEED = 15804;
@@ -75,6 +76,12 @@ test('fourteen faction registers are distinct; mechanic is a fifteenth close-mic
   const rates = new Set(BARK_FACTIONS.map((id) => FACTION_VOICE_REGISTERS[id].rate));
   assert.ok(f0s.size >= 12, 'registers must sit on different fundamentals');
   assert.ok(rates.size >= 11, 'registers must speak at different cadences');
+  // The authored invariant behind the blind-listen contract: every pair of registers sits
+  // ≥5 Hz apart, and identifyRegisterFromPcm's <2.5 Hz tolerance makes cross-naming
+  // mathematically impossible. A new register at 4 Hz off would silently degrade the guesser.
+  const sorted = [...f0s].sort((a, b) => a - b);
+  const minGap = Math.min(...sorted.slice(1).map((f, i) => f - sorted[i]));
+  assert.ok(minGap >= 5, `register f0 min pairwise gap ${minGap} Hz under the 5 Hz no-cross-name floor`);
   assert.equal(MECHANIC_VOICE_REGISTER.id, 'mechanic');
   assert.notEqual(MECHANIC_VOICE_REGISTER.f0, FACTION_VOICE_REGISTERS.faction_scn.f0);
   const mechanic = enumerateMechanicPipeline();
@@ -187,13 +194,31 @@ test(`seed ${MEASURE_SEED}: f0/rate/filter names each faction register without t
     assert.equal(named, factionId, `${factionId} must resolve from speech params, not from its label`);
   }
   assert.equal(identifyRegisterFromSpeech({ f0: 0, rate: 0, filterHz: 0 }), null);
-  console.log(`[pq-158.04 blind-stand-in] seed=${MEASURE_SEED} 8/8 speech-params residual=no-stranger-headphones`);
+  console.log(`[pq-158.04 blind-stand-in] seed=${MEASURE_SEED} 14/14 speech-params residual=no-stranger-headphones`);
+});
+
+test(`seed ${MEASURE_SEED}: the player's authored durations stay inside the spoken range`, () => {
+  // Delivered artifacts are normalized to 1.4 s; the player hears resolved.speech.durationS
+  // (authored per line, clamped [0.45, 4.8]). A durationS regression is invisible to the
+  // byte-pinned gate — pin the range and real variance here instead.
+  const rows = enumerateBarkPipeline();
+  const durations = new Set();
+  for (const row of rows) {
+    const d = row.speech.durationS;
+    assert.ok(d >= 0.45 && d <= 4.8, `${row.factionId}/${row.situation} durationS ${d} out of spoken range`);
+    durations.add(d);
+  }
+  assert.ok(durations.size >= rows.length / 4, `corpus durations collapsed to ${durations.size} distinct values`);
 });
 
 test(`seed ${MEASURE_SEED}: all ${BARK_CORPUS_TARGET} directed-voice lines exist as WAVs on disk`, () => {
   const rows = enumerateDeliveredBarkWavs();
   assert.equal(rows.length, BARK_CORPUS_TARGET);
+  // Literal pins: the naming scheme itself is the contract (4-digit positional index), not
+  // just internal consistency — an assertion that re-derives the name can't fail.
+  assert.equal(rows[0].file, 'assets/audio/voice/line_0000_faction_scn.wav');
   for (let i = 0; i < rows.length; i++) {
+    assert.match(rows[i].file, /^assets\/audio\/voice\/line_\d{4}_[A-Za-z0-9_-]+\.wav$/);
     assert.equal(rows[i].file, deliveredBarkWavRelPath(i, rows[i].registerId));
     const file = path.join(ROOT, rows[i].file);
     assert.ok(existsSync(file), `missing delivered line ${rows[i].file}`);
@@ -205,7 +230,33 @@ test(`seed ${MEASURE_SEED}: all ${BARK_CORPUS_TARGET} directed-voice lines exist
   console.log(`[pq-158.04 delivered] seed=${MEASURE_SEED} wavs=${rows.length}/${BARK_CORPUS_TARGET}`);
 });
 
-test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all thirteen registers (no filename, no label)`, () => {
+test(`seed ${MEASURE_SEED}: delivered WAVs byte-match a fresh render — a stale corpus cannot hide`, () => {
+  // Existence + RIFF magic alone can't see a renderer/register edit left unregenerated: the
+  // files would still exist and still be WAVs. Re-render a deterministic spread (~1 row per
+  // faction per third of the corpus) and byte-compare against the shipped artifacts.
+  const pipeline = enumerateBarkPipeline();
+  const stride = Math.ceil(pipeline.length / 42);
+  const sampled = pipeline.filter((_, i) => i % stride === 0 || i === pipeline.length - 1);
+  for (const [i, row] of sampled.entries()) {
+    const index = pipeline.indexOf(row);
+    const rel = deliveredBarkWavRelPath(index, row.registerId);
+    const fresh = encodeWavPcm16(renderBarkUtterancePcm(row, { sampleRate: THEME_SAMPLE_RATE, seconds: DELIVERED_WAV_SECONDS }), THEME_SAMPLE_RATE);
+    const onDisk = readFileSync(path.join(ROOT, rel));
+    assert.deepEqual(onDisk, fresh, `${rel} is stale — regenerate via generate-bark-voice.mjs --all (sample ${i + 1}/${sampled.length})`);
+  }
+  console.log(`[pq-158.04 delivered-drift] seed=${MEASURE_SEED} sampled=${sampled.length}/${pipeline.length} byte-identical`);
+});
+
+test(`seed ${MEASURE_SEED}: delivered filename authority rejects unsafe segments`, () => {
+  // The naming authority's guards are the fail-closed contract — a loose index or unsafe
+  // registerId must throw, not emit a filename that escapes the positional scheme.
+  assert.throws(() => deliveredBarkWavRelPath(1.5, 'faction_scn'), /integer 0-9999/);
+  assert.throws(() => deliveredBarkWavRelPath(-1, 'faction_scn'), /integer 0-9999/);
+  assert.throws(() => deliveredBarkWavRelPath(10000, 'faction_scn'), /integer 0-9999/);
+  assert.throws(() => deliveredBarkWavRelPath(0, 'bad/../seg'), /safe filename segment/);
+});
+
+test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all fourteen registers (no filename, no label)`, () => {
   const shuffled = [...BARK_FACTIONS];
   // Deterministic shuffle from the seed, not Math.random.
   let s = MEASURE_SEED >>> 0;
@@ -227,7 +278,7 @@ test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all thirteen registers 
   console.log(`[pq-158.04 pcm-blind] seed=${MEASURE_SEED} order=${shuffled.join(',')} named=${named.join(',')}`);
 });
 
-test(`seed ${MEASURE_SEED}: unlabeled on-disk clips name thirteen registers without using filenames`, () => {
+test(`seed ${MEASURE_SEED}: unlabeled on-disk clips name fourteen registers without using filenames`, () => {
   const named = [];
   for (const clip of BLIND_REGISTER_CLIPS) {
     const buf = readFileSync(path.join(ROOT, clip.file));
@@ -253,7 +304,7 @@ test(`seed ${MEASURE_SEED}: shipped utterance PCM names each faction register (n
   console.log(`[pq-158.04 utterance-pcm] seed=${MEASURE_SEED} named=${named.join(',')}`);
 });
 
-test(`seed ${MEASURE_SEED}: player-heard bark WAVs name thirteen registers from PCM, never from the filename`, () => {
+test(`seed ${MEASURE_SEED}: player-heard bark WAVs name fourteen registers from PCM, never from the filename`, () => {
   const named = [];
   for (const factionId of BARK_FACTIONS) {
     const sampleId = FACTION_VOICE_REGISTERS[factionId].sampleId;

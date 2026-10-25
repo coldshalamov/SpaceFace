@@ -237,7 +237,8 @@ test('aligning focus prisms triggers Supernova Bloom and drops rare crystal rewa
 
   const crystals = f.state.entityList.filter(e => e.type === 'pickup');
   assert.ok(crystals.length >= 3, 'Reward crystals spawned');
-  assert.equal(crystals[0].data?.commodity, 'cmdty_ore_rare');
+  assert.equal(crystals[0].data?.kind, 'ore');
+  assert.equal(crystals[0].data?.commodityId, 'cmdty_crystal_lumin');
 
   f.system.destroy();
 });

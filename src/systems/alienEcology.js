@@ -53,6 +53,7 @@ import { normalizeFoodWeb, stepFoodWeb } from '../data/faunaFoodWeb.js';
 import { echoApplies, stepEchoIndex, ECHO_REACH } from '../data/faunaRouteEcho.js';
 import { HUMAN_DOCK_CHART, chartPlace } from '../data/routeChart.js';
 import { copyLifeRead, lifeSampleFromSite, readSiteLife } from '../data/siteLifeRead.js';
+import { racingCorridorSceneryShift } from '../world/racingCorridor.js';
 import { WRECK_SITE_ID, stepWreckSuccession } from '../data/wreckSuccession.js';
 import {
   COLLAR_SITE_ID, collarCause, stepCollarService, useCollarService,
@@ -391,6 +392,12 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
       if (!species) continue;
       const scatterAnchor = rec.nursery?.relocation?.scatterAnchors?.[member.faunaKey];
       const pos = world._toGlobal(scatterAnchor || { x: site.center.x + member.dx, z: site.center.z + member.dz }, sector.id);
+      // AL-RACE-2: solid ambient fauna are incidental scenery on a temporary circuit —
+      // nudged clear at materialization; their own migration owns them after.
+      if (species.physicsBody) {
+        const sceneryShift = racingCorridorSceneryShift(state, sector.id, pos, species.radius);
+        if (sceneryShift) { pos.x += sceneryShift.x; pos.z += sceneryShift.z; }
+      }
       // Migration route: members of migrates species walk the waypoint loop. AE-165:
       // a site's authored routeEcho waypoints count as the route when no full
       // migrationRoute block is authored.

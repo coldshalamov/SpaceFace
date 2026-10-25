@@ -1,5 +1,10 @@
 // Extra radio lines for PULSE-08. Pure data. Appended onto BARKS so index 0 of every
 // cell stays the line that already shipped. Voice stays with the house that opened the cell.
+// Every line in this file is live: topUpBarkSituationCells appends the whole cell, so a
+// tail append here always reaches a selector — there is no dead reservoir past a cap.
+// Authoring rule: APPEND at cell end only. Delivered voice WAVs are named by positional
+// corpus index (deliveredBarkWavRelPath) — a mid-array insert or reorder renumbers the
+// whole shipped WAV set downstream of it.
 
 export const BARK_SITUATION_FILL = {
   faction_scn: {
@@ -1332,28 +1337,53 @@ export const BARK_SITUATION_FILL = {
   },
 };
 
-const BARK_CELL_MIN = 12;
+// Frozen like BARK_FACTIONS/BARK_SITUATIONS: a runtime push would sit as dead authored weight the
+// merged cells never see (the merge already ran), and a missing/pack key swap would renumber the
+// shipped positional WAV corpus. Deep — packs and cells, not just the outer table.
+for (const pack of Object.values(BARK_SITUATION_FILL)) {
+  for (const cell of Object.values(pack)) Object.freeze(cell);
+  Object.freeze(pack);
+}
+Object.freeze(BARK_SITUATION_FILL);
 
-/** Push house lines onto each situation until the cell reaches minLength. Index 0 stays. */
+// Floor target for every live cell: the corpus is authored so each touched situation ends at
+// least this deep. It is not an append cap — every fill line is reachable (D254).
+export const BARK_CELL_MIN = 12;
+
+/** Push house lines onto each situation, whole cell, deduped. Index 0 stays.
+ *  Returns the ids of every iterated cell still under minLength — a corpus gap to fill,
+ *  asserted empty by test/bark-fill-reachability.test.mjs. */
 export function topUpBarkSituationCells(barks, factions, situations, eventSituations, minLength = BARK_CELL_MIN) {
-  const keys = [];
-  if (Array.isArray(situations)) keys.push(...situations);
-  if (Array.isArray(eventSituations)) keys.push(...eventSituations);
+  const underFloor = [];
+  // Dedupe: a situation id listed in both arrays would merge its fill twice and double-report.
+  const keys = [
+    ...new Set([
+      ...(Array.isArray(situations) ? situations : []),
+      ...(Array.isArray(eventSituations) ? eventSituations : []),
+    ]),
+  ];
   for (const factionId of factions) {
-    const pack = barks && barks[factionId];
-    const fill = BARK_SITUATION_FILL[factionId];
-    if (!pack || !fill) continue;
+    // hasOwn: a prototype-keyed id must take the missing-pack branch, not adopt an
+    // inherited Object member as a pack.
+    const pack = barks && Object.hasOwn(barks, factionId) ? barks[factionId] : null;
+    const fill = Object.hasOwn(BARK_SITUATION_FILL, factionId) ? BARK_SITUATION_FILL[factionId] : null;
+    if (!pack) {
+      for (const situation of keys) underFloor.push(`${factionId}/${situation}`);
+      continue;
+    }
     for (const situation of keys) {
       const cell = pack[situation];
-      const extra = fill[situation];
-      if (!Array.isArray(cell) || !Array.isArray(extra)) continue;
-      const seen = new Set(cell);
-      for (const line of extra) {
-        if (cell.length >= minLength) break;
-        if (typeof line !== 'string' || line.length === 0 || seen.has(line)) continue;
-        cell.push(line);
-        seen.add(line);
+      const extra = fill && fill[situation];
+      if (Array.isArray(cell) && Array.isArray(extra)) {
+        const seen = new Set(cell);
+        for (const line of extra) {
+          if (typeof line !== 'string' || line.trim().length === 0 || seen.has(line)) continue;
+          cell.push(line);
+          seen.add(line);
+        }
       }
+      if (!Array.isArray(cell) || cell.length < minLength) underFloor.push(`${factionId}/${situation}`);
     }
   }
+  return underFloor;
 }

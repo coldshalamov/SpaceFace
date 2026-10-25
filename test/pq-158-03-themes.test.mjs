@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { MUSIC_STEMS } from '../src/data/audioRecipes.js';
 import { BAND_BED_PROFILES } from '../src/audio/bandBeds.js';
 import { SAMPLE_MANIFEST } from '../src/audio/sampleLibrary.js';
+import { BARK_FACTIONS } from '../src/data/barks.js';
 import {
   THEME_MATRIX_SEED,
   THEME_STATES,
@@ -84,6 +85,12 @@ test('a stranger can hum the travel theme: rising A-minor arpeggio to the octave
   assert.equal(travel.state, 'travel');
   assert.equal(travel.hummable, 'A C E A');
   assert.equal(travel.seed, MEASURE_SEED);
+  // stemDef must resolve the state's own stem row — a loose match predicate once returned
+  // stem_a for every state (latent wrong-data: stemId right, stemDef wrong).
+  for (const s of THEME_STATES) {
+    const r = resolveThemeMatrix({ state: s });
+    assert.equal(r.stemDef.id, `stem_${r.stemId.toLowerCase()}`, `${s} stemDef must match stemId`);
+  }
 });
 
 test('per-sector beds are identifiable blind: unique hz/wave/noise per named sector', () => {
@@ -112,6 +119,18 @@ test('faction stings ride the Band: unique profiles a stranger can tell apart', 
   // The catalog grew past the original eight as factions landed — the contract is a unique
   // profile per entry, not a fixed count.
   assert.ok(ids.length >= 8, `expected at least the original eight stings, got ${ids.length}`);
+  // D255: every corpus faction must own a sting — Helix sat stingless for weeks while the
+  // >=8 count stayed green. A new BARK_FACTIONS id without a sting now fails here.
+  assert.deepEqual(
+    BARK_FACTIONS.filter((id) => !FACTION_STINGS[id]),
+    [],
+    'a bark faction without a house sting is a silent audible asymmetry',
+  );
+  assert.deepEqual(
+    Object.keys(FACTION_STINGS).filter((id) => !BARK_FACTIONS.includes(id)),
+    [],
+    'a sting keyed to a non-live faction is dead authored data',
+  );
   const signatures = new Set();
   for (const id of ids) {
     const sting = resolveFactionSting(id);

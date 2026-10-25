@@ -4,7 +4,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
 import { world as worldSystem } from '../src/systems/world.js';
-import { RACE_CONTRACTS, RACE_LEVELS, racingSeedFor } from '../src/data/raceLevels.js';
+import { RACE_CONTRACTS, RACE_LEVELS, raceLevelById, racingSeedFor } from '../src/data/raceLevels.js';
 import { asteroidColliderRadius } from '../src/data/asteroidColliders.js';
 import { createSectorArranger, segmentDistanceSquared } from '../src/world/arranger.js';
 import { insertDressingRow } from '../src/world/dressingTable.js';
@@ -31,7 +31,7 @@ const snapshot = rows => rows.map(row => [row.id, row.pos.x, row.pos.z, row.radi
 
 test('all public temporary contracts build full-body clear course banks and starting grids', () => {
   for (const contract of RACE_CONTRACTS) {
-    const level = RACE_LEVELS.find(row => row.id === contract.levelId);
+    const level = raceLevelById(contract.levelId);
     const { state } = boot(level.sectorId, racingSeedFor(contract.id));
     const plan = racingCorridorPlan(level.sectorId);
     const field = rocks(state, level.sectorId);

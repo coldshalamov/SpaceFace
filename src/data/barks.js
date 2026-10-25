@@ -1,7 +1,7 @@
 // src/data/barks.js — per-faction radio VOICE corpus + deterministic selector.
 import { topUpBarkSituationCells } from './barkSituationFill.js';
 //
-// "The story is in the paperwork." Each of the 8 code factions speaks in a DISTINCT
+// "The story is in the paperwork." Each of the fourteen code factions speaks in a DISTINCT
 // register so a scan/warn/attack line instantly reads as who is talking, without an
 // IFF tag. Pure data: no DOM, no Math.random. One data import appends house lines onto
 // the cells below so index 0 of every cell stays the line that already shipped. The
@@ -41,17 +41,17 @@ import { topUpBarkSituationCells } from './barkSituationFill.js';
 // The code faction ids with a voice corpus, exported for validators/consumers.
 // Appended ids keep earlier indices stable: the generated line_*.wav corpus is indexed by
 // BARK_FACTIONS order × situation × line.
-export const BARK_FACTIONS = [
+export const BARK_FACTIONS = Object.freeze([
   'faction_scn', 'faction_mts', 'faction_dmc', 'faction_reach',
   'faction_quiet', 'faction_choir', 'faction_free', 'faction_vael',
   'faction_archive', 'faction_fulfillment', 'faction_pitborn',
   'faction_understory', 'faction_verge_layers', 'faction_helix',
-];
+]);
 
 // The core situations every faction is guaranteed to cover.
-export const BARK_SITUATIONS = [
+export const BARK_SITUATIONS = Object.freeze([
   'scan', 'warn', 'demand-cargo', 'attack', 'flee', 'reinforce', 'taunt', 'patrol-greeting',
-];
+]);
 
 // Event situations: every faction covers these too, but they fire on a moment, not a contact
 // state — same precedent as HULL_RECOGNITION below. They are deliberately NOT in BARK_SITUATIONS:
@@ -60,6 +60,9 @@ export const BARK_SITUATIONS = [
 export const BARK_EVENT_SITUATIONS = Object.freeze(['distress']);
 
 // Corpus: BARKS[factionId][situation] = [lines...]. Each array is non-empty.
+// Authoring rule: APPEND at cell end only — delivered voice WAVs are named by positional
+// corpus index (deliveredBarkWavRelPath), so a mid-array insert or reorder renumbers the
+// whole shipped WAV set downstream of it. Same rule as barkSituationFill.js.
 export const BARKS = {
   // ── Concord — procedural / bureaucratic ────────────────────────────────────
   faction_scn: {
@@ -909,6 +912,15 @@ export const BARKS = {
 
 topUpBarkSituationCells(BARKS, BARK_FACTIONS, BARK_SITUATIONS, BARK_EVENT_SITUATIONS);
 
+// Frozen like the fill table: a runtime push lands in the live selector and silently renumbers the
+// positional delivered WAV corpus (line_NNNN_* is corpus-index-keyed) — now it throws instead.
+// The merge above already ran; every consumer below is read-only.
+for (const pack of Object.values(BARKS)) {
+  for (const cell of Object.values(pack)) Object.freeze(cell);
+  Object.freeze(pack);
+}
+Object.freeze(BARKS);
+
 /**
  * Pick a deterministic index in [0, len) from a seeded rng OR a numeric index.
  * @param {function|number|undefined} rng  mulberry32-style fn returning [0,1), or an integer index.
@@ -935,12 +947,13 @@ function pickIndex(rng, len) {
  * Deterministically select one radio bark line for a faction + situation.
  *
  * @param {string} factionId   one of BARK_FACTIONS (unknown ids fall back to faction_free).
- * @param {string} situation   one of BARK_SITUATIONS (unknown falls back to 'scan').
+ * @param {string} situation   one of BARK_SITUATIONS or BARK_EVENT_SITUATIONS (unknown falls back to 'scan').
  * @param {function|number} [rng]  seeded rng fn (returns [0,1)) or a numeric index. Deterministic.
  * @returns {string}  a non-empty radio line. Always returns a string (never null/undefined).
  */
 export function barkFor(factionId, situation, rng) {
-  const faction = (factionId && BARKS[factionId]) ? BARKS[factionId] : BARKS.faction_free;
+  // hasOwn: 'toString'/'constructor' would otherwise adopt an Object.prototype member as a pack.
+  const faction = (factionId && Object.hasOwn(BARKS, factionId)) ? BARKS[factionId] : BARKS.faction_free;
   let lines = faction[situation];
   if (!Array.isArray(lines) || lines.length === 0) {
     // Situation not covered for this faction — fall back to 'scan', then to any populated situation.
@@ -1062,7 +1075,8 @@ export const HULL_RECOGNITION = Object.freeze({
  * @returns {string} a non-empty line with every token resolved.
  */
 export function hullRecognitionBarkFor(factionId, rng, tokens = {}) {
-  const lines = (factionId && HULL_RECOGNITION[factionId]) || HULL_RECOGNITION.faction_free;
+  const lines = (factionId && Object.hasOwn(HULL_RECOGNITION, factionId) && HULL_RECOGNITION[factionId])
+    || HULL_RECOGNITION.faction_free;
   const line = lines[pickIndex(rng, lines.length)];
   const ship = typeof tokens.ship === 'string' && tokens.ship.trim() ? tokens.ship.trim() : 'that hull';
   const shipClass = typeof tokens.class === 'string' && tokens.class.trim()
@@ -1355,7 +1369,8 @@ const HISTORY_STANCE_PRECEDENCE = Object.freeze(['hunts', 'fears', 'offers_work'
  */
 export function historyBarkFor(factionId, facts = {}, rng = 0) {
   if (!facts || facts.hasHistory !== true) return '';
-  const families = (factionId && HISTORY_RECOGNITION[factionId]) || HISTORY_RECOGNITION.faction_free;
+  const families = (factionId && Object.hasOwn(HISTORY_RECOGNITION, factionId) && HISTORY_RECOGNITION[factionId])
+    || HISTORY_RECOGNITION.faction_free;
   const captains = Array.isArray(facts.captains) ? facts.captains : [];
   let family = null;
   let captain = null;
@@ -1432,7 +1447,7 @@ const witnessSeamLines = {
 
 /** Pure band pick: the seam line a counter value speaks (null keeps the authored original). */
 export function witnessSeamLineFor(trackerId, value) {
-  const bands = WITNESS_SEAM_BANDS[trackerId];
+  const bands = (trackerId && Object.hasOwn(WITNESS_SEAM_BANDS, trackerId)) ? WITNESS_SEAM_BANDS[trackerId] : null;
   if (!bands) return null;
   const row = bands.find((band) => value >= band.min && value <= band.max);
   return row ? row.line : null;
@@ -1994,8 +2009,9 @@ function barLineAt(pool, index) {
  * @returns {string|null} a non-empty line, or null if the corpus is empty.
  */
 export function barGreetingBarkFor(factionId, role, index) {
-  const cell = BAR_GREETING_BARKS[factionId] || BAR_GREETING_BARKS.faction_free;
-  const pool = (role && cell[role]) || cell.any
+  const cell = (factionId && Object.hasOwn(BAR_GREETING_BARKS, factionId) && BAR_GREETING_BARKS[factionId])
+    || BAR_GREETING_BARKS.faction_free;
+  const pool = (role && Object.hasOwn(cell, role) && cell[role]) || cell.any
     || (BAR_GREETING_BARKS.faction_free && BAR_GREETING_BARKS.faction_free.any);
   return barLineAt(pool, index);
 }
@@ -2009,7 +2025,9 @@ export function barGreetingBarkFor(factionId, role, index) {
  * @returns {string|null} a non-empty line, or null if the corpus is empty.
  */
 export function barApproachBarkFor(factionId, index) {
-  return barLineAt(BAR_APPROACH_BARKS[factionId] || BAR_APPROACH_BARKS.faction_free, index);
+  const cell = (factionId && Object.hasOwn(BAR_APPROACH_BARKS, factionId) && BAR_APPROACH_BARKS[factionId])
+    || BAR_APPROACH_BARKS.faction_free;
+  return barLineAt(cell, index);
 }
 
 // ── Witness reaction: somebody watched the crime ────────────────────────────────────────────
@@ -2115,7 +2133,8 @@ export const WITNESS_CRIME_BARKS = Object.freeze({
  * @returns {string} a non-empty line.
  */
 export function witnessCrimeBarkFor(factionId, rng) {
-  const lines = (factionId && WITNESS_CRIME_BARKS[factionId]) || WITNESS_CRIME_BARKS.faction_free;
+  const lines = (factionId && Object.hasOwn(WITNESS_CRIME_BARKS, factionId) && WITNESS_CRIME_BARKS[factionId])
+    || WITNESS_CRIME_BARKS.faction_free;
   const line = lines[pickIndex(rng, lines.length)] || lines[0];
   return typeof line === 'string' && line.length ? line : '...';
 }
@@ -2215,7 +2234,8 @@ export const PURSUIT_BARKS = Object.freeze({
 
 /** One pursuit-chatter line for the chasing faction. Deterministic; falls back to faction_free. */
 export function pursuitBarkFor(factionId, rng) {
-  const lines = (factionId && PURSUIT_BARKS[factionId]) || PURSUIT_BARKS.faction_free;
+  const lines = (factionId && Object.hasOwn(PURSUIT_BARKS, factionId) && PURSUIT_BARKS[factionId])
+    || PURSUIT_BARKS.faction_free;
   const line = lines[pickIndex(rng, lines.length)] || lines[0];
   return typeof line === 'string' && line.length ? line : '...';
 }
@@ -2315,7 +2335,8 @@ export const SURRENDER_BARKS = Object.freeze({
 
 /** One surrender line for the demanding faction. Deterministic; falls back to faction_free. */
 export function surrenderBarkFor(factionId, rng) {
-  const lines = (factionId && SURRENDER_BARKS[factionId]) || SURRENDER_BARKS.faction_free;
+  const lines = (factionId && Object.hasOwn(SURRENDER_BARKS, factionId) && SURRENDER_BARKS[factionId])
+    || SURRENDER_BARKS.faction_free;
   const line = lines[pickIndex(rng, lines.length)] || lines[0];
   return typeof line === 'string' && line.length ? line : '...';
 }
@@ -2416,7 +2437,8 @@ export const ESCAPE_TAUNT_BARKS = Object.freeze({
 
 /** One post-escape taunt for the faction that lost the runner. Deterministic; faction_free fallback. */
 export function escapeTauntBarkFor(factionId, rng) {
-  const lines = (factionId && ESCAPE_TAUNT_BARKS[factionId]) || ESCAPE_TAUNT_BARKS.faction_free;
+  const lines = (factionId && Object.hasOwn(ESCAPE_TAUNT_BARKS, factionId) && ESCAPE_TAUNT_BARKS[factionId])
+    || ESCAPE_TAUNT_BARKS.faction_free;
   const line = lines[pickIndex(rng, lines.length)] || lines[0];
   return typeof line === 'string' && line.length ? line : '...';
 }
@@ -2546,9 +2568,9 @@ export const POD_HUNT_BARKS = Object.freeze({
  * Reach register; an unknown key is null so a caller can stay silent rather than invent text.
  */
 export function podHuntBarkFor(key, factionId, index) {
-  const cell = key && POD_HUNT_BARKS[key];
+  const cell = (key && Object.hasOwn(POD_HUNT_BARKS, key)) ? POD_HUNT_BARKS[key] : null;
   if (!cell) return null;
-  const lines = (factionId && cell[factionId]) || cell.faction_reach;
+  const lines = (factionId && Object.hasOwn(cell, factionId) && cell[factionId]) || cell.faction_reach;
   const line = lines[pickIndex(index, lines.length)] || lines[0];
   return typeof line === 'string' && line.length ? line : null;
 }
@@ -2585,7 +2607,8 @@ export const ORE_FLOOD_BARKS = Object.freeze({
  * line; an absent ore name reads as plain "ore".
  */
 export function oreFloodBarkFor(register, index, oreName) {
-  const lines = (register && ORE_FLOOD_BARKS[register]) || ORE_FLOOD_BARKS.working;
+  const lines = (register && Object.hasOwn(ORE_FLOOD_BARKS, register) && ORE_FLOOD_BARKS[register])
+    || ORE_FLOOD_BARKS.working;
   const line = lines[pickIndex(index, lines.length)] || lines[0];
   const ore = typeof oreName === 'string' && oreName.trim() ? oreName.trim().toLowerCase() : 'ore';
   return line.replace(/\{ore\}/g, ore);
@@ -2629,7 +2652,7 @@ export const DOCK_DEED_BARKS = Object.freeze({
 
 /** One dock-control greeting; null for an unknown tone or an empty deed line. */
 export function dockDeedBarkFor(tone, index, tokens = {}) {
-  const lines = DOCK_DEED_BARKS[tone];
+  const lines = (tone && Object.hasOwn(DOCK_DEED_BARKS, tone)) ? DOCK_DEED_BARKS[tone] : null;
   const deed = typeof tokens.deed === 'string' ? tokens.deed.trim() : '';
   if (!lines || !deed) return null;
   const line = lines[pickIndex(index, lines.length)] || lines[0];
@@ -2658,7 +2681,7 @@ export const LAW_STEP_BARKS = Object.freeze({
 
 /** The lawful-register receipt line for a law event; null for anything outside the corpus. */
 export function lawStepBarkFor(eventName) {
-  const line = eventName && LAW_STEP_BARKS[eventName];
+  const line = eventName && Object.hasOwn(LAW_STEP_BARKS, eventName) && LAW_STEP_BARKS[eventName];
   return typeof line === 'string' && line.length ? line : null;
 }
 
@@ -2761,7 +2784,7 @@ export const PASSENGER_BEATS = Object.freeze({
 
 /** One line from a passenger corpus by numeric index (0..2^32). Deterministic; never empty. */
 export function passengerBeatLine(kind, index) {
-  const pool = PASSENGER_BEATS[kind];
+  const pool = (kind && Object.hasOwn(PASSENGER_BEATS, kind)) ? PASSENGER_BEATS[kind] : null;
   if (!Array.isArray(pool) || !pool.length) return '';
   const i = (Number.isFinite(index) ? Math.abs(Math.trunc(index)) : 0) % pool.length;
   const line = pool[i];
@@ -2818,7 +2841,7 @@ export const RIVAL_SCAVENGER_REGISTER = Object.freeze({
 });
 
 export function rivalScavengerLineFor(kind, rng) {
-  const table = RIVAL_SCAVENGER_REGISTER[kind];
+  const table = (kind && Object.hasOwn(RIVAL_SCAVENGER_REGISTER, kind)) ? RIVAL_SCAVENGER_REGISTER[kind] : null;
   if (!table || !table.length) return '';
   return table[pickIndex(rng, table.length)];
 }
@@ -3097,11 +3120,11 @@ export const SECTOR_GREETING_BARKS = Object.freeze({
  * deterministic per-hull index, so the mix is save-stable.
  */
 export function sectorGreetingBarkFor(sectorId, index) {
-  const lines = (sectorId && SECTOR_GREETING_BARKS[sectorId]) || null;
+  const lines = (sectorId && Object.hasOwn(SECTOR_GREETING_BARKS, sectorId) && SECTOR_GREETING_BARKS[sectorId]) || null;
   if (!lines || lines.length === 0) return null;
   const n = Number(index);
   if (!Number.isFinite(n) || n % 2 !== 0) return null;
-  const pick = Math.floor(n / 2) % lines.length;
+  const pick = ((Math.floor(n / 2) % lines.length) + lines.length) % lines.length;
   const line = lines[pick];
   return (typeof line === 'string' && line.length) ? line : null;
 }
@@ -3110,6 +3133,7 @@ export default {
   BARKS,
   BARK_FACTIONS,
   BARK_SITUATIONS,
+  BARK_EVENT_SITUATIONS,
   CONTACT_VOICE_REGISTERS,
   MAERA_FLIGHT_LINES,
   HULL_RECOGNITION,
@@ -3124,6 +3148,11 @@ export default {
   TUMBLE_RAKE_BARKS,
   LAW_STEP_BARKS,
   SECTOR_GREETING_BARKS,
+  BAR_GREETING_BARKS,
+  BAR_APPROACH_BARKS,
+  RIVAL_SCAVENGER_REGISTER,
+  FREIGHT_RAIDER_ESCAPE_REGISTER,
+  GRANDEE_REGISTER,
   sectorGreetingBarkFor,
   FRONTIER_FIRST_NAMES,
   FRONTIER_LAST_NAMES,
@@ -3132,17 +3161,24 @@ export default {
   barkFor,
   hullRecognitionBarkFor,
   historyBarkFor,
+  barGreetingBarkFor,
+  barApproachBarkFor,
   witnessCrimeBarkFor,
   pursuitBarkFor,
   surrenderBarkFor,
   escapeTauntBarkFor,
   podHuntBarkFor,
   oreFloodBarkFor,
+  dockDeedBarkFor,
   tumbleRakeBarkFor,
   lawStepBarkFor,
+  lawResponseBarkFor,
   passengerBeatLine,
   witnessSeamLineFor,
   syncWitnessSeamVoice,
+  rivalScavengerLineFor,
+  freightRaiderEscapeBarkFor,
+  grandeeHailFor,
   TOURIST_HAIL_REGISTER,
   HAULER_REGISTER,
   COURIER_HAIL_REGISTER,

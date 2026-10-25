@@ -163,11 +163,21 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const player=st.entities?.get?.(st.playerId);
       const pod=st.entities?.get?.(race.params.rescueTargetId);
       const cueRows=race.params.raceSetPieces||[];
-      const cue=cueRows.find(c=>['warning','active','closing','closed','opening'].includes(c.phase))
-        ||cueRows.find(c=>c.kind==='anchor'&&Math.abs(c.gateIndex-(race.params.nextGate||0))<=1);
-      if(cue)courseCue.textContent=cue.kind==='anchor'?`${cue.name} · optional Massline swing`
-        :cue.kind==='shutter'?`${cue.name.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} wu`
-        :`${cue.name.toUpperCase()} · ${cue.phase==='warning'?`${Math.ceil(cue.countdownS)}s`: 'CROSSING NOW'} · refuge ring before crossing`;
+      const nextGate=Number(race.params.nextGate)||0;
+      // AL-RACE-2: a sector hazard cue surfaces only around its own upcoming leg —
+      // warning/active on its gate window — and never permanently hides anchors.
+      const sectorCue=cueRows.find(c=>c.kind==='sectorHazard'
+        &&['warning','active','unavailable'].includes(c.phase)
+        &&Math.abs(c.gateIndex-nextGate)<=1);
+      const cue=sectorCue
+        ||cueRows.find(c=>['warning','active','closing','closed','opening'].includes(c.phase))
+        ||cueRows.find(c=>c.kind==='anchor'&&Math.abs(c.gateIndex-nextGate)<=1);
+      const cueName=cue?String(cue.name||cue.id||''):'';
+      if(cue)courseCue.textContent=cue.kind==='sectorHazard'
+        ?`${cueName.toUpperCase()} · ${cue.label||'SECTOR HAZARD'}${cue.phase==='warning'&&Number.isFinite(cue.countdownS)?` · ${Math.ceil(cue.countdownS)}S`:cue.phase==='unavailable'?' · OFFLINE':''} · ${cue.hint||''}`
+        :cue.kind==='anchor'?`${cueName} · optional Massline swing`
+        :cue.kind==='shutter'?`${cueName.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} wu`
+        :`${cueName.toUpperCase()} · ${cue.phase==='warning'?`${Math.ceil(cue.countdownS)}s`: 'CROSSING NOW'} · refuge ring before crossing`;
       const anchor=cue?.kind==='anchor'?st.entities?.get(cue.entityIds[0]):null;
       selection=pod?.alive!==false&&pod?pod:anchor?.alive!==false&&anchor?anchor:null;
       if(selection&&player?.pos&&Math.hypot(selection.pos.x-player.pos.x,selection.pos.z-player.pos.z)<900){

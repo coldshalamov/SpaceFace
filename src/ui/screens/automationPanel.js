@@ -822,6 +822,18 @@ html body #screens #sf-automation.au-orrery .au-shop--outposts .meta > span:firs
   grid-column: 1 / -1; }
 html body #screens #sf-automation.au-orrery .au-shop--fleet .meta {
   grid-template-columns: 24ch max-content; }
+/* polish133: the drone earnings line ("Up to ~113 cr/min capped · shared ceiling, before upkeep")
+   had a 20ch track, so it ended in an ellipsis jammed against "buffer" on every rung. On desktop
+   the four short stats keep aligned columns and the earnings sentence takes its own line under
+   them, whole; ≤760 keeps its wrapping flex row with the sentence last. */
+@media (min-width: 761px) {
+  html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta {
+    grid-auto-flow: row; grid-template-columns: 11ch 11ch 10ch 14ch; row-gap: 2px; }
+  html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta > span:nth-child(2) {
+    grid-column: 1 / -1; }
+}
+html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta > span:nth-child(2) {
+  order: 1; white-space: normal; overflow: visible; text-overflow: clip; }
 html body #screens #sf-automation.au-orrery .au-shop .au-note {
   display: none; grid-column: 1 / -1; margin-top: 2px; font-size: 12px; }
 html body #screens #sf-automation.au-orrery .au-shop:hover .au-note,
@@ -1465,7 +1477,7 @@ export const automationScreen = {
         const def = TRADERS.find((x) => x.id === t.defId) || t;
         const card = document.createElement('div');
         card.className = 'au-card';
-        const route = t.route ? `${escapeHtml(t.route.from || '?')} → ${escapeHtml(t.route.to || '?')}` : 'idle (assign route)';
+        const route = t.route ? escapeHtml(traderPortLine(t.route.from, t.route.to)) : 'idle (assign route)';
         const hot = Math.round((t.hotness || 0) * 100);
         const distressed = t.status === 'distressed';
         const arrears = Math.floor((a.accumulators && a.accumulators.upkeepDebt) || 0);
@@ -2308,7 +2320,7 @@ function recipeText(r) {
 export function formatTraderReceipt(t) {
   const r = t && t.lastReceipt;
   if (!r) return '';
-  const legs = `${escapeHtml(String(r.qty))}u ${escapeHtml(String(r.from))}→${escapeHtml(String(r.to))} · bought @${fmtCr(r.buyUnit)} · sold @${fmtCr(r.sellUnit)} · fuel ${fmtCr(r.fuelCost)}`;
+  const legs = `${escapeHtml(String(r.qty))}u ${escapeHtml(traderPortLine(r.from, r.to))} · bought @${fmtCr(r.buyUnit)} · sold @${fmtCr(r.sellUnit)} · fuel ${fmtCr(r.fuelCost)}`;
   if (r.result === 'paid') return `Last delivery #${r.n}: ${legs} · net +${fmtCr(r.credited)} cr${r.overflowDropped > 0 ? ` · ${fmtCr(r.overflowDropped)} cr withheld by the passive income cap` : ''}${r.walletWithheld > 0 ? ` · ${fmtCr(r.walletWithheld)} cr above the credit limit` : ''}`;
   if (r.result === 'capped') return `Last delivery #${r.n}: ${legs} · no payout — passive income cap reached`;
   if (r.result === 'wallet_full') return `Last delivery #${r.n}: ${legs} · no payout — credit limit reached`;
@@ -2362,6 +2374,19 @@ function prettyLabel(id) {
   return String(id || '')
     .replace(/^(drone_|trader_|outpost_|cmdty_|ship_|sector_|mod_)/, '')
     .replace(/_/g, ' ');
+}
+
+// The hire toast already names ports. The card and the delivery line use the same names.
+// Stored route ids stay ids; this is display only.
+export function stationDisplayName(id) {
+  if (!id) return '?';
+  const named = STATION_NAMES.get(id);
+  if (named) return named;
+  return String(id).replace(/^station_/, '').replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function traderPortLine(fromId, toId) {
+  return `${stationDisplayName(fromId)} → ${stationDisplayName(toId)}`;
 }
 
 function commodityName(id) {

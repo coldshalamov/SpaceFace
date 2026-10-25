@@ -169,7 +169,7 @@ function sting(factionId, profileKey, hz, wave, label) {
   return Object.freeze({
     factionId,
     profileKey,
-    profile: BAND_BED_PROFILES[profileKey] || null,
+    profile: (profileKey && Object.hasOwn(BAND_BED_PROFILES, profileKey)) ? BAND_BED_PROFILES[profileKey] : null,
     hz,
     wave,
     label,
@@ -192,6 +192,7 @@ export const FACTION_STINGS = Object.freeze({
   faction_pitborn: sting('faction_pitborn', 'pirate_roast', 131, 'sawtooth', 'Pitborn'),
   faction_understory: sting('faction_understory', 'harmonic_drone', 98, 'sine', 'Understory'),
   faction_verge_layers: sting('faction_verge_layers', 'numbers_station', 494, 'sine', 'Verge-Layer'),
+  faction_helix: sting('faction_helix', 'numbers_station', 523, 'sine', 'Helix'),
 });
 
 function clamp01(v) {
@@ -201,8 +202,10 @@ function clamp01(v) {
 }
 
 export function resolveSectorBed(sectorId) {
-  if (sectorId && SECTOR_BEDS[sectorId]) return SECTOR_BEDS[sectorId];
-  if (sectorId && COMPOSED_SECTOR_BEDS[sectorId]) return COMPOSED_SECTOR_BEDS[sectorId];
+  // hasOwn: a prototype-keyed id ('toString' &c.) must fall through to the hashed bed, not
+  // resolve an inherited Object member as a bed row.
+  if (sectorId && Object.hasOwn(SECTOR_BEDS, sectorId)) return SECTOR_BEDS[sectorId];
+  if (sectorId && Object.hasOwn(COMPOSED_SECTOR_BEDS, sectorId)) return COMPOSED_SECTOR_BEDS[sectorId];
   const id = String(sectorId || '');
   if (!id) return DEFAULT_SECTOR_BED;
   // Unknown sector: still unique so a blind listen does not collapse to the void bed.
@@ -215,7 +218,8 @@ export function resolveSectorBed(sectorId) {
 }
 
 export function resolveFactionSting(factionId) {
-  if (factionId && FACTION_STINGS[factionId]) return FACTION_STINGS[factionId];
+  // hasOwn: 'toString' would otherwise return an inherited function as a sting row.
+  if (factionId && Object.hasOwn(FACTION_STINGS, factionId)) return FACTION_STINGS[factionId];
   return null;
 }
 
@@ -326,7 +330,7 @@ export function resolveThemeMatrix(input = {}) {
     working: !!input.working,
     workPresence: clamp01(input.workPresence),
   });
-  const stem = MUSIC_STEMS.find((row) => row && (row.id === `stem_${motif.stem.toLowerCase()}` || row.label))
+  const stem = MUSIC_STEMS.find((row) => row && row.id === `stem_${motif.stem.toLowerCase()}`)
     || MUSIC_STEMS[0];
   return Object.freeze({
     schema: 'spaceface.themeMatrix.v1',

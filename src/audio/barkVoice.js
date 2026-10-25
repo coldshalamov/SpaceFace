@@ -9,10 +9,11 @@ import { SAMPLE_MANIFEST } from './sampleLibrary.js';
 import { detectPitchHz, decodePcmWav } from './themeCompose.js';
 
 export const BARK_VOICE_SEED = 15804;
-// Authored count follows the BARKS table. PULSE-08 tops every core cell to 12
-// (14 factions x 8 situations). Distress is event-only and is not in this count.
+// Authored count follows the BARKS table. PULSE-08 tops every core cell to >=12
+// (14 factions x 8 situations + the former dead fill tails, live since D254).
+// Distress is event-only and is not in this count.
 // The pin exists so unauthored corpus drift fails loudly.
-export const BARK_CORPUS_TARGET = 1344;
+export const BARK_CORPUS_TARGET = 1399;
 
 export const BARK_RECIPE_ID = 'sfx_bark_radio';
 
@@ -87,7 +88,7 @@ export const FACTION_VOICE_REGISTERS = Object.freeze({
     formants: [350, 800, 1900],
   }),
   // Deep factions (K1 route). f0 sits ≥5 Hz from every other register so the blind-listen
-  // identifier (tolerance <3 Hz) can never cross-name two houses.
+  // identifier (tolerance <2.5 Hz) can never cross-name two houses.
   faction_archive: register('faction_archive', 'Archive', {
     // Monastic librarian: low, slow, dry — a voice that files you while it talks.
     sampleId: 'bark_archive', f0: 102, pitch: 0.85, rate: 0.82,
@@ -133,8 +134,9 @@ export const MECHANIC_VOICE_REGISTER = register('mechanic', 'Mechanic', {
 });
 
 // The instructor: the first-hour tutorial voice. Low, clean, unhurried — a dispatcher register a
-// stranger can tell apart blind from the thirteen faction registers and the mechanic (least noise and drive in
-// the set; the bandpass sits high enough to stay soft over the comms bed).
+// stranger can tell apart on the full signature from the faction registers and the mechanic (least
+// noise and drive in the set; the bandpass sits high enough to stay soft over the comms bed — its
+// f0 sits inside the blind-identification tolerance of pitborn's, so pitch alone does not separate).
 export const INSTRUCTOR_VOICE_REGISTER = register('instructor', 'Instructor', {
   sampleId: 'bark_instructor', f0: 118, pitch: 0.92, rate: 0.96,
   filterHz: 1500, q: 0.9, noise: 0.01, bandpassLo: 340, bandpassHi: 2700, drive: 0.04,
@@ -172,7 +174,10 @@ export const MECHANIC_LINES = Object.freeze([
 export function resolveVoiceRegister(factionId, mechanic = false) {
   if (mechanic || factionId === 'mechanic') return MECHANIC_VOICE_REGISTER;
   if (factionId === CONTACT_MAERA_ID) return MAERA_VOICE_REGISTER;
-  return FACTION_VOICE_REGISTERS[factionId] || FACTION_VOICE_REGISTERS.faction_free;
+  // hasOwn, not truthiness: 'toString'/'constructor' would resolve an Object.prototype member.
+  return Object.hasOwn(FACTION_VOICE_REGISTERS, factionId)
+    ? FACTION_VOICE_REGISTERS[factionId]
+    : FACTION_VOICE_REGISTERS.faction_free;
 }
 
 function durationS(line, rate) {
@@ -192,7 +197,7 @@ export function resolveBarkVoice(input = {}) {
   let factionId = 'faction_free';
   if (mechanic) factionId = 'mechanic';
   else if (maera) factionId = CONTACT_MAERA_ID;
-  else if (input.factionId && FACTION_VOICE_REGISTERS[input.factionId]) factionId = input.factionId;
+  else if (input.factionId && Object.hasOwn(FACTION_VOICE_REGISTERS, input.factionId)) factionId = input.factionId;
   const situation = mechanic
     ? 'berth'
     : (BARK_SITUATIONS.includes(input.situation) || BARK_EVENT_SITUATIONS.includes(input.situation)
@@ -341,12 +346,18 @@ export function enumerateMechanicPipeline() {
 export function factionRegistersAreDistinct() {
   const sigs = BARK_FACTIONS.map((id) => {
     const r = FACTION_VOICE_REGISTERS[id];
-    return `${r.f0}:${r.pitch}:${r.rate}:${r.filterHz}:${r.q}:${r.noise}`;
+    if (!r) return `missing:${id}`; // a missing register is a distinctness failure, not a TypeError
+    // Full signature — the register contract is pitch, cadence, filter, grit AND drive/band:
+    // two registers differing only in drive/bandpass would otherwise pass as near-clones.
+    return `${r.f0}:${r.pitch}:${r.rate}:${r.filterHz}:${r.q}:${r.noise}:${r.drive}:${r.bandpassLo}:${r.bandpassHi}`;
   });
+  if (sigs.some((s) => s.startsWith('missing:'))) return false;
   return new Set(sigs).size === sigs.length;
 }
 
-/** Blind listen: name the faction from f0/rate/filter, never from the label. */
+/** Blind listen: name the faction from f0/rate/filter, never from the label.
+ *  Faction-register input only — non-faction registers (instructor sits inside pitborn's
+ *  tolerance; mechanic/maera share neighborhoods) can misname rather than return null. */
 export function identifyRegisterFromSpeech(speech = {}) {
   const f0 = Number(speech.f0);
   const rate = Number(speech.rate);
@@ -355,6 +366,7 @@ export function identifyRegisterFromSpeech(speech = {}) {
   let bestDist = Infinity;
   for (const factionId of BARK_FACTIONS) {
     const r = FACTION_VOICE_REGISTERS[factionId];
+    if (!r) continue;
     const dist = Math.abs(r.f0 - f0) + Math.abs(r.rate - rate) * 40 + Math.abs(r.filterHz - filterHz) / 80;
     if (dist < bestDist) {
       bestDist = dist;
@@ -364,9 +376,16 @@ export function identifyRegisterFromSpeech(speech = {}) {
   return bestDist < 8 ? best : null;
 }
 
-/** Pipeline delivery path: one WAV per corpus row, written by generate-bark-voice.mjs --all. */
+/** Pipeline delivery path: one WAV per corpus row, written by generate-bark-voice.mjs --all.
+ *  Four-digit padding keeps lexicographic order = row order now that the corpus exceeds 999. */
 export function deliveredBarkWavRelPath(index, registerId) {
-  const n = String(Number(index) || 0).padStart(3, '0');
+  if (!Number.isInteger(index) || index < 0 || index > 9999) {
+    throw new Error(`deliveredBarkWavRelPath index must be an integer 0-9999, got ${index}`);
+  }
+  if (typeof registerId !== 'string' || !/^[A-Za-z0-9_-]+$/.test(registerId)) {
+    throw new Error(`deliveredBarkWavRelPath registerId must be a safe filename segment, got ${registerId}`);
+  }
+  const n = String(index).padStart(4, '0');
   return `assets/audio/voice/line_${n}_${registerId}.wav`;
 }
 
@@ -382,6 +401,10 @@ export function enumerateDeliveredBarkWavs() {
 
 export const BARK_UTTERANCE_SECONDS = 1.05;
 export const REGISTER_CALLSIGN_SECONDS = 0.7;
+// Delivered corpus artifacts are normalized to a fixed length; the player hears each row's
+// authored speech.durationS instead (pinned by pq-158-04), so this shapes only the
+// byte-verified acceptance corpus.
+export const DELIVERED_WAV_SECONDS = 1.4;
 
 class VoiceBiquad {
   constructor(type, f0, q, sr) {
@@ -433,11 +456,12 @@ function mulberry32(seed) {
  * only. Never reads sim RNG.
  */
 export function renderBarkUtterancePcm(resolved, options = {}) {
-  const sr = options.sampleRate || 32000;
-  const dur = options.seconds == null
+  const sr = Number.isFinite(options.sampleRate) && options.sampleRate > 0 ? options.sampleRate : 32000;
+  const rawDur = options.seconds == null
     ? (resolved && resolved.speech && resolved.speech.durationS) || BARK_UTTERANCE_SECONDS
     : options.seconds;
-  const n = Math.max(1, Math.round(Number(dur) * sr));
+  const dur = Number.isFinite(Number(rawDur)) && Number(rawDur) > 0 ? Number(rawDur) : BARK_UTTERANCE_SECONDS;
+  const n = Math.max(1, Math.round(dur * sr));
   const out = new Float64Array(n);
   if (!resolved || !resolved.speech) return out;
   const f0 = Number(resolved.speech.f0);
@@ -475,8 +499,9 @@ export function renderBarkUtterancePcm(resolved, options = {}) {
 /** Isolated pitch callsign: a stranger hears the register's fundamental, no radio hash. */
 export function renderRegisterCallsignPcm(register, options = {}) {
   const f0 = Number(register && register.f0);
-  const sr = options.sampleRate || 32000;
-  const seconds = options.seconds == null ? REGISTER_CALLSIGN_SECONDS : options.seconds;
+  const sr = Number.isFinite(options.sampleRate) && options.sampleRate > 0 ? options.sampleRate : 32000;
+  const rawSeconds = options.seconds == null ? REGISTER_CALLSIGN_SECONDS : options.seconds;
+  const seconds = Number.isFinite(Number(rawSeconds)) && Number(rawSeconds) > 0 ? Number(rawSeconds) : REGISTER_CALLSIGN_SECONDS;
   const n = Math.max(1, Math.round(seconds * sr));
   const pcm = new Float64Array(n);
   if (!(f0 > 0)) return pcm;
@@ -493,8 +518,11 @@ export function renderRegisterCallsignPcm(register, options = {}) {
   return pcm;
 }
 
-/** Name a faction from unlabeled PCM. Never reads the filename or the register label. */
+/** Name a faction from unlabeled PCM. Never reads the filename or the register label.
+ *  Faction-register input only — non-faction registers (instructor sits inside pitborn's
+ *  tolerance; mechanic/maera share neighborhoods) can misname rather than return null. */
 export function identifyRegisterFromPcm(pcm, sampleRate = 32000) {
+  if (!pcm || typeof pcm.length !== 'number' || pcm.length === 0) return null;
   const f0 = detectPitchHz(
     pcm,
     sampleRate,
@@ -506,13 +534,15 @@ export function identifyRegisterFromPcm(pcm, sampleRate = 32000) {
   let best = null;
   let bestDist = Infinity;
   for (const factionId of BARK_FACTIONS) {
-    const dist = Math.abs(FACTION_VOICE_REGISTERS[factionId].f0 - f0);
+    const r = FACTION_VOICE_REGISTERS[factionId];
+    if (!r) continue;
+    const dist = Math.abs(r.f0 - f0);
     if (dist < bestDist) {
       bestDist = dist;
       best = factionId;
     }
   }
-  return bestDist < 3 ? best : null;
+  return bestDist < 2.5 ? best : null;
 }
 
 /** Decode a WAV and name the register. Never reads the filename. */
@@ -524,7 +554,7 @@ export function identifyRegisterFromWavBuffer(buf) {
 
 export const BLIND_REGISTER_CLIPS = Object.freeze(
   [...BARK_FACTIONS]
-    .sort((a, b) => FACTION_VOICE_REGISTERS[a].f0 - FACTION_VOICE_REGISTERS[b].f0)
+    .sort((a, b) => (FACTION_VOICE_REGISTERS[a]?.f0 ?? -1) - (FACTION_VOICE_REGISTERS[b]?.f0 ?? -1))
     .map((factionId, index) => Object.freeze({
       index,
       file: `assets/audio/voice/blind/clip_${String(index).padStart(2, '0')}.wav`,

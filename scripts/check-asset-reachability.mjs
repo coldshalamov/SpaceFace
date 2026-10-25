@@ -21,7 +21,7 @@ import {
 } from '../src/data/portraits.js';
 import { WRECK_CATHEDRAL_EVIDENCE_CATALOG } from '../src/data/wreckCathedralEvidenceCatalog.js';
 import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManifest.js';
-import { RELEASE_COPY_MAPPINGS } from './lib/releasePackaging.mjs';
+import { RELEASE_COPY_MAPPINGS, releaseCopyExcludePrefixes, safeRelativePath } from './lib/releasePackaging.mjs';
 import { CENSUS_JSON } from '../src/data/modelTruthCensus.generated.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,7 +30,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // a referenced asset outside them 404s in the shipped game). Derived rather than duplicated so a
 // new bundled root cannot drift from this contract.
 const BUNDLED_ROOTS = RELEASE_COPY_MAPPINGS
-  .map((m) => m.source)
+  .map((m) => safeRelativePath(m.source, 'release copy source'))
   .filter((source) => source.startsWith('assets/'));
 
 // UI kit helpers (kitUrl/fhUrl in src/ui/kit) resolve their asset arguments under this prefix at
@@ -69,6 +69,9 @@ function walk(dir, out = []) {
 // Strip comments so asset paths that only appear in explanatory comments are not treated as live
 // references. Handles /* ... */ blocks and whole-line // or * comments (the forms used here). Relative
 // asset paths never contain "//", so trailing line-comment stripping cannot truncate a real reference.
+// Known limitation: a `//` inside a string literal on a live code line (e.g. 'https://…') truncates
+// the line there, so an `assets/` literal after it would be missed — acceptable while no source file
+// builds asset URLs past such a literal; the audit output diff is checked when this becomes live.
 function stripComments(src) {
   const noBlocks = src.replace(/\/\*[\s\S]*?\*\//g, '');
   return noBlocks.split('\n').map((line) => {
@@ -143,8 +146,19 @@ for (const [asset, files] of [...referenced]) {
   }
 }
 
+// Mapping.exclude prefixes are omitted from the retail copy even though their parent root is
+// bundled — a referenced asset under one 404s exactly like an asset outside every root.
+// Law: an excluded prefix must never be literally referenced from src/styles — such a match
+// means a runtime path fetches an asset the retail build doesn't ship (a real defect, so
+// this audit correctly flags it rather than carving it out). Derived from the same
+// normalizer the planner uses so separator/dir semantics can't drift.
+const EXCLUDED_PREFIXES = RELEASE_COPY_MAPPINGS.flatMap((m) =>
+  releaseCopyExcludePrefixes(m).map((p) => `${safeRelativePath(m.source, 'release copy source')}/${p}`));
+
 const issues = [];
-const underBundledRoot = (asset) => BUNDLED_ROOTS.some((r) => asset === r || asset.startsWith(`${r}/`));
+const underBundledRoot = (asset) =>
+  BUNDLED_ROOTS.some((r) => asset === r || asset.startsWith(`${r}/`))
+  && !EXCLUDED_PREFIXES.some((p) => asset.startsWith(p));
 const packageRouteFor = (asset) => renderPackagePilotForSourceUrl(asset);
 const physicallyBundled = (asset) => underBundledRoot(asset) && !packageRouteFor(asset);
 
@@ -162,7 +176,7 @@ for (const [asset, files] of referenced) {
   const packageRoute = packageRouteFor(asset);
   if (!underBundledRoot(asset) && !packageRoute) {
     issues.push(`NOT RETAIL-ROUTABLE: "${asset}" (referenced by ${files.join(', ')}) is outside the bundled roots [${BUNDLED_ROOTS.join(', ')}] and has no render-package route. ` +
-      `Add its directory to build-bundle.mjs + package.json build.files, or drop the reference.`);
+      `Add its directory to build-bundle.mjs + package.json build.files, drop the reference, or check whether it sits under a release-copy exclude prefix [${EXCLUDED_PREFIXES.join(', ')}] — excluded files are never retail-routable.`);
   }
   if (packageRoute) {
     if (!existsSync(join(ROOT, packageRoute.metadataUrl))) {
