@@ -280,8 +280,10 @@ export class WeaponVfxPresenter {
       });
     }
     const playerId = this.state && this.state.playerId;
-    let priority = ownerId === playerId ? 1 : 0.45;
-    if (HEAVY_LIGHT_VARIANTS.has(recipe.variant)) priority = Math.min(1, priority + 0.2);
+    // A muzzle is the source, not the hero event. Keep the two-slot weapon pool able to
+    // seat the contact that follows; a player contact outranks their own muzzle.
+    let priority = ownerId === playerId ? 0.72 : 0.35;
+    if (HEAVY_LIGHT_VARIANTS.has(recipe.variant)) priority = Math.min(0.84, priority + 0.12);
     if (muzzle.lightPeak > 0 && a11y.eventLightPeakScale > 0
       && !this._lightCulled(origin && origin.x, origin && origin.z, priority)) {
       this.lights.spawn({
@@ -406,8 +408,12 @@ export class WeaponVfxPresenter {
     }
     if (a11y.eventLightPeakScale > 0) {
       const hitLight = hitLightForVariant(recipe.variant);
-      let hitPriority = payload.targetId === (this.state && this.state.playerId) ? 0.9 : 0.4;
-      if (HEAVY_LIGHT_VARIANTS.has(recipe.variant)) hitPriority = Math.min(1, hitPriority + 0.25);
+      const playerId = this.state && this.state.playerId;
+      const playerCaused = payload.ownerId != null && payload.ownerId === playerId;
+      let hitPriority = payload.targetId === playerId ? 0.95 : (playerCaused ? 0.88 : 0.40);
+      if (!playerCaused && HEAVY_LIGHT_VARIANTS.has(recipe.variant)) {
+        hitPriority = Math.min(0.82, hitPriority + 0.20);
+      }
       if (!this._lightCulled(pos.x, pos.z, hitPriority)) {
         this.lights.spawn({
           x: world.x, y, z: world.z,
@@ -869,6 +875,8 @@ export class WeaponVfxPresenter {
     pose.ax = captured.nx; pose.ay = captured.ny; pose.az = captured.nz;
     pose.targetId = targetId != null ? targetId : null;
     pose.attached = captured.attached === true;
+    pose.approachX = apx;
+    pose.approachZ = apz;
     // Signed lean of the incoming path around the outward normal: head-on hits keep a symmetric
     // fan, grazing hits smear it downrange. This is presentation, never a fabricated force axis.
     const into = apx * nx + apz * nz;
