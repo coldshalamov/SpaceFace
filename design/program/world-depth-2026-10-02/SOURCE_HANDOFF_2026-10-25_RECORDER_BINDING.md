@@ -1,10 +1,12 @@
 <!-- LIFETIME: DURABLE -->
 # Last Shift recorder: source and asset handoff
-Updated: 25 October 2026, 04:38 UTC.
+Updated: 25 October 2026, 04:49 UTC.
 
 This is a source-only checkpoint. All twelve goals in [OPEN_GOALS.md](OPEN_GOALS.md) remain OPEN. It preserves the [implementation roster](IMPLEMENTATION.md), [original twenty concepts](TWENTY_CONCEPT_MAP.json) and existing build-map scope; it is not a new queue or acceptance declaration. Prior [recovery guidance](SOURCE_HANDOFF_2026-10-25_RECOVERY_GUIDANCE.md) and its original attempts remain intact.
 
-## Verified candidate publication
+Current source checkpoint: [published return-feedback follow-on](#recorder-return-feedback-published-follow-on-25-october-2026-0449-utc). The original binding checkpoint below remains historical evidence.
+
+## Verified recorder-binding publication
 - Open draft [PR602](https://github.com/coldshalamov/SpaceFace/pull/602).
 - Commit: `07c609f5643c0ad2f1bc59ff0b4da8175206e5b1`.
 - Tree: `88f72d802f967377b1a6a5d46b30c1f39ad616ec`.
@@ -50,6 +52,15 @@ These are separate focused local checks on the exact 690e-based candidate, not a
 ## Resume without duplicating owners
 The project lead coordinates the current Last Shift source, package, review and qualification owners. Preserve their exact paths and the canonical foreign-dirty checkout. Work only in the assistant's own environment. Do not create or resume external execution threads, fetch missing local promisor objects, or run `test/anvil-receiver-delivery.test.mjs`.
 
-First verify PR602/ref and current master. If the PR merged, reconcile only unlanded work onto current master and create a new draft increment; do not overwrite newer changes. The focused recorder command is `npm run check:render:last-shift-recorder`. Re-run the manifest and worker leaves on any changed source graph, keeping test counts scoped. The next narrow source unit is reason-specific return-refusal feedback: native-pending, range, tow, custody, detach and already-returned outcomes currently collapse into misleading generic reeling advice. The Last Shift gameplay owner will implement and test truthful feedback without changing authority or physics. Continue the original-recorder physical return and connected Ceres consequences afterward. Do not replace original bodies or seed evidence/custody to manufacture acceptance.
+First verify PR602/ref and current master. If the PR merged, reconcile only unlanded work onto current master and create a new draft increment; do not overwrite newer changes. The focused recorder command is `npm run check:render:last-shift-recorder`. Re-run the manifest and worker leaves on any changed source graph, keeping test counts scoped. The reason-specific return-refusal unit described in the original checkpoint is now implemented and published; see the follow-on below. Continue the original-recorder physical return and connected Ceres consequence inspection without duplicating existing Helios acknowledgement. Do not replace original bodies or seed evidence/custody to manufacture acceptance.
 
 Existing held operations remain held: the 847KB partsLibrary upload, distinct fairlead helper/tests and census-source uploads, live-browser prerequisite and older asset-specific holds. This recorder publication does not authorize their retry or substitute routes. No optional routine engineering choice needs user input; final acceptance remains required.
+
+## Recorder return feedback: published follow-on (25 October 2026, 04:49 UTC)
+- Current candidate commit: `bb43ba003abd5e1dc8788b67091a8336e8a36a22`; tree `a78dcd32c35fa12f02e186d3cda91bd1e084080a`; sole parent `07c609f5643c0ad2f1bc59ff0b4da8175206e5b1`. The prior recorder binding and model identities above remain unchanged.
+- Exactly three changed paths: `src/systems/lastShift.js`, blob `46c79d201c30ba8d8b1b30cd17542a28c2e6ef15`; `test/last-shift-return-feedback.test.mjs`, blob `e9d76b67683e2471032a256b0db5f4df64016870`; `package.json`, blob `0748b80de84f1e2be571e6afd0e888f37d256c58`. The package change appends the new test to the existing narrative-worker check only.
+- Narrow feedback is implemented and published on the draft candidate: restoration, already returned, unavailable or terminal recorder, berth range, missing tow, pending native custody, changed custody, refused detach and in-progress handoff now receive truthful, distinct advice. Unknown reasons use a safe fallback. Restoration is no longer mislabeled as an already completed return.
+- Final local qualification: 13/13 new feedback tests and 19/19 existing tests, natural exit 0, against the exact 07c source graph plus these changes. The earlier 13-case attempt using the older manifest is superseded; failed intake attempts remain preserved. No production change forced a pass. These scoped checks are not aggregate, live-play or full acceptance.
+- The narrow feedback unit is complete as source implementation/publication, not as a completed game goal. All twelve goals remain OPEN. Ordinary physical return, live camera, performance, master integration and final acceptance remain unfinished.
+- Next connected increment is Ceres local-consequence inspection. Doss already acknowledges the archive at Helios; do not duplicate that acknowledgement or introduce a second counter. Ceres bar hooks are under ownership review, not implemented. Continue original-recorder physical return and ordinary return/Save/Continue qualification without replacing bodies or seeding custody.
+- Existing publication and browser holds remain unchanged. No held payload, CI result export, PR-body change, merge or deployment is included.

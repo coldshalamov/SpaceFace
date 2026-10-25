@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 25 October 2026, 04:38 UTC.
+Updated: 25 October 2026, 04:49 UTC.
 
 All **12 goals remain OPEN**. This current register records source scope only. Historical reviewer/acceptance fields remain in the [immutable prior register](https://github.com/coldshalamov/SpaceFace/blob/5d62a0e86b8d9071d7e03b02b6c965f3ded3bab5/design/program/world-depth-2026-10-02/OPEN_GOALS.md) and its linked archive.
 
@@ -24,7 +24,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; Recorder source, release/runtime assets and tests are published at 07c609f5643c in draft PR602; separate fairlead/P08 source operations remain held.
+- State: OPEN; Recorder source, release/runtime assets and tests are published at 07c609f5643c, followed by narrow return-feedback source/tests at bb43ba003abd in draft PR602; separate fairlead/P08 source operations remain held.
 - Owner: publisher, project lead and exact feature owners.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Preserve reviewed source and handoff without retrying held exports.
@@ -32,7 +32,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-RECOVER
 - Outcome: recoverable source, models, tests and handoff beyond a disposable environment, including GitHub.
-- State: OPEN; The recorder source, compiled release/runtime models, metadata, bindings and tests are preserved by verified Git commit 07c609f5643c. Historical failed/final work remains separately recoverable.
+- State: OPEN; The recorder source, compiled release/runtime models, metadata, bindings and tests are preserved by verified Git commit 07c609f5643c. The follow-on feedback source/tests are preserved at bb43ba003abd. Historical failed/final work remains separately recoverable.
 - Owner: preserver, exact source owners and project integration.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Preserve exact source/restoration dependencies before interruptions.
@@ -64,7 +64,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-LIVING-WORLD
 - Outcome: inhabited places, work, economy, history, relationships and consequences using actual assets/systems.
-- State: OPEN; Last Shift recovery guidance and a stable original-recorder model binding are implemented on the draft branch; complete player routes remain open.
+- State: OPEN; Last Shift recovery guidance, stable original-recorder model binding and reason-specific return feedback are implemented and published on the draft branch; complete player routes remain open.
 - Owner: project lead and current Last Shift source/review owners.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Connect current activities, readable consequences and recurring visits.
@@ -72,10 +72,10 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-SECTOR-COHERENCE
 - Outcome: coherent arrivals, ordinary visits, time/progression, choices, return and Save/Continue across sectors.
-- State: OPEN; Ceres guidance and a recognizable recorder improve comprehension. Original body identity and custody are unchanged; sector arrival, ordinary return and full Save/Continue still need qualification.
+- State: OPEN; Ceres guidance, a recognizable recorder and published reason-specific return feedback improve comprehension. Original body identity and custody are unchanged; sector arrival, ordinary return and full Save/Continue still need qualification.
 - Owner: sector-experience coordination and exact gameplay/story owners.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
-- Next: First implement truthful reason-specific recorder-return refusal feedback, then finish the original-recorder physical return and ordinary sector consequences without replacing bodies or seeding custody.
+- Next: Inspect Ceres bar consequence hooks under exact ownership before implementation; preserve Doss's existing Helios archive acknowledgement without a duplicate counter. Finish the original-recorder physical return and ordinary sector consequences without replacing bodies or seeding custody.
 - Awaiting user: none for continued authorized implementation; eventual sector acceptance.
 
 ## SF-PLAY-WORLD
