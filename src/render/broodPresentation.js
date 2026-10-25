@@ -16,8 +16,10 @@
 
 import * as THREE from 'three';
 import { SWARM_BROOD_FAMILIES, BROOD_SPITTER_SPLASH_RADIUS, BROOD_SPITTER_POOL_RADIUS,
+  BROOD_CHARGER_DASH_SPEED, BROOD_CHARGER_DASH_MAX_S,
   TENDRIL_SEG_MAX, TENDRIL_SEG_RADIUS } from '../data/swarmBrood.js';
 import { SWARM_BROOD_LATE_FAMILIES } from '../data/swarmBroodLate.js';
+import { circleHitRadius, corridorHalfWidth, dashReach } from '../combat/telegraphFootprint.js';
 
 const DRAW_FAMILIES = SWARM_BROOD_FAMILIES.concat(SWARM_BROOD_LATE_FAMILIES);
 const FAMILY_N = DRAW_FAMILIES.length;
@@ -100,6 +102,34 @@ function flatMarkerMaterial(color, opacity) {
   });
 }
 
+// Footprint = damage query (packet 02). The engine's splash / pool / dash queries and these drawn
+// footprints call the SAME functions (combat/telegraphFootprint.js) with the engine's published
+// victim radius, so a marker's rim IS where the hurt starts.
+const DEFAULT_VICTIM_RADIUS = 6; // the engine's own default before a victim is cached
+
+function victimRadiusOf(view) {
+  const r = view && view.victimRadius;
+  return Number.isFinite(r) && r > 0 ? r : DEFAULT_VICTIM_RADIUS;
+}
+
+/** World radius of the spitter's splash marker at impact. */
+export function spitterFootprintRadius(view) {
+  return circleHitRadius(BROOD_SPITTER_SPLASH_RADIUS, victimRadiusOf(view));
+}
+
+/** World radius of a lingering acid pool: constant over its life — the query does not shrink. */
+export function poolFootprintRadius(view) {
+  return circleHitRadius(BROOD_SPITTER_POOL_RADIUS, victimRadiusOf(view));
+}
+
+/** The charger's committed lane: half-width (the two radii touching) and reach (speed x max time). */
+export function chargerLane(view, carrierRadius) {
+  return {
+    halfWidth: corridorHalfWidth(carrierRadius, victimRadiusOf(view)),
+    reach: dashReach(BROOD_CHARGER_DASH_SPEED, BROOD_CHARGER_DASH_MAX_S),
+  };
+}
+
 const RING_CAP = 32;
 const LOB_MAX_ITER = 24; // = BROOD_LOB_MAX; lob slots are sparse
 const POOL_CAP = 12;
@@ -173,6 +203,15 @@ export function createBroodPresentation(scene, capacity = 400) {
   lines.count = 0;
   lines.visible = false;
   scene.add(lines);
+  // The committed lane the pass will sweep (the hairline above is only its centreline): a faint
+  // strip as wide and as long as the dash's damage query, so the dodge is read off the picture.
+  const lanes = new THREE.InstancedMesh(lineGeo, flatMarkerMaterial(0xff7a4a, 0.2), LINE_CAP);
+  lanes.name = 'sf-swarm-brood-lanes';
+  lanes.frustumCulled = false;
+  lanes.renderOrder = 5;
+  lanes.count = 0;
+  lanes.visible = false;
+  scene.add(lanes);
 
   const lobGeo = new THREE.TetrahedronGeometry(1.1);
   const lobMat = new THREE.MeshStandardMaterial({
@@ -229,9 +268,9 @@ export function createBroodPresentation(scene, capacity = 400) {
   ));
 
   function dispose() {
-    for (const m of [mesh, rings, pools, lines, lobs, segs]) {
+    for (const m of [mesh, rings, pools, lines, lanes, lobs, segs]) {
       scene.remove(m);
-      m.geometry.dispose();
+      if (m !== lanes) m.geometry.dispose(); // lanes shares the line geometry
       m.material.dispose();
     }
   }
@@ -298,6 +337,14 @@ export function createBroodPresentation(scene, capacity = 400) {
             scl.set(len, 1, 1);
             matrix.compose(pos, quat, scl);
             lines.setMatrixAt(chargersWinding, matrix);
+            // The footprint: the lane from the charger along the committed bearing, as wide and as
+            // long as the dash's damage query (a lane half-width of both radii touching).
+            const lane = chargerLane(view, drawn.radius);
+            quat.setFromAxisAngle(axis, Math.atan2(dz, dx));
+            pos.set(px[i] + (dx / len) * lane.reach * 0.5, 0.3, pz[i] + (dz / len) * lane.reach * 0.5);
+            scl.set(lane.reach, 1, (lane.halfWidth * 2) / 0.14);
+            matrix.compose(pos, quat, scl);
+            lanes.setMatrixAt(chargersWinding, matrix);
             chargersWinding += 1;
           }
         }
@@ -323,7 +370,8 @@ export function createBroodPresentation(scene, capacity = 400) {
         const fam = family[i];
         if (!(fam >= 0 && fam < FAMILY_N) || DRAW_FAMILIES[fam].id !== 'spitter') continue;
         // Grow from 0.2 to 1.0 across the windup so the marker tightens as it lands.
-        writeRing(ringN, teleX[i], teleZ[i], BROOD_SPITTER_SPLASH_RADIUS, 1.15 - 0.55 * Math.max(0, Math.min(1, timer[i] / 0.8)));
+        // The marker closes IN on the real splash radius and arrives at it exactly at impact.
+        writeRing(ringN, teleX[i], teleZ[i], spitterFootprintRadius(view), 1.0 - 0.48 * Math.max(0, Math.min(1, timer[i] / 0.8)));
         ringN += 1;
       }
     }
@@ -338,10 +386,9 @@ export function createBroodPresentation(scene, capacity = 400) {
         const age = view.poolAge[i];
         const ttl = view.poolTtl[i];
         if (!(ttl > 0) || age >= ttl) continue;
-        const fade = 1 - age / ttl;
         quat.identity();
         pos.set(view.poolX[i], 0.15, view.poolZ[i]);
-        const r = BROOD_SPITTER_POOL_RADIUS * (0.65 + 0.35 * fade);
+        const r = poolFootprintRadius(view); // the acid query does not shrink as the pool cools
         scl.set(r, 1, r);
         matrix.compose(pos, quat, scl);
         pools.setMatrixAt(poolN, matrix);
@@ -355,7 +402,12 @@ export function createBroodPresentation(scene, capacity = 400) {
     // Charger lines.
     lines.count = chargersWinding;
     lines.visible = chargersWinding > 0;
-    if (chargersWinding > 0) lines.instanceMatrix.needsUpdate = true;
+    lanes.count = chargersWinding;
+    lanes.visible = chargersWinding > 0;
+    if (chargersWinding > 0) {
+      lines.instanceMatrix.needsUpdate = true;
+      lanes.instanceMatrix.needsUpdate = true;
+    }
 
     // Acid lobs in flight: a dot on the arc, height keyed to flight progress.
     let lobN = 0;
@@ -409,6 +461,6 @@ export function createBroodPresentation(scene, capacity = 400) {
     return written > 0 || ringN > 0 || poolN > 0 || chargersWinding > 0 || lobN > 0 || segN > 0;
   }
 
-  return { mesh, rings, pools, lines, lobs, segs, update, dispose };
+  return { mesh, rings, pools, lines, lanes, lobs, segs, update, dispose };
 }
 

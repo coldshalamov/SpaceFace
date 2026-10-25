@@ -118,6 +118,7 @@ import {
   swarmBroodPlan,
   swarmBroodSacReserve,
 } from '../data/swarmBrood.js';
+import { circleHitRadius, corridorHalfWidth } from '../combat/telegraphFootprint.js';
 import {
   SWARM_BROOD_LATE_FAMILIES,
   foldBroodLatePlan,
@@ -1141,7 +1142,7 @@ export function createBroodEngine(deps = {}) {
     if (routeDamage && signatureRef && signatureRef.alive !== false) {
       const dx = playerX - x;
       const dz = playerZ - z;
-      if (dx * dx + dz * dz <= (BROOD_SPITTER_SPLASH_RADIUS + playerRad * 0.5) ** 2) {
+      if (dx * dx + dz * dz <= circleHitRadius(BROOD_SPITTER_SPLASH_RADIUS, playerRad) ** 2) {
         routePlayerDamage(BROOD_SPITTER_SPLASH_DAMAGE, x, z, 'brood_acid');
       }
     }
@@ -1176,7 +1177,7 @@ export function createBroodEngine(deps = {}) {
       if (signatureRef && signatureRef.alive !== false) {
         const dx = playerX - poolX[i];
         const dz = playerZ - poolZ[i];
-        if (dx * dx + dz * dz <= (BROOD_SPITTER_POOL_RADIUS + playerRad * 0.5) ** 2) playerIn = true;
+        if (dx * dx + dz * dz <= circleHitRadius(BROOD_SPITTER_POOL_RADIUS, playerRad) ** 2) playerIn = true;
       }
     }
     poolCount = live;
@@ -1234,7 +1235,7 @@ export function createBroodEngine(deps = {}) {
     if (signatureRef && signatureRef.alive !== false) {
       const sx = playerX - px[i];
       const sz = playerZ - pz[i];
-      const rr = playerRad + rad;
+      const rr = corridorHalfWidth(rad, playerRad);
       if (sx * sx + sz * sz <= rr * rr) {
         routePlayerDamage(BROOD_CHARGER_SLAM_DAMAGE, px[i], pz[i], 'brood_charger');
         const d = Math.sqrt(sx * sx + sz * sz) || 1;
@@ -1937,6 +1938,9 @@ export function createBroodEngine(deps = {}) {
     view.segAliveCount = segAliveCount;
     view.hive = hiveMode;
     view.sacBudget = sacBudget;
+    // The radius the damage queries add the victim's reach to, so the drawn footprints can use the
+    // SAME number (telegraphFootprint.js). Runtime mirror, never serialized.
+    view.victimRadius = playerRad;
     const state = getState();
     if (state && state[SWARM_BROOD_STATE_KEY] !== view) {
       // Assign once; the view identity is stable for the engine's whole life.
