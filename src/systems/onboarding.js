@@ -72,8 +72,7 @@ import { fieldEscapeOf, FIELD_KINDS } from '../data/fields.js';
 import { fieldAffectsBody, fieldContainsPoint } from '../core/fields/fieldKernel.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
-import { cargoPodOwnerId } from './lawSecurity.js';
-import { isJettisonedCargoPod, isCivilianManifestPayload } from './lootShards.js';
+import { chargeableLotOwnerId } from './lawSecurity.js';
 import {
   FIRST_TRADE_CONTRACT,
   FIRST_TRADE_CONTRACT_DEST_STATION_ID,
@@ -1951,25 +1950,16 @@ export const onboarding = {
     const isPlayers = (id) => String(id) === String(state.playerId) || id === 'player'
       || (playerWr != null && String(id) === String(playerWr));
     let found = null;
-    // "You're wanted" must be true: speak only over exactly what lawSecurity files as
-    // payload_theft — a jettisoned / civilian-manifest pod owned by someone else (custody pods
-    // excluded, `_reportStolenCargoPod`) or a chip titled to its claim miner
-    // (`_reportTitledClaimChip`). Ships, stations, wrecks and free loot never qualify.
+    // "You're wanted" must be true: speak only over exactly what lawSecurity would file as
+    // payload_theft in sight of a lawful eye — `chargeableLotOwnerId` is the law's own read
+    // (pod/chip doors, custody and priced-manifest exemptions, jurisdiction). Ships, stations,
+    // wrecks and free loot never qualify.
     const visit = (e) => {
       if (found || !e || e.alive === false || !e.pos || e.id === state.playerId) return;
-      const d = e.data;
-      if (!d) return;
-      let ownerId = null;
-      if (isJettisonedCargoPod(e) || isCivilianManifestPayload(e)) {
-        if (!d.freightCustodyPod) ownerId = cargoPodOwnerId(e);
-      } else if (e.type === 'pickup' && d.ownerId != null && d.npcMiningSource
-        && d.npcMiningSource.minerWorldRecordId != null
-        && String(d.ownerId) === String(d.npcMiningSource.minerWorldRecordId)) {
-        ownerId = d.ownerId;
-      }
-      if (ownerId == null || isPlayers(ownerId)) return;
       const d2 = (e.pos.x - player.pos.x) ** 2 + (e.pos.z - player.pos.z) ** 2;
       if (d2 > 220 * 220) return;
+      const ownerId = chargeableLotOwnerId(state, e);
+      if (ownerId == null || isPlayers(ownerId)) return;
       found = e;
     };
     const payloads = indexedTypeScan(state, 'payloads');

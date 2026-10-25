@@ -158,6 +158,33 @@ test('X-05 review: a titled claim chip speaks; a New Game tick rewind does not s
   assert.equal(lines[0].entityId, 90);
 });
 
+test('X-05 review 3: a lot the law would not charge stays silent — a priced-murder manifest pod, or a lot outside every jurisdiction', () => {
+  // The player's witnessed murder of the hauler already carries the crime receipt; its spilled
+  // manifest is not a second theft (`_reportStolenCargoPod` double-jeopardy rule).
+  const manifest = { id: 96, type: 'payload', alive: true, pos: { x: 100, z: 0 }, vel: { x: 0, z: 0 },
+    data: { payloadType: 'civilian_manifest', ownerId: 4321 } };
+  const priced = onboardingRig([manifest]);
+  priced.state.lawSecurity = { reportedIncidents: {
+    'kill:entity:4321': { accepted: true, validatedCrime: true, victimEntityId: 4321 } } };
+  tickScan(priced, 40);
+  assert.equal(priced.hints.filter((e) => e.verbId === 'firstOwnedGoods').length, 0,
+    'the priced kill already charged the scene');
+  // Control: the same pod with no crime receipt (lawful / unwitnessed kill) is a live theft door.
+  const open = onboardingRig([{ ...manifest, data: { ...manifest.data } }]);
+  tickScan(open, 40);
+  assert.equal(open.hints.filter((e) => e.verbId === 'firstOwnedGoods').length, 1);
+
+  // Outside Helios' starter volume with no lawful station near, the law has no jurisdiction.
+  const far = { id: 97, type: 'payload', alive: true, pos: { x: 5100, z: 0 }, vel: { x: 0, z: 0 },
+    data: { payloadType: 'jettisoned_cargo', ownerId: 'wr_miner_ves' } };
+  const lawless = onboardingRig([far]);
+  lawless.player.pos = { x: 5000, z: 0 };
+  tickScan(lawless, 40);
+  assert.equal(lawless.hints.filter((e) => e.verbId === 'firstOwnedGoods').length, 0,
+    'no jurisdiction, no charge, no read');
+  assert.equal(lawless.state.player.hints.firstOwnedGoods == null, true, 'and the line is not spent');
+});
+
 test('X-05 the rail owns the voice — no read fires while it runs', () => {
   const pod = { id: 70, type: 'payload', alive: true, pos: { x: 100, z: 0 }, vel: { x: 0, z: 0 },
     data: { payloadType: 'jettisoned_cargo', ownerId: 'wr_miner_ves' } };

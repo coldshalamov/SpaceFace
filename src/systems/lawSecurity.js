@@ -2732,17 +2732,7 @@ export const lawSecurity = {
     // jeopardy. A lawful or unwitnessed kill leaves the pod an honest salvage claim instead.
     // The ledger scan (not just the reportId probe) keeps the match alive when the victim
     // entity has already been culled from state.entities.
-    if (isManifest) {
-      const victim = entityById(state, ownerId);
-      const killReportId = cleanLawId(`kill:${victimStableIdOf(victim, { id: ownerId })}`);
-      const killReceipt = killReportId && readReportedIncident(state, killReportId);
-      const ledger = state.lawSecurity && state.lawSecurity.reportedIncidents;
-      const priced = (killReceipt && killReceipt.accepted === true && killReceipt.validatedCrime === true)
-        || (ledger && typeof ledger === 'object' && Object.values(ledger).some((r) => r
-          && r.accepted === true && r.validatedCrime === true
-          && (sameLawEntityId(r.victimEntityId, ownerId) || r.victimStableId === `entity:${ownerId}`)));
-      if (priced) return null;
-    }
+    if (isManifest && manifestKillAlreadyPriced(state, ownerId)) return null;
     const pos = finiteLawPoint(entity.pos);
     if (!pos) return null;
     const payloadStableId = cleanLawId(`${isManifest ? 'manifest' : 'jettisoned'}-${entity.id}`);
@@ -6332,6 +6322,48 @@ export function cargoPodOwnerId(entity) {
     ?? (ownership && ownership.ownerId)
     ?? (identity && identity.ownerId);
   return ownerId == null || ownerId === '' ? null : ownerId;
+}
+
+// A manifest pod's victim already priced by an accepted crime receipt (the kill) is not a second
+// theft. Shared by the theft door and the advisory owner read so they cannot drift apart.
+function manifestKillAlreadyPriced(state, ownerId) {
+  const victim = entityById(state, ownerId);
+  const killReportId = cleanLawId(`kill:${victimStableIdOf(victim, { id: ownerId })}`);
+  const killReceipt = killReportId && readReportedIncident(state, killReportId);
+  const ledger = state.lawSecurity && state.lawSecurity.reportedIncidents;
+  return !!((killReceipt && killReceipt.accepted === true && killReceipt.validatedCrime === true)
+    || (ledger && typeof ledger === 'object' && Object.values(ledger).some((r) => r
+      && r.accepted === true && r.validatedCrime === true
+      && (sameLawEntityId(r.victimEntityId, ownerId) || r.victimStableId === `entity:${ownerId}`))));
+}
+
+// X-05 advisory read (onboarding's owner read): the owner a payload_theft charge would name if a
+// lawful eye saw the player lift this lot, else null. Mirrors `_reportStolenCargoPod` /
+// `_reportTitledClaimChip` plus reportIncident's jurisdiction gate, so "you're wanted" is never
+// spoken over free loot, a custody pod, the player's own lot, a manifest pod whose kill already
+// carries the crime receipt, or a lot outside every jurisdiction. The witness stays the line's
+// own "in sight" condition. Pure read: never adjudicates, never writes.
+export function chargeableLotOwnerId(state, entity) {
+  if (!state || !entity || entity.alive === false || !entity.pos || !entity.data) return null;
+  const data = entity.data;
+  const isManifest = isCivilianManifestPayload(entity);
+  const isPod = isManifest || isJettisonedCargoPod(entity);
+  let ownerId = null;
+  if (isPod) {
+    if (data.freightCustodyPod) return null;
+    ownerId = cargoPodOwnerId(entity);
+  } else if (entity.type === 'pickup' && data.ownerId != null && data.npcMiningSource
+    && data.npcMiningSource.minerWorldRecordId != null
+    && String(data.ownerId) === String(data.npcMiningSource.minerWorldRecordId)) {
+    ownerId = data.ownerId;
+  }
+  if (ownerId == null || sameLawEntityId(ownerId, state.playerId)) return null;
+  if (isManifest && manifestKillAlreadyPriced(state, ownerId)) return null;
+  const victim = isPod ? entity : entityById(state, ownerId);
+  const jurisdiction = protectedStationAt(state, { pos: entity.pos })
+    || ceresDistressJurisdiction(state, victim)
+    || ceresDistressJurisdiction(state, findCivilianHauler(state));
+  return jurisdiction ? ownerId : null;
 }
 
 function sameLawEntityId(a, b) {
