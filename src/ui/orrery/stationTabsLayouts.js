@@ -1130,6 +1130,19 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${T} .sx-dossier__title { font-size:18px !important; line-height:1.15 !important; margin:2px 0 4px !important; }
   ${T} .sx-ct-commit.orr-lampkey { min-height:34px !important; font-size:13px !important; }
 }
+/* …but a wide, short desktop (1101+ × 561–800) has a ~200–440px dossier whose reward clears by 150px, and the
+   static key fell under the frame foot (ACCEPT at y≈610 in a 600px window at 1366×600): the key rides the
+   dossier's foot again, over a dark fade, so ACCEPT is on first paint and the terms scroll beneath it */
+@media (min-width:1101px) and (min-height:561px) and (max-height:800px) {
+  ${T} .sx-dossier > .sx-dossier__foot { position:sticky !important; bottom:0; z-index:2; margin-top:6px !important; padding:26px 0 4px !important;
+    background:linear-gradient(0deg, rgb(0 0 0 / .96) calc(100% - 26px), rgb(0 0 0 / .78) calc(100% - 12px), rgb(0 0 0 / 0)) !important; }
+}
+/* …and at 1101+ × ≤560 the dossier is ~180px, too short to carry the key under the reward: ACCEPT
+   takes the top of the route column, beside the title, and the route ring follows beneath it */
+@media (min-width:1101px) and (max-height:560px) {
+  ${T} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 4 !important; align-self:start !important; margin:0 !important; padding:0 !important; }
+  ${T} .sx-dossier > .orr-ct-route { grid-row:4 / span 18 !important; }
+}
 /* even tighter (960×540, dossier ~192px): the terms stay on the board — a second column beside the
    title, reward and ACCEPT — and the dossier scrolls for the route; a player never accepts blind */
 @media (max-width:1100px) and (max-height:800px) {
