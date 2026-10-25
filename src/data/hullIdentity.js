@@ -27,6 +27,10 @@ export const HULL_NAME_BANK = Object.freeze([
   'Quiet Tenner', 'Unfiled', 'Slow Freight', 'Last Berth', 'Open Docket',
   'Nine Grams', 'Counterweight', 'Short Notice', 'Rough Manifest', 'Salt Line',
   'Working Light',
+  // ATT-H-01 — more owned-sounding words: dock debts, shift humor, and the kind of name a
+  // crew welds on after the third tow, not a registry generates.
+  'Late Fees', 'Second Coat', 'Berth Nine', 'Overtime', 'Dock Rash', 'Spare Seal',
+  'Half Manifest', 'Tool Deposit', 'Missed Call', 'Rope Burn', 'Dry Bay', 'Toll Paid',
 ]);
 
 /** The registry code the Concord ping reads out for the starting hull. */

@@ -2,14 +2,15 @@
 // The renderer receives this plain request; neither side can advance GameState.
 import { sealTheaterTape } from '../../sim/theaterTape.js';
 import { analyzeMomentStream, planShot, createOfflineCameraLease } from '../../presentation/momentMachine/index.js';
+import { createTrailerCameraLease } from '../../sim/trailerClipTape.js';
 
-export function createTheaterSession(recording, state, { startTick, endTick, moment } = {}) {
+export function createTheaterSession(recording, state, { startTick, endTick, moment, setPiece } = {}) {
   const tape = sealTheaterTape(recording, { startTick, endTick });
   if (!tape || !state) return null;
   const analysis = analyzeMomentStream({ adventureTape: recording, chronicle: state.chronicler, locale: state.settings?.locale });
   const chosen = moment || analysis.selection?.ranked?.[0] || null;
   const plan = chosen && analysis.selection?.stream ? planShot(analysis.selection.stream, chosen) : null;
-  const lease = plan ? createOfflineCameraLease(plan) : null;
+  const lease = setPiece ? createTrailerCameraLease(tape, setPiece) : plan ? createOfflineCameraLease(plan) : null;
   const ui = state.ui || (state.ui = {}), previous = ui.theater;
   let disposed = false, readyResolve;
   const ready = new Promise((resolve) => { readyResolve = resolve; });

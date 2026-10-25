@@ -54,7 +54,7 @@ import {
   resolveWorldPresentationEntity,
 } from '../../src/world/presentationSources.js';
 import { projectileSkipsVisualFactoryMesh } from '../../src/render/weapons/recipes.js';
-import { farLedgerScanRadius, tableLookAtOrigin } from '../../src/render/tabletopPolicy.js';
+import { farLedgerScanRadius, tableLookAtOrigin, tableWorldToScreen } from '../../src/render/tabletopPolicy.js';
 import { liveSectorFullExtrasStubs } from '../../src/render/saveEnvelopeSectorWarm.js';
 import { createInputCommandHistory } from '../../src/core/inputCommandSnapshot.js';
 import {
@@ -709,6 +709,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     suppressedEmitTypes: new Map(),
     modalActive: false,       // uiFold modal latch (production)
     screenStackLen: 0,        // uiFold screen-stack depth (production)
+    laneViewport: null,       // {width,height} — transported main-lane pixel size (production)
     restorePoint: null,       // save.restore envelope staged on the bus (load parity)
     // Stage-9 remediation: the game:started receipt is generated worker-side,
     // not forwarded — the newGameBoot rpc stages its payload here and the first
@@ -725,6 +726,18 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const events = host.pendingEvents;
     host.pendingEvents = [];
     return events;
+  }
+
+  // The lane's pixel size is a transported truth (init directive + viewport
+  // commands), so the host keeps it alongside the input system's lane override:
+  // helpers.worldToScreen below projects the chase frustum in those pixels.
+  function applyLaneViewport(w, h) {
+    setLaneViewport(w, h);
+    const width = Number(w);
+    const height = Number(h);
+    host.laneViewport = Number.isFinite(width) && Number.isFinite(height)
+      ? { width, height }
+      : null;
   }
 
   function rebuildJournalIfNeeded() {
@@ -1572,7 +1585,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
 
     // Lane input geometry/modal state ships before the runtime inits (input.init
     // reads the viewport at construction for stick reset).
-    setLaneViewport(Number(msg.viewport && msg.viewport.w), Number(msg.viewport && msg.viewport.h));
+    applyLaneViewport(Number(msg.viewport && msg.viewport.w), Number(msg.viewport && msg.viewport.h));
     const bus = createBus();
     const helpers = {
       // The main presentation owner admits restored flight after its visual/physics gates.
@@ -1580,6 +1593,15 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       scenarioContract: contract.document || null,
       scenarioContractPath: contract.path,
       scenarioContractHash: contract.sha256,
+      // bulletTime's moment gate wants helpers.worldToScreen (renderer.js binds
+      // the Three project() only on the presenting lane). The lane projector is
+      // the sim realm's own honest visibility source: tableChaseFraming derives
+      // the chase rig's SETTLED envelope — focus, tilt, settings fov, and the
+      // effective distance (the speed-zoomed zoom, not the commanded camera.
+      // zoom) — and tableWorldToScreen projects it in the transported pixel
+      // viewport. Off-glass points still report onScreen:false; this is never
+      // an always-visible stub.
+      worldToScreen: (pos, out) => tableWorldToScreen(host.state, host.laneViewport, pos, out),
       // The input system lives in this realm — its touch deck is DOM, so it
       // gets the lane reducer: resolved mobile frames arrive as descriptors.
       mobileSeams: { lane: 'worker' },
@@ -1944,7 +1966,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           }
         }
       },
-      setViewport: (w, h) => setLaneViewport(Number(w), Number(h)),
+      setViewport: (w, h) => applyLaneViewport(w, h),
       keepalive: (wallDt) => {
         // Mirror createRegistry.keepalive's frozen-window body against the
         // worker's systems: input/save tick at dt 0, the yard runs on wall

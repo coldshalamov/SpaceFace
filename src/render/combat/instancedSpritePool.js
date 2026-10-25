@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createStructuredBurstGeometry } from './structuredBurstGeometry.js';
+import { createVfxEventGeometry } from '../vfx/runtime/eventGeometry.js';
 import { createTransientDensityTexture, createTransientVfxMaterial } from './transientVfxMaterials.js';
 import {
   assertDynamicBufferOwnerWritable,
@@ -134,7 +134,7 @@ export function commitInstancedSpriteBuckets(buckets) {
 
 function createBucket(scene, id, capacity, texture, blending, radiance = 1.0) {
   const volume = id === 'smoke' || id === 'combustion';
-  const geometry = volume ? new THREE.BoxGeometry(1, 1, 1) : createStructuredBurstGeometry(id);
+  const geometry = volume ? new THREE.BoxGeometry(1, 1, 1) : createVfxEventGeometry();
   const position = dynamicAttribute(capacity * 3, 3);
   const scale = dynamicAttribute(capacity * 2, 2);
   const roll = dynamicAttribute(capacity, 1);

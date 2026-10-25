@@ -42,6 +42,9 @@ export const SHIP_LEDGER_TEMPLATES = deepFreeze({
     '{sector} kept {ship}. The loss file says {cargo}.',
     'Closed the line on {ship}, last carried through {sector}.',
     '{ship} did not clear {sector}. The ledger kept the name.',
+    'Claim filed on {ship} at {sector}. The underwriter wrote it off before the debris cooled.',
+    '{ship} is a line item now. {cargo} is a footnote. Condolences are a separate form.',
+    'The policy on {ship} paid out in {sector}. The hull is still out there, unpaid.',
   ]),
   trade: variants('trade', [
     // one shape: the verb first, the figure last, so the sentence agrees with the tape's sign

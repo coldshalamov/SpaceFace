@@ -90,6 +90,14 @@ const WRECK_LOSS_NOUN = {
   drone: 'mining drone',
   ship: 'ship',
   trader: 'hauler',
+  // U-09 — noun coverage for the loss kinds the aftermath writer can emit;
+  // unemitted keys stay dormant, same shape as the defaults above.
+  patrol: 'patrol cutter',
+  pirate: 'raider',
+  convoy: 'convoy hull',
+  courier: 'courier',
+  miner: 'claim rig',
+  tanker: 'fuel barge',
 };
 
 export function wreckStoryForLoss(loss, sectorName) {

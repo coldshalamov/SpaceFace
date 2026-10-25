@@ -21,6 +21,7 @@ import {
 import { formatOfflineReceiptLine } from '../src/ui/automationPayoff.js';
 import {
   buildDefeatReceipt,
+  defeatRangeOffer,
   isSlackLineSnapDeath,
   rangeRow,
 } from '../src/combat/playerDefeat.js';
@@ -138,7 +139,7 @@ function dockState(slot) {
   });
 }
 
-const HELIOS = { id: 'station_helios', name: 'Helios Station', services: ['trade'] };
+const HELIOS = { id: 'station_helios', name: 'Helios Station', services: ['trade', 'refuel', 'repair'] };
 
 function paintBerth(state, station = HELIOS) {
   const view = buildDockArrival(state, station);
@@ -447,6 +448,10 @@ test('X-09 the profile hint survives a session wipe', () => {
 test('X-09 a missing rung row returns null without throwing', () => {
   assert.equal(rangeRow('not_a_real_rung'), null);
   assert.equal(rangeRow(undefined), null);
+  const state = defeatState();
+  const terrain = { origin: { kind: 'terrain_collision' }, result: VITALS };
+  assert.equal(defeatRangeOffer(state, terrain, null), null, 'a null cause read is silence, not a throw');
+  assert.equal(defeatRangeOffer(state, terrain), null, 'no cause read keeps the pre-X-09 behaviour');
 });
 
 test('X-09 the death screen renders the terrain line without opening the Range', () => {
@@ -460,4 +465,66 @@ test('X-09 the death screen renders the terrain line without opening the Range',
   assert.equal(els.rangeOffer.hidden, false);
   assert.equal(els.rangeOffer.textContent, 'Came in hot. The Range can teach Stopping takes room.');
   assert.ok(!pushed.includes('range'));
+});
+
+
+// X-09 v3: the two live causes — a cap run dry into a contact death, and the berth's
+// dock-collar scrape (the player failed to stop). The v1 impact rows stay dormant.
+test('X-09 v3 a dry cap into a contact death offers you_can_run_dry once', () => {
+  const state = defeatState();
+  const player = state.entities.get(1);
+  player.cap = 3; player.capMax = 100;
+  const first = buildDefeatReceipt(state, player, 9, { origin: { kind: 'contact', id: 9 }, result: VITALS });
+  assert.ok(first.rangeOffer);
+  assert.equal(first.rangeOffer.rungId, 'you_can_run_dry');
+  assert.equal(first.rangeOffer.line, 'Ran the cap dry. The Range can teach You can run dry.');
+  const second = buildDefeatReceipt(state, player, 9, { origin: { kind: 'contact', id: 9 }, result: VITALS });
+  assert.equal(second.rangeOffer, undefined, 'the dry-cap lesson is once per rung');
+});
+
+test('X-09 v3 a full-cap contact death stays silent', () => {
+  const state = defeatState();
+  const player = state.entities.get(1);
+  player.cap = 90; player.capMax = 100;
+  const receipt = buildDefeatReceipt(state, player, 9, { origin: { kind: 'contact', id: 9 }, result: VITALS });
+  assert.equal(receipt.rangeOffer, undefined, 'a topped-off cap is outplay, not a lesson');
+});
+
+test('X-09 v3 a missing cap stays silent and snap still wins over dry-cap', () => {
+  const state = defeatState();
+  const player = state.entities.get(1); // no cap fields — the TEACH-08 fixture shape
+  const weapon = buildDefeatReceipt(state, player, 9, { origin: { kind: 'contact', id: 9 }, result: VITALS });
+  assert.equal(weapon.rangeOffer, undefined, 'no cap read means no offer');
+  player.capMax = 100; // capMax known, cap missing — the null read must not count as dry
+  const capless = buildDefeatReceipt(state, player, 9, { origin: { kind: 'contact', id: 9 }, result: VITALS });
+  assert.equal(capless.rangeOffer, undefined, 'a missing cap is not a dry cap');
+  player.cap = 0; player.capMax = 100;
+  const snap = buildDefeatReceipt(state, player, 9, masslineSnapLethal());
+  assert.equal(snap.rangeOffer.rungId, 'swing_do_not_pull', 'snap wins over dry-cap');
+});
+
+test('X-09 v3 an unknown-source dry-cap death is silent', () => {
+  const state = defeatState();
+  const player = state.entities.get(1);
+  player.cap = 0; player.capMax = 100;
+  const receipt = buildDefeatReceipt(state, player, 77, { origin: { kind: 'contact', id: 77 }, result: VITALS });
+  assert.equal(receipt.rangeOffer, undefined, 'a despawned attacker reads unknown — no lesson');
+});
+
+test('X-09 v3 the dock-collar scrape offers stopping_takes_room once', () => {
+  const state = defeatState();
+  const lethal = { origin: { kind: 'dock_collar' }, result: VITALS };
+  const first = buildDefeatReceipt(state, state.entities.get(1), null, lethal);
+  assert.ok(first.rangeOffer);
+  assert.equal(first.rangeOffer.rungId, 'stopping_takes_room');
+  assert.equal(first.rangeOffer.line, 'Came in hot. The Range can teach Stopping takes room.');
+  const second = buildDefeatReceipt(state, state.entities.get(1), null, lethal);
+  assert.equal(second.rangeOffer, undefined);
+});
+
+test('X-09 v3 dock-collar after an arena-impact offer of the same rung stays silent', () => {
+  const state = defeatState();
+  buildDefeatReceipt(state, state.entities.get(1), null, { origin: { kind: 'terrain_collision' }, result: VITALS });
+  const collar = buildDefeatReceipt(state, state.entities.get(1), null, { origin: { kind: 'dock_collar' }, result: VITALS });
+  assert.equal(collar.rangeOffer, undefined, 'the rung was already spent by the first scrape');
 });

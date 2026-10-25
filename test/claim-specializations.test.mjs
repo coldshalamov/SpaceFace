@@ -753,9 +753,12 @@ test('older saves default to no specialization (versioned migration)', () => {
 
 test('legacy abstract outposts migrate through the F6 path exactly once with no duplicate production', () => {
   const h = boot({ seed: 51, withAutomation: true });
-  // player built a legacy refinery outpost in the frontier sector via the real automation system
+  // player built a legacy production outpost in the frontier sector via the real automation
+  // system. Row 402 retired the refinery def — it now re-charters through
+  // claims.migrateRetiredRefineries on save:loaded instead — so the F6 fixture runs a still
+  // buildable fuel synth (same spec_refinery landing, banked fuel cells instead of alloys).
   h.state.player.credits = 500000;
-  assert.equal(h.auto.buildOutpost('outpost_refinery'), true, 'legacy outpost builds');
+  assert.equal(h.auto.buildOutpost('outpost_fuelsynth'), true, 'legacy outpost builds');
   const outpost = h.state.automation.outposts[0];
   outpost.storage = 120; // banked production
   const automationSnap = JSON.parse(JSON.stringify(h.auto.serialize ? h.auto.serialize() : h.state.automation));
@@ -766,8 +769,8 @@ test('legacy abstract outposts migrate through the F6 path exactly once with no 
   assert.equal(h.state.claims.bodies.length, 1, 'outpost re-chartered as a claim');
   const migrated = h.state.claims.bodies[0];
   assert.equal(migrated.sectorId, FRONTIER);
-  assert.equal(migrated.spec.id, 'spec_refinery', 'refinery outpost becomes an Industrial Refinery');
-  assert.equal(migrated.spec.store.output.cmdty_alloys, 120, 'banked storage carries over as real goods');
+  assert.equal(migrated.spec.id, 'spec_refinery', 'production outpost becomes an Industrial Refinery');
+  assert.equal(migrated.spec.store.output.cmdty_fuel_cells, 120, 'banked storage carries over as real goods');
   assert.ok(h.state.claims.legacyMigration, 'migration writes a durable receipt');
   assert.ok(events(h, 'claims:migrated').length === 1);
 
@@ -776,13 +779,13 @@ test('legacy abstract outposts migrate through the F6 path exactly once with no 
   else h.state.automation = JSON.parse(JSON.stringify(automationSnap));
   h.sys.deserialize({ bodies: [] });
   assert.equal(h.state.claims.bodies.length, 1, 'second legacy load migrates to the same single claim');
-  assert.equal(h.state.claims.bodies[0].spec.store.output.cmdty_alloys, 120, 'storage not duplicated');
+  assert.equal(h.state.claims.bodies[0].spec.store.output.cmdty_fuel_cells, 120, 'storage not duplicated');
   assert.equal(h.state.automation.outposts.length, 0);
 
   // new-format saves never migrate: outposts in automation stay automation's
   const h2 = boot({ seed: 52, withAutomation: true });
   h2.state.player.credits = 500000;
-  assert.equal(h2.auto.buildOutpost('outpost_refinery'), true);
+  assert.equal(h2.auto.buildOutpost('outpost_fuelsynth'), true);
   h2.sys.deserialize({ specVersion: 1, bodies: [] });
   assert.equal(h2.state.automation.outposts.length, 1, 'current-version saves leave outposts alone');
   assert.equal(h2.state.claims.bodies.length, 0);
@@ -790,7 +793,7 @@ test('legacy abstract outposts migrate through the F6 path exactly once with no 
   // no claimable body available → outpost is kept legacy, never deleted
   const h3 = boot({ seed: 53, sectorId: 'sector_helios_prime', withAutomation: true });
   h3.state.player.credits = 500000;
-  assert.equal(h3.auto.buildOutpost('outpost_refinery'), true, 'outpost in a sector with no claimable body');
+  assert.equal(h3.auto.buildOutpost('outpost_fuelsynth'), true, 'outpost in a sector with no claimable body');
   h3.sys.deserialize({ bodies: [] });
   assert.equal(h3.state.automation.outposts.length, 1, 'unmigratable outpost keeps running');
   assert.equal(h3.state.claims.legacyMigration.kept, 1, 'kept-legacy is recorded');

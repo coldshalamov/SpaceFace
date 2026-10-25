@@ -3768,6 +3768,11 @@ const WRECK_PACKAGED_FILES = Object.freeze([
   'places/place_aftermath_aft_pressure_tank.glb',
 ]);
 
+// Wreck bodies that name one authored part (data.fractureVisual.partId) instead of a hull.
+const WRECK_PART_FILES = Object.freeze({
+  place_aftermath_aft_armor_slab: 'places/place_aftermath_aft_armor_slab.glb',
+});
+
 function packagedPartUrl(relativeFile) {
   return `${RELEASE_PART_ROOT}${String(relativeFile || '').replace(/^[\\/]+/, '')}`;
 }
@@ -3864,6 +3869,10 @@ export function wreckPackagedFile(e) {
   if (isCeresShipbreakSection(e)) return CERES_SHIPBREAK_FILES[e.data.placeId];
   const fragmentFile = fractureFragmentFileForEntity(e);
   if (fragmentFile) return fragmentFile;
+  // Row 448: a torn capital plate names its authored part (fractureVisual.partId) — it must
+  // draw as the armor slab it is, not a hash-picked aftermath piece. Whitelisted part ids only.
+  const partId = e && e.data && e.data.fractureVisual && e.data.fractureVisual.partId;
+  if (partId && Object.hasOwn(WRECK_PART_FILES, partId)) return WRECK_PART_FILES[partId];
   const hulkFile = hulkPackagedFileForEntity(e);
   if (hulkFile) return hulkFile;
   const identity = interactionProfileForEntity(e);

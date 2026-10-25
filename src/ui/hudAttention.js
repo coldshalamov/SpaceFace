@@ -388,6 +388,7 @@ export const FIRST_USE_LINE = Object.freeze({
   // The shield visibly regrows; the hull does not. The first bite that reaches the hull
   // names the survival rule once — plate stays hurt until a repair berth welds it.
   firstHullBite: 'The shield grows back. Hull does not — a berth repairs it.',
+  firstOwnedGoods: 'Someone owns that lot. Lift it in sight, you\'re wanted.',
   // X-01: the salvage bay loop already pays; the first fill and the first cash-in say so once.
   firstSalvageBay: 'Salvage is in the bay. Dock to cash it.',
   firstSalvageCashIn: 'Bay paid out. Fight, fill, dock.',
@@ -498,6 +499,7 @@ export function shelfVerbLine(verbId, bindingLabel) {
 export function firstUseAttachKind(verbId) {
   const key = String(verbId || '');
   if (key === 'firstStation' || key === 'firstHub' || key === 'firstGate') return 'station';
+  if (key === 'firstOwnedGoods') return 'rock';
   if (key === 'firstDrill') return 'rock';
   if (key.startsWith('massline') || key === 'firstCombat') return 'latch';
   return 'player';

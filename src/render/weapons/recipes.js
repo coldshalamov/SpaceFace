@@ -747,9 +747,72 @@ const RECIPES_BY_VARIANT = Object.freeze({
   'driver-slug': DRIVER_SLUG,
 });
 
+// One authored scale register for the whole arsenal. The base recipes own physical shape
+// and timing; this table makes every family read at the chase camera without collapsing
+// them into one size. Values are multipliers on the authored fields, never new hazards.
+const WEAPON_ART_SCALE = Object.freeze({
+  'pulse-bolt': { pixel: 2.30, dash: 1.30, width: 1.30, intensity: 1.20, ribbon: 1.35, linger: 1.40, muzzle: 1.20 },
+  'thermal-bolt': { pixel: 2.20, dash: 1.30, width: 1.25, intensity: 1.15, ribbon: 1.35, linger: 1.30, muzzle: 1.30 },
+  autocannon: { pixel: 1.20, dash: 1.15, width: 1.15, intensity: 1.10, ribbon: 1.30, linger: 1.20, muzzle: 1.15 },
+  flak: { pixel: 1.35, dash: 1.20, width: 1.20, intensity: 1.10, ribbon: 1.20, muzzle: 1.15 },
+  railgun: { pixel: 2.00, dash: 1.20, width: 1.30, intensity: 1.20, ribbon: 1.40, muzzle: 1.30 },
+  'siege-lance': { pixel: 2.00, dash: 1.25, width: 1.35, intensity: 1.20, ribbon: 1.30, muzzle: 1.35 },
+  disruptor: { pixel: 2.10, dash: 1.25, width: 1.30, intensity: 1.20, ribbon: 1.30, linger: 1.30, muzzle: 1.25 },
+  'concussion-slug': { pixel: 2.30, dash: 1.50, width: 1.45, intensity: 1.25, ribbon: 1.30, muzzle: 1.25 },
+  missile: { pixel: 1.80, dash: 1.30, width: 1.20, intensity: 1.15, ribbon: 1.30, linger: 1.20, muzzle: 1.20 },
+  torpedo: { pixel: 2.00, dash: 1.25, width: 1.25, intensity: 1.20, ribbon: 1.30, linger: 1.20, muzzle: 1.30 },
+  'continuous-beam': { pixel: 1.30, muzzle: 1.20 },
+  filament: { pixel: 1.40, dash: 1.15, width: 1.20, intensity: 1.10, ribbon: 1.20, muzzle: 1.15 },
+  'field-ring': { pixel: 1.80, dash: 1.30, width: 1.30, intensity: 1.15, ribbon: 1.30, muzzle: 1.20 },
+  'filament-latch': { pixel: 1.70, dash: 1.20, width: 1.25, intensity: 1.15, ribbon: 1.20, muzzle: 1.15 },
+  'well-collar': { muzzle: 1.20 },
+  wedge: { pixel: 1.80, dash: 1.25, width: 1.30, intensity: 1.15, ribbon: 1.30, muzzle: 1.20 },
+  'sticky-charge': { pixel: 1.60, dash: 1.25, width: 1.25, intensity: 1.15, ribbon: 1.20, muzzle: 1.20 },
+  'primer-arc': { pixel: 1.50, dash: 1.20, width: 1.20, intensity: 1.15, ribbon: 1.20, muzzle: 1.15 },
+  'cooker-seam': { pixel: 1.80, dash: 1.30, width: 1.25, intensity: 1.15, ribbon: 1.25, muzzle: 1.25 },
+  'driver-slug': { pixel: 1.30, dash: 1.15, width: 1.20, intensity: 1.15, ribbon: 1.20, muzzle: 1.15 },
+  'vector-mine': { muzzle: 1.20 },
+});
+
+function scaleNumber(value, multiplier, fallback = 0) {
+  const number = Number.isFinite(value) ? value : fallback;
+  return number * multiplier;
+}
+
+function scaledRecipe(recipe, art) {
+  if (!art) return recipe;
+  const flight = { ...recipe.flight };
+  const muzzle = { ...recipe.muzzle };
+  const shield = { ...recipe.shield };
+  const hull = { ...recipe.hull };
+  if (Number.isFinite(art.pixel)) flight.pixelFloor = Math.round(scaleNumber(flight.pixelFloor, art.pixel));
+  if (Number.isFinite(art.dash)) flight.dashLength = scaleNumber(flight.dashLength, art.dash);
+  if (Number.isFinite(art.width)) flight.width = scaleNumber(flight.width, art.width);
+  if (Number.isFinite(art.intensity)) flight.intensity = scaleNumber(flight.intensity, art.intensity);
+  if (Number.isFinite(art.ribbon)) flight.ribbonWidth = scaleNumber(flight.ribbonWidth, art.ribbon);
+  if (Number.isFinite(art.linger)) flight.ribbonLinger = scaleNumber(flight.ribbonLinger, art.linger);
+  if (Number.isFinite(art.muzzle)) {
+    muzzle.width = scaleNumber(muzzle.width, art.muzzle);
+    muzzle.height = scaleNumber(muzzle.height, art.muzzle);
+    muzzle.life = scaleNumber(muzzle.life, 1 + (art.muzzle - 1) * 0.35);
+  }
+  if (Number.isFinite(art.impact)) hull.sparkScale = scaleNumber(hull.sparkScale, art.impact);
+  return Object.freeze({
+    ...recipe,
+    muzzle: Object.freeze(muzzle),
+    flight: Object.freeze(flight),
+    shield: Object.freeze(shield),
+    hull: Object.freeze(hull),
+  });
+}
+
+const ART_RECIPES_BY_VARIANT = Object.freeze(Object.fromEntries(
+  Object.entries(RECIPES_BY_VARIANT).map(([variant, recipe]) => [variant, scaledRecipe(recipe, WEAPON_ART_SCALE[variant])]),
+));
+
 export function resolveWeaponRecipe(weaponId, weaponData = null) {
   const presentation = resolveWeaponPresentationFamily(weaponId, weaponData);
-  return RECIPES_BY_VARIANT[presentation.variant] || AUTOCANNON;
+  return ART_RECIPES_BY_VARIANT[presentation.variant] || ART_RECIPES_BY_VARIANT.autocannon;
 }
 
 const projectileMeshSkipVerdicts = new WeakMap();

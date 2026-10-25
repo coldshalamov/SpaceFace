@@ -58,8 +58,8 @@ const OUTCOME_WORDS = Object.freeze({
 });
 
 const COLUMN_NAMES = Object.freeze(['Act', 'Incident', 'Standing', 'Consequence']);
-const INCIDENT_EMPTY_LABEL = 'No jurisdiction logged this';
-const CONSEQUENCE_EMPTY_LABEL = 'Nothing hunts you yet';
+const INCIDENT_EMPTY_LABEL = 'No jurisdiction logged this — the file is blank, not clean';
+const CONSEQUENCE_EMPTY_LABEL = 'Nothing hunts you yet; the ledger only looks quiet';
 const RECORD_SORTS = Object.freeze(['time', 'delta']);
 /** The dial holds this many chains; older settled ones are counted on its rim. */
 const DIAL_CHAIN_CAP = 15;

@@ -430,5 +430,321 @@ export default defineFlavorPack({
         { id: 'dd_03', text: 'The drop is heavier than freight and lighter than evidence.' },
       ],
     },
+    {
+      // S-02: the claim cluster on f_ceres_1's rim — two pins, one claim, three crews.
+      id: 'ceres_claim_tag',
+      displayName: 'Claim Forty-Tag',
+      location: { sectorId: 'sector_ceres_belt', poiId: 'poi_ceres_claim_tag' },
+      lines: [
+        { id: 'ct_01', text: 'Third-issue stamp over drilled rock. The filing fees were paid on time.' },
+        { id: 'ct_02', text: 'A second pin stands four hands off: fourth issue, same claim, different crew.' },
+        { id: 'ct_03', text: 'The Board lapsed the dead and re-filed the living in one shift. The rock never noticed.' },
+      ],
+    },
+    {
+      id: 'ceres_vigil',
+      displayName: 'Cathedral Vigil',
+      location: { sectorId: 'sector_ceres_belt', poiId: 'poi_ceres_vigil' },
+      lines: [
+        { id: 'cv_01', text: 'A worklight with no work order, burning on a schedule nobody ordered.' },
+        { id: 'cv_02', text: 'Two names welded under the mounting plate. The shipbreak counts tonnage, not names.' },
+        { id: 'cv_03', text: 'The cell is always fresh. The crew that keeps it fresh does not sign the board.' },
+      ],
+    },
+    {
+      id: 'ceres_lapsed_cache',
+      displayName: 'Lapsed Claim Cache',
+      location: { sectorId: 'sector_ceres_belt', poiId: 'poi_ceres_lapsed_cache' },
+      lines: [
+        { id: 'lc_01', text: 'Weighed, tagged, never collected. The toll receipt outdates the strike.' },
+        { id: 'lc_02', text: 'The pin above it still holds. The crew under it does not.' },
+        { id: 'lc_03', text: 'Take the ore. The belt already took everything it was owed.' },
+      ],
+    },
+    {
+      id: 'ceres_ash_pin',
+      displayName: 'Ash Pin on the Pallas Leg',
+      location: { sectorId: 'sector_ceres_belt', poiId: 'poi_ceres_ash_pin' },
+      lines: [
+        { id: 'ap_01', text: 'A pin cooked to its socket. Its survey ID still transmits on the old band.' },
+        { id: 'ap_02', text: 'Drift crews pass it slow — the ID is still on the books.' },
+        { id: 'ap_03', text: 'The belt keeps its graves in a ledger. This one still pings.' },
+      ],
+    },
+    {
+      // S-03: the junction's outbound legs, in the two-desk register.
+      id: 'tethys_marshal_nine',
+      displayName: 'Convoy Marshal Nine',
+      location: { sectorId: 'sector_tethys_junction', poiId: 'poi_tethys_marshal_nine' },
+      lines: [
+        { id: 'mn_01', text: 'Meridian paint over a Concord lane keeper. The serial still bleeds through.' },
+        { id: 'mn_02', text: 'Outbound threes form on the lamps. The Tally counts in; this one counts out.' },
+        { id: 'mn_03', text: 'Its on-time log is the shortest file at the junction.' },
+      ],
+    },
+    {
+      id: 'tethys_second_count',
+      displayName: 'Second Count Buoy',
+      location: { sectorId: 'sector_tethys_junction', poiId: 'poi_tethys_second_count' },
+      lines: [
+        { id: 'sc_01b', text: 'Concord housing, dark lamps, seal intact. The lease changed; the mount did not.' },
+        { id: 'sc_02b', text: 'The Vesta leg paid a toll before this one. It will pay another after.' },
+        { id: 'sc_03b', text: 'Filed shutdown, filed salvage, filed waiver. Nobody came. The filing is complete.' },
+      ],
+    },
+    {
+      id: 'tethys_refiled',
+      displayName: 'The Re-filed Hull',
+      location: { sectorId: 'sector_tethys_junction', poiId: 'poi_tethys_refiled' },
+      lines: [
+        { id: 'rf_01', text: 'Flagged HELD at a bend the lane no longer takes.' },
+        { id: 'rf_02', text: 'The desk was re-filed twice. The hold transferred with the furniture.' },
+        { id: 'rf_03', text: 'Her crew signed the release years ago. The hold did not.' },
+      ],
+    },
+    {
+      // S-04: the burn's workforce and the foundry's signature.
+      id: 'vesta_hot_face',
+      displayName: 'Hot Face Claim',
+      location: { sectorId: 'sector_vesta_forge', poiId: 'poi_vesta_hot_face' },
+      lines: [
+        { id: 'hf_01', text: 'Seven stamp layers on one pin. The roster is the claim.' },
+        { id: 'hf_02', text: 'Twenty-minute watches. The four-watch crew is still argued about.' },
+        { id: 'hf_03', text: 'The best face in the Forge sits in the burn. Nobody files that as a problem.' },
+      ],
+    },
+    {
+      id: 'vesta_lead_hedge',
+      displayName: 'The Lead Hedge',
+      location: { sectorId: 'sector_vesta_forge', poiId: 'poi_vesta_lead_hedge' },
+      lines: [
+        { id: 'lh_01', text: 'Lead doors chalked with watch-tallies. Most run to the floor.' },
+        { id: 'lh_02', text: 'A few columns end mid-tally. Nobody erases those.' },
+        { id: 'lh_03', text: 'The next crew chalks a fresh door. The count stays honest.' },
+      ],
+    },
+    {
+      id: 'vesta_guild_stamps',
+      displayName: 'Guild Stamp Post',
+      location: { sectorId: 'sector_vesta_forge', poiId: 'poi_vesta_guild_stamps' },
+      lines: [
+        { id: 'gs_01', text: 'Second Pour at the crown, Third Pour below. The base is all ghosts.' },
+        { id: 'gs_02', text: 'The gallery across the field signs the welders. This signs the work.' },
+        { id: 'gs_03', text: 'A single strike reads as provenance. Unsigned plate does not ship.' },
+      ],
+    },
+    {
+      // S-05: the drift's kept mooring, the den's doorbell, the kitchen's line.
+      id: 'pallas_eighteenth',
+      displayName: 'The Eighteenth Mooring',
+      location: { sectorId: 'sector_pallas_drift', poiId: 'poi_pallas_eighteenth' },
+      lines: [
+        { id: 'pm_01', text: 'A mooring pin on the Quiessence\u2019s approach, lamp burning over an empty berth.' },
+        { id: 'pm_02', text: 'Seventeen freighters hold formation in the murk. The drift keeps the eighteenth slot on the outside.' },
+        { id: 'pm_03', text: 'Repainted every season. Asking whose season keeps it is bad bookkeeping.' },
+      ],
+    },
+    {
+      id: 'pallas_quiet_bell',
+      displayName: 'The Quiet Bell',
+      location: { sectorId: 'sector_pallas_drift', poiId: 'poi_pallas_quiet_bell' },
+      lines: [
+        { id: 'qb_01', text: 'A whistle-buoy on the den\u2019s approach lane. Regulars run the manifold across it once.' },
+        { id: 'qb_02', text: 'Ring twice and the house answers with silence. At the den, silence is a complete sentence.' },
+        { id: 'qb_03', text: 'The only roll the house calls. Nobody is asked to sign it.' },
+      ],
+    },
+    {
+      id: 'pallas_mess_line',
+      displayName: 'The Mess Line',
+      location: { sectorId: 'sector_pallas_drift', poiId: 'poi_pallas_mess_line' },
+      lines: [
+        { id: 'ml_01', text: 'Ration pods staged off the market\u2019s south apron, chalk-sorted by skiff and shift.' },
+        { id: 'ml_02', text: 'Every unlisted crew on the fringe eats through this line. The intake overshoots; the surplus clears.' },
+        { id: 'ml_03', text: 'Nobody asks where a pod goes once it leaves the rack. That is the whole arrangement.' },
+      ],
+    },
+    {
+      // S-13: the memorial markers beside the unplated frontier wrecks — the eulogy register.
+      id: 'nyx_runner_memorial',
+      displayName: 'Runner\u2019s Tally Post',
+      location: { sectorId: 'sector_nyx_march', poiId: 'poi_nyx_runner_memorial' },
+      lines: [
+        { id: 'rn_01', text: 'A tally post beside a stripped wreck. The names it keeps were filed nowhere else.' },
+        { id: 'rn_02', text: 'Toma Reye ran a forged cut with two unpaid hands. The scoring on the flank reads in threes.' },
+        { id: 'rn_03', text: 'Holds and drive were gone before the hull cooled. The post outlasted the paperwork.' },
+      ],
+    },
+    {
+      id: 'rhea_slag_memorial',
+      displayName: 'Slagman\u2019s Lantern',
+      location: { sectorId: 'sector_rhea_cinder', poiId: 'poi_rhea_slag_memorial' },
+      lines: [
+        { id: 'sl_01', text: 'A furnace lantern on a cell that still takes charge. Somebody keeps it fed.' },
+        { id: 'sl_02', text: 'Pall Vess, Nera Oku, and the apprentice refused the torch. The ingot reads slag-bound.' },
+        { id: 'sl_03', text: 'The scoring on the bell runs inward. The lantern burns anyway.' },
+      ],
+    },
+    {
+      id: 'haumea_probe_memorial',
+      displayName: 'Probe-Keeper\u2019s Stake',
+      location: { sectorId: 'sector_haumea_rift', poiId: 'poi_haumea_probe_memorial' },
+      lines: [
+        { id: 'pk_01', text: 'Anchor knot-work on a survey stake, left by the machine that minds the crack.' },
+        { id: 'pk_02', text: 'RIME-4 came back wrong. Ansi Toro and Bes Mar are recorded at the Anchor.' },
+        { id: 'pk_03', text: 'The shell\u2019s scoring runs inward. No weapon the rift knows does that.' },
+      ],
+    },
+    {
+      id: 'eris_toll_memorial',
+      displayName: 'Toll-Book Marker',
+      location: { sectorId: 'sector_eris_margin', poiId: 'poi_eris_toll_memorial' },
+      lines: [
+        { id: 'tb_01', text: 'A torn toll-book page sealed under the plate. The runner HALKETT paid through seventeen times.' },
+        { id: 'tb_02', text: 'On the eighteenth crossing the toll was the hull. Salvors took drive and holds the first day.' },
+        { id: 'tb_03', text: 'The margin keeps what is left. The page keeps the count.' },
+      ],
+    },
+    {
+      id: 'nereid_shoal_memorial',
+      displayName: 'Shoal Ledger Marker',
+      location: { sectorId: 'sector_nereid_shoal', poiId: 'poi_nereid_shoal_memorial' },
+      lines: [
+        { id: 'sh_01', text: 'The shoal salvors set this marker by law. The rime keeps the count; the stake keeps the names.' },
+        { id: 'sh_02', text: 'O. Ferro, K. Ferro, and an apprentice nobody carded.' },
+        { id: 'sh_03', text: 'Cut lines on the holds say they were opened after the crew were already ice.' },
+      ],
+    },
+    {
+      id: 'triton_wake_memorial',
+      displayName: 'Wake-Bell Marker',
+      location: { sectorId: 'sector_triton_wake', poiId: 'poi_triton_wake_memorial' },
+      lines: [
+        { id: 'wk_01', text: 'A bell buoy with its clapper pulled, tuned silent on the wake drift.' },
+        { id: 'wk_02', text: 'The plate names only the captain — Reva Ils. The wake does not give the other three back.' },
+        { id: 'wk_03', text: 'Kill-marks line the spine like stitching. Too regular to be rock.' },
+      ],
+    },
+    {
+      id: 'eunomia_row_marker',
+      displayName: 'Gardener\u2019s Row Marker',
+      location: { sectorId: 'sector_eunomia_gulf', poiId: 'poi_eunomia_row_marker' },
+      lines: [
+        { id: 'ro_01', text: 'A compost post in the Understory\u2019s hand, newer than the wreck it faces.' },
+        { id: 'ro_02', text: 'Row 7 — the hulk YARROW, planted whole. Pell Osta, S. Reck, and the ship\u2019s cat are returned to the garden.' },
+        { id: 'ro_03', text: 'The scoring on the hull predates the planting. The gardener counts what falls.' },
+      ],
+    },
+    {
+      id: 'eunomia_bed_marker',
+      displayName: 'Painted-Bed Marker',
+      location: { sectorId: 'sector_eunomia_gulf', poiId: 'poi_eunomia_bed_marker' },
+      lines: [
+        { id: 'pb_01', text: 'Bed 12 — loose tonnage, three crews\u2019 worth of scrap under a compost post.' },
+        { id: 'pb_02', text: 'The names left aboard are written on the stake\u2019s weather side.' },
+        { id: 'pb_03', text: 'Kill-marks point inward from every bearing. Whatever died here was running.' },
+      ],
+    },
+    {
+      // S-14: the five dressed regions' own scan-lore bindings.
+      id: 'hyperion_stake_line',
+      displayName: 'Second Stake Line',
+      location: { sectorId: 'sector_hyperion_cut', poiId: 'poi_hyperion_stake_line' },
+      lines: [
+        { id: 'st_01', text: 'Claim stakes in the seam\u2019s shadow, filed in the Outpost\u2019s own shorthand: S-LINE TWO.' },
+        { id: 'st_02', text: 'Worked before the cave. Half the stakes name crews the Shaft\u2019s roster dropped.' },
+        { id: 'st_03', text: 'The line is older than the crack in the band. The filing outlived the crew.' },
+      ],
+    },
+    {
+      id: 'hyperion_tag_face',
+      displayName: 'Marked Face',
+      location: { sectorId: 'sector_hyperion_cut', poiId: 'poi_hyperion_tag_face' },
+      lines: [
+        { id: 'tf_01', text: 'Auger tally and shift codes on the field\u2019s largest face, painted before the cave took the mast.' },
+        { id: 'tf_02', text: 'One name in a circle. The refinery calls it vandalism; the crews call it the shift board.' },
+        { id: 'tf_03', text: 'The paint predates the drill logs. Nobody files either anymore.' },
+      ],
+    },
+    {
+      id: 'dione_convoy_tally',
+      displayName: 'Convoy Tally Post',
+      location: { sectorId: 'sector_dione_lane', poiId: 'poi_dione_convoy_tally' },
+      lines: [
+        { id: 'co_01', text: 'Chalk manifests and berth numbers where the hauler lines form up before the customs read.' },
+        { id: 'co_02', text: 'The convoy count is in Meridian hands. Every flag on the lane agrees this scale is honest.' },
+        { id: 'co_03', text: 'Crews wait out the customs read against this seam. The post is the waiting room.' },
+      ],
+    },
+    {
+      id: 'dione_way_tag',
+      displayName: 'Wayline Tag',
+      location: { sectorId: 'sector_dione_lane', poiId: 'poi_dione_way_tag' },
+      lines: [
+        { id: 'wy_01', text: 'Neat block letters, a lane number, a date — filed to within an inch of regulation.' },
+        { id: 'wy_02', text: 'Even the graffiti on the watched lane keeps to the margin.' },
+        { id: 'wy_03', text: 'The customs desk logs it under morale, admissible.' },
+      ],
+    },
+    {
+      id: 'eris_watch_pin',
+      displayName: 'Watch Pin',
+      location: { sectorId: 'sector_eris_margin', poiId: 'poi_eris_watch_pin' },
+      lines: [
+        { id: 'wp_01', text: 'A burned survey pin dead-center on the metallic field, pointed at nothing the telescope admits.' },
+        { id: 'wp_02', text: 'The Quiet do not pull dead pins. A pin that watches nothing is the kind that still works.' },
+        { id: 'wp_03', text: 'No signal, no keeper, no filing. The pin was never the payload.' },
+      ],
+    },
+    {
+      id: 'eris_mark_stone',
+      displayName: 'Mark Stone',
+      location: { sectorId: 'sector_eris_margin', poiId: 'poi_eris_mark_stone' },
+      lines: [
+        { id: 'ms_01', text: 'A name, a hull weight, a date — in a hand nobody at the Fence teaches.' },
+        { id: 'ms_02', text: 'The filing this mark answers to lives in somebody else\u2019s registry.' },
+        { id: 'ms_03', text: 'On the Margin, the mark that matters is never where the marker is.' },
+      ],
+    },
+    {
+      id: 'eunomia_gulf_stake',
+      displayName: 'Gulf Stake',
+      location: { sectorId: 'sector_eunomia_gulf', poiId: 'poi_eunomia_gulf_stake' },
+      lines: [
+        { id: 'gu_01', text: 'A claim stake stamped LICENSE E-1140 in the Understory\u2019s plate script.' },
+        { id: 'gu_02', text: 'The fence\u2019s cutting crews file under a yard license, not a name.' },
+        { id: 'gu_03', text: 'The exotic seam\u2019s last three filings read the same: licensed, uninspected, unreturned.' },
+      ],
+    },
+    {
+      id: 'eunomia_lamp_row',
+      displayName: 'Lamp Row',
+      location: { sectorId: 'sector_eunomia_gulf', poiId: 'poi_eunomia_lamp_row' },
+      lines: [
+        { id: 'la_01', text: 'Worklamps strung along the licensed plate drift — half dead, half burning on scavenged cells.' },
+        { id: 'la_02', text: 'The yard\u2019s shift line, strung so the cutting crews find the drift after the fog lifts.' },
+        { id: 'la_03', text: 'The lit half marks where the last crew stopped.' },
+      ],
+    },
+    {
+      id: 'haumea_frost_tag',
+      displayName: 'Frost Mark',
+      location: { sectorId: 'sector_haumea_rift', poiId: 'poi_haumea_frost_tag' },
+      lines: [
+        { id: 'ft_01', text: 'A frost-etched tag on the ice field\u2019s clearest face — instrument-log date stamps, one doodle of the fracture the chart will not name.' },
+        { id: 'ft_02', text: 'Observatory crews get bored on the long scans. The mark is the log of the boredom.' },
+        { id: 'ft_03', text: 'The survey post files it as surface contamination, benign.' },
+      ],
+    },
+    {
+      id: 'haumea_listen_pin',
+      displayName: 'Listen Pin',
+      location: { sectorId: 'sector_haumea_rift', poiId: 'poi_haumea_listen_pin' },
+      lines: [
+        { id: 'lp_01', text: 'A dropped receiver on the crystalline seam\u2019s edge, still answering the observatory\u2019s ping schedule.' },
+        { id: 'lp_02', text: 'Channel four, on schedule. The acquisition paperwork lists it as recovered.' },
+        { id: 'lp_03', text: 'The ping log disagrees with the paperwork. The equipment cage stopped reconciling the two.' },
+      ],
+    },
   ],
 });

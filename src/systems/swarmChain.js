@@ -35,7 +35,7 @@ import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { validateRunState } from '../core/runState.js';
 import { styleCauseFromKill } from './survivalStyle.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
-import { ownedSwarmLegendaryIds } from '../data/swarmDraft.js';
+import { ownedSwarmLegendaryIds, swarmPassiveFireRateScale } from '../data/swarmDraft.js';
 import { createRewardDeathLedger } from '../combat/rewardEligibility.js';
 
 /** Seconds allowed between kills before the chain lapses. Fixed, so a player can learn it. */
@@ -59,9 +59,27 @@ export const SWARM_CHAIN_SCORE_CAP = 60;
  */
 export const SWARM_CHAIN_OVERDRIVE_RATE = 3;
 
-/** Player gun cooldown scale. 1 until this chain has opened its single overdrive window. */
+/**
+ * Player gun cooldown scale: the overdrive window times the armory's gun-cycler stack.
+ * The chain's own gift is the overdrive rate — 1 until this chain has opened its single
+ * window. The armory's passive (SWARM-08) rides the same cadence axis, ×1.06 per coil
+ * held on the run's own `swarm_passive` ledger, so the weapons path keeps reading one
+ * number and nothing outside a live swarm run can bend it.
+ */
 export function swarmChainFireRateScale() {
-  return swarmChain._overdrive ? SWARM_CHAIN_OVERDRIVE_RATE : 1;
+  const overdrive = swarmChain._overdrive ? SWARM_CHAIN_OVERDRIVE_RATE : 1;
+  return overdrive * swarmPassiveGunRateScale(swarmChain.state);
+}
+
+/**
+ * SWARM-08 — the gun-cycler passive's share of the player cooldown scale: ×1.06 per
+ * coil held, ×1.3 at the rack cap. Reads the live run's own `swarm_passive` ledger,
+ * the same receipt every other armory effect honours; outside a live swarm run — or
+ * with no coils racked — the answer is 1, not a guess.
+ */
+export function swarmPassiveGunRateScale(state) {
+  const run = liveSwarmRun(state);
+  return run ? swarmPassiveFireRateScale(run) : 1;
 }
 
 /**

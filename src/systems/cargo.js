@@ -1239,7 +1239,9 @@ export const cargo = {
       });
     }
     this.bus.emit('salvage:bayCashedIn', { units: sale.units, credits: sale.credits, lots: sale.lots });
-    this.bus.emit('salvage:changed', { used: Math.round(this.state.player.salvageBay?.usedVolume || 0), cap: Math.round(salvageBayCap(this.state)) });
+    // cashIn marks the leftover volume so the first-fill hint never fires AT the berth saying
+    // "Dock to cash it" right after the dock just paid out.
+    this.bus.emit('salvage:changed', { used: Math.round(this.state.player.salvageBay?.usedVolume || 0), cap: Math.round(salvageBayCap(this.state)), cashIn: true });
     this.bus.emit('toast', {
       text: `Salvage bay cashed in: ${sale.units} units for ${sale.credits} cr.`,
       kind: 'good',

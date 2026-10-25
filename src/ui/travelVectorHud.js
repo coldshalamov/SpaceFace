@@ -13,6 +13,7 @@ export function travelVectorReadout(state, player, out = {}) {
   const drift = explicit2 === 'drift' || explicit2 === 'newtonian';
   const speed = Math.hypot(player?.vel?.x || 0, player?.vel?.z || 0);
   const wrestle = state?.player?.cruise?.wrestle;
+  out.interdiction = state?.jump?.state === 'JUMPING' ? state.jump._interdiction : null;
   out.drift = drift && speed > 2; out.mode = explicit2; out.speed = speed; out.wrestle = wrestle || null;
   return out;
 }
@@ -33,8 +34,8 @@ export function mountTravelVectorHud(root, state, helpers) {
     update(player) {
       const read = travelVectorReadout(state, player, reading);
       line.style.display = read.drift ? '' : 'none';
-      arc.style.display = read.wrestle ? '' : 'none';
-      if ((!read.drift && !read.wrestle) || !player?.pos || !helpers?.worldToScreen) return;
+      arc.style.display = read.wrestle || read.interdiction ? '' : 'none';
+      if ((!read.drift && !read.wrestle && !read.interdiction) || !player?.pos || !helpers?.worldToScreen) return;
       a.x = player.pos.x; a.z = player.pos.z;
       b.x = a.x + (player.vel.x || 0) * 0.5; b.z = a.z + (player.vel.z || 0) * 0.5;
       const A = helpers.worldToScreen(a, pa), B = helpers.worldToScreen(b, pb);
@@ -47,10 +48,11 @@ export function mountTravelVectorHud(root, state, helpers) {
       let d = `M${A.x},${A.y}l${dx},${dy}`;
       for (let t = 0.25; t <= 1; t += 0.25) d += `M${A.x + dx * t - nx},${A.y + dy * t - ny}l${2 * nx},${2 * ny}`;
       line.setAttribute('d', d);
-      if (read.wrestle) {
-        const w = read.wrestle, r = 64;
+      if (read.wrestle || read.interdiction) {
+        const w = read.wrestle, r = w ? 64 : 84;
         // Project the escape bearing into the same world-to-screen basis as the flight tick.
-        b.x = a.x + Math.cos(w.escapeBearing) * 100; b.z = a.z + Math.sin(w.escapeBearing) * 100;
+        const bearing = w ? w.escapeBearing : read.interdiction.bearing;
+        b.x = a.x + Math.cos(bearing) * 100; b.z = a.z + Math.sin(bearing) * 100;
         const C = helpers.worldToScreen(b, pb);
         const angle = Math.atan2(C.y - A.y, C.x - A.x), half = Math.PI / 9;
         const x1 = A.x + Math.cos(angle - half) * r, y1 = A.y + Math.sin(angle - half) * r;

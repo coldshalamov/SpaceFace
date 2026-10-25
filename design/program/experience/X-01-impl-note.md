@@ -9,3 +9,5 @@ Tests: new `test/x01-salvage-bay-voice.test.mjs` 5/5. Keep-green 54/59 — the 5
 `opening-hauler-raid`/starter-world failures are pre-existing foreign encounter drift
 (verified identical with my comms line reverted); `check-encounter-director` fails on
 its quiet-time soak for the same reason. `index.generated.js` foreign pro-yard diff left out.
+Review fix: the post-cash-in `salvage:changed` now carries `cashIn:true` and the fill hint
+skips it — a mixed bay's leftover no longer re-offers "Dock to cash it" at the berth.

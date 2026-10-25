@@ -37,6 +37,7 @@
 // callbacks from swarmReinforceCount (which survivalWave already calls on the sim tick).
 
 import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } from '../data/environmentMaterials.js';
+import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
 import { mulberry32 } from '../core/rng.js';
 import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
@@ -448,7 +449,11 @@ export function planSwarmDebris({ anchor, existing = [], want = 0, rng, layout =
   const n = Math.max(0, Math.trunc(want));
 
   for (let i = 0; i < n; i++) {
-    const size = SWARM_DEBRIS_SIZE_MIN + roll() * (SWARM_DEBRIS_SIZE_MAX - SWARM_DEBRIS_SIZE_MIN);
+    // §33 row 485 — a layout may carry its own size band (the arena-ladder tiers do: the room
+    // grows with the line rating); the fixed monolith band stays the default.
+    const sizeMin = Number.isFinite(layout && layout.sizeMinWu) ? layout.sizeMinWu : SWARM_DEBRIS_SIZE_MIN;
+    const sizeMax = Number.isFinite(layout && layout.sizeMaxWu) ? layout.sizeMaxWu : SWARM_DEBRIS_SIZE_MAX;
+    const size = sizeMin + roll() * Math.max(0, sizeMax - sizeMin);
     let chosen = null;
     for (let attempt = 0; attempt < PLACEMENT_TRIES; attempt++) {
       // Golden-angle stride off the roll so successive rocks spread around the ring instead of
@@ -764,6 +769,9 @@ export const swarmArena = {
       ? lesson.holdTicks / 60
       : null;
     if (lesson && wave <= 1) this._installOpeningLesson(lesson);
+    // §33 row 485 — wave 1's authored opening pocket: at least three pebble-class throwables
+    // inside a short fly of the pilot, so a stranger's first throw is nearly unavoidable.
+    if (wave <= 1) this._installOpeningPocket(run);
     const massGap = payload && payload.plan && payload.plan.swarm && payload.plan.swarm.massGap;
     if (massGap) this._installMassGapWall(massGap, wave);
   },
@@ -786,6 +794,35 @@ export const swarmArena = {
     // B4 — the Hive's room lands with the wave: first wall ring standing, sacs pulsing.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveInstall(run);
     this._pressureAlive = liveCohortCount(this.state);
+  },
+
+  _installOpeningPocket(run) {
+    const state = this.state;
+    const helpers = this.helpers;
+    if (!state || !helpers || typeof helpers.spawnEntity !== 'function') return;
+    const anchor = playerAnchor(state);
+    const player = state && state.entities && state.playerId != null
+      && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const headingRad = player && Number.isFinite(player.rot) ? player.rot : 0;
+    const tier = swarmArenaTierForRun({
+      wave: 1,
+      ratingT: Number(state.rockCore && state.rockCore.ratingT) || 0,
+    });
+    const existing = (state.entityList || [])
+      .filter((e) => e && e.alive !== false && e.pos && SOLID_TYPES.has(e.type))
+      .map((e) => ({ x: e.pos.x, z: e.pos.z, radius: e.radius || 0 }));
+    const spots = planOpeningThrowables({ anchor, headingRad, tier, existing });
+    if (!spots.length) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const rng = mulberry32(debrisStreamSeed(
+      Number.isInteger(run.seed) ? run.seed : 1,
+      1,
+    ));
+    for (const spot of spots) {
+      this._spawnDebrisRock(spot.x, spot.z, spot.radiusWu, rng, now, { openingPocket: true });
+    }
   },
 
   _onOpeningLessonReleased() {
@@ -1042,7 +1079,16 @@ export const swarmArena = {
     this._ids = surviving;
 
     const reef = runHasMutator(run, 'reef');
-    const layout = debrisLayoutForArena(run && run.arenaId);
+    // Row 481 — Wreck Ballast: the debris field comes in as dead hulls, not rock. Same plan,
+    // same counts, same physics verbs; only the material the room hands you changes.
+    const ballast = runHasMutator(run, 'wreck_ballast');
+    // §33 row 485 — the ladder tier (deepest rung the wave band or line rating unlocks) owns the
+    // debris room's band and size; authored arena layouts stay the fallback and the reef override.
+    const ladderTier = swarmArenaTierForRun({
+      wave: Number.isInteger(wave) ? wave : 1,
+      ratingT: Number(state && state.rockCore && state.rockCore.ratingT) || 0,
+    });
+    const layout = (reef ? null : swarmArenaDebrisLayout(ladderTier)) || debrisLayoutForArena(run && run.arenaId);
     const target = reef ? REEF_DEBRIS_TARGET : layout.target;
     const want = Math.min(target - mine, SWARM_DEBRIS_MAX - mine,
       SWARM_DEBRIS_MAX * 2 - surviving.length);
@@ -1081,7 +1127,9 @@ export const swarmArena = {
         this._terrainRetry = true;
         continue;
       }
-      const material = missingMaterials[materialIndex] || ENVIRONMENT_FAMILIES[materialIndex % ENVIRONMENT_FAMILIES.length];
+      const material = ballast
+        ? 'debris'
+        : missingMaterials[materialIndex] || ENVIRONMENT_FAMILIES[materialIndex % ENVIRONMENT_FAMILIES.length];
       materialIndex++;
       const id = this._spawnDebrisRock(spot.x, spot.z, spot.radius, rng, now,
         { ...(reef ? { reefLayoutId: REEF_LAYOUT_ID } : {}), material });

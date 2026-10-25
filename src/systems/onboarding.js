@@ -72,10 +72,14 @@ import { fieldEscapeOf, FIELD_KINDS } from '../data/fields.js';
 import { fieldAffectsBody, fieldContainsPoint } from '../core/fields/fieldKernel.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { chargeableLotOwnerId } from './lawSecurity.js';
 import {
+  FIRST_TRADE_CONTRACT,
   FIRST_TRADE_CONTRACT_DEST_STATION_ID,
   FIRST_TRADE_CONTRACT_SOURCE,
 } from '../data/economyContractTemplates.js';
+import { gateTollFor } from '../data/travelChoices.js';
+import { SECTORS } from '../data/sectors.js';
 import {
   FLIGHT_DRILL_BRAKE_WU,
   FLIGHT_DRILL_BURST_SHOTS,
@@ -150,6 +154,12 @@ import {
 import { isHostileToPlayer } from './scanner.js';
 import { fittedCloakModule } from './cloak.js';
 import { lawfulPatrolOnGlass } from './lawSecurity.js';
+import {
+  ActivityKind,
+  RulesOfEngagement,
+  normalizeActivity,
+  setEntityDoctrine,
+} from '../ai/doctrine.js';
 
 const FIT_FEEL_DEFS = new Map();
 for (const def of [...MODULES, ...WEAPONS]) {
@@ -737,11 +747,34 @@ export const onboarding = {
       this._showHint('firstStation', firstUseLine('firstStation'), payload);
     });
 
-    // First jump gate approach: teach the player how gates work.
+    // First jump gate approach: teach the player how gates work. Holding the first trade run
+    // upgrades the generic "Plot a jump." once — the tolls are part of the pay, so the gate
+    // line quotes them and stamps firstGate so the generic line never follows.
     bus.on('gate:range', (payload) => {
       this._gateControlInRange = !!(payload && payload.inRange);
       if (!payload || !payload.inRange) return;
+      const run = this._firstTradeRun();
+      if (run && payload.gateTo === run.destSectorId) {
+        const out = gateTollFor(this._sectorById(run.destSectorId)) || 0;
+        const home = gateTollFor(this._sectorById(this._runOriginSectorId(run))) || 0;
+        const pay = Number(run.reward_cr) || FIRST_TRADE_CONTRACT.terms.paysCr;
+        this._showHint('firstGateToll', `Toll ${out} out, ${home} home. The run pays ${pay}. Jump.`, payload);
+        if (!this.state.player.hints) this.state.player.hints = {};
+        this.state.player.hints.firstGate = true;
+        return;
+      }
       this._showHint('firstGate', firstUseLine('firstGate'), payload);
+    });
+
+    // X-04: landing in the contract's sector names the worklight lead-in once.
+    bus.on('jump:arrive', (p) => {
+      const run = this._firstTradeRun();
+      if (!run || !p || p.sectorId !== run.destSectorId) return;
+      // Only the Helios leg reads this way — the Flare Rack lead-in is the out-run, not a
+      // return or a later Ceres entry. world.js stamps the departure sector on the payload
+      // (state.world keeps no previous-sector field).
+      if (p.fromSectorId !== this._runOriginSectorId(run)) return;
+      this._showHint('firstGateArrive', 'Ceres. Follow the Flare Rack to the refinery.', {});
     });
 
     // An add that fit emits cargo:changed and, when it also overflowed, cargo:full
@@ -757,10 +790,30 @@ export const onboarding = {
     // on the fill and on the cash-in. _showHint defers while the rail owns the voice, so a 344
     // kill inside the rail speaks on the next post-rail fill or dock.
     bus.on('salvage:changed', (p) => {
+      if (p && p.cashIn) return;
       if ((p && p.used | 0) > 0) this._showHint('firstSalvageBay', firstUseLine('firstSalvageBay'), {});
     });
     bus.on('salvage:bayCashedIn', (p) => {
       if ((p && p.credits | 0) > 0) this._showHint('firstSalvageCashIn', firstUseLine('firstSalvageCashIn'), {});
+    });
+
+    // X-07: the vent pays a named lesson once each — a clean cut teaches the release, and a
+    // beam that cooked at the peg learns the banked-ore stop. Each is one-time per profile.
+    bus.on('mining:ventBonus', (p) => {
+      if (!p) return;
+      if (p.clean === true) {
+        this._showHint('miningCleanCut', 'Clean cut. Let go before the peg.', {});
+      } else if ((p.peggedS || 0) >= 1) {
+        this._showHint('miningPegged', 'Pegged beam stops banking. Let go in the amber.', {});
+      }
+    });
+
+    // X-03: buying the named module retires the chip id; hints.fitOffer stays true.
+    bus.on('module:purchased', (p) => {
+      if (p && p.defId && this.state.player.hints
+        && this.state.player.hints.fitOfferDefId === p.defId) {
+        delete this.state.player.hints.fitOfferDefId;
+      }
     });
 
     // First frontier crossing (2026-09-28 INFERENCE): the first uncharted sector the player
@@ -1285,6 +1338,9 @@ export const onboarding = {
     if (!def) return '';
     if (!player.hints) player.hints = {};
     player.hints.fitOffer = true;
+    // X-03: remember WHICH module the voice named so the yard row can wear its chip;
+    // module:purchased clears the key, the boolean stays the once-ever flag.
+    player.hints.fitOfferDefId = def.id;
     // The earned line supersedes B5's generic board followup whichever berth event spoke it
     // (a contract payout's grantCredits fires inside the same sale, before tradeCompleted
     // reaches this system).
@@ -1871,7 +1927,81 @@ export const onboarding = {
     }
   },
 
+  // X-04 — the first trade run carries its own toll math: the out leg is priced by the
+  // destination's security, the home leg by the origin's. Everything below is computed at
+  // speak time from gateTollFor — no literals.
+  _firstTradeRun() {
+    const missions = this.state && this.state.missions && this.state.missions.active;
+    return Array.isArray(missions) ? missions.find((m) => m && m.source === FIRST_TRADE_CONTRACT_SOURCE) || null : null;
+  },
+
+  _sectorById(id) {
+    return SECTORS.find((s) => s && s.id === id) || null;
+  },
+
+  // X-05 — read the owner before the act. The first lot the player gets inside reach of
+  // (220 wu — inside the 450 wu witness radius, outside contact range) that belongs to
+  // somebody else speaks its consequence once, anchored to the lot itself.
+  _scanOwnedGoods(state) {
+    const hints = state.player && state.player.hints;
+    if (!hints || hints.firstOwnedGoods) return;
+    // The line is spent once; never spend it where _showHint would refuse or where the lot is a
+    // venue/arena prop rather than the open world.
+    if (state.physicsVenueSession === true) return;
+    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (state.settings && state.settings.gameplay && state.settings.gameplay.tutorialHints === false) return;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const playerWr = state.player && state.player.worldRecordId;
+    const isPlayers = (id) => String(id) === String(state.playerId) || id === 'player'
+      || (playerWr != null && String(id) === String(playerWr));
+    let found = null;
+    // "You're wanted" must be true: speak only over exactly what lawSecurity would file as
+    // payload_theft in sight of a lawful eye — `chargeableLotOwnerId` is the law's own read
+    // (pod/chip doors, custody and priced-manifest exemptions, jurisdiction). Ships, stations,
+    // wrecks and free loot never qualify.
+    const visit = (e) => {
+      if (found || !e || e.alive === false || !e.pos || e.id === state.playerId) return;
+      const d2 = (e.pos.x - player.pos.x) ** 2 + (e.pos.z - player.pos.z) ** 2;
+      if (d2 > 220 * 220) return;
+      const ownerId = chargeableLotOwnerId(state, e);
+      if (ownerId == null || isPlayers(ownerId)) return;
+      found = e;
+    };
+    const payloads = indexedTypeScan(state, 'payloads');
+    const pickups = indexedTypeScan(state, 'pickups');
+    for (let i = 0; i < payloads.length && !found; i++) visit(payloads[i]);
+    if (pickups !== payloads) for (let i = 0; i < pickups.length && !found; i++) visit(pickups[i]);
+    if (found) {
+      this._showHint('firstOwnedGoods', firstUseLine('firstOwnedGoods'), { entityId: found.id });
+    }
+  },
+
+  // The board station's sector is where the run started — the "gate home" toll is priced there.
+  // At mission:completed the run is already off the active list (missions.js removes before
+  // emitting), so a null run falls back to the contract's own board station before the
+  // player's current sector — quoting the Ceres-side toll as "home" would read 194, not 246.
+  _runOriginSectorId(run) {
+    if (run && run.originSectorId) return run.originSectorId;
+    const stationId = (run && run.stationId) || FIRST_TRADE_CONTRACT.stationId;
+    if (stationId) {
+      const home = SECTORS.find((s) => s && Array.isArray(s.stations)
+        && s.stations.some((st) => st && st.id === stationId));
+      if (home) return home.id;
+    }
+    return this.state.world && this.state.world.currentSectorId;
+  },
+
   _onMissionCompleted(payload) {
+    // X-04: the paid line must speak even off-rail — accepting the run ends the rail, so the
+    // dock-beat early-return below cannot carry it. "Keep the home toll" is the round trip's
+    // last cost named at the moment the player has the purse for it.
+    if (payload && payload.source === FIRST_TRADE_CONTRACT_SOURCE) {
+      const run = this._firstTradeRun();
+      const pay = Number(payload.rewardCr) || Number(run && run.reward_cr) || FIRST_TRADE_CONTRACT.terms.paysCr;
+      const home = gateTollFor(this._sectorById(this._runOriginSectorId(run))) || 0;
+      this._showHint('firstTradePaid', `Paid ${pay}. Keep ${home} for the gate home.`, {});
+    }
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!ob || !beat || beat.key !== 'dock') return;
@@ -1955,6 +2085,8 @@ export const onboarding = {
     const ob = this.state.onboarding;
     if (!ob || ob.beatDoneAt[beat.key] != null) return;
     ob.beatDoneAt[beat.key] = this.state.simTime || 0;
+    // X-02: the lesson landing releases the wing — it runs rather than fading out.
+    if (beat.key === 'raid') this._stepRaidWing();
     this._maybeStartRescueBeat(beat.key);
     if (beat.key === 'choice' || BEATS.indexOf(beat) === CHOICE_BEAT_INDEX) {
       this._finish();
@@ -2069,7 +2201,20 @@ export const onboarding = {
       this._teachReleaseWindow();
       this._tickShelfVerbs(intervalS, state);
       this._tickFitFelt(state);
-      if (!ob.active || ob.finished) return;
+      if (!ob.active || ob.finished) {
+        // X-05: past the rail, one read before the act — the first owned lot the player gets
+        // close enough to reach for names its consequence once. 15-tick cadence; the scan
+        // retires for good once the hint has spoken.
+        const scanTick = state.tick | 0;
+        // A New Game / load rewinds the tick under this module-lifetime stamp — re-latch so
+        // the scan never stalls until the clock catches back up.
+        if (ob.finished && !(this._ownedScanAt <= scanTick)) this._ownedScanAt = scanTick;
+        if (ob.finished && scanTick - this._ownedScanAt >= 15) {
+          this._ownedScanAt = scanTick;
+          this._scanOwnedGoods(state);
+        }
+        return;
+      }
       this._notePaceFlight();
       this._tryAdvanceBeat();
       this._resolveProximityDone();
@@ -3197,6 +3342,7 @@ export const onboarding = {
     const id = raid.ids && raid.ids[slot];
     if (id == null || !this.state.entities) return null;
     const entity = this.state.entities.get(id);
+    if (slot === 'wing' && !(entity && entity.data && entity.data.onboardingRaidWing === true)) return null;
     return entity && entity.alive !== false ? entity : null;
   },
 
@@ -3227,7 +3373,7 @@ export const onboarding = {
     if (!raid || !this.helpers || !this.helpers.spawnEntity) return;
     const player = st.entities && st.entities.get(st.playerId);
     if (!player || !player.pos) return;
-    this._removeRaidActors();
+    this._removeRaidActors({ wing: opts.wing });
     // Reuse the rescue wall's bearing so the release line reads: raider between the player and
     // the big rock, the hauler dressed just off the raider's beam.
     const wall = st.onboarding.rescue && st.onboarding.rescue.ids
@@ -3266,9 +3412,43 @@ export const onboarding = {
       raiderSpec.data.ai = {
         ...(raiderSpec.data.ai || {}),
         passive: true, roe: 'hold_fire', spawnContext: 'onboarding_raid', motive: 'crippled',
+        // X-02: the wing answers for its crew — same squad marks the raider an own-wingmate
+        // under fireDiscipline, so the wing's pulse never finds the tow.
+        squadId: 'claim_jumper_wing',
       };
       const raider = this.helpers.spawnEntity(raiderSpec);
       raid.ids.raider = raider && raider.id != null ? raider.id : null;
+    }
+    // X-02 — the Claim Jumper's wing. It stages off the tow on every non-clinic stage,
+    // holds fire until the line latches, and once it has fled or died it never returns
+    // (raid.wingDone). A kept slot (gun-kill/drift restage) is not re-spawned.
+    if (!clinic && !raid.wingDone && raid.ids.wing == null) {
+      const wingSpec = makeEnemySpawnSpec('wasp_swarmer', 1, at(480, -0.6), { startedTick: st.tick });
+      if (wingSpec) {
+        wingSpec.name = "Claim Jumper's Wing";
+        wingSpec.hull = wingSpec.hullMax = 60;
+        wingSpec.shield = wingSpec.shieldMax = 0;
+        wingSpec.shieldRegenRate = 0;
+        wingSpec.data = wingSpec.data || {};
+        wingSpec.data.onboarding = true;
+        wingSpec.data.onboardingRaidWing = true;
+        // Its resolved kit keeps only the pulse mount — defanged in place so a hit stings
+        // and never shoves the tow (impulsePerHit 0). Combat reads defId/dmg/rof at fire time.
+        const mounts = Array.isArray(wingSpec.data.weapons) ? wingSpec.data.weapons : [];
+        const pulse = mounts.find((w) => w && w.defId === 'wpn_pulse_laser_s');
+        if (pulse) {
+          pulse.dmg = 2; pulse.rof = 2; pulse.impulsePerHit = 0;
+          wingSpec.data.weapons = [pulse];
+        } else {
+          wingSpec.data.weapons = [];
+        }
+        wingSpec.data.ai = {
+          ...(wingSpec.data.ai || {}),
+          roe: 'hold_fire', spawnContext: 'onboarding_raid', squadId: 'claim_jumper_wing',
+        };
+        const wing = this.helpers.spawnEntity(wingSpec);
+        raid.ids.wing = wing && wing.id != null ? wing.id : null;
+      }
     }
     // A throw-target rock right downrange of the raider: the tow pass distance stays short
     // and readable, and the thrown body always has a solid near its release line.
@@ -3308,12 +3488,54 @@ export const onboarding = {
     raid.lastWhipAt = null;
   },
 
-  _removeRaidActors() {
+  // opts.wing: 'keep' leaves the live wing armed as it stands (gun-kill/drift restage);
+  // 'disarm' leaves it but puts it back on hold_fire (player-death restage); anything
+  // else — including the bare call _finish/_teardown make — removes every slot.
+  _removeRaidActors(opts = {}) {
     const raid = this.state && this.state.onboarding && this.state.onboarding.raid;
     if (!raid || !raid.ids) return;
     const player = this.state && this.state.player;
     for (const slot of Object.keys(raid.ids)) {
       const id = raid.ids[slot];
+      if (slot === 'wing' && (opts.wing === 'keep' || opts.wing === 'disarm')) {
+        if (opts.wing === 'disarm' && id != null && this.state.entities) {
+          const wing = this.state.entities.get(id);
+          if (wing && wing.data && wing.data.ai) {
+            // A wing that already left honestly keeps its exit record through the restage —
+            // restamping its FLEE/DISENGAGE as a LOITER would park a routed hull mid-field
+            // instead of letting it finish running. A merely disengaged wing stands down.
+            if (!this._raidWingExited(wing)) {
+              wing.data.ai.roe = 'hold_fire';
+              // Stand the wing down with its record, not just its guns: a live 'onboarding_raid:'
+              // ATTACK_RUN would keep overriding the squad's FOCUS and the silent hull would keep
+              // stalking the player it can no longer shoot.
+              wing.data.ai.activity = normalizeActivity({
+                kind: ActivityKind.LOITER,
+                reason: 'onboarding_raid:standdown',
+                anchor: wing.pos,
+                leashRadius: 0,
+                startedTick: this.state.tick | 0,
+                targetId: null,
+              });
+            }
+            wing.data.ai.forcePlayerTarget = false;
+            wing.data.ai.huntPlayer = false;
+            const combat = wing.data.combat || (wing.data.combat = {});
+            combat.targetId = null;
+            if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
+          }
+        }
+        continue;
+      }
+      // A dead or egressed wing keeps its slot (wingDone guards the respawn), and entity ids
+      // recycle — never remove whatever hull now wears that id.
+      if (slot === 'wing' && id != null && this.state.entities) {
+        const held = this.state.entities.get(id);
+        if (!held || !held.data || held.data.onboardingRaidWing !== true) {
+          raid.ids[slot] = null;
+          continue;
+        }
+      }
       if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
         this.helpers.removeEntity(id);
       }
@@ -3322,12 +3544,83 @@ export const onboarding = {
     }
   },
 
+  // X-02: what "the wing honestly left" means. markFleeing/markSurrendered — and the custody,
+  // surrender-recovery, sanctuary-withdrawal, and parley break-off paths built on the same
+  // shape — stamp a durable denial every authority gate keeps honoring for the hull's life:
+  // pirateDisengaged, motiveSatisfied, or the pirateDisengage record itself. A bare
+  // forceFlee/fsm:'flee' is NOT that record: wingMorale's leader-killed scatter
+  // (_wingMoraleUntil) and difficultyDirector's pin-release hold (_pacingFleeUntil) stamp
+  // exactly those and are built to expire so the hull re-presses when the shock lapses.
+  _raidWingExited(wing) {
+    const data = wing && wing.data;
+    const ai = data && data.ai;
+    if (!ai) return false;
+    if (ai.pirateDisengaged === true || ai.motiveSatisfied === true) return true;
+    const rec = data.pirateDisengage;
+    return !!(rec && (rec.phase === 'flee' || rec.phase === 'surrender'));
+  },
+
+  // Adopt that honest rout as the wing's done state: fled is done. Otherwise a later latch
+  // would restamp a dead-letter ATTACK_RUN + weapons_free on a hull that can never fire, and
+  // the sanctuary identity gate would keep exempting a wing that already left the lesson. A
+  // wing merely scattered or paced off is not adopted — its hold lapses and it re-arms.
+  _adoptRaidWingExit(raid, wing) {
+    const ai = wing && wing.data && wing.data.ai;
+    if (!raid || !ai || !this._raidWingExited(wing)) return false;
+    raid.wingDone = true;
+    // Drop the pins an earlier arming left (markFleeing shape) so the routed hull stops
+    // resolving the player as its target anywhere downstream.
+    ai.forcePlayerTarget = false;
+    ai.huntPlayer = false;
+    const combat = wing.data.combat;
+    if (combat) {
+      if (combat.targetId === this.state.playerId) combat.targetId = null;
+      if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
+    }
+    return true;
+  },
+
   _onRaidLatched(payload) {
     const raid = this._raid();
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !ob || !beat || beat.key !== 'raid') return;
     if (payload.targetId !== raid.ids.raider) return;
+    // X-02: the wing holds its fire until the tow actually starts — the first latch on the
+    // raider is the trigger it answers for. Re-latching an armed wing stays quiet.
+    const wing = this._raidActor('wing');
+    if (wing && this._adoptRaidWingExit(raid, wing)) return this._onBeatEvent('raid:latched', payload);
+    if (wing && wing.data && wing.data.ai && !raid.wingDone
+      && wing.data.ai.roe !== 'weapons_free') {
+      // The wing's lesson target is the pilot holding the tow — pin it through the sanctioned
+      // flag and hand it an AUTHORITATIVE ASSIGNMENT: the 'onboarding_raid:' ATTACK_RUN outranks
+      // the squad's advisory vote, so the shared squadId with the passive raider can no longer
+      // vote the offender non-hostile and starve the FOCUS objective (X-02 acquisition fix).
+      wing.data.ai.forcePlayerTarget = true;
+      const player = this.state.entities && typeof this.state.entities.get === 'function'
+        ? this.state.entities.get(this.state.playerId)
+        : null;
+      const raider = this._raidActor('raider');
+      setEntityDoctrine(wing, {
+        activity: {
+          kind: ActivityKind.ATTACK_RUN,
+          reason: 'onboarding_raid:claim_jumper',
+          anchor: (player && player.pos) || (raider && raider.pos) || wing.pos,
+          leashRadius: 2200,
+          startedTick: this.state.tick | 0,
+          targetId: this.state.playerId,
+        },
+        roe: RulesOfEngagement.WEAPONS_FREE,
+      });
+      wing.data.combat = { ...(wing.data.combat || {}), targetId: this.state.playerId };
+      this.bus.emit('comms:popup', {
+        sender: "Claim Jumper's Wing",
+        text: 'Hands off his boat.',
+        category: 'hostile',
+        ttl: 5,
+      });
+      this._sayTutorial("Keep swinging. He can't hold aim.");
+    }
     this._onBeatEvent('raid:latched', payload);
   },
 
@@ -3371,7 +3664,21 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !ob || !beat || beat.key !== 'raid' || !payload) return;
+    // X-02: the wing's own death ends its part — never a restage, never a beat result.
+    if (payload.id === raid.ids.wing) { raid.wingDone = true; return; }
     if (payload.id !== raid.ids.raider) return;
+    // X-02 v3: a stray wing round into the towed raider converges like a gun kill — silently,
+    // because "the raider broke off" is not what the player did.
+    if (payload.killerId === raid.ids.wing || payload.ownerId === raid.ids.wing) {
+      raid.strayKills = (raid.strayKills | 0) + 1;
+      if (raid.strayKills >= 2) {
+        this._beatDone(beat);
+        this._emitMilestone('momentumKill', { cause: 'stray', beat: 'raid' });
+      } else {
+        this._respawnRaidRaider(null);
+      }
+      return;
+    }
     const credited = payload.killerId === this.state.playerId || payload.ownerId === this.state.playerId;
     if (!credited) { this._respawnRaidRaider('the raider broke off'); return; }
     const now = this.state.simTime || 0;
@@ -3391,10 +3698,10 @@ export const onboarding = {
     this._emitMilestone('momentumKill', { cause: 'guns', beat: 'raid' });
   },
 
-  _respawnRaidRaider(line) {
+  _respawnRaidRaider(line, opts = {}) {
     const raid = this._raid();
     if (!raid) return;
-    this._spawnRaidCast();
+    this._spawnRaidCast({ wing: opts.wing || 'keep' });
     if (line) {
       this.state.onboarding.beatAction = line;
       this._sayTutorial(line);
@@ -3407,7 +3714,62 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !beat || beat.key !== 'raid') return;
-    this._respawnRaidRaider('Back in one piece. Latch the raider. Swing him into the rock.');
+    // The wing survives the restage but stands down until the next first latch.
+    this._respawnRaidRaider('Back in one piece. Latch the raider. Swing him into the rock.',
+      { wing: 'disarm' });
+  },
+
+  // X-02 — the wing fights until the tow teaches its lesson or its own hull says enough:
+  // the beat ending, or hull at 30%, tells it to run through the ordinary flee/egress path.
+  // It is staged hostile, not morale-immune, so the same doctrine and egress rules apply.
+  _stepRaidWing() {
+    const raid = this._raid();
+    if (!raid || raid.wingDone) return;
+    const wing = this._raidActor('wing');
+    if (!wing) return;
+    // A morale scatter exits honestly through pirateDisengage without touching wingDone —
+    // adopt it before the scripted checks so the slot closes within a tick and no later
+    // latch can restamp a dead-letter ATTACK_RUN on a routed hull.
+    if (this._adoptRaidWingExit(raid, wing)) return;
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    const beatDone = !!(ob && ob.beatDoneAt && ob.beatDoneAt.raid != null)
+      || (beat && beat.key !== 'raid');
+    const lowHull = wing.hullMax > 0 && (wing.hull / wing.hullMax) <= 0.30;
+    if (!beatDone && !lowHull) return;
+    raid.wingDone = true;
+    if (wing.data && wing.data.ai) {
+      wing.data.ai.forceFlee = true;
+      wing.data.ai.fsm = 'flee';
+      wing.data.ai.roe = 'hold_fire';
+      // Retire the authoritative assignment honestly (pirateDisengage markFleeing pattern):
+      // a DISENGAGE record kills the FOCUS override and the fire bridge with it — forceFlee is
+      // the transient survival order, this is the durable one. The player-target flags go with
+      // it: once the wing is running it is no longer hunting the pilot.
+      wing.data.ai.forcePlayerTarget = false;
+      wing.data.ai.huntPlayer = false;
+      wing.data.ai.activity = normalizeActivity({
+        kind: ActivityKind.DISENGAGE,
+        reason: 'onboarding_raid:withdrawn',
+        anchor: wing.pos,
+        leashRadius: 0,
+        startedTick: this.state.tick | 0,
+        targetId: null,
+      });
+      const combat = wing.data.combat || (wing.data.combat = {});
+      combat.targetId = null;
+      if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
+      const intent = wing.data.intent || (wing.data.intent = {});
+      intent.fire = false;
+      intent.fireGroup = null;
+    }
+    this.bus.emit('comms:popup', {
+      sender: "Claim Jumper's Wing",
+      text: "Not for his cut. I'm gone.",
+      category: 'hostile',
+      ttl: 5,
+    });
+    this._sayTutorial("He's running. Let him.");
   },
 
   _resolveRaidDone() {
@@ -3415,6 +3777,7 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !beat || beat.key !== 'raid') return;
+    this._stepRaidWing();
     const raider = this._raidActor('raider');
     if (!raider) return; // kill handling is event-driven (_onRaidKilled)
     const player = this.state.entities && this.state.entities.get(this.state.playerId);

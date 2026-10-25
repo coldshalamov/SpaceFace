@@ -3,13 +3,18 @@ import { entityWeaponBlocked } from '../combat/runtime.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { readFrameOrigin } from './frameCoordinates.js';
+import { CAMERA_DIRECTOR_COMBAT_MAX_ZOOM } from './tabletopPolicy.js';
+
+// The combat zoom ceiling is defined in tabletopPolicy.js (the shared, Three-free
+// framing policy the sim-lane projector also reads) and re-exported here so the
+// director stays the import site every consumer already uses.
+export { CAMERA_DIRECTOR_COMBAT_MAX_ZOOM };
 
 export const CAMERA_DIRECTOR_MIN_ZOOM = 58;
 // 58-180 is the authored pair envelope. A wider exact pair may use the chase camera's existing
 // legal 330 ceiling rather than crop either ship, but must report that authored-envelope overflow.
 export const CAMERA_DIRECTOR_MAX_ZOOM = 180;
 export const CAMERA_DIRECTOR_ENGINE_MAX_ZOOM = 330;
-export const CAMERA_DIRECTOR_COMBAT_MAX_ZOOM = 528;
 // Standard combat-pair margin: content stays inside NDC +/-0.80 → 10% context each side.
 export const CAMERA_DIRECTOR_SAFE_NDC = 0.8;
 // Focus shares the same 10% functional safe frame; extra cinematic tightening must never push an

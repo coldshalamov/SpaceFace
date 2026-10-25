@@ -187,6 +187,12 @@ export function createDamageRouter(context, statusService, options = {}) {
     if (!packet.flags.ignoreFriendlyFire && attacker && attacker.id !== target.id && attacker.team != null && target.team != null && attacker.team === target.team && !(attackerIsPlayer && !targetIsOwnDevice) && !npcCrossfireAdmits(state, attacker, target, origin) && !npcGrudgeAdmits(state, attacker, target, origin)) {
       return rejected('friendly_fire', input, packet);
     }
+    // X-02 v4: the onboarding wing's rounds touch only the player while its raid beat is live —
+    // any packet aimed at a bystander is rejected, so no stray piracy and no traffic damage.
+    if (attacker && attacker.data?.onboardingRaidWing === true && state?.onboarding?.raid?.active
+      && !state?.onboarding?.raid?.wingDone && target.id !== state.playerId) {
+      return rejected('onboarding_wing_ward', input, packet);
+    }
     if (!(rawTotal > 0) && !(packet.heat > 0) && !packet.statuses.length && !hasImpulse(packet.impulse)) return rejected('empty_packet', input, packet);
 
     const runtime = ensureCombatant(state, target, catalog);
@@ -246,7 +252,13 @@ export function createDamageRouter(context, statusService, options = {}) {
     // when a projectile already carries an explicit subsystemId — so NPC fire and the 47a golden
     // (which never populates state.ui.componentSelection) are byte-identical / determinism-safe.
     applySelectedComponentHit(state, input, target, runtime, packet);
-    const subsystemId = selectHitSubsystem(target, runtime, catalog, packet.hit || {});
+    const selectedSubsystemId = selectHitSubsystem(target, runtime, catalog, packet.hit || {});
+    // GOLD-COLOSSI: a plate still bolted over its subsystem takes the hit for it — the shot
+    // lands on hull at the ordinary multiplier instead. The plate is data on the live fight;
+    // the cover map is stamped by the fight owner whenever plates change.
+    const plateCover = target.data && target.data.capitalPlateCover;
+    const subsystemId = selectedSubsystemId && plateCover && plateCover[selectedSubsystemId]
+      ? null : selectedSubsystemId;
     const subsystemShare = subsystemId ? clamp01(packet.subsystemShare == null ? model.subsystemShare : packet.subsystemShare) : 0;
     const subsystemInput = scaleChannelsInto(terminalRaw, subsystemShare, model.channelOrder, ROUTE_SCRATCH[4]);
     const hullInput = scaleChannelsInto(terminalRaw, 1 - subsystemShare, model.channelOrder, ROUTE_SCRATCH[5]);

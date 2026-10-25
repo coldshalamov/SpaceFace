@@ -1,6 +1,8 @@
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { addCargo, releasableContractUnits } from './cargo.js';
+import { reckoningKilled } from '../missions/reckoningRuntime.js';
+import { b2RescueActorCount } from './missions.js';
 import { compactKillCausality, killCauseFamily } from '../combat/killCausality.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
@@ -2120,6 +2122,12 @@ export const missionObjectiveOps = {
     if (!m || m.status !== 'active') return false;
     m.params = m.params || {};
     m.params.completionMethod = method;
+    if (isCampaign47aB2Rescue(m)) {
+      // Settlement rescues the remaining cohort; destroyed pods are never counted.
+      const count = b2RescueActorCount(m, b2RescueActorForRole(m, PHYSICAL_ROLE.POD), 'podCount');
+      const lost = Object.values(ensureB2RescueActorOutcomes(m)).filter(value => value === 'lost').length;
+      this.state.story.flags.reckoning_b2_saved_pods = Math.max(0, count - lost);
+    }
     m.objectiveProgress = m.objectiveTarget;
     this._completeMission(m, index);
     this._offerSetPieceFollowOn(m);
@@ -2524,6 +2532,7 @@ export const missionObjectiveOps = {
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.id)) continue;
       const victim = this.state.entities.get(p.id);
       const role = physicalRoleOf(victim) || p.physicalRole || null;
+      if (reckoningKilled(m, victim)) continue;
       if (m.params?.workingBattlefield) { workingBattlefieldKilled(this, m, p, victim); continue; }
       if (m.type === AUTHORED_SET_PIECE_TYPE) {
         this._tryCompleteAuthored(m, i, 'kill', role, victim);

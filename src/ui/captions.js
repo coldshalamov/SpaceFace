@@ -42,11 +42,19 @@ export const AUDIO_CUE_CAPTIONS = Object.freeze({
   telegraph: ACCESSIBILITY_CAPTION_COPY.telegraph.text,
 });
 
+// The positional-bearing template itself is player-facing copy: it must sit on a
+// recognized text field so the localization extractor carries it into the catalog.
+export const BEARING_CAPTION_COPY = Object.freeze({
+  bearing: Object.freeze({ text: "{sound}, {clock} o'clock." }),
+});
+
 export function localizableCaptionMessages() {
   const out = [];
   for (const row of Object.values(ACCESSIBILITY_CAPTION_COPY)) out.push(row.text);
   for (const row of Object.values(MASSLINE_CAPTION_COPY)) out.push(row.text);
-  return out;
+  for (const row of Object.values(EXPLICIT_RECIPE_CAPTIONS)) out.push(row.text);
+  for (const row of Object.values(BEARING_CAPTION_COPY)) out.push(row.text);
+  return [...new Set(out)];
 }
 
 export const ACCESSIBILITY_AUDIO_CUE_TABLE = Object.freeze({
@@ -189,6 +197,31 @@ const UI_BLIP_IDS = new Set([
 ]);
 
 const EXPLICIT_RECIPE_CAPTIONS = Object.freeze({
+  ambient_fauna_drifter: Object.freeze({ text: 'A drifter sings.', urgency: 'normal', event: 'ecology.drifter' }),
+  ambient_fauna_grazer: Object.freeze({ text: 'A grazer calls.', urgency: 'normal', event: 'ecology.grazer' }),
+  ambient_fauna_hunter: Object.freeze({ text: 'A hunter growls.', urgency: 'warn', event: 'ecology.hunter' }),
+  ambient_fauna_carrier: Object.freeze({ text: 'A brood vessel hums.', urgency: 'normal', event: 'ecology.carrier' }),
+  ambient_fauna_relay: Object.freeze({ text: 'A relay bearer answers.', urgency: 'normal', event: 'ecology.relay' }),
+  ambient_fauna_colony: Object.freeze({ text: 'The colony chatters.', urgency: 'normal', event: 'ecology.colony' }),
+  ambient_fauna_scavenger: Object.freeze({ text: 'A scavenger clicks.', urgency: 'normal', event: 'ecology.scavenger' }),
+  ambient_fauna_sessile: Object.freeze({ text: 'An attached organism rumbles.', urgency: 'normal', event: 'ecology.sessile' }),
+  ambient_machine_surveyor_prism: Object.freeze({ text: 'The surveyor sweeps.', urgency: 'normal', event: 'machine.surveyor' }),
+  ambient_machine_custodian: Object.freeze({ text: 'The custodian cycles.', urgency: 'normal', event: 'machine.custodian' }),
+  ambient_machine_auditor: Object.freeze({ text: 'The auditor ticks.', urgency: 'normal', event: 'machine.auditor' }),
+  ambient_machine_witness: Object.freeze({ text: 'The witness rings.', urgency: 'normal', event: 'machine.witness' }),
+  ambient_machine_shepherd: Object.freeze({ text: 'The shepherd pulses.', urgency: 'normal', event: 'machine.shepherd' }),
+  ambient_machine_mason: Object.freeze({ text: 'The mason knocks.', urgency: 'normal', event: 'machine.mason' }),
+  ambient_machine_executor: Object.freeze({ text: 'The executor sounds.', urgency: 'warn', event: 'machine.executor' }),
+  ambient_machine_courier: Object.freeze({ text: 'The courier whistles.', urgency: 'normal', event: 'machine.courier' }),
+  ambient_machine_conservator: Object.freeze({ text: 'The conservator hums.', urgency: 'normal', event: 'machine.conservator' }),
+  ambient_machine_measure: Object.freeze({ text: 'The measure counts.', urgency: 'normal', event: 'machine.measure' }),
+  ambient_machine_boundary_walker: Object.freeze({ text: 'The boundary walker calls.', urgency: 'normal', event: 'machine.boundary' }),
+  ambient_machine_appeals_clerk: Object.freeze({ text: 'The appeals clerk chimes.', urgency: 'normal', event: 'machine.appeal' }),
+  ambient_machine_debris_sorter: Object.freeze({ text: 'The debris sorter clacks.', urgency: 'normal', event: 'machine.sorter' }),
+  ambient_machine_sleeping_jury: Object.freeze({ text: 'The sleeping jury murmurs.', urgency: 'normal', event: 'machine.jury' }),
+  ambient_station_crowd: Object.freeze({ text: 'Dockside voices mingle.', urgency: 'normal', event: 'station.crowd' }),
+  ambient_station_murmur: Object.freeze({ text: 'The berth hums.', urgency: 'normal', event: 'station.room' }),
+  ambient_station_shift_bell: Object.freeze({ text: 'The shift bell rings.', urgency: 'normal', event: 'station.shift' }),
   sfx_refusal_empty: Object.freeze({ text: 'No ammunition.', urgency: 'high', event: 'refusal.ammo' }),
   sfx_refusal_target: Object.freeze({ text: 'No valid target.', urgency: 'high', event: 'refusal.target' }),
   sfx_massline_deny: Object.freeze({ text: 'Action refused.', urgency: 'high', event: 'refusal' }),

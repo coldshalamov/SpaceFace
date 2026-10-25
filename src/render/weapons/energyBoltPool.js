@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { LIVING_MATERIAL_GLSL } from '../vfx/livingMaterial.glsl.js';
 import {
   commitDynamicBufferOwner,
   markDynamicBufferItems,
@@ -117,7 +116,7 @@ const VERTEX_SHADER = /* glsl */`
     vec3 shaped = position;
     if (aBoltSize.w < 0.5) {
       shaped.x += (1.0 - side * side) * bow * 0.19;
-      shaped.yz *= 0.70 + smoothstep(0.35, 0.80, t) * 0.62;
+      shaped.yz *= 1.05 + smoothstep(0.35, 0.80, t) * 0.72;
     } else if (aBoltSize.w < 1.5) {
       // Three unequal hollow convection channels orbit a hot open interior. The
       // rolled cross-section exposes sidewalls and a dark cavity at every view.
@@ -206,7 +205,6 @@ const VERTEX_SHADER = /* glsl */`
 `;
 
 const FRAGMENT_SHADER = /* glsl */`
-  ${LIVING_MATERIAL_GLSL}
   precision highp float;
   varying vec2 vUv;
   varying vec3 vColor;
@@ -254,7 +252,12 @@ const FRAGMENT_SHADER = /* glsl */`
       // The same material transport library feeds different physical cross-sections:
       // collimated charge, forked current, pressure shoulders, and shearing hot exhaust.
       float rate=induction?3.1:pressure?1.2:siege?2.0:2.4;
-      vec3 carried=sfLivingFilm(vec2(t*5.8,v*1.25),boltClock*rate,vPatch+vVariation.x);
+      // Authored transport: three filtered travelling folds carry structure through the
+      // cross-section. No hash noise, no scrolling comb, no still image under a moving tint.
+      vec3 carried=vec3(
+        0.5+0.5*boltWave(t*5.8-boltClock*rate+vPatch*6.28318),
+        0.5+0.5*boltWave(v*1.25+boltClock*rate*0.70+vVariation.x*6.28318),
+        0.5+0.5*boltWave(t*2.3+v*1.8-boltClock*rate*1.30+vPatch*3.1));
       float curl=v+(carried.x-.5)*(induction?.16:.38);
       float convection=carried.x;
       float secondary=carried.y;
@@ -284,7 +287,7 @@ const FRAGMENT_SHADER = /* glsl */`
         body=.18+.24*patches;alpha=.23+.25*patches+.12*shoulder;
       }else if(motor){
         float aft=1.0-t;
-        float carried=sfLivingFilm(vec2(aft*5.0,v),boltClock*2.8,vPatch).x;
+        float carried=0.5+0.5*boltWave(aft*5.0-boltClock*2.8+vPatch*6.28318);
         float nozzle=boltStrand(aft-.13,.10);
         hot=(broad*(.35+.75*carried)+fold*.45)*(1.0-aft*.58)+nozzle*.48;
         body=.12+.20*carried;alpha=(.20+.28*carried)*(1.0-smoothstep(.63,1.0,aft));
@@ -323,7 +326,10 @@ const FRAGMENT_SHADER = /* glsl */`
     float pulse = 1.0 - step(0.5, vVariant);
     float pulseTip = smoothstep(0.0, 0.1, vAlong) * (1.0 - smoothstep(0.88, 1.0, vAlong));
     float pulseHead = smoothstep(0.40, 0.76, vAlong);
-    vec3 pulseFlow=sfLivingFilm(vec2(vAlong*3.1,across*.7),boltClock*2.2,vVariation.x);
+    vec3 pulseFlow=vec3(
+      0.5+0.5*boltWave(vAlong*3.1-boltClock*2.2+vVariation.x*6.28318),
+      0.5+0.5*boltWave(across*0.7+boltClock*2.2),
+      0.5+0.5*boltWave(vAlong*1.7+across*1.3-boltClock*1.4));
     float pulseShed = pulseFlow.x*2.0-1.0;
     float pulseLip = exp(-pow((across - (0.57 + 0.13 * pulseShed)) / 0.13, 2.0));
     float pulseSurge = 0.90 + uBoltFlicker * 0.14 * pulseFlow.y;
@@ -394,12 +400,12 @@ const FRAGMENT_SHADER = /* glsl */`
     col = mix(col, vec3(1.0, 0.9, 0.6), core * flak * 0.8);
 
     // The incandescent core carries a modest HDR lift; alpha and the sheath enamel are untouched.
-    float radiance = body * vIntensity * (1.0 + 0.25 * core);
+    float radiance = body * vIntensity * (1.45 + 0.35 * core);
     // A dark saturated outer enamel is part of the energy object. Normal blending lets
     // that lip separate it from a bright sky; only the hot fold feeds the bloom shoulder.
     float inkLip = smoothstep(0.69, 0.88, across) * (1.0 - smoothstep(0.95, 1.0, across));
     col = mix(col, vSheath * 0.065, inkLip * 0.88);
-    float alpha = clamp(max(body, inkLip * tip * 0.82), 0.0, 1.0);
+    float alpha = clamp(max(body, inkLip * tip * 0.82) * 1.22, 0.0, 1.0);
 
     if (uDepthEnabled > 0.5) {
       vec2 screenUv = gl_FragCoord.xy / max(uResolution, vec2(1.0));

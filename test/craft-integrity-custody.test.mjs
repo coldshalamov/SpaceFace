@@ -63,9 +63,10 @@ function slotIndexOfType(shipDefId, type) {
 
 test('P02: a fully sealed input refuses before any mutation; the low-level remover still serves a handover', () => {
   const { state, inst, toasts } = boot();
-  // Refine Metals: 3 iron + 1 titanium -> 2 refined metals (instant). All 3 held iron are sealed
-  // manifest freight for an active delivery, so the FREE count is 0 — the six-fuel-cell overlap
-  // shape (contract units matching a recipe need) must be a recoverable shortage, not a softlock.
+  // Refine Metals (canonical row-402 bill): 2 iron -> 1 refined metal (instant). All 3 held iron
+  // are sealed manifest freight for an active delivery, so the FREE count is 0 — contract units
+  // matching a recipe need must be a recoverable shortage, not a softlock. The free titanium is
+  // unrelated freight and cannot substitute.
   state.missions.active.push(sealedDelivery('cmdty_ore_iron', 3));
   state.player.cargo.capVolume = 40;
   addCargo(state, 'cmdty_ore_iron', 3);
@@ -77,7 +78,7 @@ test('P02: a fully sealed input refuses before any mutation; the low-level remov
   assert.equal(state.player.cargo.usedVolume, 4, 'used volume untouched');
   assert.equal(Object.keys(state.crafting.queues).length, 0, 'no job is enqueued');
   assert.equal(state.player.moduleInventory.length, 0);
-  assert.equal(toasts.at(-1).text, 'Need 3 Iron Ore for Refine Metals',
+  assert.equal(toasts.at(-1).text, 'Need 2 Iron Ore for Refine Metals',
     'the refusal names the free-quantity shortfall');
 
   // The low-level remover is intentionally NOT sealed-gated: missions deliver through it.
@@ -90,12 +91,12 @@ test('P02: a sealed lot plus own units spends only the free units and leaves the
   state.missions.active.push(sealedDelivery('cmdty_ore_iron', 3));
   state.player.cargo.capVolume = 40;
   addCargo(state, 'cmdty_ore_iron', 6); // 3 sealed + 3 the player's own
-  addCargo(state, 'cmdty_ore_titanium', 1);
+  addCargo(state, 'cmdty_ore_titanium', 1); // unrelated freight under the canonical 2-iron bill
 
   assert.equal(inst.build('bp_refine_metals', 'station_helios'), true, 'free units cover the recipe');
-  assert.equal(state.player.cargo.items.cmdty_ore_iron, 3,
-    'exactly the sealed remainder survives the swap');
-  assert.equal(state.player.cargo.items.cmdty_refined_metals, 2);
+  assert.equal(state.player.cargo.items.cmdty_ore_iron, 4,
+    'the canonical bill spends 2 free iron; the sealed lot plus one spare own unit survive');
+  assert.equal(state.player.cargo.items.cmdty_refined_metals, 1);
   assert.equal(reservedCargoQuantity(state, 'cmdty_ore_iron'), 3,
     'the delivery claim still holds its units');
 });

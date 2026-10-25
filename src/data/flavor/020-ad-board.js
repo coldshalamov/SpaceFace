@@ -367,5 +367,23 @@ export default defineFlavorPack({
     { id: 'ad_pulse_303', sponsor: 'Cadence Clerk', factionId: 'faction_helix', stationType: 'research', sectorId: 'sector_sedna_dark', text: 'CADENCE CLERK: THE INTERVAL IS DATA. AN OPINION OF THE INTERVAL IS NOT.' },
     { id: 'ad_pulse_304', sponsor: 'Plinth Clerk', factionId: 'faction_archive', stationType: 'research', sectorId: 'sector_orcus_shadow', text: 'PLINTH CLERK: THE SIGNAL IS SHARP. COPIES ARE A READING ROOM PRODUCT.' },
     { id: 'ad_pulse_305', sponsor: 'Shrine Clerk', factionId: 'faction_vael', stationType: 'research', sectorId: 'sector_phoebe_echo', text: 'SHRINE CLERK: THE ECHO IS FILED. LISTENING TWICE IS A SECOND FEE.' },
+    // ── S-01 Helios Prime — third-shift desk notices (ATTENTION ledger) ─────────────────
+    { id: 'ad_pulse_306', sponsor: 'Third-Shift Canteen', factionId: 'faction_scn', stationType: 'trade_hub', sectorId: 'sector_helios_prime', text: 'THIRD-SHIFT CANTEEN: HOT TRAY AT THE BELL. THE BELL IS THE RESERVATION.' },
+    { id: 'ad_pulse_307', sponsor: 'Lost Freight Window', factionId: 'faction_scn', stationType: 'trade_hub', sectorId: 'sector_helios_prime', text: 'LOST FREIGHT WINDOW: NOTHING ON THE APRON IS LOST. CLAIMS REQUIRE THE BERTH THAT CLOSED.' },
+    { id: 'ad_pulse_308', sponsor: 'Misdeclaration Amnesty', factionId: 'faction_scn', stationType: 'military', sectorId: 'sector_helios_prime', text: 'MISDECLARATION AMNESTY DESK: CORRECT YOUR MASS BEFORE THE BUOY DOES. THE BUOY DOES NOT.' },
+    { id: 'ad_pulse_309', sponsor: 'Overtime Ticket Office', factionId: 'faction_scn', stationType: 'fab', sectorId: 'sector_helios_prime', text: 'OVERTIME TICKET OFFICE: A SHIFT ENDS WHEN THE FORM SAYS SO. THE FORM IS STILL OPEN.' },
+    // ── T-01 station screens — notice-desk additions (ATTENTION ledger) ─────────────────
+    { id: 'ad_pulse_310', sponsor: 'Berth Queue Desk', factionId: 'faction_scn', stationType: 'trade_hub', sectorId: 'sector_tethys_junction', text: 'BERTH QUEUE DESK: YOUR NUMBER IS YOUR POSITION. POSITIONS DO NOT IMPROVE BY ASKING.' },
+    { id: 'ad_pulse_311', sponsor: 'Manifest Window Two', factionId: 'faction_scn', stationType: 'trade_hub', sectorId: 'sector_tethys_junction', text: 'MANIFEST WINDOW TWO: WEIGHT IS A STATEMENT. STATEMENTS ARE AUDITED.' },
+    { id: 'ad_pulse_312', sponsor: 'Dockside Provisions', factionId: 'faction_mts', stationType: 'trade_hub', sectorId: 'sector_sker_haven', text: 'DOCKSIDE PROVISIONS: WATER IS PRICED BY DISTANCE. YOU ARRIVED AT THE FAR END.' },
+    { id: 'ad_pulse_313', sponsor: 'Repair Bay Queue', factionId: 'faction_dmc', stationType: 'fab', sectorId: 'sector_ceres_belt', text: 'REPAIR BAY QUEUE: ESTIMATES ARE FREE. THE ESTIMATE IS THE ONLY THING THAT IS.' },
+    { id: 'ad_pulse_314', sponsor: 'Customs Amnesty Hour', factionId: 'faction_scn', stationType: 'military', sectorId: 'sector_io_reach', text: 'CUSTOMS AMNESTY HOUR: CONTRABAND SURRENDERED IS CONTRABAND PROCESSED. GRATITUDE IS EXTRA.' },
+    { id: 'ad_pulse_315', sponsor: 'Toll Audit Window', factionId: 'faction_reach', stationType: 'trade_hub', sectorId: 'sector_sker_haven', text: 'TOLL AUDIT WINDOW: THE PRICE YOU PAID WAS THE PRICE OF ASKING. THE LANE COSTS AGAIN.' },
+    { id: 'ad_pulse_316', sponsor: 'Fuel Point Notice', factionId: 'faction_mts', stationType: 'trade_hub', sectorId: 'sector_eunomia_gulf', text: 'FUEL POINT NOTICE: THE PUMP READS THE HULL, NOT THE PILOT\'S EXCUSE.' },
+    { id: 'ad_pulse_317', sponsor: 'Departure Clerk', factionId: 'faction_free', stationType: 'trade_hub', sectorId: 'sector_nyx_march', text: 'DEPARTURE CLERK: CLEARANCE IS A STAMP. THE STAMP IS A PERSON. THE PERSON IS ON BREAK.' },
+    { id: 'ad_pulse_318', sponsor: 'Salvage Claims', factionId: 'faction_dmc', stationType: 'trade_hub', sectorId: 'sector_rhea_cinder', text: 'SALVAGE CLAIMS: FOUND MASS BELONGS TO THE FILER. FILING COSTS A THIRD OF IT.' },
+    { id: 'ad_pulse_319', sponsor: 'Quiet Freight Window', factionId: 'faction_quiet', stationType: 'blackmarket', sectorId: 'sector_pallas_drift', text: 'FREIGHT WINDOW: THE FORM HAS NO NAME FIELD. THE PAYMENT DOES.' },
+    { id: 'ad_pulse_320', sponsor: 'Archive Reading Desk', factionId: 'faction_archive', stationType: 'research', sectorId: 'sector_orcus_shadow', text: 'READING DESK: LOANS END. THE RECORD OF THE LOAN DOES NOT.' },
+    { id: 'ad_pulse_321', sponsor: 'Habitat Air Desk', factionId: 'faction_mts', stationType: 'trade_hub', sectorId: 'sector_helios_prime', text: 'HABITAT AIR DESK: YOUR BREATH IS METERED. COUGHING IS A METERED EVENT.' },
   ],
 });

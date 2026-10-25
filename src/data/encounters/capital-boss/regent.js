@@ -13,6 +13,12 @@ export const REGENT = freezeDeep({
   subsystemRoles: SUBSYSTEM_ROLES,
   actors: [hullActor({ label: 'FORGE REGENT', archetype: 'forge_regent', hull: 720,
     mass: 420, radius: 32, speed: 84, doctrine: 'capital_broadside' }), ballast('CROWN WRECKAGE', 180)],
+  plates: [
+    { id: 'rim_plate', label: 'rim plate', anchor: { x: -0.58, z: 0 }, radius: 9, mass: 85,
+      holdTension: 0.75, covers: 'subsystem_drive', shedOnAct: 0 },
+    { id: 'crown_plate', label: 'crown plate', anchor: { x: 0.5, z: 0 }, radius: 10, mass: 95,
+      holdTension: 0.85, covers: 'subsystem_weapon', shedOnAct: 1 },
+  ],
   score: score({
     name: 'FORGE REGENT', missionDefinitionId: 'capital_boss', identity: 'commitment',
     rangeResponse: { minRange: 320, beatId: 'crown_check' },

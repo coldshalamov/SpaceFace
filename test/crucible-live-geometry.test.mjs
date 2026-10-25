@@ -107,8 +107,8 @@ test('priorityContext is derived once per pick and shared by every graded entry'
   assert.ok(graded[4][1] === graded[5][1], 'the two-entry pick shares its context');
   const distinctContexts = new Set(graded.map(([, context]) => context));
   assert.equal(distinctContexts.size, 4, 'one context object per grading pick');
-  assert.ok(contextCalls >= distinctContexts.size,
-    'context is derived once per pick — the urgent lane\'s empty scans count too');
+  assert.equal(contextCalls, distinctContexts.size,
+    'only scans that grade a live candidate derive priority context');
   assert.equal(queue.stats().admitted, 4);
 });
 

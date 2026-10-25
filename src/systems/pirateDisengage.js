@@ -576,7 +576,11 @@ function nearestPatrol(members, patrols) {
 
 function moraleDecision(members, state, baseline, patrol) {
   const player = entityFor(state, state.playerId);
-  if (patrol) return { reason: 'lawful-patrol-nearby', outcome: 'fled', threat: patrol };
+  // X-02 v4: the Claim Jumper's wing holds its nerve while its raid beat is live — a lawful
+  // patrol on glass does not send it home. Its designed exits stay: ≤30% hull or beat done.
+  const wingBeat = (m) => m && m.data?.onboardingRaidWing === true
+    && state?.onboarding?.raid?.active && !state?.onboarding?.raid?.wingDone;
+  if (patrol && !members.every(wingBeat)) return { reason: 'lawful-patrol-nearby', outcome: 'fled', threat: patrol };
   if (badProfitRisk(members, state)) return { reason: 'profit-risk-bad', outcome: 'fled', threat: player };
 
   const average = averageHullFraction(members);

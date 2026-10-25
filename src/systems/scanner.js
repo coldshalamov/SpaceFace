@@ -2184,6 +2184,9 @@ export function isHostileToPlayer(e, playerTeam, state) {
   }
   const context = String((ai && (ai.spawnContext || ai.context)) || '');
   if (PLAYER_DANGER_CONTEXTS.has(context)) return true;
+  // X-02 v4: the Claim Jumper's wing is a live-fire lesson, not an ambient contact — while the
+  // raid beat is current (and the wing isn't done) it reads as player-danger so its shots land.
+  if (data.onboardingRaidWing === true && state?.onboarding?.raid?.active && !state?.onboarding?.raid?.wingDone) return true;
   const archetype = String((ai && (ai.archetype || ai.doctrine || ai.role)) || data.role || data.scenarioRole || '').toLowerCase();
   if (archetype.includes('trad') || archetype.includes('miner') || archetype.includes('civilian')) return false;
   if (context !== 'ambient' && archetype.includes('pirate')) return true;

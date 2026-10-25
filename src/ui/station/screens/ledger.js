@@ -241,6 +241,19 @@ export function createLedgerScreen(ctx) {
       }
       const evidence = row.querySelector('[data-ledger-evidence]');
       if (evidence) paintKey(evidence, 'small');
+      const onboard = row.querySelector('[data-ledger-onboard]');
+      if (onboard) paintCap(onboard);
+    }
+    // Row 444 — the case board wears the same chrome: legend type, key affordances, keyrack plate.
+    const boardEl = panel.el.querySelector('.st-ledger-board');
+    if (boardEl) {
+      pinKeyrack(boardEl);
+      paintCap(boardEl.querySelector('.st-ledger-board-head'));
+      paintLegend(boardEl.querySelector('.st-ledger-board-empty'), true);
+      paintLegend(boardEl.querySelector('.st-ledger-board-note'), true);
+      paintLegend(boardEl.querySelector('.st-ledger-board-banner'));
+      for (const btn of boardEl.querySelectorAll('button')) paintKey(btn, 'small');
+      for (const thread of boardEl.querySelectorAll('.st-ledger-thread')) paintLegend(thread);
     }
     pinKeyrack(panel.el.querySelector('.st-ledger-nav'));
     for (const btn of panel.el.querySelectorAll('[data-ledger-page]')) paintKey(btn, 'legend');
@@ -249,8 +262,10 @@ export function createLedgerScreen(ctx) {
       paintPlate(detail, 'sunk');
       paintMarking(detail.querySelector('.st-ledger-detail-title'));
       paintLegend(detail.querySelector('.st-ledger-provenance'));
+      paintLegend(detail.querySelector('.st-ledger-detail-note'), true);
       const back = detail.querySelector('[data-ledger-back]');
       if (back) paintKey(back, 'legend');
+      for (const tool of detail.querySelectorAll('.st-ledger-detail-tools button')) paintKey(tool, 'small');
       const figure = detail.querySelector('.st-ledger-figure');
       if (figure) paintWindow(figure);
     } else if (!read.hidden) {
@@ -306,10 +321,11 @@ export function createLedgerScreen(ctx) {
     if (item) readEntry(item);
   }
   // The panel's own evidence detail takes the right half while open; the reading column yields.
+  // A board chip opening the same detail yields the same way.
   function onClick(ev) {
-    const t = ev.target && ev.target.closest && ev.target.closest('[data-ledger-evidence], [data-ledger-back]');
+    const t = ev.target && ev.target.closest && ev.target.closest('[data-ledger-evidence], [data-ledger-board-open], [data-ledger-back]');
     if (!t) return;
-    if (t.hasAttribute('data-ledger-evidence')) {
+    if (t.hasAttribute('data-ledger-evidence') || t.hasAttribute('data-ledger-board-open')) {
       read.hidden = true;
       dressLedger();
     } else setTimeout(readFirst, 0);

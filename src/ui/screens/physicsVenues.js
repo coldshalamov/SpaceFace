@@ -48,7 +48,7 @@ export const physicsVenuesScreen = {
       return section;
     };
     const grid = el('div', 'race-board-grid');
-    grid.append(card('Orbital Gallery', '24 physical puzzles. Read the pocket, then use momentum, anchors and Massline to deliver the marked body.', 'gallery',
+    grid.append(card('Orbital Gallery', '24 physical puzzles. Read the pocket, then use momentum, anchors and Massline to deliver the marked body. Every venue is a real pilot\'s botched run, rebuilt.', 'gallery',
       listScenarios().map(r => ({ id: r.id, label: r.title, title: r.inference,
         sub: `${r.family}${records.gallery.best[r.id] ? ` · best ${records.gallery.best[r.id].total}` : ''}` }))),
       card('Kinetic League', '12 events: sweep, bank, curl, relay, bend and contain. Clear qualification to open higher tiers. Scrip is a local sport record.', 'league',

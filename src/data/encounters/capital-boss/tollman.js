@@ -10,6 +10,12 @@ export const TOLLMAN = freezeDeep({
   subsystemRoles: SUBSYSTEM_ROLES,
   actors: [hullActor({ label: 'THE TOLLMAN', archetype: 'pd_screen_escort', hull: 840,
     mass: 480, radius: 30, speed: 48, doctrine: 'capital_broadside_tollman' }), ballast('IMPOUNDED BALLAST', 210)],
+  plates: [
+    { id: 'battery_housing', label: 'battery housing', anchor: { x: 0.5, z: 0.15 }, radius: 9, mass: 90,
+      holdTension: 0.8, covers: 'subsystem_weapon', shedOnAct: 0 },
+    { id: 'ledger_plate', label: 'ledger plate', anchor: { x: -0.05, z: -0.35 }, radius: 10, mass: 100,
+      holdTension: 0.8, covers: 'subsystem_power', shedOnAct: 1 },
+  ],
   score: score({
     name: 'THE TOLLMAN', missionDefinitionId: 'capital_boss_tollman', identity: 'lane_reversal',
     rangeResponse: { minRange: 340, beatId: 'receipt_lance' },

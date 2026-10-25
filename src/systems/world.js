@@ -5622,7 +5622,7 @@ export const world = {
 
     const player = state.entities.get(state.playerId);
     const toPos = player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
-    const arrivePayload = { sectorId: target, interdicted, ambushCount, toPos, playerId: state.playerId,
+    const arrivePayload = { sectorId: target, fromSectorId, interdicted, ambushCount, toPos, playerId: state.playerId,
       ...(warning ? { interdiction: { ...warning } } : {}) };
     if (unfiled) arrivePayload.unfiled = true;
     this.bus.emit('jump:arrive', arrivePayload);

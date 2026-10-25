@@ -666,6 +666,17 @@ export function buildKillPresentationReceipt(state, target, killerId, lethal = {
   });
 }
 
+/**
+ * The body a collision-killed victim struck (null for every non-collision death). Law reads it
+ * off the entity:killed payload so a thrown rock never occludes the kill it caused; it stays off
+ * the versioned presentation receipt, which is a presentation-only contract.
+ */
+function killImpactorId(lethal) {
+  const packet = lethal && lethal.packet && typeof lethal.packet === 'object' ? lethal.packet : null;
+  const collision = collisionPresentationProvenance(lethal, packet);
+  return collision && collision.otherId != null ? collision.otherId : null;
+}
+
 function collisionPresentationProvenance(lethal, packet) {
   const origin = lethal && lethal.origin;
   const source = packet && packet.source;
@@ -1113,6 +1124,8 @@ export const combat = {
       baseKind: d.baseKind || null,
       // A lethal whip need not leave an impulse record; keep its damage-owned cause.
       ...(lethal?.origin?.kind === 'massline_whip' ? { cause: 'massline_whip' } : {}),
+      // The collision partner — law's witness sightline must not let it occlude its own kill.
+      impactorId: killImpactorId(lethal),
       presentation,
     });
     // SEAM-BASE: a destructible base entity is an ordinary damageable station carrying

@@ -185,6 +185,20 @@ fails to spawn with `reasoning-level-missing` until its frontmatter names a thou
 (owner's call). First real vision finding: several small-hull CHASE crops measure near-black
 (hornet chase stdev 4.3) — pursue whether small hulls read too dark at the gameplay camera.
 
+**First vision-audit findings (2026-10-24, GLM-5.3-Flash subagent over fleet-look renders,
+player hulls batch 1 of 14).** Best-in-class reference: **Kestrel** (full lamp set, three-value
+separation, cut bands, name livery, readable to chase zoom). Defects, ranked:
+1. **Hornet — empty frame at the gameplay chase camera** (close/inspect pass; renders
+   beautifully at close zoom). Root-cause in progress: harness framing vs def-radius vs game.
+2. **Wasp — value compression**: no light-primary value anywhere (near-black-on-black carried
+   only by cyan lamp stripes) + one stray bright-white underside panel outside the lamp
+   language. Forge-source paint fix in progress.
+3. **Helios Lark — incomplete lamp complement**: no red/green navs at any extremity, twin
+   stern nozzles dead dark, stern reads inert. Forge-source lamp fix in progress.
+Minor notes: drifter's cyan edge-glow borders on painted-outline (within style); mule
+containers are the most matte surface in the fleet (suits a hauler). pelican/drifter/mule/
+kestrel all PASS both views; wasp and lark carry their chase read via lamps alone.
+
 ## 5. Directions beyond the backlog (where the picture goes next)
 
 These are bigger bets, in rough value order. Each needs a short packet (outcome, done-when, files)

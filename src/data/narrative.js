@@ -341,6 +341,8 @@ export const GRAFFITI = {
   // New testimony-form additions. Each names a beneficiary, a number, or a fact.
   // No maxims, no chiasmus — the wall states the receipt; the reader keeps the verdict.
   MOISTURE_LOSS_NINE:        'SHAFT 7. 9 OF 11 RETURNED. 0.7T FILED AS MOISTURE. THE MATH IS LEGAL.',
+  MANIFEST_ALREADY_SIGNED:   'THE MANIFEST WAS ALREADY SIGNED. ASK WHO SIGNED IT.',
+  THIRD_TAG_MEANS_SURVIVOR:  'THIRD TAG MEANS SOMEBODY READ THE FINE PRINT.',
   ATMO_SHORT_HELD:           'THE PIT\u2019S AIR FELL. THE TOKEN ROSE. SAME DESK. BOTH BOOKS.',
   ALGO_RECOMMENDS_VALE_SIGNS:'THE ENGINE DID NOT NAME US. THE ENGINE DOES NOT NAME ANYONE.',
   ELROY_THIRD_TAG:           'THE THIRD TAG WAS THERE FOR HALF A SECOND. IT COUNTED.',
@@ -378,7 +380,10 @@ export const BEAT_CONTENT = [
   { // B1 — HONEST WORK
     beat: 1, phase: 1,
     hint: 'Haul the components. The manifest will say INDUSTRIAL COMPONENTS. At destination it will say SURPLUS REDISTRIBUTION. Nobody will flag the change. This is normal.',
-    graffiti: [{ line: GRAFFITI.REDISTRIBUTED, where: 'airlock' }], // appears at destination airlock
+    graffiti: [
+      { line: GRAFFITI.REDISTRIBUTED, where: 'airlock' }, // appears at destination airlock
+      { line: GRAFFITI.MANIFEST_ALREADY_SIGNED, where: 'airlock', delayS: 5 },
+    ],
     comms: [],
     hudLie: 'manifest_silent_correct', // manifest self-corrects silently, no notification
   },
@@ -389,6 +394,7 @@ export const BEAT_CONTENT = [
       { line: GRAFFITI.THEY_WERE_CARRYING_MEDICINE, where: 'airlock', delayS: 2 },
       // Same-session residue (audit W06): even if the 0.5s flicker is missed, the wall names it.
       { line: GRAFFITI.ELROY_THIRD_TAG, where: 'airlock', delayS: 6 },
+      { line: GRAFFITI.THIRD_TAG_MEANS_SURVIVOR, where: 'bulkhead' },
     ],
     comms: [],
     hudLie: 'civilian_tag_flicker', // CIVILIAN VESSEL — REGISTERED flickers 0.5s, then kill feed overwrites

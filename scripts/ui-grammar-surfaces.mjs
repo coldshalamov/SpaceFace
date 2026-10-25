@@ -364,13 +364,13 @@ const RAW_SURFACES = Object.freeze([
   }),
   surface({
     id: 'statistics',
-    title: 'Statistics',
+    title: 'Records Wall',
     archetype: 'META-SHELL',
     ownerFile: 'src/ui/screens/statistics.js',
     screenId: 'statistics',
     root: ['[data-screen="statistics"]'],
-    // A REAL public route: the pause sheet's "Statistics" word (pause.js, Reference group).
-    entry: nested('pause', '[data-screen="pause"] [data-action]', 'Statistics', 'pause → Statistics'),
+    // A REAL public route: the pause sheet's "Records Wall" word (pause.js, Reference group).
+    entry: nested('pause', '[data-screen="pause"] [data-action]', 'Records Wall', 'pause → Records Wall'),
     owner: 'PQ-181',
     ownerLeaf: 'meta-shell',
   }),

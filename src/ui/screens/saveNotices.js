@@ -13,6 +13,12 @@ const REASON_WORD = Object.freeze({
   read_failed: 'the slot could not be read',
   no_backup: 'there was no backup',
   save_size_limit: 'the save was too large',
+  tombstoned: 'the slot was deliberately retired',
+  attestation_failed: 'the hull record failed its attestation',
+  peer_conflict: 'a newer copy answered from another machine',
+  empty_profile: 'the pilot record was blank on arrival',
+  corrupt_backup: 'the backup was damaged before it could help',
+  write_interrupted: 'the last write never finished',
 });
 
 function slotWord(id) {

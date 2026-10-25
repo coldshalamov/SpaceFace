@@ -168,7 +168,9 @@ function liveOutpostEntities(harness, outpostId = null) {
 test('buildOutpost anchors the ledger near the current global player or asteroid field, never origin', () => {
   const h = boot();
 
-  assert.equal(h.inst.buildOutpost('outpost_refinery'), true);
+  // Row 402: outpost_refinery is retired (re-chartered as a claim) — buildable fuel synth
+  // exercises the same anchoring path and carries the same authored place id.
+  assert.equal(h.inst.buildOutpost('outpost_fuelsynth'), true);
   const outpost = h.state.automation.outposts[0];
   assert.ok(outpost, 'successful build should create an authoritative ledger record');
   assert.notDeepEqual(outpost.pos, { x: 0, z: 0 }, 'outpost must not use the legacy hardcoded origin');
@@ -189,7 +191,7 @@ test('buildOutpost ignores a distant first field and stays near the player activ
     { id: 'field_near', type: 'ast_common_rock', center: { x: 1_020, z: -430 } },
   ];
 
-  assert.equal(h.inst.buildOutpost('outpost_refinery'), true);
+  assert.equal(h.inst.buildOutpost('outpost_fuelsynth'), true);
   const outpost = h.state.automation.outposts[0];
   const playerDistance = Math.hypot(outpost.pos.x - PLAYER_POS.x, outpost.pos.z - PLAYER_POS.z);
 
@@ -199,7 +201,7 @@ test('buildOutpost ignores a distant first field and stays near the player activ
 
 test('a built current-sector outpost owns exactly one authored place entity through repeated sync', () => {
   const h = boot();
-  assert.equal(h.inst.buildOutpost('outpost_refinery'), true);
+  assert.equal(h.inst.buildOutpost('outpost_fuelsynth'), true);
   const outpost = h.state.automation.outposts[0];
 
   h.bus.emit('sector:enter', { sectorId: HELIOS, continuous: false, noTeleport: false });

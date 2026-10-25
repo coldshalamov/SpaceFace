@@ -313,8 +313,13 @@ export function installFlightFootage(bus, {
     const sample = state?.replay?.latestPoseSample;
     if (!sample || sample.tick === lastPoseTick) return;
     lastPoseTick = sample.tick;
-    poses.push({ tick: sample.tick, poses: sample.poses.map((pose) => ({ ...pose })), boost: sample.boost });
-    while (poses.length > 300 || (poses.length && sample.tick - poses[0].tick > 1800)) poses.shift();
+    poses.push({ tick: sample.tick,
+      poses: sample.poses.map((pose) => ({ ...pose, ...(pose.visualData ? { visualData: { ...pose.visualData } } : {}) })),
+      lines: (sample.lines || []).map((line) => ({ ...line })),
+      fields: (sample.fields || []).map((field) => ({ ...field, center: { ...field.center }, dir: { ...field.dir } })),
+      scene: sample.scene ? { ...sample.scene, ...(sample.scene.bolusFlags ? { bolusFlags: { ...sample.scene.bolusFlags } } : {}) } : null,
+      boost: sample.boost });
+    while (poses.length > 301 || (poses.length && sample.tick - poses[0].tick > 1800)) poses.shift();
     marks = (sample.events || []).map((event) => ({ ...event }));
   };
   const eligible = (state) => state?.mode === 'flight' && !state.paused && !document.hidden;
@@ -845,10 +850,11 @@ export function installFlightFootage(bus, {
       };
     },
     recording() {
-      if (!ring.frames.length) return null;
-      const base = ring.frames[0].tick, end = ring.frames.at(-1).tick;
-      const rows = poses.filter((row) => row.tick >= base && row.tick <= end);
-      return { seed: stateOf()?.meta?.seed || 0, tickRate: 60, ticks: end - base + 1,
+      // The worker's pose tape is useful even before a pixel capture is committed.
+      // Theater re-renders these poses and must not depend on a JPEG/WebCodecs backend.
+      if (!poses.length) return null;
+      const base = poses[0].tick, end = poses.at(-1).tick, rows = poses.slice();
+      return { seed: stateOf()?.meta?.seed || 0, playerId: stateOf()?.playerId, tickRate: 60, ticks: end - base + 1,
         seconds: (end - base + 1) / 60, absoluteBaseTick: base, base,
         poseFrames: rows, samples: rows.flatMap((row) => row.poses),
         events: marks.filter((mark) => mark.absoluteTick >= base && mark.absoluteTick <= end)

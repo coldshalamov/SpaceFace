@@ -97,6 +97,13 @@ const spec = {
       "verb": "say",
       "line": "The casket has a serial someone still loves.",
       "channel": "info",
+      "next": "a2x"
+    },
+    {
+      "id": "a2x",
+      "verb": "say",
+      "line": "The hull ahead is paying in clipped coin and a long apology.",
+      "channel": "info",
       "next": "p2"
     },
     {

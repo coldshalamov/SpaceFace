@@ -177,3 +177,35 @@ test('outfit budget and modules already held on another owned hull constrain the
   assert.deepEqual(blocked.said, [], 'a loadout beyond its engine capacity cannot accept this promised fit');
   assert.equal(blocked.state.player.hints.fitOffer, undefined);
 });
+
+// X-03 — the spoken module is remembered so the yard row can wear its chip; buying it clears
+// only the id key. The once-ever boolean and the pinned line stay byte-identical.
+test('X-03 the spoken def id rides the hint (swing and veil cases)', () => {
+  const swing = makeHarness({ credits: 5200 });
+  swing.sell();
+  assert.equal(swing.state.player.hints.fitOffer, true);
+  assert.equal(swing.state.player.hints.fitOfferDefId, 'mod_swing_drive_s');
+
+  const veil = makeHarness({ credits: 4300 });
+  veil.sell();
+  assert.equal(veil.state.player.hints.fitOfferDefId, 'mod_veil_step');
+});
+
+test('X-03 purchasing the named module clears the id; other buys leave it', () => {
+  const h = makeHarness({ credits: 5200 });
+  h.sell();
+  assert.equal(h.state.player.hints.fitOfferDefId, 'mod_swing_drive_s');
+  h.bus.emit('module:purchased', { defId: 'mod_other_thing' });
+  assert.equal(h.state.player.hints.fitOfferDefId, 'mod_swing_drive_s', 'a different module does not clear the chip');
+  h.bus.emit('module:purchased', { defId: 'mod_swing_drive_s' });
+  assert.equal(h.state.player.hints.fitOfferDefId, undefined, 'the named purchase retires the chip');
+  assert.equal(h.state.player.hints.fitOffer, true, 'the once-ever flag stays');
+});
+
+test('X-03 a legacy save with the boolean and no id shows no chip and never throws', () => {
+  const h = makeHarness({ credits: 5200 });
+  h.state.player.hints = { fitOffer: true };
+  h.sell();
+  assert.deepEqual(h.said, [], 'the boolean still suppresses the pitch');
+  assert.equal(h.state.player.hints.fitOfferDefId, undefined);
+});

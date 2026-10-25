@@ -52,6 +52,11 @@ export default defineFlavorPack({
         { id: 'slow_fleet_attack_01', surface: 'hail', text: 'Ancient weapons wake. Every modern warning light follows.' },
         { id: 'slow_fleet_news_01', surface: 'news', text: 'The Slow Fleet crossed Tethys without acknowledging the century.' },
         { id: 'slow_fleet_news_02', surface: 'news', text: 'A delivery outlived the nation waiting for it.' },
+        // E-04 easter-egg one-offs: rare-scan rarities inside the existing rare-epic pool.
+        { id: 'slow_fleet_scan_03', surface: 'scan', text: 'Registry scan: hull numbers issued before the numbering system.' },
+        { id: 'slow_fleet_hail_02', surface: 'hail', text: 'The lead courier repeats its clearance. Same word, same hour, every ask.' },
+        { id: 'slow_fleet_news_03', surface: 'news', text: 'Sker Bazaar briefly priced a berth beside the convoy. It cleared.' },
+        { id: 'slow_fleet_scan_04', surface: 'scan', text: 'Inertial logs disagree with the compass by one century, steady.' },
       ],
     },
     // PULSE-STORIES: the small lane — thirty-six low-stakes stories told across hail, band,

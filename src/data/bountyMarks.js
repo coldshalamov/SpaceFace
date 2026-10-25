@@ -54,6 +54,10 @@ export const MARK_NAMES = Object.freeze([
   'Hollis Merk',
   'Fenn Abrit',
   'Odile Kane',
+  'Tane Collateral',
+  'Wisp Marrow',
+  'Edda Tollcut',
+  'Bram Six-Seals',
 ]);
 
 /**
@@ -89,6 +93,10 @@ export const MARK_HAIL_LINES = Object.freeze([
   'They swore out the writ in a room with no windows. Fitting.',
   'Last hunter is still drifting out past the gate, if you want a look.',
   'Bring the writ home framed. It will be worth more than me.',
+  'The Scar pays late. My friends pay tonight. Read the room, courier.',
+  'A Holt signature on the writ means somebody at customs wanted you slow, not caught.',
+  'Poster says armed. Poster lies about which hull.',
+  'Framed, my last writ is worth more than the bounty on this one.',
 ]);
 
 /**
