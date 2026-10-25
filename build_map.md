@@ -1229,7 +1229,7 @@ attention rows fill the surfaces).
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 559 | X-01 | P2 first-hour life — tier-0 encounter deck, one real fight, loop-closure beat (joint with ledger E-01; direction-1 rail staging is X-02's) | BUILD | landed 6ab0d2eb2e devin-lanea (audit✓3 plan✓3; impl review pending) |
-| 560 | X-02 | P1 raid beat teeth — staged hostile that shoots and flees at ≤30% hull (raid beat joint with ledger E-01; direction-1 split — rail staging here, hour-1 outcome is X-01's) | BUILD | landed acc83ababd devin-lanea (audit✓3 plan✓3; impl review pending) |
+| 560 | X-02 | P1 raid beat teeth — staged hostile that shoots and flees at ≤30% hull (raid beat joint with ledger E-01; direction-1 split — rail staging here, hour-1 outcome is X-01's) | BUILD | landed acc83ababd+dbfe5da7c5 devin-lanea (audit✓3 plan✓3; v4 gates landed — remaining: wing target acquisition under live tactical decide, live-fire test test/x02-raid-wing-live-fire-4242 skipped pending it) |
 | 561 | X-03 | First purchase staged — a sub-5k module that changes a verb | BUILD | landed ecb17f9a96 devin-lanea (audit✓3 plan✓3; impl review pending) |
 | 562 | X-04 | Guided gate jump beat — first jump + return, toll math lands (joint with ledger E-01) | BUILD | landed 6e0aa21444 devin-lanea (audit✓3 plan✓3; impl review pending) |
 | 563 | X-05 | Law/consequence persists past the rail — heat, wanted, witnesses in sandbox | BUILD | landed e417abde7c devin-lanea (audit✓3 plan✓3; impl review pending) |
