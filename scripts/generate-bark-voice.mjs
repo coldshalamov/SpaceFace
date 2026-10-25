@@ -30,7 +30,6 @@ import {
   MECHANIC_VOICE_REGISTER,
   FACTION_VOICE_REGISTERS,
   INSTRUCTOR_LINES,
-  INSTRUCTOR_VOICE_REGISTER,
   BLIND_REGISTER_CLIPS,
   countBarkCorpus,
   deliveredBarkWavRelPath,
@@ -121,12 +120,15 @@ if (catalogOnly) {
 // --all covers the corpus rows AND the runtime representative clips (bark_* register files,
 // mechanic, instructor), so a lone `--all --check` is a complete voice-tree audit.
 const jobs = (writeAll
-  ? pipeline.map((row, i) => ({
-    file: path.join(ROOT, deliveredBarkWavRelPath(i, row.registerId)),
-    rel: deliveredBarkWavRelPath(i, row.registerId),
-    resolved: row,
-    seconds: DELIVERED_WAV_SECONDS,
-  }))
+  ? pipeline.map((row, i) => {
+    const rel = deliveredBarkWavRelPath(i, row.registerId);
+    return {
+      file: path.join(ROOT, rel),
+      rel,
+      resolved: row,
+      seconds: DELIVERED_WAV_SECONDS,
+    };
+  })
   : []).concat(representativeJobs());
 
 if (!checkOnly) mkdirSync(OUT_DIR, { recursive: true });

@@ -69,6 +69,9 @@ function walk(dir, out = []) {
 // Strip comments so asset paths that only appear in explanatory comments are not treated as live
 // references. Handles /* ... */ blocks and whole-line // or * comments (the forms used here). Relative
 // asset paths never contain "//", so trailing line-comment stripping cannot truncate a real reference.
+// Known limitation: a `//` inside a string literal on a live code line (e.g. 'https://…') truncates
+// the line there, so an `assets/` literal after it would be missed — acceptable while no source file
+// builds asset URLs past such a literal; the audit output diff is checked when this becomes live.
 function stripComments(src) {
   const noBlocks = src.replace(/\/\*[\s\S]*?\*\//g, '');
   return noBlocks.split('\n').map((line) => {

@@ -1337,6 +1337,15 @@ export const BARK_SITUATION_FILL = {
   },
 };
 
+// Frozen like BARK_FACTIONS/BARK_SITUATIONS: a runtime push would sit as dead authored weight the
+// merged cells never see (the merge already ran), and a missing/pack key swap would renumber the
+// shipped positional WAV corpus. Deep — packs and cells, not just the outer table.
+for (const pack of Object.values(BARK_SITUATION_FILL)) {
+  for (const cell of Object.values(pack)) Object.freeze(cell);
+  Object.freeze(pack);
+}
+Object.freeze(BARK_SITUATION_FILL);
+
 // Floor target for every live cell: the corpus is authored so each touched situation ends at
 // least this deep. It is not an append cap — every fill line is reachable (D254).
 export const BARK_CELL_MIN = 12;

@@ -547,7 +547,7 @@ export function identifyRegisterFromWavBuffer(buf) {
 
 export const BLIND_REGISTER_CLIPS = Object.freeze(
   [...BARK_FACTIONS]
-    .sort((a, b) => FACTION_VOICE_REGISTERS[a].f0 - FACTION_VOICE_REGISTERS[b].f0)
+    .sort((a, b) => (FACTION_VOICE_REGISTERS[a]?.f0 ?? -1) - (FACTION_VOICE_REGISTERS[b]?.f0 ?? -1))
     .map((factionId, index) => Object.freeze({
       index,
       file: `assets/audio/voice/blind/clip_${String(index).padStart(2, '0')}.wav`,
