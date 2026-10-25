@@ -35,8 +35,9 @@ import {
   deliveredBarkWavRelPath,
   BLIND_REGISTER_CLIPS,
   BARK_UTTERANCE_SECONDS,
+  DELIVERED_WAV_SECONDS,
 } from '../src/audio/barkVoice.js';
-import { decodePcmWav } from '../src/audio/themeCompose.js';
+import { decodePcmWav, encodeWavPcm16, THEME_SAMPLE_RATE } from '../src/audio/themeCompose.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MEASURE_SEED = 15804;
@@ -221,6 +222,23 @@ test(`seed ${MEASURE_SEED}: all ${BARK_CORPUS_TARGET} directed-voice lines exist
     assert.ok(buf.byteLength > 44);
   }
   console.log(`[pq-158.04 delivered] seed=${MEASURE_SEED} wavs=${rows.length}/${BARK_CORPUS_TARGET}`);
+});
+
+test(`seed ${MEASURE_SEED}: delivered WAVs byte-match a fresh render — a stale corpus cannot hide`, () => {
+  // Existence + RIFF magic alone can't see a renderer/register edit left unregenerated: the
+  // files would still exist and still be WAVs. Re-render a deterministic spread (~1 row per
+  // faction per third of the corpus) and byte-compare against the shipped artifacts.
+  const pipeline = enumerateBarkPipeline();
+  const stride = Math.ceil(pipeline.length / 42);
+  const sampled = pipeline.filter((_, i) => i % stride === 0 || i === pipeline.length - 1);
+  for (const [i, row] of sampled.entries()) {
+    const index = pipeline.indexOf(row);
+    const rel = deliveredBarkWavRelPath(index, row.registerId);
+    const fresh = encodeWavPcm16(renderBarkUtterancePcm(row, { sampleRate: THEME_SAMPLE_RATE, seconds: DELIVERED_WAV_SECONDS }), THEME_SAMPLE_RATE);
+    const onDisk = readFileSync(path.join(ROOT, rel));
+    assert.deepEqual(onDisk, fresh, `${rel} is stale — regenerate via generate-bark-voice.mjs --all (sample ${i + 1}/${sampled.length})`);
+  }
+  console.log(`[pq-158.04 delivered-drift] seed=${MEASURE_SEED} sampled=${sampled.length}/${pipeline.length} byte-identical`);
 });
 
 test(`seed ${MEASURE_SEED}: delivered filename authority rejects unsafe segments`, () => {

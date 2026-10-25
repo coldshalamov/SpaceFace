@@ -30,7 +30,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // a referenced asset outside them 404s in the shipped game). Derived rather than duplicated so a
 // new bundled root cannot drift from this contract.
 const BUNDLED_ROOTS = RELEASE_COPY_MAPPINGS
-  .map((m) => m.source)
+  .map((m) => m.source.replace(/\\/g, '/'))
   .filter((source) => source.startsWith('assets/'));
 
 // UI kit helpers (kitUrl/fhUrl in src/ui/kit) resolve their asset arguments under this prefix at

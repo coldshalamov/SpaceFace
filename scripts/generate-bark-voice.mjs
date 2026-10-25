@@ -15,15 +15,16 @@
 // --all writes every corpus line plus the runtime representative clips (bark_* registers,
 // mechanic, instructor) and the blind callsigns. --all --check byte-verifies all of them and
 // audits the whole voice tree for stray files the pipeline no longer owns (npm run
-// check:bark-voice-corpus).
+// check:bark-voice-corpus); --all --prune deletes strays instead of only failing on them.
 
-import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import {
   BARK_CORPUS_TARGET,
   BARK_UTTERANCE_SECONDS,
+  DELIVERED_WAV_SECONDS,
   MECHANIC_LINES,
   MECHANIC_VOICE_REGISTER,
   FACTION_VOICE_REGISTERS,
@@ -50,6 +51,9 @@ const argv = process.argv.slice(2);
 const checkOnly = argv.includes('--check');
 const catalogOnly = argv.includes('--catalog');
 const writeAll = argv.includes('--all');
+// --prune deletes flagged strays instead of failing on them; only meaningful with --all,
+// and only ever deletes files the pipeline provably does not own under voice/.
+const pruneStrays = argv.includes('--prune');
 
 function wavFromPcm(pcm) {
   return encodeWavPcm16(pcm, SR);
@@ -107,11 +111,6 @@ if (catalogOnly) {
   process.exit(process.exitCode || 0);
 }
 
-// Delivered corpus artifacts are normalized to a fixed length; the player hears each row's
-// authored speech.durationS instead (pinned by pq-158-04), so this constant shapes only the
-// byte-verified acceptance corpus.
-const DELIVERED_WAV_SECONDS = 1.4;
-
 // --all covers the corpus rows AND the runtime representative clips (bark_* register files,
 // mechanic, instructor), so a lone `--all --check` is a complete voice-tree audit.
 const jobs = (writeAll
@@ -154,20 +153,24 @@ for (const clip of BLIND_REGISTER_CLIPS) {
 // Stray audit: --all fails on ANY voice-tree file the pipeline no longer owns — stale line_*
 // names, a renamed register's old bark_* clip, or an orphan under voice/blind/. It runs in
 // write mode too: a renumber leaves orphans at the point of cause, not at the next --check.
+// --prune deletes stray FILES in place (directories are recursed, never removed). Expected
+// paths are OUT_DIR-relative so a future nested delivered layout audits correctly instead of
+// self-flagging its own subdirectory.
 if (writeAll) {
-  const expected = new Set(jobs.map((j) => path.basename(j.file)));
-  if (existsSync(OUT_DIR)) {
-    for (const f of readdirSync(OUT_DIR)) {
-      if (f === 'blind') continue;
-      if (!expected.has(f)) mismatches.push(`stray assets/audio/voice/${f}`);
+  const expected = new Set(jobs.map((j) => path.relative(OUT_DIR, j.file).replace(/\\/g, '/')));
+  for (const c of BLIND_REGISTER_CLIPS) expected.add(`blind/${path.basename(c.file)}`);
+  const stray = (abs, rel) => {
+    if (pruneStrays) { unlinkSync(abs); console.log(`pruned stray ${rel}`); }
+    else mismatches.push(`stray ${rel}`);
+  };
+  const auditDir = (dir, relPrefix) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const rel = relPrefix ? `${relPrefix}/${e.name}` : e.name;
+      if (e.isDirectory()) { auditDir(path.join(dir, e.name), rel); continue; }
+      if (!expected.has(rel)) stray(path.join(dir, e.name), `assets/audio/voice/${rel}`);
     }
-  }
-  const expectedBlind = new Set(BLIND_REGISTER_CLIPS.map((c) => path.basename(c.file)));
-  if (existsSync(blindDir)) {
-    for (const f of readdirSync(blindDir)) {
-      if (!expectedBlind.has(f)) mismatches.push(`stray assets/audio/voice/blind/${f}`);
-    }
-  }
+  };
+  if (existsSync(OUT_DIR)) auditDir(OUT_DIR, '');
 }
 
 if (mismatches.length) {

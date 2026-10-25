@@ -390,6 +390,10 @@ export function enumerateDeliveredBarkWavs() {
 
 export const BARK_UTTERANCE_SECONDS = 1.05;
 export const REGISTER_CALLSIGN_SECONDS = 0.7;
+// Delivered corpus artifacts are normalized to a fixed length; the player hears each row's
+// authored speech.durationS instead (pinned by pq-158-04), so this shapes only the
+// byte-verified acceptance corpus.
+export const DELIVERED_WAV_SECONDS = 1.4;
 
 class VoiceBiquad {
   constructor(type, f0, q, sr) {

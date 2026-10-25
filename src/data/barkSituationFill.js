@@ -1352,7 +1352,10 @@ export function topUpBarkSituationCells(barks, factions, situations, eventSituat
   for (const factionId of factions) {
     const pack = barks && barks[factionId];
     const fill = BARK_SITUATION_FILL[factionId];
-    if (!pack) continue;
+    if (!pack) {
+      for (const situation of keys) underFloor.push(`${factionId}/${situation}`);
+      continue;
+    }
     for (const situation of keys) {
       const cell = pack[situation];
       const extra = fill && fill[situation];

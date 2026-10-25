@@ -56,10 +56,17 @@ test('every live cell meets the floor directly — not just via the mutator repo
   for (const factionId of BARK_FACTIONS) {
     const pack = BARKS[factionId];
     assert.ok(pack, `${factionId} missing from BARKS`);
+    // A pack key outside the situation set is the same dead-space class as a dead fill key:
+    // authored, iterated by nobody — e.g. a typo'd `attacks:` cell.
+    assert.deepEqual(
+      Object.keys(pack).filter((k) => !SITUATION_KEYS.includes(k)),
+      [],
+      `${factionId} pack holds keys no consumer iterates`,
+    );
     for (const situation of SITUATION_KEYS) {
       const cell = pack[situation];
       assert.ok(Array.isArray(cell), `${factionId}/${situation} is missing or not an array`);
-      if (cell.length > 0 && cell.length < BARK_CELL_MIN) {
+      if (cell.length < BARK_CELL_MIN) {
         under.push(`${factionId}/${situation} (${cell.length})`);
       }
     }

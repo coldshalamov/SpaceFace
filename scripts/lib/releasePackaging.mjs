@@ -518,6 +518,9 @@ async function copyProjectedDir(sourceRoot, destinationRoot, directory, excluded
     if (excluded.has(rel)) continue;
     if (entry.isSymbolicLink()) throw new Error(`release copy refuses symbolic link ${source}`);
     const destination = join(destinationRoot, ...rel.split('/'));
+    // Directory recursion passes destinationRoot, not destination: a dir's own destination is
+    // only ever created by a file's mkdir(dirname) below, so a fully-excluded directory never
+    // materializes empty (pinned by the m6 exclude fixture).
     if (entry.isDirectory()) await copyProjectedDir(sourceRoot, destinationRoot, source, excluded);
     else if (entry.isFile()) {
       await mkdir(dirname(destination), { recursive: true });
