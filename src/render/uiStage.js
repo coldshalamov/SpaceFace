@@ -31,6 +31,8 @@
 // early, never wrong.
 
 import * as THREE from 'three';
+import { createStationBayTraffic } from './stationBayTraffic.js';
+import { stationLifeClockFor } from '../presentation/stationLifeClock.js';
 import { canvasIsProtectedDuringFreeze } from '../core/presentationFreeze.js';
 import { activeOwnedShip } from '../data/hullIdentity.js';
 import { loadAuthoredPart as loadAuthoredPartLive } from './assetLoader.js';
@@ -870,6 +872,10 @@ async function loadSceneContent(built, renderer, request) {
     if (propGroups[i]) setShadowRoles(propGroups[i], built.rig, spec.props[i].casts === true);
   }
   if (hullGroup) setShadowRoles(hullGroup, built.rig, true);
+  if (built.id === 'berth') {
+    built.bayTraffic = createStationBayTraffic(hullRecord, groupFromBlueprint, placeByBounds);
+    if (built.bayTraffic) admitted.push(...built.bayTraffic.roots);
+  }
   await prepareForFirstDraw(admitted, renderer, built);
   if (built.disposed) return;
   // One reveal, one frame: every prop and the hull arrive together, so the title never shows a
@@ -1307,6 +1313,7 @@ function applyCamera(built, time) {
 }
 
 function drawStage(built, renderer, state, dt = 0, target = null) {
+  built.bayTraffic?.update(stationLifeClockFor(built.request), stageNow(), motionAllowed(state));
   const size = renderer.getSize(_stageSize);
   const aspect = target ? target.width / target.height : size.y > 0 ? size.x / size.y : 16 / 9;
   if (Math.abs(built.camera.aspect - aspect) > 1e-4) {
