@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "seed-hf-11-thrown-mass-kill-line",
-      "date": "2026-10-23",
-      "wf": "WF-16",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A ship wrecked by the player's thrown mass says so. An NPC-on-NPC crash keeps the old line.",
-      "fingerprint": "verb=wreck,subject=kill-line,sector=any,layer=aftermath,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "b37fea99d8",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-hf-06-swarm-champion-parts",
       "date": "2026-10-23",
       "wf": "WF-02",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "3b512c0b15f00f62238d4bccb4b03c1f4a3d1c10",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-printer-follow",
+      "date": "2026-10-25",
+      "wf": "WF-17",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The kill printer follows the ship through the wreck yard.",
+      "fingerprint": "verb=follow,subject=printer,sector=kepler,domain=wf-17",
+      "references": [],
+      "integration": "live",
+      "commit": "847893aef07bb18eeaad23737f1fc7a4fdb67325",
       "verification": "focused_green"
     }
   ],
