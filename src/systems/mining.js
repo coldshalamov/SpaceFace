@@ -270,6 +270,8 @@ export const mining = {
     this._pulseOre = 0;
     this._pulseTargetId = null;
     this._pulseCommodityId = null;
+    this._beamPegged = false;
+    this._pulsePeggedS = 0;
     this._heatEmitPct = -1;
     this._noiseImpulseAt = -Infinity;
     this._ventTaught = false;
@@ -299,6 +301,8 @@ export const mining = {
       this._pulseOre = 0;
       this._pulseTargetId = null;
       this._pulseCommodityId = null;
+      this._beamPegged = false;
+      this._pulsePeggedS = 0;
     };
     bus.on('sector:enter', resetMiningSession);
     bus.on('save:loaded', resetMiningSession);
@@ -844,6 +848,10 @@ export const mining = {
     if (!beam) return;
     const heatMax = beam.heatMax > 0 ? beam.heatMax : BEAM_HEAT_MAX;
     const prev = Number.isFinite(beam.heat) ? beam.heat : 0;
+    // X-07: peg from the START of the tick — the tick that reaches the peg still banks, and
+    // the peg clock only accrues while already pegged so a clean release stays honest.
+    this._beamPegged = !!(working && prev >= heatMax);
+    if (this._beamPegged) this._pulsePeggedS = (this._pulsePeggedS || 0) + dt;
     let heat;
     if (working) {
       if (this._lockTargetId != null && state.player && state.player.miningTargetId == null) {
@@ -903,9 +911,12 @@ export const mining = {
     const pulseOre = this._pulseOre;
     const targetId = this._pulseTargetId;
     const commodityId = this._pulseCommodityId;
+    // X-07: a clean cut cashed ≥85% depth with zero pegged seconds — read before the reset.
+    const peggedS = this._pulsePeggedS || 0;
     this._pulseOre = 0;
     this._pulseTargetId = null;
     this._pulseCommodityId = null;
+    this._pulsePeggedS = 0;
     const player = this.state.entities.get(this.state.playerId);
     const beam = player ? this._beamRuntime(player) : null;
     if (!beam) return null;
@@ -913,6 +924,7 @@ export const mining = {
     const pct = heatMax > 0 ? (Number.isFinite(beam.heat) ? beam.heat : 0) / heatMax : 0;
     if (pct < BEAM_VENT_BAND_LO) return null;
     const depth = Math.min(1, (pct - BEAM_VENT_BAND_LO) / Math.max(1e-6, 1 - BEAM_VENT_BAND_LO));
+    const clean = depth >= 0.85 && peggedS === 0;
     const bonusU = Math.floor(pulseOre * BEAM_VENT_BONUS_MAX * depth);
     if (!(bonusU > 0)) return null;
     this._ventTaught = true;
@@ -938,6 +950,8 @@ export const mining = {
       pulseOreU: pulseOre,
       heatPct: pct,
       depth,
+      clean,
+      peggedS,
     });
     this.bus.emit('audio:cue', { id: 'sfx_mining_seam_reward', gain: 0.7 });
     return { qty: bonusU, commodityId: id, depth };
@@ -949,6 +963,8 @@ export const mining = {
     this._pulseOre = 0;
     this._pulseTargetId = null;
     this._pulseCommodityId = null;
+    this._beamPegged = false;
+    this._pulsePeggedS = 0;
     this._heatEmitPct = -1;
     if (!beam) return;
     beam.heat = 0;
@@ -1172,7 +1188,9 @@ export const mining = {
     // Vent bookkeeping: how much ore this beam-on window has produced so far, and from what. Only
     // the player runs the vent rhythm — mining drones reuse applyMining and must not bank a bonus.
     if (minerId === state.playerId) {
-      this._pulseOre += delivered;
+      // X-07: a pegged gauge stops banking — extraction stays full-rate and what was
+      // already banked still pays; the peg only stops the accrual (owner ruling mining.js).
+      if (!this._beamPegged) this._pulseOre += delivered;
       this._pulseTargetId = ast.id;
       this._pulseCommodityId = d.commodityId || this._dominantOre(def);
     }

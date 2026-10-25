@@ -785,6 +785,17 @@ export const onboarding = {
       if ((p && p.credits | 0) > 0) this._showHint('firstSalvageCashIn', firstUseLine('firstSalvageCashIn'), {});
     });
 
+    // X-07: the vent pays a named lesson once each — a clean cut teaches the release, and a
+    // beam that cooked at the peg learns the banked-ore stop. Each is one-time per profile.
+    bus.on('mining:ventBonus', (p) => {
+      if (!p) return;
+      if (p.clean === true) {
+        this._showHint('miningCleanCut', 'Clean cut. Let go before the peg.', {});
+      } else if ((p.peggedS || 0) >= 1) {
+        this._showHint('miningPegged', 'Pegged beam stops banking. Let go in the amber.', {});
+      }
+    });
+
     // X-03: buying the named module retires the chip id; hints.fitOffer stays true.
     bus.on('module:purchased', (p) => {
       if (p && p.defId && this.state.player.hints

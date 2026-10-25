@@ -188,6 +188,7 @@ export const miningHud = {
     this._heat = { pct: 0, band: 'cold' };
     this._core = null;      // { window, durationS, openedAt, expiresAt, charging, chargeStartedAt, resolved, resolvedAt, finalProgress }
     this._seam = null;      // { seamHit, at }
+    this._cleanWordUntil = 0;
     this._anchor = null;    // { x, z } — latest beam contact / lock point
     this._writeCaches();
     this._handlers = {
@@ -199,6 +200,9 @@ export const miningHud = {
       coreCharge: (p) => this._onCoreChargeStart(p),
       coreDone: (p) => this._onCoreResolved(p, 'hit'),
       coreFizzle: (p) => this._onCoreResolved(p, 'fizzle'),
+      // X-07: a clean cut speaks its name in the existing word slot for 1.2 s, then the
+      // seam word returns. Text only — no class, token or layout change.
+      ventBonus: (p) => this._onVentBonus(p),
     };
     if (this._bus && this._bus.on) {
       this._bus.on('mining:start', this._handlers.start);
@@ -209,6 +213,7 @@ export const miningHud = {
       this._bus.on('mining:richCoreChargeStart', this._handlers.coreCharge);
       this._bus.on('mining:richCoreCompleted', this._handlers.coreDone);
       this._bus.on('mining:richCoreFizzle', this._handlers.coreFizzle);
+      this._bus.on('mining:ventBonus', this._handlers.ventBonus);
     }
   },
 
@@ -222,6 +227,7 @@ export const miningHud = {
       this._bus.off('mining:richCoreChargeStart', this._handlers.coreCharge);
       this._bus.off('mining:richCoreCompleted', this._handlers.coreDone);
       this._bus.off('mining:richCoreFizzle', this._handlers.coreFizzle);
+      this._bus.off('mining:ventBonus', this._handlers.ventBonus);
     }
     if (this._dom && this._dom.root && this._dom.root.parentNode) {
       this._dom.root.parentNode.removeChild(this._dom.root);
@@ -339,6 +345,12 @@ export const miningHud = {
 
     if (!this._placeMark(dom, state)) return;
 
+    // X-07: the CLEAN CUT word owns the slot until its 1.2 s is spent, then the seam word
+    // returns for whatever the beam is doing now.
+    if (this._cleanWordUntil && now >= this._cleanWordUntil) {
+      this._cleanWordUntil = 0;
+      dom.word.textContent = seamWordFor(this._seam ? this._seam.seamHit : false);
+    }
     this._renderHeat(dom, heat);
     this._renderCore(dom, coreCue, now);
     this._renderSeam(dom, seamFresh ? this._seam.seamHit : null);
@@ -397,6 +409,12 @@ export const miningHud = {
       dom.coreFill.setAttribute('stroke-dasharray', dash);
       dom.coreFillBloom.setAttribute('stroke-dasharray', dash);
     }
+  },
+
+  _onVentBonus(p) {
+    if (!p || !p.clean || !this._dom || !this._dom.word) return;
+    this._dom.word.textContent = 'CLEAN CUT';
+    this._cleanWordUntil = this._now() + 1.2;
   },
 
   _renderSeam(dom, seamHit) {
