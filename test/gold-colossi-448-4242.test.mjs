@@ -76,12 +76,13 @@ function tick(h, n = 1) {
 // the same records the tear check reads in production. A capital is roped at its centre of
 // mass, so targetAnchorLocal is {0,0} exactly as tetherGameplay creates it; and the HUD's
 // tensionEstimate is pinned near its live ~1e-3 to prove the tear never reads it.
-function latchAt(h, anchor, tension = 0.9) {
+function latchAt(h, anchor, tension = 0.9, attrs = null) {
   if (!h.state.combat.attachments) h.state.combat.attachments = { byId: {}, nextId: 1 };
   const att = {
     id: 'att_plate_test', defId: 'tether_standard',
     ownerId: h.player.id, targetId: h.boss.id, state: 'active',
     targetAnchorLocal: { x: 0, z: 0 }, lastTension: tension * CAPITAL_PLATE_FULL_PULL,
+    ...(attrs || {}),
   };
   h.state.combat.attachments.byId[att.id] = att;
   const len = Math.hypot(anchor.x, anchor.z) || 1;
@@ -377,4 +378,21 @@ test('review 3: tear the plate, sling its slab back, and the bared subsystem tak
   assert.ok(weaponHp() < hp0,
     'the slab whipped into the boss lands subsystem damage on the now-uncovered weapon');
   assert.ok(h.boss.hull < hull0, 'and the hull still takes its share');
+});
+
+test('review 9: the re-latch keeps the line the player was holding — def, controller, mode', () => {
+  const created = [];
+  const svc = { cut() {}, create: (spec) => { created.push(spec); return { ok: true, attachment: { id: 'att_new' } }; } };
+  const h = bootScoreFight(TOLLMAN, { attachmentService: svc });
+  // A specialist head line on the boss: its own def, a live controller, and a control mode —
+  // the records a massline/bridle-class latch carries in live play.
+  latchAt(h, plateAnchorLocal(h, 'battery_housing'), 0.9,
+    { defId: 'attachment_massline', controllerId: h.player.id, controlMode: 'twin_bridle' });
+  tick(h, 40);
+  assert.equal(plateRec(h, 'battery_housing').attached, false, 'the plate still tears');
+  assert.equal(created.length, 1, 'the line re-latches through the sanctioned create');
+  assert.equal(created[0].defId, 'attachment_massline',
+    'the slab gets the line the player was holding, never a silent tether_standard');
+  assert.equal(created[0].controllerId, h.player.id, 'the controller rides the move');
+  assert.equal(created[0].controlMode, 'twin_bridle', 'the control mode rides the move');
 });
