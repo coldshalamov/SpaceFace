@@ -48,9 +48,10 @@ Three seams closed the live-fire loop:
    scripted actor.
 
 Honest emergent beat kept: the raider is the squad's fallback leader (heaviest hull), so its
-death legitimately scatters the wing — it flees the shock, then re-presses the still-
-authoritative ATTACK_RUN when the stamp expires (the withdrawal skip preserves that record;
-a `passive` stamp would have ended it permanently).
+death legitimately scatters the wing — it flees the shock. Round-2 review correction: nothing
+consumes `disengageUntil`, so the rout is final — `_adoptRaidWingExit` (onboarding.js) now
+adopts any honest exit record (pirateDisengaged/forceFlee/fsm flee|surrender) as `wingDone`,
+closing the slot so a later latch cannot restamp a dead-letter ATTACK_RUN on a routed hull.
 
 Live-fire test `test/x02-raid-wing-live-fire-4242.test.mjs` is ACTIVE: real production runtime
 boot (seed 4242, node-safe lane), `_enterRaidBeat`, real `tether:latched` emit; player parked

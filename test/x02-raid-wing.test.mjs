@@ -188,6 +188,40 @@ test('X-02 a wing stray into the towed raider converges like a gun kill', () => 
   assert.ok(Number.isFinite(h.state.onboarding.beatDoneAt.raid), 'the second stray resolves the beat');
 });
 
+// X-02 review round 2: a morale scatter exits through pirateDisengage's markFleeing shape —
+// fsm/passive/pirateDisengaged over a FLEE record — without touching wingDone. A later latch
+// must adopt that honest exit, not restamp a dead-letter ATTACK_RUN on a routed hull.
+test('X-02 a morale-scattered wing is adopted as done and never re-arms', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wing = h.entities.get(raid.ids.wing);
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  assert.equal(wing.data.ai.roe, 'weapons_free');
+  assert.equal(wing.data.combat.targetId, 1);
+  // markFleeing's shape, as a tumble-shock rout would leave it.
+  wing.data.ai.fsm = 'flee';
+  wing.data.ai.passive = true;
+  wing.data.ai.pirateDisengaged = true;
+  wing.data.ai.roe = 'hold_fire';
+  const openings = () => h.comms.filter((c) => c.text === 'Hands off his boat.').length;
+  assert.equal(openings(), 1);
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  assert.equal(raid.wingDone, true, 'the rout is adopted, not re-armed');
+  assert.equal(wing.data.ai.roe, 'hold_fire', 'no dead-letter weapons_free');
+  assert.equal(wing.data.ai.forcePlayerTarget, false, 'the player pin clears with the slot');
+  assert.equal(wing.data.combat.targetId, null, 'the stale target clears');
+  assert.equal(openings(), 1, 'a routed wing does not announce a second arming');
+  // _stepRaidWing reaches the same state on its own for a scatter between beats.
+  const h2 = rig();
+  const raid2 = stage(h2);
+  const wing2 = h2.entities.get(raid2.ids.wing);
+  wing2.data.ai.fsm = 'surrender';
+  wing2.data.ai.pirateDisengaged = true;
+  h2.ob._stepRaidWing();
+  assert.equal(raid2.wingDone, true, 'the beat step adopts an honest exit too');
+  assert.equal(wing2.data.ai.fsm, 'surrender', 'the honest record is not restamped');
+});
+
 // X-02 review: entity ids recycle. A wing that egressed or died keeps its slot (wingDone guards
 // the respawn), so the slot must never arm or delete whatever hull wears that id next.
 test('X-02 review: a recycled wing id is never armed or removed', () => {

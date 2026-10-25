@@ -3537,6 +3537,30 @@ export const onboarding = {
     }
   },
 
+  // X-02: a morale scatter exits the wing through pirateDisengage — markFleeing /
+  // markSurrendered stamp fsm/passive/pirateDisengaged over a FLEE or DISENGAGE record that
+  // every authority gate keeps honoring as denied — without touching raid.wingDone. Adopt
+  // that honest rout as the wing's done state: fled is done. Otherwise a later latch would
+  // restamp a dead-letter ATTACK_RUN + weapons_free on a hull that can never fire, and the
+  // sanctuary identity gate would keep exempting a wing that already left the lesson.
+  _adoptRaidWingExit(raid, wing) {
+    const ai = wing && wing.data && wing.data.ai;
+    if (!raid || !ai) return false;
+    if (ai.pirateDisengaged !== true && ai.forceFlee !== true
+      && ai.fsm !== 'flee' && ai.fsm !== 'surrender') return false;
+    raid.wingDone = true;
+    // Drop the pins an earlier arming left (markFleeing shape) so the routed hull stops
+    // resolving the player as its target anywhere downstream.
+    ai.forcePlayerTarget = false;
+    ai.huntPlayer = false;
+    const combat = wing.data.combat;
+    if (combat) {
+      if (combat.targetId === this.state.playerId) combat.targetId = null;
+      if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
+    }
+    return true;
+  },
+
   _onRaidLatched(payload) {
     const raid = this._raid();
     const ob = this.state.onboarding;
@@ -3546,6 +3570,7 @@ export const onboarding = {
     // X-02: the wing holds its fire until the tow actually starts — the first latch on the
     // raider is the trigger it answers for. Re-latching an armed wing stays quiet.
     const wing = this._raidActor('wing');
+    if (wing && this._adoptRaidWingExit(raid, wing)) return this._onBeatEvent('raid:latched', payload);
     if (wing && wing.data && wing.data.ai && !raid.wingDone
       && wing.data.ai.roe !== 'weapons_free') {
       // The wing's lesson target is the pilot holding the tow — pin it through the sanctioned
@@ -3683,6 +3708,10 @@ export const onboarding = {
     if (!raid || raid.wingDone) return;
     const wing = this._raidActor('wing');
     if (!wing) return;
+    // A morale scatter exits honestly through pirateDisengage without touching wingDone —
+    // adopt it before the scripted checks so the slot closes within a tick and no later
+    // latch can restamp a dead-letter ATTACK_RUN on a routed hull.
+    if (this._adoptRaidWingExit(raid, wing)) return;
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     const beatDone = !!(ob && ob.beatDoneAt && ob.beatDoneAt.raid != null)
