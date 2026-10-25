@@ -18,8 +18,10 @@ function fixture({ sector = 'sector_eunomia_gulf', runKind = 'adventure' } = {})
   const bus = createBus();
   const popups = [];
   const grants = [];
+  const receipts = [];
   bus.on('comms:popup', (p) => popups.push(p));
   bus.on('economy:grantCredits', (p) => grants.push(p));
+  bus.on('salvage:completed', (p) => receipts.push({ payload: p, aliveNow: state.entities.get(p?.wreckId)?.alive }));
   const player = { id: 7, alive: true, isPlayer: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } };
   const state = {
     run: { kind: runKind },
@@ -42,7 +44,7 @@ function fixture({ sector = 'sector_eunomia_gulf', runKind = 'adventure' } = {})
   };
   const sys = createGravedigger();
   sys.init({ state, bus, helpers });
-  return { state, bus, helpers, popups, grants, sys };
+  return { state, bus, helpers, popups, grants, receipts, sys };
 }
 const addWreck = (state, pos, extra = {}) => {
   const e = {
@@ -86,6 +88,38 @@ test('a settled wreck in reach is consumed and a bed stands on the grave', () =>
   assert.equal(gardens(state)[0].data.gravediggerGardenSerial, bed[0].serial);
   assert.equal(says(popups, 'gravedigger_bury_').length, 1);
   assert.match(says(popups, 'gravedigger_bury_')[0].text, /IN THE GROUND/);
+});
+
+test('a burial files the consumption receipt before the take — the marker retires, the corpse stays buried', () => {
+  const { state, receipts, sys } = fixture();
+  // The aftermath "fair good" shape the shared law lets through: marker-bound
+  // residue the field would rematerialize next enter unless the sale's
+  // salvage:completed receipt retires it while the hulk is still live+bound.
+  const w = addWreck(state, { x: GRAVEDIGGER.post.x + 30, z: GRAVEDIGGER.post.z }, {
+    data: {
+      markerId: 'marker_1', persistenceOwner: 'aftermathWrecks',
+      provenance: { markerId: 'marker_1' },
+    },
+  });
+  sys.update(0.5, state);
+  assert.equal(w.alive, false);
+  assert.equal(receipts.length, 1, 'the burial filed salvage:completed');
+  assert.equal(receipts[0].payload.wreckId, w.id);
+  assert.equal(receipts[0].payload.markerId, 'marker_1', 'the durable marker is named so it retires');
+  assert.equal(receipts[0].payload.source, 'gravedigger:bury');
+  assert.equal(receipts[0].aliveNow, true, 'the receipt lands while the wreck is still live — dead hulks cannot retire');
+});
+
+test('no take, no pay: without the removal seam the pit cannot claim an offering', () => {
+  const { state, helpers, grants, receipts, sys } = fixture();
+  flags(state).gravedigger_taught = true;
+  addWreck(state, { x: GRAVEDIGGER.post.x, z: GRAVEDIGGER.post.z });
+  delete helpers.removeEntity;
+  sys.update(0.5, state);
+  assert.equal(grants.length, 0, 'the fee never pays for a hull still sitting in the pit');
+  assert.equal(receipts.length, 0);
+  assert.equal(gardens(state).length, 0, 'no bed for a hull not taken');
+  assert.equal(state.entityList.some((e) => e.alive && e.type === 'wreck'), true, 'the offering stands');
 });
 
 test('the race is physical: a wreck out of arm reach gets run down by impulse', () => {

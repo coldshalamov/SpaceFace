@@ -171,6 +171,24 @@ export function createGravedigger() {
     _bury(wreck, { pay = false } = {}) {
       const flags = this._flags();
       if (!flags || !wreck?.alive) return false;
+      // No take, no pay — the booth's law: without the removal seam the pit
+      // would pay for a hull still sitting in it, every pass, forever.
+      if (typeof this.helpers?.removeEntity !== 'function') return false;
+      // The canonical consumption receipt, BEFORE the take: a bound aftermath
+      // marker only retires while its wreck is still live (rookBooth's order —
+      // _completeByEntity refuses a dead hulk). Skip it and the field
+      // rematerializes the buried hull on the next enter — a second body
+      // standing beside its own grave, sellable and buryable again.
+      const d = wreck.data || {};
+      this.bus?.emit('salvage:completed', {
+        wreckId: wreck.id,
+        markerId: d.markerId || (d.provenance && d.provenance.markerId) || null,
+        loot: {},
+        pos: { x: wreck.pos.x, z: wreck.pos.z },
+        radius: Number.isFinite(wreck.radius) ? wreck.radius : 0,
+        source: 'gravedigger:bury',
+      });
+      if (this.helpers.removeEntity(wreck.id) === false) return false;
       const gardens = this._gardens();
       const serial = (Number(flags[GRAVEDIGGER.serialFlag]) || 0) + 1;
       flags[GRAVEDIGGER.serialFlag] = serial;
@@ -179,7 +197,6 @@ export function createGravedigger() {
         gardens.push(bed);
         this.helpers.spawnEntity(gravediggerGardenSpec(bed, serial));
       }
-      this.helpers?.removeEntity?.(wreck.id);
       if (pay) {
         this.bus?.emit('economy:grantCredits', { amount: GRAVEDIGGER.compostFee, reason: 'gravedigger:compost' });
       }
@@ -218,8 +235,9 @@ export function createGravedigger() {
         const offering = (s.entityList || []).find((e) => gravediggerCompostable(e, GRAVEDIGGER.post));
         if (offering) {
           const full = this._gardens().length >= GRAVEDIGGER.gardenMax;
-          this._bury(offering, { pay: true });
-          this._say(`gravedigger_compost_${s.tick}`, full ? GRAVEDIGGER.fullLine : GRAVEDIGGER.compostLine, 6);
+          if (this._bury(offering, { pay: true })) {
+            this._say(`gravedigger_compost_${s.tick}`, full ? GRAVEDIGGER.fullLine : GRAVEDIGGER.compostLine, 6);
+          }
           return;
         }
       }
@@ -230,8 +248,9 @@ export function createGravedigger() {
       const target = gravediggerTarget(robot.pos, s.entityList, eligible);
       if (target) {
         if (gravediggerCanBury(target, robot.pos)) {
-          this._bury(target);
-          this._say(`gravedigger_bury_${s.tick}`, GRAVEDIGGER.buryLine, 5);
+          if (this._bury(target)) {
+            this._say(`gravedigger_bury_${s.tick}`, GRAVEDIGGER.buryLine, 5);
+          }
           return;
         }
         const dv = gravediggerSteerDeltaV(robot, target.pos);
