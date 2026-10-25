@@ -86,7 +86,7 @@ export function capitalBossReadouts(state,out) {
    // GOLD-COLOSSI: attached plate anchors ride the readout so the overlay can paint them in
    // warning style and the latched player gets a PLATE/HOLD read without a second pass.
    const platesOut=readout._plates||(readout._plates=[]);
-   platesOut.length=0;
+   let cellN=0;
    let plateHold=readout._hold;
    if(!plateHold){plateHold={strainTicks:0,holdTension:0,tension:0,label:'',x:0,z:0};readout._hold=plateHold;}
    readout.plateHold=null;
@@ -106,7 +106,6 @@ export function capitalBossReadouts(state,out) {
     }
     const tension=capitalPlatePull(latch);
     const latchOwner=latch&&state.entities&&state.entities.get?state.entities.get(latch.ownerId):null;
-    let cellN=0;
     for(let pi=0;pi<plateSpecs.length;pi+=1){
      const pspec=plateSpecs[pi];
      if(!pspec)continue;
@@ -125,8 +124,8 @@ export function capitalBossReadouts(state,out) {
       readout.plateHold=plateHold;
      }
     }
-    platesOut.length=cellN;
    }
+   platesOut.length=cellN;
    readout.plates=platesOut;
    const cast=r.cast;
    if(cast&&score&&Array.isArray(score.beats)){
