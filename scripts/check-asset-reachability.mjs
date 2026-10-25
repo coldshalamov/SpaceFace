@@ -21,7 +21,7 @@ import {
 } from '../src/data/portraits.js';
 import { WRECK_CATHEDRAL_EVIDENCE_CATALOG } from '../src/data/wreckCathedralEvidenceCatalog.js';
 import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManifest.js';
-import { RELEASE_COPY_MAPPINGS, releaseCopyExcludePrefixes } from './lib/releasePackaging.mjs';
+import { RELEASE_COPY_MAPPINGS, releaseCopyExcludePrefixes, safeRelativePath } from './lib/releasePackaging.mjs';
 import { CENSUS_JSON } from '../src/data/modelTruthCensus.generated.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,7 +30,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // a referenced asset outside them 404s in the shipped game). Derived rather than duplicated so a
 // new bundled root cannot drift from this contract.
 const BUNDLED_ROOTS = RELEASE_COPY_MAPPINGS
-  .map((m) => m.source.replace(/\\/g, '/'))
+  .map((m) => safeRelativePath(m.source, 'release copy source'))
   .filter((source) => source.startsWith('assets/'));
 
 // UI kit helpers (kitUrl/fhUrl in src/ui/kit) resolve their asset arguments under this prefix at
@@ -150,7 +150,7 @@ for (const [asset, files] of [...referenced]) {
 // this audit correctly flags it rather than carving it out). Derived from the same
 // normalizer the planner uses so separator/dir semantics can't drift.
 const EXCLUDED_PREFIXES = RELEASE_COPY_MAPPINGS.flatMap((m) =>
-  releaseCopyExcludePrefixes(m).map((p) => `${m.source.replace(/\\/g, '/')}/${p}`));
+  releaseCopyExcludePrefixes(m).map((p) => `${safeRelativePath(m.source, 'release copy source')}/${p}`));
 
 const issues = [];
 const underBundledRoot = (asset) =>

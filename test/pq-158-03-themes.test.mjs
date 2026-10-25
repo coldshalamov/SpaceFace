@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { MUSIC_STEMS } from '../src/data/audioRecipes.js';
 import { BAND_BED_PROFILES } from '../src/audio/bandBeds.js';
 import { SAMPLE_MANIFEST } from '../src/audio/sampleLibrary.js';
+import { BARK_FACTIONS } from '../src/data/barks.js';
 import {
   THEME_MATRIX_SEED,
   THEME_STATES,
@@ -118,6 +119,13 @@ test('faction stings ride the Band: unique profiles a stranger can tell apart', 
   // The catalog grew past the original eight as factions landed — the contract is a unique
   // profile per entry, not a fixed count.
   assert.ok(ids.length >= 8, `expected at least the original eight stings, got ${ids.length}`);
+  // D255: every corpus faction must own a sting — Helix sat stingless for weeks while the
+  // >=8 count stayed green. A new BARK_FACTIONS id without a sting now fails here.
+  assert.deepEqual(
+    BARK_FACTIONS.filter((id) => !FACTION_STINGS[id]),
+    [],
+    'a bark faction without a house sting is a silent audible asymmetry',
+  );
   const signatures = new Set();
   for (const id of ids) {
     const sting = resolveFactionSting(id);

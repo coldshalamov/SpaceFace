@@ -131,6 +131,9 @@ const jobs = (writeAll
 
 if (!checkOnly) mkdirSync(OUT_DIR, { recursive: true });
 const mismatches = [];
+let wrote = 0;
+// Write only drifted/missing files — an unchanged byte-for-byte WAV keeps its mtime, so a
+// regeneration that changes nothing doesn't churn the whole tree's timestamps.
 for (const job of jobs) {
   const bytes = wavFromPcm(renderBarkUtterancePcm(job.resolved, { sampleRate: SR, seconds: job.seconds }));
   if (checkOnly) {
@@ -138,7 +141,7 @@ for (const job of jobs) {
     const existing = readFileSync(job.file);
     if (!existing.equals(bytes)) mismatches.push(`drifted ${job.rel}`);
   } else {
-    writeFileSync(job.file, bytes);
+    if (!existsSync(job.file) || !readFileSync(job.file).equals(bytes)) { writeFileSync(job.file, bytes); wrote++; }
   }
 }
 
@@ -153,7 +156,7 @@ for (const clip of BLIND_REGISTER_CLIPS) {
     if (!existsSync(file)) mismatches.push(`missing ${clip.file}`);
     else if (!readFileSync(file).equals(bytes)) mismatches.push(`drifted ${clip.file}`);
   } else {
-    writeFileSync(file, bytes);
+    if (!existsSync(file) || !readFileSync(file).equals(bytes)) { writeFileSync(file, bytes); wrote++; }
   }
 }
 
@@ -179,7 +182,8 @@ if (mismatches.length) {
   console.log(
     `PQ-158.04 seed=${BARK_VOICE_SEED} corpus=${pipeline.length}/${BARK_CORPUS_TARGET} `
     + `registers=${Object.keys(FACTION_VOICE_REGISTERS).length} mechanic=${mechanic.length} `
-    + `wavs=${jobs.length} blind=${BLIND_REGISTER_CLIPS.length}${checkOnly ? ' (verified)' : ''}`,
+    + `wavs=${jobs.length} blind=${BLIND_REGISTER_CLIPS.length}`
+    + (checkOnly ? ' (verified)' : ` written=${wrote} unchanged=${jobs.length + BLIND_REGISTER_CLIPS.length - wrote}`),
   );
   console.log(`mechanic register f0=${MECHANIC_VOICE_REGISTER.f0} captions=on`);
 }

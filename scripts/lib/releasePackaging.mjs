@@ -561,7 +561,7 @@ function normalizeRel(value) {
   return String(value || '').split(sep).join('/').replace(/^\.\//, '');
 }
 
-function safeRelativePath(value, label) {
+export function safeRelativePath(value, label) {
   const clean = String(value ?? '').replace(/\\/g, '/');
   const segments = clean.split('/');
   if (!clean || clean.startsWith('/') || /^[a-z][a-z\d+.-]*:/i.test(clean) || clean.includes('\0')
