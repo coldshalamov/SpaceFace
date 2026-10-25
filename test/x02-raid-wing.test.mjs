@@ -25,7 +25,7 @@ function rig({ clinic = false } = {}) {
     world: { currentSectorId: 'sector_helios_prime' },
     onboarding: {
       active: true, finished: false, currentBeat: 0,
-      beatDoneAt: {}, pace: clinic
+      beatDoneAt: {}, firedFollowups: {}, pace: clinic
         ? { swing: { clinicOpenedAtS: 1, clinicLesson: 'raid' } } : { swing: {} },
       raid: { active: true, ids: {}, gunKills: 0, strayKills: 0 },
       rescue: { ids: {} },
@@ -132,6 +132,27 @@ test('X-02 at 18 hull the wing flees, disarms, and the bridge closes behind it',
   assert.ok(h.comms.some((c) => c.text === "Not for his cut. I'm gone."), 'the exit speaks once');
 });
 
+test('X-02 the wing speaks once per arming, including after a player-death restage', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wing = h.entities.get(raid.ids.wing);
+  const openings = () => h.comms.filter((c) => c.text === 'Hands off his boat.').length;
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  assert.equal(openings(), 1, 're-latching an armed wing does not repeat its opening');
+  assert.equal(wing.data.ai.roe, 'weapons_free');
+
+  h.ob._respawnRaidRaider(null);
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  assert.equal(openings(), 1, 'gun-kill restage keeps the armed wing quiet');
+
+  h.bus.emit('player:death');
+  assert.equal(wing.data.ai.roe, 'hold_fire');
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  assert.equal(openings(), 2, 'the disarmed wing announces its next arming');
+  assert.equal(wing.data.ai.roe, 'weapons_free');
+});
+
 test('X-02 restages keep the wing id; after wingDone no wing respawns', () => {
   const h = rig();
   const raid = stage(h);
@@ -164,5 +185,5 @@ test('X-02 a wing stray into the towed raider converges like a gun kill', () => 
   assert.ok(raider2 != null, 'the beat restages for the stray');
   h.bus.emit('entity:killed', { id: raider2, killerId: wingId, pos: { x: 0, z: 0 } });
   assert.equal(h.state.onboarding.raid.strayKills, 2);
-  assert.notEqual(h.state.onboarding.beatDoneAt.raid, null, 'the second stray resolves the beat');
+  assert.ok(Number.isFinite(h.state.onboarding.beatDoneAt.raid), 'the second stray resolves the beat');
 });

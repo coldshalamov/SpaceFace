@@ -3522,9 +3522,10 @@ export const onboarding = {
     if (!raid || !ob || !beat || beat.key !== 'raid') return;
     if (payload.targetId !== raid.ids.raider) return;
     // X-02: the wing holds its fire until the tow actually starts — the first latch on the
-    // raider is the trigger it answers for.
+    // raider is the trigger it answers for. Re-latching an armed wing stays quiet.
     const wing = this._raidActor('wing');
-    if (wing && wing.data && wing.data.ai && !raid.wingDone) {
+    if (wing && wing.data && wing.data.ai && !raid.wingDone
+      && wing.data.ai.roe !== 'weapons_free') {
       wing.data.ai.roe = 'weapons_free';
       this.bus.emit('comms:popup', {
         sender: "Claim Jumper's Wing",
