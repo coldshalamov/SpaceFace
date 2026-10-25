@@ -1331,6 +1331,9 @@ function workerFallback(state, origin, nearby) {
     if (workerStillHere(state, origin, subject.entityId, nearby)) continue;
     const pos = xz(subject.pos);
     if (!pos) continue;
+    // The scanner drops a berth past this reach. Skip it here so a nearer
+    // empty berth later in the book is the one the player hears.
+    if (distXZ(origin, pos) > 1400) continue;
     const part = {
       sf: 'SF-175',
       sentence: 'The hauler is gone. The berth remains. Their cargo is not yours.',
