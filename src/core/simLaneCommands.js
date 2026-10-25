@@ -266,6 +266,81 @@ export function laneViewport(w, h) {
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// camera frame — the main lane's DISPLAYED chase envelope, one per posted
+// directive: commanded base zoom, the eased displayed distance, the damped
+// speed-zoom factor, the settled look-at, the tilt/aspect and — since round 4 —
+// the full displayed pose (frame-local eye, post-roll/post-shake orientation,
+// view kind + eased blend, displayed fov/near/far) plus the frame origin every
+// local coordinate belongs to. camera.js stamps the live values onto
+// state.camera each follow(); the lane bridge ships them.
+//
+// Coordinate contract: focusX/focusZ and the eye are FRAME-LOCAL in the
+// shipped frameOrigin — never galactic-global. The origin rides the same
+// envelope because the sim's origin can hop between the stamp and the apply;
+// the consumer (tableChaseFraming) adds the shipped origin, never its live one.
+// The worker's visibility projector consumes the record so its worldToScreen
+// answers the picture — a real perspective projection for the racing stern
+// rig and every blended/director pose, the analytic chase derivation only as
+// the deterministic pre-transport fallback. Every field is optional — absent
+// keys leave the worker's local record alone.
+// ---------------------------------------------------------------------------
+export function laneCameraFramePayload(cam, aspect = null) {
+  if (!cam || typeof cam !== 'object') return null;
+  const focus = cam.focus;
+  return {
+    zoom: Number.isFinite(cam.zoom) ? cam.zoom : null,
+    displayedZoom: Number.isFinite(cam.displayedZoom) ? cam.displayedZoom : null,
+    speedZoomFactor: Number.isFinite(cam.speedZoomFactor) ? cam.speedZoomFactor : null,
+    focusX: focus && Number.isFinite(focus.x) ? focus.x : null,
+    focusZ: focus && Number.isFinite(focus.z) ? focus.z : null,
+    tilt: Number.isFinite(cam.tilt) ? cam.tilt : null,
+    aspect: Number.isFinite(aspect) && aspect > 0 ? aspect : null,
+    frameOriginX: Number.isFinite(cam.frameOriginX) ? cam.frameOriginX : null,
+    frameOriginZ: Number.isFinite(cam.frameOriginZ) ? cam.frameOriginZ : null,
+    viewKind: typeof cam.viewKind === 'string' ? cam.viewKind : null,
+    viewMix: Number.isFinite(cam.viewMix) ? cam.viewMix : null,
+    eyeX: Number.isFinite(cam.eyeX) ? cam.eyeX : null,
+    eyeY: Number.isFinite(cam.eyeY) ? cam.eyeY : null,
+    eyeZ: Number.isFinite(cam.eyeZ) ? cam.eyeZ : null,
+    quatX: Number.isFinite(cam.quatX) ? cam.quatX : null,
+    quatY: Number.isFinite(cam.quatY) ? cam.quatY : null,
+    quatZ: Number.isFinite(cam.quatZ) ? cam.quatZ : null,
+    quatW: Number.isFinite(cam.quatW) ? cam.quatW : null,
+    displayFov: Number.isFinite(cam.displayFov) ? cam.displayFov : null,
+    displayNear: Number.isFinite(cam.displayNear) ? cam.displayNear : null,
+    displayFar: Number.isFinite(cam.displayFar) ? cam.displayFar : null,
+  };
+}
+
+export function applyLaneCameraFrame(state, p) {
+  if (!state || !p || typeof p !== 'object') return false;
+  const cam = state.camera || (state.camera = {});
+  let wrote = false;
+  if (Number.isFinite(p.zoom)) { cam.zoom = p.zoom; wrote = true; }
+  if (Number.isFinite(p.displayedZoom)) { cam.displayedZoom = p.displayedZoom; wrote = true; }
+  if (Number.isFinite(p.speedZoomFactor)) { cam.speedZoomFactor = p.speedZoomFactor; wrote = true; }
+  if (Number.isFinite(p.focusX)) { cam.focusX = p.focusX; wrote = true; }
+  if (Number.isFinite(p.focusZ)) { cam.focusZ = p.focusZ; wrote = true; }
+  if (Number.isFinite(p.tilt)) { cam.tilt = p.tilt; wrote = true; }
+  if (Number.isFinite(p.aspect) && p.aspect > 0) { cam.aspect = p.aspect; wrote = true; }
+  if (Number.isFinite(p.frameOriginX)) { cam.frameOriginX = p.frameOriginX; wrote = true; }
+  if (Number.isFinite(p.frameOriginZ)) { cam.frameOriginZ = p.frameOriginZ; wrote = true; }
+  if (typeof p.viewKind === 'string' && p.viewKind.length > 0) { cam.viewKind = p.viewKind; wrote = true; }
+  if (Number.isFinite(p.viewMix)) { cam.viewMix = p.viewMix; wrote = true; }
+  if (Number.isFinite(p.eyeX)) { cam.eyeX = p.eyeX; wrote = true; }
+  if (Number.isFinite(p.eyeY)) { cam.eyeY = p.eyeY; wrote = true; }
+  if (Number.isFinite(p.eyeZ)) { cam.eyeZ = p.eyeZ; wrote = true; }
+  if (Number.isFinite(p.quatX)) { cam.quatX = p.quatX; wrote = true; }
+  if (Number.isFinite(p.quatY)) { cam.quatY = p.quatY; wrote = true; }
+  if (Number.isFinite(p.quatZ)) { cam.quatZ = p.quatZ; wrote = true; }
+  if (Number.isFinite(p.quatW)) { cam.quatW = p.quatW; wrote = true; }
+  if (Number.isFinite(p.displayFov) && p.displayFov > 0) { cam.displayFov = p.displayFov; wrote = true; }
+  if (Number.isFinite(p.displayNear) && p.displayNear > 0) { cam.displayNear = p.displayNear; wrote = true; }
+  if (Number.isFinite(p.displayFar) && p.displayFar > 0) { cam.displayFar = p.displayFar; wrote = true; }
+  return wrote;
+}
+
 // Generic sim-bus event replay (main → worker): the sim's listener set inside
 // the worker hears it exactly like a local emit. Emitter-side callers wrap
 // their own emit with a forward-suppression latch so drained worker→main
