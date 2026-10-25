@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "exp-11",
-      "date": "2026-10-22",
-      "wf": "WF-09",
-      "mode": "starved",
-      "verdict": "cut",
-      "reason": "The six open factions — Understory, Fulfillment, Archive, Pitborn, Free Frontier, Verge-Layers — now have canon sketches in the canonical factions file, each marked PROVISIONAL (R10, 2026-10-21), so the story bible the narrative lane writes from finally matches the fourteen factions the game fields.",
-      "fingerprint": "verb=transcribe,subject=faction-canon,sector=story-bible,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "831774e575",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-hf-09",
       "date": "2026-10-22",
       "wf": "WF-12",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "a68d2a27a4523f5c7edbb6e60aff73e17e9ad44f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-airlock-line",
+      "date": "2026-10-25",
+      "wf": "WF-09",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A line scratched on the airlock stays readable, including THEY KNEW THE MASS.",
+      "fingerprint": "verb=read,subject=airlock-line,sector=dock,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "cf6ece9d547ff794fec3170e2a03b0605809ea57",
       "verification": "focused_green"
     }
   ],
