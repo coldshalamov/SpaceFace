@@ -460,7 +460,10 @@ export function renderBarkUtterancePcm(resolved, options = {}) {
   const rawDur = options.seconds == null
     ? (resolved && resolved.speech && resolved.speech.durationS) || BARK_UTTERANCE_SECONDS
     : options.seconds;
-  const dur = Number.isFinite(Number(rawDur)) && Number(rawDur) > 0 ? Number(rawDur) : BARK_UTTERANCE_SECONDS;
+  const dur = Math.min(
+    Number.isFinite(Number(rawDur)) && Number(rawDur) > 0 ? Number(rawDur) : BARK_UTTERANCE_SECONDS,
+    60, // ceiling: absurd durations clamp to a sane render length rather than RangeError on alloc
+  );
   const n = Math.max(1, Math.round(dur * sr));
   const out = new Float64Array(n);
   if (!resolved || !resolved.speech) return out;
@@ -501,7 +504,10 @@ export function renderRegisterCallsignPcm(register, options = {}) {
   const f0 = Number(register && register.f0);
   const sr = Number.isFinite(options.sampleRate) && options.sampleRate > 0 ? options.sampleRate : 32000;
   const rawSeconds = options.seconds == null ? REGISTER_CALLSIGN_SECONDS : options.seconds;
-  const seconds = Number.isFinite(Number(rawSeconds)) && Number(rawSeconds) > 0 ? Number(rawSeconds) : REGISTER_CALLSIGN_SECONDS;
+  const seconds = Math.min(
+    Number.isFinite(Number(rawSeconds)) && Number(rawSeconds) > 0 ? Number(rawSeconds) : REGISTER_CALLSIGN_SECONDS,
+    60, // same ceiling as the utterance render
+  );
   const n = Math.max(1, Math.round(seconds * sr));
   const pcm = new Float64Array(n);
   if (!(f0 > 0)) return pcm;
