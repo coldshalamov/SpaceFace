@@ -144,8 +144,10 @@ test('production init + update order lengths match the live browser baseline', (
   // firing-report enforcement plus a calendar drift-home pass (row 506 member 2).
   // 242 -> 243 init / 188 -> 189 update: W-SHIFT registers tare — the scale deck's
   // weigh census reads settled bodies on the same calendar clock (row 506 member 6).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 243);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 189);
+  // 243 -> 244 init / 189 -> 190 update: W-SHIFT registers lamplighter — the arm
+  // ring and stock census is a seconds-scale read on the same clock (member 7).
+  assert.equal(PRODUCTION_INIT_ORDER.length, 244);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 190);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

@@ -213,6 +213,7 @@ import { receipt } from '../systems/receipt.js';
 import { mop } from '../systems/mop.js';
 import { tallyho } from '../systems/tallyho.js';
 import { tare } from '../systems/tare.js';
+import { lamplighter } from '../systems/lamplighter.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -700,6 +701,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['mop', mop],
     ['tallyho', tallyho],
     ['tare', tare],
+    ['lamplighter', lamplighter],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],
