@@ -148,6 +148,12 @@ const SHIPPED_MODULES = [
     description: 'Brake and throw to drop a proximity charge behind your flight path; a plain throw still sticks a plate. Pursuers trigger a radial shove; remote detonation still works.',
   },
   {
+    id: 'mod_collector_maw_s', name: 'Collector Maw', slotType: 'utility', size: 'S', tier: 2,
+    mass: 3, price: 21000, requiresTech: 'tech_tractor_systems', energyDraw: 2,
+    mods: { pullCollector: 1 },
+    description: 'Fit it and Pull drops a collector: the well binds loose rocks and wrecks into one knot at its maw. Hold Pull to aim the knot, release to throw it from where it sits.',
+  },
+  {
     id: 'mod_cargo_scanner_s', name: 'Cargo Scanner S', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 4000,
     energyDraw: 1, mods: { revealCargo: true },
   },

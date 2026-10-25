@@ -16,6 +16,8 @@ import { activeFieldSnapshot, fieldBodyProfile, fieldVelocityTermApplies } from 
 import { queryPhysicalBodies } from '../combat/physicalEffects.js';
 import { launchPlan, burstPlan, springAccel } from '../matter/aggregateMass.js';
 import { predictTrajectory, createTrajectoryBuffer, TRAJECTORY_BUDGET } from '../matter/aggregateTrajectory.js';
+import { knotThrowDirection } from '../matter/collectorKnot.js';
+import { COLLECTOR_KNOT } from './collectorKnot.js';
 
 export const FORECAST_NOTE = 'Forecast — moving bodies and fields change it';
 const CORRIDOR_PAD_WU = 90;       // how far off the line a body is still swept
@@ -214,5 +216,32 @@ export function planKnotThrow(state, knot, dir, tuning) {
     center: { x: knot.pos.x, z: knot.pos.z }, radius: forecast.radius, areas, moves: throwMoves(forecast), blocked: null,
     note: forecast.hit ? `${FORECAST_NOTE} · strike in ${forecast.hit.t.toFixed(1)}s` : FORECAST_NOTE,
     forecast, plan,
+  };
+}
+
+const _knotDir = { x: 1, z: 0 };
+
+/**
+ * The held Pull key with a collector knot: the focused release. The forecast leaves from where the
+ * knot physically is toward the aim point; the plan is dimmed with its reason when the throw would be
+ * refused (out of reach, not enough charge), so the key answers before it is released.
+ */
+export function planCollectorRelease(state, player) {
+  const c = state && state.fieldsRuntime && state.fieldsRuntime.collector;
+  if (!c || !c.fitted || !c.ready || c.coreId == null) return null;
+  const core = state.entities && state.entities.get(c.coreId);
+  if (!core || core.alive === false || !core.pos) return null;
+  const dir = knotThrowDirection(state, player, core.pos, _knotDir);
+  const plan = planKnotThrow(state, core, { x: dir.x, z: dir.z }, COLLECTOR_KNOT);
+  if (!plan) return null;
+  const reach = Math.hypot(core.pos.x - player.pos.x, core.pos.z - player.pos.z);
+  const cap = typeof player.cap === 'number' && Number.isFinite(player.cap) ? player.cap
+    : (player.data && player.data.derived && player.data.derived.cap) || 0;
+  let blocked = null;
+  if (reach > COLLECTOR_KNOT.focusRange) blocked = 'Knot is out of reach — close in to throw it';
+  else if (cap < c.cost) blocked = `Needs ${Math.ceil(c.cost)} charge to throw — you have ${Math.floor(cap)}`;
+  return {
+    ...plan, blocked,
+    note: `KNOT ${Math.round(c.mass)} t · release to throw · ${Math.ceil(c.cost)} charge · ${plan.note}`,
   };
 }

@@ -36,7 +36,7 @@ import {
 } from '../systems/powerVerbs.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { readRailModel } from '../ui/powerRail.js';
-import { planGyreThrow } from './throwForecast.js';
+import { planGyreThrow, planCollectorRelease } from './throwForecast.js';
 
 /** Per-power preview tint (05 §7.2 — the same colour the rail and Cluster use). */
 export const POWER_PREVIEW_TINT = Object.freeze({
@@ -314,6 +314,9 @@ function blastKicks(state, player, { x, z, radius, impulse, falloff, t = 0, excl
 
 function planPull(state, player, rail, opts) {
   if (!fieldsFlag('enabled')) return null; // a profile without fields: the press deploys nothing
+  // A fitted Collector Maw with a knot: Pull is that knot's focus, so the line is its throw.
+  const knotThrow = planCollectorRelease(state, player);
+  if (knotThrow) return knotThrow;
   const spec = playerFieldSpec('well', player, state);
   const areas = [fieldArea('field', spec)];
   const slot = rail[1];
