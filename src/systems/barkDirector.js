@@ -216,7 +216,8 @@ export const WITNESS_THEFT_BARKS = Object.freeze({
  * range, same contract as the barks.js selectors). Falls back to the Frontier pack.
  */
 export function witnessTheftBarkFor(factionId, rng) {
-  const lines = (factionId && WITNESS_THEFT_BARKS[factionId]) || WITNESS_THEFT_BARKS.faction_free;
+  const lines = (factionId && Object.hasOwn(WITNESS_THEFT_BARKS, factionId) && WITNESS_THEFT_BARKS[factionId])
+    || WITNESS_THEFT_BARKS.faction_free;
   let index = 0;
   if (typeof rng === 'number' && Number.isFinite(rng)) {
     index = ((Math.floor(rng) % lines.length) + lines.length) % lines.length;
@@ -617,19 +618,19 @@ export function cargoSpillCauseOf(eventName, payload = {}) {
 }
 
 export function cargoSpillBarkText(ownerName, reaction) {
-  const template = CARGO_SPILL_BARKS[reaction] || '{owner} marked the spill.';
+  const template = (Object.hasOwn(CARGO_SPILL_BARKS, reaction) && CARGO_SPILL_BARKS[reaction]) || '{owner} marked the spill.';
   return template.replace(/\{owner\}/g, String(ownerName || 'Unknown owner'));
 }
 
 export function cargoSpillLedgerText(ownerName, reaction) {
-  const verb = (CARGO_OWNER_REACTIONS[reaction] && CARGO_OWNER_REACTIONS[reaction].ledgerVerb)
+  const verb = (Object.hasOwn(CARGO_OWNER_REACTIONS, reaction) && CARGO_OWNER_REACTIONS[reaction].ledgerVerb)
     || reaction
     || 'spill';
   return `${ownerName || 'Unknown owner'} — ${verb} after the spill.`;
 }
 
 export function stuntRecognitionBarkFor(factionId, rng, tokens = {}) {
-  const faction = (factionId && STUNT_BARKS[factionId]) ? STUNT_BARKS[factionId] : STUNT_BARKS.faction_free;
+  const faction = (factionId && Object.hasOwn(STUNT_BARKS, factionId)) ? STUNT_BARKS[factionId] : STUNT_BARKS.faction_free;
   let idx = 0;
   if (typeof rng === 'number' && Number.isFinite(rng)) {
     idx = ((Math.floor(rng) % faction.length) + faction.length) % faction.length;
@@ -2496,7 +2497,7 @@ export const barkDirector = {
     if (!resolved || !resolved.ownerName) return null;
 
     const reaction = resolved.reaction;
-    if (!reaction || !CARGO_OWNER_REACTIONS[reaction]) return null;
+    if (!reaction || !Object.hasOwn(CARGO_OWNER_REACTIONS, reaction)) return null;
 
     const own = ensureState(state);
     const now = Number(state.simTime) || 0;

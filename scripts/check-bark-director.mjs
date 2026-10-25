@@ -202,7 +202,7 @@ function testPackageRegistryAndSourceGuards() {
   const source = readFileSync(new URL('../src/systems/barkDirector.js', import.meta.url), 'utf8');
   assert.match(source, /helpers\.voice/, 'barkDirector reads helpers.voice');
   assert.match(source, /voice\.say\(\{[\s\S]*channel: 'bark'/, 'barkDirector routes through voice.say bark channel');
-  assert.doesNotMatch(source, /Math\.random|Date\.now|performance\.now|setTimeout|setInterval/,
+  assert.doesNotMatch(source, /Math\.random|Date\.now|new Date\(|Date\.parse|Date\.UTC|performance\.now|setTimeout|setInterval/,
     'barkDirector uses no RNG, wall clock, performance clock, or timers');
   assert.doesNotMatch(source, /bus\.emit\('toast'|this\._emit\('toast'/,
     'barkDirector does not bypass voiceArbiter with direct toasts');

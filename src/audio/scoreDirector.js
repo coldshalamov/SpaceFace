@@ -128,7 +128,8 @@ const UNKNOWN_COLOURS = Object.freeze(['glass', 'grit', 'signal', 'drift', 'cold
 
 export function resolveScoreIdentity(sectorId) {
   if (!sectorId) return DEFAULT_SCORE_IDENTITY;
-  const row = SECTOR_SCORE_IDENTITY[sectorId];
+  // hasOwn: a prototype-keyed sectorId must take the hashed path, not return an inherited member.
+  const row = Object.hasOwn(SECTOR_SCORE_IDENTITY, sectorId) ? SECTOR_SCORE_IDENTITY[sectorId] : null;
   if (row) return row;
   const h = hash32(String(sectorId));
   return identity(String(sectorId), (h % 12) - 6, MODE_NAMES[(h >>> 4) % MODE_NAMES.length],
@@ -163,7 +164,7 @@ export function scoreNoteHz(note, octave = 4, identityRow = null) {
 }
 
 export function resolveFactionColour(factionId) {
-  return (factionId && FACTION_SCORE_COLOUR[factionId]) || null;
+  return (factionId && Object.hasOwn(FACTION_SCORE_COLOUR, factionId) && FACTION_SCORE_COLOUR[factionId]) || null;
 }
 
 function clamp01(v) {
