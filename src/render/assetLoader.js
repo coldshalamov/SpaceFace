@@ -1401,6 +1401,9 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
   const task = admitAuthoredAssetTask(runtime, cacheKey, (admission) => (
     runtime.renderPackages.load(pilot.metadataUrl, {
       signal: admission.signal,
+      // Byte progress re-arms this task's 120 s admission wall: a slow-but-flowing handset
+      // download must not be aborted mid-stream while it is actively arriving (D188).
+      onFetchProgress: () => admission.touch(),
       expectedContentHash: pilot.expectedContentHash,
       ...(pilot.flightStaticV3 === true ? { expectedRuntimeHash: pilot.expectedRuntimeHash } : {}),
       // Let the package entry carry this consumer's owner from the commit itself; retaining only

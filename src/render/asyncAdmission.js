@@ -6,7 +6,7 @@ function toAbortReason(reason) {
   }
   const message = reason instanceof Error
     ? (reason.message || 'authored admission owner became inactive')
-    : (reason != null ? String(reason) : 'authored admission owner became inactive');
+    : reason != null ? String(reason) : 'authored admission owner became inactive';
   const error = new Error(message);
   error.name = 'AbortError';
   if (reason instanceof Error) error.cause = reason;
@@ -24,6 +24,7 @@ export function createAsyncAdmission({
   const labelText = String(label);
   let deadlineTimer = null;
   let externalSignal = null;
+  let finished = false;
 
   const timeoutError = () => {
     const error = new Error(
@@ -112,8 +113,24 @@ export function createAsyncAdmission({
   };
 
   const finish = () => {
+    finished = true;
     clearDeadline();
     detachExternal();
+  };
+
+  // Byte progress re-arms the deadline. The fixed wall exists to retire wedged work, not to
+  // cancel work that is actively arriving: on a throttled handset a flowing multi-megabyte
+  // package download outlives the wall while never stalling (D188 — fixed walls aborted every
+  // in-flight package under Fast 3G and the boot failed closed). touch() is a no-op once the
+  // admission has aborted or finished.
+  const touch = () => {
+    if (finished || controller.signal.aborted) return;
+    clearDeadline();
+    deadlineTimer = setTimer(() => {
+      deadlineTimer = null;
+      abort(timeoutError());
+    }, ms);
+    if (deadlineTimer && typeof deadlineTimer.unref === 'function') deadlineTimer.unref();
   };
 
   return Object.freeze({
@@ -121,6 +138,7 @@ export function createAsyncAdmission({
     wait,
     abort,
     finish,
+    touch,
     assertActive,
   });
 }
