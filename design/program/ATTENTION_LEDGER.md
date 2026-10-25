@@ -13,21 +13,21 @@ Row format: `id | surface | what the player sees | register | sanctioned detail 
 
 | id | surface | what the player sees | register | sanctioned detail | status |
 |----|---------|---------------------|----------|-------------------|--------|
-| S-01 | Helios Prime (tier 0, home) | station ring, trade hub, 47-A scene staged at boot, starter traffic | third-shift working class; manifests wrong | ambient encounters tier-0, named hulls, gossip barks | in-review |
-| S-02 | Ceres Belt (first jump) | mining belt, toll gate | company town, quiet dread | wreck dressing, claim tags, miner chatter | in-review |
-| S-03 | Tethys Junction | trade hub + overlays, convoy traffic | commerce bustle, toll friction | convoy radio, customs checks, lane stories | in-review |
-| S-04 | Vesta Forge | forge/industrial sector | hot industry, pride | foundry texture, guild marks, hazard lore | in-review |
-| S-05 | Pallas Drift | drift sector | drift culture | drift-specific props, local factions' texture | in-review |
-| S-06 | Io Reach | reach sector | frontier industry | reach flavor, outpost marks | in-review |
-| S-07 | Charon Expanse | expanse sector | wide empty, eerie | anomalies, radio ghosts, lonely sights | in-review |
-| S-08 | Sker Haven | haven sector (skerris) | haven refuge, skerris culture | haven dressing, refugee texture, shrine bits | in-review |
-| S-09 | Veil Nebula | nebula sector | fogged, strange | nebula phenomena, veil cult texture, sightings | in-review |
-| S-10 | Ashfall Reach | raider territory, rust + sodium | raider poetry, blade culture | totem wrecks, challenge barks, graffiti | in-review |
-| S-11 | Asteroid fields (all sectors) | rocks + seams | geology + claim culture | graffiti (exists), claim marks, micro-props | in-review |
-| S-12 | Landmarks | candle fleet, cathedral, skerris throne | monumental, mournful | lore plaques, memorial arrays, pilgrim traffic | in-review |
+| S-01 | Helios Prime (tier 0, home) | station ring, trade hub, 47-A scene staged at boot, starter traffic | third-shift working class; manifests wrong | ambient encounters tier-0, named hulls, gossip barks | shipped 1312cc53bb |
+| S-02 | Ceres Belt (first jump) | mining belt, toll gate | company town, quiet dread | wreck dressing, claim tags, miner chatter | shipped 1312cc53bb |
+| S-03 | Tethys Junction | trade hub + overlays, convoy traffic | commerce bustle, toll friction | convoy radio, customs checks, lane stories | shipped 1312cc53bb |
+| S-04 | Vesta Forge | forge/industrial sector | hot industry, pride | foundry texture, guild marks, hazard lore | shipped 1312cc53bb |
+| S-05 | Pallas Drift | drift sector | drift culture | drift-specific props, local factions' texture | shipped 1312cc53bb |
+| S-06 | Io Reach | reach sector | frontier industry | reach flavor, outpost marks | shipped 1312cc53bb |
+| S-07 | Charon Expanse | expanse sector | wide empty, eerie | anomalies, radio ghosts, lonely sights | shipped 1312cc53bb |
+| S-08 | Sker Haven | haven sector (skerris) | haven refuge, skerris culture | haven dressing, refugee texture, shrine bits | shipped 1312cc53bb |
+| S-09 | Veil Nebula | nebula sector | fogged, strange | nebula phenomena, veil cult texture, sightings | shipped 1312cc53bb |
+| S-10 | Ashfall Reach | raider territory, rust + sodium | raider poetry, blade culture | totem wrecks, challenge barks, graffiti | shipped 1312cc53bb |
+| S-11 | Asteroid fields (all sectors) | rocks + seams | geology + claim culture | graffiti (exists), claim marks, micro-props | shipped 1312cc53bb |
+| S-12 | Landmarks | candle fleet, cathedral, skerris throne | monumental, mournful | lore plaques, memorial arrays, pilgrim traffic | shipped 1312cc53bb |
 | S-13 | Debris/wreck fields | dead hulks, scraps | aftermath | named dead, salvage notes, kill-marks | done 2026-10-24 |
-| S-14 | Frontier regions (14: Hyperion Cut, Dione Lane, Eris Margin, Eunomia Gulf, Haumea Rift, Kepler Scar, Nereid Shoal, Nyx March, Orcus Shadow, Phoebe Echo, Proteus Well, Rhea Cinder, Sedna Dark, Triton Wake — src/data/frontierRegions/) | far reaches | raw frontier | region dressing, reach flavor, isolation texture — splittable per region when claimed | in-review (5/14 regions) |
-| S-15 | The Bolus (viscera interior + The Swallowed Rib station — sector_the_bolus) | swallowed interior, organic | viscera palette, biology industry | organ dressing, rib-station texture, harvest flavor | in-review |
+| S-14 | Frontier regions (14: Hyperion Cut, Dione Lane, Eris Margin, Eunomia Gulf, Haumea Rift, Kepler Scar, Nereid Shoal, Nyx March, Orcus Shadow, Phoebe Echo, Proteus Well, Rhea Cinder, Sedna Dark, Triton Wake — src/data/frontierRegions/) | far reaches | raw frontier | region dressing, reach flavor, isolation texture — splittable per region when claimed | shipped 1312cc53bb |
+| S-15 | The Bolus (viscera interior + The Swallowed Rib station — sector_the_bolus) | swallowed interior, organic | viscera palette, biology industry | organ dressing, rib-station texture, harvest flavor | shipped 1312cc53bb |
 
 ## M. Missions & encounters
 
