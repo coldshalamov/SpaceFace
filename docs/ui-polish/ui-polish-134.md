@@ -12,3 +12,5 @@ padding) so the fold reads as a scroll edge. No markup, selector, or data change
 
 **Checked:** 960×540 and 1024×576 walk clean (0 findings); 1280×720, 1920×1080 and 390×844 are
 outside the media query and unchanged. Type floor OK.
+
+**Review fix (761×540 NET FLOW wrap):** the stat values now hold one line inside this band, and from 761 to 860 wide the four stat columns size to their values with 12px gutters, so NET FLOW reads "0 cr/min" on one line while the 340px board keeps its one-line cost and PLOT button. Bench: 0 findings at 761×540, 860×540, 960×540, 1280×720 and 390×844.

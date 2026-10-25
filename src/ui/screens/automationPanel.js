@@ -731,6 +731,12 @@ html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-conte
   html body #screens #sf-automation.au-orrery .au-body { padding-bottom: 28px;
     -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent);
     mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent); }
+  html body #screens #sf-automation.au-orrery .au-metric .v { white-space: nowrap; }
+}
+/* polish134: under ~860 wide the 340px board column left the stats too narrow, so NET FLOW broke
+   as "0 / cr/min"; the stat gutters tighten and columns size to their values, keeping the board. */
+@media (min-width: 761px) and (max-width: 860px) and (max-height: 580px) {
+  html body #screens #sf-automation.au-orrery .au-summary { grid-template-columns: repeat(4, auto); column-gap: 12px; }
 }
 /* ≤760 wide desktop window: the 270px board column, the five-node strip beside the gauge and
    the one-line purchase rungs only fit from 761px, so below it the strip names ran into the next
