@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "seed-se-07-travel-captions",
-      "date": "2026-10-23",
-      "wf": "WF-13",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A committed jump, an arrival, and an interdiction each emit one caption. Repeats inside the dedupe window stay one.",
-      "fingerprint": "verb=travel,subject=jump-arrival,sector=lane,layer=caption,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "869dd46a8e",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-hf-14-impact-rating",
       "date": "2026-10-23",
       "wf": "WF-15",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "ad1b3ba4acbbcbc1942238efcd14001187121785",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-surveyor-mark",
+      "date": "2026-10-25",
+      "wf": "WF-10",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Scanning the seam surveyor points at the mark that ship is working.",
+      "fingerprint": "verb=point,subject=surveyor,sector=ceres,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "c6a40ea73cfb62b135fcb01c43382dbe7dca91b4",
       "verification": "focused_green"
     }
   ],
