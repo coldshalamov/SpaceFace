@@ -3221,9 +3221,41 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // stays put, because the column has no spare room under the readings (1280×720 lost BUILD, and
     // 1440×900 lost its Top speed bar, when they dropped for a gap alone)
     if (last.right <= sr.left || last.left >= sr.right || rosterBottom <= sr.top) return;
+    // A drop must not cost a reading: at 1366×600 and 1366×768 it pushed +12/s, can tow and Inertia past
+    // a panel edge that cuts them off (a reading moved into a box that scrolls is still there). So the
+    // readings drop, and go back up if any line that showed before is cut off after.
+    const cutBefore = statsLinesCut();
     const top = Math.round((parseFloat(cs.top) || 0) + rosterBottom + 8 - sr.top);
     statsEl.style.setProperty('top', `${top}px`, 'important');
     statsEl.style.setProperty('bottom', 'auto', 'important');
+    if ([...statsLinesCut()].some((line) => !cutBefore.has(line))) {
+      statsEl.style.removeProperty('top');
+      statsEl.style.removeProperty('bottom');
+    }
+  }
+
+  // Lines of the readings' type that run past the top or bottom of a box that clips them with no way to
+  // scroll there (the drop only moves them down, so only the vertical edges count).
+  function statsLinesCut() {
+    const cut = new Set();
+    const range = document.createRange();
+    const walker = document.createTreeWalker(statsEl, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.textContent.trim() || !n.parentElement) continue;
+      range.selectNodeContents(n);
+      const r = range.getBoundingClientRect();
+      if (r.height <= 0) continue;
+      for (let p = n.parentElement; p && p !== document.body; p = p.parentElement) {
+        const o = getComputedStyle(p);
+        const scrolls = /auto|scroll/.test(`${o.overflowY} ${o.overflowX}`);
+        if (!scrolls && !/hidden|clip/.test(`${o.overflowY} ${o.overflowX}`)) continue;
+        const h = p.getBoundingClientRect();
+        if (r.bottom <= h.bottom + 4 && r.top >= h.top - 4) continue;
+        if (!(scrolls && p.scrollHeight > p.clientHeight + 8)) cut.add(n);
+        break;
+      }
+    }
+    return cut;
   }
 
   function scheduleSpatialProjection() {
