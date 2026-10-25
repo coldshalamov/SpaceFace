@@ -381,8 +381,22 @@ export function createRacingOpponents({ state, bus, helpers }) {
     return true;
   }
   function update(mission) {
-    if (!eligible(mission)) { if (heat?.missionId === mission?.id) stop('ineligible'); return []; }
-    if (!heat || heat.missionId !== mission.id) if (!start(mission)) return [];
+    if (!eligible(mission)) {
+      if (heat?.missionId === mission?.id) stop('ineligible');
+      // Same published-array honesty as racingSetPieces: an ineligible mission's
+      // stale standings describe a heat it no longer owns.
+      if (mission?.params?.raceStandings?.length) mission.params.raceStandings = [];
+      return [];
+    }
+    // One heat, one mission — the twin of racingSetPieces' exclusive owner. A
+    // second simultaneous pack-mode mission gets empty standings rather than
+    // re-running start() every other tick: each steal would despawn the live
+    // rivals, drop the physics impact subscription, and re-seed the grid.
+    if (heat && heat.missionId !== mission.id) {
+      if (mission.params.raceStandings?.length) mission.params.raceStandings = [];
+      return [];
+    }
+    if (!heat && !start(mission)) return [];
     const p = mission.params, now = Number(state.simTime) || 0;
     const dt = Math.max(0, Math.min(0.1, now - heat.lastTime));
     heat.lastTime = now;

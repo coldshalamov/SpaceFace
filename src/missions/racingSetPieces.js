@@ -179,7 +179,15 @@ export function createRacingSetPieces({ state, bus, helpers }) {
     return true;
   }
   function update(mission) {
-    if (!eligible(mission)) { if (run?.missionId === mission?.id) stop('ineligible'); return []; }
+    if (!eligible(mission)) {
+      if (run?.missionId === mission?.id) stop('ineligible');
+      // An ineligible mission (session ended, sector left, params mutated) must
+      // not keep advertising the last run's cue array — the HUD and rival code
+      // read params.raceSetPieces live. Publish the same frozen empty set the
+      // displaced-owner branch does.
+      if (mission?.params) mission.params.raceSetPieces = NO_CUES;
+      return NO_CUES;
+    }
     // One run, one mission: a second simultaneous race mission gets no set
     // pieces rather than trading the run — and re-spawning its anchors,
     // re-arming its warnings, and re-shooting its dynamics — every other tick.
@@ -281,7 +289,9 @@ export function createRacingSetPieces({ state, bus, helpers }) {
       if (!cue.announceWarning) continue;
       cue.announceWarning = false;
       const nextGate = Number(p.nextGate) || 0;
-      if (Math.abs(nextGate - cue.gateIndex) > 2) continue;
+      // A malformed def's non-finite gateIndex cannot scope the warning to a leg —
+      // Math.abs(nextGate - NaN) > 2 is false, which would announce it globally.
+      if (!Number.isFinite(cue.gateIndex) || Math.abs(nextGate - cue.gateIndex) > 2) continue;
       bus?.emit?.('race:setPieceWarning', { missionId: mission.id, ...cue, warningS: cue.countdownS });
       bus?.emit?.('toast', { text: `${cue.name} · ${cue.label}. ${cue.hint}`, kind: 'warn', ttl: 5 });
     }

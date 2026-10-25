@@ -31,6 +31,8 @@ import { RACING_CIRCUIT_LAYOUTS } from '../src/data/racingCircuitLayouts.js';
 import { racingSetPieceDefinitions } from '../src/data/racingSetPieces.js';
 import { projectRacingSectorHazards } from '../src/missions/racingSectorHazards.js';
 import { createRacingSetPieces } from '../src/missions/racingSetPieces.js';
+import { createRacingOpponents } from '../src/missions/racingOpponents.js';
+import { observeRacingGhost, readRacingGhost } from '../src/systems/racingGhosts.js';
 import {
   configureRacingCorridorSession, isRacingCorridorSession,
   racingCorridorPlan, clearsRacingCorridor,
@@ -44,7 +46,7 @@ import {
 } from '../src/data/environmentalMachinery.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { sectorLocalToGlobalForSector, globalToSectorLocalForSector } from '../src/data/sectorCoordinates.js';
-import { segmentDistanceSquared } from '../src/world/arranger.js';
+import { segmentDistanceSquared, createSectorArranger } from '../src/world/arranger.js';
 import { asteroidColliderRadius } from '../src/data/asteroidColliders.js';
 import { stageRacingLaunch, armRacingContract, takeRacingLaunch } from '../src/ui/racingLaunch.js';
 import {
@@ -546,6 +548,240 @@ test('one run, one mission: a second simultaneous race gets no pieces; a course 
     if (ownedIds.length) assert.notDeepEqual(pieces.inspect().entityIds, ownedIds,
       'anchors re-seeded on the new course');
     pieces.stop('done');
+  } finally { f.dispose(); }
+});
+
+test('an ineligible mission republishes the frozen empty set, never the dead run\'s array', async () => {
+  const f = await sectorFixture('sector_pallas_drift');
+  try {
+    const level = raceLevelById('level_pallas_reef');
+    const mission = { id: 'cue-run', type: 'race', status: 'active', params: {
+      racingContractId: 'contract_pallas_reef', raceMode: 'time-trial',
+      courseId: level.course.courseId, courseSectorId: level.sectorId, levelId: level.id,
+      gates: level.course.gates, gateRadiusWU: 90, nextGate: 4, laps: 1,
+      gridUntilSimS: 0.5, raceStartSimS: 0.5 } };
+    f.state.missions.active = [mission];
+    const pieces = createRacingSetPieces(f.ctx);
+    f.state.simTime = 1; f.state.tick = 60;
+    const live = pieces.update(mission);
+    assert.ok(live.length >= 1);
+    assert.equal(mission.params.raceSetPieces, live, 'params aliases the live cue array');
+    // The corridor session ends beneath the mission — the restore path clears
+    // registration exactly this way. The mission goes ineligible while still
+    // active, and must not keep advertising the dead run's geometry.
+    configureRacingCorridorSession(f.state, false);
+    const empty = pieces.update(mission);
+    assert.equal(empty.length, 0);
+    assert.equal(mission.params.raceSetPieces.length, 0, 'the stale array is unpublished');
+    assert.ok(Object.isFrozen(mission.params.raceSetPieces), 'the shared empty set stays frozen');
+    assert.notEqual(mission.params.raceSetPieces, live, 'never republishes the dead array');
+    assert.equal(pieces.inspect(), null, 'the run itself stopped');
+    pieces.stop('done');
+  } finally { f.dispose(); }
+});
+
+test('one heat, one mission: a second pack mission gets empty standings, never the run', async () => {
+  const f = await sectorFixture('sector_pallas_drift');
+  try {
+    const level = raceLevelById('level_pallas_reef');
+    const mk = (id) => ({ id, type: 'race', status: 'active', params: {
+      racingContractId: 'contract_pallas_reef', raceMode: 'race', raceDifficulty: 'club',
+      courseId: level.course.courseId, course: level.course, courseSectorId: level.sectorId,
+      levelId: level.id, gates: level.course.gates, gateRadiusWU: 90, nextGate: 0, laps: 1,
+      raceOpponents: 2, closedCircuit: !!level.course.closedCircuit,
+      gridUntilSimS: 0.5, raceStartSimS: 0.5 } });
+    const a = mk('pack-a'), b = mk('pack-b');
+    f.state.missions.active = [a, b];
+    const rivals = createRacingOpponents(f.ctx);
+    f.state.simTime = 1; f.state.tick = 60;
+    rivals.update(a);
+    assert.equal(rivals.inspect()?.missionId, 'pack-a');
+    const before = rivals.inspect().rivals.map((row) => row.entityId);
+    assert.ok(before.length >= 1, 'the pack actually spawned');
+    assert.deepEqual(rivals.update(b), [], 'the interloper publishes nothing');
+    assert.ok(!b.params.raceStandings?.length, 'no standings published on the interloper');
+    assert.equal(rivals.inspect()?.missionId, 'pack-a', 'the incumbent keeps the heat');
+    assert.deepEqual(rivals.inspect().rivals.map((row) => row.entityId), before,
+      'rivals never despawned and re-seeded on the interloper\'s tick');
+    // The owner's next tick still drives the same heat — no ownership drift.
+    rivals.update(a);
+    assert.equal(rivals.inspect()?.missionId, 'pack-a');
+    rivals.stop('done');
+  } finally { f.dispose(); }
+});
+
+test('corridor arranger: negative or fractional slot indices bank deterministically', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const sector = f.state.world.sectors['sector_ceres_belt'];
+    const plan = racingCorridorPlan(sector.id);
+    const field = { id: 'f_ceres_1', type: 'ast_metallic' };
+    // slotIndex | 0 guarded the caller but left negative indices indexing
+    // legs[-1] — plan.segments[undefined] threw on destructure. Every caller
+    // shape now yields a finite off-corridor bank point.
+    for (const slotIndex of [-3, -1, 0.7, 0, 5]) {
+      const pos = createSectorArranger(sector, {}).createField(field)
+        .place({ x: plan.origin.x, z: plan.origin.z }, 18, slotIndex);
+      assert.ok(pos && Number.isFinite(pos.x) && Number.isFinite(pos.z), `slot ${slotIndex}`);
+      assert.ok(clearsRacingCorridor(plan, pos, 18), `slot ${slotIndex} still banks off-corridor`);
+    }
+    const d1 = createSectorArranger(sector, {}).createField(field).place({ x: 1, z: 2 }, 18, -3);
+    const d2 = createSectorArranger(sector, {}).createField(field).place({ x: 1, z: 2 }, 18, -3);
+    assert.deepEqual(d1, d2, 'a negative index still resolves deterministically');
+    // Non-negative ordering is unchanged by the wrap: two fresh arrangers agree
+    // with or without the guard for ordinary indices (same inputs, same banks).
+    const n1 = createSectorArranger(sector, {}).createField(field).place({ x: 1, z: 2 }, 18, 4);
+    const n2 = createSectorArranger(sector, {}).createField(field).place({ x: 1, z: 2 }, 18, 4);
+    assert.deepEqual(n1, n2);
+  } finally { f.dispose(); }
+});
+
+test('corridor arranger honors authored activity reservations before any rock spawns', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const sector = f.state.world.sectors['sector_ceres_belt'];
+    const plan = racingCorridorPlan(sector.id);
+    const field = { id: 'f_ceres_1', type: 'ast_metallic' };
+    const original = { x: plan.origin.x, z: plan.origin.z };
+    // Learn where a slot wants to bank, then reserve exactly that mark — the
+    // same contract the campaign arranger already honored for Ceres' bound
+    // activity objects and collision anchors.
+    const target = createSectorArranger(sector, {}).createField(field).place(original, 18, 3);
+    const guarded = createSectorArranger(sector, {
+      reservations: [{ pos: { ...target }, radius: 60 }],
+    }).createField(field);
+    const moved = guarded.place(original, 18, 3);
+    assert.ok(Number.isFinite(moved.x) && Number.isFinite(moved.z));
+    assert.ok(Math.hypot(moved.x - target.x, moved.z - target.z) >= 18 + 60 + 8 - 0.01,
+      'a banked rock never lands on a reserved authored mark');
+    assert.ok(clearsRacingCorridor(plan, moved, 18), 'the relocated body stays off-corridor');
+  } finally { f.dispose(); }
+});
+
+test('a live run reconciles on sector leave and the corridor returns on re-entry', async () => {
+  const f = await sectorFixture('sector_pallas_drift');
+  try {
+    const level = raceLevelById('level_pallas_reef');
+    const mission = { id: 'rt-race', type: 'race', status: 'active', params: {
+      racingContractId: 'contract_pallas_reef', raceMode: 'time-trial',
+      courseId: level.course.courseId, courseSectorId: level.sectorId, levelId: level.id,
+      gates: level.course.gates, gateRadiusWU: 90, nextGate: 2, laps: 1,
+      gridUntilSimS: 0.5, raceStartSimS: 0.5 } };
+    f.state.missions.active = [mission];
+    const pieces = createRacingSetPieces(f.ctx);
+    f.state.simTime = 1; f.state.tick = 60;
+    assert.ok(pieces.update(mission).length >= 1, 'the run is live');
+    // Leave mid-race: registration is WeakMap identity on the sector OBJECTS —
+    // enter/leave never replaces them — but the run itself must stop.
+    const otherId = Object.keys(f.state.world.sectors).find((id) => id !== level.sectorId);
+    f.world.enterSector(otherId);
+    pieces.reconcile(f.state.missions.active);
+    assert.equal(pieces.inspect(), null, 'the run stops on sector leave');
+    // Returning re-materializes the same registered sector object: the corridor
+    // session is still authoritative and a fresh run can own the mission.
+    f.world.enterSector(level.sectorId);
+    assert.ok(isRacingCorridorSession(f.state), 'the sector object stays session-registered');
+    const arranger = createSectorArranger(f.state.world.sectors[level.sectorId], {});
+    assert.ok(arranger, 'the corridor arranger still answers for the sector');
+    const bank = arranger.createField({ id: 'f_pallas_1', type: 'ast_metallic' })
+      .place({ x: 0, z: 0 }, 18, 0);
+    assert.ok(clearsRacingCorridor(racingCorridorPlan(level.sectorId), bank, 18),
+      'post-return placements still bank off the corridor');
+    assert.ok(pieces.update(mission).length >= 1, 'a fresh run starts on return');
+    assert.equal(pieces.inspect()?.missionId, 'rt-race');
+    pieces.stop('done');
+  } finally { f.dispose(); }
+});
+
+test('live cue records serialize honestly — finite, plain JSON, no dead geometry', async () => {
+  const f = await sectorFixture('sector_pallas_drift');
+  try {
+    const level = raceLevelById('level_pallas_reef');
+    const mission = { id: 'json-run', type: 'race', status: 'active', params: {
+      racingContractId: 'contract_pallas_reef', raceMode: 'time-trial',
+      courseId: level.course.courseId, courseSectorId: level.sectorId, levelId: level.id,
+      gates: level.course.gates, gateRadiusWU: 90, nextGate: 4, laps: 1,
+      gridUntilSimS: 0.5, raceStartSimS: 0.5 } };
+    f.state.missions.active = [mission];
+    const pieces = createRacingSetPieces(f.ctx);
+    f.state.simTime = 1; f.state.tick = 60;
+    pieces.update(mission);
+    const published = mission.params.raceSetPieces;
+    assert.ok(published.length >= 1);
+    // Racing sessions are save-suppressed, but the published array is still plain
+    // data: a mission snapshot through JSON must carry finite cue records only.
+    const round = JSON.parse(JSON.stringify(published));
+    assert.equal(round.length, published.length);
+    for (const cue of round) {
+      assert.ok(Number.isFinite(cue.pos.x) && Number.isFinite(cue.pos.z), `${cue.id} pos`);
+      // Anchor cues carry no waitPos at all; hazard/dynamic cues carry null or a finite point.
+      assert.ok(cue.waitPos == null || (Number.isFinite(cue.waitPos.x) && Number.isFinite(cue.waitPos.z)),
+        `${cue.id} waitPos`);
+      assert.ok(Array.isArray(cue.entityIds), `${cue.id} entityIds`);
+    }
+  } finally { f.dispose(); }
+});
+
+test('a reused hazard cue normalizes corrupt positions and re-reads def-owned fields', async () => {
+  const f = await sectorFixture('sector_kepler_scar');
+  try {
+    const level = raceLevelById('level_kepler_scar');
+    const mission = { params: { courseSectorId: level.sectorId, gates: level.course.gates, nextGate: 3 } };
+    const prior = {
+      id: level.sectorHazards[0].id,
+      kind: 'forged', label: 'FORGED', hint: 'forged', gateIndex: 42,
+      waitRadiusWU: 'x', pos: { x: NaN, z: 5 }, waitPos: { x: Infinity, z: 0 },
+      entityIds: 'not-an-array', announceWarning: true, countdownS: -3,
+    };
+    const [cue] = projectRacingSectorHazards(f.state, mission.params, [level.sectorHazards[0]], [prior]);
+    assert.equal(cue, prior, 'the same record is reused');
+    assert.ok(Number.isFinite(cue.pos.x) && Number.isFinite(cue.pos.z), 'non-finite pos repaired');
+    assert.equal(cue.gateIndex, level.sectorHazards[0].gateIndex, 'gateIndex re-read from the def');
+    assert.equal(cue.kind, 'sectorHazard');
+    assert.ok(Array.isArray(cue.entityIds));
+    assert.ok(cue.waitPos === null || (Number.isFinite(cue.waitPos.x) && Number.isFinite(cue.waitPos.z)),
+      'waitPos is finite or absent');
+    const round = JSON.parse(JSON.stringify(cue));
+    assert.ok(Number.isFinite(round.pos.x) && Number.isFinite(round.pos.z));
+  } finally { f.dispose(); }
+});
+
+test('ghost tapes quarantine on course revision or gate edits — never replay stale geometry', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const level = raceLevelById('level_ceres_sluice');
+    const storage = memoryStorage();
+    const params = { courseId: level.course.courseId, courseRevision: 1,
+      racingContractId: 'contract_ceres_sluice', laps: 1, closedCircuit: false,
+      gates: level.course.gates, courseSectorId: level.sectorId, gateRadiusWU: 90,
+      raceStartSimS: 0, raceClean: true };
+    // Drive one clean simulated lap: every authored gate crossed once per second.
+    const gateCount = params.gates.length;
+    const lastTick = gateCount * 60;
+    let result = null;
+    for (let t = 0; t <= lastTick; t++) {
+      f.state.simTime = t / 60;
+      const events = [];
+      if (t > 0 && t % 60 === 0 && t / 60 <= gateCount) {
+        const gate = { lap: 0, gateIndex: t / 60 - 1, elapsedS: t / 60 };
+        if (t === lastTick) gate.finished = true;
+        events.push(gate);
+      }
+      result = observeRacingGhost(params, f.player, f.state, { events, finish: t === lastTick, storage });
+      if (!result.ok) break;
+    }
+    assert.equal(result?.reason, 'saved', `the tape stored (${result?.reason})`);
+    assert.ok(readRacingGhost(storage, params, f.state, f.player), 'the fresh tape loads');
+    // Revision bump: courseId alone is not identity — revision 2 must not
+    // replay a revision-1 tape.
+    const rev2 = { ...params, courseRevision: 2 };
+    assert.equal(readRacingGhost(storage, rev2, f.state, f.player), null,
+      'a revision-1 ghost never replays on revision 2');
+    // A gate edit without a revision bump: the geometry hash quarantines the
+    // old tape even though course, contract and revision all still match.
+    const edited = { ...params, gates: params.gates.map((g, i) => (i === 3 ? { x: g.x + 1, z: g.z } : g)) };
+    assert.equal(readRacingGhost(storage, edited, f.state, f.player), null,
+      'a gate edit silently invalidates the old tape');
   } finally { f.dispose(); }
 });
 

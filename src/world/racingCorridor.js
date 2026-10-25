@@ -175,6 +175,12 @@ export function createRacingCorridorArranger(sector, options = {}) {
       radius: Math.max(24, Number(poi.placeTargetRadius) || Number(poi.visualRadius) || (poi.runtimeOwner ? 100 : 24)),
     });
   }
+  // Already-global authored activity marks enter as reservations BEFORE the first
+  // movable rock — same contract as the campaign arranger. Ceres is a racing
+  // sector now: without this a banked scatter rock could land on a bound mark.
+  for (const r of options.reservations || []) {
+    if (finitePoint(r?.pos) && Number.isFinite(r.radius)) peers.push({ pos: { ...r.pos }, radius: r.radius });
+  }
   const stats = { placed: 0, moved: 0, skirts: 0 };
   const peerClear = (pos, radius) => peers.every(row => Math.hypot(pos.x - row.pos.x, pos.z - row.pos.z) >= radius + row.radius + 8);
   const reserve = (pos, radius) => { if (finitePoint(pos) && Number.isFinite(radius)) peers.push({ pos: { ...pos }, radius }); };
@@ -194,8 +200,14 @@ export function createRacingCorridorArranger(sector, options = {}) {
         place(original, bodyRadius, slotIndex) {
           const radius = asteroidColliderRadius(fdef.type, bodyRadius);
           const seed = hash32(fdef.id, slotIndex, original.x, original.z) >>> 0;
-          for (let attempt = 0; attempt < 96; attempt++) {
-            const leg = legs[((slotIndex | 0) + Math.floor(attempt / 8)) % legs.length];
+          // slotIndex | 0 guards non-integer callers but a negative still indexes
+          // legs[-1] — plan.segments[undefined] then throws on destructure. Wrap
+          // through a positive modulo; non-negative indices are bit-identical to
+          // the old ordering. An empty leg list banks nothing and falls through
+          // to the exterior fallback instead of dividing by zero.
+          const wrap = (i) => ((i % legs.length) + legs.length) % legs.length;
+          for (let attempt = 0; attempt < 96 && legs.length; attempt++) {
+            const leg = legs[wrap((slotIndex | 0) + Math.floor(attempt / 8))];
             const { a, b } = plan.segments[leg];
             const length = Math.hypot(b.x - a.x, b.z - a.z) || 1;
             const t = 0.12 + (((seed % 65521) / 65521 + attempt * 0.381966) % 1) * 0.76;
