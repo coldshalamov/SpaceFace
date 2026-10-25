@@ -498,6 +498,16 @@ test('hazard projection holds its contract on malformed defs', async () => {
       const broken = projectRacingSectorHazards(f.state, mission.params,
         [{ id: 'broken_zone', kind: 'staticZone', zoneIndex: 0, gateIndex: 7 }], [])[0];
       assert.equal(broken.phase, 'unavailable');
+      // A non-finite center is treated the same way: the record keeps its prior
+      // position (here the unset default) and the hold stays on the served leg.
+      sector.hazards[0] = { type: 'radiation', radius: 400, center: { x: NaN, z: 10 } };
+      const nanCue = projectRacingSectorHazards(f.state, mission.params,
+        [{ id: 'nan_zone', kind: 'staticZone', zoneIndex: 0, gateIndex: 7 }], [])[0];
+      assert.equal(nanCue.phase, 'unavailable');
+      assert.ok(Number.isFinite(nanCue.pos.x) && Number.isFinite(nanCue.pos.z),
+        'a non-finite source never lands in the published record');
+      assert.ok(Number.isFinite(nanCue.waitPos.x) && Number.isFinite(nanCue.waitPos.z),
+        'the hold point stays finite');
     } finally { sector.hazards[0] = authored; }
     // A courseSectorId the player is not in still projects in the course's own
     // frame — the hazard's true global position, not a fabricated local one.

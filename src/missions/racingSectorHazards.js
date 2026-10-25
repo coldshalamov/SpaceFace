@@ -146,10 +146,16 @@ export function projectRacingSectorHazards(state, params, definitions, previousC
     }
     cue.phase = phase;
     cue.countdownS = countdownS;
-    if (pos) { cue.pos.x = pos.x; cue.pos.z = pos.z; }
+    // Phase truth stands apart from position truth: a machinery phase still
+    // projects even when its source yields no finite point, but a non-finite
+    // point is never written into the published record or the hold fallback.
+    const finitePos = pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? pos : null;
+    if (finitePos) { cue.pos.x = finitePos.x; cue.pos.z = finitePos.z; }
     // An uncomputable hold point inherits the hazard position, never the world origin.
-    const waitPos = waitPosFor(gates, def.gateIndex, def.waitBackWU) || pos;
-    if (waitPos) { cue.waitPos.x = waitPos.x; cue.waitPos.z = waitPos.z; }
+    const waitPos = waitPosFor(gates, def.gateIndex, def.waitBackWU) || finitePos;
+    if (waitPos && Number.isFinite(waitPos.x) && Number.isFinite(waitPos.z)) {
+      cue.waitPos.x = waitPos.x; cue.waitPos.z = waitPos.z;
+    }
     // Transition bookkeeping: the owner announces each entry into `warning` once.
     cue.announceWarning = phase === 'warning' && cue._lastPhase !== 'warning';
     cue._lastPhase = phase;
