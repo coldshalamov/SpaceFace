@@ -431,9 +431,13 @@ const SWING_RUNG_ID = 'swing_do_not_pull';
 // X-09 (plan-approved rows): the only causes a real Range rung actually teaches. A weapon kill,
 // a contact-caused ram or throw, a hazard, or an unreadable cause stays silent — no rung teaches
 // surviving gunfire and an offer with no drill behind it is a lie.
+// X-09: the v1 physicalLabel rows are correct mappings but DORMANT — the player takes no
+// impact damage yet (a separate gameplay contract). Rows keying `origin`/`context` are live:
+// the berth's dock-collar scrape is already a player-caused failure to stop.
 const DEFEAT_RUNG_ROWS = Object.freeze([
   { label: 'arena impact', sources: Object.freeze(['self', 'environment']), rungId: 'stopping_takes_room', lead: 'Came in hot.' },
   { label: 'hull ram', sources: Object.freeze(['self', 'environment']), rungId: 'slip_a_gap', lead: 'Clipped a hull.' },
+  { origin: 'dock_collar', sources: Object.freeze(['environment']), rungId: 'stopping_takes_room', lead: 'Came in hot.' },
 ]);
 
 // Exported for the X-09 miss-robustness seam: a rung id with no rail row returns null, never throws.
@@ -493,8 +497,23 @@ export function defeatRangeOffer(state, lethal, read = {}) {
   }
   const cause = read && typeof read === 'object' ? read : {};
   const sourceKind = cause.sourceKind;
+  // v3 live row — ran the cap dry into a contact death. No last-fire stamp exists, so the
+  // read is cap-only; 'unknown' (despawned attacker) stays silent by the kind gate.
+  const capMax = Number(cause.capMax);
+  const cap = Number(cause.cap);
+  if (sourceKind === 'contact' && !cause.physicalLabel
+    && Number.isFinite(capMax) && capMax > 0 && Number.isFinite(cap) && cap <= 0.05 * capMax) {
+    if (!rungOfferedBefore(state, 'you_can_run_dry')) {
+      return rangeOfferFor('you_can_run_dry', 'Ran the cap dry.');
+    }
+  }
   for (const rule of DEFEAT_RUNG_ROWS) {
-    if (cause.physicalLabel !== rule.label || !rule.sources.includes(sourceKind)) continue;
+    if (rule.origin) {
+      if (cause.origin !== rule.origin && cause.context !== rule.origin) continue;
+    } else if (cause.physicalLabel !== rule.label) {
+      continue;
+    }
+    if (!rule.sources.includes(sourceKind)) continue;
     if (rungOfferedBefore(state, rule.rungId)) continue;
     return rangeOfferFor(rule.rungId, rule.lead);
   }
@@ -557,7 +576,14 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     pos: playerEntity && playerEntity.pos ? { x: playerEntity.pos.x, z: playerEntity.pos.z } : null,
     recovery,
   };
-  const offer = defeatRangeOffer(state, lethal, { physicalLabel, sourceKind: source.kind });
+  const offer = defeatRangeOffer(state, lethal, {
+    physicalLabel,
+    sourceKind: source.kind,
+    cap: playerEntity && Number.isFinite(playerEntity.cap) ? playerEntity.cap : null,
+    capMax: playerEntity && Number.isFinite(playerEntity.capMax) ? playerEntity.capMax : null,
+    origin: lethal.origin && typeof lethal.origin === 'object' ? lethal.origin.kind : null,
+    context,
+  });
   if (offer) {
     receipt.rangeOffer = offer;
     if (!state.ui || typeof state.ui !== 'object') state.ui = {};
