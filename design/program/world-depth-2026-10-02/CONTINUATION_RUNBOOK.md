@@ -1,6 +1,6 @@
 # Expansion continuation: restart and failure recovery
 
-Current-state pointer (23 October 2026, 11:41 UTC): consult [CURRENT_CHECKPOINT_2026-10-22.md](CURRENT_CHECKPOINT_2026-10-22.md), [OPEN_GOALS.md](OPEN_GOALS.md), and [SECTOR_EXPERIENCE_REGISTER_2026-10-21.md](SECTOR_EXPERIENCE_REGISTER_2026-10-21.md) for authoritative latest delivery, active operation, and the eleven-goal register. All eleven goals remain OPEN. Read [EXECUTION_STATUS.md](EXECUTION_STATUS.md) for preserved history and acceptance/reviewer fields; its older dated next-operation statements are not current routing. Resume the exact active operation named in the latest checkpoint instead of freezing a prior unit or rerunning an obsolete delivery. Original scope remains [IMPLEMENTATION](IMPLEMENTATION.md), the [original twenty-concept map](TWENTY_CONCEPT_MAP.json), and the [real build map](../../../build_map.md). Preserve held Kiln/Writ/other operations without retrying or bypassing them.
+Current source pointer (25 October 2026, 03:18 UTC): read [SOURCE_HANDOFF_2026-10-25_RECOVERY_GUIDANCE.md](SOURCE_HANDOFF_2026-10-25_RECOVERY_GUIDANCE.md) and the compact [OPEN_GOALS.md](OPEN_GOALS.md). All twelve goals remain OPEN. Historical checkpoints and acceptance/reviewer fields remain preserved; verify current ownership and permissions before resuming. No merge, deployment or held-operation retry is authorized by this pointer.
 
 
 This procedure was requested on 8 October 2026 after repeated status reports replaced

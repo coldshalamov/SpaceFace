@@ -1,105 +1,103 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 25 October 2026, 01:45 UTC.
+Updated: 25 October 2026, 03:18 UTC.
 
-All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
+All **12 goals remain OPEN**. This current register records source scope only. Historical reviewer/acceptance fields remain in the [immutable prior register](https://github.com/coldshalamov/SpaceFace/blob/5d62a0e86b8d9071d7e03b02b6c965f3ded3bab5/design/program/world-depth-2026-10-02/OPEN_GOALS.md) and its linked archive.
 
-Scope: [implementation](IMPLEMENTATION.md), [original twenty concepts](TWENTY_CONCEPT_MAP.json), [build map / P00–P21](../../../build_map.md).
-Current evidence: [checkpoint](CURRENT_CHECKPOINT_2026-10-22.md), [sector experience register](SECTOR_EXPERIENCE_REGISTER_2026-10-21.md).
-History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), byte-identical to [14de7ebe](https://github.com/coldshalamov/SpaceFace/blob/14de7ebe934ac2bf583c0758d7310f6a4fc6d35c/design/program/world-depth-2026-10-02/OPEN_GOALS.md). Historical acceptance/reviewer fields remain archived.
+Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP.json), [build map/P00–P21](../../../build_map.md). Current source handoff: [Last Shift recovery guidance](SOURCE_HANDOFF_2026-10-25_RECOVERY_GUIDANCE.md).
 
 ## SF-GAME
 - Outcome: implement, review, polish and obtain acceptance for the full authorized game and twenty-concept scope.
-- State: OPEN; tested increments are delivered, not whole-game acceptance.
-- Owner: root integration and exact feature owners.
-- Evidence: scope links; current checkpoint and PR590.
-- Next: finish scoped P08 normal-runtime integration and ordinary-play qualification.
+- State: OPEN; Published increments do not complete the authorized game.
+- Owner: project integration and exact feature owners.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Finish original-scope integration and ordinary-play qualification.
 - Awaiting user: final acceptance when demonstrated; no routine engineering decision.
 
 ## SF-ORCHARD
 - Outcome: authored three-pod machinery, finite custody, Continue/residency, ordinary route and accepted presentation.
-- State: OPEN; PR485/488 repairs delivered; ordinary integration/acceptance unfinished.
-- Owner: root; receiver/asset and tow-interception owners retained.
-- Evidence: [PR485](https://github.com/coldshalamov/SpaceFace/pull/485), [PR488](https://github.com/coldshalamov/SpaceFace/pull/488), full archive.
-- Next: qualify ordinary integration with fidelity/rollback guards; prohibited receiver-delivery test remains excluded.
+- State: OPEN; Finite custody, Continue/residency and ordinary acceptance remain unfinished.
+- Owner: project lead; receiver/asset and tow-interception owners retained.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Resume permitted ordinary integration with fidelity/rollback guards; excluded receiver test remains excluded.
 - Awaiting user: final acceptance; original receiver/asset holds unchanged.
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; PR6025beb49b9 moves unchanged Tally3 gate to sim, pending; dcdc Tally3 was unrun. Earlier1/49/89 passes are not new-head proof. P08 source remains held.
-- Owner: publisher, root and exact feature owners.
-- Evidence: [PR599](https://github.com/coldshalamov/SpaceFace/pull/599); checkpoint separates exact heads, passes and failures.
-- Next: qualify exact-head PR602 CI; preserve separate uncertain Contents and denied inline-tree histories.
-- Awaiting user: exact847KB partsLibrary public upload approval; no retry or substitute route.
+- State: OPEN; Recovery guidance source07d6980f is published; separate fairlead/P08 source operations remain held.
+- Owner: publisher, project lead and exact feature owners.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Preserve reviewed source and handoff without retrying held exports.
+- Awaiting user: exact 847KB partsLibrary upload and the distinct fairlead helper/tests and census-source public-upload approvals; no retry or substitute route.
 
 ## SF-RECOVER
 - Outcome: recoverable source, models, tests and handoff beyond a disposable environment, including GitHub.
-- State: OPEN; PR598 verifies recovery of67 intended text paths and44 original assets; active successors must remain recoverable.
-- Owner: preserver, exact source owners and root integration.
-- Evidence: [hosted evidence](../world-experience-2026-10-24/hosted-custody-evidence/README.md), [Press Camp guard proof](../world-experience-2026-10-24/press-camp-evidence/guard-native-proof.json), checkpoint.
-- Next: preserve tested source, failed/final raw measurements and restoration pins before interruption.
+- State: OPEN; Source, models and historical failed/final work remain recoverable; ongoing increments still need durable preservation.
+- Owner: preserver, exact source owners and project integration.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Preserve exact source/restoration dependencies before interruptions.
 - Awaiting user: none for routine recovery; backup does not satisfy held publication.
 
 ## SF-VISUALS
 - Outcome: new inspected actual-work images and live game-camera acceptance.
-- State: OPEN; recovered-fairlead/current-cockpit CPU comparison delivered; recovered model not integrated. Live camera/performance acceptance open.
-- Owner: root visual review and exact feature owners.
-- Evidence: [Pitborn preview/PR582](https://github.com/coldshalamov/SpaceFace/pull/582), [measured chart](../world-experience-2026-10-24/hosted-custody-evidence/README.md).
-- Next: show meaningful new work; qualify new Camp binding workload and actual camera readability/lighting when permitted.
+- State: OPEN; Actual-work previews are distinct from live camera and performance acceptance.
+- Owner: project visual review and exact feature owners.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Qualify permitted actual camera readability, lighting and workload.
 - Awaiting user: eventual visual acceptance; live-browser hold unchanged.
 
 ## SF-ASSETBANK
 - Outcome: broad reusable small/large pieces addressing real inventory gaps, counting distinct models only.
-- State: OPEN; compositions/cassette exist; greenhouse exported/reviewed, not published/integrated/accepted.
-- Owner: root and asset owners; receiver holds retained.
-- Evidence: historical PR480 composition/cassette inventory in archive; original build map.
-- Next: fill actual placement/inventory gaps; reuse existing pieces, never count LODs/recolors twice.
+- State: OPEN; Distinct reusable pieces and inventory gaps remain ongoing; exported assets are not integrated acceptance.
+- Owner: project lead and asset owners; receiver holds retained.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Reuse coherent existing pieces and address demonstrated placement gaps.
 - Awaiting user: existing greenhouse/asset publication hold and eventual integrated acceptance.
 
 ## SF-ASSET-QUALITY
 - Outcome: cohesive detail/materials with distinctive industrial, civilian, military, salvaged and alien character.
-- State: OPEN; Camp visual/native parity is published; authored Tradehub workload and final materials remain unqualified.
-- Owner: align_ceres body/helper/registry; inspect_last_shift_visual_binding visual overrides/tests.
-- Evidence: PR480 history in archive; Pitborn actual exported-material comparison.
-- Next: qualify recovered fairlead compatibility and placement; preserve physical/visual parity and acceptance boundaries.
-- Awaiting user: final quality acceptance; no optional per-piece decision.
+- State: OPEN; Fairlead source review and preparation do not establish runtime visual/physical acceptance.
+- Owner: fairlead physics/catalog owner and visual-binding owner.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Complete permitted publication, normal census checks and actual visual/physical parity qualification.
+- Awaiting user: pending publication approvals tracked under [SF-PUBLISH](#sf-publish), plus final quality acceptance.
 
 ## SF-LIVING-WORLD
 - Outcome: inhabited places, work, economy, history, relationships and consequences using actual assets/systems.
-- State: OPEN; Nursery formation/causal receipts pass32 hosted checks; Camp/Tail behavior is bounded evidence, not completed player routes.
-- Owner: root and current Camp source/review owners.
-- Evidence: [Tail/PR583](https://github.com/coldshalamov/SpaceFace/pull/583), [Camp/PR590](https://github.com/coldshalamov/SpaceFace/pull/590), checkpoint.
-- Next: qualify Nursery ordinary visits and P19 committed receipts; continue reviewed original-scope work.
+- State: OPEN; Last Shift optional recovery guidance is implemented; complete player routes remain open.
+- Owner: project lead and current Camp source/review owners.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Connect current activities, readable consequences and recurring visits.
 - Awaiting user: world acceptance; no routine choice.
 
 ## SF-SECTOR-COHERENCE
 - Outcome: coherent arrivals, ordinary visits, time/progression, choices, return and Save/Continue across sectors.
-- State: OPEN; Nursery shelter geometry and survey coherence are tested; configured Camp admission remains distinct from human travel/sector acceptance.
-- Owner: root sector register and exact gameplay/story owners.
-- Evidence: sector experience register and build map; Camp/Tail proof boundaries.
-- Next: qualify published Camp visual binding and workload, then ordinary choices and Save consequences.
+- State: OPEN; Ceres guidance improves comprehension; sector arrival, ordinary return and persistence still need qualification.
+- Owner: sector-experience coordination and exact gameplay/story owners.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Establish actual original-recorder return and ordinary sector consequences.
 - Awaiting user: none for continued authorized implementation; eventual sector acceptance.
 
 ## SF-PLAY-WORLD
 - Outcome: ordinary play guides placement, characters, discoveries and connected development.
-- State: OPEN; no personally piloted full session proven; old browser failures are not current diagnoses.
-- Owner: root and exact feature owners.
-- Evidence: historical public-entry captures in archive; current live-browser hold in checkpoint.
-- Next: use permitted own-environment ordinary arrival/visits/Continue; no bypasses or preview substitution.
+- State: OPEN; No independently piloted full session or complete ordinary recorder return is established here.
+- Owner: project lead and exact feature owners.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Use permitted own-environment routes; preserve browser holds and distinguish previews from play.
 - Awaiting user: existing browser/asset holds; ordinary-play acceptance.
 
 ## SF-MOTIVES
 - Outcome: established character/faction wants, fears, obligations and conflicts shape playable consequences.
-- State: OPEN; studies/voices/Cut evidence exist, not sector acceptance. Cut/Rope/Blind Welder remain parked.
-- Owner: root creative direction and exact story owners.
-- Evidence: [PR532](https://github.com/coldshalamov/SpaceFace/pull/532), [PR531](https://github.com/coldshalamov/SpaceFace/pull/531), [PR547](https://github.com/coldshalamov/SpaceFace/pull/547); archive limits.
-- Next: express grounded motives in player-facing consequences; no parked queues or invented canon.
+- State: OPEN; Established motives and playable consequences remain open; parked queues stay parked.
+- Owner: creative direction and exact story owners.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Express grounded obligations and consequences without inventing canon.
 - Awaiting user: none.
 
 ## SF-WORLD-DIRECTION
 - Outcome: lore-grounded expansion connects sectors, assets and motivations into playable experiences.
-- State: OPEN; treatment and bounded placement/build requests are a direction, not completed expansion.
-- Owner: root and exact place/mission owners.
-- Evidence: [PR552](https://github.com/coldshalamov/SpaceFace/pull/552), original scope and build map.
-- Next: compose reviewed places/activities with existing assets; route missing set pieces through build map.
+- State: OPEN; Treatments and bounded increments do not complete the expanded world.
+- Owner: project lead and exact place/mission owners.
+- Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
+- Next: Continue connected original-scope experiences with actual assets and owners.
 - Awaiting user: none; this remains the primary creative direction.
