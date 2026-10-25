@@ -429,8 +429,10 @@ export const NORTH_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_haumea_fissure',
         pos: Object.freeze({ x: 0, z: 180 }),
-        landmarkGlb: 'place_asteroid_seamed',
+        landmarkGlb: 'place_haumea_fracture_mouth',
         landmark: true,
+        placeTargetRadius: 48,
+        visualRadius: 48,
       }),
       Object.freeze({
         id: 'poi_haumea_buoy',

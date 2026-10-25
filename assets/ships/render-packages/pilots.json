@@ -6518,6 +6518,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/orcus-signal-plinth",
       "metadataUrl": "assets/ships/release/render-packages/orcus-signal-plinth/render-package.json"
+    },
+    {
+      "key": "haumea-fracture-mouth",
+      "assetId": "sf.render.haumea-fracture-mouth",
+      "runtimeAssetId": "place_haumea_fracture_mouth",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_haumea_fracture_mouth",
+      "sourceUrl": "assets/ships/release/parts/places/place_haumea_fracture_mouth.glb",
+      "releaseSha256": "d64d1e66e14e6fe5270a9dca9ced39616c53ad542d10bed06bafd15d36fcad0d",
+      "releaseBytes": 3912,
+      "rootNode": "place_haumea_fracture_mouth",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/haumea-fracture-mouth",
+      "metadataUrl": "assets/ships/release/render-packages/haumea-fracture-mouth/render-package.json"
     }
   ]
 }
