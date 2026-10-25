@@ -139,7 +139,7 @@ function dockState(slot) {
   });
 }
 
-const HELIOS = { id: 'station_helios', name: 'Helios Station', services: ['trade'] };
+const HELIOS = { id: 'station_helios', name: 'Helios Station', services: ['trade', 'refuel', 'repair'] };
 
 function paintBerth(state, station = HELIOS) {
   const view = buildDockArrival(state, station);
