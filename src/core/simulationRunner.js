@@ -40,6 +40,21 @@ export function frameSimStepCap({
   return isHitchFrame(frameDt, fixedDt) ? Math.min(configured, HITCH_CATCHUP_STEPS) : configured;
 }
 
+// First seconds after the flight veil lifts. The first fixed steps run first-flight code once
+// (lazy compile, IC warm-up) and each costs several times a steady step, so a full four-step
+// catch-up frame there stalls 400+ ms. For a short window after the lift the catch-up ceiling
+// drops to POST_LIFT_CATCHUP_STEPS; surplus whole ticks are shed as on a hitch (sub-tick phase
+// kept). Only the first POST_LIFT_WINDOW_MS of flight are affected.
+export const POST_LIFT_CATCHUP_STEPS = 2;
+export const POST_LIFT_WINDOW_MS = 2000;
+
+/** Step cap for a frame `sinceLiftMs` after the veil lift (null/negative = no lift seen). */
+export function postLiftStepCap(stepCap, sinceLiftMs) {
+  if (!Number.isFinite(sinceLiftMs) || sinceLiftMs < 0 || sinceLiftMs >= POST_LIFT_WINDOW_MS) return stepCap;
+  const cap = Number.isFinite(stepCap) ? stepCap : MAX_CATCHUP_STEPS;
+  return Math.min(cap, POST_LIFT_CATCHUP_STEPS);
+}
+
 const DEFAULT_COMPLETED_TICK_CAPACITY = 8;
 
 export function advanceFixedTimestep(

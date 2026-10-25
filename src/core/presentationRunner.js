@@ -9,6 +9,7 @@ import {
   HITCH_CATCHUP_STEPS,
   LOOP_FIXED_DT,
   frameSimStepCap,
+  postLiftStepCap,
 } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities, collectJournalPresentationEntitiesChunked } from '../world/presentationSources.js';
@@ -461,6 +462,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   // no lifecycle resume may restart the clock while the veil still holds.
   const flightVeilHeld = () => !!(state.render && state.render.flightVeilHoldsSim === true);
   let veilClockHeld = false;
+  let veilWasHeld = false;
+  let veilLiftedAt = null;
   let workerClockWanted = false;
   function syncFlightVeilClock() {
     if (!workerPumpOwnsClock || typeof simulationRunner.setClockActive !== 'function') return;
@@ -1270,9 +1273,15 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       _stepCapArgs.frameDt = frameDt;
       _stepCapArgs.fixedDt = fixedDt;
       _stepCapArgs.maxSteps = simulationRunner.maxSteps;
+      // Track the flight-veil lift: for a short window after it the catch-up ceiling is lowered
+      // (postLiftStepCap) so first-flight steps cannot stack into one long frame.
+      const veilNow = flightVeilHeld();
+      if (veilWasHeld && !veilNow) veilLiftedAt = measureNow();
+      veilWasHeld = veilNow;
       const stepCap = restoring
         ? undefined
-        : frameSimStepCap(_stepCapArgs);
+        : postLiftStepCap(frameSimStepCap(_stepCapArgs),
+          veilLiftedAt === null ? NaN : measureNow() - veilLiftedAt);
       if (!restoring && !destroyed && !suspended) {
         advanceSimulation(frameDt, false, stepCap, perf);
       }
