@@ -179,7 +179,7 @@ export function createBellhop() {
       if (!crystal) return;
       const note = bellhopNoteOf(crystal);
       const tick = Number(this.state?.tick) || 0;
-      if (tick - (this._lastRing.get(crystal) || -Infinity) < BELLHOP.ringDebounceTicks) return;
+      if (tick - (this._lastRing.get(crystal) ?? -Infinity) < BELLHOP.ringDebounceTicks) return;
       this._lastRing.set(crystal, tick);
       const flags = this._flags();
       if (!flags || flags[BELLHOP.sungFlag] === true) return; // post-song chimes are the sandbox
