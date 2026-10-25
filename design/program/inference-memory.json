@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "seed-hf-14-impact-rating",
-      "date": "2026-10-23",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A crushing massline hit reads heavier than a solid hit, and a glance is the lightest, on the existing impact lane.",
-      "fingerprint": "verb=whip,subject=impact-rating,sector=any,layer=feel,domain=wf-15",
-      "references": [],
-      "integration": "live",
-      "commit": "869dd46a8e",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-se-13-npc-kill-not-yours",
       "date": "2026-10-23",
       "wf": "WF-14",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "c6a40ea73cfb62b135fcb01c43382dbe7dca91b4",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-void-deposit",
+      "date": "2026-10-25",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A voided contract says the deposit came back only when a deposit was charged.",
+      "fingerprint": "verb=void,subject=deposit,sector=any,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "090d61caa576a6f4caaf228defc2422aaf7ac079",
       "verification": "focused_green"
     }
   ],
