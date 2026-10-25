@@ -96,7 +96,7 @@ const mechanic = enumerateMechanicPipeline();
 
 if (corpus !== BARK_CORPUS_TARGET || pipeline.length !== BARK_CORPUS_TARGET) {
   console.error(`bark corpus ${corpus} / pipeline ${pipeline.length}, expected ${BARK_CORPUS_TARGET}`);
-  process.exitCode = 1;
+  process.exit(1); // fail fast — rendering 1415 jobs against a drifted corpus is wasted work
 }
 
 if (catalogOnly) {
@@ -118,7 +118,7 @@ const jobs = (writeAll
   }))
   : []).concat(representativeJobs());
 
-mkdirSync(OUT_DIR, { recursive: true });
+if (!checkOnly) mkdirSync(OUT_DIR, { recursive: true });
 const mismatches = [];
 for (const job of jobs) {
   const bytes = wavFromPcm(renderBarkUtterancePcm(job.resolved, { sampleRate: SR, seconds: job.seconds }));
@@ -132,7 +132,7 @@ for (const job of jobs) {
 }
 
 const blindDir = path.join(OUT_DIR, 'blind');
-mkdirSync(blindDir, { recursive: true });
+if (!checkOnly) mkdirSync(blindDir, { recursive: true });
 for (const clip of BLIND_REGISTER_CLIPS) {
   const register = FACTION_VOICE_REGISTERS[clip.factionId];
   const pcm = renderRegisterCallsignPcm(register, { sampleRate: SR });
@@ -151,13 +151,17 @@ for (const clip of BLIND_REGISTER_CLIPS) {
 // so the gate is a complete voice-tree audit, not just a corpus-row check.
 if (checkOnly && writeAll) {
   const expected = new Set(jobs.map((j) => path.basename(j.file)));
-  for (const f of readdirSync(OUT_DIR)) {
-    if (f === 'blind') continue;
-    if (!expected.has(f)) mismatches.push(`stray assets/audio/voice/${f}`);
+  if (existsSync(OUT_DIR)) {
+    for (const f of readdirSync(OUT_DIR)) {
+      if (f === 'blind') continue;
+      if (!expected.has(f)) mismatches.push(`stray assets/audio/voice/${f}`);
+    }
   }
   const expectedBlind = new Set(BLIND_REGISTER_CLIPS.map((c) => path.basename(c.file)));
-  for (const f of readdirSync(blindDir)) {
-    if (!expectedBlind.has(f)) mismatches.push(`stray assets/audio/voice/blind/${f}`);
+  if (existsSync(blindDir)) {
+    for (const f of readdirSync(blindDir)) {
+      if (!expectedBlind.has(f)) mismatches.push(`stray assets/audio/voice/blind/${f}`);
+    }
   }
 }
 

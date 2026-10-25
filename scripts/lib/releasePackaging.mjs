@@ -188,12 +188,10 @@ export async function createReleaseCopyPlans({
       if (!Array.isArray(mapping.exclude) || mapping.exclude.length === 0) {
         throw new Error(`release copy exclude for ${mapping.source} must be a non-empty array`);
       }
-      const byPath = new Map(omissions.map((o) => [o.path, o]));
-      for (const o of await collectExcludedOmissions(projectRoot, mapping)) {
-        if (!byPath.has(o.path)) byPath.set(o.path, o);
+      if (projection === RENDER_PACKAGE_SOURCE_PROJECTION) {
+        throw new Error(`release copy ${mapping.source} cannot combine projection with exclude — the overlap semantics are untested; split the tree instead`);
       }
-      omissions.length = 0;
-      omissions.push(...byPath.values());
+      omissions.push(...await collectExcludedOmissions(projectRoot, mapping));
       omissions.sort((a, b) => lexicalCompare(a.path, b.path));
     }
     plans.push({ mapping, projection, omissions });
@@ -365,9 +363,11 @@ function digestFileRecords(inputFiles) {
  *  planner and the asset-reachability audit so both read the same exclusion semantics. */
 export function releaseCopyExcludePrefixes(mapping) {
   return (mapping?.exclude ?? []).map((entry) => {
-    const raw = String(entry);
-    const rel = safeRelativePath(raw.replace(/\/+$/, ''), 'release copy exclude');
-    return raw.endsWith('/') ? `${rel}/` : rel;
+    if (typeof entry !== 'string' || entry.length === 0) {
+      throw new Error(`release copy exclude entries must be non-empty strings, got ${JSON.stringify(entry)}`);
+    }
+    const rel = safeRelativePath(entry.replace(/\/+$/, ''), 'release copy exclude');
+    return entry.endsWith('/') ? `${rel}/` : rel;
   });
 }
 

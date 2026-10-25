@@ -145,7 +145,10 @@ for (const [asset, files] of [...referenced]) {
 
 // Mapping.exclude prefixes are omitted from the retail copy even though their parent root is
 // bundled — a referenced asset under one 404s exactly like an asset outside every root.
-// Derived from the same normalizer the planner uses so separator/dir semantics can't drift.
+// Law: an excluded prefix must never be literally referenced from src/styles — such a match
+// means a runtime path fetches an asset the retail build doesn't ship (a real defect, so
+// this audit correctly flags it rather than carving it out). Derived from the same
+// normalizer the planner uses so separator/dir semantics can't drift.
 const EXCLUDED_PREFIXES = RELEASE_COPY_MAPPINGS.flatMap((m) =>
   releaseCopyExcludePrefixes(m).map((p) => `${m.source}/${p}`));
 

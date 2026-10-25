@@ -94,6 +94,7 @@ test('copy exclude drops the prefixed files, ships siblings, and fails loud on b
   assert.ok(existsSync(join(web, 'media', 'keep.wav')), 'sibling file must ship');
   assert.equal(existsSync(join(web, 'media', 'drop', 'omit.wav')), false, 'dir-prefix file must not ship');
   assert.equal(existsSync(join(web, 'media', 'line_0000_x.wav')), false, 'raw-prefix file must not ship');
+  assert.equal(existsSync(join(web, 'media', 'drop')), false, 'a fully-excluded dir must not materialize empty');
 
   const receipt = await createReleaseBuildReceipt({ root, webRoot: web, mappings });
   const copy = receipt.copies.find((c) => c.source === 'media');
@@ -114,6 +115,11 @@ test('copy exclude drops the prefixed files, ships siblings, and fails loud on b
     createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: ['nomatch/'] }] }),
     /matches nothing under media/,
     'a stale exclude must fail rather than silently pin nothing',
+  );
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: [42] }] }),
+    /non-empty strings/,
+    'a non-string entry must not silently become a "42" prefix',
   );
 });
 

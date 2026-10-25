@@ -190,6 +190,20 @@ test(`seed ${MEASURE_SEED}: f0/rate/filter names each faction register without t
   console.log(`[pq-158.04 blind-stand-in] seed=${MEASURE_SEED} 14/14 speech-params residual=no-stranger-headphones`);
 });
 
+test(`seed ${MEASURE_SEED}: the player's authored durations stay inside the spoken range`, () => {
+  // Delivered artifacts are normalized to 1.4 s; the player hears resolved.speech.durationS
+  // (authored per line, clamped [0.45, 4.8]). A durationS regression is invisible to the
+  // byte-pinned gate — pin the range and real variance here instead.
+  const rows = enumerateBarkPipeline();
+  const durations = new Set();
+  for (const row of rows) {
+    const d = row.speech.durationS;
+    assert.ok(d >= 0.45 && d <= 4.8, `${row.factionId}/${row.situation} durationS ${d} out of spoken range`);
+    durations.add(d);
+  }
+  assert.ok(durations.size >= rows.length / 4, `corpus durations collapsed to ${durations.size} distinct values`);
+});
+
 test(`seed ${MEASURE_SEED}: all ${BARK_CORPUS_TARGET} directed-voice lines exist as WAVs on disk`, () => {
   const rows = enumerateDeliveredBarkWavs();
   assert.equal(rows.length, BARK_CORPUS_TARGET);
