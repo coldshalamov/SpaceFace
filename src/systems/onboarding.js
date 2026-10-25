@@ -763,6 +763,14 @@ export const onboarding = {
       if ((p && p.credits | 0) > 0) this._showHint('firstSalvageCashIn', firstUseLine('firstSalvageCashIn'), {});
     });
 
+    // X-03: buying the named module retires the chip id; hints.fitOffer stays true.
+    bus.on('module:purchased', (p) => {
+      if (p && p.defId && this.state.player.hints
+        && this.state.player.hints.fitOfferDefId === p.defId) {
+        delete this.state.player.hints.fitOfferDefId;
+      }
+    });
+
     // First frontier crossing (2026-09-28 INFERENCE): the first uncharted sector the player
     // enters gets ONE line — the chart ends here, the rim is theirs to name. Fires on
     // world's firstVisit flag so return trips never re-teach; player.hints keeps it once-only.
@@ -1285,6 +1293,9 @@ export const onboarding = {
     if (!def) return '';
     if (!player.hints) player.hints = {};
     player.hints.fitOffer = true;
+    // X-03: remember WHICH module the voice named so the yard row can wear its chip;
+    // module:purchased clears the key, the boolean stays the once-ever flag.
+    player.hints.fitOfferDefId = def.id;
     // The earned line supersedes B5's generic board followup whichever berth event spoke it
     // (a contract payout's grantCredits fires inside the same sale, before tradeCompleted
     // reaches this system).

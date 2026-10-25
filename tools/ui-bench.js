@@ -1080,6 +1080,12 @@ async function goto(rawId) {
       unseedGameOverShot(state);
       // A footprint shot mounts over a lived-in record (tools/ui-bench-footprint.js); every other shot over none.
       if (id === 'footprint') seedFootprintShot(state, shot.footprint || 'wanted'); else unseedFootprintShot(state);
+      // X-03 visual fixture: ?fitOfferDefId=<id> stamps the named-module hint so the yard row
+      // wears its chip in the shot. Plain shots leave player.hints untouched.
+      if (params.get('fitOfferDefId')) {
+        state.player = state.player || {};
+        state.player.hints = { ...(state.player.hints || {}), fitOfferDefId: params.get('fitOfferDefId') };
+      }
       // A drill shot with `drill:` mounts over a worked claim, a base shot with `base:` over a
       // managed body; every other shot over the seeded state.
       if (id === 'drill' && shot.drill) await seedDrillShot(state, shot.drill);
