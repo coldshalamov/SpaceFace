@@ -21,6 +21,13 @@ test('the fill table holds no dead keys — every faction id and situation key i
         Array.isArray(cell) && cell.every((l) => typeof l === 'string' && l.trim().length > 0 && l === l.trim()),
         `fill cell ${factionId}/${situation} is not an array of trimmed non-empty strings — authored content the mutator silently skips`,
       );
+      // The mutator dedupes against `seen`, so an authored repeat inside one cell is silently
+      // dropped — dead authored weight no consumer can reach, the exact D254 class.
+      assert.equal(
+        new Set(cell).size,
+        cell.length,
+        `fill cell ${factionId}/${situation} holds a duplicate line — silently deduped dead authored weight`,
+      );
     }
   }
   // The same dead-space class on the base side: a BARKS pack keyed under a non-live faction
