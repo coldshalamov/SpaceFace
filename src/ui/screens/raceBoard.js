@@ -174,7 +174,9 @@ export const raceBoardScreen={
         ||entries.find(e=>e.eligible&&e.contract.practice);
       this._selectedContractId=fallback?fallback.contractId:null;
     }
-    const startPanel=el('section','race-board-result dp-glass');
+    // The start panel stays pinned while the cards scroll (raceBoardLayouts .race-board-start):
+    // a pick on the last card must still see START and its status line.
+    const startPanel=el('section','race-board-result race-board-start dp-glass');
     startPanel.setAttribute('aria-label','Selected event');
     const startTitle=el('h2','k-t-sub'),startMeta=el('p','k-sentence'),startStatus=el('p','k-sentence');
     startStatus.setAttribute('role','status');
