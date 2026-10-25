@@ -150,8 +150,10 @@ test('production init + update order lengths match the live browser baseline', (
   // census and the broken shepherd's patrol walk ride the same clock (member 8).
   // 245 -> 246 init / 191 -> 192 update: W-SHIFT registers quill — the read ring
   // and drift-home are a seconds-scale read on the same clock (member 9).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 246);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 192);
+  // 246 -> 247 init / 192 -> 193 update: W-SHIFT registers holdfast — the crack
+  // meter, clamp seats, and drift-home ride the same clock (member 10).
+  assert.equal(PRODUCTION_INIT_ORDER.length, 247);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 193);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));
