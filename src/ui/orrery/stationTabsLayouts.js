@@ -1130,6 +1130,13 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${T} .sx-dossier__title { font-size:18px !important; line-height:1.15 !important; margin:2px 0 4px !important; }
   ${T} .sx-ct-commit.orr-lampkey { min-height:34px !important; font-size:13px !important; }
 }
+/* …but a wide, short desktop (1101+ × ≤720) has a dossier too short to carry the key under the reward
+   (ACCEPT at y≈610 in a 600px window at 1366×600, y≈721 at 1101×480): ACCEPT takes the top of the route
+   column, beside the title, and the route ring follows beneath it — nothing rides over the terms */
+@media (min-width:1101px) and (max-height:720px) {
+  ${T} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 4 !important; align-self:start !important; margin:0 !important; padding:0 !important; }
+  ${T} .sx-dossier > .orr-ct-route { grid-row:4 / span 18 !important; }
+}
 /* even tighter (960×540, dossier ~192px): the terms stay on the board — a second column beside the
    title, reward and ACCEPT — and the dossier scrolls for the route; a player never accepts blind */
 @media (max-width:1100px) and (max-height:800px) {
