@@ -7860,6 +7860,9 @@ export const save = {
     this.state.nav = restored;
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('nav:waypoint', restored.waypoint || null);
+      if (restored.autopilot && restored.autopilot.status === 'rendezvous-replot') {
+        this.bus.emit('toast', { text: 'Replot the recovery course — the saved burn was chasing a moving ship.', kind: 'info', ttl: 4 });
+      }
     }
   },
 
@@ -9183,12 +9186,18 @@ function sanitizeNavState(nav, opts) {
     waypoint: sanitizeNavWaypoint(source.waypoint, opts),
     autopilot: sanitizeNavAutopilot(source.autopilot, opts),
   };
+  // A rendezvous capture is a mid-maneuver snapshot: every local marker in it was authored
+  // against the moving ship's position at capture time. The replot record retires the whole
+  // local-fix block with it — a stale waypoint/route would aim the next burn at wreckage.
+  if (out.autopilot && out.autopilot.status === 'rendezvous-replot') {
+    out.route = null; out.autoTravel = false; out.waypoint = null;
+  }
   // The route follower's executor (src/systems/routeFollower.js) rides along with the route it is
   // following, so a cross-sector trip resumes at the leg it reached instead of orphaning. The key is
   // OMITTED when there is nothing to persist, so the default nav shape stays byte-identical — several
   // suites deep-equal a whole nav against a literal with no executor key
   // (test/unified-map-professional.test.mjs:203, scripts/check-sectorSim.mjs:205).
-  const executor = sanitizeNavExecutor(source.executor, route);
+  const executor = sanitizeNavExecutor(source.executor, out.route);
   if (executor) out.executor = executor;
   return out;
 }
@@ -9311,6 +9320,21 @@ function sanitizeNavWaypoint(waypoint, opts) {
 
 function sanitizeNavAutopilot(autopilot, opts) {
   const source = autopilot && typeof autopilot === 'object' && !Array.isArray(autopilot) ? autopilot : {};
+  // A rendezvous is a live-body burn: velocity-matched against a moving ship whose motion the
+  // envelope cannot resume. Captured or restored, it disengages to a replot record rather than
+  // becoming a fixed-point course to stale coordinates (BLACK FLAG save contract).
+  const status = navString(source.status);
+  if (source.rendezvous === true || (status && status.startsWith('rendezvous-'))) {
+    return {
+      active: false,
+      rendezvous: true,
+      target: null,
+      targetEntityId: null,
+      label: navString(source.label) || '',
+      status: 'rendezvous-replot',
+      arrivalRadius: Number.isFinite(source.arrivalRadius) ? Math.max(12, Math.min(500, source.arrivalRadius)) : 36,
+    };
+  }
   const target = sanitizeNavPos(source.target);
   const out = {
     active: !!target && source.active === true,
