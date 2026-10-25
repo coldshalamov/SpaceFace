@@ -131,6 +131,9 @@ ${R} > .race-board-start { position:sticky !important; top:calc(-1 * clamp(26px,
 ${R} > .race-board-start > :not(button) { grid-column:1 !important; }
 ${R} > .race-board-start > button.race-board-launch { grid-column:2 !important; grid-row:1 / span 3 !important; margin:0 !important; }
 ${R} > .race-board-start > p.k-sentence { margin:4px 0 0 !important; }
+/* Keyboard and gamepad focus scrolls a card's select word into view; reserve the pinned panel's
+   height so a word reached going back up the list lands below START instead of under it. */
+${R}:has(> .race-board-start) { scroll-padding-top:128px; }
 
 @media (max-height: 620px) {
   ${R} .race-board-course > .race-map { max-height:110px !important; margin:6px 0 !important; }
@@ -145,10 +148,11 @@ ${R} > .race-board-start > p.k-sentence { margin:4px 0 0 !important; }
   ${R} .race-board-tools > button.k-word { flex:1 1 auto; justify-content:center; }
   ${R} .race-board-tools > button.k-word:last-child { flex:0 0 auto; }
   ${R} > .race-board-start { top:-22px !important; }
+  ${R}:has(> .race-board-start) { scroll-padding-top:168px; }
 }
 /* 1080p band: lift the whole flow (no getBoundingClientRect positioning on this board). */
-@media (min-width: 1800px) and (max-width: 2199px) and (min-height: 900px) { ${R} > * { zoom:1.14; } ${R} > .race-board-start { top:calc(-1 * clamp(26px, 6vh, 72px) / 1.14) !important; } }
-@media (min-width: 2200px) and (min-height: 1200px) { ${R} > * { zoom:1.4; } ${R} > .race-board-start { top:calc(-1 * clamp(26px, 6vh, 72px) / 1.4) !important; } }
+@media (min-width: 1800px) and (max-width: 2199px) and (min-height: 900px) { ${R} > * { zoom:1.14; } ${R} > .race-board-start { top:calc(-1 * clamp(26px, 6vh, 72px) / 1.14) !important; } ${R}:has(> .race-board-start) { scroll-padding-top:148px; } }
+@media (min-width: 2200px) and (min-height: 1200px) { ${R} > * { zoom:1.4; } ${R} > .race-board-start { top:calc(-1 * clamp(26px, 6vh, 72px) / 1.4) !important; } ${R}:has(> .race-board-start) { scroll-padding-top:180px; } }
 `;
 
 export function injectRaceBoardLayouts() {
