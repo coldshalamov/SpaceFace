@@ -13,7 +13,7 @@ import { validateRunState } from '../core/runState.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
 import { swarmZoneIndexFor } from '../data/swarmLadder.js';
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
-import { recordRulesFor, settleCrucibleRun } from './survivalRecords.js';
+import { noteAdventureDeath, recordRulesFor, settleCrucibleRun } from './survivalRecords.js';
 import { circuitSummaryFor } from './survivalCircuit.js';
 import { challengeFromRun } from './survivalMutators.js';
 import { currentStuntRunRules, stuntAssistProfile } from '../combat/stuntRunRules.js';
@@ -915,7 +915,14 @@ export const survivalResults = {
 
   _onPlayerDeath(payload) {
     const run = liveSurvivalRun(this.state);
-    if (!run) return;
+    if (!run) {
+      // RC-CRUCIBLE-DOOR (row 481): no survival run owns this death — it happened out in the
+      // Adventure. File the receipt so the Crucible door can offer a seeded drill of it.
+      try {
+        noteAdventureDeath(payload, { sectorId: this.state && this.state.world && this.state.world.currentSectorId });
+      } catch { /* the drill offer is a nicety; a meta write failure never interrupts a death */ }
+      return;
+    }
     this._defeatReceipt = payload || null;
     const player = this.state.entities?.get(this.state.playerId);
     const owned = this.state.player?.ownedShips?.[this.state.player.activeShipIndex || 0];
@@ -1132,6 +1139,15 @@ export const survivalResults = {
     // SWARM-08 B5 — the journey the run actually flew, snapshotted onto the result so the
     // results plate, the record row and the hangar all read one stamp.
     result.circuit = circuitSummaryFor(run);
+    // RC-CRUCIBLE-DOOR (row 481): the Grudge Ledger's cause — the defeat receipt's named
+    // attacker and weapon ride the result so the filed row never re-derives them.
+    if (outcome === 'defeat' && this._defeatReceipt) {
+      const receipt = this._defeatReceipt;
+      result.deathBy = {
+        attacker: receipt.attacker || (receipt.source && receipt.source.label) || null,
+        weapon: receipt.weapon || null,
+      };
+    }
     // Keep invalid Circuit identity visible even when there is no valid summary to publish.
     result.recordRules = recordRulesFor(result, run);
     // The stake also rides the record rules' loadoutRules JSON; surface it flat for the rows.

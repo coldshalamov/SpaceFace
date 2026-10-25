@@ -265,7 +265,9 @@ export function circuitRecordIdentity(raw) {
       dest.arenaId === entry.arenaId && dest.nodeId === entry.nodeId)) return null;
     const row = { stage, arenaId: entry.arenaId, nodeId: entry.nodeId };
     if (entry.nodeKind === 'service') row.nodeKind = 'service';
-    if (entry.fight === 'elite' || entry.fight === 'challenge') row.fight = entry.fight;
+    if (entry.fight === 'elite' || entry.fight === 'challenge' || entry.fight === 'champion') {
+      row.fight = entry.fight;
+    }
     route.push(row);
   }
   return { version: CIRCUIT_VERSION, startArenaId: raw.startArenaId, route };
@@ -357,14 +359,21 @@ export function circuitRoundFor(run, wave, origin = null) {
   if (!Number.isInteger(wave) || wave < 1 || wave > CIRCUIT_TOTAL_ROUNDS) return null;
   const stage = Math.floor((wave - 1) / CIRCUIT_ROUNDS_PER_STAGE) + 1;
   const localRound = ((wave - 1) % CIRCUIT_ROUNDS_PER_STAGE) + 1;
-  let kind = 'cohort';
-  if (localRound === 2) kind = 'survive';
-  else if (localRound === CIRCUIT_ROUNDS_PER_STAGE) kind = 'boss';
-  else if (CIRCUIT_SPECIAL_KIND[`${stage}:${localRound}`]) kind = CIRCUIT_SPECIAL_KIND[`${stage}:${localRound}`];
-  const bossId = kind === 'boss' ? (CIRCUIT_BOSS_SEQUENCE[stage - 1] || null) : null;
   const routeEntry = (circuit.route || []).find((entry) => entry && entry.stage === stage) || null;
-  const fight = routeEntry && (routeEntry.fight === 'elite' || routeEntry.fight === 'challenge')
+  const fight = routeEntry && (routeEntry.fight === 'elite' || routeEntry.fight === 'challenge'
+    || routeEntry.fight === 'champion')
     ? routeEntry.fight : null;
+  let kind = 'cohort';
+  if (fight === 'champion') {
+    // Row 481 — Call the Champion: the stage's champion answers at the door instead of at the
+    // back of the room. Round one is the boss round; clearing it settles the whole stage.
+    if (localRound === 1) kind = 'boss';
+  } else {
+    if (localRound === 2) kind = 'survive';
+    else if (localRound === CIRCUIT_ROUNDS_PER_STAGE) kind = 'boss';
+    else if (CIRCUIT_SPECIAL_KIND[`${stage}:${localRound}`]) kind = CIRCUIT_SPECIAL_KIND[`${stage}:${localRound}`];
+  }
+  const bossId = kind === 'boss' ? (CIRCUIT_BOSS_SEQUENCE[stage - 1] || null) : null;
   const scale = circuitFightScale(fight);
   return {
     stage,
@@ -409,7 +418,7 @@ export function circuitChoiceId(kind, { arenaId = null, wave = 0, revision = 1, 
     return `circuit_service_${arenaId}_w${w}_r${rev}`;
   }
   if (kind === 'route' && typeof arenaId === 'string' && arenaId) {
-    const suffix = fight === 'elite' || fight === 'challenge' ? `_${fight}` : '';
+    const suffix = fight === 'elite' || fight === 'challenge' || fight === 'champion' ? `_${fight}` : '';
     return `circuit_route_${arenaId}${suffix}_w${w}_r${rev}`;
   }
   return null;
@@ -418,7 +427,7 @@ export function circuitChoiceId(kind, { arenaId = null, wave = 0, revision = 1, 
 /** Parse a reserved Circuit choice id, or null when it is an ordinary offer id. */
 export function parseCircuitChoiceId(id) {
   if (typeof id !== 'string' || !id.startsWith('circuit_')) return null;
-  const route = /^circuit_route_(.+?)(?:_(elite|challenge))?_w(\d+)_r(\d+)$/.exec(id);
+  const route = /^circuit_route_(.+?)(?:_(elite|challenge|champion))?_w(\d+)_r(\d+)$/.exec(id);
   if (route) {
     return {
       kind: 'route',
@@ -653,15 +662,20 @@ export function circuitChoicesFor(run) {
         wave,
         revision,
       };
-      return [ordinary, ...['elite', 'challenge'].map((fight) => {
+      return [ordinary, ...['elite', 'challenge', 'champion'].map((fight) => {
         const scale = circuitFightScale(fight);
-        const word = fight === 'elite' ? 'Elite' : 'Challenge';
+        const word = fight === 'elite' ? 'Elite' : fight === 'challenge' ? 'Challenge' : 'Champion';
+        // Row 481 — the champion call: one round in that room, and the stage's authored
+        // champion is the whole of it. No scale; the purse you skip is the price.
+        const line = fight === 'champion'
+          ? `${dest.line} The ${circuitBossFor(CIRCUIT_BOSS_SEQUENCE[nextStage - 1])?.label || 'champion'} answers at the door — one round decides the stage.`
+          : `${dest.line} Pressure ×${scale.pressureMul}, purse ×${scale.earnMul}. The ordinary room is still a choice.`;
         return {
           ...ordinary,
           id: circuitChoiceId('route', { arenaId: dest.arenaId, wave, revision, fight }),
           fight,
           label: `${word} · ${dest.label}`,
-          line: `${dest.line} Pressure ×${scale.pressureMul}, purse ×${scale.earnMul}. The ordinary room is still a choice.`,
+          line,
         };
       })];
     });
