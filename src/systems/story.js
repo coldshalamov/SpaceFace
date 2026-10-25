@@ -108,6 +108,7 @@ import {
 } from '../story/endings/index.js';
 import { continuationJobPermitted, newGamePlusConsequenceLine } from '../story/endings/continuationAccess.js';
 import { normalizeStoryFacts, recallStoryFact, recordCareerDecision, recordStoryFact } from '../story/storyFacts.js';
+import { vergeEvidenceLinked } from './shipLedger.js';
 
 const ASHFALL = 'sector_ashfall_reach';
 const VALE_PROFIT_ID = 'story_vale_profit_100k';
@@ -177,6 +178,9 @@ export const story = {
     bus.on('story:vergeEvidenceRecorded', (p) => this._recordVergeFact(p || {}));
     bus.on('story:kurtzLedger', (p) => this._recordKurtzFact(p || {}));
     bus.on('story:vergeValeGatesRevoked', (p) => this._recordVergeRevokeFact(p || {}));
+    // Row 444 — a deliberate board tie is a submission intent; the docked sim may not be ticking,
+    // so the event path resolves immediately and the update() poll is the mid-flight fallback.
+    bus.on('ledger:evidenceLinked', () => this._maybeResolveVergeBoardChain());
     bus.on('career:origin:offered', (p) => this._recordCareer('offered', p || {}));
     bus.on('career:origin:declined', (p) => this._recordCareer('declined', p || {}));
     bus.on('career:origins:declined', (p) => this._recordCareer('declined', p || {}));
@@ -290,6 +294,9 @@ export const story = {
     // never advances in a paused game; docked flight may deliver if its simulation still runs.
     this._pumpWrittenFinale();
     if (this._writtenFinaleHoldsChannel()) return;
+    // Row 444 — the player-authored Ledger chain is a deliberate submission and the board lives on
+    // the docked station screen, so its check must run before the docked early-return below.
+    this._maybeResolveVergeBoardChain();
     if (state.ui && state.ui.docked) return;
     // Story lines and the ambient schedule both read state.simTime. A large dt cannot
     // release a line whose stamp is still in the future, and a simTime jump cannot skip it.
@@ -1440,6 +1447,19 @@ export const story = {
       persist: true,
     });
     return true;
+  },
+
+  // Row 444 — the GOLD-LEDGER route: a deliberate player-tied chain on the docked Ledger board is
+  // the submission. The board owner reports whether the three Verge evidence pages form one
+  // connected chain; the verdict itself stays inside _maybeResolveVergeEvidenceTrail, so the
+  // exact kellPaperTrail + archiveFile + kurtzLedger requirements (and revealed/not-revoked gates)
+  // are reused verbatim. Wrong or incomplete chains never reach it.
+  _maybeResolveVergeBoardChain() {
+    const s = this.state.story;
+    const verge = s && s.verge;
+    if (!verge || verge.valeGatesRevoked) return false;
+    if (!vergeEvidenceLinked(this.state)) return false;
+    return this._maybeResolveVergeEvidenceTrail();
   },
 
   // =========================================================================================

@@ -1,9 +1,14 @@
-// A2 Ship's Ledger — pure, read-only projection over existing durable receipts.
+// A2 Ship's Ledger — pure, read-only projection over existing durable receipts, plus the row-444
+// player-authored evidence board.
 //
-// This module intentionally has no registry slot, init(), event subscriptions, serializer, or
-// state mutation. Source systems remain the sole writers. Dock UI asks for a page and receives a
-// deterministic snapshot assembled from loss, trade, wreck, encounter, title, career, and
-// recovered-name state that already round-trips through saves.
+// The page projection still has no registry slot, init(), event subscriptions, or hidden writes:
+// source systems remain the sole writers of everything it reads. Dock UI asks for a page and
+// receives a deterministic snapshot assembled from loss, trade, wreck, encounter, title, career,
+// and recovered-name state that already round-trips through saves.
+//
+// The one owned slice is `state.shipLedger.board` — the GOLD-LEDGER case board the player builds
+// deliberately: `pins` (ordered evidence pageIds) and `links` ([a,b] unordered pairs). It is
+// created lazily by the owner APIs at the bottom of this file and exists on no untouched run.
 
 import { hash32 } from '../core/rng.js';
 import { livingHullScars, livingHullRenown } from '../core/livingHull.js';
@@ -21,6 +26,7 @@ import {
   VOLS_LEDGER_ANNOTATIONS,
 } from '../data/shipLedgerTemplates.js';
 import {
+  WRECK_CATHEDRAL_EVIDENCE_CATALOG,
   WRECK_CATHEDRAL_EVIDENCE_PAGE_IDS,
   wreckCathedralEvidenceCatalogEntry,
 } from '../data/wreckCathedralEvidenceCatalog.js';
@@ -823,6 +829,99 @@ function collectCandidates(state, options = {}) {
     observed++;
   }
 
+  // Row-444 Verge/Vale evidence pages — three facts the player earns deliberately (Kell burn,
+  // Archive reading-room file, Kurtz desk ledger). Same witness shape as the Cathedral rows so
+  // the archive leaf and the board treat them identically. The durable flag is the receipt;
+  // the recorded story fact supplies the timestamp.
+  for (const page of SHIP_LEDGER_VERGE_EVIDENCE_PAGES) {
+    if (!vergeEvidenceEarned(state, page.vergeKey)) continue;
+    const facts = sourceArray(state.story && state.story.facts);
+    const fact = facts.find((row) => row && row.id === `verge:${page.vergeKey}`);
+    const at = Math.max(0, finite(fact && fact.atS, 0));
+    if (probe) {
+      observed++;
+      if (observed <= SHIP_LEDGER_MAX_SOURCE_RECORDS && !probe.exclude.has('witness')) {
+        probe.hit = true;
+        probe.done = true;
+        return probeResult();
+      }
+      continue;
+    }
+    candidates.push({
+      id: `ledger_evidence_${page.pageId}`,
+      schemaVersion: SHIP_LEDGER_SCHEMA_VERSION,
+      type: 'witness',
+      sourceId: page.pageId,
+      sourceKind: 'story.verge',
+      at,
+      cycle: cycleOf(at),
+      cycleLabel: formatLedgerCycle(at),
+      templateId: `evidence.${page.pageId}`,
+      text: page.title,
+      hand: 'captain',
+      annotationId: null,
+      annotation: null,
+      evidencePage: {
+        pageId: page.pageId,
+        revision: 1,
+        title: page.title,
+        fragment: page.fragment,
+        body: page.body,
+        provenanceRef: page.provenanceRef,
+        mapRef: null,
+        media: null,
+        earnedTick: 0,
+        earnedAtS: at,
+      },
+    });
+    observed++;
+  }
+
+  // Row-444 clue-contradiction pages — a scanner subject becomes an evidence page only once its
+  // real history carries a 'contradicted' superseded reading. A filed claim alone stays a lead.
+  for (const { subjectId, subject, contradicted } of contradictedClueSubjects(state)) {
+    const pageId = `${SHIP_LEDGER_CLUE_PAGE_PREFIX}${subjectId}`;
+    const at = Math.max(0, finite(subject.observedAt, 0));
+    if (probe) {
+      observed++;
+      if (observed <= SHIP_LEDGER_MAX_SOURCE_RECORDS && !probe.exclude.has('witness')) {
+        probe.hit = true;
+        probe.done = true;
+        return probeResult();
+      }
+      continue;
+    }
+    const superseded = contradicted.map((entry) => `“${text(entry.claim, 'unfiled claim')}”`).join('; ');
+    candidates.push({
+      id: `ledger_evidence_${pageId}`,
+      schemaVersion: SHIP_LEDGER_SCHEMA_VERSION,
+      type: 'witness',
+      sourceId: pageId,
+      sourceKind: 'signalInvestigation.clues',
+      at,
+      cycle: cycleOf(at),
+      cycleLabel: formatLedgerCycle(at),
+      templateId: `evidence.${pageId}`,
+      text: `Contradicted reading — ${text(subject.claim, 'filed claim')}`,
+      hand: 'captain',
+      annotationId: null,
+      annotation: null,
+      evidencePage: {
+        pageId,
+        revision: 1,
+        title: `Contradicted reading — ${text(subject.claim, 'filed claim')}`,
+        fragment: 'A later reading contradicts the filed claim.',
+        body: `Filed claim: “${text(subject.claim, 'unfiled claim')}”. Superseded readings: ${superseded}.`,
+        provenanceRef: `signalInvestigation.clues/${subjectId}`,
+        mapRef: null,
+        media: null,
+        earnedTick: 0,
+        earnedAtS: at,
+      },
+    });
+    observed++;
+  }
+
   candidates.sort((a, b) => b.at - a.at || b.cycle - a.cycle || a.id.localeCompare(b.id));
   return { candidates, observed, gateOpen, evidenceConflicts: evidence.conflicts, probeHit: probe ? probe.hit : false };
 }
@@ -1094,6 +1193,418 @@ export function instanceIdentityText(instance) {
   const cond = instanceConditionText(instance.condition);
   if (cond) bits.push(cond);
   return bits.join(' · ');
+}
+
+// ── GOLD-LEDGER (row 444) — the player-authored evidence board ────────────────────────────
+//
+// `state.shipLedger.board = { pins:[pageId…], links:[[a,b]…] }` is owned here and created lazily:
+// the APIs below validate BEFORE `state.shipLedger` exists, so an untouched run never grows the
+// key. Pins hold ordered admissible evidence pageIds; links hold canonical [a,b] pairs (sorted,
+// deduped). Admissibility is earned-only — a page is pinnable only when a real acquisition route
+// already surfaced it as a ledger evidence page:
+//   • the five Wreck Cathedral receipts      (collectWreckCathedralEvidence — durable site record)
+//   • the three Vale/Verge evidence facts     (state.story.verge.evidence — earned via Kell burn,
+//                                             the Archive reading-room file, and the Kurtz desk)
+//   • scanner contradiction history           (state.signalInvestigation.clues — a subject whose
+//                                             superseded readings hold a 'contradicted' verdict)
+// Catalog presence or hidden data alone admits nothing.
+
+export const SHIP_LEDGER_BOARD_SCHEMA_VERSION = 1;
+export const SHIP_LEDGER_BOARD_MAX_PINS = 32;
+export const SHIP_LEDGER_BOARD_MAX_LINKS = 64;
+
+export const SHIP_LEDGER_BOARD_CASE_CATHEDRAL = 'wreck_cathedral';
+export const SHIP_LEDGER_BOARD_CASE_VERGE = 'verge_vale';
+export const SHIP_LEDGER_BOARD_CASE_CLUE = 'clue_book';
+
+// The Vale case thread. pageIds are stable, dotted like the Cathedral ids; `vergeKey` is the exact
+// evidence flag `_maybeResolveVergeEvidenceTrail` requires (story.js), so the board chain reuses
+// that requirement verbatim instead of paraphrasing it.
+export const SHIP_LEDGER_VERGE_EVIDENCE_PAGES = Object.freeze([
+  Object.freeze({
+    pageId: 'verge.kell_paper_trail',
+    vergeKey: 'kellPaperTrail',
+    caseId: SHIP_LEDGER_BOARD_CASE_VERGE,
+    title: 'The Kell Paper Trail',
+    fragment: 'A burned contact left a paper trail.',
+    body: 'Wraith Kell’s burned paper trail — the payment chain that ends at Director Vale’s office.',
+    provenanceRef: 'verge/kellPaperTrail',
+  }),
+  Object.freeze({
+    pageId: 'verge.archive_file',
+    vergeKey: 'archiveFile',
+    caseId: SHIP_LEDGER_BOARD_CASE_VERGE,
+    title: 'The Gate Revocation File',
+    fragment: 'A sealed archive file names the gate order.',
+    body: 'The Archive reading room’s recovered file — Vale’s own revocation paperwork, filed nowhere official.',
+    provenanceRef: 'verge/archiveFile',
+  }),
+  Object.freeze({
+    pageId: 'verge.kurtz_ledger',
+    vergeKey: 'kurtzLedger',
+    caseId: SHIP_LEDGER_BOARD_CASE_VERGE,
+    title: 'The Kurtz Ledger',
+    fragment: 'A desk ledger keeps the real counterparties.',
+    body: 'The Kurtz figure’s desk ledger — beneficiary, counterparties, and the transponder that ties them.',
+    provenanceRef: 'verge/kurtzLedger',
+  }),
+]);
+
+const SHIP_LEDGER_CLUE_PAGE_PREFIX = 'clue.';
+
+function boardPageId(value) {
+  const id = typeof value === 'string' ? value.trim() : '';
+  return id && !/\s/.test(id) ? id : '';
+}
+
+function vergeEvidenceEarned(state, vergeKey) {
+  const verge = state && state.story && state.story.verge;
+  const evidence = verge && isRecord(verge.evidence) ? verge.evidence : {};
+  return evidence[vergeKey] === true;
+}
+
+function clueBookSubjects(state) {
+  const clues = state && state.signalInvestigation && state.signalInvestigation.clues;
+  const subjects = clues && isRecord(clues.subjects) ? clues.subjects : {};
+  return subjects;
+}
+
+// A clue subject is board-admissible only once its real acquisition history carries a
+// 'contradicted' superseded reading — a filed claim alone is a lead, not evidence.
+function contradictedClueSubjects(state) {
+  const subjects = clueBookSubjects(state);
+  const out = [];
+  for (const subjectId of Object.keys(subjects)) {
+    const subject = subjects[subjectId];
+    if (!subject || !text(subject.claim, '')) continue;
+    const contradicted = sourceArray(subject.history)
+      .filter((entry) => entry && entry.status === 'contradicted' && text(entry.claim, ''));
+    if (contradicted.length) out.push({ subjectId, subject, contradicted });
+  }
+  return out;
+}
+
+/**
+ * The set of pageIds the board will admit right now: every evidence page a real acquisition route
+ * already surfaced. Returns a Map of pageId → { pageId, caseId, title }. Read-only.
+ */
+export function admissibleLedgerEvidence(state) {
+  const out = new Map();
+  for (const item of collectWreckCathedralEvidence(state).winners) {
+    out.set(item.pageId, {
+      pageId: item.pageId,
+      caseId: SHIP_LEDGER_BOARD_CASE_CATHEDRAL,
+      title: item.catalog.title,
+    });
+  }
+  for (const page of SHIP_LEDGER_VERGE_EVIDENCE_PAGES) {
+    if (vergeEvidenceEarned(state, page.vergeKey)) {
+      out.set(page.pageId, { pageId: page.pageId, caseId: page.caseId, title: page.title });
+    }
+  }
+  for (const { subjectId, subject } of contradictedClueSubjects(state)) {
+    const pageId = `${SHIP_LEDGER_CLUE_PAGE_PREFIX}${subjectId}`;
+    out.set(pageId, {
+      pageId,
+      caseId: SHIP_LEDGER_BOARD_CASE_CLUE,
+      title: `Contradicted reading — ${text(subject.claim, 'filed claim')}`,
+    });
+  }
+  return out;
+}
+
+// A "known" page id is one the ledger could ever surface — the distinction between an unknown
+// pageId (refuse: the ledger knows no such page) and a real page the run simply has not earned
+// (refuse: not earned yet). Catalog/verge ids are enumerable; clue pages are open-shaped.
+function knownEvidencePageId(pageId) {
+  if (Object.hasOwn(WRECK_CATHEDRAL_EVIDENCE_CATALOG, pageId)) return true;
+  if (SHIP_LEDGER_VERGE_EVIDENCE_PAGES.some((page) => page.pageId === pageId)) return true;
+  if (pageId.startsWith(SHIP_LEDGER_CLUE_PAGE_PREFIX) && pageId.length > SHIP_LEDGER_CLUE_PAGE_PREFIX.length) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * The full detail object for one admissible page — the same shape evidence rows carry, so the
+ * panel can open a pinned page even when its row lives on another archive leaf. Read-only;
+ * returns null for unearned or unknown ids.
+ */
+export function ledgerEvidenceDetail(state, pageId) {
+  const id = boardPageId(pageId);
+  if (!id || !admissibleLedgerEvidence(state).has(id)) return null;
+  for (const item of collectWreckCathedralEvidence(state).winners) {
+    if (item.pageId !== id) continue;
+    return {
+      pageId: id,
+      revision: item.catalog.revision,
+      title: item.catalog.title,
+      fragment: item.catalog.fragment,
+      body: item.catalog.body,
+      provenanceRef: item.catalog.provenanceRef,
+      mapRef: item.catalog.mapRef,
+      media: item.catalog.media,
+      earnedTick: finiteInt(item.receipt.earnedTick),
+      earnedAtS: Math.max(0, finite(item.receipt.earnedAtS, 0)),
+    };
+  }
+  const vergePage = SHIP_LEDGER_VERGE_EVIDENCE_PAGES.find((page) => page.pageId === id);
+  if (vergePage) {
+    // The durable timestamp is the recorded story fact (`verge:<key>`), not the flag itself.
+    const facts = sourceArray(state && state.story && state.story.facts);
+    const fact = facts.find((row) => row && row.id === `verge:${vergePage.vergeKey}`);
+    const at = Math.max(0, finite(fact && fact.atS, 0));
+    return {
+      pageId: vergePage.pageId,
+      revision: 1,
+      title: vergePage.title,
+      fragment: vergePage.fragment,
+      body: vergePage.body,
+      provenanceRef: vergePage.provenanceRef,
+      mapRef: null,
+      media: null,
+      earnedTick: 0,
+      earnedAtS: at,
+    };
+  }
+  if (id.startsWith(SHIP_LEDGER_CLUE_PAGE_PREFIX)) {
+    const subjectId = id.slice(SHIP_LEDGER_CLUE_PAGE_PREFIX.length);
+    const subject = clueBookSubjects(state)[subjectId];
+    if (!subject) return null;
+    const contradicted = sourceArray(subject.history)
+      .filter((entry) => entry && entry.status === 'contradicted' && text(entry.claim, ''));
+    if (!contradicted.length) return null;
+    const at = Math.max(0, finite(subject.observedAt, 0));
+    const superseded = contradicted.map((entry) => `“${text(entry.claim, 'unfiled claim')}”`).join('; ');
+    return {
+      pageId: id,
+      revision: 1,
+      title: `Contradicted reading — ${text(subject.claim, 'filed claim')}`,
+      fragment: 'A later reading contradicts the filed claim.',
+      body: `Filed claim: “${text(subject.claim, 'unfiled claim')}”. Superseded readings: ${superseded}.`,
+      provenanceRef: `signalInvestigation.clues/${subjectId}`,
+      mapRef: null,
+      media: null,
+      earnedTick: 0,
+      earnedAtS: at,
+    };
+  }
+  return null;
+}
+
+/** Display title for a board chip: admissible title when earned, catalog title when merely known. */
+export function ledgerEvidencePageTitle(state, pageId) {
+  const id = boardPageId(pageId);
+  const admissible = id && admissibleLedgerEvidence(state).get(id);
+  if (admissible) return admissible.title;
+  const catalog = id && WRECK_CATHEDRAL_EVIDENCE_CATALOG[id];
+  if (catalog) return catalog.title;
+  const vergePage = id && SHIP_LEDGER_VERGE_EVIDENCE_PAGES.find((page) => page.pageId === id);
+  if (vergePage) return vergePage.title;
+  return id || 'unfiled page';
+}
+
+/** Live board read — never creates the key. Returns null on untouched runs. */
+export function shipLedgerBoard(state) {
+  const own = state && state.shipLedger;
+  const board = own && isRecord(own.board) ? own.board : null;
+  if (!board) return null;
+  const pins = Array.isArray(board.pins) ? board.pins : [];
+  const links = Array.isArray(board.links) ? board.links : [];
+  return { pins, links };
+}
+
+function ensureLedgerBoard(state) {
+  if (!isRecord(state.shipLedger)) state.shipLedger = {};
+  if (!isRecord(state.shipLedger.board)) state.shipLedger.board = { pins: [], links: [] };
+  if (!Array.isArray(state.shipLedger.board.pins)) state.shipLedger.board.pins = [];
+  if (!Array.isArray(state.shipLedger.board.links)) state.shipLedger.board.links = [];
+  return state.shipLedger.board;
+}
+
+function boardResult(ok, reason) {
+  return { ok, reason: ok ? '' : text(reason, 'The ledger refuses that.') };
+}
+
+function canonicalLinkPair(a, b) {
+  const aId = boardPageId(a);
+  const bId = boardPageId(b);
+  if (!aId || !bId || aId === bId) return null;
+  return aId < bId ? [aId, bId] : [bId, aId];
+}
+
+function linkPairEquals(link, pair) {
+  return Array.isArray(link) && link.length === 2 && link[0] === pair[0] && link[1] === pair[1];
+}
+
+/**
+ * Pin one earned evidence page to the board. Refuses with a specific player-facing reason for an
+ * unknown pageId, a real page the run has not earned, a duplicate pin, and a full board.
+ */
+export function pinEvidence(state, pageId) {
+  const id = boardPageId(pageId);
+  if (!id || !knownEvidencePageId(id)) return boardResult(false, 'The ledger knows no such page.');
+  if (!admissibleLedgerEvidence(state).has(id)) {
+    return boardResult(false, 'That evidence has not been earned — the board only takes what was actually found.');
+  }
+  const board = shipLedgerBoard(state);
+  if (board && board.pins.includes(id)) return boardResult(false, 'That page is already on the board.');
+  if (board && board.pins.length >= SHIP_LEDGER_BOARD_MAX_PINS) {
+    return boardResult(false, 'The board is full — unpin something first.');
+  }
+  ensureLedgerBoard(state).pins.push(id);
+  return boardResult(true);
+}
+
+/** Remove a pin and every thread tied to it. Refuses when the page is not on the board. */
+export function unpinEvidence(state, pageId) {
+  const id = boardPageId(pageId);
+  if (!id || !knownEvidencePageId(id)) return boardResult(false, 'The ledger knows no such page.');
+  const view = shipLedgerBoard(state);
+  if (!view || !view.pins.includes(id)) return boardResult(false, 'That page is not on the board.');
+  // Mutate the live board — shipLedgerBoard() returns a read view, so reassignments land here.
+  const board = state.shipLedger.board;
+  board.pins = board.pins.filter((pin) => pin !== id);
+  board.links = board.links.filter((link) => !(Array.isArray(link) && (link[0] === id || link[1] === id)));
+  return boardResult(true);
+}
+
+/**
+ * Tie two pinned pages. Refuses (state unchanged) for unknown ids, unearned pages, pages not on
+ * the board, a self-link, a duplicate link, and pages that share no case thread.
+ */
+export function linkEvidence(state, a, b) {
+  const aId = boardPageId(a);
+  const bId = boardPageId(b);
+  if (!aId || !bId) return boardResult(false, 'The ledger knows no such page.');
+  if (!knownEvidencePageId(aId) || !knownEvidencePageId(bId)) {
+    return boardResult(false, 'The ledger knows no such page.');
+  }
+  if (aId === bId) return boardResult(false, 'A page cannot tie to itself.');
+  const admissible = admissibleLedgerEvidence(state);
+  if (!admissible.has(aId) || !admissible.has(bId)) {
+    return boardResult(false, 'That evidence has not been earned — the board only takes what was actually found.');
+  }
+  const board = shipLedgerBoard(state);
+  if (!board || !board.pins.includes(aId) || !board.pins.includes(bId)) {
+    return boardResult(false, 'Pin both pages to the board first.');
+  }
+  const pair = canonicalLinkPair(aId, bId);
+  if (board.links.some((link) => linkPairEquals(link, pair))) {
+    return boardResult(false, 'Those two are already tied.');
+  }
+  if (board.links.length >= SHIP_LEDGER_BOARD_MAX_LINKS) {
+    return boardResult(false, 'The board cannot hold more thread — cut something first.');
+  }
+  if (admissible.get(aId).caseId !== admissible.get(bId).caseId) {
+    return boardResult(false, 'The board cannot tie those together — they share no case thread.');
+  }
+  board.links.push(pair);
+  return boardResult(true);
+}
+
+/** Cut one existing thread. Refuses when no thread joins the pair. */
+export function unlinkEvidence(state, a, b) {
+  const pair = canonicalLinkPair(a, b);
+  const board = shipLedgerBoard(state);
+  if (!pair || !board) return boardResult(false, 'There is no thread between those pages.');
+  const index = board.links.findIndex((link) => linkPairEquals(link, pair));
+  if (index < 0) return boardResult(false, 'There is no thread between those pages.');
+  board.links.splice(index, 1);
+  return boardResult(true);
+}
+
+/**
+ * True when the three Verge evidence pages are tied into ONE connected chain on the board —
+ * the deliberate player-submitted shape the Vale trail resolves on. Read-only; the story owner
+ * re-checks its own revealed/evidence/revoked requirements on top of this.
+ */
+export function vergeEvidenceLinked(state) {
+  const board = shipLedgerBoard(state);
+  if (!board || board.links.length < 2) return false;
+  const wanted = SHIP_LEDGER_VERGE_EVIDENCE_PAGES.map((page) => page.pageId);
+  const parent = new Map();
+  const root = (id) => {
+    let r = parent.get(id);
+    if (r === undefined) return id;
+    while (r !== parent.get(r)) r = parent.get(r);
+    return r;
+  };
+  for (const link of board.links) {
+    if (!Array.isArray(link) || link.length !== 2) continue;
+    const aId = boardPageId(link[0]);
+    const bId = boardPageId(link[1]);
+    if (!aId || !bId) continue;
+    if (!parent.has(aId)) parent.set(aId, aId);
+    if (!parent.has(bId)) parent.set(bId, bId);
+    const ra = root(aId);
+    const rb = root(bId);
+    if (ra !== rb) parent.set(ra, rb);
+  }
+  if (!wanted.every((pageId) => parent.has(pageId))) return false;
+  const first = root(wanted[0]);
+  return wanted.every((pageId) => root(pageId) === first);
+}
+
+/**
+ * Lazy serializer: absent board → `undefined` (the envelope slot can stay empty on untouched
+ * runs — no new key). Present board → a plain JSON-safe `{ schemaVersion, board }`.
+ */
+export function serializeShipLedgerBoard(state) {
+  const board = shipLedgerBoard(state);
+  if (!board) return undefined;
+  return {
+    schemaVersion: SHIP_LEDGER_BOARD_SCHEMA_VERSION,
+    board: {
+      pins: board.pins.map((pin) => String(pin)),
+      links: board.links
+        .filter((link) => Array.isArray(link) && link.length === 2)
+        .map((link) => [String(link[0]), String(link[1])]),
+    },
+  };
+}
+
+/**
+ * Restore the board from serialized input. Missing/absent `board` leaves `state.shipLedger`
+ * untouched (old saves stay lazy). Present input is validated: pins are nonempty string ids
+ * (deduped, capped), links are canonical string pairs whose endpoints are pinned, with
+ * self-links, duplicates, and malformed rows dropped rather than trusted.
+ */
+export function deserializeShipLedgerBoard(data, state) {
+  if (!isRecord(data) || !Object.hasOwn(data, 'board')) return false;
+  if (!isRecord(state)) return false;
+  const raw = isRecord(data.board) ? data.board : {};
+  const pins = [];
+  for (const candidate of sourceArray(raw.pins)) {
+    const id = boardPageId(candidate);
+    if (!id || pins.includes(id)) continue;
+    pins.push(id);
+    if (pins.length >= SHIP_LEDGER_BOARD_MAX_PINS) break;
+  }
+  const pinned = new Set(pins);
+  const links = [];
+  for (const candidate of sourceArray(raw.links)) {
+    const pair = Array.isArray(candidate)
+      ? canonicalLinkPair(candidate[0], candidate[1])
+      : isRecord(candidate)
+        ? canonicalLinkPair(candidate.a, candidate.b)
+        : null;
+    if (!pair) continue;
+    if (!pinned.has(pair[0]) || !pinned.has(pair[1])) continue;
+    if (links.some((link) => linkPairEquals(link, pair))) continue;
+    links.push(pair);
+    if (links.length >= SHIP_LEDGER_BOARD_MAX_LINKS) break;
+  }
+  const board = ensureLedgerBoard(state);
+  board.pins = pins;
+  board.links = links;
+  return true;
+}
+
+/** Chunked-lane twin of deserializeShipLedgerBoard — one bounded section, one yield label. */
+export function *deserializeShipLedgerBoardChunked(data, state) {
+  deserializeShipLedgerBoard(data, state);
+  yield 'shipLedger:board';
 }
 
 export default buildShipLedger;
