@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "seed-hf-06-swarm-champion-parts",
-      "date": "2026-10-23",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Thrown mass on a swarm champion tears a rotating capital part. Mission fights stay on the same rotation.",
-      "fingerprint": "verb=throw,subject=swarm-champion,sector=crucible,layer=subsystem,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "b37fea99d8",
-      "verification": "focused_green"
-    },
-    {
       "id": "al-pr-13-first-hour-captions",
       "date": "2026-10-23",
       "wf": "WF-13",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "847893aef07bb18eeaad23737f1fc7a4fdb67325",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-solstice-crystal",
+      "date": "2026-10-25",
+      "wf": "WF-18",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Scooping a Solstice bloom crystal puts two Phosphor Crystals in the hold.",
+      "fingerprint": "verb=scoop,subject=crystal,sector=ceres,domain=wf-18",
+      "references": [],
+      "integration": "live",
+      "commit": "20f04f85191f76445880e54b0a5d7cc01efaef8f",
       "verification": "focused_green"
     }
   ],
