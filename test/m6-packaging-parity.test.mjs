@@ -121,6 +121,15 @@ test('copy exclude drops the prefixed files, ships siblings, and fails loud on b
     /non-empty strings/,
     'a non-string entry must not silently become a "42" prefix',
   );
+  await assert.rejects(
+    createReleaseCopyPlans({
+      root,
+      mappings: [{ source: 'media', destination: 'media', projection: RENDER_PACKAGE_SOURCE_PROJECTION, exclude: ['drop/'] }],
+      pilots: [],
+    }),
+    /cannot combine projection with exclude/,
+    'projection+exclude is fail-loud, not live-but-untested semantics',
+  );
 });
 
 test('release build lock serializes candidates and recovers only dead owners', async (t) => {

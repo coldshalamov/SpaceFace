@@ -107,6 +107,11 @@ if (catalogOnly) {
   process.exit(process.exitCode || 0);
 }
 
+// Delivered corpus artifacts are normalized to a fixed length; the player hears each row's
+// authored speech.durationS instead (pinned by pq-158-04), so this constant shapes only the
+// byte-verified acceptance corpus.
+const DELIVERED_WAV_SECONDS = 1.4;
+
 // --all covers the corpus rows AND the runtime representative clips (bark_* register files,
 // mechanic, instructor), so a lone `--all --check` is a complete voice-tree audit.
 const jobs = (writeAll
@@ -114,7 +119,7 @@ const jobs = (writeAll
     file: path.join(ROOT, deliveredBarkWavRelPath(i, row.registerId)),
     rel: deliveredBarkWavRelPath(i, row.registerId),
     resolved: row,
-    seconds: 1.4,
+    seconds: DELIVERED_WAV_SECONDS,
   }))
   : []).concat(representativeJobs());
 
@@ -146,10 +151,10 @@ for (const clip of BLIND_REGISTER_CLIPS) {
   }
 }
 
-// Stray audit: a --check over --all fails on ANY voice-tree file the pipeline no longer owns —
-// stale line_* names, a renamed register's old bark_* clip, or an orphan under voice/blind/ —
-// so the gate is a complete voice-tree audit, not just a corpus-row check.
-if (checkOnly && writeAll) {
+// Stray audit: --all fails on ANY voice-tree file the pipeline no longer owns — stale line_*
+// names, a renamed register's old bark_* clip, or an orphan under voice/blind/. It runs in
+// write mode too: a renumber leaves orphans at the point of cause, not at the next --check.
+if (writeAll) {
   const expected = new Set(jobs.map((j) => path.basename(j.file)));
   if (existsSync(OUT_DIR)) {
     for (const f of readdirSync(OUT_DIR)) {

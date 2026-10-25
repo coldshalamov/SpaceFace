@@ -223,6 +223,15 @@ test(`seed ${MEASURE_SEED}: all ${BARK_CORPUS_TARGET} directed-voice lines exist
   console.log(`[pq-158.04 delivered] seed=${MEASURE_SEED} wavs=${rows.length}/${BARK_CORPUS_TARGET}`);
 });
 
+test(`seed ${MEASURE_SEED}: delivered filename authority rejects unsafe segments`, () => {
+  // The naming authority's guards are the fail-closed contract — a loose index or unsafe
+  // registerId must throw, not emit a filename that escapes the positional scheme.
+  assert.throws(() => deliveredBarkWavRelPath(1.5, 'faction_scn'), /integer 0-9999/);
+  assert.throws(() => deliveredBarkWavRelPath(-1, 'faction_scn'), /integer 0-9999/);
+  assert.throws(() => deliveredBarkWavRelPath(10000, 'faction_scn'), /integer 0-9999/);
+  assert.throws(() => deliveredBarkWavRelPath(0, 'bad/../seg'), /safe filename segment/);
+});
+
 test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all fourteen registers (no filename, no label)`, () => {
   const shuffled = [...BARK_FACTIONS];
   // Deterministic shuffle from the seed, not Math.random.

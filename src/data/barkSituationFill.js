@@ -1364,7 +1364,7 @@ export function topUpBarkSituationCells(barks, factions, situations, eventSituat
           seen.add(line);
         }
       }
-      if (Array.isArray(cell) && cell.length < minLength) underFloor.push(`${factionId}/${situation}`);
+      if (!Array.isArray(cell) || cell.length < minLength) underFloor.push(`${factionId}/${situation}`);
     }
   }
   return underFloor;

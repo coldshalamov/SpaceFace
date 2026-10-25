@@ -150,7 +150,7 @@ for (const [asset, files] of [...referenced]) {
 // this audit correctly flags it rather than carving it out). Derived from the same
 // normalizer the planner uses so separator/dir semantics can't drift.
 const EXCLUDED_PREFIXES = RELEASE_COPY_MAPPINGS.flatMap((m) =>
-  releaseCopyExcludePrefixes(m).map((p) => `${m.source}/${p}`));
+  releaseCopyExcludePrefixes(m).map((p) => `${m.source.replace(/\\/g, '/')}/${p}`));
 
 const issues = [];
 const underBundledRoot = (asset) =>
