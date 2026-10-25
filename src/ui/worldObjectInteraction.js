@@ -6,6 +6,7 @@ import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
 import { initialMouseToolLane } from '../systems/input.js';
 import { interactionClassLine, interactionDisplayName, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { classifyPickIntent } from '../combat/targetAcquisition.js';
 import { isConfirmOpen } from './confirm.js';
 import { targetDisplayName } from './targetPanel.js';
 import { createHoverTag, placeHoverTag, paintHoverTagVitals } from './orrery/hoverTag.js';
@@ -453,7 +454,11 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       return { sling: true, text: 'RMB select · hold to aim sling', beam: false };
     }
     if (lane !== 'beam') {
-      return { sling: false, text: 'RMB select', beam: false };
+      // Packet 02: say what the press COMMITS to before it happens — an attack target takes the guns,
+      // a prop only selects a tool subject, a friendly or neutral hull only informs.
+      const intent = classifyPickIntent(entity, !!(player && isHostileToPlayer(entity, player.team, state)));
+      const word = intent === 'attack' ? 'RMB lock target' : intent === 'info' ? 'RMB inspect' : 'RMB select';
+      return { sling: false, text: word, beam: false };
     }
     if (!isBeamTargetEligible(entity, state)) {
       const depleted = !!(entity && entity.data && entity.data.respawnAt != null);

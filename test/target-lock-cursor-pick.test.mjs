@@ -47,7 +47,9 @@ test('range only breaks ties near the cursor', () => {
   assert.equal(state.player.targetId, 'near');
 });
 
-test('without a live cursor the pick is still the nearest hostile', () => {
+test('without a live cursor the pick reads the aim ray and never takes the hostile behind the player', () => {
+  // Packet 02: the nearest hostile here is BEHIND the player. With no cursor the intent is the aim
+  // direction (nose), so the contact on that line wins and the one behind is never auto-acquired.
   for (const [label, opts] of [
     ['no pointer', {}],
     ['G combat stick (pointer locked)', { cursor: { x: 540, z: -10 }, input: { autoFire: true } }],
@@ -55,8 +57,21 @@ test('without a live cursor the pick is still the nearest hostile', () => {
   ]) {
     const state = world(pack(), opts);
     targetNearestHostileToPlayer(state, null, { quiet: true });
-    assert.equal(state.player.targetId, 'behind', label);
+    assert.equal(state.player.targetId, 'ahead', label);
   }
+});
+
+test('a lone hostile behind the player is not auto-acquired, but a deliberate press still gets it', () => {
+  const only = () => [shipLike('behind', { x: -180, z: 20 })];
+  const quietState = world(only(), {});
+  targetNearestHostileToPlayer(quietState, null, { quiet: true });
+  assert.equal(quietState.player.targetId, null, 'the quiet refresh never swings the guns onto your tail');
+  const pressed = world(only(), {});
+  targetNearestHostileToPlayer(pressed, null, {});
+  assert.equal(pressed.player.targetId, 'behind', 'asking for a target is a deliberate act: nearest in range');
+  const aimedBack = world(only(), { input: { aimAngle: Math.PI } });
+  targetNearestHostileToPlayer(aimedBack, null, { quiet: true });
+  assert.equal(aimedBack.player.targetId, 'behind', 'aiming back at it is explicit intent');
 });
 
 test('a legal lock is kept when the cursor wanders to another contact (no flicker)', () => {

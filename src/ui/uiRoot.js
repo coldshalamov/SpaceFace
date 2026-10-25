@@ -47,6 +47,9 @@ import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { laneInputWrite } from '../core/simLaneCommands.js';
 import { occupantGenerationOf } from '../core/entity.js';
+import { targetIdentityGeneration } from '../ai/perception.js';
+import { concealedFromPlayer, selectionIsRecycled, selectionRetired } from '../combat/targetIdentity.js';
+import { ACQUISITION_PROTOTYPE, createAcquisitionTracker, resetAcquisitionTracker, stepAcquisition } from '../combat/targetAcquisition.js';
 import { flightCursorMode, installNativeFlightCursor } from './flightCursor.js';
 import { saveErrorText, saveSlotLabel, shouldToastSaveError } from './saveFeedback.js';
 import { installWindowTitle, readWindowTitleView } from './windowTitle.js';
@@ -2141,6 +2144,10 @@ function isScannerHostileLock(player, state, entity) {
   if (!isHostileToPlayer(entity, player.team, state)) return false;
   if (!presentationAllowsTargetLock(entity, state)) return false;
   if (isPirateDisengaged(entity)) return false;
+  // Packet 02: a hull the player's sensors cannot see (cloak) is not a legal lock, and a recycled
+  // id is not the body the player picked — neither may keep (or inherit) a lock.
+  if (concealedFromPlayer(state, entity)) return false;
+  if (selectionIsRecycled(state, entity)) return false;
   const dx = entity.pos.x - player.pos.x;
   const dz = entity.pos.z - player.pos.z;
   return (dx * dx + dz * dz) <= SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE;
@@ -2194,12 +2201,12 @@ function isDeliberateNonHostilePick(player, state, entity) {
 // so the contact under the cursor wins and range only breaks ties. Without a cursor it is the
 // nearest hostile, as before. Lab bench (pinned packs, cursor on a seeded contact, up to 60 wu off):
 // nearest-only locked the intended contact 18-52% of the time; this locks it 100%.
-export const LOCK_PICK_RANGE_WEIGHT = 0.25;
+export const LOCK_PICK_RANGE_WEIGHT = ACQUISITION_PROTOTYPE.rangeWeight; // 0.25 — one number, owned by the picker
 // After a lock is lost (kill, out of range) with a live cursor, the quiet refresh waits this long
 // before picking again, so the cursor can travel to the next contact first. The refresh runs every
 // AUTO_TARGET_REFRESH_S (0.12 s), so the measured gap is ~0.23 s; it covers a ~0.25 s reaction.
 export const LOCK_REACQUIRE_GRACE_S = 0.15;
-const lockMemoByState = new WeakMap(); // state -> { id: last lock seen by the refresh, lostAt }
+const lockMemoByState = new WeakMap(); // state -> { id: last lock seen by the refresh, lostAt, tracker }
 
 /** The world point under the player's live mouse cursor, or null (no pointer, G mode, pad aim). */
 function lockCursorPoint(state) {
@@ -2210,7 +2217,55 @@ function lockCursorPoint(state) {
 }
 
 function rememberLock(state, id) {
-  lockMemoByState.set(state, { id, lostAt: null });
+  // The acquisition tracker (combat/targetAcquisition.js) survives the memo reset: it is what makes
+  // a contact that briefly drops out of legality (scanner edge, cloak ring) the preferred
+  // re-acquisition instead of whichever contact happens to be cheapest this refresh.
+  const prior = lockMemoByState.get(state);
+  const tracker = prior && prior.tracker ? prior.tracker : createAcquisitionTracker();
+  // The held lock IS the picker's incumbent, whoever chose it (Tab, a click, the line, the refresh).
+  const held = state.entities && state.entities.get ? state.entities.get(id) : null;
+  tracker.id = id; tracker.gen = held ? (targetIdentityGeneration(held) || 0) : 0;
+  tracker.challengerId = null; tracker.challengerGen = 0; tracker.since = 0;
+  lockMemoByState.set(state, { id, lostAt: null, tracker });
+}
+
+// Reused per call: the quiet refresh runs at 8 Hz forever and must not allocate.
+const _acqCandidates = [];
+const _acqPool = [];
+const _acqIntent = { px: 0, pz: 0, hasCursor: false, cx: 0, cz: 0, aimAngle: NaN, heading: 0 };
+
+function acquisitionTrackerFor(state) {
+  let memo = lockMemoByState.get(state);
+  if (!memo) { memo = { id: null, lostAt: null, tracker: null }; lockMemoByState.set(state, memo); }
+  if (!memo.tracker) memo.tracker = createAcquisitionTracker();
+  return memo.tracker;
+}
+
+/**
+ * The legal automatic-lock candidates (hostile, observed, in scanner range, presentable), in the
+ * shape combat/targetAcquisition.js scores. Allocation-free after warm-up.
+ */
+function collectAcquisitionCandidates(state, player) {
+  let n = 0;
+  const rangeSq = SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE;
+  for (const e of indexedShipLikeScan(state)) {
+    if (!e || e.alive === false || e === player || !e.pos) continue;
+    if (e.type !== 'ship' && e.type !== 'drone') continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
+    if (!presentationAllowsTargetLock(e, state)) continue;
+    if (isPirateDisengaged(e)) continue;
+    if (concealedFromPlayer(state, e)) continue;
+    const dx = e.pos.x - player.pos.x;
+    const dz = e.pos.z - player.pos.z;
+    if (dx * dx + dz * dz > rangeSq) continue;
+    const rec = _acqPool[n] || (_acqPool[n] = { id: null, gen: 0, x: 0, z: 0, radius: 0 });
+    rec.id = e.id; rec.gen = targetIdentityGeneration(e) || 0;
+    rec.x = e.pos.x; rec.z = e.pos.z; rec.radius = Number.isFinite(e.radius) ? e.radius : 0;
+    _acqCandidates[n] = rec;
+    n += 1;
+  }
+  _acqCandidates.length = n;
+  return _acqCandidates;
 }
 
 function targetNearestHostileToPlayer(state, bus, options = {}) {
@@ -2218,6 +2273,12 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
   const player = state.entities.get(state.playerId);
   if (!player) return;
   const quiet = !!options.quiet;
+  // Packet 02: the selection is a NUMBER; if that number now names a different occupant the picked
+  // body is gone. Retire it (free aim) rather than let the heir inherit the lock and the assist.
+  if (state.player && state.player.targetId != null && selectionRetired(state)) {
+    laneInputWrite(state, 'player.targetId', null);
+    laneInputWrite(state, 'ui.objectSelection', null);
+  }
   const curId = state.player && state.player.targetId;
   if (curId != null) {
     const cur = state.entities.get(curId);
@@ -2265,24 +2326,34 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     }
     return;
   }
+  // Packet 02 acquisition: intent (the cursor, else the aim ray), never the nearest hostile behind
+  // the player, a stable id tie-break, and the contact that just dropped out of legality is the
+  // preferred re-acquisition (combat/targetAcquisition.js). Candidates are legal automatic locks.
+  const candidates = collectAcquisitionCandidates(state, player);
+  // Reaching this point means NO legal lock is held, so there is no incumbent to defend: a fresh
+  // acquisition (the sticky-lock contract — only Tab, a click, or losing the lock changes a lock —
+  // is the early return above). Dwell/margin hysteresis lives in the picker for soft retargeting.
+  const tracker = resetAcquisitionTracker(acquisitionTrackerFor(state));
+  const inp = state.input;
+  _acqIntent.px = player.pos.x; _acqIntent.pz = player.pos.z;
+  _acqIntent.hasCursor = !!cursor;
+  _acqIntent.cx = cursor ? cursor.x : 0; _acqIntent.cz = cursor ? cursor.z : 0;
+  _acqIntent.aimAngle = inp && Number.isFinite(inp.aimAngle) ? inp.aimAngle : NaN;
+  _acqIntent.heading = Number.isFinite(player.rot) ? player.rot : 0;
+  const picked = stepAcquisition(tracker, candidates, _acqIntent, Number(state.simTime) || 0,
+    { zoom: state.camera && state.camera.zoom });
   let best = null;
-  let bestCost = Infinity;
-  for (const e of indexedShipLikeScan(state)) {
-    if (!e || e.alive === false || e === player || !e.pos) continue;
-    if (e.type !== 'ship' && e.type !== 'drone') continue;
-    if (!isHostileToPlayer(e, player.team, state)) continue;
-    if (!presentationAllowsTargetLock(e, state)) continue;
-    if (isPirateDisengaged(e)) continue;
-    const dx = e.pos.x - player.pos.x;
-    const dz = e.pos.z - player.pos.z;
-    const d2 = dx * dx + dz * dz;
-    if (d2 > SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE) continue;
-    const cost = cursor
-      ? Math.hypot(e.pos.x - cursor.x, e.pos.z - cursor.z) + LOCK_PICK_RANGE_WEIGHT * Math.sqrt(d2)
-      : d2;
-    if (cost < bestCost) {
-      best = e;
-      bestCost = cost;
+  if (picked.id != null) best = state.entities.get(picked.id) || null;
+  // A deliberate press (not the quiet refresh) always gets a target if any hostile is in range:
+  // the player asked for one. Nearest, because there is no intent left to read.
+  if (!best && !quiet) {
+    let bestD2 = Infinity;
+    for (let i = 0; i < candidates.length; i += 1) {
+      const c = candidates[i];
+      const d2 = (c.x - player.pos.x) ** 2 + (c.z - player.pos.z) ** 2;
+      if (d2 < bestD2 || (d2 === bestD2 && best && String(c.id) < String(best.id))) {
+        bestD2 = d2; best = state.entities.get(c.id) || null;
+      }
     }
   }
   if (!best) {
