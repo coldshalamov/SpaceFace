@@ -98,7 +98,8 @@ export function resolveRelation(subject, ctx) {
 
 /**
  * Shield points a contact costs the pair. Callers hand physical facts; the table here turns them
- * into the ONE resource the pair debits (SP). Never below `minContactEnergy`.
+ * into the ONE resource the pair debits (SP). Discrete hits never fall below `minContactEnergy`;
+ * sustained contacts (beam ticks, hulls leaning on the wall) pay exactly what they deliver.
  *   projectile/beam/chain: info.damage (summed damage of the packet / the tick's beam damage)
  *   blast:                 info.damage, else info.baseImpulse scaled by def.blastEnergyFromImpulse
  *   ship/debris:           0.5 * mass * dv^2 / def.shipEnergyDiv (dv = inbound speed removed)
@@ -124,5 +125,9 @@ export function contactEnergy(kind, info, def) {
     default:
       e = Math.max(0, Number(info && info.damage) || 0);
   }
+  // A discrete hit never costs nothing; a sustained contact (a beam tick, a hull leaning on the
+  // wall tick after tick) pays exactly what it delivers, so pressing on the wall strains it
+  // smoothly instead of draining it at a flat per-tick floor.
+  if (kind === C.BEAM || kind === C.SHIP || kind === C.DEBRIS) return e;
   return e < minE ? minE : e;
 }

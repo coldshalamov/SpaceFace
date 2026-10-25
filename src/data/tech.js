@@ -37,7 +37,7 @@ export const TECH_NODES = [
   {
     id: 'tech_deflector_theory', name: 'Deflector Theory', branch: 'combat', prereqs: [],
     cost: { credits: 1100, rp: 0 },
-    unlocks: { modules: ['mod_shield_capacitor_m', 'mod_shield_hardener_m', 'mod_chaff_dispenser_m', 'mod_decoy_buoy_s'] },
+    unlocks: { modules: ['mod_shield_capacitor_m', 'mod_shield_hardener_m', 'mod_chaff_dispenser_m', 'mod_decoy_buoy_s', 'mod_pylon_projector_m'] },
   },
   {
     id: 'tech_hardened_deflectors', name: 'Hardened Deflectors', branch: 'combat', prereqs: ['tech_deflector_theory'],

@@ -448,6 +448,23 @@ const SHIPPED_MODULES = [
     energyDraw: 0, mods: { hullBurst: 'gravity', hullBurstRank: 1 },
   },
   {
+    // PYLON PROJECTOR — Linked Shield Pylons (Controlled Chaos packet 06). Deploy one endpoint, then a
+    // second: a thin relation-selective shield wall stands between them. You and your allies cross it
+    // both ways and shoot through it; hostile hulls, shots, beams, blasts and arcs stop at it. The
+    // wall has one energy pool, strains, overloads and collapses; each pylon is a body hostile fire
+    // can destroy, which drops the whole wall at once. Two pairs at a time. Tuned in data/shieldPylons.js,
+    // run by systems/shieldPylons.js (the Digit6 verb; the binding owner labels the key).
+    id: 'mod_pylon_projector_m', name: 'Pylon Projector M', slotType: 'utility', size: 'M', tier: 2, mass: 5, price: 28000,
+    requiresTech: 'tech_deflector_theory',
+    // First-station rack at first-haul terms (same door as Gravity Bumper): a pilot docked at Helios can
+    // buy the wall without a research stop; the catalog price and the research gate stand elsewhere.
+    shopOffers: { station_helios: { price: 16000 } },
+    energyDraw: 3,
+    mods: { pylonPairs: 2 },
+    sentence: 'Place one pylon, then a second: hostile ships and shots stop at the wall between them; you and your allies pass.',
+    description: 'A pylon projector and two pairs of deployable endpoints. Each endpoint is a body that hostile fire can destroy; the wall between a linked pair stops hostile hulls, shots, beams, blasts and arcs while you and your allies cross it both ways. Strain it too hard and it overloads; lose an endpoint and it collapses.',
+  },
+  {
     // FIRE LANCE — the finisher (design doc 2026-09-29 section 4). A narrow, short wedge you must fly straight
     // at: contact is thermal damage through the combat kernel, credited to you. A light or medium hull dies;
     // a heavy ignites and burns. Full effect at speed; a crawling touch only scorches. Same key as every hull

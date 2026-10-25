@@ -31,7 +31,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics', 'latchNine',
   'aiPorts', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'hullBurst', 'mines', 'bombs', 'emergentPrimitives', 'environmentMaterials', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'gyreSnare', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks', 'dyingHull',
+  'uniqueLootAbilities', 'fields', 'gyreSnare', 'shieldPylons', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks', 'dyingHull',
   // Packet 09 (Three Capitals): the score system validates helpers.routeCombatDamage /
   // getCombatCapabilities at init, so it initialises after the combat kernel installs them.
   'capitalBossEncounters',
@@ -115,7 +115,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
-  'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'physics', 'reactiveMatter', 'latchNine', 'combat',
+  'survivalArena', 'fields', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'physics', 'reactiveMatter', 'latchNine', 'combat',
   'combatOutcome', 'aftermathWrecks', 'dyingHull', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'shipjack', 'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
@@ -435,7 +435,7 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // Combat/contact owners and damage single-writers.
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs',
   'emergentPrimitives', 'environmentMaterials', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'gyreSnare', 'environmentalMachinery',
+  'uniqueLootAbilities', 'fields', 'gyreSnare', 'shieldPylons', 'environmentalMachinery',
   // Anchored set-pieces queue physics impulses every tick.
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket',
   // Combat island: damage/attachment/custody owners at combat cadence.

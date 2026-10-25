@@ -93,6 +93,7 @@ import { hullBurst } from '../systems/hullBurst.js';
 import { massSeed } from '../systems/massSeed.js';
 import { fields } from '../systems/fields.js';
 import { gyreSnare } from '../systems/gyreSnare.js';
+import { shieldPylons } from '../systems/shieldPylons.js';
 import { emergentPrimitives } from '../systems/emergentPrimitives.js';
 import { environmentMaterials } from '../systems/environmentMaterials.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js';
@@ -336,6 +337,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
     ['gyreSnare', gyreSnare],
+    ['shieldPylons', shieldPylons],
     ['latchNine', latchNine],
     ['scissorwake', scissorwake],
     ['tallyThree', tallyThree],

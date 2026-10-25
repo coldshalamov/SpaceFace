@@ -159,8 +159,11 @@ test('production init + update order lengths match the live browser baseline', (
   // 249 -> 250 init / 195 -> 196 update: Controlled Chaos packet 08 registers dyingHull — the
   // bounded failure interval between a decisive kill and its single rupture, right after
   // aftermathWrecks, on the table clock.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 250);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 196);
+  // 250 -> 251 init / 196 -> 197 update: Controlled Chaos packet 06 registers shieldPylons — the
+  // linked shield pylons' lifecycle, hull interception and the single energy debit, right after
+  // gyreSnare in the pre-physics slot, on the table clock.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 251);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 197);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

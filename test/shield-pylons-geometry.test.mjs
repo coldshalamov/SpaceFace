@@ -262,7 +262,8 @@ test('resolveRelation: hostility comes from the injected oracle, never from team
 test('contactEnergy: one resource, never below the floor', () => {
   const def = SHIELD_PYLON_DEF;
   assert.equal(contactEnergy(C.PROJECTILE, { damage: 40 }, def), 40);
-  assert.equal(contactEnergy(C.BEAM, { damage: 0.1 }, def), def.minContactEnergy);
+  assert.equal(contactEnergy(C.BEAM, { damage: 0.1 }, def), 0.1, 'a beam tick pays exactly what it delivers');
+  assert.equal(contactEnergy(C.PROJECTILE, { damage: 0.1 }, def), def.minContactEnergy, 'a chip shot is never free');
   assert.equal(contactEnergy(C.BLAST, { damage: 120 }, def), 120);
   assert.equal(contactEnergy(C.BLAST, { baseImpulse: 5000 }, def), 5000 * def.blastEnergyFromImpulse);
   const ram = contactEnergy(C.SHIP, { mass: 28, dv: 60 }, def);

@@ -98,6 +98,7 @@ import { hullBurst } from '../systems/hullBurst.js';                   // hull-b
 import { massSeed } from '../systems/massSeed.js';               // PQ-011/SF-11 deployable anchor Mass Seed
 import { fields } from '../systems/fields.js';                   // PQ-012/SF-12 continuous field kernel (Well/Repulsor/Cone)
 import { gyreSnare } from '../systems/gyreSnare.js';             // Gyre Snare: held-key telekinetic katamari lash (Quote)
+import { shieldPylons } from '../systems/shieldPylons.js';       // Controlled Chaos packet 06: linked shield pylons (relation-selective wall)
 import { environmentMaterials } from '../systems/environmentMaterials.js';
 import { emergentPrimitives } from '../systems/emergentPrimitives.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js'; // PQ-027/SF-22 timed Ceres current + World Site adapter
@@ -587,6 +588,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
     ['gyreSnare', gyreSnare],
+    ['shieldPylons', shieldPylons],
     ['emergentPrimitives', emergentPrimitives],
     ['environmentMaterials', environmentMaterials],
     ['environmentalMachinery', environmentalMachinery],
@@ -1015,6 +1017,13 @@ export function createRegistry(ctx) {
   // physics-command membrane, so this tick's SG-02 solve applies them. It is input-only — the
   // beam never activates without the held verb — it is NOT in the sf-sim curated list, and the
   // 47-A golden never presses the key; the runtime mirror (state.gyreSnare) is never serialized.
+  // shieldPylons (packet 06, linked shield pylons) follows gyreSnare in the same pre-physics slot: it
+  // reads the settled input flag, then stops hostile hulls/debris at the wall with swept-disc impulses on the
+  // physics-command membrane (this tick's solve applies them) and drains the contact inbox the projectile,
+  // beam, blast and chain paths fill (core/physics.js, systems/combat.js, combat/physicalEffects.js,
+  // combat/attackHit.js) - the single energy debit. Input-only: a strict no-op until the first pylon is
+  // placed, NOT in the sf-sim curated list, runtime mirror (state.shieldPylons) never serialized, endpoints
+  // are non-persistent so a save carries neither - the gyreSnare recipe, so the 47-A golden never executes it.
   // fields (PQ-012) sits immediately before physics, after the massSeed/uniqueLootAbilities/
   // dockingCorridor deployable family: the continuous-field kernel reads the settled flight/input
   // commands, then queues its bounded, coupling-selective accelerations on the physics-command
