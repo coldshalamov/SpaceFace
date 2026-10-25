@@ -126,6 +126,11 @@ test('faction stings ride the Band: unique profiles a stranger can tell apart', 
     [],
     'a bark faction without a house sting is a silent audible asymmetry',
   );
+  assert.deepEqual(
+    Object.keys(FACTION_STINGS).filter((id) => !BARK_FACTIONS.includes(id)),
+    [],
+    'a sting keyed to a non-live faction is dead authored data',
+  );
   const signatures = new Set();
   for (const id of ids) {
     const sting = resolveFactionSting(id);

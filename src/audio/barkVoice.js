@@ -342,8 +342,10 @@ export function enumerateMechanicPipeline() {
 export function factionRegistersAreDistinct() {
   const sigs = BARK_FACTIONS.map((id) => {
     const r = FACTION_VOICE_REGISTERS[id];
+    if (!r) return `missing:${id}`; // a missing register is a distinctness failure, not a TypeError
     return `${r.f0}:${r.pitch}:${r.rate}:${r.filterHz}:${r.q}:${r.noise}`;
   });
+  if (sigs.some((s) => s.startsWith('missing:'))) return false;
   return new Set(sigs).size === sigs.length;
 }
 
