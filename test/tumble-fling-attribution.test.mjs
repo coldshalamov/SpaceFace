@@ -454,3 +454,74 @@ test('X-08 review: a throw\'s own tether:released echo keeps its record; a later
     assert.equal(x08Read(h.thrown, h.state.tick)?.actorId, h.player.id);
   });
 });
+
+// X-08 review 2 — the lawful-kill leg above emits entity:killed by hand. This drives the REAL
+// seam: a thrown rock's physics:impact through collisionConsequences + the combat kernel, whose
+// own entity:killed reaches lawSecurity and heat. A witnessed lawful hull ended by the player's
+// rock charges lawful_kill and prices heat; the same rock unthrown (or past its hold) bills nobody.
+function x08LawfulRockScene({ thrown, flightTicks = 60 }) {
+  const sim = x08Sim({ seed: 4242, systems: [x08Law, x08Heat] });
+  const { state, bus } = sim;
+  state.mode = 'flight';
+  state.world.currentSectorId = 'sector_helios_prime';
+  const pilot = sim.spawn({ type: 'ship', team: 0, pos: { x: -400, z: 10 }, radius: 8, hull: 500, hullMax: 500 });
+  state.playerId = pilot.id;
+  state.player.heat = 0;
+  // Rock surface touches the victim (20 + 10 = 30 wu apart) so it never occludes the witness.
+  const rock = sim.spawn({ type: 'asteroid', pos: { x: 270, z: 40 }, vel: { x: 90, z: 0 }, radius: 20, mass: 400,
+    hull: 4000, hullMax: 4000, data: { oreHP: 400, oreHPMax: 400 } });
+  const lawful = sim.spawn({ type: 'ship', team: 2, factionId: 'faction_scn', pos: { x: 300, z: 40 }, radius: 10, mass: 16,
+    hull: 1, hullMax: 30, data: { ai: { lawful: true, archetype: 'patrol_lawman' } } });
+  sim.spawn({ type: 'ship', team: 2, factionId: 'faction_scn', pos: { x: 320, z: 60 }, radius: 9, hull: 100, hullMax: 100,
+    data: { ai: { lawful: true, archetype: 'patrol_lawman' } } });
+  const helpers = { ...sim.helpers, combatPhysics: { applyImpulse: () => true } };
+  const kernel = x08Kernel({ state, bus, helpers, registry: { get: () => null } });
+  const registry = { get: (n) => (n === 'combat' ? { kernel } : null) };
+  Object.create(tumbleStates).init({ state, bus, helpers, registry });
+  Object.create(x08Collisions).init({ state, bus, helpers, registry });
+  const killed = [];
+  const adjudicated = [];
+  bus.on('entity:killed', (p) => killed.push(p));
+  bus.on('law:killedAdjudicated', (p) => adjudicated.push(p));
+  if (thrown) {
+    bus.emit('massline:throw', { releaseId: `massline:throw:${state.tick}:${rock.id}`, payloadId: rock.id,
+      aimTargetId: lawful.id, aimSynthetic: false, payloadSpeed: 90, mode: 'snap', tick: state.tick, time: state.simTime });
+  }
+  state.tick += flightTicks;
+  bus.emit('physics:impact', { consequenceKernelVersion: 1, aId: rock.id, bId: lawful.id,
+    impulse: 400 * 90, dp: 400 * 90, tick: state.tick, pos: { x: 290, z: 40 }, normal: { x: -1, z: 0 },
+    preSolveClosingSpeed: 90 });
+  return { sim, state, pilot, lawful, killed, adjudicated };
+}
+
+test('X-08 review 2: a real thrown-rock contact that ends a witnessed lawful hull charges the player and prices heat', () => {
+  x08WithFlags(() => {
+    const s = x08LawfulRockScene({ thrown: true });
+    try {
+      assert.equal(s.lawful.alive, false, 'the rock contact killed the lawful hull');
+      const kill = s.killed.find((k) => k.id === s.lawful.id);
+      assert.ok(kill, 'the kernel emitted the real entity:killed');
+      assert.equal(kill.killerId, s.pilot.id, 'the real kill receipt names the thrower');
+      const verdict = s.adjudicated.find((a) => a.victimEntityId === s.lawful.id);
+      assert.ok(verdict, 'lawSecurity adjudicated the kill');
+      assert.equal(verdict.outcome, 'charged');
+      assert.equal(verdict.kind, 'lawful_kill');
+      assert.equal(verdict.witnessed, true);
+      assert.ok(s.state.player.heat > 0, 'heat priced off the real path');
+    } finally { s.sim.dispose(); }
+  });
+});
+
+test('X-08 review 2: the same real contact from an unthrown rock, or past the hold, bills the player nothing', () => {
+  x08WithFlags(() => {
+    for (const opts of [{ thrown: false }, { thrown: true, flightTicks: THROW_CREDIT_HOLD_TICKS + 30 }]) {
+      const s = x08LawfulRockScene(opts);
+      try {
+        const kill = s.killed.find((k) => k.id === s.lawful.id);
+        assert.notEqual(kill && kill.killerId, s.pilot.id, `no player kill receipt (${JSON.stringify(opts)})`);
+        assert.equal(s.adjudicated.some((a) => a.victimEntityId === s.lawful.id && a.outcome === 'charged'), false);
+        assert.equal(s.state.player.heat, 0, `no heat (${JSON.stringify(opts)})`);
+      } finally { s.sim.dispose(); }
+    }
+  });
+});
