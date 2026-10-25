@@ -519,23 +519,26 @@ const CSS = `
   color:var(--dp-ink-mute, var(--sf-calm)); }
 .sf-sj__herorow { display:flex; align-items:baseline; gap:12px; }
 .sf-sj__herofig { font-weight:800; font-size:54px; line-height:1; font-variant-numeric:tabular-nums;
-  color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit-lamp, 0 0 18px rgb(242 185 80 / .35)); }
-.sf-sj__hero[data-tier="ignition"] .sf-sj__herofig { color:#ffd27a; }
-.sf-sj__hero[data-tier="flare"] .sf-sj__herofig { color:#ffab4d; }
-.sf-sj__hero[data-tier="nova"] .sf-sj__herofig { color:#ff7a4d; }
+  color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, 0 0 18px rgb(232 226 212 / .3)); }
+/* Tier ramp on the sanctioned tokens only: warm amber while the chain holds, the lamp driven
+   danger-hot as it nears the break, danger red at the tiers one hit from the shatter. The tier
+   WORD above the figure carries the meaning; the ramp is reinforcement, never the sole channel. */
+.sf-sj__hero[data-tier="ignition"] .sf-sj__herofig { color:var(--dp-lamp-hot, #ffd98c); }
+.sf-sj__hero[data-tier="flare"] .sf-sj__herofig { color:var(--dp-lamp, #f2b950); }
+.sf-sj__hero[data-tier="nova"] .sf-sj__herofig { color:var(--dp-danger-hot, #ff8a70); }
 .sf-sj__hero[data-tier="supernova"] .sf-sj__herofig,
-.sf-sj__hero[data-tier="singularity"] .sf-sj__herofig { color:#ff5a5a;
-  text-shadow:0 0 22px rgb(255 90 90 / .5); }
+.sf-sj__hero[data-tier="singularity"] .sf-sj__herofig { color:var(--dp-danger, #ff5038);
+  text-shadow:var(--dp-emit, 0 0 18px rgb(232 226 212 / .3)); }
 .sf-sj__hero[data-tier="ignition"] .sf-sj__herotier,
-.sf-sj__hero[data-tier="flare"] .sf-sj__herotier { color:#ffcf8a; }
+.sf-sj__hero[data-tier="flare"] .sf-sj__herotier { color:var(--dp-lamp-hot, #ffd98c); }
 .sf-sj__hero[data-tier="nova"] .sf-sj__herotier,
 .sf-sj__hero[data-tier="supernova"] .sf-sj__herotier,
-.sf-sj__hero[data-tier="singularity"] .sf-sj__herotier { color:#ff8a7a; }
+.sf-sj__hero[data-tier="singularity"] .sf-sj__herotier { color:var(--dp-danger-hot, #ff8a70); }
 .sf-sj__heromix { font-weight:700; font-size:15px; letter-spacing:.18em;
   color:var(--dp-lamp-hot, #f2b950); }
 .sf-sj__herobest { font-weight:500; font-size:12px; letter-spacing:.14em;
   font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
-.sf-sj__herotrack { width:130px; height:3px; background:rgb(232 226 212 / .20); overflow:hidden; }
+.sf-sj__herotrack { width:130px; height:3px; background:var(--dp-rule-hi, rgb(232 226 212 / .20)); overflow:hidden; }
 .sf-sj__herodeplete { width:100%; height:100%; transform-origin:left center;
   background:var(--dp-lamp, #f2b950); }
 /* — the announcer — */
@@ -543,22 +546,27 @@ const CSS = `
   display:flex; flex-direction:column; align-items:center; gap:4px; }
 .sf-sj__calls[hidden] { display:none; }
 .sf-sj__call { font-weight:800; font-size:30px; letter-spacing:.22em; text-transform:uppercase;
-  color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit-lamp, 0 0 16px rgb(242 185 80 / .4));
+  color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, 0 0 16px rgb(232 226 212 / .3));
   animation:sf-sj-pop .28s cubic-bezier(.2,.9,.3,1) both; }
-.sf-sj__call[data-kind="pileup"], .sf-sj__call[data-kind="collateral"] { color:#ffb454; }
-.sf-sj__call[data-kind="revenge"], .sf-sj__call[data-kind="closecall"] { color:#ff6a4d; }
-.sf-sj__call[data-kind="lastone"], .sf-sj__call[data-kind="bossdown"] { color:#ffe08a; }
+.sf-sj__call[data-kind="pileup"], .sf-sj__call[data-kind="collateral"] { color:var(--dp-lamp, #f2b950); }
+.sf-sj__call[data-kind="revenge"], .sf-sj__call[data-kind="closecall"] { color:var(--dp-danger-hot, #ff8a70); }
+.sf-sj__call[data-kind="lastone"], .sf-sj__call[data-kind="bossdown"] { color:var(--dp-lamp-hot, #ffd98c); }
 .sf-sj__shatter { position:absolute; top:24vh; left:50%; transform:translateX(-50%);
   font-weight:800; font-size:22px; letter-spacing:.26em; text-transform:uppercase;
   color:var(--dp-danger-hot, #ff5038); animation:sf-sj-drop .5s ease-out both; }
 .sf-sj__shatter[hidden] { display:none; }
 /* — the round slam — */
-.sf-sj__slam { position:absolute; top:34vh; left:0; right:0; display:flex; flex-direction:column;
+/* RC-456: the sf-sj-slam keyframes hold translateX(-50%) — the layer's own centring idiom —
+   so the element must sit at left:50% with an intrinsic width. A full-width (left:0;right:0)
+   box under that transform rides -50vw forever (the both fill keeps the last keyframe), and
+   the centred ROUND title lands half off the left edge — the clipped label in the C1 pass. */
+.sf-sj__slam { position:absolute; top:34vh; left:50%; transform:translateX(-50%);
+  width:max-content; max-width:94vw; display:flex; flex-direction:column;
   align-items:center; gap:6px; animation:sf-sj-slam .34s cubic-bezier(.2,.9,.3,1) both; }
 .sf-sj__slam[hidden] { display:none; }
 .sf-sj__slamtitle { font-weight:800; font-size:64px; line-height:1; letter-spacing:.3em;
   text-transform:uppercase; color:var(--dp-ink, var(--sf-paper));
-  text-shadow:var(--dp-emit-lamp, 0 0 26px rgb(242 185 80 / .4)); }
+  text-shadow:var(--dp-emit, 0 0 26px rgb(232 226 212 / .3)); }
 .sf-sj__slamsub { font-weight:700; font-size:15px; letter-spacing:.3em; text-transform:uppercase;
   color:var(--dp-lamp-hot, #f2b950); }
 /* — the clear tally — */
@@ -574,8 +582,10 @@ const CSS = `
 /* — the boss furniture — */
 .sf-sj__card { position:absolute; top:24vh; left:50%; transform:translateX(-50%);
   display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 26px;
-  background:rgb(10 12 16 / .72); border-top:1px solid rgb(242 185 80 / .55);
-  border-bottom:1px solid rgb(242 185 80 / .55); animation:sf-sj-slam .3s ease-out both; }
+  background:var(--dp-glass-flight, rgb(10 12 16 / .72));
+  border-top:1px solid color-mix(in srgb, var(--dp-lamp, #f2b950) 55%, transparent);
+  border-bottom:1px solid color-mix(in srgb, var(--dp-lamp, #f2b950) 55%, transparent);
+  animation:sf-sj-slam .3s ease-out both; }
 .sf-sj__card[hidden] { display:none; }
 .sf-sj__cardtitle { font-weight:800; font-size:26px; letter-spacing:.26em; text-transform:uppercase;
   color:var(--dp-ink, var(--sf-paper)); }
@@ -586,25 +596,28 @@ const CSS = `
 .sf-sj__boss[hidden] { display:none; }
 .sf-sj__bossname { font-weight:700; font-size:12px; letter-spacing:.3em; text-transform:uppercase;
   color:var(--dp-danger-hot, #ff5038); }
-.sf-sj__bosstrack { width:100%; height:6px; background:rgb(232 226 212 / .16); overflow:hidden; }
+.sf-sj__bosstrack { width:100%; height:6px; background:var(--dp-rule-hi, rgb(232 226 212 / .16)); overflow:hidden; }
 .sf-sj__bossfill { width:100%; height:100%; transform-origin:left center;
-  background:var(--dp-danger, #ff5038); box-shadow:0 0 8px rgb(255 80 56 / .5);
+  background:var(--dp-danger, #ff5038);
   transition:transform .18s linear; }
 .sf-sj__bosscount { font-weight:650; font-size:12px; letter-spacing:.2em;
   font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
-.sf-sj__bossdown { position:absolute; top:30vh; left:0; right:0; text-align:center;
+/* Same centring contract as the slam: sf-sj-slam owns the translateX(-50%), so the box takes
+   left:50% and an intrinsic width — left:0;right:0 under that transform clipped the text. */
+.sf-sj__bossdown { position:absolute; top:30vh; left:50%; transform:translateX(-50%);
+  width:max-content; max-width:94vw; text-align:center;
   font-weight:800; font-size:44px; letter-spacing:.3em; text-transform:uppercase;
-  color:var(--dp-lamp-hot, #f2b950); text-shadow:0 0 30px rgb(242 185 80 / .55);
+  color:var(--dp-lamp-hot, #f2b950); text-shadow:var(--dp-emit-lamp, 0 0 26px rgb(242 185 80 / .4));
   animation:sf-sj-slam .34s cubic-bezier(.2,.9,.3,1) both; }
 .sf-sj__bossdown[hidden] { display:none; }
 /* — the kill popups — */
 .sf-sj__pops { position:absolute; inset:0; }
 .sf-sj__pop { position:absolute; top:0; left:0; font-weight:750; font-size:15px;
   letter-spacing:.12em; text-transform:uppercase; font-variant-numeric:tabular-nums;
-  color:var(--dp-ink, var(--sf-paper)); text-shadow:0 0 8px rgb(0 0 0 / .6);
+  color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-etch-shadow, 0 1px 2px rgb(0 0 0 / .8));
   animation:sf-sj-float 1.05s ease-out both; will-change:transform; white-space:nowrap; }
 .sf-sj__pop[data-cause="terrain"], .sf-sj__pop[data-cause="collision"],
-.sf-sj__pop[data-cause="explosive"] { color:#ffcf8a; }
+.sf-sj__pop[data-cause="explosive"] { color:var(--dp-lamp-hot, #ffd98c); }
 /* — beats — */
 @keyframes sf-sj-pop { from { opacity:0; transform:scale(.72); } to { opacity:1; transform:scale(1); } }
 @keyframes sf-sj-rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
