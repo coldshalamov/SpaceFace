@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "al-pr-14-caption-inventory",
-      "date": "2026-10-23",
-      "wf": "WF-13",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Incoming telegraph, repulsor deployed, and massline captions are in the source inventory a translation pass can read.",
-      "fingerprint": "verb=read,subject=caption-inventory,sector=any,layer=access,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "66deeb0e84",
-      "verification": "focused_green"
-    },
-    {
       "id": "al-pr-15-caption-bearing",
       "date": "2026-10-23",
       "wf": "WF-13",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "fc7e1f3b89ea912f9db32717741cb3d3ce66be75",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-fine-again",
+      "date": "2026-10-25",
+      "wf": "WF-06",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A new warrant at the same desk offers the scan fine again.",
+      "fingerprint": "verb=pay,subject=fine,sector=tethys,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "95e18bf9fa29cf8d3f02a3b12ac18be68fe9d7e0",
       "verification": "focused_green"
     }
   ],
