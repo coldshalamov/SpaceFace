@@ -766,8 +766,9 @@ export const onboarding = {
       const run = this._firstTradeRun();
       if (!run || !p || p.sectorId !== run.destSectorId) return;
       // Only the Helios leg reads this way — the Flare Rack lead-in is the out-run, not a
-      // return or a later Ceres entry.
-      if ((this.state.world && this.state.world.previousSectorId) !== this._runOriginSectorId(run)) return;
+      // return or a later Ceres entry. world.js stamps the departure sector on the payload
+      // (state.world keeps no previous-sector field).
+      if (p.fromSectorId !== this._runOriginSectorId(run)) return;
       this._showHint('firstGateArrive', 'Ceres. Follow the Flare Rack to the refinery.', {});
     });
 

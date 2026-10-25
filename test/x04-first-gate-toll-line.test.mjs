@@ -8,6 +8,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { onboarding } from '../src/systems/onboarding.js';
+import { world } from '../src/systems/world.js';
 import { jumpAbortText } from '../src/ui/jumpNotice.js';
 import { SECTORS } from '../src/data/sectors.js';
 
@@ -23,7 +24,6 @@ function rig(withRun = true) {
   state.mode = 'flight';
   state.missions.active = withRun ? [{ ...RUN }] : [];
   state.world.currentSectorId = 'sector_helios_prime';
-  state.world.previousSectorId = 'sector_helios_prime';
   state.onboarding = { active: false, finished: true };
   const raw = createBus();
   const emitted = [];
@@ -78,19 +78,37 @@ test('X-04 the line follows gateTollFor — no literals', () => {
 
 test('X-04 arrival names the worklight lead-in once; no run means silence', () => {
   const h = rig();
-  h.bus.emit('jump:arrive', { sectorId: 'sector_ceres_belt' });
+  const fromHelios = { sectorId: 'sector_ceres_belt', fromSectorId: 'sector_helios_prime' };
+  h.bus.emit('jump:arrive', fromHelios);
   const line = h.hints('firstGateArrive');
   assert.equal(line.length, 1);
   assert.equal(line[0].payload.text, 'Ceres. Follow the Flare Rack to the refinery.');
-  h.bus.emit('jump:arrive', { sectorId: 'sector_ceres_belt' });
+  h.bus.emit('jump:arrive', fromHelios);
   assert.equal(h.hints('firstGateArrive').length, 1);
   const none = rig(false);
-  none.bus.emit('jump:arrive', { sectorId: 'sector_ceres_belt' });
+  none.bus.emit('jump:arrive', fromHelios);
   assert.equal(none.hints('firstGateArrive').length, 0);
   const wrongLeg = rig();
-  wrongLeg.state.world.previousSectorId = 'sector_io_reach'; // a Ceres entry off the out-run
-  wrongLeg.bus.emit('jump:arrive', { sectorId: 'sector_ceres_belt' });
+  wrongLeg.bus.emit('jump:arrive', { sectorId: 'sector_ceres_belt', fromSectorId: 'sector_io_reach' });
   assert.equal(wrongLeg.hints('firstGateArrive').length, 0, 'only the Helios leg names the Flare Rack');
+});
+
+test('X-04 the live jump:arrive payload carries the departure sector the arrival gate reads', () => {
+  // The arrival gate keys on p.fromSectorId; state.world keeps no previous-sector field, so the
+  // world writer must stamp it or the line can never speak in play.
+  const state = createGameState(SEED);
+  state.world.currentSectorId = 'sector_helios_prime';
+  state.jump = { state: 'JUMPING', _jumpT: 99, targetSectorId: 'sector_ceres_belt', via: 'gate' };
+  const seen = [];
+  const host = Object.create(world);
+  host.state = state;
+  host.bus = { emit: (e, p) => { if (e === 'jump:arrive') seen.push(p); }, on() {}, off() {} };
+  host.enterSector = (id) => { state.world.currentSectorId = id; };
+  host._activeDrive = () => null;
+  host._tickJumping(1 / 60, state);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].sectorId, 'sector_ceres_belt');
+  assert.equal(seen[0].fromSectorId, 'sector_helios_prime');
 });
 
 test('X-04 completion names the pay and the kept home toll, once', () => {
