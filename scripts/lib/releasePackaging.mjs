@@ -360,15 +360,19 @@ function digestFileRecords(inputFiles) {
   return { files, bytes, digest: hash.digest('hex') };
 }
 
-async function collectExcludedOmissions(projectRoot, mapping) {
-  // Entries ending in '/' are directory prefixes (match only inside the dir); other entries are
-  // raw path prefixes (e.g. 'voice/line_' matches every line_*.wav under voice/).
-  const prefixes = mapping.exclude.map((entry) => {
+/** Normalized exclusion prefixes for a mapping: dir-form entries ('x/') keep their slash so
+ *  they only match inside the directory; other entries stay raw path prefixes. Shared by the
+ *  planner and the asset-reachability audit so both read the same exclusion semantics. */
+export function releaseCopyExcludePrefixes(mapping) {
+  return (mapping?.exclude ?? []).map((entry) => {
     const raw = String(entry);
     const rel = safeRelativePath(raw.replace(/\/+$/, ''), 'release copy exclude');
-    if (!rel) throw new Error('release copy exclude entries must be non-empty');
     return raw.endsWith('/') ? `${rel}/` : rel;
   });
+}
+
+async function collectExcludedOmissions(projectRoot, mapping) {
+  const prefixes = releaseCopyExcludePrefixes(mapping);
   const matches = (rel) => prefixes.some((prefix) => rel.startsWith(prefix));
   const sourceRoot = resolveContained(projectRoot, mapping.source, 'release copy source');
   const files = [];
@@ -465,6 +469,7 @@ async function renderPackageSourceOmissions(projectRoot, mapping, pilots) {
     }
 
     omissions.push({
+      reason: 'render-package-projection',
       path: sourceRecord.path,
       bytes: sourceRecord.bytes,
       sha256: sourceRecord.sha256,

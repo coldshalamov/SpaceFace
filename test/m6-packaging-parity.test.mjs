@@ -74,6 +74,49 @@ test('audio copy exclusions omit exactly the acceptance corpus — never a runti
   }
 });
 
+test('copy exclude drops the prefixed files, ships siblings, and fails loud on bad rules', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-copy-exclude-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const web = join(root, 'build', 'web');
+  const source = join(root, 'media');
+  await mkdir(join(source, 'drop'), { recursive: true });
+  await writeFile(join(source, 'keep.wav'), 'keep');
+  await writeFile(join(source, 'drop', 'omit.wav'), 'omit');
+  await writeFile(join(source, 'line_0000_x.wav'), 'tail');
+
+  const mappings = [{ source: 'media', destination: 'media', exclude: ['drop/', 'line_'] }];
+  const plans = await createReleaseCopyPlans({ root, mappings });
+  assert.equal(plans.length, 1);
+  assert.equal(plans[0].omissions.length, 2);
+  for (const o of plans[0].omissions) assert.equal(o.reason, 'exclude', `${o.path} untagged`);
+
+  await copyReleaseRuntimeTrees({ root, webRoot: web, mappings });
+  assert.ok(existsSync(join(web, 'media', 'keep.wav')), 'sibling file must ship');
+  assert.equal(existsSync(join(web, 'media', 'drop', 'omit.wav')), false, 'dir-prefix file must not ship');
+  assert.equal(existsSync(join(web, 'media', 'line_0000_x.wav')), false, 'raw-prefix file must not ship');
+
+  const receipt = await createReleaseBuildReceipt({ root, webRoot: web, mappings });
+  const copy = receipt.copies.find((c) => c.source === 'media');
+  assert.equal(copy.exact, true, 'excluded files must be attributed, not diffed');
+  assert.equal(copy.omittedFileCount, 2);
+
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: 'x' }] }),
+    /must be a non-empty array/,
+    'a non-array exclude is an authoring error, not a silent no-op',
+  );
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: [] }] }),
+    /must be a non-empty array/,
+    'an empty exclude is an authoring error, not a silent no-op',
+  );
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: ['nomatch/'] }] }),
+    /matches nothing under media/,
+    'a stale exclude must fail rather than silently pin nothing',
+  );
+});
+
 test('release build lock serializes candidates and recovers only dead owners', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'spaceface-release-lock-'));
   t.after(() => rm(root, { recursive: true, force: true }));

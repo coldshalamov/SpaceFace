@@ -10,6 +10,12 @@
 //   node scripts/generate-bark-voice.mjs --check
 //   node scripts/generate-bark-voice.mjs --catalog
 //   node scripts/generate-bark-voice.mjs --all
+//   node scripts/generate-bark-voice.mjs --all --check
+//
+// --all writes every corpus line plus the runtime representative clips (bark_* registers,
+// mechanic, instructor) and the blind callsigns. --all --check byte-verifies all of them and
+// audits the whole voice tree for stray files the pipeline no longer owns (npm run
+// check:bark-voice-corpus).
 
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -140,12 +146,18 @@ for (const clip of BLIND_REGISTER_CLIPS) {
   }
 }
 
-// Stray audit: a --check over --all also fails on line_*.wav files the pipeline no longer
-// owns — stale positional names silently survive a corpus renumber otherwise.
+// Stray audit: a --check over --all fails on ANY voice-tree file the pipeline no longer owns —
+// stale line_* names, a renamed register's old bark_* clip, or an orphan under voice/blind/ —
+// so the gate is a complete voice-tree audit, not just a corpus-row check.
 if (checkOnly && writeAll) {
   const expected = new Set(jobs.map((j) => path.basename(j.file)));
   for (const f of readdirSync(OUT_DIR)) {
-    if (/^line_\d+_.+\.wav$/.test(f) && !expected.has(f)) mismatches.push(`stray assets/audio/voice/${f}`);
+    if (f === 'blind') continue;
+    if (!expected.has(f)) mismatches.push(`stray assets/audio/voice/${f}`);
+  }
+  const expectedBlind = new Set(BLIND_REGISTER_CLIPS.map((c) => path.basename(c.file)));
+  for (const f of readdirSync(blindDir)) {
+    if (!expectedBlind.has(f)) mismatches.push(`stray assets/audio/voice/blind/${f}`);
   }
 }
 

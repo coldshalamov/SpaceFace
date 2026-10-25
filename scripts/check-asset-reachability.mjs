@@ -21,7 +21,7 @@ import {
 } from '../src/data/portraits.js';
 import { WRECK_CATHEDRAL_EVIDENCE_CATALOG } from '../src/data/wreckCathedralEvidenceCatalog.js';
 import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManifest.js';
-import { RELEASE_COPY_MAPPINGS } from './lib/releasePackaging.mjs';
+import { RELEASE_COPY_MAPPINGS, releaseCopyExcludePrefixes } from './lib/releasePackaging.mjs';
 import { CENSUS_JSON } from '../src/data/modelTruthCensus.generated.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -145,11 +145,9 @@ for (const [asset, files] of [...referenced]) {
 
 // Mapping.exclude prefixes are omitted from the retail copy even though their parent root is
 // bundled — a referenced asset under one 404s exactly like an asset outside every root.
+// Derived from the same normalizer the planner uses so separator/dir semantics can't drift.
 const EXCLUDED_PREFIXES = RELEASE_COPY_MAPPINGS.flatMap((m) =>
-  (m.exclude ?? []).map((e) => {
-    const stripped = `${m.source}/${String(e).replace(/\/+$/, '')}`;
-    return String(e).endsWith('/') ? `${stripped}/` : stripped;
-  }));
+  releaseCopyExcludePrefixes(m).map((p) => `${m.source}/${p}`));
 
 const issues = [];
 const underBundledRoot = (asset) =>
