@@ -1,10 +1,10 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 25 October 2026, 03:18 UTC.
+Updated: 25 October 2026, 04:38 UTC.
 
 All **12 goals remain OPEN**. This current register records source scope only. Historical reviewer/acceptance fields remain in the [immutable prior register](https://github.com/coldshalamov/SpaceFace/blob/5d62a0e86b8d9071d7e03b02b6c965f3ded3bab5/design/program/world-depth-2026-10-02/OPEN_GOALS.md) and its linked archive.
 
-Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP.json), [build map/P00–P21](../../../build_map.md). Current source handoff: [Last Shift recovery guidance](SOURCE_HANDOFF_2026-10-25_RECOVERY_GUIDANCE.md).
+Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP.json), [build map/P00–P21](../../../build_map.md). Current source handoff: [Last Shift recorder binding](SOURCE_HANDOFF_2026-10-25_RECORDER_BINDING.md). Prior [recovery guidance](SOURCE_HANDOFF_2026-10-25_RECOVERY_GUIDANCE.md) remains historical evidence.
 
 ## SF-GAME
 - Outcome: implement, review, polish and obtain acceptance for the full authorized game and twenty-concept scope.
@@ -24,7 +24,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; Recovery guidance source07d6980f is published; separate fairlead/P08 source operations remain held.
+- State: OPEN; Recorder source, release/runtime assets and tests are published at 07c609f5643c in draft PR602; separate fairlead/P08 source operations remain held.
 - Owner: publisher, project lead and exact feature owners.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Preserve reviewed source and handoff without retrying held exports.
@@ -32,7 +32,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-RECOVER
 - Outcome: recoverable source, models, tests and handoff beyond a disposable environment, including GitHub.
-- State: OPEN; Source, models and historical failed/final work remain recoverable; ongoing increments still need durable preservation.
+- State: OPEN; The recorder source, compiled release/runtime models, metadata, bindings and tests are preserved by verified Git commit 07c609f5643c. Historical failed/final work remains separately recoverable.
 - Owner: preserver, exact source owners and project integration.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Preserve exact source/restoration dependencies before interruptions.
@@ -40,7 +40,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-VISUALS
 - Outcome: new inspected actual-work images and live game-camera acceptance.
-- State: OPEN; Actual-work previews are distinct from live camera and performance acceptance.
+- State: OPEN; A new actual compiled-recorder geometry preview was reviewed and delivered. It omits textures, normal/AO maps, PBR and game lighting; live camera and performance acceptance remain open.
 - Owner: project visual review and exact feature owners.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Qualify permitted actual camera readability, lighting and workload.
@@ -48,7 +48,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-ASSETBANK
 - Outcome: broad reusable small/large pieces addressing real inventory gaps, counting distinct models only.
-- State: OPEN; Distinct reusable pieces and inventory gaps remain ongoing; exported assets are not integrated acceptance.
+- State: OPEN; An existing neutral Thimble recorder is reused for Last Shift. This adds zero distinct model designs; broader asset gaps and integrated acceptance remain open.
 - Owner: project lead and asset owners; receiver holds retained.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Reuse coherent existing pieces and address demonstrated placement gaps.
@@ -56,26 +56,26 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-ASSET-QUALITY
 - Outcome: cohesive detail/materials with distinctive industrial, civilian, military, salvaged and alien character.
-- State: OPEN; Fairlead source review and preparation do not establish runtime visual/physical acceptance.
-- Owner: fairlead physics/catalog owner and visual-binding owner.
+- State: OPEN; The recorder package and planar fit passed focused runtime checks. Held fairlead preparation remains separate; neither establishes full visual/physical acceptance.
+- Owner: recorder visual/package owners; existing fairlead physics/catalog owners retained.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Complete permitted publication, normal census checks and actual visual/physical parity qualification.
 - Awaiting user: pending publication approvals tracked under [SF-PUBLISH](#sf-publish), plus final quality acceptance.
 
 ## SF-LIVING-WORLD
 - Outcome: inhabited places, work, economy, history, relationships and consequences using actual assets/systems.
-- State: OPEN; Last Shift optional recovery guidance is implemented; complete player routes remain open.
-- Owner: project lead and current Camp source/review owners.
+- State: OPEN; Last Shift recovery guidance and a stable original-recorder model binding are implemented on the draft branch; complete player routes remain open.
+- Owner: project lead and current Last Shift source/review owners.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Connect current activities, readable consequences and recurring visits.
 - Awaiting user: world acceptance; no routine choice.
 
 ## SF-SECTOR-COHERENCE
 - Outcome: coherent arrivals, ordinary visits, time/progression, choices, return and Save/Continue across sectors.
-- State: OPEN; Ceres guidance improves comprehension; sector arrival, ordinary return and persistence still need qualification.
+- State: OPEN; Ceres guidance and a recognizable recorder improve comprehension. Original body identity and custody are unchanged; sector arrival, ordinary return and full Save/Continue still need qualification.
 - Owner: sector-experience coordination and exact gameplay/story owners.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
-- Next: Establish actual original-recorder return and ordinary sector consequences.
+- Next: First implement truthful reason-specific recorder-return refusal feedback, then finish the original-recorder physical return and ordinary sector consequences without replacing bodies or seeding custody.
 - Awaiting user: none for continued authorized implementation; eventual sector acceptance.
 
 ## SF-PLAY-WORLD

@@ -1,6 +1,6 @@
 # Expansion continuation: restart and failure recovery
 
-Current source pointer (25 October 2026, 03:18 UTC): read [SOURCE_HANDOFF_2026-10-25_RECOVERY_GUIDANCE.md](SOURCE_HANDOFF_2026-10-25_RECOVERY_GUIDANCE.md) and the compact [OPEN_GOALS.md](OPEN_GOALS.md). All twelve goals remain OPEN. Historical checkpoints and acceptance/reviewer fields remain preserved; verify current ownership and permissions before resuming. No merge, deployment or held-operation retry is authorized by this pointer.
+Current source pointer (25 October 2026, 04:38 UTC): read [SOURCE_HANDOFF_2026-10-25_RECORDER_BINDING.md](SOURCE_HANDOFF_2026-10-25_RECORDER_BINDING.md) and the compact [OPEN_GOALS.md](OPEN_GOALS.md). All twelve goals remain OPEN. Historical checkpoints and acceptance/reviewer fields remain preserved; verify current ownership and permissions before resuming. No merge, deployment or held-operation retry is authorized by this pointer.
 
 
 This procedure was requested on 8 October 2026 after repeated status reports replaced
