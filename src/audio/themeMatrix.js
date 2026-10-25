@@ -359,7 +359,9 @@ const NOTE_INDEX = Object.freeze({
 
 export function intervalSignature(notes) {
   const idx = (Array.isArray(notes) ? notes : []).map((n) => NOTE_INDEX[n]);
-  if (idx.some((v) => v == null) || idx.length < 2) return '';
+  // typeof, not == null: a prototype-keyed note maps to an inherited function — truthy, non-null —
+  // and would produce a garbage 'NaN,NaN' signature instead of the contracted '' for invalid input.
+  if (idx.some((v) => typeof v !== 'number') || idx.length < 2) return '';
   const out = [];
   for (let i = 1; i < idx.length; i += 1) out.push((idx[i] - idx[0] + 12) % 12);
   return out.join(',');

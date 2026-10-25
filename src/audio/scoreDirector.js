@@ -406,9 +406,10 @@ export function createScoreDirector(options = {}) {
   return {
     step,
     get frame() { return mem.frame; },
-    reset() { mem.t = null; mem.phase = 'travel'; mem.sectorId = undefined; mem.docked = false; mem.peak = 0;
+    reset() { mem.t = null; mem.phase = 'travel'; mem.phaseSince = 0; mem.sectorId = undefined; mem.docked = false; mem.peak = 0;
       mem.lastFightAt = -Infinity; mem.fightSector = undefined; mem.arrivalAt = -Infinity; mem.departureAt = -Infinity; mem.threatLatched = false;
-      mem.pendingPhase = null; mem.intensity = 0.2; mem.frame = null; mem.transitions = 0; },
+      mem.aftermathArmed = false; mem.anchor = 0; mem.t0 = 0;
+      mem.pendingPhase = null; mem.pendingSince = 0; mem.transitionAt = 0; mem.intensity = 0.2; mem.frame = null; mem.transitions = 0; },
   };
 }
 

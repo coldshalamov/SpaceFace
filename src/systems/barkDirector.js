@@ -1532,7 +1532,8 @@ export const barkDirector = {
     if (!witness) return null;
     const title = (incident.titleIds || []).map(id => state.story.titles.byId[id]).find(t => t?.knownWitnesses?.includes(witness.identity));
     const rule = title && STUNT_TITLE_RULES.find(r => r.id === title.titleId);
-    const lines = STUNT_SITUATION_LINES[incident.trickId] || ['That changed the fight.', 'I saw that impact.', 'Keep clear.'];
+    const lines = (Object.hasOwn(STUNT_SITUATION_LINES, incident.trickId) && STUNT_SITUATION_LINES[incident.trickId])
+      || ['That changed the fight.', 'I saw that impact.', 'Keep clear.'];
     // THE WORLD ANSWERS: a variant (own wingman, bolas pair) or the cargo of an Ore Shotgun speaks
     // ahead of the generic title bark.
     const text = stuntSpecificLine(incident) || rule?.bark || lines[witness.role === 'hostile' ? 2 : witness.role === 'patrol' ? 0 : 1];
