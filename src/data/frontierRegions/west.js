@@ -180,6 +180,27 @@ const REGION_NYX = freezeRegion({
           body: "A salvager's tally post hammered into a loose plate beside the wreck. It keeps the names the runner filed nowhere else — Toma Reye, out on a forged cut, and the two hands who crewed unpaid. Holds and drive were gone before the hull cooled; the scoring on the port flank reads in threes.",
         },
       },
+      // ATTENTION S-14 (8/14) — the quiet lane's own signals: a lantern that burns
+      // backwards on the ice field's rim, and the stakes the Fence files in a
+      // registry that isn't.
+      {
+        id: 'poi_nyx_dark_lantern',
+        type: 'beacon',
+        name: 'Dark Lantern',
+        discoveryPlate: {
+          title: 'Dark Lantern',
+          body: 'A lantern post on the ice field\u2019s rim that burns backwards: lit means the cut-lane is watched, dark means run it. The runners who keep it have never once answered for the schedule.',
+        },
+      },
+      {
+        id: 'poi_nyx_forged_stakes',
+        type: 'beacon',
+        name: 'Forged Stakes',
+        discoveryPlate: {
+          title: 'Forged Stakes',
+          body: 'A line of claim stakes on the metallic seam filed under a registry that exists nowhere else. The Fence stakes rock the way it files manifests — forged, tidy, and honored by everyone who needs the lane.',
+        },
+      },
     ],
   },
   anchors: {
@@ -204,6 +225,20 @@ const REGION_NYX = freezeRegion({
       { id: 'poi_nyx_cache', pos: { x: -1480, z: -280 }, landmarkGlb: 'place_debris_chunk' },
       { id: 'poi_nyx_wreck', pos: { x: 1120, z: 760 }, landmarkGlb: 'place_dead_hulk', landmark: true },
       { id: 'poi_nyx_runner_memorial', pos: { x: 1000, z: 830 }, landmarkGlb: 'place_nav_buoy' },
+      {
+        // ATTENTION S-14 — f_nyx_1 rim (center 420,-780, r440).
+        id: 'poi_nyx_dark_lantern',
+        pos: { x: 484, z: -716 },
+        landmarkGlb: 'place_worklight_tower',
+        visualRadius: 12,
+      },
+      {
+        // ATTENTION S-14 — f_nyx_2 rim (center -640,320, r380).
+        id: 'poi_nyx_forged_stakes',
+        pos: { x: -576, z: 384 },
+        landmarkGlb: 'place_claim_mark',
+        visualRadius: 5,
+      },
     ],
   },
   zones: [
@@ -483,6 +518,27 @@ const REGION_KEPLER = freezeRegion({
         },
       },
       { id: 'poi_kepler_stash', type: 'cache', name: 'Raider Stash', hidden: true },
+      // ATTENTION S-14 (6/14) — the Bazaar's own bookkeeping: the stall tally that
+      // prices the exotic seam, and the tow-marks the enforcers leave on the
+      // metallic seam.
+      {
+        id: 'poi_kepler_price_post',
+        type: 'beacon',
+        name: 'Price Post',
+        discoveryPlate: {
+          title: 'Price Post',
+          body: 'A tally post on the exotic seam\u2019s rim where the Bazaar\u2019s cutters mark rock already spoken for: hull codes, strip counts, prices in favors. The stall that owns a stone changes shift to shift; the chalk keeps the last honest answer.',
+        },
+      },
+      {
+        id: 'poi_kepler_tow_marks',
+        type: 'beacon',
+        name: 'Tow Marks',
+        discoveryPlate: {
+          title: 'Tow Marks',
+          body: 'Drag-marks and scorch tallies painted on the metallic seam\u2019s quiet face — one line per late payer the Bazaar\u2019s enforcers hauled under the carrier. The paint goes where the radiation fog eats it slowest.',
+        },
+      },
     ],
   },
   anchors: {
@@ -516,6 +572,20 @@ const REGION_KEPLER = freezeRegion({
         id: 'poi_kepler_stash',
         pos: { x: -1320, z: -360 },
         landmarkGlb: 'place_debris_chunk',
+      },
+      {
+        // ATTENTION S-14 — f_kepler_1 rim (center 680,-420, r420).
+        id: 'poi_kepler_price_post',
+        pos: { x: 744, z: -356 },
+        landmarkGlb: 'place_tally_post',
+        visualRadius: 9,
+      },
+      {
+        // ATTENTION S-14 — f_kepler_2 rim (center -980,280, r380).
+        id: 'poi_kepler_tow_marks',
+        pos: { x: -916, z: 344 },
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
       },
     ],
   },
@@ -610,6 +680,26 @@ const REGION_ORCUS = freezeRegion({
         } },
       { id: 'poi_orcus_vault', type: 'cache', name: 'Shadow Vault', hidden: true },
       { id: 'poi_orcus_plinth', type: 'beacon', name: 'Shadow Plinth', factionId: 'faction_vael' },
+      // ATTENTION S-14 (9/14) — measured, not claimed: a Vael instrument pin on the
+      // exotic seam, and a herder's tag on the flock that never got driven home.
+      {
+        id: 'poi_orcus_measure_stake',
+        type: 'beacon',
+        name: 'Measure Stake',
+        discoveryPlate: {
+          title: 'Measure Stake',
+          body: 'A Vael survey stake on the exotic seam\u2019s rim — not a claim mark, an instrument. Its tally plate counts scans in a notation that predates the Shadow Cache, and the count increments when nothing is watching it.',
+        },
+      },
+      {
+        id: 'poi_orcus_shepherd_tag',
+        type: 'derelict',
+        name: 'Shepherd\u2019s Tag',
+        discoveryPlate: {
+          title: 'Shepherd\u2019s Tag',
+          body: 'A herder\u2019s tag wired to the shadow debris\u2019 lead rock — the flock the Broken Shepherd never finished driving. The tag names the flock, the driver, and a delivery bearing that ends at the signal\u2019s throat.',
+        },
+      },
     ],
   },
   anchors: {
@@ -651,6 +741,20 @@ const REGION_ORCUS = freezeRegion({
         rot: Math.atan2(540, -980),
         placeTargetRadius: 36,
         visualRadius: 36,
+      },
+      {
+        // ATTENTION S-14 — f_orcus_1 rim (center 720,-280, r420).
+        id: 'poi_orcus_measure_stake',
+        pos: { x: 784, z: -216 },
+        landmarkGlb: 'place_ash_pin',
+        visualRadius: 6,
+      },
+      {
+        // ATTENTION S-14 — f_orcus_3 rim (center 1160,-860, r420).
+        id: 'poi_orcus_shepherd_tag',
+        pos: { x: 1096, z: -796 },
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
       },
     ],
   },
