@@ -140,6 +140,11 @@ export const GYRE_SNARE = Object.freeze({
                            // capped clump still rocks the tether instead of dying to 0.05
   absorbKnockSpeedRef: 80,   // wu/s — closing-speed reference for the knock's speed grade:
                            // an 80 wu/s meal doubles its flinch (clamped +150%)
+  absorbGapTicks: 4,         // ticks between two merges into one clump. MEASURED (test/gyre-baseline-loop):
+                           // a Pull pile that is already touching the core merged all four members on
+                           // ONE tick — "watch the mass climb" read as a single pop. Four ticks (~67 ms)
+                           // between meals lets a pile fold in as x2, x3, x4 while a belt's real arrival
+                           // rate (a few per second) is untouched; a 28-member fill still takes < 2 s.
   absorbCueMinGapS: 0.08,    // s — min gap between absorb glass ticks so a dense belt feed
                            // doesn't stack identical cues into noise (events stay per-body)
   maxClumpRadius: 60,        // wu — volumetric union clamps here; mass keeps growing regardless

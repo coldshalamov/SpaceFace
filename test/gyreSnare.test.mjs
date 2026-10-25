@@ -4102,15 +4102,21 @@ test('a same-tick multi-absorb publishes absorbR for the BIGGEST meal', async ()
   for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'holding');
   const core = t.state.entities.get(t.sys._rt.coreId);
-  // Both land on the clump in the same absorb pass — the publish ledger used to
-  // carry whichever body resolved LAST, so a wreck-then-pebble batch under-
-  // graded the HUD eat-pop it feeds.
-  rock(t.sim, core.pos.x + 1, core.pos.z, 2, 4);
-  rock(t.sim, core.pos.x - 1, core.pos.z, 8, 12);
-  t.state.input.actions.gyreSnare = true; t.sim.step(); // spatial index registers
-  t.state.input.actions.gyreSnare = true; t.sim.step();
+  // Both land on the clump inside one tick — the publish ledger used to carry whichever
+  // body resolved LAST, so a wreck-then-pebble batch under-graded the HUD eat-pop it feeds.
+  // The suck pass now staggers merges (D.absorbGapTicks, measured in gyre-baseline-loop) so a
+  // pile folds in over several ticks; the max-ledger stays for any caller that merges two
+  // bodies in one tick (direct absorbs, adopters), and is pinned here through that seam.
+  const pebble = rock(t.sim, core.pos.x + 1, core.pos.z, 2, 4);
+  const wreckMeal = rock(t.sim, core.pos.x - 1, core.pos.z, 8, 12);
+  t.sys._rt.absorbRadius = 0;
+  assert.equal(t.sys._absorb(t.state, t.sys._rt, core, wreckMeal, 1, 0, 1), true);
+  assert.equal(t.sys._absorb(t.state, t.sys._rt, core, pebble, 1, 0, 1), true);
+  t.sys._publish(t.state, t.player);
   assert.equal(t.state.gyreSnare.absorbR, 12,
     `the publish ledger carries the biggest meal's radius (got ${t.state.gyreSnare.absorbR})`);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.absorbR, 0, 'the next suck pass re-reads a quiet tick');
   // The ledger is PER TICK — a later small meal re-reads its own radius instead
   // of ratcheting to the hold's lifetime wreck.
   rock(t.sim, core.pos.x, core.pos.z + 1, 2, 5);

@@ -38,6 +38,14 @@ import { queryAsteroidField, promoteAsteroidFieldRock } from '../world/asteroidF
 import { occupantGenerationOf } from '../core/entity.js';
 import { GYRE_SNARE, GYRE_EVENTS, GYRE_ABSORBABLE_TYPES } from '../data/gyreSnare.js';
 import { environmentMaterialOf } from '../data/environmentMaterials.js';
+import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
+import {
+  MATTER_REFUSAL, explainRefusal, createCaptureLedger, memberRef, grownRadius, launchPlan, burstPlan,
+  makeBody, mergeBodies, mergeImpulse, solidInertia,
+} from '../matter/aggregateMass.js';
+import {
+  matterRefusal, matterMass, matterRadius, matterIsDynamic, hasProtectedContent,
+} from '../matter/aggregateEligibility.js';
 
 const D = GYRE_SNARE;
 const TICKS_PER_S = 60; // sim tick -> simTime ratio shared by the provenance hold
@@ -60,59 +68,42 @@ const PROV_TAG = 'gyre_snare';
 function finite(v, d = 0) { return Number.isFinite(v) ? v : d; }
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-function entityMass(e) {
-  const m = Number(e && e.physicsBody && e.physicsBody.mass);
-  if (Number.isFinite(m) && m > 0) return m;
-  const top = Number(e && e.mass);
-  return Number.isFinite(top) && top > 0 ? top : 1;
-}
+// The shared matter predicates (src/matter/aggregateEligibility.js) — Gyre and the Pull collector
+// ask the same questions in the same order and speak the same refusal vocabulary.
+const entityMass = matterMass;
+const entityRadius = matterRadius;
+const isDynamic = matterIsDynamic;
+const GYRE_RULES = Object.freeze({ types: ABSORBABLE, maxRadius: D.maxClumpRadius });
 
-function entityRadius(e) {
-  // Prefer the collider radius: the absorb trigger rests just outside rapier contact,
-  // so keying on the visual would grind a fat-collider/thin-skin body against the
-  // clump's surface without ever crossing the absorb distance.
-  const r = Number(e && ((e.physicsBody && e.physicsBody.radius) || e.radius));
-  return Number.isFinite(r) && r > 0 ? r : 4;
-}
-
-function isDynamic(e) {
-  // isDynamicPhysicsBodyEntity is the shared substance convention — record-less bodies
-  // count as dynamic (SG-02 materializes the record in a tick), matching every other
-  // pull lane in the tree. The local collides guard stays on top of it.
-  return !!(e && e.collides !== false && isDynamicPhysicsBodyEntity(e));
-}
-
-// Read current custody/content at the destructive boundary. A former claim alone
-// does not protect empty scrap; live cargo, a quest hook, or a durable world body does.
-function hasProtectedContent(e) {
-  if (e.flags && (e.flags.persistent || e.flags.missionPinned)) return true;
-  const data = e.data || {};
-  if (data.persistent || data.persistenceOwner || data.missionPinned
-    || data.missionTargetSlot != null || data.worldRecordId != null
-    || data.worldRecordSlotId != null || data.wreckMissionId != null
-    || data.isCommunicator === true) return true;
-  if (data.salvagePool && Object.values(data.salvagePool).some((qty) => Number(qty) > 0)) return true;
-  if (Array.isArray(data.loot) && data.loot.some((lot) => lot && Number(lot.qty ?? lot.amount ?? 1) > 0)) return true;
-  if (Array.isArray(data.cargoManifest?.lines)
-    && data.cargoManifest.lines.some((line) => line && Number(line.qty) > 0)) return true;
-  const freight = data.freightCustodyPod;
-  return !!(freight && Number(freight.qty) > 0 && (!freight.status || freight.status === 'live'));
-}
-
+// null = may join; otherwise a MATTER_REFUSAL code. The historical 'too-heavy' / 'protected'
+// strings are unchanged (HUD + tests compare them); 'unavailable' is now split into the specific
+// reasons (anchored / collectible / not-matter / claimed / unavailable).
 function ingestionReason(e) {
-  if (!e || e.alive === false || !ABSORBABLE.has(e.type) || !isDynamic(e)
-    || e.physicsBody === false || e.physicsBody?.material === 'sensor'
-    || e.data?.gyreCore || e.data?.gyreLaunched) return 'unavailable';
-  if (hasProtectedContent(e)) return 'protected';
-  // Fit is a size question, never a tonnage one: a body fatter than the clump's own
-  // radius cap cannot go in whole, and partial-body disappearance is not a thing.
-  if (entityRadius(e) > D.maxClumpRadius) return 'too-heavy';
-  return null;
+  return matterRefusal(e, GYRE_RULES);
 }
 
 /** Capacity is the member ledger, not tonnage: a full ball stops eating AND pulling. */
 function clumpFull(rt) {
   return rt.members.length >= D.maxAbsorbRecords;
+}
+
+const REFUSE_KEYS = Object.freeze(['protected', 'too-heavy', 'anchored', 'collectible', 'claimed', 'saturated']);
+// Which refusal the pilot is told about first when several stand in the net at once.
+const REFUSE_PRIORITY = Object.freeze(['saturated', 'too-heavy', 'anchored', 'protected', 'collectible', 'claimed']);
+
+function resetRefuse(rt) {
+  const r = rt.refuse;
+  for (let i = 0; i < REFUSE_KEYS.length; i++) r[REFUSE_KEYS[i]] = 0;
+}
+
+/** Count a refusal this tick. Codes that are not pilot-meaningful (not-matter, unavailable) are ignored. */
+function tallyRefusal(rt, code) {
+  if (code != null && Object.prototype.hasOwnProperty.call(rt.refuse, code)) rt.refuse[code] += 1;
+}
+
+function topRefusal(refuse) {
+  for (let i = 0; i < REFUSE_PRIORITY.length; i++) if (refuse[REFUSE_PRIORITY[i]] > 0) return REFUSE_PRIORITY[i];
+  return null;
 }
 
 function freshRuntime() {
@@ -131,6 +122,15 @@ function freshRuntime() {
     clumpMass: 0,          // t — bookkeeping mass (base core + absorbed members)
     clumpRadius: 0,        // wu — volumetric union radius (for visuals/absorb tests)
     members: [],           // bounded absorb records for the clump lumps VFX
+    // The capture transaction ledger (src/matter/aggregateMass.js): a body is RESERVED here before
+    // any mass moves, so a reentrant event, a repeated contact or a save callback cannot count it
+    // twice. Bounded to the member capacity; generation-safe refs; reset with the clump.
+    capture: createCaptureLedger({ capacity: D.maxAbsorbRecords }),
+    nextAbsorbTick: 0,     // earliest tick the next meal may merge (D.absorbGapTicks stagger)
+    // Per-tick refusal tally by MATTER_REFUSAL code (published as pub.refusals): why the net is not
+    // taking something. Reset every tick the tool is live; edge-latched cues ride `refuseLatched`.
+    refuse: { protected: 0, 'too-heavy': 0, anchored: 0, collectible: 0, claimed: 0, saturated: 0 },
+    refuseLatched: { protected: false, anchored: false, collectible: false, saturated: false },
     absorbDir: { x: 0, z: 0 }, // newest meal's approach dir — UNBOUNDED channel (the
                              // ledger caps at 28; a frozen gulp dir past that is stale)
     absorbRadius: 0,       // biggest meal's collider radius this tick — the gulp reads scale by it
@@ -310,6 +310,7 @@ export const gyreSnare = {
     rt.clumpMass = 0;
     rt.clumpRadius = 0;
     rt.members.length = 0;
+    rt.capture.reset();
     rt.absorbDir.x = 0; rt.absorbDir.z = 0; rt.absorbRadius = 0;
     rt.launchLeft = 0;
     rt.launchWindup = 0;
@@ -337,6 +338,7 @@ export const gyreSnare = {
     rt.basinMass = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
+    resetRefuse(rt);
     rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0; // dead-state hygiene — the lag read is HOLD-only but resets like the rest
@@ -968,7 +970,14 @@ export const gyreSnare = {
       const e = cands[i];
       if (!e || e.alive === false || !e.pos) continue;
       if (e.id === state.playerId) continue;
-      if (!isDynamic(e)) continue;
+      if (!isDynamic(e)) {
+        // A station, gate or landmark under the glass is not "nothing there": say it is anchored.
+        if (isAnchoredPhysicalBody(e)
+          && Math.hypot(e.pos.x - maw.x, e.pos.z - maw.z) <= D.basinRadius + entityRadius(e)) {
+          tallyRefusal(this._rt, MATTER_REFUSAL.ANCHORED);
+        }
+        continue;
+      }
       // physicsBody:false is an authored opt-out (dropped bombs, snare sentinels): no
       // rapier body ever materializes, so queued impulses just accumulate unread.
       if (e.physicsBody === false) continue;
@@ -1016,6 +1025,11 @@ export const gyreSnare = {
       }
       const admission = ingestionReason(e);
       const absorbable = admission === null;
+      // Why-not ledger: what stands inside the drawn glass and is not being taken, by reason.
+      if (!absorbable && (inBasin || lipT === 0) && e.type !== 'projectile') tallyRefusal(this._rt, admission);
+      else if (absorbable && (inBasin || lipT === 0) && this._rt.phase === PHASE.HOLD && clumpFull(this._rt)) {
+        tallyRefusal(this._rt, MATTER_REFUSAL.SATURATED); // a full net eats nothing more
+      }
       // Mass in the funnel: absorbable bodies already inside the cone get counted so
       // the HUD/maw can telegraph the catch before it lands ("×N IN NET").
       // The "IN NET" read names mass actually inside the glass — bodies easing through
@@ -1194,6 +1208,8 @@ export const gyreSnare = {
     rt.clumpMass = entityMass(best);
     rt.clumpRadius = entityRadius(best);
     rt.totalAbsorbed = 0; // new clump ledger — the HUD count restarts with the core
+    rt.capture.reset();   // a fresh clump starts a fresh capture transaction ledger
+    rt.nextAbsorbTick = 0;
     rt.fullCueLatched = false;
     rt.fuseCueLatched = false; // the latch's contract is 'once per hold' — a warn spent
                              // searching must not silence the hold it was actually for
@@ -1334,6 +1350,7 @@ export const gyreSnare = {
     // the suck lane's annulus count from the same tick. deflectCount rides the same
     // reset point (its basin half lands in _pullPass too).
     rt.towCount = 0;
+    resetRefuse(rt);
     rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     // The clump's merge is the one irreversible sim mutation — a wreck eaten
@@ -1409,6 +1426,7 @@ export const gyreSnare = {
       if (e.data && e.data.gyreLaunched) continue; // a thrown ball is never re-absorbed
       const admission = ingestionReason(e);
       const absorbable = admission === null;
+      if (!absorbable && e.type !== 'projectile') tallyRefusal(rt, admission);
       if (admission === 'too-heavy') {
         // Too heavy to EAT — not too heavy to feel: falls through to the courtesy tug
         // below so the strongest gravity zone (inside owned.r, where the basin lane is
@@ -1477,7 +1495,12 @@ export const gyreSnare = {
         // The merge is the one irreversible lane — it freezes under a live modal
         // (a wreck eaten behind a screen can't be unseen); the meal rests at
         // contact and lands on the first visible tick.
-        if (!modal) this._absorb(state, rt, core, e, dx, dz, dist);
+        if (clumpFull(rt)) tallyRefusal(rt, MATTER_REFUSAL.SATURATED); // resting at the skin, refused: full
+        else if (!modal && (state.tick | 0) >= rt.nextAbsorbTick) {
+          // One meal per gap: a pile already touching the core folds in as x2, x3, x4 instead of
+          // one pop. The rest rest at the skin (still pulled, still in contact) until their turn.
+          if (this._absorb(state, rt, core, e, dx, dz, dist)) rt.nextAbsorbTick = (state.tick | 0) + D.absorbGapTicks;
+        }
         continue;
       }
       // Below the merge check: a body absorbed THIS tick is the clump's mass, not
@@ -1487,7 +1510,7 @@ export const gyreSnare = {
         // A FULL clump can't keep another gram — stop vacuuming meals it will never
         // merge. Same gate _absorb enforces at contact, extended to the pull lane so a
         // capped ball doesn't drag leeches against its skin forever.
-        if (clumpFull(rt)) continue;
+        if (clumpFull(rt)) { tallyRefusal(rt, MATTER_REFUSAL.SATURATED); continue; }
         const couple = couplingScale(this._profile(e));
         const pull = D.suckAccel * couple * wake;
         const mass = entityMass(e);
@@ -1541,15 +1564,32 @@ export const gyreSnare = {
   _absorb(state, rt, core, e, dx, dz, dist) {
     if (clumpFull(rt)) return false;
     if (ingestionReason(e) !== null) return false;
+    // Capture is a representation transaction: RESERVE before any mass moves. A reentrant call
+    // (an event subscriber, a repeated contact, a save callback) finds the ticket and is refused,
+    // so one body can never be counted twice. The ref carries the occupant generation, so a
+    // recycled id is a different body.
+    const reservation = rt.capture.reserve(memberRef(e, occupantGenerationOf), entityMass(e));
+    if (!reservation.ok) return false;
+    const before = { mass: rt.clumpMass, radius: rt.clumpRadius, total: rt.totalAbsorbed };
+    try {
+      return this._mergeMeal(state, rt, core, e, dx, dz, dist, reservation.ticket);
+    } catch (err) {
+      // A throw before the commit leaves the meal alive and the ledger as it was: give the
+      // ticket back and undo the bookkeeping, then let the failure surface.
+      if (rt.capture.cancel(reservation.ticket)) {
+        rt.clumpMass = before.mass; rt.clumpRadius = before.radius; rt.totalAbsorbed = before.total;
+      }
+      throw err;
+    }
+  },
+
+  _mergeMeal(state, rt, core, e, dx, dz, dist, ticket) {
     const em = entityMass(e);
     const er = entityRadius(e);
     const massBefore = rt.clumpMass;
     rt.clumpMass = massBefore + em;
     // Ingestion is whole-body: if the meal cannot fit it stays alive with all its mass.
-    rt.clumpRadius = Math.min(
-      D.maxClumpRadius,
-      Math.cbrt(rt.clumpRadius ** 3 + er ** 3),
-    );
+    rt.clumpRadius = grownRadius(rt.clumpRadius, er, 1, D.maxClumpRadius);
     // Each member keeps its actual surface and approach so the clump is visibly made
     // from what the player collected. The member ceiling stops further ingestion.
     rt.totalAbsorbed += 1;
@@ -1605,6 +1645,8 @@ export const gyreSnare = {
     }
     if (this.helpers.removeEntity) this.helpers.removeEntity(e.id);
     else e.alive = false;
+    // The meal is gone from the world: the core is authoritative now. Commit the ticket.
+    rt.capture.commit(ticket);
     // Grow the AUTHORED body record (mass/inertia/radius + revision bump → the physics owner
     // rebuilds the ball with the new spec). A one-tick writePhysicsBodyResponse would revert
     // on the next pass; this is the real katamari — the rapier body genuinely gains mass and
@@ -1734,6 +1776,7 @@ export const gyreSnare = {
     rt.basinMass = 0;
     rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
     rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
+    resetRefuse(rt);
     rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;    // HOLD-only channel — nothing may read a stale drag residual
@@ -1846,6 +1889,7 @@ export const gyreSnare = {
     rt.clumpMass = 0;
     rt.clumpRadius = 0;
     rt.members.length = 0;
+    rt.capture.reset();
     rt.absorbDir.x = 0; rt.absorbDir.z = 0; rt.absorbRadius = 0;
     rt.launchWindup = 0;
     rt.launchWindupTotal = 0;
@@ -1871,6 +1915,7 @@ export const gyreSnare = {
     rt.basinMass = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
+    resetRefuse(rt);
     rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;
@@ -2234,7 +2279,28 @@ export const gyreSnare = {
       // init and the first publish tick sees these too, not undefined.
       suckRadius: 0, swirlBlend: 1, orbitSeed: 0,
       ballTtlS: 0, full: false,
+      // Why the net is not taking something, by MATTER_REFUSAL code (counts this tick), and the one
+      // the pilot should hear about first. The words live in explainRefusal(), not here.
+      refusals: { protected: 0, 'too-heavy': 0, anchored: 0, collectible: 0, claimed: 0, saturated: 0 },
+      refusal: null,
     });
+  },
+
+  /** The refusal edges: first time a class of body stands in the net and is not taken, say so once. */
+  _refusalCues(state, rt) {
+    if (!this.bus) return;
+    const live = rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD;
+    const latched = rt.refuseLatched;
+    for (const code of Object.keys(latched)) {
+      const count = live ? rt.refuse[code] : 0;
+      if (count > 0 && !latched[code]) {
+        latched[code] = true;
+        const words = explainRefusal(code);
+        this.bus.emit('matter:refused', {
+          tool: 'gyre', code, count, short: words.short, text: words.text, tick: state.tick,
+        });
+      } else if (count === 0) latched[code] = false;
+    }
   },
 
   _publish(state, player) {
@@ -2286,6 +2352,9 @@ export const gyreSnare = {
     pub.deflectLane = rt.deflectLane;
     pub.ballOverflow = rt.ballOverflow || 0;
     pub.tooHeavyCount = rt.tooHeavyCount || 0;
+    for (let i = 0; i < REFUSE_KEYS.length; i++) pub.refusals[REFUSE_KEYS[i]] = rt.refuse[REFUSE_KEYS[i]] | 0;
+    pub.refusal = topRefusal(rt.refuse);
+    this._refusalCues(state, rt);
     // Live-ball count publishes on EVERY phase incl. OFF — the HUD's '+N' counts balls
     // still flying while the lash is closed; freezing it here would pin a phantom
     // extra-ball pip until the next beam opened.
@@ -2695,6 +2764,11 @@ export const gyreSnare = {
         if (this.bus) {
           this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare needs charge to wake', ttl: 1.6 });
           this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.7 });
+          this.bus.emit('matter:refused', {
+            tool: 'gyre', code: MATTER_REFUSAL.DRY, count: 1, need: D.capActivateMin, have: cap,
+            short: explainRefusal(MATTER_REFUSAL.DRY).short, text: explainRefusal(MATTER_REFUSAL.DRY).text,
+            tick: state.tick,
+          });
         }
       }
     }
@@ -2937,6 +3011,7 @@ export const gyreSnare = {
       if (rt.phase === PHASE.LAUNCH && rt.launchWindup <= 0 && rt.launchLeft <= 0) this._finishLaunch(state);
     } else if (rt.phase === PHASE.BEAM) {
       rt.towCount = 0;
+      resetRefuse(rt);
       rt.deflectCount = 0;
       rt.tooHeavyCount = 0;
       this._pullPass(dt, state, player, maw, nose);
