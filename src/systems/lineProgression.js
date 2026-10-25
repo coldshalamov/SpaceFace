@@ -46,12 +46,17 @@ export const lineProgression = {
     this._heldMassT = 0;
     this._heldAttachmentId = null;
     this._snapGraceUntil = 0;
+    this._restoreLoadedHold = false;
     if (!this.state) return;
     this._ensureBag(this.state);
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('tether:latched', (payload = {}) => this._onLatched(payload));
       this.bus.on('tether:released', (payload = {}) => this._onLineEnd(payload));
       this.bus.on('tether:broke', (payload = {}) => this._onLineEnd(payload));
+      this.bus.on('save:loaded', () => {
+        this._restoreLoadedHold = true;
+        this._reconcileLoadedHold();
+      });
     }
   },
 
@@ -90,6 +95,7 @@ export const lineProgression = {
     this._heldTargetId = payload.targetId ?? null;
     this._heldMassT = target ? bodyMassOf(target) : 0;
     this._snapGraceUntil = 0;
+    this._restoreLoadedHold = false;
     const player = this._player();
     const attachments = this._attachments();
     this._heldAttachmentId = null;
@@ -100,10 +106,40 @@ export const lineProgression = {
     }
     if (this._heldMassT > bag.highestHeldMassT) {
       bag.highestHeldMassT = this._heldMassT;
-      if (this._heldMassT > 0 && bag.tonnageLoggedT > 0) {
-        stampLineRecord(bag, 'heaviest_hold', `${Math.round(this._heldMassT)} T. CORRECT.`, simNow(state));
+      if (this._heldMassT > 0) {
+        this._stampRecord(bag, 'heaviest_hold', `${Math.round(this._heldMassT)} T. CORRECT.`);
       }
     }
+    if (Math.abs(this._heldMassT - 12.4) <= .05) {
+      this._stampRecord(bag, 'exact_mass', '12,400 KG. THEY KNEW THE MASS. SO DO YOU.');
+    }
+  },
+
+  _stampRecord(bag, kind, text) {
+    const stamp = stampLineRecord(bag, kind, text, simNow(this.state));
+    if (stamp && typeof this.bus?.emit === 'function') this.bus.emit('line:recordStamped', { ...stamp, playerId: this.state.playerId });
+    return stamp;
+  },
+
+  _reconcileLoadedHold() {
+    if (!this._restoreLoadedHold) return;
+    const state = this.state, tether = state?.player?.tether;
+    const player = state?.entities?.get?.(state.playerId);
+    const target = state?.entities?.get?.(tether?.targetId);
+    const attachments = this._attachments();
+    if (!attachments || typeof attachments.listForEntity !== 'function') return;
+    this._restoreLoadedHold = false;
+    this._heldTargetId = null; this._heldMassT = 0; this._heldAttachmentId = null; this._snapGraceUntil = 0;
+    if (!tether?.active || !player || player.alive === false || !target || target.alive === false) return;
+    // A serialized UI mirror cannot recreate a constraint. Only an active, player-controlled
+    // attachment in the loaded combat authority can resume heat, control costs and a snap.
+    const held = attachments.listForEntity(player.id, true).find(a => a?.state === 'active'
+      && (a.ownerId === player.id || a.controllerId === player.id)
+      && a.targetId === target.id && (tether.attachmentId == null || a.id === tether.attachmentId));
+    if (!held) return;
+    this._heldTargetId = target.id;
+    this._heldMassT = bodyMassOf(target);
+    this._heldAttachmentId = held.id;
   },
 
   _onLineEnd(payload = {}) {
@@ -131,7 +167,7 @@ export const lineProgression = {
     if (nextIndex > (bag.classIndex || 1)) {
       bag.classIndex = nextIndex;
       const cls = lineClassForIndex(nextIndex);
-      stampLineRecord(bag, 'class_up', `LINE CLASS ${cls.label} — CORRECT.`, simNow(state));
+      this._stampRecord(bag, 'class_up', `LINE CLASS ${cls.label} — CORRECT.`);
       if (this.bus && typeof this.bus.emit === 'function') {
         this.bus.emit('line:classChanged', {
           classIndex: nextIndex,
@@ -147,6 +183,7 @@ export const lineProgression = {
   },
 
   update(dt, state) {
+    this._reconcileLoadedHold();
     const bag = this._ensureBag(state);
     const cls = lineClassForIndex(bag.classIndex);
     const over = this._heldMassT > 0 && this._heldMassT > cls.fullControlMassT;
@@ -179,6 +216,7 @@ export const lineProgression = {
 
   // FRESH_RUN_SYSTEMS — New Game starts at class I with an empty ledger and no held body.
   newGame() {
+    this._restoreLoadedHold = false;
     this._heldTargetId = null;
     this._heldMassT = 0;
     this._heldAttachmentId = null;
@@ -197,6 +235,8 @@ export const lineProgression = {
     if (!state) return;
     const data = entry && entry.data !== undefined ? entry.data : entry;
     state.lineProgression = normalizeLineProgression(data);
+    this._heldTargetId = null; this._heldMassT = 0; this._heldAttachmentId = null; this._snapGraceUntil = 0;
+    this._restoreLoadedHold = true;
   },
 };
 
