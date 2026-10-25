@@ -114,32 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-fauna-fog",
-      "date": "2026-10-22",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "Glassbacks read as scattered glass until you get close, and the stone lung beside them keeps its name.",
-      "fingerprint": "verb=fog,subject=glassback,sector=veil,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-fauna-toll",
-      "date": "2026-10-22",
-      "wf": "WF-13",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "Close to a cold bell, it names itself and tolls before the radiation front.",
-      "fingerprint": "verb=toll,subject=cold-bell,sector=ashfall,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-machine-nursery",
       "date": "2026-10-22",
       "wf": "WF-09",
@@ -1672,6 +1646,32 @@
       "integration": "live",
       "commit": "cb51917ef47cdd2d8ded1378c9e5d12d070197ff",
       "verification": "focused_green"
+    },
+    {
+      "id": "inf-veil-planet",
+      "date": "2026-10-25",
+      "wf": "WF-05",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The veil step stops on the world's skin.",
+      "fingerprint": "verb=step,subject=planet,sector=tethys,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "46b17dc9983dc2b78c106e20e36bd7cd3f593d7a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "al-lg-04",
+      "date": "2026-10-25",
+      "wf": "WF-02",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "B7 reckoning boards are built from the run's actual B1-B6 callbacks: a towed or slung B3 core returns as usable mass at Ashfall; two saves differing only at B3 spawn different bodies; focused test 4/4 (al-long-2-reckoning-4242)",
+      "fingerprint": "verb=spawn,subject=reckoning-callbacks,sector=ashfall,layer=subsystem,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "e3711912bc",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
@@ -1698,6 +1698,14 @@
       "status": "closed",
       "date": "2026-09-17",
       "note": "VERIFIED REPAIRED 2026-10-14: encounterScripts.js:86 convoyHasDemand opens the stance offer for any convoy shape declaring choices; convoyChoose (line 2758) answers defend/raid/pass with rep/stance/custody consequences; 329 surfaces its offer on offerS=12 with timeoutChoice pass."
+    },
+    {
+      "id": "sw-02-overdrive-cap-pin",
+      "wf": "WF-02",
+      "severity": "ambient",
+      "status": "open",
+      "date": "2026-10-25",
+      "note": "test/inf50-seed-sw-02.test.mjs:200 'capacitor cost per shot is unchanged' fails on master: hot tape spends ~2/shot vs ~9086 cold. Unit seed-sw-02-overdrive shipped @974f04824e; later landed units (chain-fed packets SEED-SW-09/10, e3b8b4975f fast-guns rework) moved the capacitor spend path. Decide whether the pin or the spend law needs repair."
     }
   ],
   "referenceUse": {},
