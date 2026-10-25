@@ -229,7 +229,8 @@ export function stuntSpecificLine(incident) {
     const name=cleanName(incident.cargo?.name,'cargo').toLowerCase();
     return `That was your ${name}. The pod killed him.`;
   }
-  return STUNT_VARIANT_LINES[incident.variantId]??null;
+  return (incident.variantId && Object.hasOwn(STUNT_VARIANT_LINES, incident.variantId))
+    ? STUNT_VARIANT_LINES[incident.variantId] : null;
 }
 export function completeWitness(witness) {
   return witness?.provenance==='live-physical-samples'&&witness.sourceTicks>=6&&witness.transferTicks>=6&&witness.payoffTicks>=6;
@@ -240,7 +241,7 @@ export function stuntAccountFor(record) {
   const source=cleanName(record?.sourceName,'the released body'),target=cleanName(record?.targetName,'the target');
   if(record?.variantId==='bolas_pair')return `bridled ${target} to a wingman and drove the pair into the rock`;
   if(record?.variantId==='own_wingman')return `put the wreck ${source} back in motion against its own wingman ${target}`;
-  return ({
+  const account = {
     bolas:`released ${source} under load into ${target}`,
     wrecking_ball:`swung the attached ${source} into ${target}`,
     clothesline:`loaded a tether across ${target}'s path`,
@@ -256,7 +257,11 @@ export function stuntAccountFor(record) {
     slingshot_golf:`passed ${source} from a loaded tether through gravity into ${target}`,
     ore_shotgun:`shoved ${source} into ${target} and the cargo killed it`,
     near_miss:'changed course and cleared an incoming threat',
-  })[record?.trickId]||`completed ${cleanName(record?.name||record?.trickId,'a stunt')}`;
+  };
+  // hasOwn: trickId rides the persisted incident record — a prototype key must not land an
+  // inherited member as the ledger's account text.
+  return (record?.trickId && Object.hasOwn(account, record.trickId) && account[record.trickId])
+    || `completed ${cleanName(record?.name||record?.trickId,'a stunt')}`;
 }
 /** §6 harm row: actual recorded outcomes only; unknown values stay unknown. */
 export function stuntHarmFor(incident) {

@@ -2638,6 +2638,9 @@ export const barkDirector = {
       if (this._onLawDispatchStarted) this.bus.off('law:dispatchStarted', this._onLawDispatchStarted);
       if (this._onLawWarrantPosted) this.bus.off('law:wantedWarrantPosted', this._onLawWarrantPosted);
       if (this._onLawCheckpointPosted) this.bus.off('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
+      if (this._onRivalCut) this.bus.off('wreckEcology:scavenged', this._onRivalCut);
+      if (this._onRivalPressured) this.bus.off('wreckEcology:rivalPressured', this._onRivalPressured);
+      if (this._onRivalDeparted) this.bus.off('wreckEcology:departed', this._onRivalDeparted);
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
       if (this._onPatrolIntervened) this.bus.off('encounter:patrolIntervened', this._onPatrolIntervened);
       if (this._onHarasserDisengaged) this.bus.off('harasser:disengaged', this._onHarasserDisengaged);
@@ -2646,6 +2649,7 @@ export const barkDirector = {
       if (this._onLawFineAssessed) this.bus.off('law:fineAssessed', this._onLawFineAssessed);
       if (this._onLawSanctuaryWithdrawal) this.bus.off('law:sanctuaryWithdrawal', this._onLawSanctuaryWithdrawal);
       if (this._onLawResponseDeferred) this.bus.off('law:responseDeferred', this._onLawResponseDeferred);
+      if (this._onLawResponse) this.bus.off('law:response', this._onLawResponse);
       if (this._onLawIncidentResolved) this.bus.off('law:incidentResolved', this._onLawIncidentResolved);
       if (this._onLawWarrantReleased) this.bus.off('law:wantedWarrantReleased', this._onLawWarrantReleased);
       if (this._onLawDistressRaised) this.bus.off('law:distressRaised', this._onLawDistressRaised);
@@ -2692,7 +2696,11 @@ export const barkDirector = {
     this._onLawFineAssessed = null;
     this._onLawSanctuaryWithdrawal = null;
     this._onLawResponseDeferred = null;
+    this._onLawResponse = null;
     this._onLawIncidentResolved = null;
+    this._onRivalCut = null;
+    this._onRivalPressured = null;
+    this._onRivalDeparted = null;
     this._onLawWarrantReleased = null;
     this._onLawDistressRaised = null;
     this._onCounterHintSpawn = null;
