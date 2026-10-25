@@ -347,7 +347,7 @@ import {
   survivalDefersArenaDressingJob,
 } from './authoredUpgradePolicy.js';
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
-import { createRetainedRigidOpaqueBatchController, mintRigidOpaqueBatchSpecimen, planRigidOpaqueBatchSpecimenGroups, isRigidOpaqueBatchProgramWarmed, noteRigidOpaqueBatchProgramWarmed, clearRigidOpaqueBatchWarmedKeys } from './rigidOpaqueBatch.js';
+import { createRetainedRigidOpaqueBatchController, mintRigidOpaqueBatchSpecimen, planRigidOpaqueBatchSpecimenGroups, isRigidOpaqueBatchProgramWarmed, noteRigidOpaqueBatchProgramWarmed, clearRigidOpaqueBatchWarmedKeys, retainRigidOpaqueBatchSpecimenMaterial } from './rigidOpaqueBatch.js';
 import {
   scheduleRealtimeShadowRefresh,
   shouldRefreshRealtimeShadowMap,
@@ -30595,7 +30595,8 @@ export const render = {
         for (const mesh of specimens) {
           try { mesh.dispose?.(); } catch (_) { /* best effort */ }
           const material = mesh.material;
-          if (material && typeof material.dispose === 'function') {
+          if (material && !retainRigidOpaqueBatchSpecimenMaterial(material)
+              && typeof material.dispose === 'function') {
             try { material.dispose(); } catch (_) { /* best effort */ }
           }
         }
