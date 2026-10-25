@@ -28,8 +28,8 @@ export const FIRST_HOUR_OVERLAY = Object.freeze({
   'Preparing your next departure': L(
     'Preparando tu próxima salida',
     'Préparation de votre prochain départ',
-    'Ihr nächster Abflug wird vorbereitet',
-    'A preparar a sua próxima partida',
+    'Dein nächster Abflug wird vorbereitet',
+    'Preparando a sua próxima partida',
   ),
   '00:00': L('00:00', '00:00', '00:00', '00:00'),
   '0%': L('0%', '0%', '0%', '0%'),
@@ -54,7 +54,7 @@ export const FIRST_HOUR_OVERLAY = Object.freeze({
   'Massline reel.': L('Recogida de la Massline.', 'Enroulement de la Massline.', 'Massline-Aufzug.', 'Recolhimento da Massline.'),
   'Massline release.': L('Suelta de la Massline.', 'Relâche de la Massline.', 'Massline-Lösung.', 'Soltura da Massline.'),
   'Massline break.': L('Rotura de la Massline.', 'Rupture de la Massline.', 'Massline-Bruch.', 'Ruptura da Massline.'),
-  'Twin bridle chord.': L('Cuerda de brida doble.', 'Corde de bride double.', 'Doppelleinen-Sehne.', 'Corda dupla de brida.'),
+  'Twin bridle chord.': L('Cuerda de brida doble.', 'Corde de bride double.', 'Doppelleinen-Akkord.', 'Corda dupla de brida.'),
 
   // Ambient fauna and machine captions (the authored recipe sentences).
   'A drifter sings.': L('Una errante canta.', 'Un errant chante.', 'Ein Drifter singt.', 'Um errante canta.'),
@@ -131,7 +131,7 @@ export const FIRST_HOUR_OVERLAY = Object.freeze({
   // Wanted, shields, reactor.
   'You are wanted.': L('Estás buscado.', 'Vous êtes recherché.', 'Du wirst gesucht.', 'Você está procurado.'),
   'The warrant clears.': L('La orden se limpia.', 'Le mandat se dissipe.', 'Der Haftbefehl klingt ab.', 'O mandado é limpo.'),
-  'Shields down.': L('Escudos caídos.', 'Boucliers à plat.', 'Schilde unten.', 'Escudos em baixo.'),
+  'Shields down.': L('Escudos caídos.', 'Boucliers à plat.', 'Schilde unten.', 'Escudos caídos.'),
   'Shields blow out.': L('Los escudos estallan.', 'Les boucliers sautent.', 'Schilde fliegen raus.', 'Os escudos estouram.'),
   'The reactor runs away.': L('El reactor se desboca.', 'Le réacteur s’emballe.', 'Der Reaktor läuft davon.', 'O reator descontrola-se.'),
 
