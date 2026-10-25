@@ -249,6 +249,18 @@ test('an act change sheds its plate exactly once and the toast names the slab', 
   assert.equal(plateSpawns(h).filter((e) => e.data.capitalPlate.plateId === 'battery_housing').length, 1);
 });
 
+test('final review: a score that skips an act still sheds the skipped act\'s plate', () => {
+  const h = bootScoreFight(TOLLMAN);
+  tick(h, 200);
+  assert.equal(fightRec(h).actIndex, 0);
+  h.boss.hull = 20; // under both the act-1 (0.67) and act-2 (0.29) gates in one hit
+  tick(h, 140);
+  assert.equal(fightRec(h).actIndex, 2, 'the score jumps straight to the last act');
+  assert.equal(plateRec(h, 'battery_housing').attached, false, 'the skipped act still sheds its plate');
+  assert.equal(plateRec(h, 'ledger_plate').attached, false);
+  assert.equal(plateSpawns(h).length, 2, 'each plate spawns exactly once');
+});
+
 test('a mid-fight save keeps torn/attached state and restore spawns nothing', () => {
   const h = bootScoreFight(TOLLMAN);
   const anchor = plateAnchorLocal(h, 'battery_housing');

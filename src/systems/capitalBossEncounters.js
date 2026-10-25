@@ -381,11 +381,14 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(!this._platesLive(r)) return;
       const boss = ctx.state.entities && ctx.state.entities.get(r.bossId);
       if(!boss || boss.alive === false || !boss.pos) return;
-      const shedAfter = newActIndex - 1; // shedOnAct N holds through act N and tears as it ends
+      // shedOnAct N holds through act N and tears as it ends. A score that skips an act (one
+      // heavy hit past two hull gates) still sheds every plate whose act it passed — `<=`, not
+      // `===`, or the skipped act's plate would cover its subsystem for the rest of the fight.
+      const shedAfter = newActIndex - 1;
       for (const rec of r.plates) {
         if(!rec || !rec.attached) continue;
         const spec = this._plateSpec(r, rec.id);
-        if(!spec || spec.shedOnAct !== shedAfter) continue;
+        if(!spec || spec.shedOnAct == null || spec.shedOnAct > shedAfter) continue;
         const torn = this._tearPlate(r, boss, rec, spec, { cause: 'actShed' });
         if(torn) {
           const name = (requireCapitalBossEncounter(r.encounterId).score || {}).name || 'The boss';
