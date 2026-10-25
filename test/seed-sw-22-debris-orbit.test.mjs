@@ -81,3 +81,51 @@ test('the ring claims at most four existing rocks, never conjures, frees spent s
   assert.equal(ring.size, 4, 'slot refilled from the room');
   assert.ok(ring.has('r6'), 'the last real rock was claimed');
 });
+
+test('unprofiled loose bodies are lent the tether-anchor profile before latching', () => {
+  // The real kernel refuses targets with zero tether sockets; 'debris'/'rock'/'cargo_pod'
+  // bodies have no entry in DEFAULT_COMBAT_PROFILE_BY_TYPE, so the claim must stamp the
+  // anchor profile itself — the same stamp spawners use — or the gun is silently dead.
+  const owner = {
+    id: 'player', type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 8,
+    team: 'player', data: { weapons: [{ defId: DEF.id }] },
+  };
+  const loose = rock('d1', 40, 0, 'debris');
+  const stamped = { ...rock('w1', 50, 0, 'debris'), data: { combatProfileId: 'combat_profile_pallet_jack' } };
+  const asteroidBody = rock('a1', 60, 0, 'asteroid');
+  const list = [owner, loose, stamped, asteroidBody];
+  const entities = new Map(list.map((e) => [e.id, e]));
+  const state = {
+    tick: 5, simTime: 0, playerId: 'player', entities,
+    entityList: list, entityIndex: null, spatialHash: null,
+    combat: { attachments: { byId: {} } },
+  };
+  const live = new Map();
+  let nextAtt = 0;
+  const attachments = {
+    create: (spec) => {
+      const id = `att_${++nextAtt}`;
+      const att = { id, defId: spec.defId, ownerId: spec.ownerId, targetId: spec.targetId, state: 'active' };
+      live.set(id, att);
+      return { ok: true, attachment: att };
+    },
+    get: (id) => live.get(id) || null,
+    breakAttachment: () => {},
+  };
+  const host = Object.assign(Object.create(weapons), {
+    state,
+    helpers: { getEntity: (id) => entities.get(id) || null },
+    bus: { emit: () => {} },
+    _orbitRings: new Map(),
+    _byId: new Map([[DEF.id, DEF]]),
+    _entityGetter: (id) => entities.get(id) || null,
+    _attachmentsService: () => attachments,
+  });
+  weapons._tickDebrisOrbit.call(host, 1 / 60, state);
+  assert.equal(loose.data.combatProfileId, 'combat_profile_tether_anchor',
+    'unprofiled debris gains the anchor profile so the kernel can socket the clamp');
+  assert.equal(stamped.data.combatProfileId, 'combat_profile_pallet_jack',
+    'an explicitly stamped profile is never overwritten');
+  assert.equal(asteroidBody.data.combatProfileId, undefined,
+    'a body whose type already defaults to the anchor profile is left alone');
+});
