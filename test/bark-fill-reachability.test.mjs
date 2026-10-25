@@ -152,6 +152,8 @@ test('prototype-keyed ids take the documented fallback at every selector — nev
   // member, a TypeError, or the literal text "undefined". Guards are Object.hasOwn throughout.
   for (const key of ['toString', 'constructor', '__proto__']) {
     assert.ok(BARKS.faction_free.scan.includes(barkFor(key, 'scan', 0)), `barkFor(${key}) must speak faction_free`);
+    assert.ok(BARKS.faction_scn.scan.includes(barkFor('faction_scn', key, 0)),
+      `barkFor(faction_scn, ${key}) must fall back to the scan cell, not adopt a prototype member`);
     // The selector replaces {ship}/{class} tokens on the way out — compare post-replacement.
     const expectedHull = HULL_RECOGNITION.faction_free.map((l) => l.replace(/\{ship\}/g, 'that hull').replace(/\{class\}/g, 'hull'));
     assert.ok(expectedHull.includes(hullRecognitionBarkFor(key, 0, {})), `hullRecognitionBarkFor(${key}) must speak faction_free`);
