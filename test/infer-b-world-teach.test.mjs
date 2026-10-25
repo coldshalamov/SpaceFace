@@ -495,6 +495,9 @@ test('X-09 v3 a missing cap stays silent and snap still wins over dry-cap', () =
   const player = state.entities.get(1); // no cap fields — the TEACH-08 fixture shape
   const weapon = buildDefeatReceipt(state, player, 9, { origin: { kind: 'contact', id: 9 }, result: VITALS });
   assert.equal(weapon.rangeOffer, undefined, 'no cap read means no offer');
+  player.capMax = 100; // capMax known, cap missing — the null read must not count as dry
+  const capless = buildDefeatReceipt(state, player, 9, { origin: { kind: 'contact', id: 9 }, result: VITALS });
+  assert.equal(capless.rangeOffer, undefined, 'a missing cap is not a dry cap');
   player.cap = 0; player.capMax = 100;
   const snap = buildDefeatReceipt(state, player, 9, masslineSnapLethal());
   assert.equal(snap.rangeOffer.rungId, 'swing_do_not_pull', 'snap wins over dry-cap');

@@ -499,8 +499,9 @@ export function defeatRangeOffer(state, lethal, read = {}) {
   const sourceKind = cause.sourceKind;
   // v3 live row — ran the cap dry into a contact death. No last-fire stamp exists, so the
   // read is cap-only; 'unknown' (despawned attacker) stays silent by the kind gate.
-  const capMax = Number(cause.capMax);
-  const cap = Number(cause.cap);
+  // typeof gate, not Number(): Number(null) is 0, which would read a missing cap as dry.
+  const capMax = typeof cause.capMax === 'number' ? cause.capMax : NaN;
+  const cap = typeof cause.cap === 'number' ? cause.cap : NaN;
   if (sourceKind === 'contact' && !cause.physicalLabel
     && Number.isFinite(capMax) && capMax > 0 && Number.isFinite(cap) && cap <= 0.05 * capMax) {
     if (!rungOfferedBefore(state, 'you_can_run_dry')) {
