@@ -168,3 +168,27 @@ test('destroy + re-init: provider and owned hulls clean', () => {
   sys.init({ state, bus: createBus(), helpers });
   assert.equal(state.entityList.filter((e) => e.alive && e.data?.tare).length, 1);
 });
+
+test('a killed scale robot is durable gone — no restaffing on any seam', () => {
+  const { state, bus, popups, sys } = fixture();
+  const robot = state.entityList.find((e) => e.data?.tare === true);
+  assert.ok(robot);
+  robot.alive = false; // kills emit after alive=false — resolve by id, not live scan
+  bus.emit('entity:killed', { id: robot.id });
+  assert.equal(state.story.flags[TARE.goneFlag], true);
+  assert.equal(says(popups, 'tare_gone').length, 1);
+  // Killing something else does not set the flag.
+  const s2 = fixture();
+  s2.bus.emit('entity:killed', { id: 12345 });
+  assert.equal(s2.state.story.flags[TARE.goneFlag], undefined);
+  // Re-entry, restore, and new game seams all leave the deck empty.
+  bus.emit('sector:enter', { sectorId: 'sector_dione_lane' });
+  bus.emit('save:loaded', {});
+  bus.emit('game:newGame', {});
+  assert.equal(state.entityList.filter((e) => e.alive && e.data?.tare).length, 0);
+  // And the census does not run without a live robot.
+  const rock = onDeck(60, 15);
+  state.entityList.push(rock);
+  sys.update(0.5, state);
+  assert.equal(rock.data.weighedBy, undefined);
+});

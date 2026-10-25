@@ -29,6 +29,7 @@ export const TARE = Object.freeze({
   stepFlag: 'tare_step',
   paidFlag: 'tare_paid',
   masteryFlag: 'tare_mastery',
+  goneFlag: 'tare_gone',
   sender: 'TARE / WG-2',
   callsign: 'WG-2',
   // Voice: the Line's caps register (02 §Measure Engines) — the robot IS their kin.
@@ -39,4 +40,5 @@ export const TARE = Object.freeze({
   massIncorrect: 'MASS RECORDED. MASS INCORRECT.',
   nextTarget: 'TARE SET. BRING ME MASS: {target}.',
   masteryLine: 'FOUR MASSES TRUE. THE LINE KNOWS YOUR NAME.',
+  goneLine: 'SCALE DUTY ENDED. THE LANE WEIGHS ITSELF NOW.',
 });

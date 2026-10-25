@@ -76,6 +76,7 @@ export function createTare() {
         .push(this._cookProvider);
       on('save:loaded', () => { this._announced = false; this._sync(); });
       on('game:newGame', () => { this._announced = false; this._sync(); });
+      on('entity:killed', (p) => this._onKilled(p));
       this._sync();
     },
     destroy() {
@@ -110,6 +111,13 @@ export function createTare() {
       }
       return null;
     },
+    _entity(id) {
+      if (id == null) return null;
+      const map = this.state?.entities;
+      if (map && typeof map.get === 'function') return map.get(id) || null;
+      for (const e of this.state?.entityList || []) if (e && e.id === id) return e;
+      return null;
+    },
     _removeOwned() {
       for (const e of this.state?.entityList || []) {
         if (e?.alive && (e.data?.tare === true || e.data?.tareFragment === true)) {
@@ -125,18 +133,33 @@ export function createTare() {
     _sync() {
       if (!this.state?.story) return;
       if (!this._adventure()) { this._removeOwned(); return; }
+      const flags = this._flags();
+      // A killed scale robot is durable gone: the deck never restaffs, but
+      // fragments already paid stay in the world as the trial's testimony.
+      if (flags && flags[TARE.goneFlag] === true) return;
       const robot = this._robot() || (this.helpers.spawnEntity && this.helpers.spawnEntity(tareSpec()));
       if (!robot) return;
       // One hail per arrival: the tare-set call plus the open request. In-memory —
       // a returning pilot gets the price board again; a finished scale hails once.
       if (!this._announced) {
         this._announced = true;
-        const flags = this._flags();
         const step = flags ? (Number(flags[TARE.stepFlag]) || 0) : 0;
         const target = tareTargetAt(step);
         this._say('tare_set', target == null
           ? TARE.tareSet
           : `${TARE.tareSet} ${tareTargetLine(target)}`, 9);
+      }
+    },
+    /** Kill reports read the victim by id (the event fires after alive=false, so
+     *  the entity map is the honest lookup). A dead scale robot is durable gone. */
+    _onKilled(p) {
+      if (!this._adventure() || !p) return;
+      const victim = this._entity(p.id);
+      if (!victim || !victim.data || victim.data.tare !== true) return;
+      const flags = this._flags();
+      if (flags && flags[TARE.goneFlag] !== true) {
+        flags[TARE.goneFlag] = true;
+        this._say('tare_gone', TARE.goneLine, 9);
       }
     },
     /** The calendar census: weigh every settled body on the plate, stamp it under
@@ -183,11 +206,12 @@ export function createTare() {
         // ladder, and keep processing — two true bodies can climb two steps.
         if (flags) {
           flags[TARE.stepFlag] = step + 1;
-          flags[TARE.paidFlag] = (Number(flags[TARE.paidFlag]) || 0) + 1;
-          const paid = flags[TARE.paidFlag];
+          // The fragment is the payment — the paid count only moves when the
+          // mint seam actually exists, so a missing helper can't log phantom pay.
           if (this.helpers.spawnEntity) {
+            flags[TARE.paidFlag] = (Number(flags[TARE.paidFlag]) || 0) + 1;
             this.helpers.spawnEntity(
-              tareFragmentSpec(TARE.fragmentMass, tareFragmentSpot(paid), robot.id, s.simTime));
+              tareFragmentSpec(TARE.fragmentMass, tareFragmentSpot(flags[TARE.paidFlag]), robot.id, s.simTime));
           }
           const next = tareTargetAt(step + 1);
           if (next != null) {
