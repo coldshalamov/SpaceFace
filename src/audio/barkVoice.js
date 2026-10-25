@@ -522,6 +522,7 @@ export function renderRegisterCallsignPcm(register, options = {}) {
  *  Faction-register input only — non-faction registers (instructor sits inside pitborn's
  *  tolerance; mechanic/maera share neighborhoods) can misname rather than return null. */
 export function identifyRegisterFromPcm(pcm, sampleRate = 32000) {
+  if (!pcm || typeof pcm.length !== 'number' || pcm.length === 0) return null;
   const f0 = detectPitchHz(
     pcm,
     sampleRate,

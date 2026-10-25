@@ -1446,7 +1446,7 @@ const witnessSeamLines = {
 
 /** Pure band pick: the seam line a counter value speaks (null keeps the authored original). */
 export function witnessSeamLineFor(trackerId, value) {
-  const bands = WITNESS_SEAM_BANDS[trackerId];
+  const bands = (trackerId && Object.hasOwn(WITNESS_SEAM_BANDS, trackerId)) ? WITNESS_SEAM_BANDS[trackerId] : null;
   if (!bands) return null;
   const row = bands.find((band) => value >= band.min && value <= band.max);
   return row ? row.line : null;
@@ -2008,8 +2008,9 @@ function barLineAt(pool, index) {
  * @returns {string|null} a non-empty line, or null if the corpus is empty.
  */
 export function barGreetingBarkFor(factionId, role, index) {
-  const cell = BAR_GREETING_BARKS[factionId] || BAR_GREETING_BARKS.faction_free;
-  const pool = (role && cell[role]) || cell.any
+  const cell = (factionId && Object.hasOwn(BAR_GREETING_BARKS, factionId) && BAR_GREETING_BARKS[factionId])
+    || BAR_GREETING_BARKS.faction_free;
+  const pool = (role && Object.hasOwn(cell, role) && cell[role]) || cell.any
     || (BAR_GREETING_BARKS.faction_free && BAR_GREETING_BARKS.faction_free.any);
   return barLineAt(pool, index);
 }
@@ -2129,7 +2130,8 @@ export const WITNESS_CRIME_BARKS = Object.freeze({
  * @returns {string} a non-empty line.
  */
 export function witnessCrimeBarkFor(factionId, rng) {
-  const lines = (factionId && WITNESS_CRIME_BARKS[factionId]) || WITNESS_CRIME_BARKS.faction_free;
+  const lines = (factionId && Object.hasOwn(WITNESS_CRIME_BARKS, factionId) && WITNESS_CRIME_BARKS[factionId])
+    || WITNESS_CRIME_BARKS.faction_free;
   const line = lines[pickIndex(rng, lines.length)] || lines[0];
   return typeof line === 'string' && line.length ? line : '...';
 }
@@ -2229,7 +2231,8 @@ export const PURSUIT_BARKS = Object.freeze({
 
 /** One pursuit-chatter line for the chasing faction. Deterministic; falls back to faction_free. */
 export function pursuitBarkFor(factionId, rng) {
-  const lines = (factionId && PURSUIT_BARKS[factionId]) || PURSUIT_BARKS.faction_free;
+  const lines = (factionId && Object.hasOwn(PURSUIT_BARKS, factionId) && PURSUIT_BARKS[factionId])
+    || PURSUIT_BARKS.faction_free;
   const line = lines[pickIndex(rng, lines.length)] || lines[0];
   return typeof line === 'string' && line.length ? line : '...';
 }
@@ -2329,7 +2332,8 @@ export const SURRENDER_BARKS = Object.freeze({
 
 /** One surrender line for the demanding faction. Deterministic; falls back to faction_free. */
 export function surrenderBarkFor(factionId, rng) {
-  const lines = (factionId && SURRENDER_BARKS[factionId]) || SURRENDER_BARKS.faction_free;
+  const lines = (factionId && Object.hasOwn(SURRENDER_BARKS, factionId) && SURRENDER_BARKS[factionId])
+    || SURRENDER_BARKS.faction_free;
   const line = lines[pickIndex(rng, lines.length)] || lines[0];
   return typeof line === 'string' && line.length ? line : '...';
 }
@@ -2430,7 +2434,8 @@ export const ESCAPE_TAUNT_BARKS = Object.freeze({
 
 /** One post-escape taunt for the faction that lost the runner. Deterministic; faction_free fallback. */
 export function escapeTauntBarkFor(factionId, rng) {
-  const lines = (factionId && ESCAPE_TAUNT_BARKS[factionId]) || ESCAPE_TAUNT_BARKS.faction_free;
+  const lines = (factionId && Object.hasOwn(ESCAPE_TAUNT_BARKS, factionId) && ESCAPE_TAUNT_BARKS[factionId])
+    || ESCAPE_TAUNT_BARKS.faction_free;
   const line = lines[pickIndex(rng, lines.length)] || lines[0];
   return typeof line === 'string' && line.length ? line : '...';
 }
@@ -2560,9 +2565,9 @@ export const POD_HUNT_BARKS = Object.freeze({
  * Reach register; an unknown key is null so a caller can stay silent rather than invent text.
  */
 export function podHuntBarkFor(key, factionId, index) {
-  const cell = key && POD_HUNT_BARKS[key];
+  const cell = (key && Object.hasOwn(POD_HUNT_BARKS, key)) ? POD_HUNT_BARKS[key] : null;
   if (!cell) return null;
-  const lines = (factionId && cell[factionId]) || cell.faction_reach;
+  const lines = (factionId && Object.hasOwn(cell, factionId) && cell[factionId]) || cell.faction_reach;
   const line = lines[pickIndex(index, lines.length)] || lines[0];
   return typeof line === 'string' && line.length ? line : null;
 }
@@ -2599,7 +2604,8 @@ export const ORE_FLOOD_BARKS = Object.freeze({
  * line; an absent ore name reads as plain "ore".
  */
 export function oreFloodBarkFor(register, index, oreName) {
-  const lines = (register && ORE_FLOOD_BARKS[register]) || ORE_FLOOD_BARKS.working;
+  const lines = (register && Object.hasOwn(ORE_FLOOD_BARKS, register) && ORE_FLOOD_BARKS[register])
+    || ORE_FLOOD_BARKS.working;
   const line = lines[pickIndex(index, lines.length)] || lines[0];
   const ore = typeof oreName === 'string' && oreName.trim() ? oreName.trim().toLowerCase() : 'ore';
   return line.replace(/\{ore\}/g, ore);
@@ -2643,7 +2649,7 @@ export const DOCK_DEED_BARKS = Object.freeze({
 
 /** One dock-control greeting; null for an unknown tone or an empty deed line. */
 export function dockDeedBarkFor(tone, index, tokens = {}) {
-  const lines = DOCK_DEED_BARKS[tone];
+  const lines = (tone && Object.hasOwn(DOCK_DEED_BARKS, tone)) ? DOCK_DEED_BARKS[tone] : null;
   const deed = typeof tokens.deed === 'string' ? tokens.deed.trim() : '';
   if (!lines || !deed) return null;
   const line = lines[pickIndex(index, lines.length)] || lines[0];
@@ -2832,7 +2838,7 @@ export const RIVAL_SCAVENGER_REGISTER = Object.freeze({
 });
 
 export function rivalScavengerLineFor(kind, rng) {
-  const table = RIVAL_SCAVENGER_REGISTER[kind];
+  const table = (kind && Object.hasOwn(RIVAL_SCAVENGER_REGISTER, kind)) ? RIVAL_SCAVENGER_REGISTER[kind] : null;
   if (!table || !table.length) return '';
   return table[pickIndex(rng, table.length)];
 }

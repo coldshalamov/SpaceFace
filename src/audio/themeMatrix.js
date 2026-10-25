@@ -169,7 +169,7 @@ function sting(factionId, profileKey, hz, wave, label) {
   return Object.freeze({
     factionId,
     profileKey,
-    profile: BAND_BED_PROFILES[profileKey] || null,
+    profile: (profileKey && Object.hasOwn(BAND_BED_PROFILES, profileKey)) ? BAND_BED_PROFILES[profileKey] : null,
     hz,
     wave,
     label,

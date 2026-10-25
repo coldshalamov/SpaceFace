@@ -114,7 +114,7 @@ if (catalogOnly) {
   for (const row of pipeline) {
     console.log(`${row.factionId}\t${row.situation}\t${row.speech.f0}\t${row.speech.rate}\t${row.caption}`);
   }
-  process.exit(process.exitCode || 0);
+  process.exit(0);
 }
 
 // --all covers the corpus rows AND the runtime representative clips (bark_* register files,

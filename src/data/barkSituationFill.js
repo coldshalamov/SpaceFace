@@ -1363,8 +1363,10 @@ export function topUpBarkSituationCells(barks, factions, situations, eventSituat
     ]),
   ];
   for (const factionId of factions) {
-    const pack = barks && barks[factionId];
-    const fill = BARK_SITUATION_FILL[factionId];
+    // hasOwn: a prototype-keyed id must take the missing-pack branch, not adopt an
+    // inherited Object member as a pack.
+    const pack = barks && Object.hasOwn(barks, factionId) ? barks[factionId] : null;
+    const fill = Object.hasOwn(BARK_SITUATION_FILL, factionId) ? BARK_SITUATION_FILL[factionId] : null;
     if (!pack) {
       for (const situation of keys) underFloor.push(`${factionId}/${situation}`);
       continue;

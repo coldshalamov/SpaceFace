@@ -1,7 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BARKS, BARK_FACTIONS, BARK_SITUATIONS, BARK_EVENT_SITUATIONS, barkFor } from '../src/data/barks.js';
+import {
+  BARKS, BARK_FACTIONS, BARK_SITUATIONS, BARK_EVENT_SITUATIONS, barkFor,
+  HULL_RECOGNITION, hullRecognitionBarkFor,
+  BAR_GREETING_BARKS, barGreetingBarkFor,
+  WITNESS_CRIME_BARKS, witnessCrimeBarkFor,
+  PURSUIT_BARKS, pursuitBarkFor,
+  SURRENDER_BARKS, surrenderBarkFor,
+  ESCAPE_TAUNT_BARKS, escapeTauntBarkFor,
+  podHuntBarkFor,
+  ORE_FLOOD_BARKS, oreFloodBarkFor,
+  dockDeedBarkFor,
+  rivalScavengerLineFor,
+  witnessSeamLineFor,
+} from '../src/data/barks.js';
 import { BARK_SITUATION_FILL, BARK_CELL_MIN, topUpBarkSituationCells } from '../src/data/barkSituationFill.js';
+import { resolveBarkVoice, resolveVoiceRegister, identifyRegisterFromPcm, FACTION_VOICE_REGISTERS } from '../src/audio/barkVoice.js';
+import { resolveFactionSting, resolveSectorBed } from '../src/audio/themeMatrix.js';
 
 // D254: the fill reservoir used to be capped at BARK_CELL_MIN=12 appends, leaving ~55 authored
 // tail lines unreachable. The cap is gone — every line in BARK_SITUATION_FILL must land in the
@@ -123,4 +138,33 @@ test('deep cell indices past the old cap resolve to authored lines', () => {
     }
   }
   assert.ok(deepCells > 0, 'expected merged cells deeper than the old cap');
+});
+
+test('prototype-keyed ids take the documented fallback at every selector — never a crash or an inherited member', () => {
+  // 'toString'/'constructor'/'__proto__' are valid strings a hostile or corrupted factionId can
+  // carry; every corpus lookup must answer with its contracted fallback, not an Object.prototype
+  // member, a TypeError, or the literal text "undefined". Guards are Object.hasOwn throughout.
+  for (const key of ['toString', 'constructor', '__proto__']) {
+    assert.ok(BARKS.faction_free.scan.includes(barkFor(key, 'scan', 0)), `barkFor(${key}) must speak faction_free`);
+    // The selector replaces {ship}/{class} tokens on the way out — compare post-replacement.
+    const expectedHull = HULL_RECOGNITION.faction_free.map((l) => l.replace(/\{ship\}/g, 'that hull').replace(/\{class\}/g, 'hull'));
+    assert.ok(expectedHull.includes(hullRecognitionBarkFor(key, 0, {})), `hullRecognitionBarkFor(${key}) must speak faction_free`);
+    assert.ok(BAR_GREETING_BARKS.faction_free.any.includes(barGreetingBarkFor(key, key, 0)), `barGreetingBarkFor(${key}) must speak faction_free.any`);
+    assert.ok(WITNESS_CRIME_BARKS.faction_free.includes(witnessCrimeBarkFor(key, 0)), `witnessCrimeBarkFor(${key}) must speak faction_free`);
+    assert.ok(PURSUIT_BARKS.faction_free.includes(pursuitBarkFor(key, 0)), `pursuitBarkFor(${key}) must speak faction_free`);
+    assert.ok(SURRENDER_BARKS.faction_free.includes(surrenderBarkFor(key, 0)), `surrenderBarkFor(${key}) must speak faction_free`);
+    assert.ok(ESCAPE_TAUNT_BARKS.faction_free.includes(escapeTauntBarkFor(key, 0)), `escapeTauntBarkFor(${key}) must speak faction_free`);
+    assert.equal(podHuntBarkFor(key, key, 0), null, `podHuntBarkFor(${key}) must return null for an unknown key`);
+    const expectedOre = ORE_FLOOD_BARKS.working.map((l) => l.replace(/\{ore\}/g, 'iron'));
+    assert.ok(expectedOre.includes(oreFloodBarkFor(key, 0, 'iron')), `oreFloodBarkFor(${key}) must speak the working register`);
+    assert.equal(dockDeedBarkFor(key, 0, { deed: 'x' }), null, `dockDeedBarkFor(${key}) must return null for an unknown tone`);
+    assert.equal(rivalScavengerLineFor(key, 0), '', `rivalScavengerLineFor(${key}) must return '' for an unknown kind`);
+    assert.equal(witnessSeamLineFor(key, 5), null, `witnessSeamLineFor(${key}) must return null for an unknown tracker`);
+    assert.equal(resolveVoiceRegister(key).id, FACTION_VOICE_REGISTERS.faction_free.id, `resolveVoiceRegister(${key}) must fall back to faction_free`);
+    assert.equal(resolveBarkVoice({ factionId: key, situation: 'scan', line: 'x' }).registerId, 'faction_free', `resolveBarkVoice(${key}) must fall back to faction_free`);
+    assert.equal(resolveFactionSting(key), null, `resolveFactionSting(${key}) must return null`);
+    assert.match(resolveSectorBed(key).id, /^bed_/, `resolveSectorBed(${key}) must take the hashed-bed path`);
+  }
+  assert.equal(identifyRegisterFromPcm(null), null, 'identifyRegisterFromPcm(null) must return null, not throw');
+  assert.equal(identifyRegisterFromPcm([]), null, 'identifyRegisterFromPcm([]) must return null, not throw');
 });
