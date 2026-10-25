@@ -193,7 +193,7 @@ test('X-07 the vent carry never crosses commodities', () => {
   assert.ok(h.mining._ventCarry < 1, 'the paid unit leaves the carry');
 });
 
-test('X-07 the CLEAN CUT word holds for 1.2 s then the seam word returns', () => {
+test('X-07 only a clean vent replaces the word with CLEAN CUT', () => {
   const hud = Object.create(miningHud);
   hud.init({ state: {}, helpers: {}, bus: null });
   hud._dom = { word: { textContent: '' }, mark: { classList: { toggle() {} } } };

@@ -319,6 +319,38 @@ test('the three rhythms render at the beam contact, from the seams mining alread
   }
 });
 
+test('CLEAN CUT survives beam release for 1.2 simulation seconds, then the current seam returns', () => {
+  const t = mountInstrument(flightState());
+  try {
+    t.bus.emit('mining:start', { minerId: 'player', position: { x: 10, z: 0 } });
+    t.bus.emit('mining:tick', { sourceEntityId: 'player', seamHit: true });
+    t.bus.emit('mining:ventBonus', { minerId: 'player', clean: true });
+    t.bus.emit('mining:stop', { minerId: 'player' });
+    t.hud.update(1 / 60, t.state);
+    assert.equal(t.mark.style.display, 'block', 'release leaves the clean-cut mark visible');
+    assert.equal(t.dom.word.textContent, 'CLEAN CUT');
+
+    t.state.simTime = NOW + 1.19;
+    t.hud.update(1 / 60, t.state);
+    assert.equal(t.dom.word.textContent, 'CLEAN CUT', 'the word holds before the deadline');
+    assert.equal(t.mark.style.display, 'block');
+    // A frozen simulation clock spends none of the remaining hold.
+    t.hud.update(1 / 60, t.state);
+    assert.equal(t.dom.word.textContent, 'CLEAN CUT');
+
+    t.state.simTime = NOW + 1.21;
+    t.bus.emit('mining:start', { minerId: 'player', position: { x: 10, z: 0 } });
+    t.bus.emit('mining:tick', { sourceEntityId: 'player', seamHit: false });
+    t.hud.update(1 / 60, t.state);
+    assert.equal(t.dom.word.textContent, 'OFF SEAM', 'the current seam replaces the expired word');
+    t.bus.emit('mining:tick', { sourceEntityId: 'player', seamHit: true });
+    t.hud.update(1 / 60, t.state);
+    assert.equal(t.dom.word.textContent, 'ON SEAM', 'ordinary seam updates resume');
+  } finally {
+    t.cleanup();
+  }
+});
+
 test('hidden below 5%, docked/mode gates, settled frames write nothing', () => {
   const state = flightState();
   const t = mountInstrument(state);

@@ -1,7 +1,7 @@
 // Row 394 AL-RACE-1 — the line is contested (seed 4242). Real rivals use the Massline's own
-// verbs: they take physical anchors (canonical attachments through the kernel), an anchored
-// lap is measurably faster, and a player shove into a set piece is a takedown the rival
-// recovers from. Native bodies + the real combat-physics port throughout — no pose teleports.
+// verbs: they take physical anchors through canonical kernel attachments. Faster anchored
+// laps remain an open tuning clause; these tests cover qualified use and exclusive ropes.
+// Native bodies + the real combat-physics port throughout — no pose teleports.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -93,7 +93,18 @@ async function raceFixture(levelId, { laps = 2, difficulty = 'expert', stripAnch
       pack.update(mission);
       pieces.update(mission);
       kernel.attachments.updateTelemetryAndBreak();
-      for (const row of pack.inspect().rivals) {
+      const rows = pack.inspect().rivals;
+      const liveAnchors = rows.filter((row) => row.anchor);
+      assert.equal(new Set(liveAnchors.map((row) => row.anchor.anchorId)).size, liveAnchors.length,
+        'two rivals cannot hold the same anchor');
+      for (const row of rows) {
+        const ropes = Object.values(state.combat.attachments.byId)
+          .filter((a) => a.state === 'active' && a.ownerId === row.entityId);
+        assert.ok(ropes.length <= 1, `${row.id} carries at most one live rope`);
+        if (row.anchor) {
+          assert.equal(ropes.length, 1, `${row.id} anchor has a live canonical attachment`);
+          assert.equal(ropes[0].id, row.anchor.attachmentId);
+        }
         const t = lapTimes[row.id];
         if (t && row.lap > t.lap) { t.crossedAt.push({ lap: t.lap, simS: state.simTime }); t.lap = row.lap; }
       }
@@ -117,10 +128,11 @@ test('every rival logs a qualified anchor use on each lap of the Hard course', a
     for (const row of rows) {
       const uses = row.anchorUses.filter((u) => u.qualified);
       const laps = new Set(uses.map((u) => u.lap));
-      assert.ok(laps.size >= 2, `${row.id} qualified anchor on ≥2 laps (got ${JSON.stringify(row.anchorUses)})`);
+      for (const lap of [0, 1]) {
+        assert.ok(laps.has(lap), `${row.id} qualified anchor on lap ${lap + 1} (got ${JSON.stringify(row.anchorUses)})`);
+      }
     }
-    // One rope per rival at a time and no shared reservation: qualified uses are per-rival,
-    // and each attachment was released before the next could begin.
+    // The live checks above cover simultaneous exclusivity; the log also preserves ordering.
     for (const row of rows) {
       for (let i = 1; i < row.anchorUses.length; i++) {
         assert.ok(row.anchorUses[i - 1].releasedTick <= row.anchorUses[i].attachedTick,
@@ -136,8 +148,10 @@ test('Mira ropes the Quarry Hook on at least two laps', async () => {
   try {
     f.stepRace(60 * 150, () => f.pack.inspect().rivals.find((r) => r.id === 'mira')?.lap >= 2);
     const mira = f.pack.inspect().rivals.find((r) => r.id === 'mira');
-    const hooks = new Set(mira.anchorUses.filter((u) => u.anchorId === 'quarry_hook').map((u) => u.lap));
-    assert.ok(hooks.size >= 2, `mira took quarry_hook on ≥2 laps (got ${JSON.stringify(mira.anchorUses)})`);
+    const hooks = new Set(mira.anchorUses.filter((u) => u.qualified && u.anchorId === 'quarry_hook').map((u) => u.lap));
+    for (const lap of [0, 1]) {
+      assert.ok(hooks.has(lap), `mira qualified quarry_hook on lap ${lap + 1} (got ${JSON.stringify(mira.anchorUses)})`);
+    }
   } finally { f.dispose(); }
 });
 
