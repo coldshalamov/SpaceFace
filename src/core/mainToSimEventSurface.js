@@ -63,6 +63,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'kinetic-league:next',
   'kinetic-league:retry',
   'lastShift:archive',
+  'lastShift:readRecovery',
   'lastShift:returnRecorder',
   'law:fineChoice',
   'law:impoundPay',

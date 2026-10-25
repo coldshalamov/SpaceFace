@@ -16,7 +16,7 @@ export const lastShift = {
   name: 'lastShift',
   init(ctx) {
     this.ctx = ctx; this.state = ctx.state; this.bus = ctx.bus; this._bindings = new Map();
-    this._subs = []; this._restoring = false; this._nextTick = 0; this._lastReturnOffer = null;
+    this._subs = []; this._restoring = false; this._nextTick = 0; this._lastReturnOffer = null; this._lastRecoveryState = null;
     this._adopt(ctx.state.world?.lastShift);
     const on = (event, fn) => this._subs.push(this.bus.on(event, fn));
     on('scan:pulse', p => this._scan(p));
@@ -24,6 +24,7 @@ export const lastShift = {
     on('salvage:completed', p => this._lost(p?.wreckId, 'salvaged'));
     on('entity:killed', p => this._lost(p?.targetId ?? p?.id ?? p?.victimId, 'destroyed'));
     on('entity:destroyed', p => this._lost(p?.id, p?.entity?.data?._salvaged ? 'salvaged' : 'destroyed', p?.entity));
+    on('lastShift:readRecovery', p => this._offer(p?.view === 'sources' ? 'sources' : 'recovery', p?.requestId));
     on('lastShift:archive', p => {
       const result = this.archive(p?.revision);
       if (!result.ok) {
@@ -171,13 +172,37 @@ export const lastShift = {
     if (!this._row.destroyedClueIds.includes(id)) this._row.destroyedClueIds = lastShiftFactIds([...this._row.destroyedClueIds, id]);
     this._bindings.delete(id); if (this._row.knownClueIds.length) this._offer();
   },
+  // Presentation-only: evidence knowledge unlocks directions, never hardware or custody.
+  _recorderRecovery(gate) {
+    if (!this._row.knownClueIds.includes('recorder')) return null;
+    const status = this._row.bodies.recorder?.status;
+    if (this._row.recorderReturn || status === 'returned') return 'returned';
+    if (status === 'destroyed' || status === 'salvaged') return 'lost';
+    if (this._restoring) return 'unavailable';
+    const recorder = this._find('recorder'), player = this.state.entities.get(this.state.playerId);
+    if (!recorder || recorder.data.persistenceOwner !== C.persistenceOwner || !player?.alive) return 'unavailable';
+    if (gate.ok) return 'berth-ready';
+    const line = getCombatKernel(this.ctx).attachments.listForEntity(player.id).find(a => a.state === 'active'
+      && ((a.ownerId === player.id && a.targetId === recorder.id) || (a.targetId === player.id && a.ownerId === recorder.id))
+      && attachmentBindsOccupant(a, player.id, player.occupantGeneration)
+      && attachmentBindsOccupant(a, recorder.id, recorder.occupantGeneration));
+    if (!line) return 'available';
+    if (this.state.settings?.gameplay?.physicsBackend === 'rapier-dynamic') {
+      const physics = this.ctx.registry?.get('physics');
+      if ((physics && (physics._nativeRestorePending || physics._nativeRestoreDeferred || !physics._sg02))
+        || !this.ctx.helpers.combatPhysics?.getAttachmentTelemetry?.({ attachmentId: line.id, physicsHandle: line.physicsHandle })) return 'custody-pending';
+    }
+    return 'towing';
+  },
   readout() {
+    const gate = this._returnEligibility();
     return { siteId: C.siteId, revision: this._row.revision, clueIds: [...this._row.knownClueIds],
       text: lastShiftReport(this._row.knownClueIds, this._row.destroyedClueIds),
-      canArchive: this._row.knownClueIds.length > 0, canReturnRecorder: this._returnEligibility().ok,
+      canArchive: this._row.knownClueIds.length > 0, canReturnRecorder: gate.ok,
+      recorderRecovery: this._recorderRecovery(gate),
       recorderReturned: !!this._row.recorderReturn };
   },
-  _offer() { this.bus.emit('lastShift:offer', this.readout()); },
+  _offer(view = 'sources', requestId = null) { this.bus.emit('lastShift:offer', { ...this.readout(), view, requestId }); },
   archive(expectedRevision = null) {
     if (this._restoring || !this._row.knownClueIds.length) return { ok: false, reason: 'no_evidence' };
     if (expectedRevision != null && expectedRevision !== this._row.revision) return { ok: false, reason: 'evidence_changed' };
@@ -245,7 +270,10 @@ export const lastShift = {
       || state.simTime < this._nextTick) return;
     this._nextTick = state.simTime + 0.25;
     this._capture(); this._materialize();
-    const gate = this._returnEligibility();
+    const gate = this._returnEligibility(), recovery = this._recorderRecovery(gate);
+    if (recovery !== this._lastRecoveryState) {
+      this._lastRecoveryState = recovery; this._offer('recoveryUpdate');
+    }
     if (gate.ok && this._lastReturnOffer !== gate.receiver.stationId) {
       this._lastReturnOffer = gate.receiver.stationId; this._offer();
     } else if (!gate.ok) this._lastReturnOffer = null;
