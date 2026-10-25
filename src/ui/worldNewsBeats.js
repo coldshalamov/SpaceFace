@@ -115,8 +115,17 @@ export function dayBoundaryCard(state, payload) {
 let nameTables = null;
 function displayNameFor(kind, id) {
   if (!nameTables) {
-    nameTables = { commodity: new Map(COMMODITIES.map((c) => [c.id, c.name])), station: new Map() };
-    for (const sec of SECTORS) for (const st of (sec.stations || [])) nameTables.station.set(st.id, st.name);
+    nameTables = {
+      commodity: new Map(COMMODITIES.map((c) => [c.id, c.name])),
+      station: new Map(),
+      facts: new Map(),
+    };
+    for (const sec of SECTORS) {
+      for (const st of (sec.stations || [])) {
+        nameTables.station.set(st.id, st.name);
+        nameTables.facts.set(st.id, { type: st.type, tier: sec.tier || 0 });
+      }
+    }
   }
   return nameTables[kind].get(id) || String(id);
 }
@@ -131,9 +140,19 @@ export function noteDemandShift(state, payload) {
     delete bag.starved[key];
     return null;
   }
-  const market = payload.market || null;
-  const need = starvedIndustryNeedFor(payload.stationType, payload.stationTier, market);
-  if (!need) return null;
+  // The live price event names the station and the good. It does not carry the
+  // yard type, the sector tier, or the stock board. Those live on the catalog
+  // and on the economy the player is already trading.
+  displayNameFor('station', payload.stationId);
+  const facts = nameTables.facts.get(payload.stationId) || null;
+  const market = payload.market
+    || (state.economy && state.economy.markets && state.economy.markets[payload.stationId])
+    || null;
+  const stationType = payload.stationType || (facts && facts.type) || null;
+  const stationTier = payload.stationTier != null ? payload.stationTier : (facts ? facts.tier : 0);
+  const need = starvedIndustryNeedFor(stationType, stationTier, market);
+  // Name the good that is actually thin. A jump in some other listing is not this headline.
+  if (!need || need.inputId !== payload.commodityId) return null;
   const line = `${displayNameFor('commodity', payload.commodityId)} is starved at ${displayNameFor('station', payload.stationId)}.`;
   bag.starved[key] = line;
   return {
