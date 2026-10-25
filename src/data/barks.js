@@ -938,7 +938,7 @@ function pickIndex(rng, len) {
  * Deterministically select one radio bark line for a faction + situation.
  *
  * @param {string} factionId   one of BARK_FACTIONS (unknown ids fall back to faction_free).
- * @param {string} situation   one of BARK_SITUATIONS (unknown falls back to 'scan').
+ * @param {string} situation   one of BARK_SITUATIONS or BARK_EVENT_SITUATIONS (unknown falls back to 'scan').
  * @param {function|number} [rng]  seeded rng fn (returns [0,1)) or a numeric index. Deterministic.
  * @returns {string}  a non-empty radio line. Always returns a string (never null/undefined).
  */

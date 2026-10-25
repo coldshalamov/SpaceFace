@@ -83,6 +83,10 @@ test('every live cell meets the floor directly — not just via the mutator repo
         cell.every((l) => typeof l === 'string' && l === l.trim() && l.length > 0),
         `${factionId}/${situation} holds a padded or non-string line — caption text must be exactly its trimmed self`,
       );
+      assert.equal(
+        new Set(cell).size, cell.length,
+        `${factionId}/${situation} holds a duplicate line — authored dead weight that reads as additive`,
+      );
       if (cell.length < BARK_CELL_MIN) {
         under.push(`${factionId}/${situation} (${cell.length})`);
       }

@@ -358,6 +358,7 @@ export function identifyRegisterFromSpeech(speech = {}) {
   let bestDist = Infinity;
   for (const factionId of BARK_FACTIONS) {
     const r = FACTION_VOICE_REGISTERS[factionId];
+    if (!r) continue;
     const dist = Math.abs(r.f0 - f0) + Math.abs(r.rate - rate) * 40 + Math.abs(r.filterHz - filterHz) / 80;
     if (dist < bestDist) {
       bestDist = dist;
@@ -522,7 +523,9 @@ export function identifyRegisterFromPcm(pcm, sampleRate = 32000) {
   let best = null;
   let bestDist = Infinity;
   for (const factionId of BARK_FACTIONS) {
-    const dist = Math.abs(FACTION_VOICE_REGISTERS[factionId].f0 - f0);
+    const r = FACTION_VOICE_REGISTERS[factionId];
+    if (!r) continue;
+    const dist = Math.abs(r.f0 - f0);
     if (dist < bestDist) {
       bestDist = dist;
       best = factionId;
