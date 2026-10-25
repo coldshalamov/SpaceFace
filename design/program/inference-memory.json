@@ -114,32 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-fuel-decant",
-      "date": "2026-10-22",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "Pouring a fuel cell into a tank that cannot take it now says how much room is left, and a booked pump says it already owns the gap.",
-      "fingerprint": "verb=explain,subject=fuel-decant,sector=helios,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "890cc66bad2311b5f0c3066f52a2dc6a6cce9c94",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-mine-heat",
-      "date": "2026-10-22",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "A core in a hollow hall cuts its output from heat, the claim says so on the first watch, and the board no longer calls that machine idle.",
-      "fingerprint": "verb=fault,subject=mine-heat,sector=ashfall,domain=wf-15",
-      "references": [],
-      "integration": "live",
-      "commit": "475a510341148a607af9aeaaf61fbbcdf30ace72",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-drone-hail",
       "date": "2026-10-22",
       "wf": "WF-12",
@@ -1671,6 +1645,32 @@
       "references": [],
       "integration": "live",
       "commit": "7d75d98a52406b56eec7193ac7658c05eba65875",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pulse-07-merged-rim-lore",
+      "date": "2026-10-25",
+      "wf": "WF-10",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "adopted dead zcode-inf20 claim: every rim-sector POI (incl. 13 merged claim-stake/wonder sites) now carries >=3 scan-lore lines; join test covers merged SECTORS set + all live flavorTargetRefs",
+      "fingerprint": "verb=read,subject=rim-poi-lore,sector=frontier-rim,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "aad659da0d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "exp-12-log-narration-already-true",
+      "date": "2026-10-25",
+      "wf": "WF-09",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "already true on master: row-502 feed landed 187daf8fa6, 66-line copy table landed 6b4b42bc84, zc-exp-12 test 4/4 green; catalog cell marked SHIPPED",
+      "fingerprint": "verb=narrate,subject=physics-log,sector=all,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "6b4b42bc84",
       "verification": "focused_green"
     }
   ],
