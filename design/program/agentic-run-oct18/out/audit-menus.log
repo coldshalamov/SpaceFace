@@ -1,0 +1,1324 @@
+[0m
+> build · glm-5.3-flash-free
+[0m
+[0m→ [0mRead design/program/agentic-run-oct18/packets/AUDIT-MENUS.md
+[0m
+[0m$ [0mGet-ChildItem src/ui/screens -Name; Get-ChildItem src/ui/orrery -Name
+achievements.js
+automationPanel.js
+base.js
+clipExport.js
+clips.js
+codex.js
+codexRecord.js
+credits.js
+crucible.js
+crucibleDraft.js
+crucibleLabControls.js
+crucibleLabTelemetry.js
+demoEnd.js
+drill.js
+flightFootage.js
+footageVideoCodec.js
+footprint.js
+gameOver.js
+help.js
+industryReadout.js
+localmap.js
+mainMenu.js
+missionLog.js
+motionAsk.js
+newGame.js
+pause.js
+physicsVenues.js
+raceBoard.js
+range.js
+replay.js
+resultsSheet.js
+sandbox.js
+saveLoad.js
+saveNotices.js
+settings.js
+shareCode.js
+stageHull.js
+starmap.js
+statistics.js
+techTree.js
+archiveInstruments.js
+archiveLayouts.js
+arcRail.js
+armoryPreviewMedia.js
+arsenalGlyphs.js
+barReplyDial.js
+bearingRefusal.js
+bootRing.js
+bootRingWorker.js
+buildSigils.js
+chainBeam.js
+chartHub.js
+chartInstruments.js
+chartLabels.js
+chartLayouts.js
+chartWorld.js
+commsLayouts.js
+constellation.js
+constellationLayouts.js
+constellationMedals.js
+crestOrbit.js
+crucibleArmory.js
+cruciblePreparation.js
+cruciblePreparationLayouts.js
+crucibleResultsLayouts.js
+deathDial.js
+equipmentGlyphs.js
+flightCluster.js
+flightInstruments.js
+flightPreview.js
+footprintDial.js
+footprintLayouts.js
+gameOverLayouts.js
+helpInstruments.js
+helpLayouts.js
+helpRig.js
+hoverTag.js
+hudAdapter.js
+hudSkin.js
+hullRing.js
+hullSchematic.js
+industryGlyphs.js
+instruments.js
+lampKey.js
+ledgerTape.js
+marketLayouts.js
+mobileScreenLayouts.js
+motion.js
+newGameLayouts.js
+nextDecision.js
+pauseLayouts.js
+pipSpannerCrew.js
+pipSpannerPreview.js
+raceBoardLayouts.js
+ringLegend.js
+routeOrrery.js
+sableDemo.js
+saveBerth.js
+saveFilmstrip.js
+saveLayouts.js
+saveSortieTape.js
+screenLayouts.js
+scrollExtent.js
+settingsLayouts.js
+settingsPreview.js
+shipworksLayouts.js
+slotJig.js
+speedDial.js
+stationLayouts.js
+stationTabsLayouts.js
+statisticsLayouts.js
+stopDial.js
+svg.js
+text.js
+titleAsideLayouts.js
+tokens.js
+waveform.js
+wingmanLayouts.js
+yardCarousel.js
+[0m
+[0m$ [0mGet-ChildItem src/ui -Name
+asteroid
+deckplate
+effects
+kit
+map
+market
+navigation
+orrery
+panels
+presenters
+prompts
+sandbox
+screens
+ship
+sim
+station
+views
+accessibility.js
+accessibilityChecklist.js
+adventureDecisions.js
+aftermathChoicePrompt.js
+AGENTS.md
+alerts.js
+automationPayoff.js
+bandHud.js
+bindings.js
+bootEntry.js
+bootMediaPlayback.js
+bootStartupFailure.js
+bootVisualizer.js
+borrowedSunPrompt.js
+borrowedVoicePrompt.js
+canvasFonts.js
+capitalBossOverlayMount.js
+captions.js
+careerLadderView.js
+cargoConscience.js
+causeLedger.js
+cinematicInputFence.js
+commandBar.js
+commandDeckRefit.js
+commandDeckRefitHooks.js
+comms.js
+commsRadial.js
+confirm.js
+contactHailPrompt.js
+controlPrompts.js
+crucibleCombatReadout.js
+crucibleFocus.js
+crucibleLaunch.js
+customsPrompt.js
+damageIndicators.js
+dangerGradient.js
+demandDriverSummary.js
+discoveryPlate.js
+dockArrival.js
+dockDenyBanner.js
+dockStateCommit.js
+domInstrumentation.js
+encounterChoicePrompt.js
+endingEpilogue.js
+entityLinks.js
+entityResolver.js
+factionStanding.js
+fieldHud.js
+firstHourFelt.js
+flightCursor.js
+flightViewProjection.js
+floatingText.js
+forkInstrument.js
+frontierRumorMapLayer.js
+fuelReserveWarning.js
+galaxyMap.js
+globalFind.js
+glyphs.js
+gravityMarkOverlay.js
+gyreHud.js
+hud.js
+hudAttention.js
+hudBrackets.js
+hudCombatLock.js
+hudLayout.js
+hudMeta.js
+hudSkipUnchanged.js
+hullPosters.js
+ilexArkPrompt.js
+impoundPayPrompt.js
+input.js
+introSignalRemix.js
+introSignalRemixBoot.js
+jumpNotice.js
+lastShiftPrompt.js
+lawfulInspectionPrompt.js
+listControls.js
+loadingPresenter.js
+loadingProgressDriver.js
+loadingProgressModel.js
+loadingSignalTableaux.js
+loadingTerminalArt.js
+localizedCoreCopy.js
+mapAuthority.js
+marketDriverPresenter.js
+marketIntelligence.js
+marketIntelPresenter.js
+marketNews.js
+masslineCadenceReadout.js
+masslineHud.js
+massSeedHud.js
+miningHud.js
+missionPreflight.js
+momentumSinkOverlay.js
+moralTrapPrompt.js
+mothlightPrompt.js
+navigationWaypoint.js
+nemesisComms.js
+numberFormat.js
+objectiveRecall.js
+outfittingSpendConfirm.js
+pallasHiddenCacheMapLayer.js
+palletJackPrompt.js
+physicalJobsPrompt.js
+physicsVenues.js
+pirateParleyPrompt.js
+planetHud.js
+portraitArt.js
+powerRail.js
+previewContextRetire.js
+priceForecast.js
+promptDeck.js
+quitGame.js
+racingCoach.js
+racingControls.js
+racingHud.js
+racingLaunch.js
+racingMap.js
+racingRecognition.js
+radar.js
+recoveryEncounterPrompt.js
+redKitePrompt.js
+reducedMotionInformation.js
+runtimeFailurePresenter.js
+saveFeedback.js
+screenManager.js
+screenMemory.js
+sectorLawPresenter.js
+sectorPostcard.js
+securityReadout.js
+shipLedgerPanel.js
+shipPreviewMount.js
+signalInvestigationPrompt.js
+starterAirCard.js
+stuckTowPrompt.js
+stuntCallout.js
+survivalHud.js
+swarmJuiceHud.js
+targetBracket.js
+targetCondition.js
+targetPanel.js
+teachingOverlay.js
+threatHalo.js
+toasts.js
+towlineTablePrompt.js
+uiPrimitives.js
+uiRoot.js
+uniqueWreckMapLayer.js
+uniqueWreckRumorSurface.js
+vestaOreCacheMapLayer.js
+virtualList.js
+voiceArbiter.js
+wantedReason.js
+warrantOfferPrompt.js
+watchlist.js
+watchlistHud.js
+weaponClips.js
+weaponHeat.js
+whyReveal.js
+windowTitle.js
+wingmanRadial.js
+worldNewsBeats.js
+worldObjectInteraction.js
+worldSiteMapLayer.js
+wreckChoicePrompt.js
+wreckEcologyMarkers.js
+[0m
+[0m→ [0mRead src/ui/screenManager.js
+[0m
+[0m$ [0mrg -n "1\.8" build_map.md | head -20
+17:[Maturity, 15 October](design/program/MATURITY_2026_10_15.md). It applies §1.8 across the existing
+77:   "polish" or "demo ready", use [§1.8](#18-production-maturity-debugging-and-polish).
+124:**The maturity priority in [§1.8](#18-production-maturity-debugging-and-polish) precedes this
+284:| "it's super buggy", "fix all the bugs", "make it solid", "debug and polish", "text overflows", "models don't load", "too much off-screen loading", "demo ready" | **[§1.8](#18-production-maturity-debugging-and-polish)** — own discovery and repair of ordinary player workflows through the existing lanes and ONE defect ledger. The owner supplies the symptom, not a technical diagnosis |
+310:### 1.8 Production maturity: debugging and polish
+319:**Copy-ready assignment:** "Debug and polish SpaceFace using build_map §1.8. Own discovery
+524:For debugging/polish work, [§1.8](#18-production-maturity-debugging-and-polish) takes priority:
+1594:### 11.8–11.13 Candidates, scheduling, status, reviews, inhibitors, jobs
+3819:Frame times on this host swing ±50 % run to run and are not evidence either way; a 1.8–2.8 s frame
+5187:in [§1.8](#18-production-maturity-debugging-and-polish). Repair broken existing workflows before
+5206:| **THE RELEASE** | final package/device/language/store qualification — **pre-release prep, parked (owner, 2026-09-27; see §1.2)**. Gameplay input, accessibility, save/recovery and clipped/unreachable text repairs remain active in their affected HAND/INSTRUMENT/MACHINE/LONG GAME lanes under §1.8. | Final qualification residuals of PQ-033/164–167/191/210, §22 E2/E4/E5/E7, §25 Phases 5/7; no blanket parking of product repairs |
+[0m
+[0m$ [0mgit status --short -- src/ui | Select-Object -First 20
+M src/ui/confirm.js
+ M src/ui/screens/flightFootage.js
+ M src/ui/screens/footageVideoCodec.js
+ M src/ui/screens/gameOver.js
+ M src/ui/screens/mainMenu.js
+ M src/ui/uiRoot.js
+[0m
+[0m• [0mAudit menu/load/settings screens[90m General Agent[0m
+[0m• [0mAudit map screens[90m General Agent[0m
+[0m• [0mAudit station market jobs screens[90m General Agent[0m
+[0m• [0mAudit swarm/crucible + jobs screens[90m General Agent[0m
+Dirty foreign files noted. Spawning parallel read-only audit agents across the screen groups.
+[0m✓ [0mAudit menu/load/settings screens[90m General Agent[0m
+[0m✓ [0mAudit swarm/crucible + jobs screens[90m General Agent[0m
+[0m✓ [0mAudit station market jobs screens[90m General Agent[0m
+[0m✓ [0mAudit map screens[90m General Agent[0m
+[0m→ [0mRead src/ui/galaxyMap.js[90m [limit=70, offset=5300][0m
+Subagent outputs vary in reliability — verifying key candidates directly before reporting.
+[0m
+[0m$ [0mrg -n "marketMemory\[" src/ | head -20; echo ---; rg -n "marketMemory" src/economy/economy.js | head; echo ---; rg -n "_marketMemoryHtml|commQuote" src/ui/screens/starmap.js | head
+---
+rg: src/economy/economy.js: The system cannot find the file specified. (os error 2)
+---
+1282:      const commQuote = sectMemory && sectMemory[this._commodityId];
+1283:      if (commQuote) {
+1289:        const priceText = `${Math.round(commQuote.buy || 0)}/${Math.round(commQuote.sell || 0)}`;
+1401:    const memoryHtml = this._marketMemoryHtml(s.id);
+1524:  _marketMemoryHtml(sectorId) {
+[0m
+[0m→ [0mRead src/ui/galaxyMap.js[90m [limit=55, offset=5245][0m
+[0m
+[0m$ [0mrg -n "marketMemory" src --glob "*.js" -l | head; echo ---; rg -n "state.player.marketMemory" src --glob "*.js" | head -20
+src\ui\watchlist.js
+src\ui\galaxyMap.js
+src\ui\views\marketPresentation.js
+src\ui\marketIntelPresenter.js
+src\ui\marketIntelligence.js
+src\ui\market\tradeLogic.js
+src\ui\station\stationHubModel.js
+src\ui\screens\starmap.js
+src\systems\economy.js
+src\systems\scanReveal.js
+---
+src\ui\watchlist.js:252:  const memory = state && state.player && state.player.marketMemory;
+src\ui\views\marketPresentation.js:366:  const memory = state && state.player && state.player.marketMemory;
+src\systems\economy.js:1444:  const memory = state && state.player && state.player.marketMemory;
+src\systems\economy.js:5061:    state.player.marketMemory = {};
+src\systems\economy.js:5102:      ...Object.keys(this.state.player && this.state.player.marketMemory || {}),
+src\ui\station\stationHubModel.js:88:  const memRoot = state.player && state.player.marketMemory;
+src\systems\scanReveal.js:578:  const memory = state.player && state.player.marketMemory;
+src\ui\screens\starmap.js:507:  const memory = state && state.player && state.player.marketMemory;
+src\ui\screens\starmap.js:1280:      const memory = this._ctx.state.player && this._ctx.state.player.marketMemory;
+src\ui\galaxyMap.js:3012:  const memory = state && state.player && state.player.marketMemory;
+src\ui\galaxyMap.js:3050:  const memory = state && state.player && state.player.marketMemory;
+src\ui\galaxyMap.js:3073:  const memory = state && state.player && state.player.marketMemory;
+src\ui\galaxyMap.js:3229:  const memory = state.player && state.player.marketMemory;
+src\ui\market\tradeLogic.js:392:  const memory = state && state.player && state.player.marketMemory;
+src\ui\market\tradeLogic.js:663:  const memory = state && state.player && state.player.marketMemory;
+src\ui\marketIntelligence.js:323: * Composite pure view over state.player.marketMemory + tradeLedger at state.simTime.
+[0m
+[0m$ [0mGet-Content src\systems\economy.js -TotalCount 1470 | Select-Object -Skip 1435
+buy: row.buy,
+          sell: row.sell,
+          stock: row.stock,
+          seenAt: intel[stationId].seenAtT,
+        });
+      }
+    }
+  }
+  const memory = state && state.player && state.player.marketMemory;
+  if (memory && typeof memory === 'object' && !Array.isArray(memory)) {
+    for (const stationId of Object.keys(memory)) {
+      const station = memory[stationId];
+      if (!station || typeof station !== 'object') continue;
+      for (const commodityId of Object.keys(station)) {
+        const row = station[commodityId];
+        if (!row) continue;
+        put(stationId, commodityId, row);
+      }
+    }
+  }
+  return books;
+}
+
+function projectedPurchasableStock(state, stationId, commodityId, remembered) {
+  if (remembered && remembered.stock != null && Number.isFinite(Number(remembered.stock))) {
+    return Math.max(0, Math.floor(Number(remembered.stock)));
+  }
+  const live = state && state.economy && state.economy.markets
+    && state.economy.markets[stationId]
+    && state.economy.markets[stationId][commodityId];
+  if (!live || !Number.isFinite(Number(live.stock))) return null;
+  return Math.max(0, Math.floor(Number(live.stock) - 1));
+}
+
+/** One selected route from the market the player is standing in. Not an automatic trader. */
+[0m
+[0m$ [0mrg -n "marketMemory" src/ui/screens/starmap.js; echo ===; rg -n "marketMemory" src/ui/galaxyMap.js | Select-Object -First 12
+506:export function marketMemoryStationOverlays(state, commodityId) {
+507:  const memory = state && state.player && state.player.marketMemory;
+1280:      const memory = this._ctx.state.player && this._ctx.state.player.marketMemory;
+1401:    const memoryHtml = this._marketMemoryHtml(s.id);
+1524:  _marketMemoryHtml(sectorId) {
+1525:    const overlays = marketMemoryStationOverlays(this._ctx.state, this._commodityId)
+1623:      this._commodityId || '', marketMemoryStationOverlays(this._ctx.state, this._commodityId).length,
+===
+3012:  const memory = state && state.player && state.player.marketMemory;
+3050:  const memory = state && state.player && state.player.marketMemory;
+3073:  const memory = state && state.player && state.player.marketMemory;
+3229:  const memory = state.player && state.player.marketMemory;
+[0m
+[0m$ [0mrg -n "marketMemory\[" src/systems/economy.js src/systems/scanReveal.js | head; echo ===; Get-Content src\ui\screens\starmap.js -TotalCount 1295 | Select-Object -Skip 1270
+===
+        g.beginPath(); g.arc(n.x, n.y, 3.4 / z, 0, Math.PI * 2);
+        g.fillStyle = roles.paper; g.fill();
+      }
+
+      const labelY = n.y + n.r + 5 / z;
+      g.fillStyle = selected ? roles.paper : paint(roles.paper, 0.9);
+      g.font = canvasFontScaled(current ? '700' : '500', 13, z, 'body');
+      g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(s.name, n.x, labelY);
+
+      const memory = this._ctx.state.player && this._ctx.state.player.marketMemory;
+      const sectMemory = memory && memory[s.id];
+      const commQuote = sectMemory && sectMemory[this._commodityId];
+      if (commQuote) {
+        g.save();
+        g.fillStyle = roles.goal;
+        g.font = canvasFontScaled('500', 12, z, 'data');
+        g.textAlign = 'left';
+        g.textBaseline = 'middle';
+        const priceText = `${Math.round(commQuote.buy || 0)}/${Math.round(commQuote.sell || 0)}`;
+        g.fillText(priceText, n.x + n.r + 5 / z, n.y);
+        g.restore();
+      }
+
+      if (signal) {
+        const glyph = trendGlyph(signal.trend.danger);
+[0m
+[0m$ [0mrg -n "marketMemory" src/systems/economy.js src/systems/scanReveal.js src/ui/market/tradeLogic.js | head -30
+src/systems/scanReveal.js:578:  const memory = state.player && state.player.marketMemory;
+src/ui/market/tradeLogic.js:393:  const memory = state && state.player && state.player.marketMemory;
+src/ui/market/tradeLogic.js:664:  const memory = state && state.player && state.player.marketMemory;
+src/systems/economy.js:973:  if (!player.marketMemory || typeof player.marketMemory !== 'object' || Array.isArray(player.marketMemory)) {
+src/systems/economy.js:974:    player.marketMemory = {};
+src/systems/economy.js:976:  return player.marketMemory;
+src/systems/economy.js:1444:  const memory = state && state.player && state.player.marketMemory;
+src/systems/economy.js:5061:    state.player.marketMemory = {};
+src/systems/economy.js:5102:      ...Object.keys(this.state.player && this.state.player.marketMemory || {}),
+[0m
+[0m→ [0mRead src/systems/economy.js[90m [limit=40, offset=958][0m
+[0m
+[0m$ [0mrg -n "ensurePlayerMarketMemory\(.*\)\[" src/systems/economy.js; rg -n "= ensurePlayerMarketMemory" src/systems/economy.js; rg -n "marketMemory" src/systems/economy.js --max-count 1 --files-with-matches >$null; rg -n "memory\[" src/systems/economy.js | head -20
+2514:    const memory = ensurePlayerMarketMemory(state.player);
+1447:      const station = memory[stationId];
+2515:    const stationMemory = memory[stationId] || (memory[stationId] = {});
+[0m
+[0m→ [0mRead src/ui/screens/starmap.js[90m [limit=50, offset=500][0m
+[0m
+[0m$ [0mrg -n "_drawNodes|_commodityId\s*=" src/ui/screens/starmap.js | head -15
+808:    if (!COMMODITY_BY_ID.has(this._commodityId)) this._commodityId = DEFAULT_MEMORY_COMMODITY;
+811:      this._commodityId = this._els.commodity.value || DEFAULT_MEMORY_COMMODITY;
+1137:    this._drawNodes(g, nodes, this._currentId(), roles);
+1220:  _drawNodes(g, nodes, currentId, roles) {
+[0m
+[0m→ [0mRead src/ui/screens/starmap.js[90m [limit=35, offset=1110][0m
+[0m
+[0m$ [0mGet-Content src\ui\screens\localmap.js -TotalCount 870 | Select-Object -Skip 820; echo ===STARMAP===; Get-Content src\ui\screens\starmap.js -TotalCount 700 | Select-Object -Skip 660
+let btn = null;
+    for (const cand of this._routesPanel.querySelectorAll('[data-act="route-nav"]')) {
+      if ((cand.getAttribute('data-destination') || '') === dest
+        && (cand.getAttribute('data-commodity') || '') === comm) { btn = cand; break; }
+    }
+    if (!btn) return;
+    try { btn.focus(); } catch (_) { /* a headless host has no focus */ }
+    this._scheduleSettledReveal(btn);
+  },
+
+  // Reveal once the repainted list has actually laid out: two frames - the first lands the new
+  // geometry, the second measures it. scrollIntoView with block:'nearest' is a no-op when the
+  // result is already fully visible.
+  _scheduleSettledReveal(el) {
+    const reveal = () => {
+      try {
+        if (el && el.isConnected !== false && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ block: 'nearest' });
+        }
+      } catch (_) { /* cosmetic */ }
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(reveal));
+    else reveal();
+  },
+
+  _close() {
+    const sm = this._ctx && this._ctx.screenManager;
+    if (sm && typeof sm.popScreen === 'function') sm.popScreen();
+  },
+
+  _resize() {
+    const wrap = this._body;
+    if (!wrap || !this._canvas) return;
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const cw = Math.max(2, Math.floor(w * dpr));
+    const ch = Math.max(2, Math.floor(h * dpr));
+    if (cw === this._lastCanvasW && ch === this._lastCanvasH && dpr === this._lastDpr) return;
+    this._dpr = dpr;
+    this._lastCanvasW = cw;
+    this._lastCanvasH = ch;
+    this._lastDpr = dpr;
+    this._canvas.width = cw;
+    this._canvas.height = ch;
+    this._g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  },
+
+  _draw() {
+    const g = this._g;
+    const ctx = this._ctx;
+===STARMAP===
+    return {
+      state: 'plotted',
+      next: `Next jump: ${nameOf(first.to)}`,
+      summary: `${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F`,
+      canPlot: true,
+      actionLabel: 'Refresh Objective Route',
+    };
+  }
+  return {
+    state: 'needed',
+    next: `Plot route to ${nameOf(targetSectorId)}`,
+    summary: `${BINDINGS.starmap.label} route needed`,
+    canPlot: !!targetSectorId,
+    actionLabel: 'Plot Objective Route',
+  };
+}
+
+function closeScreen(ctx) {
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  const mgr = (ctx && (ctx.screenManager || ctx.screens)) || (ui && (ui.screenManager || ui.manager));
+  if (mgr && typeof mgr.popScreen === 'function') mgr.popScreen();
+  else if (ctx && ctx.bus) ctx.bus.emit('ui:popScreen', {});
+}
+
+function pushScreen(ctx, screenId) {
+  if (!ctx || !screenId) return;
+  const ui = ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  const mgr = (ctx.screenManager || ctx.screens) || (ui && (ui.screenManager || ui.manager));
+  if (mgr && typeof mgr.pushScreen === 'function') mgr.pushScreen(screenId);
+  else if (ctx.bus) ctx.bus.emit('ui:pushScreen', { id: screenId });
+}
+
+function drawHexPath(g, cx, cy, r) {
+  g.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI / 3 * i - Math.PI / 2;
+    const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+    if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+  }
+  g.closePath();
+[0m
+[0m$ [0mrg -n "localmap" src/ui src/core src/systems --glob "*.js" | grep -vi "screens/localmap.js:" | head -20
+src/ui\bindings.js:23:  localmap: { key: 'm', code: 'KeyM', label: 'M' },
+src/ui\bindings.js:58:  // way the UI router owns dock/localmap only where the verb lives. No flight verb claims P
+src/ui\bindings.js:93:  localmap: 'map',
+src/ui\bindings.js:102:  localmap: 'Map',
+src/ui\commandDeckRefitHooks.js:18:  localmap: 'local-map',
+src/ui\commandDeckRefit.js:35:  ['local-map', /\b(local map|localmap|system map|systemmap|tactical map)\b/],
+src/ui\controlPrompts.js:61:  const maps = `${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.codex.label} codex  •  ${BINDINGS.cargo.label} cargo  •  ${BINDINGS.comms.label} comms`;
+src/ui\controlPrompts.js:62:  const mapChart = `${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`;
+src/ui\galaxyMap.js:21:// This screen unifies the two legacy maps (localmap.js = live near-field system, starmap.js =
+src/ui\hud.js:690:        readings = mtReadingsLine('', `Next: ${gateFix.label}`, gateTravel.distanceText, `${BINDINGS.localmap.label} to plot`);
+src/ui\hud.js:692:        readings = mtReadingsLine('', `Next: ${gateFix.label}`, `open the ${BINDINGS.localmap.label} map to plot`, '');
+src/ui\input.js:372:        && (matchesBinding(ev, BINDINGS.starmap) || matchesBinding(ev, BINDINGS.localmap))
+src/ui\input.js:503:      // Legacy localmap/starmap screens remain registered for tools/checks only.
+src/ui\input.js:504:      case BINDINGS.localmap.key:
+src/ui\input.js:505:      case BINDINGS.localmap.label:
+src/ui\input.js:1057:    if (touchActionPressed('localmap')) { routeTouchUiAction('localmap'); return; }
+src/ui\input.js:1071:      if ((action === 'starmap' || action === 'localmap') && isMapScreenId(top)) {
+src/ui\input.js:1089:    if (action === 'localmap') { openMapFromTouch(MAP_FOCUS.LOCAL); return true; }
+src/ui\mapAuthority.js:6:// onShow — legacy localmap/starmap screens stay registered for tools/checks but are not the
+src/ui\mapAuthority.js:20: * Accepts product vocabulary: local / localmap, system, galaxy / star / starmap / nav.
+[31;1mResourceUnavailable: [31;1mProgram 'grep.exe' failed to run: The pipe is being closed.At line:1 char:62[0m
+[31;1m[31;1m+ . e src/systems --glob "*.js" | grep -vi "screens/localmap.js:" | head  .[0m
+[31;1m[31;1m+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.[0m
+[0m
+[0m$ [0mrg -n "onKey|getActiveScreenDef|activeDef" src/ui/input.js | head -30
+316:  function onKeyDown(ev) {
+348:      const def = screenManager.getActiveScreenDef();
+386:      if (def && typeof def.onKey === 'function') {
+387:        try { if (def.onKey(ev, ctx) === true) { ev.preventDefault(); return; } }
+388:        catch (e) { dedupError('uiInput.screen-key', '[uiInput] screen onKey error:', e); }
+391:      // inside that screen so the dossier still has a host. Runs after def.onKey so a screen that
+400:      // onKey; maps do it above). Without this, T/K/F1 open a screen they cannot close.
+908:  document.addEventListener('keydown', onKeyDown);
+1171:      const def = screenManager.getActiveScreenDef && screenManager.getActiveScreenDef();
+1335:      document.removeEventListener('keydown', onKeyDown);
+[0m
+[0m→ [0mRead src/ui/input.js[90m [limit=80, offset=320][0m
+F-MAP-1 and F-MAP-2 confirmed. Now spot-checking settings/saveLoad/mainMenu myself since that subagent's output was unreliable.
+[0m
+[0m$ [0m(Get-Content src\ui\screens\settings.js | Measure-Object -Line).Lines; (Get-Content src\ui\screens\saveLoad.js | Measure-Object -Line).Lines; (Get-Content src\ui\screens\mainMenu.js | Measure-Object -Line).Lines; (Get-Content src\ui\screens\pause.js | Measure-Object -Line).Lines
+1571
+1717
+1021
+1175
+[0m
+[0m→ [0mRead src/ui/screens/settings.js[90m [limit=120, offset=1451][0m
+[0m
+[0m$ [0mrg -n "jobs" src/ui --include="*.js" --max-count 3 -l | head; echo ===; rg -n "screenJobs|'jobs'" src/ui -S --glob "*.js" | head -20
+rg: unrecognized flag --include
+
+similar flags that are available: --include-zero
+===
+[0m
+[0m$ [0mrg -ln "jobs" src/ui | head; echo ===; rg -n "jobs" src/ui/station/stationHubModel.js | head -10
+src/ui\asteroid\industryPlanner.js
+src/ui\adventureDecisions.js
+src/ui\marketNews.js
+src/ui\map\careersReadout.js
+src/ui\orrery\hudSkin.js
+src/ui\whyReveal.js
+src/ui\station\outfittingGuidance.js
+src/ui\station\serviceQuotes.js
+src/ui\station\stationApp.js
+src/ui\station\missionDockAttention.js
+===
+[0m
+[0m$ [0mrg -n "jobs" src/ui/station/stationApp.js | head -15; echo ===; rg -n "contracts" src/ui/station/stationApp.js | head -15
+688:    contracts: ['Missions', 'Accept jobs, track routes and settle objectives that finish at this berth. Highlighted rows need attention first.'],
+===
+28:import { createContractsScreen } from './screens/contracts.js';
+69:  market: 'market', hold: 'market', missions: 'contracts', shipyard: 'shipworks',
+139:  // Player-facing label is Missions (contracts is the stable internal rail id + TARGET_MAP alias).
+140:  { id: 'contracts', label: stationControlLabel('contracts'), icon: 'contracts', create: createContractsScreen },
+201:  if (/\b(route|track|mission|objective|contract)\b/.test(signal)) return { navigate: 'contracts' };
+658:  const TITLE_SIZED = new Set(['market', 'shipworks', 'contracts']);
+688:    contracts: ['Missions', 'Accept jobs, track routes and settle objectives that finish at this berth. Highlighted rows need attention first.'],
+1301:      dock.setAttention('contracts', { badge: attention.badge, title: why });
+1307:      navigate('contracts', {
+1315:    if (refreshActive && activeId === 'contracts' && attention) {
+1316:      const screen = screenCache.get('contracts');
+[0m
+[0m$ [0m(Get-Content src\ui\station\screens\contracts.js | Measure-Object -Line).Lines; rg -n "empty|no contracts|zero" src/ui/station/screens/contracts.js | head -10
+1475
+603:      mountDataState(boardEl, 'empty', {
+609:          onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'contracts-empty' }),
+1284:      mountDataState(dossierEl, 'empty', {
+[0m
+[0m$ [0mrg -n "emit\(" src/ui/station/screens/contracts.js | head -30
+1384:    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+1395:      if (ctx.bus) ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+1431:      ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+1434:      ctx.bus.emit('audio:cue', { id: res && res.ok ? 'ui_accept' : 'ui_deny' });
+1490:      if (ctx.bus) { ctx.bus.emit('ui:trackMission', { missionId: id }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); }
+[0m
+[0m→ [0mRead src/ui/station/screens/contracts.js[90m [limit=130, offset=1355][0m
+[0m
+[0m$ [0mrg -n "acceptMissionOnLane" src/ui src/systems src/sim -S | head; echo ===; rg -n "function chooseAdventureDecision" src/ui/adventureDecisions.js
+src/ui\adventureDecisions.js:399:export async function acceptMissionOnLane(bus, missionId) {
+src/ui\adventureDecisions.js:463:    const res = await acceptMissionOnLane(bus, effect.missionId);
+src/ui\station\screens\bar.js:38:import { acceptMissionOnLane } from '../../adventureDecisions.js';
+src/ui\station\screens\bar.js:726:      const res = await acceptMissionOnLane(ctx.bus, missionId);
+src/ui\station\screens\contracts.js:36:import { acceptMissionOnLane, chooseAdventureDecision, presentSurfaceDecisions } from '../../adventureDecisions.js';
+src/ui\station\screens\contracts.js:1433:      const res = await acceptMissionOnLane(ctx.bus, missionId);
+===
+534:export async function chooseAdventureDecision(state, decisionId, optionId, ctx = {}) {
+[0m
+[0m→ [0mRead src/ui/adventureDecisions.js[90m [limit=80, offset=395][0m
+[0m
+[0m$ [0mrg -n "export async function laneRpc|function laneRpc" src -S; 
+src\core\simLaneCommands.js:217:export function laneRpc(op, args) {
+[0m
+[0m→ [0mRead src/core/simLaneCommands.js[90m [limit=70, offset=180][0m
+[0m
+[0m$ [0mrg -n "\brefs\b" src/ui/screens/settings.js | head -15
+215:let refs = null;
+704:    refs = { root: rootEl, title, hang, pane, foot, tabBtns, active: 'Audio', preview, arrive: false, spot: null };
+705:    try { refs.spot = attachSpotlight(rootEl); } catch (e) { refs.spot = null; }
+720:    if (!refs || !TABS.includes(tab)) return;
+721:    refs.active = tab;
+722:    Object.entries(refs.tabBtns).forEach(([t, b]) => {
+729:    refs.pane.setAttribute('aria-labelledby', refs.tabBtns[tab].id);
+730:    refs.arrive = true;
+732:    try { if (refs.preview) refs.preview.show(tab, ctx.state.settings); } catch (e) { /* the preview is cosmetic */ }
+734:      try { settle(refs.pane, { from: 'left', state: 'settings:' + tab }); } catch (e) { /* motion is cosmetic */ }
+748:    try { if (refs && refs.preview) refs.preview.changed(section, key, s); } catch (e) { /* the preview is cosmetic */ }
+836:    if (!refs) return;
+837:    const pane = refs.pane;
+839:    refs.familyValue = null;
+850:    if (refs.active === 'Audio') {
+[0m
+[0m$ [0mGet-Content package.json | Select-String '"(check|player|ui)[^"]*":' | Select-Object -First 40
+[7m"check:jules-task-bank":[0m "node scripts/jules-dispatch.mjs --validate && node --test test/jules-task-bank.test.mjs",
+    [7m"check:contracts": [0m[7m[0m"node [0m[7m[0mscripts/sf.mjs [0m[7m[0mvalidate [0m[7m[0mtest/47a.inputs.json [0m[7m[0mtest/47a.telemetry.expected.json [0m
+[7m[0msrc/data/scenarios/47a.scenario.json [0m[7m[0m&& [0m[7m[0mnode [0m[7m[0mscripts/check-src-reachability.mjs [0m[7m[0m&& [0m[7m[0mnode [0m[7m[0mscripts/sync-modulepreload.mjs [0m
+[7m[0m--check",[0m
+    [7m"check:playtest:gates":[0m "node scripts/check-playtest-gates.mjs",
+    [7m"check:adventure-decisions":[0m "node --test test/adventure-decisions.test.mjs",
+    [7m"check:sfq-b192":[0m "node --test test/sfq-b192-massline-four-voices.test.mjs",
+    [7m"check:sim:gyre-snare":[0m "node --test test/gyreSnare.test.mjs",
+    [7m"check:alpha:evidence":[0m "node scripts/check-alpha-evidence.mjs",
+    [7m"check:alpha:evidence:contract":[0m "node scripts/check-alpha-evidence.mjs --self-test",
+    [7m"check:time-effects":[0m "node test/time-effects.test.mjs",
+    [7m"check:asset-classifications": [0m[7m[0m"node [0m[7m[0mscripts/check-asset-classifications.mjs [0m[7m[0m--self-test [0m[7m[0m&& [0m[7m[0mnode [0m
+[7m[0mscripts/check-asset-classifications.mjs",[0m
+    [7m"check:asset-classifications:evidence":[0m "node scripts/check-asset-classifications.mjs --require-evidence",
+    [7m"check:alpha:baseline:contracts": [0m[7m[0m"node [0m[7m[0mtest/alpha-live-baseline-contracts.test.mjs [0m[7m[0m&& [0m[7m[0mnode [0m
+[7m[0mtest/alpha-live-baseline-route-contract.test.mjs [0m[7m[0m&& [0m[7m[0mnode [0m[7m[0mtest/alpha-live-baseline-electron-contract.test.mjs [0m[7m[0m&& [0m[7m[0mnpm [0m
+[7m[0mrun [0m[7m[0mcheck:cinematic-input-fence [0m[7m[0m&& [0m[7m[0mnpm [0m[7m[0mrun [0m[7m[0mcheck:asset-runtime-disposal [0m[7m[0m&& [0m[7m[0mnpm [0m[7m[0mrun [0m[7m[0mcheck:galaxy-map-inspector",[0m
+    [7m"check:alpha:baseline:browser": [0m[7m[0m"npm [0m[7m[0mrun [0m[7m[0mcheck:alpha:baseline:contracts [0m[7m[0m&& [0m[7m[0mnode [0m
+[7m[0mscripts/check-alpha-live-baseline-browser.mjs [0m[7m[0m&& [0m[7m[0mnpm [0m[7m[0mrun [0m[7m[0mcheck:galaxy-map-search-pointer",[0m
+    [7m"check:alpha:baseline:electron": [0m[7m[0m"npm [0m[7m[0mrun [0m[7m[0mcheck:alpha:baseline:contracts [0m[7m[0m&& [0m[7m[0mnode [0m
+[7m[0mscripts/check-alpha-live-baseline-electron.mjs",[0m
+    [7m"check:ceres:five-minute":[0m "node scripts/check-ceres-five-minute.mjs",
+    [7m"check:ceres:five-minute:browser":[0m "node scripts/validation-broker-cli.mjs --manifest ceres-five-minute-browser",
+    [7m"check:ceres:five-minute:electron":[0m "node scripts/validation-broker-cli.mjs --manifest ceres-five-minute-electron",
+    [7m"check:ceres:five-minute:pair":[0m "node scripts/check-ceres-five-minute.mjs",
+    [7m"check:pq048:ore-cycle:browser":[0m "node scripts/validation-broker-cli.mjs --manifest pq048-ore-cycle-browser",
+    [7m"check:cinematic-input-fence":[0m "node test/cinematic-input-fence.test.mjs",
+    [7m"check:asset-runtime-disposal":[0m "node test/asset-runtime-disposal.test.mjs",
+    [7m"check:asset-startup-readiness":[0m "node scripts/check-asset-startup-readiness.mjs",
+    [7m"check:asteroid-instance-structure":[0m "node test/asteroid-instance-structure.test.mjs",
+    [7m"check:galaxy-map-inspector":[0m "node test/galaxy-map-inspector-stability.test.mjs",
+    [7m"check:galaxy-map-search-pointer":[0m "node scripts/check-galaxy-map-search-pointer.mjs",
+    [7m"check:replay": [0m[7m[0m"node [0m[7m[0mscripts/sf.mjs [0m[7m[0mreplay [0m[7m[0mverify [0m[7m[0mtest/47a.inputs.json [0m[7m[0m--seed [0m[7m[0m47 [0m[7m[0m--ticks [0m[7m[0m720 [0m[7m[0m--expect [0m
+[7m[0mtest/47a.telemetry.expected.json [0m[7m[0m--hash [0m[7m[0m--repeat [0m[7m[0m20 [0m[7m[0m--reload-at [0m[7m[0m600",[0m
+    [7m"check:sim": [0m[7m[0m"node [0m[7m[0mscripts/sf-sim.mjs [0m[7m[0mrun [0m[7m[0m47a [0m[7m[0m--seed [0m[7m[0m47 [0m[7m[0m--ticks [0m[7m[0m720 [0m[7m[0m--inputs [0m[7m[0mtest/47a.inputs.json [0m[7m[0m--expect [0m
+[7m[0mtest/47a.telemetry.expected.json [0m[7m[0m--hash [0m[7m[0m--repeat [0m[7m[0m20 [0m[7m[0m--reload-at [0m[7m[0m600",[0m
+    [7m"check:sim:compare": [0m[7m[0m"node [0m[7m[0mscripts/sf-sim.mjs [0m[7m[0mcompare [0m[7m[0m47a [0m[7m[0m--seed [0m[7m[0m47 [0m[7m[0m--ticks [0m[7m[0m720 [0m[7m[0m--inputs [0m[7m[0mtest/47a.inputs.json [0m
+[7m[0m--expect [0m[7m[0mtest/47a.telemetry.expected.json [0m[7m[0m--reload-at [0m[7m[0m600",[0m
+    [7m"check:sim:dynamic": [0m[7m[0m"node [0m[7m[0mscripts/sf-sim.mjs [0m[7m[0mcompare [0m[7m[0m47a [0m[7m[0m--seed [0m[7m[0m47 [0m[7m[0m--ticks [0m[7m[0m720 [0m[7m[0m--inputs [0m[7m[0mtest/47a.inputs.json [0m
+[7m[0m--expect [0m[7m[0mtest/47a.telemetry.expected.json [0m[7m[0m--reload-at [0m[7m[0m600",[0m
+    [7m"check:sim:profile": [0m[7m[0m"node [0m[7m[0mscripts/sf-sim.mjs [0m[7m[0mprofile [0m[7m[0m47a [0m[7m[0m--seed [0m[7m[0m47 [0m[7m[0m--ticks [0m[7m[0m720 [0m[7m[0m--inputs [0m[7m[0mtest/47a.inputs.json [0m
+[7m[0m--expect [0m[7m[0mtest/47a.telemetry.expected.json",[0m
+    [7m"check:sim:long":[0m "node scripts/sf-sim.mjs run 47a --seed 47 --ticks 36120 --inputs test/47a.inputs.json --hash",
+    [7m"check:sim:long:compare": [0m[7m[0m"node [0m[7m[0mscripts/sf-sim.mjs [0m[7m[0mcompare [0m[7m[0m47a [0m[7m[0m--seed [0m[7m[0m47 [0m[7m[0m--ticks [0m[7m[0m36120 [0m[7m[0m--inputs [0m
+[7m[0mtest/47a.inputs.json [0m[7m[0m--reload-at [0m[7m[0m12000",[0m
+    [7m"check:sim:v3": [0m[7m[0m"node [0m[7m[0mscripts/sf-sim.mjs [0m[7m[0mrun [0m[7m[0m47a [0m[7m[0m--seed [0m[7m[0m47 [0m[7m[0m--ticks [0m[7m[0m720 [0m[7m[0m--inputs [0m[7m[0mtest/47a.inputs.json [0m[7m[0m--expect [0m
+[7m[0mtest/47a.telemetry.v3.expected.json [0m[7m[0m--hash [0m[7m[0m--repeat [0m[7m[0m20 [0m[7m[0m--reload-at [0m[7m[0m600 [0m[7m[0m--flight-system [0m[7m[0mv3",[0m
+    [7m"check:sim:v3:compare": [0m[7m[0m"node [0m[7m[0mscripts/sf-sim.mjs [0m[7m[0mcompare [0m[7m[0m47a [0m[7m[0m--seed [0m[7m[0m47 [0m[7m[0m--ticks [0m[7m[0m720 [0m[7m[0m--inputs [0m[7m[0mtest/47a.inputs.json [0m
+[7m[0m--expect [0m[7m[0mtest/47a.telemetry.v3.expected.json [0m[7m[0m--reload-at [0m[7m[0m600 [0m[7m[0m--flight-system [0m[7m[0mv3",[0m
+    [7m"check:47a:tactics":[0m "node scripts/check-47a-tactics.mjs",
+    [7m"check:47a:live-branch":[0m "node scripts/check-47a-live-branch-predicate.mjs",
+    [7m"check:47a:live-cold-open":[0m "node scripts/check-47a-live-cold-open.mjs",
+    [7m"check:47a:counterplay":[0m "node scripts/check-47a-counter-tether-live.mjs",
+    [7m"check:47a:death-retry":[0m "node scripts/check-47a-death-retry.mjs",
+    [7m"check:gameover-recovery-copy":[0m "node scripts/check-gameover-recovery-copy.mjs",
+[0m
+Doing my own pass on saveLoad/pause nodes given the first subagent's result was untrustworthy.
+[0m$ [0mrg -n "no saves|empty|No saves|error|corrupt|restore" src/ui/screens/saveLoad.js | head -20; echo ===; rg -n "disabled|back|Escape|popScreen" src/ui/screens/saveLoad.js | head -30
+4:// (src/ui/orrery/saveFilmstrip.js), each save a frame of its hull on its own station, an empty slot an
+346:/** The title's sub: "Four saves · last flown yesterday", "One save · last flown today", "No saves yet". */
+349:  if (!occupied.length) return 'No saves yet';
+452:// from the envelope; a legacy card without one still names Adventure, and an empty
+977:    // a beam runs from the chosen frame to the berth (the ring the hull stands on, or the empty ring).
+1021:    // An empty slot at the title has no ship to show: its page stands beside the unlit save mark.
+1025:    // ORRERY: the unlit mark gives way to an empty berth ring, named in words.
+1058:      if (this.hull.restore() && refs) refs.shownShipId = null;
+1062:    // SFQ-B228: a restore that fails before the start transition emits save:error, not
+1065:    // not after the next full remount. Load-shaped means the restore receipts AND the
+1068:    // a restore must still give the stage back. The loadRequested guard keeps write-path
+1071:      'load_failed', 'restore_prepare_failed',
+1075:    const unsubLoadFailed = ctx.bus.on('save:error', (payload = {}) => {
+1082:      if (this.hull.restore() && refs) refs.shownShipId = null;
+1100:    const unsubRecoveryFailed = ctx.bus.on('save:error', (payload = {}) => {
+1182:      // A restored selection never gets a pick event — arm its envelope decode on mount
+1183:      // instead of leaving a non-default restore (currentSlot != latest-occupied) to
+1226:    // `.sf-slot-badge`); an empty slot's name reads at 38 %; the badges ride the sub line.
+1230:      if (!item.occupied) row.classList.add('empty');
+1234:        // hull with no render stands as a quiet ring; an empty station is its corners alone.
+===
+35:  backupKeptLine,
+74:const DP_MATERIAL_PROP = /^(border-image|border-style$|border-width$|background)/;
+86:  pin(root, { background: 'transparent', 'border-width': '0', 'box-shadow': 'none' });
+120:      background: 'transparent', ...extra,
+138:        background: 'transparent', color: 'CanvasText',
+158:      background: 'transparent',
+164:    const disabled = button.getAttribute('aria-disabled') === 'true' || button.disabled;
+166:    apply(disabled ? 'disabled' : (kind === 'legend' && lit ? 'lit' : 'rest'));
+172:      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+177:      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+182:      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+207:    background: 'transparent',
+229:/** Read the save index. Prefer the save system's API; fall back to localStorage scan. */
+241:  // Fallback: scan localStorage for sf.save.* entries.
+543:function portraitLine(value, fallback) {
+546:    return text || fallback;
+550:    return text || fallback;
+552:  return fallback;
+713:      line: grudge.name + ' hates you' + (grudge.returnsBigger ? ' · comes back harder' : ''),
+797:// stage re-render, re-pick, or scrub back-track reuses {raw, data} instead of paying another
+898:  // byte-identical fallback for the no-worker lane or a peek failure.
+997:      pin(stage, { background: 'transparent', 'border-width': '0' });
+998:      paintPlate(caption, 'edge', { 'max-width': '100%', background: 'transparent' });
+1040:    // frees the context once the shell covers the stage; a failed start brings back a fresh hull.
+1068:    // a restore must still give the stage back. The loadRequested guard keeps write-path
+1094:      if (note.kind === 'backup' && prev && prev.kind === 'recovered') return;
+1099:    const unsubBackup = ctx.bus.on('save:backup', (payload) => noteAndRender(backupKeptLine(payload)));
+1141:    const back = footWord('Back');
+1142:    back.classList.add('sf-back');
+1148:    back.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
+[0m
+[0m$ [0mrg -n "addEventListener|nav\(|laneWriteSetting|emit\(" src/ui/screens/pause.js | head -40
+128:function nav(ctx, method, arg) {
+132:  ctx.bus.emit('ui:' + method, { id: arg });
+653:    state.bus.emit('settings:changed', { section: 'video', key: 'exposure', source: 'photo' });
+661:    state.bus.emit('settings:changed', { section: 'video', key: 'exposure', source: 'photo-exit' });
+777:    ctx.bus.emit('settings:changed', { section: 'video', key: 'exposure', source: 'photo' });
+810:    ctx.bus.emit('settings:changed', { section: 'video', key: 'fov', source: 'photo' });
+869:  exposure.addEventListener('input', () => syncPhotoExposure(ctx, exposure.value));
+875:  lookBtn.addEventListener('click', () => {
+889:  fov.addEventListener('input', () => syncPhotoFov(ctx, fov.value));
+892:  captureBtn.addEventListener('click', () => runPhotoCapture(ctx));
+919:  window.addEventListener('keydown', onKey, true);
+920:  window.addEventListener('keydown', onMove, true);
+921:  window.addEventListener('keyup', onMove, true);
+922:  window.addEventListener('wheel', onWheel, { passive: true });
+996:    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'), { group: 'Game', bank: true, icon: 'settings' });
+997:    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { group: 'Game', bank: true, icon: 'install', hint: 'F5', keys: 'F5' });
+1006:      if (ok) nav(ctx, 'pushScreen', 'saveLoad');
+1008:    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', bank: true, icon: 'missions', keycap: true });
+1011:    mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', bank: true, icon: 'shipworks' });
+1016:    mk('Operations (Automation)', () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
+1020:    mk(coreText('helpControls'), () => { if (isPhoneLayout() && ctx.bus && ctx.bus.emit) ctx.bus.emit('touch:guide', {}); else nav(ctx, 'pushScreen', 'help'); }, { group: 'Reference', bank: true, icon: 'help' });
+1021:    mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', bank: true, icon: 'info' });
+1023:    mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });
+1024:    mk('Statistics', () => nav(ctx, 'pushScreen', 'statistics'), { group: 'Reference', bank: true, icon: 'info' });
+1044:      nav(ctx, 'pushScreen', 'codex');
+1045:      if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:endingArchiveOpen');
+1049:    mk('Physics challenges', () => nav(ctx, 'pushScreen', 'physicsVenues'), { group: 'Play', bank: true, icon: 'utility' });
+1050:    if (ctx.state?.mercyServicePublic?.bodies?.length) mk('Rescue tools', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.mercy(); }, { group: 'Field work', bank: true, icon: 'utility' });
+1051:    if (ctx.state?.wreckCourtPublic?.bodies?.length) mk('Wreck Court notebook', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.court(); }, { group: 'Field work', bank: true, icon: 'utility' });
+1052:    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
+1173:    nav(ctx, 'popScreen');
+1178:      ctx.bus.emit('game:exitToMenu', { source: 'pause' });
+1188:      nav(ctx, 'replaceScreen', 'mainMenu');
+1207:      ctx.bus.emit('save:loadSpeculationTarget', { slot: 'quick' });
+1222:    if (!pausePhotoKeyHandler && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+1233:      window.addEventListener('keydown', pausePhotoKeyHandler, true);
+[0m
+[0m→ [0mRead src/ui/input.js[90m [limit=40, offset=495][0m
+[0m
+[0m$ [0mrg -n "ui:pushScreen|ui:popScreen|ui:replaceScreen|ui:closeAll|ui:openScreen" src/ui/uiRoot.js | head; echo ===; rg -n "case 'ui:" src/ui/uiRoot.js | head -20
+1339:    this.bus.on('ui:pushScreen', (payload = {}) => {
+1356:          source: payload.source || 'ui:pushScreen',
+1362:    this.bus.on('ui:popScreen', () => this.screenManager.popScreen());
+1371:    this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
+1372:    this.bus.on('ui:closeAll', () => {
+===
+[0m
+[0m$ [0mGet-Content src\ui\numberFormat.js -TotalCount 80
+// The implementation moved to ../core/numberFormat.js so sim-side code (src/combat/) can share it
+// without importing presentation - the combat-grammar ownership check forbids src/combat  src/ui
+// imports. This shim keeps the module's UI-era import path alive for the HUD and the focused
+// locale test. Re-export only; no code lives here.
+export {
+  FALLBACK_NUMBER_LOCALE,
+  resolveNumberLocale,
+  formatNumber,
+  formatCount,
+  localeGroupsThousands,
+} from '../core/numberFormat.js';
+[0m
+[0m$ [0mrg -n "function openConfirm|let pending|queue|isConfirmOpen|_active" src/ui/confirm.js | head -20
+262:export function isConfirmOpen() {
+[0m
+[0m→ [0mRead src/ui/confirm.js[90m [limit=120, offset=230][0m
+[0m
+[0m$ [0mrg -n "registerScreen|register\(|createScreen|def.id" src/ui/uiRoot.js | head -40
+13:import { createScreenManager } from './screenManager.js';
+696:    this.screenManager = createScreenManager(ctx);
+1593:    // screen over the wreck. The screen loads via dynamic import (registerScreens path), so retry
+1662:    // registerScreens() resolution path IF state.mode is still 'menu' when it loads — this avoids
+1665:    this.registerScreens();
+1676:  registerScreens() {
+1682:        if (!def || !def.id) { console.warn(`[ui] screen "${name}" missing valid export`); return; }
+1683:        try { this.screenManager.register(def); }
+1684:        catch (err) { console.error(`[ui] register("${def.id}") failed:`, err); return; }
+1686:        if (def.id === 'station' && typeof mod.installStationExitGate === 'function') {
+1690:        this._registeredScreens.add(def.id);
+1696:        if (!SCREEN_PREWARM_DEFER.has(def.id)) {
+1697:          (this._screenPrewarmQueue || (this._screenPrewarmQueue = [])).push(def.id);
+1705:        if ((def.id === 'mainMenu' || def.id === 'newGame' || def.id === 'motionAsk') &&
+1711:        if (def.id === 'station' && isDockedStationState(this.state)
+[0m
+[0m→ [0mRead src/ui/uiRoot.js[90m [limit=45, offset=1339][0m
+[0m
+[0m$ [0mrg -n "registerScreens\(\)|SCREEN_IMPORTS|import\(.*screens/" src/ui/uiRoot.js | head; echo ===; rg -n "const SCREEN|=~|= \{" src/ui/uiRoot.js | Select-String "screens" | head
+159:  { path: './screens/range.js', load: () => import('./screens/range.js'), name: 'rangeScreen' },
+161:  { path: './screens/footprint.js', load: () => import('./screens/footprint.js'), name: 'footprintScreen' },
+162:  { path: './screens/starmap.js', load: () => import('./screens/starmap.js'), name: 'starmapScreen' },
+163:  { path: './screens/localmap.js', load: () => import('./screens/localmap.js'), name: 'localmapScreen' },
+164:  { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },
+165:  { path: './screens/automationPanel.js', load: () => import('./screens/automationPanel.js'), name: 'automationScreen' },
+170:  { path: './screens/base.js', load: () => import('./screens/base.js'), name: 'baseScreen' },
+171:  { path: './screens/mainMenu.js', load: () => import('./screens/mainMenu.js'), name: 'mainMenuScreen' },
+172:  { path: './screens/motionAsk.js', load: () => import('./screens/motionAsk.js'), name: 'motionAskScreen' },
+173:  { path: './screens/newGame.js', load: () => import('./screens/newGame.js'), name: 'newGameScreen' },
+===
+[0m
+[0m→ [0mRead src/ui/uiRoot.js[90m [limit=65, offset=150][0m
+[0m
+[0m$ [0mrg -n "pushScreen|nav\(ctx, 'push" src/ui --glob "*.js" | rg -o "pushScreen', ?'[a-zA-Z]+'|'(replay|clips)'" | sort | uniq -c | sort -rn
+[31;1mSort-Object: [31;1mA parameter cannot be found that matches parameter name 'rn'.[0m
+[0m
+[0m$ [0mrg -o "pushScreen[,(]? ?'[a-zA-Z]+'|pushScreen', '[a-zA-Z]+'" -N src/ui --glob "*.js" | rg -o "'[a-zA-Z]+'$" | sort | uniq -c; echo ===; rg -n "'replay'|'clips'" src/ui --glob "*.js" | head -15
+1 'achievements'
+      1 'automation'
+      2 'base'
+      5 'codex'
+      1 'footprint'
+      2 'help'
+      4 'mainMenu'
+      4 'missionLog'
+      1 'newGame'
+      2 'pause'
+      1 'physicsVenues'
+      3 'range'
+      1 'sandbox'
+      3 'saveLoad'
+      1 'settings'
+      2 'ship'
+      1 'starmap'
+      1 'station'
+      1 'statistics'
+      1 'techTree'
+===
+src/ui\screens\clips.js:39:export const CLIPS_SCREEN_ID = 'clips';
+src/ui\screens\replay.js:23:export const REPLAY_SCREEN_ID = 'replay';
+[0m
+[0m$ [0mrg -n "CLIPS_SCREEN_ID|REPLAY_SCREEN_ID|" src/ui --glob "*.js" -e "CLIPS_SCREEN_ID" -e "REPLAY_SCREEN_ID" | head -10
+rg: CLIPS_SCREEN_ID|REPLAY_SCREEN_ID|: The filename, directory name, or volume label syntax is incorrect. (os error 123)
+src/ui\screens\replay.js:23:export const REPLAY_SCREEN_ID = 'replay';
+src/ui\screens\replay.js:598:  container.dataset.role = REPLAY_SCREEN_ID;
+src/ui\screens\replay.js:906:  container.dataset.role = REPLAY_SCREEN_ID;
+src/ui\screens\replay.js:925:  id: REPLAY_SCREEN_ID,
+src/ui\screens\clips.js:39:export const CLIPS_SCREEN_ID = 'clips';
+src/ui\screens\clips.js:1160:  container.dataset.role = CLIPS_SCREEN_ID;
+src/ui\screens\clips.js:1320:  container.dataset.role = CLIPS_SCREEN_ID;
+src/ui\screens\clips.js:1339:  id: CLIPS_SCREEN_ID,
+[0m
+[0m$ [0mrg -ni "replay|clip" src/ui/screens/pause.js | head
+33:import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
+34:import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
+1028:    // Replay (PQ-160.00): the deterministic last thirty seconds, played back with the photo-mode
+1030:    mk(REPLAY_LABEL, () => { forceCloseClips(); openReplay(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'clock' });
+1031:    // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
+1033:    mk(CLIPS_LABEL, () => { forceCloseReplay(); openClips(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'record' });
+1253:    // Replay/Clips are sibling overlays, not stacked screens — they must close with pause.
+1254:    forceCloseReplay();
+1255:    forceCloseClips();
+[0m
+[0m$ [0mrg -n "settings.controls.bindings|settings:changed" src/systems/input.js src/ui/bindings.js src/ui/input.js | head -15
+src/systems/input.js:37:// defaults below are mirrored as `settings.controls.bindings` on first run; the Settings/Controls
+src/systems/input.js:38:// tab captures a new key per action and persists it. Input reads state.settings.controls.bindings
+src/systems/input.js:427:  const cfg = state.settings && state.settings.controls && state.settings.controls.bindings;
+[0m
+[0m$ [0mrg -n "onKey|matchesBinding|rebindCopy|refreshBindings|bindings" src/systems/input.js | head -25
+36:// REBINDING (V2 §12): flight actions are resolved through a bindings map keyed by action id. The
+37:// defaults below are mirrored as `settings.controls.bindings` on first run; the Settings/Controls
+38:// tab captures a new key per action and persists it. Input reads state.settings.controls.bindings
+77:// bindings live here with the input owner (propulsionKernel.js:22-24). `TRAVEL_DRIVE_STATES` is
+285:  // tables and ui/bindings.js, same as Digit4), left-hand reachable off WASD, and rebindable like
+291:  // tables and ui/bindings.js, same audit as Digit4-7) and sits with the deployable family. The
+295:  // Quote (') is free repo-wide (checked against both scheme tables, ui/bindings.js, and the
+304:  // Comma is free repo-wide (checked against both scheme tables and ui/bindings.js) and sits
+310:  // Period is free of the verb tables and the UI bindings. Cargo owns the dump.
+320:  // KeyH is free repo-wide (checked against both VERB/scheme tables and ui/bindings.js) and sits
+427:  const cfg = state.settings && state.settings.controls && state.settings.controls.bindings;
+445:/** Flight actions the default route teaches. Interface keys live in `src/ui/bindings.js`. */
+522: * Empty `fire` is LMB (the mouse is not remappable). Other empty bindings print `empty`.
+1203:    const bindings = (this._domBindings = []);
+1211:      bindings.push({ target, type, listener, options });
+1270:    const bindings = this._domBindings;
+1271:    if (Array.isArray(bindings)) {
+1272:      for (const { target, type, listener, options } of bindings) {
+1276:          // A host may remove its DOM surface before registry teardown; remaining bindings still
+1280:      bindings.length = 0;
+[0m
+[0m→ [0mRead src/systems/input.js[90m [limit=40, offset=418][0m
+[0m
+[0m$ [0mrg -n "onKey|key ===|emit\(|ui:closeScreen|popScreen" src/ui/screens/crucibleDraft.js | head -40
+817:            ctx.bus.emit('run:draftPickRequested', { offerId: null });
+822:      ctx.bus.emit('run:draftPickRequested', { offerId: null });
+826:    refit.addEventListener('click', () => ctx.bus.emit('ui:pushScreen', { id: 'crucibleRefit' }));
+855:      if (inSearch && event.key === 'Escape') {
+874:      if (event.key === 'Escape') {
+890:      if (event.key === 'r' || event.key === 'R') {
+900:        const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? all.length - 1 : (here + step + all.length) % all.length;
+958:    context.bus.emit('run:draftRerollRequested', {});
+1241:      ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
+1350:        context.bus.emit('run:draftPickRequested', { offerId: offer.id, demo: true });
+1366:        context.bus.emit('run:draftLockRequested', { offerId: offer.id });
+1519:      ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
+1620:      if (ctx.state.run?.phase === 'draft') ctx.bus.emit('ui:popScreen', {});
+1621:      else ctx.bus.emit('run:refitCloseRequested', {});
+1638:        ctx.bus.emit('run:refitCloseRequested', {});
+1674:      if (event.key === 'Escape') {
+1688:      if (event.key === ' ') {
+1702:      if (event.key === 'f' || event.key === 'F') {
+1708:      if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && document.activeElement
+1712:        const next = group[(here + (event.key === 'ArrowRight' ? 1 : -1) + group.length) % group.length];
+1723:      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+1731:        const step = event.key === 'ArrowDown' ? 1 : -1;
+1738:      if (event.key === 'f' || event.key === 'F') this._feedEndHold(false);
+2002:            context.bus.emit('run:refitStripRequested', { slotIndex: row.slotIndex });
+2006:              context.bus.emit('run:refitFitRequested', {
+2037:            context.bus.emit('run:refitSellRequested', sellTarget);
+[0m
+[0m$ [0mrg -n "run:draftRerollRequested|run:refitCloseRequested|run:refitStripRequested|run:refitSellRequested|run:refitFitRequested|run:draftPickRequested|run:draftLockRequested" src/systems src/sim --glob "*.js" | head
+src/systems\survivalDraft.js:166:    this._unsubs.push(this.bus.on('run:draftPickRequested', (p) => this.resolvePick(p)));
+src/systems\survivalDraft.js:167:    this._unsubs.push(this.bus.on('run:refitCloseRequested', (p) => this.closeRefit(p)));
+src/systems\survivalDraft.js:168:    this._unsubs.push(this.bus.on('run:refitFitRequested', (p) => this.refitFit(p)));
+src/systems\survivalDraft.js:169:    this._unsubs.push(this.bus.on('run:refitStripRequested', (p) => this.refitStrip(p)));
+src/systems\survivalDraft.js:173:    this._unsubs.push(this.bus.on('run:refitSellRequested', (p) => this.refitSell(p)));
+src/systems\survivalDraft.js:174:    this._unsubs.push(this.bus.on('run:draftLockRequested', (p) => this.lockOffer(p)));
+src/systems\survivalDraft.js:175:    this._unsubs.push(this.bus.on('run:draftRerollRequested', () => this.requestReroll()));
+[0m
+[0m$ [0mrg -n "MAX|cap|length >|splice|slice" src/ui/toasts.js | head -10; echo ===; rg -n "MAX|slice\(|length >" src/ui/alerts.js | head -5
+21:import { admitReceipt, RECEIPT_MAX, stuntDetectionReceipt } from './hudAttention.js';
+28:const MAX = RECEIPT_MAX;
+279:    while (live.length > MAX) dismiss(live[live.length - 1]);
+287:    if (i >= 0) live.splice(i, 1);
+377:  insufficient_capacitor: 'Not enough capacitor',
+396:    const named = disabledActionLine(raw.slice('disabled:'.length));
+398:    const part = raw.slice('disabled:'.length).replace(/_/g, ' ');
+412:  insufficient_capacitor: 'Let the capacitor refill',
+436: * `capability:*` is a dead part (checked before tags). `tag:dash` and `tag:tether` are a tumble.
+443:  const cause = parts.slice(2).join(':');
+===
+58:  return typeof p.scope === 'string' && p.scope.length > 0
+77:    const t = s.slice(8);
+162:const DOCK_PROMPT_NAME_MAX = 28;
+172:  const name = raw.length > DOCK_PROMPT_NAME_MAX ? `${raw.slice(0, DOCK_PROMPT_NAME_MAX - 1)}…` : raw;
+249:    const shown = arr.slice(0, 3);
+[0m
+[0m→ [0mRead src/ui/station/screens/shipworks.js[90m [limit=60, offset=3010][0m
+[0m
+[0m$ [0mrg -n "function openChooser|slotfieldEl" src/ui/station/screens/shipworks.js | head -20
+481:  const slotfieldEl = el.querySelector('.sx-sw__slotfield');
+3038:        const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`);
+3049:      const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`);
+3061:    slotfieldEl.addEventListener('focusin', (ev) => {
+3112:    if (mode !== 'fleet') { slotfieldEl.innerHTML = ''; syncJig(null, [], [], ''); return; }
+3115:    if (!def) { slotfieldEl.innerHTML = ''; syncJig(null, [], [], ''); return; }
+3118:    slotfieldEl.innerHTML = slots.map((slot, i) => {
+3313:    if (slotfieldEl) slotfieldEl.classList.toggle('is-board', !livePath && !posterOn);
+3334:    const nodes = [...slotfieldEl.querySelectorAll('[data-spatial-slot]')];
+4102:  function openChooser(slotIndex, anchorEl, opts = {}) {
+4287:    chooserAnchor = anchorEl || slotfieldEl.querySelector(`[data-spatial-slot="${slotIndex}"]`);
+4289:    slotfieldEl.classList.add('is-focusing');
+4290:    slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => {
+4345:    slotfieldEl.classList.remove('is-focusing');
+4346:    slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => node.classList.remove('is-selected'));
+4733:    slotfieldEl.classList.remove('is-focusing');
+5090:      const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${selectedSlot}"]`);
+5134:  slotfieldEl.addEventListener('click', (ev) => {
+[0m
+[0m→ [0mRead src/ui/station/screens/shipworks.js[90m [limit=40, offset=4102][0m
+One more sweep over the remaining smaller screens (missionLog/techTree/gameOver/demoEnd/help) for wiring and empty states.
+[0m
+[0m$ [0mrg -n "emit\(|addEventListener" src/ui/screens/missionLog.js | head -20; echo ===TECHTREE; rg -n "emit\(|addEventListener" src/ui/screens/techTree.js | head -15
+2144:    if (richDom() && typeof body.addEventListener === 'function') {
+2149:      body.addEventListener('pointermove', (ev) => { pointerY = ev.clientY; if (!frame) frame = later(apply); });
+2150:      body.addEventListener('pointerleave', () => { pointerY = null; if (!frame) frame = later(apply); });
+2151:      body.addEventListener('scroll', () => { if (!frame) frame = later(apply); }, { passive: true });
+2211:    toggle.addEventListener('click', () => {
+2242:    corrToggle.addEventListener('click', () => {
+2262:    back.addEventListener('click', () => {
+2275:        ctx.bus.emit('ui:trackMission', { missionId: btn.getAttribute('data-mid') });
+2276:        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+2279:        ctx.bus.emit('ui:endgameSandbox', { source: 'missionLog' });
+2280:        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+2283:        ctx.bus.emit('ui:endgameUnfiledJump', { source: 'missionLog' });
+2284:        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+2288:        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+2291:    recEl.addEventListener('click', handleCampaignAction);
+2292:    storyEl.addEventListener('click', handleCampaignAction);
+2294:    careerEl.addEventListener('click', async (ev) => {
+2303:        ctx.bus.emit(act === 'ladderAccept' ? 'career:ladder:accept' : 'career:ladder:decline', { careerId });
+2304:        ctx.bus.emit('audio:cue', { id: act === 'ladderAccept' ? 'ui_accept' : 'ui_click' });
+2311:        ctx.bus.emit('career:origin:accept', { careerId, source: 'missionLog' });
+===TECHTREE
+297:    back.addEventListener('click', () => {
+300:      else if (ctx && ctx.bus) ctx.bus.emit('ui:popScreen', {});
+322:    recentre.addEventListener('click', () => { if (this._sky && this._sky.recentre) this._sky.recentre(); });
+336:    nodeSelect.addEventListener('change', () => this._selectNode(nodeSelect.value));
+375:    actions.addEventListener('click', (e) => {
+381:    if (typeof document !== 'undefined' && document.fonts && document.fonts.addEventListener) {
+382:      document.fonts.addEventListener('loadingdone', () => {
+661:    this._ctx.bus.emit('ui:unlockTech', { nodeId: n.id });
+[0m
+[0m$ [0mrg -n "career:ladder:accept|career:ladder:decline|career:origin:accept|ui:trackMission|ui:unlockTech|ui:endgameSandbox|ui:endgameUnfiledJump" src/systems src/core src/runtime src/sim --glob "*.js" | head -12
+src/core\mainToSimEventSurface.js:14:  'career:ladder:accept',
+src/core\mainToSimEventSurface.js:16:  'career:ladder:decline',
+src/core\mainToSimEventSurface.js:18:  'career:origin:accept',
+src/core\mainToSimEventSurface.js:127:  'ui:endgameSandbox',
+src/core\mainToSimEventSurface.js:129:  'ui:endgameUnfiledJump',
+src/core\mainToSimEventSurface.js:130:  'ui:endgameUnfiledJumpConfirm',
+src/core\mainToSimEventSurface.js:152:  'ui:trackMission',
+src/core\mainToSimEventSurface.js:154:  'ui:unlockTech',
+src/systems\missions.js:1577:    bus.on('ui:trackMission', (p) => { if (p && p.missionId) this.trackMission(p.missionId); });
+src/systems\ships.js:1767:    bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
+src/systems\story.js:230:    bus.on('ui:endgameSandbox', (p) => this._onEndgameChoose({ ...(p || {}), choice: SANDBOX_ID, confirm: !!(p && p.confirm) }));
+src/systems\story.js:231:    bus.on('ui:endgameUnfiledJump', () => this._requestUnfiledJump());
+[0m
+[0m$ [0mrg -n "career:ladder:accept|career:ladder:decline|career:origin:accept" src/systems --glob "*.js" | head -5
+(no output)
+[0m
+[0m$ [0mrg -n "career:ladder:accept|career:ladder:decline|career:origin:accept" src --glob "*.js" | rg -v "mainToSimEventSurface|missionLog" | head -10
+src\careers\origins\haulerOriginSystem.js:77:      bus.on('career:origin:accept', (p) => {
+src\careers\origins\careerOrigins.js:94:  ACCEPT: 'career:origin:accept',
+src\careers\ladders\ladderShared.js:32:  ACCEPT: 'career:ladder:accept',
+src\careers\ladders\ladderShared.js:33:  DECLINE: 'career:ladder:decline',
+[0m
+[0m$ [0mrg -n "career.ladder.accept|ladderShared.CREATE_TAGS|CREATE_TAGS" src/careers/ladders/ladderShared.js | head; rg -n "career:ladder" src/careers --glob "*.js" | rg "bus.on|on\(" | head
+32:  ACCEPT: 'career:ladder:accept',
+[0m
+[0m$ [0mrg -n "career:ladder:accept" src -N | head
+src\careers\ladders\ladderShared.js:  ACCEPT: 'career:ladder:accept',
+src\core\mainToSimEventSurface.js:  'career:ladder:accept',
+src\ui\screens\missionLog.js:        ctx.bus.emit(act === 'ladderAccept' ? 'career:ladder:accept' : 'career:ladder:decline', { careerId });
+[0m
+[0m$ [0mrg -n "career:ladder:decline" src -N | head; echo ===; rg -n "ACCEPT\b|DECLINE\b" src/careers/ladders/*.js | head -20
+src\careers\ladders\ladderShared.js:  DECLINE: 'career:ladder:decline',
+src\ui\screens\missionLog.js:        ctx.bus.emit(act === 'ladderAccept' ? 'career:ladder:accept' : 'career:ladder:decline', { careerId });
+src\core\mainToSimEventSurface.js:  'career:ladder:decline',
+===
+rg: src/careers/ladders/*.js: The filename, directory name, or volume label syntax is incorrect. (os error 123)
+[0m
+[0m$ [0mrg -n "EVENTS|ACCEPT|DECLINE" src/careers/ladders -N | Select-Object -First 30; Get-ChildItem src/careers/ladders -Name
+src/careers/ladders\careerLadders.js:  CAREER_LADDER_EVENTS,
+src/careers/ladders\careerLadders.js:  CAREER_LADDER_EVENTS,
+src/careers/ladders\careerLadders.js:      this._listen(CAREER_LADDER_EVENTS.ACCEPT, (payload) => {
+src/careers/ladders\careerLadders.js:      this._listen(CAREER_LADDER_EVENTS.DECLINE, (payload) => {
+src/careers/ladders\careerLadders.js:      this._listen(CAREER_LADDER_EVENTS.ABANDON, (payload) => {
+src/careers/ladders\careerLadders.js:      this._listen(CAREER_LADDER_EVENTS.CHOOSE, (payload) => {
+src/careers/ladders\careerLadders.js:      this._listen(CAREER_LADDER_EVENTS.RECOVER, (payload) => {
+src/careers/ladders\careerLadders.js:            emitOn(this.bus, CAREER_LADDER_EVENTS.PROGRESS, progressPayload(own, def, t));
+src/careers/ladders\careerLadders.js:      if (own.status === LADDER_STATUS.LATENT || own.status === LADDER_STATUS.DECLINED) {
+src/careers/ladders\careerLadders.js:          force: own.status === LADDER_STATUS.DECLINED,
+src/careers/ladders\haulerLadderFsm.js:  CAREER_LADDER_EVENTS,
+src/careers/ladders\haulerLadderFsm.js:      this._listen(CAREER_LADDER_EVENTS.ACCEPT, (p) => {
+src/careers/ladders\haulerLadderFsm.js:      this._listen(CAREER_LADDER_EVENTS.DECLINE, (p) => {
+src/careers/ladders\haulerLadderFsm.js:      this._listen(CAREER_LADDER_EVENTS.ABANDON, (p) => {
+src/careers/ladders\haulerLadderFsm.js:      this._listen(CAREER_LADDER_EVENTS.CHOOSE, (p) => {
+src/careers/ladders\haulerLadderFsm.js:      this._listen(CAREER_LADDER_EVENTS.STEP_ACTIVE, (p) => {
+src/careers/ladders\haulerLadderFsm.js:      if (own.status === LADDER_STATUS.LATENT || own.status === LADDER_STATUS.DECLINED) {
+src/careers/ladders\haulerLadderFsm.js:export { LADDER_STATUS, STEP_STATUS, CAREER_LADDER_EVENTS };
+src/careers/ladders\haulerLadderDefs.js:  LADDER_REWARD_EVENTS,
+src/careers/ladders\haulerLadderDefs.js:              event: LADDER_REWARD_EVENTS.CHARGE_CREDITS,
+src/careers/ladders\hunterLadderDefs.js:  LADDER_REWARD_EVENTS,
+src/careers/ladders\hunterLadderDefs.js: * Emit path is restricted to CAREER_LADDER_EVENTS + LADDER_REWARD_EVENTS.
+src/careers/ladders\hunterLadderDefs.js:export const HUNTER_LADDER_LIVE_EVENTS = Object.freeze({
+src/careers/ladders\hunterLadderDefs.js:  MISSION_ACCEPTED: 'mission:accepted',
+src/careers/ladders\hunterLadderDefs.js:    doNotUseEvents: Object.freeze([HUNTER_LADDER_LIVE_EVENTS.COMBAT_SURRENDERED]),
+src/careers/ladders\hunterLadderDefs.js:        HUNTER_LADDER_LIVE_EVENTS.MISSION_ACCEPTED,
+src/careers/ladders\hunterLadderDefs.js:        HUNTER_LADDER_LIVE_EVENTS.MISSION_COMPLETED,
+src/careers/ladders\hunterLadderDefs.js:        HUNTER_LADDER_LIVE_EVENTS.COMBAT_DAMAGE,
+src/careers/ladders\hunterLadderDefs.js:        HUNTER_LADDER_LIVE_EVENTS.HEAT_CHANGED,
+src/careers/ladders\hunterLadderDefs.js:        HUNTER_LADDER_LIVE_EVENTS.ENTITY_KILLED,
+careerLadders.js
+haulerLadderDefs.js
+haulerLadderFsm.js
+hunterLadderDefs.js
+hunterLadderFsm.js
+ladderSchema.js
+ladderShared.js
+liveCareerLadderBranches.js
+prospectorLadderDefs.js
+prospectorLadderFsm.js
+[0m
+Checking the two foreign-dirty footage files briefly as the packet requires.
+[0m$ [0mrg -n "addEventListener|emit\(|onKey|popScreen|Escape" src/ui/screens/flightFootage.js | head -25; echo ===; (Get-Content src\ui\screens\flightFootage.js | Measure-Object -Line).Lines; (Get-Content src\ui\screens\footageVideoCodec.js | Measure-Object -Line).Lines
+824:  document.addEventListener('visibilitychange', visibility);
+946:  signal?.addEventListener('abort', abort, { once: true });
+===
+956
+400
+[0m
+[0m$ [0mrg -n "close|Escape|back|export|id:|screen" src/ui/screens/flightFootage.js | head -30
+5:export const FLIGHT_FOOTAGE_LIMITS = Object.freeze({ seconds: 30, fps: 10, width: 640, height: 360, maxBytes: 32 * 1024 * 1024 });
+7:export function createFootageRing(limits = FLIGHT_FOOTAGE_LIMITS) {
+36:export function getFlightFootage() { return active; }
+40: * queued — those VideoFrames die unclosed and the host logs "garbage collected without being
+41: * closed". Read the queue out first and close each one. A queued frame satisfies read() inside
+52:        try { drained.value?.close?.(); } catch { /* already released */ }
+61: * references nothing outside itself. It scales a presented frame onto an OffscreenCanvas and encodes the
+62: * JPEG there. The sync GPU-to-CPU readback that canvas.toBlob does on the main thread waits for the whole
+66:export function footageEncoderRuntime() {
+70:    const readbackOptimized = willReadFrequently === true;
+73:    const closeSource = () => {
+76:      try { bitmap.close?.(); } catch { /* already closed */ }
+80:        canvas = new OffscreenCanvas(width, height);
+82:          context = readbackOptimized
+86:          // Older OffscreenCanvas implementations may reject the context-options dictionary. Keep the
+87:          // opt-in reversible: the worker still has a concrete 2D fallback, and a missing context is
+89:          if (!readbackOptimized) throw error;
+92:        if (!context && readbackOptimized) context = canvas.getContext('2d');
+109:        closeSource();
+114:        try { resized.close?.(); } catch { /* already closed */ }
+116:      } else closeSource();
+120:      if (resized) { try { resized.close?.(); } catch { /* already closed */ } }
+121:      closeSource();
+127:/** The off-main-thread JPEG encoder, or null where Worker/OffscreenCanvas/createImageBitmap are missing. */
+128:export function createFootageEncoder(scope = globalThis, { timeoutMs = 5000, willReadFrequently = false } = {}) {
+129:  if (typeof scope.Worker !== 'function' || typeof scope.OffscreenCanvas !== 'function'
+133:  const readbackOptimized = willReadFrequently === true;
+141:  // requests reject, the thread ends and the Blob URL is released, so a dead worker never stays owned (OffscreenCanvas,
+142:  // thread) while the main-thread fallback records.
+168:      if (broken || !worker) { bitmap.close?.(); return Promise.reject(new Error('footage worker retired')); }
+[31;1mResourceUnavailable: [31;1mProgram 'rg.exe' failed to run: The pipe has been ended.At line:1 char:1[0m
+[31;1m[31;1m+ rg -n "close|Escape|back|export|id:|screen" src/ui/screens/flightFoot .[0m
+[31;1m[31;1m+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.[0m
+[0m
+[0m$ [0mrg -n -i "tab" src/ui/screens/help.js | head -10; echo ===; rg -n "_currentLayerFocus" src/ui/galaxyMap.js | head; echo ===; rg -n "layer" src/ui/screens/help.js | head -5
+3:// ORRERY: six instruments behind one tab ladder, no table anywhere.
+13:// The Controls tab reads the LIVE keybindings the player set in Settings → Controls
+17:// `.sf-help-now`, `.sf-tab` and `.sf-lc__search` stay on their elements as hooks.
+60:// The control profile the Controls tab describes (settings.gameplay.controlScheme; the Settings
+120:  ['Station tab: previous', 'tabPrev', (g) => g],
+121:  ['Station tab: next', 'tabNext', (g) => g],
+156:  'Cancel / back', 'Station tab: previous', 'Station tab: next', 'Travel burn', 'Auto-target',
+261:      ['Cycle combat lock', null, 'Tab / Shift+Tab'],
+277:    ['Touch (phone / tablet)', [
+297:const TABS = ['Controls', 'Loops', 'Ships', 'Commodities', 'Ores', 'Factions'];
+===
+4154:  _currentLayerFocus: 'route',
+5330:      const nextIdx = (keys.indexOf(this._currentLayerFocus) + 1) % keys.length;
+5331:      this._currentLayerFocus = keys[nextIdx];
+5333:      this._layers[this._currentLayerFocus] = !this._layers[this._currentLayerFocus];
+5335:      const btn = this._root.querySelector(`.gm-layer-btn[data-layer="${this._currentLayerFocus}"]`);
+5337:        if (this._layers[this._currentLayerFocus]) btn.classList.add('active');
+===
+4:// - CONTROLS is the Controls Rig (src/ui/orrery/helpRig.js): the player's own hull in its plan render on a
+8://   ladder of every key beside it. Nothing is dispatched: Help is a modal, the flight input layer is
+13:// The Controls tab reads the LIVE keybindings the player set in Settings → Controls
+125:  // FB-003 chord layer — LB is the survey/deploy layer, RB the combat-state layer.
+171:// Two different reasons a row can name no button. A player who cleared a binding chose that; a
+[0m
+[0m$ [0mrg -n -i "lens|layer" src/ui/helpInstruments.js src/ui/orrery/helpRig.js | head -8; rg -n "chart.*Tab|Tab.*chart|lens" src/ui/galaxyMap.js | head -8
+rg: src/ui/helpInstruments.js: The system cannot find the file specified. (os error 2)
+src/ui/orrery/helpRig.js:3:// The player's own hull, in its produced plan render, stands on a berth: a lit annulus you could
+src/ui/orrery/helpRig.js:19:// flight input layer is already neutralised under it (systems/input.js shouldNeutralizeFlightInput).
+src/ui/orrery/helpRig.js:709:    const fxGroup = (key, layer = fxG) => { const g = svg('g', { class: 'orr-hrig__fx' }); layer.appendChild(g); return add(key, g); };
+src/ui/orrery/helpRig.js:736:    const plumeLayer = svg('g', {});
+src/ui/orrery/helpRig.js:737:    under.insertBefore(plumeLayer, defs.nextSibling);
+src/ui/orrery/helpRig.js:740:      plume(fxGroup('drive', plumeLayer), dx, dy + S * 0.01, 180, S * 0.27, S * 0.03);
+src/ui/orrery/helpRig.js:742:      plume(fxGroup('bloom', plumeLayer), bx, by, 180, S * 0.44, S * 0.046);
+3866:   * foot row now.) The DOM chrome that sits over the full-frame canvas (the lens rail, the
+4679:    // Pointer events carry the pan, the hover lens and the laid line (a PointerEvent is a MouseEvent,
+4894:    // A remembered commodity that no longer exists in the catalogue must not become a lens on
+7324:    const lensCountEl = this._root.querySelector('[data-lens-count]');
+7325:    if (lensCountEl) {
+7327:      lensCountEl.textContent = `${on}/${LAYER_DEFS.length}`;
+7729:      items.push({ group: 'Lenses', label: `${def.name} lens`, sub: this._layers[id] ? 'On' : 'Off', run: () => {
+8203:    // Hover hit test; the lattice lens follows the pointer on the next frame.
+[0m
+### F-MENUS-01
+- symptom: On the galaxy map (the player's M/N map), Tab never moves keyboard focus — every Tab press toggles a random chart lens instead, so keyboard-only players cannot reach the layer buttons, plot/engage rail controls or any other focusable control on the screen (arrows only serve the search list); focus is effectively owned away from the dialog.
+- severity: major
+- route: open map (M/N) → press Tab (or Shift+Tab) with focus anywhere in the screen
+- owner: src/ui/galaxyMap.js:5327-5347 (`galaxyMapScreen.onKey`, Tab branch)
+- evidence: `if (key === 'tab') { event.preventDefault(); … this._layers[this._currentLayerFocus] = !this._layers[this._currentLayerFocus]; … }` — the branch unconditionally preventDefaults Tab with no text-entry/shift distinction and no comment, and no other traversal exists for the screen's DOM controls. `src/ui/input.js:348-389` routes every modal keydown to `def.onKey` before anything else, and `src/ui/screenManager.js:143-159` (`_trapKeydown`) only intervenes at the focus edges, so in-screen Tab is wholly consumed here. No help entry, theme doc or check records "Tab cycles lenses" as intent.
+- suggested_fix: delete the Tab branch so native traversal plus the ScreenManager trap own Tab (mirroring every other modal screen); move lens toggling, if wanted, to the screen's context menu (`galaxyMap.js:7729` already lists lens verbs there) or an unclaimed key.
+- confidence: high
+
+### F-MENUS-02
+- symptom: On the legacy star chart, the drawn per-sector price tag next to a node can never render — the player trades at stations and learns prices, but the chart never shows one regardless of how many markets were visited.
+- severity: minor (legacy surface: `src/ui/input.js:503` keeps starmap for tools/checks only; M/N open galaxyMap via `src/ui/input.js:504-513` and `src/ui/uiRoot.js:1342-1358`)
+- route: star chart (legacy) → visit a market → open chart → no buy/sell pair beside the sector node
+- owner: src/ui/screens/starmap.js:1280-1289 (`_drawNodes`)
+- evidence: `starmap.js:1280-1282` reads `state.player.marketMemory[s.id]` where `s` is a sector node (`_draw()` builds nodes from sectors, `starmap.js:1122-1123`), but the single writer keys the memory by station id: `src/systems/economy.js:2514-2515` `const memory = ensurePlayerMarketMemory(…); const stationMemory = memory[stationId] || …`. The sector-keyed lookup is always `undefined`, so `commQuote` is never truthy and the block is dead code; the sidebar (`starmap.js:1401` → `_marketMemoryHtml` → `marketMemoryStationOverlays`, which maps stations→sectors) is correct while the canvas label is not.
+- suggested_fix: derive the node label from `marketMemoryStationOverlays(state, this._commodityId)` filtered to `o.sectorId === s.id` (best overlay), or remove the dead canvas block in favor of the working sidebar section.
+- confidence: high
+
+### F-MENUS-03
+- symptom: In Shipworks, clicking a hardpoint node on the hull dial can be silently swallowed: the node lights up (selection state set) but no chooser opens, no deny cue, no receipt — a control that does nothing.
+- severity: minor
+- route: docked berth → Shipworks → click a dial node during the window after a re-render dropped the slot nodes (rebuilt on the next projection frame)
+- owner: src/ui/station/screens/shipworks.js:3037-3041 (jig `onPick`) and 3045-3052 (jig-host click)
+- evidence: both handlers do `const anchor = slotfieldEl.querySelector([data-spatial-slot=i]); jigLit = index; if (anchor) openChooser(index, anchor);` — the slot nodes are only rebuilt by `renderSpatialSlots()` inside `renderCenter` (`shipworks.js:3713`), so they can be momentarily absent while `jigLit` is already set. `openChooser` itself is tolerant: `shipworks.js:4287` `chooserAnchor = anchorEl || slotfieldEl.querySelector(…)`, and its rAF focus loop retargets — the guard discards a call `openChooser` would have handled.
+- suggested_fix: on a valid index call `openChooser(index, null)` unconditionally and keep the guard only to emit the `ui_deny` cue out of range.
+- confidence: medium
+
+### F-MENUS-04
+- symptom: (legacy-only, no live player route) The local map's Close control and its own `M` key path go through `_close()` only via `ctx.screenManager.popScreen`, whereas the sibling starmap has a bus fallback (`ui:popScreen`) for bus-mounted hosts; a host that mounts screens by bus intent gets a silent dead close.
+- severity: minor (conditional; not reachable on the default route — `src/ui/mapAuthority.js:6` and `src/ui/input.js:503` keep localmap for tools/checks, and `src/ui/uiRoot.js:1342-1358` converts `ui:pushScreen localmap` to galaxyMap)
+- route: local map (legacy/tools) → Close button / `M` key
+- owner: src/ui/screens/localmap.js:846-849 (`_close`)
+- evidence: `localmap.js:846-849` `const sm = this._ctx && this._ctx.screenManager; if (sm && typeof sm.popScreen === 'function') sm.popScreen();` — no emit fallback; contrast `src/ui/screens/starmap.js:678-683` `closeScreen(ctx)` which falls back to `ctx.bus.emit('ui:popScreen', {})` after the same probe.
+- suggested_fix: mirror starmap's `closeScreen` — try `popScreen`, else emit `ui:popScreen`.
+- confidence: high (code), low (reachability)
+
+Coverage: title/newGame/saveLoad/pause/settings (+ bindings, pad capture, apply path via `applyAccessibility`↔`--ui-scale`, frameCap consumed by `src/core/presentationRunner.js:1308`), station/market/contracts/shipworks, jobs (contracts screen hold-to-accept fully wired incl. `acceptMissionOnLane`/`chooseAdventureDecision` — `src/core/simLaneCommands.js:217-226` never rejects), Swarm draft/refit/results (`run:*` intents all consumed in `src/systems/survivalDraft.js`/`survivalRun.js`), maps, HUD receipts (capped, `src/ui/toasts.js:279`), confirm dialog (session-dismissed on death/game-over/exit), all `pushScreen` targets resolve to registered screens (`src/ui/uiRoot.js:150-201`), replay/clips open as wired pause overlays. Foreign-lane file dirty: `src/ui/screens/flightFootage.js:1`, `src/ui/screens/footageVideoCodec.js:1` — audited read-only, no functional findings (pure encoder/ring plumbing, no menu wiring). Also foreign-dirty in working tree: `src/ui/screens/mainMenu.js`, `src/ui/screens/gameOver.js`, `src/ui/confirm.js`, `src/ui/uiRoot.js` — audited on disk, no functional findings. `src/ui/station/screens/shipworks.js:25` comment drift (`ui:sellShip` named, never emitted/rendered) is doc drift, not a defect.
+
+VERDICT: 4 findings
