@@ -282,7 +282,7 @@ test('player tow into lawful station rescues and pays the answerable-mayday salv
   }
 });
 
-test('fence-adjacent handoff ransoms with moralMemory only', () => {
+test('a black-market berth that does not buy pods leaves the cable alone', () => {
   const h = boot();
   try {
     const victim = h.spawnCrewed({ extraData: { worldRecordId: 'wr_ransom' } });
@@ -295,7 +295,12 @@ test('fence-adjacent handoff ransoms with moralMemory only', () => {
       factionId: 'faction_reach',
       pos: { x: 0, z: 0 },
       radius: 60,
-      data: { stationId: 'station_fence', stationType: 'blackmarket', factionId: 'faction_reach' },
+      data: {
+        stationId: 'station_fence',
+        stationType: 'blackmarket',
+        stationTypeId: 'blackmarket',
+        factionId: 'faction_reach',
+      },
       flags: {},
     });
     pod.pos.x = 8;
@@ -306,11 +311,12 @@ test('fence-adjacent handoff ransoms with moralMemory only', () => {
     h.bus.on('economy:grantCredits', (p) => credits.push(p));
     h.latch(pod);
     survivorPod.update(1 / 60, h.state);
-    assert.equal(ransomed.length, 1);
+    assert.equal(ransomed.length, 0);
     assert.equal(credits.length, 0);
     const memory = ensureMoralMemory(h.state);
-    assert.ok(Object.values(memory.debts).some((d) => d.cause === 'ransomed_survivors'));
-    assert.equal(h.pods().length, 0);
+    assert.equal(Object.values(memory.debts).some((d) => d.cause === 'ransomed_survivors'), false);
+    assert.equal(h.pods().length, 1);
+    assert.equal(pod.alive !== false, true);
   } finally {
     h.restore();
   }

@@ -18,11 +18,12 @@
 // ── Causal eject path (U09 Stage 2) ────────────────────────────────────────────────────────────
 // Destroyed/disabled crewed ships may eject a tetherable survivor payload. Player can:
 //   rescue — tow into lawful station protection, or hand to a traffic rescue hull;
-//   ransom — tow fence-adjacent (blackmarket/pirate_base);
+//   ransom — tow to the one fence who buys pods;
 //   ignore — TTL expires with a moralMemory note.
 // Credits are never written directly (economy stays single writer). A player-answered mayday
 // emits an economy:grantCredits intent (salvage fee) exactly like the authored strip choice;
-// rescue reward is that fee + moralMemory + faction rep intent. Ransom is moralMemory only.
+// rescue reward is that fee + moralMemory + faction rep intent. Ransom is moralMemory only
+// here; the fence desk pays the buyer. Any other berth leaves the pod on the cable.
 // Spawn gated out of curated scenarios (salvor pattern).
 
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
@@ -40,6 +41,7 @@ import { clearIneligibleAIFiringIntents } from './aiPorts.js';
 import { rememberMoralDebt } from './moralMemory.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { fenceForStation } from '../data/fences.js';
 
 const MISSION_ID = 'wm_survivor_pod';
 const CONCORD_FACTION_ID = 'faction_scn';
@@ -408,11 +410,21 @@ function hasCanonicalEntityLifecycle(state) {
   return !!(state && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 === true);
 }
 
-function isFenceStation(station) {
-  if (!station) return false;
+// The live station spawn stamps stationId and stationTypeId. The buyer is the fence
+// record, not the type string: only quirk.wantsPods takes the pod. A black-market berth
+// with no such fence, including one labeled stationType for an older harness, leaves it.
+function podBuyerAt(station) {
+  if (!station || station.alive === false || station.type !== 'station') return null;
   const data = station.data || {};
-  const type = data.stationType || data.type || station.stationType || station.type;
-  return type === 'blackmarket' || type === 'pirate_base';
+  const stationId = data.stationId || station.stationId || null;
+  if (typeof stationId !== 'string' || !stationId) return null;
+  const fence = fenceForStation(stationId);
+  if (!fence || !fence.quirk || fence.quirk.wantsPods !== true) return null;
+  return {
+    stationId,
+    entityId: station.id,
+    factionId: station.factionId || data.factionId || fence.factionId || null,
+  };
 }
 
 function fenceStationAt(state, entity) {
@@ -420,18 +432,13 @@ function fenceStationAt(state, entity) {
   const list = indexedTypeScan(state, 'stations');
   for (let i = 0; i < list.length; i++) {
     const station = list[i];
-    if (!station || station.alive === false || station.type !== 'station' || !station.pos) continue;
-    if (!isFenceStation(station)) continue;
+    if (!station || !station.pos) continue;
+    const buyer = podBuyerAt(station);
+    if (!buyer) continue;
     const dx = entity.pos.x - station.pos.x;
     const dz = entity.pos.z - station.pos.z;
     const radius = Math.max(CAUSAL_HANDOFF_RANGE_WU, Number(station.radius) || 40) + CAUSAL_HANDOFF_RANGE_WU;
-    if (dx * dx + dz * dz <= radius * radius) {
-      return {
-        stationId: String(station.data && station.data.stationId || station.stationId || station.id),
-        entityId: station.id,
-        factionId: station.factionId || (station.data && station.data.factionId) || null,
-      };
-    }
+    if (dx * dx + dz * dz <= radius * radius) return buyer;
   }
   return null;
 }
@@ -1124,7 +1131,7 @@ export const survivorPod = {
         continue;
       }
 
-      // Fence-adjacent ransom.
+      // Only the fence who buys pods. Any other berth leaves the pod on the cable.
       const fence = fenceStationAt(state, entity) || fenceStationAt(state, player);
       if (fence) {
         this._resolveCausal(state, own, rec, entity, 'ransomed', {
