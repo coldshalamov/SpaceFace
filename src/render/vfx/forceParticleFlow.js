@@ -90,6 +90,13 @@ class TransportBehavior {
     p.forceContactCount = contactCount;
     p.forceContactHeat = 0;
     p.forceFlowInit = false;
+    // One parcel in three becomes a body-local aura mote when the field is actually
+    // touching matter. It keeps the same pool and force grammar; only its origin moves
+    // from the field centre to the affected body, so telekinesis visibly lights the thing
+    // it is holding instead of only washing the space between.
+    p.forceAura = contactCount > 0 && ordinal % 3 === 0;
+    const auraContact = p.forceAura ? ordinal % contactCount : -1;
+    if (p.forceAura) owner.stats.aura++;
     const variety = unit(event.seed, ordinal * 3), phase = unit(event.seed, ordinal * 3 + 1) * TAU;
     m[0] = event.kind; m[1] = event.x; m[2] = event.y; m[3] = event.z;
     m[4] = event.dx; m[5] = event.dz; m[6] = event.radius; m[7] = phase; m[8] = variety;
@@ -101,7 +108,17 @@ class TransportBehavior {
     m[12] = clamp(m[11] * (0.085 + unit(event.seed, ordinal * 3 + 2) * 0.015), 0.055, 1.20);
     if (event.kind === 9) m[12] = m[11] * (0.16 + variety * 0.045);
     m[13] = event.halfAngle; m[14] = event.halfWidth;
+    if (p.forceAura) {
+      const o = auraContact * CONTACT_STRIDE;
+      m[1] = contacts[o]; m[3] = contacts[o + 1];
+      m[6] = Math.max(3, contacts[o + 2] * 1.25);
+      m[7] = phase + auraContact * 1.73;
+      m[9] = Math.min(1.5, event.strength * 1.18);
+      m[11] = clamp(contacts[o + 2] * 0.85, 1.6, 7.0);
+      m[12] = m[11] * (0.075 + unit(event.seed, ordinal * 3 + 4) * 0.02);
+    }
     p.life = event.life * (0.74 + variety * 0.26);
+    if (p.forceAura) p.life = Math.min(p.life, 0.42 + variety * 0.20);
     p.age = Math.min(p.life, event.age);
     m[10] = p.age;
     const k = p.forceKinematics || (p.forceKinematics = new Float64Array(MATERIAL_STATE_SIZE));
@@ -150,9 +167,12 @@ class TransportBehavior {
       ? 0.22 + cooling * 0.72 + stretch * 0.26
       : (0.24 + cooling * 2.3) * (1 + flare * 0.9) + p.forceContactHeat * 1.1)
       * m[9] * (owner.reducedFlash ? 0.36 : 1);
+    const auraBoost = p.forceAura ? 1.45 : 1;
     const ember = m[0] === 5 ? t : 0;
-    p.color.set(rgb[0] * hot, rgb[1] * hot * (1 - ember * 0.65),
-      rgb[2] * hot * (1 - ember * 0.85), launch * cooling * (0.52 + m[8] * 0.22) * k[14]);
+    p.color.set(rgb[0] * hot * auraBoost, rgb[1] * hot * (1 - ember * 0.65) * auraBoost,
+      rgb[2] * hot * (1 - ember * 0.85) * auraBoost,
+      Math.min(1, launch * cooling * (0.52 + m[8] * 0.22) * k[14]
+        * (p.forceAura ? 1.35 : 1)));
   }
   frameUpdate() {} reset() {}
 }
@@ -164,7 +184,7 @@ export class ForceParticleFlow {
     this.disposed = false; this.ordinal = 0; this.reducedMotion = false; this.reducedFlash = false;
     this.event = { kind: 0, x: 0, y: 0.5, z: 0, dx: 1, dz: 0, radius: 10, seed: 0, strength: 1, life: 0.8,
       halfAngle: 0.56, halfWidth: 52, age: 0, environment: null };
-    this.stats = { emitted: 0, dropped: 0, updates: 0 };
+    this.stats = { emitted: 0, dropped: 0, updates: 0, aura: 0 };
     this.contactLight = createMaterialContactRead(); this._materialScene = null;
     this.geometry = streakGeometry(); this.matrix = new THREE.Matrix4();
     this.material = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false,
@@ -315,13 +335,20 @@ export class ForceParticleFlow {
       dx = (k[mid] - k[0]) * R; dz = (k[mid + 2] - k[2]) * R;
       this.flowMid[q] = c * dx - sn * dz; this.flowMid[q + 1] = (k[mid + 1] - k[1]) * R;
       this.flowMid[q + 2] = sn * dx + c * dz;
-      // Only material that really touched a retained body may request local reflected light.
-      const power = this.reducedFlash ? 0 : k[8] * p.color.w * 7;
-      if (k[13] > 0 && power > .025 && power > light.intensity) {
+      // Only material that really touched a retained body, or a body-local telekinetic
+      // aura mote, may request local reflected light. One shared slot still owns it.
+      const aura = p.forceAura === true;
+      const power = this.reducedFlash ? 0 : k[8] * p.color.w * 7 + (aura ? 3.4 + p.color.w * 2.0 : 0);
+      if ((k[13] > 0 || aura) && power > .025 && power > light.intensity) {
         const rgb = MATERIAL_FLOW_RECIPES[p.forceFlow[0]].rgb;
-        light.active = true; light.x = p.position.x; light.y = p.position.y + 5; light.z = p.position.z;
+        light.active = true; light.x = p.position.x;
+        // A held body must actually catch the field light. The old +5 WU sat inside a
+        // frigate-sized rock; keep the aura light above the surface so the top faces read.
+        light.y = aura ? Math.max(16, p.position.y + 8) : p.position.y + 5;
+        light.z = p.position.z;
         light.r = Math.min(1, rgb[0]); light.g = Math.min(1, rgb[1]); light.b = Math.min(1, rgb[2]);
-        light.intensity = Math.min(3.5, power); light.range = Math.min(75, Math.max(16, p.forceFlow[6] * .45));
+        light.intensity = Math.min(aura ? 7.5 : 3.5, power);
+        light.range = Math.min(aura ? 160 : 75, Math.max(aura ? 56 : 16, p.forceFlow[6] * (aura ? 1.6 : .45)));
       }
     }
     if (this.live) {

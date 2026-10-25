@@ -402,6 +402,17 @@ export const MIGRATIONS = [
       }
     },
   },
+  {
+    from: 20,
+    to: 21,
+    // Missing sections are intentionally fresh, rather than inheriting the outgoing run.
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      for (const key of ['shipbreakingYard', 'rigWorkshop', 'salvageTender', 'salvageOutfits', 'industrialDisasters']) {
+        if (!Object.hasOwn(data, key)) data[key] = null;
+      }
+    },
+  },
 ];
 
 /**

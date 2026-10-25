@@ -9,6 +9,7 @@ import { vfx as liveVfx } from '../render/vfx.js';
 import { installNpcJobLiveSignatureDraw } from '../render/npcJobSignatureVfx.js';
 import { shouldFreezeFlightSubmit, shouldSkipFlightDraw } from './presentationFreeze.js';
 import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
+import { presentProExperiencesFrame, releaseProExperiencesPresentation } from '../features/proExperiencesBrowser.js';
 
 installNpcJobLiveSignatureDraw(liveVfx);
 import {
@@ -29,6 +30,7 @@ let uiStagePrewarmErrorLogCount = 0;
 
 export function runRenderUpdatePhase({
   state,
+  bus,
   render,
   vfx,
   feel,
@@ -42,7 +44,10 @@ export function runRenderUpdatePhase({
   const record = typeof recordPhase === 'function' ? recordPhase : noopPhase;
   const clock = typeof now === 'function' ? now : defaultNow;
 
-  if (state?.mode !== 'flight') releaseBombPresentation(state);
+  if (state?.mode !== 'flight') {
+    releaseBombPresentation(state);
+    releaseProExperiencesPresentation(state);
+  }
 
   if (shouldFreezeFlightSubmit(state)) {
     // The flight submit is frozen; the picture is not. A screen that asked for a stage gets its own
@@ -111,6 +116,8 @@ export function runRenderUpdatePhase({
   t = clock();
   try { updateBombPresentation(state, alpha); }
   catch (err) { vfxError = err; }
+  try { presentProExperiencesFrame(state, bus, alpha); }
+  catch (err) { vfxError ||= err; }
   // One cosmetic lane failing cannot suppress the existing detonation presenter either.
   if (vfx && typeof vfx.update === 'function') {
     try { vfx.update(frameDt, state); }

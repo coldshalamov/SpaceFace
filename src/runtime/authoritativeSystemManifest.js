@@ -14,6 +14,9 @@ export const PRESENTATION_PLATFORM_IDS = Object.freeze([
   'feel',
   'audio',
   'ui',
+  // Pro-experience browser driver (nodeSafe:false — deck, renderer and mixer live on the
+  // main thread; the sim owner 'shipbreakingYard' stays node-safe).
+  'shipbreakingYardBrowser',
 ]);
 
 const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
@@ -40,6 +43,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   'masslineImpactDamage', 'lootShards', 'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens', 'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads', 'terrainAnchors', 'jettisonImpulse', 'volatileExposure', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'moistureLoss', 'economy', 'automation', 'asteroidSites',
+  'industrialDisasters',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
   'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake',
   // Nemesis packet: the arc engine (nemesis) decides and schedules, the encounter host
@@ -56,7 +60,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // §34 faction-signature rows: mass/heat sensor model (513), Concord formation lock (515),
   // Meridian cargo spines (516), Helix false-flag packs + lien drones (526), Drift claim pylons (530).
   'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
-  'sectorSim', 'towlineTable', 'towlineTablePrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'npcJobsRuntime', 'careerOrigins',
+  'sectorSim', 'towlineTable', 'towlineTablePrompt', 'shipbreakingYard', 'shipbreakingYardBrowser', 'rigWorkshop', 'salvageTender', 'salvageTenderPrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'salvageOutfits', 'salvageOutfitsPrompt', 'npcJobsRuntime', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
@@ -115,7 +119,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
-  'survivalArena', 'fields', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'physics', 'reactiveMatter', 'latchNine', 'combat',
+  'survivalArena', 'fields', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'industrialDisasters', 'salvageTender', 'physics', 'reactiveMatter', 'latchNine', 'combat',
   'combatOutcome', 'aftermathWrecks', 'dyingHull', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'shipjack', 'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
@@ -138,7 +142,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // registration would silently never run their update().
   'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens',
   'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads',
-  'sectorSim', 'towlineTable', 'borrowedVoice', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
+  'sectorSim', 'towlineTable', 'shipbreakingYard', 'rigWorkshop', 'borrowedVoice', 'salvageOutfits', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
   'liveCareerLadderBranches', 'story', 'scenarioRuntime',
   // survivalWave: materializes the planned wave through spawnBudget and reports the cleared
   // receipt. Immediately before survivalRun so a wave cleared this tick advances the phase this tick.
@@ -213,6 +217,13 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   feel: Object.freeze({ nodeSafe: false, phase: 'render', capability: 'presentation' }),
   audio: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'presentation' }),
   ui: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'presentation' }),
+  shipbreakingYard: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'occupation' }),
+  // nodeSafe:false is intentional (feature manifest.js): the browser driver owns the deck,
+  // renderer and mixer on the main thread and must not boot in a Node production runtime.
+  shipbreakingYardBrowser: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'presentation' }),
+  // Event-only prompt owners — glass, no update slot, no clock declaration.
+  salvageTenderPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  salvageOutfitsPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   masslineHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   survivalHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   crucibleFocus: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
@@ -401,6 +412,9 @@ export const NEAR_CLOCK_IDS = Object.freeze([
   'flybyFocus', 'scanner', 'spectrum', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aiSlot', 'aiEncounter', 'traffic', 'titles',
   'towlineTable', 'borrowedVoice', 'npcJobsRuntime',
+  // Pro-experience outfit table: near clock per its integration contract (update after
+  // borrowedVoice, before npcJobsRuntime) — the prompt is glass and event-only.
+  'salvageOutfits',
   // Observer receipts; primary ticks already throttle internally. Catch-up extra steps
   // must not rescan the island just to notice a flee flag.
   'combatOutcome',
@@ -465,6 +479,10 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // latch already covers the idle pole). Docked-yard job progression is real per-tick
   // service work, so the yard stays on the table.
   'chronicler', 'stationServices',
+  // Pro-experience owners — salvageTender publishes this tick's bounded berth force and
+  // industrialDisasters queues tether impulses immediately before physics; the yard and
+  // workshop observe the settled tick and run their own body work on the 60 Hz step.
+  'shipbreakingYard', 'rigWorkshop', 'salvageTender', 'industrialDisasters',
   // §34 faction-signature owners — per-step kinematics (formation lock, coupler snap,
   // pylon settle, false-flag deviation, sweep-ring read). Calendar would miss the motion.
   'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',

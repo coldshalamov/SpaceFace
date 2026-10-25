@@ -156,16 +156,22 @@ test('production init + update order lengths match the live browser baseline', (
   // restock and drift-home ride the clock; judging is event-driven (member 11).
   // 248 -> 249 init / 194 -> 195 update: W-SHIFT registers gravedigger — the
   // race, the bury, and the pit ride the same clock (member 12 — the roster).
-  // 249 -> 250 init / 195 -> 196 update: Controlled Chaos packet 08 registers dyingHull — the
+  // 249 -> 257 init / 195 -> 200 update: the pro-experiences packet lands its
+  // authored registration (feature INTEGRATION contracts): shipbreakingYard +
+  // its browser driver beside the towline pair, rigWorkshop with them,
+  // salvageTender + industrialDisasters before physics, salvageOutfits after
+  // borrowedVoice — the three event-only prompts (tender/outfits) and the
+  // yard browser init-only as glass/presentation.
+  // 257 -> 258 init / 200 -> 201 update: Controlled Chaos packet 08 registers dyingHull — the
   // bounded failure interval between a decisive kill and its single rupture, right after
   // aftermathWrecks, on the table clock.
-  // 250 -> 251 init / 196 -> 197 update: Controlled Chaos packet 06 registers shieldPylons — the
+  // 258 -> 259 init / 201 -> 202 update: Controlled Chaos packet 06 registers shieldPylons — the
   // linked shield pylons' lifecycle, hull interception and the single energy debit, right after
   // gyreSnare in the pre-physics slot, on the table clock.
-  // 251 -> 252 init / 197 -> 198 update: packet 06 also registers pylonHud — the DOM-guarded
+  // 259 -> 260 init / 202 -> 203 update: packet 06 also registers pylonHud — the DOM-guarded
   // next-operation label and wall-state pill (massSeedHud / gyreHud sibling).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 252);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 198);
+  assert.equal(PRODUCTION_INIT_ORDER.length, 260);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 203);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

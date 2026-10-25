@@ -12,10 +12,10 @@ export const DISCHARGE_CAPACITY = 48;
  * the floor only ever thickens, so close zoom keeps its authored cross-section exactly.
  */
 export const SOURCE_MIN_STRIP_PX = 2.4;
-export const IMPACT_MIN_STRIP_PX = 3.0;
+export const IMPACT_MIN_STRIP_PX = 5.0;
 /** Whole-footprint floors (width x reach, pixels) so a hit/muzzle still reads at the wide camera. */
 export const SOURCE_MIN_WIDTH_PX = 9, SOURCE_MIN_LENGTH_PX = 44;
-export const IMPACT_MIN_WIDTH_PX = 12, IMPACT_MIN_LENGTH_PX = 46;
+export const IMPACT_MIN_WIDTH_PX = 22, IMPACT_MIN_LENGTH_PX = 86;
 
 /**
  * Working heat of the strips (instance attribute `iPivot.w`). The legacy surface shader multiplies
@@ -25,8 +25,8 @@ export const IMPACT_MIN_WIDTH_PX = 12, IMPACT_MIN_LENGTH_PX = 46;
  * brightest thing in the hit.
  */
 export const SOURCE_HEAT = 0.82;
-export const IMPACT_HEAT = 0.92;
-export const IMPACT_RING_HEAT = 0.58;
+export const IMPACT_HEAT = 1.0;
+export const IMPACT_RING_HEAT = 0.64;
 /** Muzzles that are not the player's own run this much cooler so a crowded fight cannot stack its bloom. */
 export const BYSTANDER_SOURCE_HEAT_SCALE = 0.72;
 
@@ -69,12 +69,12 @@ const SHIELD_CYAN = new THREE.Color(0x9fe8ff);
  * `ribs` adds crossing panel seams (shield contact); hull gouges leave them off.
  */
 const IMPACT_BEATS = Object.freeze({
-  kinetic: Object.freeze({ style: 3, color: BRASS, blades: 3, spread: 0.46, reach: 1.0, bladeWidth: 0.24, ring: 0.85, ringWidth: 0.30, ribs: 0 }),
-  coherent: Object.freeze({ style: 4, color: PALE, blades: 2, spread: 0.18, reach: 1.45, bladeWidth: 0.15, ring: 0.60, ringWidth: 0.13, ribs: 0 }),
-  propulsion: Object.freeze({ style: 1, color: THERMAL, blades: 3, spread: 0.60, reach: 0.80, bladeWidth: 0.30, ring: 1.05, ringWidth: 0.36, ribs: 0 }),
-  induction: Object.freeze({ style: 4, color: VIOLET, blades: 4, spread: 0.66, reach: 1.05, bladeWidth: 0.19, ring: 0.72, ringWidth: 0.15, ribs: 2 }),
-  metric: Object.freeze({ style: 1, color: SHIELD_CYAN, blades: 3, spread: 0.52, reach: 0.90, bladeWidth: 0.24, ring: 1.00, ringWidth: 0.30, ribs: 2 }),
-  reactive: Object.freeze({ style: 0, color: THERMAL, blades: 2, spread: 0.82, reach: 0.58, bladeWidth: 0.46, ring: 0.48, ringWidth: 0.38, ribs: 0 }),
+  kinetic: Object.freeze({ style: 3, color: BRASS, blades: 3, spread: 0.46, reach: 1.22, bladeWidth: 0.27, ring: 0.92, ringWidth: 0.34, ribs: 0 }),
+  coherent: Object.freeze({ style: 4, color: PALE, blades: 2, spread: 0.18, reach: 1.72, bladeWidth: 0.18, ring: 0.66, ringWidth: 0.15, ribs: 0 }),
+  propulsion: Object.freeze({ style: 1, color: THERMAL, blades: 3, spread: 0.60, reach: 1.05, bladeWidth: 0.34, ring: 1.12, ringWidth: 0.40, ribs: 0 }),
+  induction: Object.freeze({ style: 4, color: VIOLET, blades: 4, spread: 0.66, reach: 1.30, bladeWidth: 0.23, ring: 0.82, ringWidth: 0.18, ribs: 2 }),
+  metric: Object.freeze({ style: 1, color: SHIELD_CYAN, blades: 3, spread: 0.52, reach: 1.16, bladeWidth: 0.28, ring: 1.08, ringWidth: 0.34, ribs: 2 }),
+  reactive: Object.freeze({ style: 0, color: THERMAL, blades: 2, spread: 0.82, reach: 0.74, bladeWidth: 0.52, ring: 0.56, ringWidth: 0.42, ribs: 0 }),
 });
 const DEFAULT_BEAT = IMPACT_BEATS.kinetic;
 
@@ -103,6 +103,7 @@ export class WeaponDischargePool {
       alive:false,role:SURFACE_ROLE.SOURCE,kind:IMPACT_KIND.HULL,
       age:0,life:0,x:0,y:0,z:0,angle:0,pitch:0,width:0,length:0,opacity:1,
       source:null,variant:null,ownerId:null,targetId:null,attached:false,slant:0,
+      approachX:NaN,approachZ:NaN,
       tr:1,tg:1,tb:1,priority:0,seed:0,beat:0,cadence:Infinity,pxw:0,
       // Retained target-local anchor of an attached impact. x/y/z/angle/pitch hold the DRAWN world pose.
       lx:0,ly:0,lz:0,langle:0,lpitch:0,heatScale:1,
@@ -171,12 +172,14 @@ export class WeaponDischargePool {
     slot.angle=Math.atan2(pose.az,pose.ax);
     slot.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
     const ip=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
-    slot.width=Math.max(.6,flash.size0,ip*IMPACT_MIN_WIDTH_PX);slot.length=Math.max(1.6,flash.size1*1.8,ip*IMPACT_MIN_LENGTH_PX);
+    slot.width=Math.max(1.0,flash.size0,ip*IMPACT_MIN_WIDTH_PX);slot.length=Math.max(2.8,flash.size1*2.35,ip*IMPACT_MIN_LENGTH_PX);
     slot.opacity=Math.min(1,flash.opacity0/1.2);
     slot.source=null;slot.variant=variant;
     slot.targetId=pose.targetId!=null?pose.targetId:null;
     slot.attached=pose.attached===true;
     slot.slant=Number.isFinite(pose.slant)?pose.slant:0;
+    slot.approachX=Number.isFinite(pose.approachX)?pose.approachX:NaN;
+    slot.approachZ=Number.isFinite(pose.approachZ)?pose.approachZ:NaN;
     slot.tr=Number.isFinite(flash.r)?flash.r:1;
     slot.tg=Number.isFinite(flash.g)?flash.g:1;
     slot.tb=Number.isFinite(flash.b)?flash.b:1;
@@ -435,6 +438,21 @@ export class WeaponDischargePool {
     // hairline. It is a tapered blade (never a disc or card) and it cools with the same envelope,
     // so the eye gets one bright anchor to hang the slit, fan and ring on at the chase camera.
     this._strip(s,lean*.25,0,.04,length*.2,w*(shield?.30:.36),1,0,0,0,-1,0);
+    // A hard hull contact sheds one bright ping along the reflected approach. This is a
+    // short outward spark path after the hit, not a claim that the shot bounced with damage.
+    if (!shield && Number.isFinite(s.approachX) && Number.isFinite(s.approachZ)) {
+      const nx = Math.cos(s.angle), nz = Math.sin(s.angle);
+      const dot = s.approachX * nx + s.approachZ * nz;
+      const rx = s.approachX - 2 * dot * nx;
+      const rz = s.approachZ - 2 * dot * nz;
+      if (Math.hypot(rx, rz) > 1e-5) {
+        const ping = Math.atan2(rz, rx);
+        this._strip(s, ping - .05, 0, .04, length * (.50 + salt(s.seed, 41) * .12),
+          w * (.075 + salt(s.seed, 42) * .02), 1, 0, w * .07, 0, -1, 0);
+        this._strip(s, ping + .13, 0, .03, length * (.20 + salt(s.seed, 43) * .08),
+          w * .040, 1, 0, -w * .08, 0, -1, 0);
+      }
+    }
     for(let k=0;k<beat.blades;k++){
       const fan=beat.blades===1?0:(k/(beat.blades-1)-.5)*2;
       const reach=(.42+.58*salt(s.seed,k))*beat.reach;

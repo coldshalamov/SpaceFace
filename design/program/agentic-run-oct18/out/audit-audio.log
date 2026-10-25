@@ -1,0 +1,39 @@
+I'll read the audio audit packet and run it as written, then print only the findings.The packet is a read-only ear audit. I'll read the ear bar and the audio owners, then hunt for cues that never fire, double-fires, and effects that outlive their owners.The latch path is already guarded. Next I’ll cross-check recipe and sample ids, and look for cues that play twice or keep sounding after their owner is gone.Auto-compacting conversation (81% full)...
+Conversation compacted.
+The recipe cross-check is already done. I'll confirm the remaining audio and effect paths against the current code, then print only the findings report.### F-AV-01
+- symptom: Handing the last of a latched load to a receiver plays the cable-break crack. The delivery itself is silent on the snap, so the only sound is a failure.
+- severity: major
+- route: A receiver takes the last unit of a latched payload (`pickup:collected`). Gameplay clears the live line, cuts the attachment as `accepted` (a quiet reason, so the snap does not play), then emits `tether:broke` with that same reason. The broke listener ignores the reason and plays the crack.
+- owner: src/systems/tetherGameplay.js:_releaseAcceptedLoad/2291 (emit); src/audio/audioSystem.js tether:broke listener/2917. Dirty file: src/audio/audioSystem.js has uncommitted edits; this listener is not in that diff.
+- evidence: `_onLatchedPayloadAcceptance` calls `_releaseAcceptedLoad` when remaining hits 0 (tetherGameplay.js:2222). That cuts with reason `accepted` (2288) and emits `tether:broke` `{ reason: 'accepted' }` (2291). `accepted` is in `TETHER_BREAK_QUIET_REASONS` (presentationOrchestrator.js:1813-1819), so the `tether:broken` listener returns before the snap (audioSystem.js:2885-2888). `combatVerbRecipe('tether:broke')` is `sfx_tether_crack` (combatVerbCues.js:127) and the listener plays it at gain 0.8 with no reason check (audioSystem.js:2917-2919).
+- suggested_fix: In the `tether:broke` listener, return when the reason is in `TETHER_BREAK_QUIET_REASONS` (same set the snap already honors). Do not emit `tether:broke` for an accepted handoff.
+- confidence: high
+
+### F-AV-02
+- symptom: A real massline break plays the snap crack twice on the same tick. The designed snap already contains the crack; the verb voice plays that crack again, and both plays use the `tether_snap` sample when it is loaded.
+- severity: major
+- route: Any non-quiet break (`target_lost`, overload, a hostile cut, a physics break) emits `tether:broken`, which plays `sfx.tetherSnap` (layers: crack + twang). The same break also emits `tether:broke`, which always plays `sfx_tether_crack`. A deliberate `tether_cut` does not take this path.
+- owner: src/audio/audioSystem.js tether:broken/2878 and tether:broke/2917; src/audio/masslineInstrument.js MASSLINE_RECIPES.break/29; src/data/audioRecipes.js sfx.tetherSnap/1830. Dirty file: src/audio/audioSystem.js (the latch dedupe just above this listener is uncommitted; the broke listener is not).
+- evidence: `attachments.cut` calls `breakAttachment` (attachments.js:602-606), which emits `tether:broken` (655). That listener plays the instrument break unless the reason is quiet (audioSystem.js:2885-2888). The break recipe is `sfx.tetherSnap` (masslineInstrument.js:29), whose layers are `sfx_tether_crack` and `sfx_tether_twang` (audioRecipes.js:1830-1834), and `playRecipe` starts each layer (synth.js:354-368). Gameplay then emits a second crack: target loss emits `tether:broke` right after the cut (tetherGameplay.js:482-483); any other non-`tether_cut` reconcile does the same (1393-1394). The broke listener plays `sfx_tether_crack` unconditionally (audioSystem.js:2917-2919; combatVerbCues.js:127). Sample bindings map both `sfx.tetherSnap` and `sfx_tether_crack` to sample `tether_snap` (audioRecipes.js:3840-3842). The same file already skips `tether:latched` when the latch signature spoke this tick, because that signature contains the lock layer (audioSystem.js:2908-2914). The break has no such skip. `presentation.tether.break` is not in the cue map, so the juice cue does not add a third snap (audioSystem.js:1903-1909, 6682-6683).
+- suggested_fix: Make `tether:broke` stand down on a tick that already played `sfx.tetherSnap`, the same way `tether:latched` stands down after `sfx.tetherLatch`. Reconcile should not emit `tether:broke` when `tether:broken` already owns the snap.
+- confidence: high
+
+### F-AV-03
+- symptom: The player's own shield collapse plays the shield-crack burst twice. The crystalline signature and the personal blowout pop both include the same crack layer, and they start together.
+- severity: minor
+- route: `shieldDown` for the player plays `sfx.shieldBreak` and then `sfx_shield_blowout_pop`. Each recipe contains `sfx_shield_break_crack`.
+- owner: src/audio/audioSystem.js shieldDown/2592. Dirty: this stack is the uncommitted edit in src/audio/audioSystem.js. Committed code played the signature only for other ships and the pop plus alarm only for the player.
+- evidence: The handler plays `signature.recipeId` (`sfx.shieldBreak`) for every break, then for the player also plays `sfx_shield_blowout_pop` (audioSystem.js:2584-2595). `sfx.shieldBreak` layers are `sfx_shield_break_crystal` and `sfx_shield_break_crack` (audioRecipes.js:1294-1299). `sfx_shield_blowout_pop` layers are `sfx_shield_blowout_discharge` and `sfx_shield_break_crack` (1301-1307). `playRecipe` sounds every layer (synth.js:354-368). The presentation alias stays silent via `playbackOwnedByRaw` (presentationAdapters.js:569-571; audioSystem.js:6702), so the double is these two plays.
+- suggested_fix: Keep one crack. For the player, play the crystalline signature plus the discharge and the alarm, not the pop recipe that already contains `sfx_shield_break_crack`.
+- confidence: high
+
+### F-AV-04
+- symptom: A line that fails during a real swing also plays the successful-release whoosh. A failure sounds partly like a clean let-go.
+- severity: minor
+- route: Target loss and any non-cut reconcile emit `tether:releaseRated` with no `deliberate` flag. If the swing still grades good or better, the release instrument plays `sfx_massline_release` on top of the snap.
+- owner: src/systems/tetherGameplay.js target-loss/484 and _reconcileActive/1395; src/audio/audioSystem.js:_onMasslineInstrument/6382. Dirty file: src/audio/audioSystem.js (strain-cooldown edits sit in this function; the release play is not those lines).
+- evidence: Target loss emits `tether:releaseRated` from `rateRelease` without `{ deliberate: true }` (tetherGameplay.js:484, 3530-3557). Reconcile does the same on every non-`tether_cut` break (1395). `rateCadenceTechnique` returns `good`, `clean`, or `razor` once the release score is at least 0.35 (masslineControlLaw.js:148-149). `_onMasslineInstrument` passes `payload.classification` and does not read `deliberate` (audioSystem.js:6384-6390, 6420). `resolveMasslineInstrument` sets `play: false` only for a messy or missing class (masslineInstrument.js:186-218); any other class plays `sfx_massline_release` (masslineInstrument.js:28). A deliberate cut is the path that is supposed to carry this voice (tetherGameplay.js:2000, 2023).
+- suggested_fix: Play the release recipe only when `payload.deliberate === true`. Keep emitting the rating so the grade readout still receives it.
+- confidence: high
+
+VERDICT: 4 findings

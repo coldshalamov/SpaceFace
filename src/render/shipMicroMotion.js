@@ -225,6 +225,44 @@ const RECOIL_DEFS = Object.freeze({
   beam:      { kickX: 0.06, pitchRise: 0.008, heatCost: 0.18 },
 });
 
+// Weapon families read differently through the hull. Kinetic and concussive loads
+// physically rock a body; coherent and induction defects mostly shake the frame; thermal
+// and explosive hits sit between. These are presentation multipliers, never damage or force.
+const HIT_REACTION_DEFS = Object.freeze({
+  concussive: Object.freeze({ flinch: 1.80, roll: 1.55, yaw: 2.10, yield: 1.55 }),
+  explosive: Object.freeze({ flinch: 1.45, roll: 1.30, yaw: 1.35, yield: 1.30 }),
+  kinetic: Object.freeze({ flinch: 1.18, roll: 1.12, yaw: 0.82, yield: 1.18 }),
+  thermal: Object.freeze({ flinch: 1.00, roll: 0.92, yaw: 0.45, yield: 0.92 }),
+  coherent: Object.freeze({ flinch: 0.82, roll: 0.72, yaw: 0.30, yield: 0.68 }),
+  induction: Object.freeze({ flinch: 0.90, roll: 0.85, yaw: 0.55, yield: 0.62 }),
+  default: Object.freeze({ flinch: 1.00, roll: 1.00, yaw: 0.55, yield: 1.00 }),
+});
+
+function hitReactionFor(weaponId, damageType) {
+  const id = String(weaponId || '').toLowerCase();
+  const type = String(damageType || '').toLowerCase();
+  if (id.includes('concussion') || id.includes('shunt') || id.includes('bumper') || id.includes('wedge')) {
+    return HIT_REACTION_DEFS.concussive;
+  }
+  if (id.includes('missile') || id.includes('torpedo') || id.includes('bomb') || type === 'explosive') {
+    return HIT_REACTION_DEFS.explosive;
+  }
+  if (id.includes('rail') || id.includes('cannon') || id.includes('slug') || id.includes('driver')
+    || id.includes('autocannon') || id.includes('flak') || id.includes('glaive') || type === 'kinetic') {
+    return HIT_REACTION_DEFS.kinetic;
+  }
+  if (id.includes('emp') || id.includes('disruptor') || id.includes('primer') || type === 'ion') {
+    return HIT_REACTION_DEFS.induction;
+  }
+  if (id.includes('plasma') || id.includes('thermal') || id.includes('cooker') || type === 'thermal') {
+    return HIT_REACTION_DEFS.thermal;
+  }
+  if (id.includes('laser') || id.includes('beam') || id.includes('pulse') || type === 'energy') {
+    return HIT_REACTION_DEFS.coherent;
+  }
+  return HIT_REACTION_DEFS.default;
+}
+
 function resolveRecoilClass(weaponId) {
   const id = String(weaponId || '').toLowerCase();
   if (id.includes('torpedo') || id.includes('missile') || id.includes('bomb') || id.includes('rocket')) {
@@ -631,24 +669,39 @@ export function createShipMicroMotionTracker() {
       || Number(payload.amount) || Number(payload.damage) || 10;
     // approach is the shot's travel; normal is the surface. Either beats a random twitch.
     const hitNormal = payload.hitNormal || payload.approach || payload.normal || null;
+    const reaction = hitReactionFor(
+      payload.weaponId || (payload.origin && (payload.origin.weaponId || payload.origin.id)),
+      payload.damageType,
+    );
 
-    const intensity = Math.min(1.2, Math.max(0.15, dmg / 35.0));
+    // Every hit rocks the hull; the weapon family decides how much of the answer is a
+    // physical roll, a directional yaw swing and a local shape yield.
+    const intensity = Math.min(1.9, Math.max(0.18, dmg / 32.0) * reaction.flinch);
 
     if (hitNormal) {
       const nx = Number(hitNormal.x) || 0;
       const nz = Number(hitNormal.z) || 0;
-      rec.flinchVelRoll += nz * intensity * 3.5;
-      rec.flinchVelPitch += nx * intensity * 2.8;
-      rec.flinchX += nx * intensity * 0.25;
-      rec.flinchZ += nz * intensity * 0.25;
+      rec.flinchVelRoll += nz * intensity * 4.6 * reaction.roll;
+      rec.flinchVelPitch += nx * intensity * 3.8 * reaction.roll;
+      rec.flinchX += nx * intensity * 0.34;
+      rec.flinchZ += nz * intensity * 0.34;
+      // Off-centre contacts twist the model as well as the solver. The sim remains the
+      // sole writer of real heading; this is the visible hull child riding that response.
+      if (payload.targetId !== rememberedPlayerId && payload.pos && rec.px != null && rec.pz != null) {
+        const rx = (Number(payload.pos.x) || 0) - rec.px;
+        const rz = (Number(payload.pos.z) || 0) - rec.pz;
+        const invR = 1 / (Number.isFinite(rec.radius) && rec.radius > 0 ? rec.radius : 12);
+        const leverYaw = clamp((rx * nz - rz * nx) * invR, -1.4, 1.4);
+        rec.impactVelYaw += leverYaw * intensity * 1.9 * reaction.yaw;
+      }
     } else {
       // No contact axis on the receipt: a stable shiver from the hull's own phase,
       // not a fresh random draw, so the same hit reads the same way twice.
       const wobble = Math.sin(rec.idlePhase * 4.1);
-      rec.flinchVelRoll += wobble * intensity * 2.2;
-      rec.flinchVelPitch += Math.cos(rec.idlePhase * 2.7) * intensity * 1.6;
+      rec.flinchVelRoll += wobble * intensity * 2.6 * reaction.roll;
+      rec.flinchVelPitch += Math.cos(rec.idlePhase * 2.7) * intensity * 1.9 * reaction.roll;
     }
-    rec.flinchShudder = Math.min(0.35, rec.flinchShudder + intensity * 0.25);
+    rec.flinchShudder = Math.min(0.48, rec.flinchShudder + intensity * 0.30);
 
     // Collisions already crumple through physics:impact. A second yield here doubles the dent.
     const originKind = payload.origin && payload.origin.kind;
@@ -661,7 +714,7 @@ export function createShipMicroMotionTracker() {
       const nz = hitNormal ? (Number(hitNormal.z) || 0) : 0;
       const pushFwd = nx * cf + nz * sf;
       const pushLat = nx * -sf + nz * cf;
-      let dv = Math.min(80, dmg * 0.55);
+      let dv = Math.min(80, dmg * 0.55) * reaction.yield;
       // The field takes a shield hit; the hull only shivers.
       if (payload.shieldHit && !payload.hullHit) dv *= 0.3;
       noteContactYield(rec, pushFwd, pushLat, dv, rec.mass);

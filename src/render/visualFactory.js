@@ -1,3 +1,4 @@
+import { buildRigWorkshopBody, isRigWorkshopBody } from '../features/rigWorkshop/view.js';
 import { isOrchardFrame, ORCHARD_FRAME_FILE } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
@@ -6513,6 +6514,7 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
     clearReadyPackagedBodies(reason) { readyBodies?.clear(reason); },
     readyPackagedBodyDiagnostics() { return readyBodies?.diagnostics() || { templates: 0, geometryBytes: 0 }; },
     build(e) {
+      if (isRigWorkshopBody(e)) return stampBuiltVisual(buildRigWorkshopBody(e));
       try {
         if (!e) return null;
         if (isBorrowedVoiceRing(e)) {

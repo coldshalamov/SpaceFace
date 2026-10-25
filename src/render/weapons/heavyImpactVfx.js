@@ -46,7 +46,7 @@ export class HeavyImpactVfx {
       role: SURFACE_ROLE.IMPACT, targetId: payload.targetId ?? null, attached: captured.attached,
       x: captured.x, y: captured.y, z: captured.z, angle: Math.atan2(nz, nx),
       pitch: Math.atan2(captured.ny, Math.hypot(nx, nz)), slant,
-      radius: clamp(Math.sqrt(Math.max(1, targetRadius)) * 1.55, 3.2, 8.5),
+      radius: clamp(Math.sqrt(Math.max(1, targetRadius)) * 1.8, 3.8, 10.5),
       seed: weaponEffectSeed((payload.projectileId ?? payload.id ?? payload.targetId ?? 0) + ':' + this.serial++),
     });
     this.live++; this.dirty = true;

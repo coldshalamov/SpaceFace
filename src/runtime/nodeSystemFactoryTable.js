@@ -3,6 +3,7 @@
 // (render/vfx/feel/audio/ui). Avoids the browser registry path (Three.js).
 
 import { isNodeSafeSystemId } from './authoritativeSystemManifest.js';
+import { createProExperienceSystemEntries } from '../features/proExperienceSystems.js';
 import { core } from '../core/coreSystem.js';
 import { runSession } from '../systems/runSession.js';
 import { survivalDraft } from '../systems/survivalDraft.js';
@@ -359,6 +360,10 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['towlineTablePrompt', towlineTablePrompt],
     ['borrowedVoice', borrowedVoice],
     ['borrowedVoicePrompt', borrowedVoicePrompt],
+    // Pro-experience owners (shipbreakingYard, rigWorkshop, salvageTender(+Prompt),
+    // salvageOutfits(+Prompt), industrialDisasters) — node-safe sim entries shared with
+    // the browser registry; shipbreakingYardBrowser stays browser-only by capability.
+    ...createProExperienceSystemEntries(),
     ['emergentPrimitives', emergentPrimitives],
     ['environmentMaterials', environmentMaterials],
     ['environmentalMachinery', environmentalMachinery],

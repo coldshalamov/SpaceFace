@@ -12,6 +12,9 @@ import {
 import { SweptSurfaceBatch } from '../src/render/forceLanguage/sweptSurfaceBatch.js';
 import { createTransientVfxMaterial } from '../src/render/combat/transientVfxMaterials.js';
 import { ExplosionRupture } from '../src/render/combat/explosionRupture.js';
+import { ForceParticleFlow } from '../src/render/vfx/forceParticleFlow.js';
+import { IMPACT_KIND, WeaponDischargePool } from '../src/render/forceLanguage/weaponDischargePool.js';
+import { feel, HS_CAMERA_HOLD_MAX } from '../src/render/feel.js';
 
 function wellBody() {
   const values = new Float32Array(36);
@@ -87,6 +90,65 @@ test('transient buckets use closed event volumes while smoke keeps its density f
   glow.dispose();
   ring.dispose();
   smoke.dispose();
+});
+
+test('affected bodies receive body-local aura parcels and a real contact light', () => {
+  const flow = new ForceParticleFlow(null, { capacity: 12 });
+  const environment = {
+    count: 1,
+    records: [{ x: 4, z: 2, radius: 6, strength: 1, vx: 0, vz: 0, material: 0 }],
+  };
+  const emitted = flow.emit({
+    kind: 'well', x: 0, z: 0, radius: 60, count: 6, life: 0.6, environment,
+  });
+  assert.ok(emitted > 0);
+  const aura = flow.inspect().aura;
+  assert.ok(aura > 0, 'a third of the parcels become body-local aura motes');
+  assert.equal(flow.contactLight.active, true, 'the aura requests a real pooled contact light');
+  assert.ok(flow.contactLight.range >= 56);
+  assert.ok(flow.contactLight.intensity > 3);
+  flow.dispose();
+});
+
+test('an unshielded hull contact adds a reflected ping; a shield does not fake one', () => {
+  const pool = new WeaponDischargePool(new THREE.Scene(), { capacity: 2 });
+  const flash = { life: 0.18, size0: 2, size1: 3, opacity0: 1 };
+  const pose = {
+    x: 0, y: 0.4, z: 0, ax: 1, ay: 0, az: 0,
+    targetId: 9, attached: false, slant: 0.1, approachX: 1, approachZ: 0.35,
+  };
+  pool.spawnImpact(pose, IMPACT_KIND.HULL, 'autocannon', flash, 1);
+  pool.update(0.02);
+  const withPing = pool.mesh.count;
+  for (const slot of pool.slots) slot.alive = false;
+  pool.activeCount = 0;
+  pool.spawnImpact({ ...pose, approachX: NaN, approachZ: NaN }, IMPACT_KIND.HULL, 'autocannon', flash, 1);
+  pool.update(0.02);
+  const withoutPing = pool.mesh.count;
+  assert.ok(withPing > withoutPing, 'the reflected spark path is additional contact geometry');
+  for (const slot of pool.slots) slot.alive = false;
+  pool.activeCount = 0;
+  pool.spawnImpact(pose, IMPACT_KIND.SHIELD, 'autocannon', flash, 1);
+  pool.update(0.02);
+  const shieldWithApproach = pool.mesh.count;
+  for (const slot of pool.slots) slot.alive = false;
+  pool.activeCount = 0;
+  pool.spawnImpact({ ...pose, approachX: NaN, approachZ: NaN }, IMPACT_KIND.SHIELD, 'autocannon', flash, 1);
+  pool.update(0.02);
+  assert.equal(pool.mesh.count, shieldWithApproach,
+    'shield panels answer with seams, not an extra hull ping');
+  pool.dispose();
+});
+
+test('a heavy contact can hold the presented camera for a bounded beat', () => {
+  const holds = [];
+  const host = Object.create(feel);
+  host.state = { render: { cameraCtrl: { hold(seconds) { holds.push(seconds); return true; } } } };
+  assert.equal(host._holdCameraBeat(0.09), true);
+  assert.equal(holds[0], HS_CAMERA_HOLD_MAX);
+  assert.equal(host._holdCameraBeat(0), false);
+  host.state.render = {};
+  assert.equal(host._holdCameraBeat(0.03), false, 'a harness without a camera controller is safe');
 });
 
 test('destruction publishes the same closed carrier through its existing instance contract', () => {
