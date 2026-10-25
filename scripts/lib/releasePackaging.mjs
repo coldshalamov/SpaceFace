@@ -59,10 +59,16 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   // during authoring. Omitting this small JSON subtree rejects otherwise valid GLBs.
   Object.freeze({ source: 'assets/ships/motions', destination: 'assets/ships/motions' }),
   Object.freeze({ source: 'assets/portraits', destination: 'assets/portraits' }),
-  // The entire authored audio tree ships: SAMPLE_MANIFEST sfx, generated bark voice lines, and
-  // music beds are all fetched from assets/audio/** at runtime (sampleLibrary.js, barkVoice.js).
+  // The authored audio tree ships: SAMPLE_MANIFEST sfx, bark_* register clips, and music beds
+  // are all fetched from assets/audio/** at runtime (sampleLibrary.js, barkVoice.js).
   // Omitting it silently degrades the retail build to synth-only voices.
-  Object.freeze({ source: 'assets/audio', destination: 'assets/audio' }),
+  // Excluded: voice/line_* (the byte-pinned delivered corpus — acceptance artifacts verified on
+  // disk by pq-158 tests, never fetched; ~120 MiB) and voice/blind/ (unlabeled check fixtures).
+  Object.freeze({
+    source: 'assets/audio',
+    destination: 'assets/audio',
+    exclude: ['voice/line_', 'voice/blind/'],
+  }),
   // Runtime plume/RCS masks are loaded through template paths in vfx.js. Copy only this manifest-
   // governed subtree; the labelled FX reference sheets in assets/fx/ remain authoring-only.
   Object.freeze({ source: 'assets/fx/thruster', destination: 'assets/fx/thruster' }),
@@ -177,6 +183,10 @@ export async function createReleaseCopyPlans({
       : [];
     if (projection !== 'exact' && projection !== RENDER_PACKAGE_SOURCE_PROJECTION) {
       throw new Error(`unknown release copy projection ${projection}`);
+    }
+    if (mapping.exclude != null) {
+      omissions.push(...await collectExcludedOmissions(projectRoot, mapping));
+      omissions.sort((a, b) => lexicalCompare(a.path, b.path));
     }
     plans.push({ mapping, projection, omissions });
   }
@@ -340,6 +350,28 @@ function digestFileRecords(inputFiles) {
     hash.update(file.sha256); hash.update('\n');
   }
   return { files, bytes, digest: hash.digest('hex') };
+}
+
+async function collectExcludedOmissions(projectRoot, mapping) {
+  const prefixes = mapping.exclude.map((entry) => {
+    const rel = safeRelativePath(String(entry).replace(/\/+$/, ''), 'release copy exclude');
+    if (!rel) throw new Error('release copy exclude entries must be non-empty');
+    return rel;
+  });
+  const sourceRoot = resolveContained(projectRoot, mapping.source, 'release copy source');
+  const files = [];
+  await walk(sourceRoot, sourceRoot, files, new Set());
+  const omissions = files.filter((f) => prefixes.some((prefix) => f.path.startsWith(prefix)));
+  const matched = new Set();
+  for (const f of omissions) {
+    for (const prefix of prefixes) if (f.path.startsWith(prefix)) matched.add(prefix);
+  }
+  for (const prefix of prefixes) {
+    if (!matched.has(prefix)) {
+      throw new Error(`release copy exclude '${prefix}' matches nothing under ${mapping.source} — stale rule or renamed tree`);
+    }
+  }
+  return omissions;
 }
 
 async function renderPackageSourceOmissions(projectRoot, mapping, pilots) {

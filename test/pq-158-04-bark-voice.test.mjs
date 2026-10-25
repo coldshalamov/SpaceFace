@@ -1,6 +1,6 @@
 // test/pq-158-04-bark-voice.test.mjs — PQ-158.04 leaf gate.
 //
-// DONE WHEN: all 271 lines through the pipeline; subtitles; determinism untouched.
+// DONE WHEN: every corpus line through the pipeline (BARK_CORPUS_TARGET-pinned); subtitles; determinism untouched.
 // Seed 15804. Eight faction registers + mechanic. Directed synthetic voice, no recorded actors.
 
 import test from 'node:test';

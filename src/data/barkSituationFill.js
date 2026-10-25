@@ -1342,7 +1342,7 @@ export const BARK_SITUATION_FILL = {
 export const BARK_CELL_MIN = 12;
 
 /** Push house lines onto each situation, whole cell, deduped. Index 0 stays.
- *  Returns the ids of any touched cells still under minLength — a corpus gap to fill,
+ *  Returns the ids of every iterated cell still under minLength — a corpus gap to fill,
  *  asserted empty by test/bark-fill-reachability.test.mjs. */
 export function topUpBarkSituationCells(barks, factions, situations, eventSituations, minLength = BARK_CELL_MIN) {
   const keys = [];
@@ -1352,10 +1352,10 @@ export function topUpBarkSituationCells(barks, factions, situations, eventSituat
   for (const factionId of factions) {
     const pack = barks && barks[factionId];
     const fill = BARK_SITUATION_FILL[factionId];
-    if (!pack || !fill) continue;
+    if (!pack) continue;
     for (const situation of keys) {
       const cell = pack[situation];
-      const extra = fill[situation];
+      const extra = fill && fill[situation];
       if (Array.isArray(cell) && Array.isArray(extra)) {
         const seen = new Set(cell);
         for (const line of extra) {
