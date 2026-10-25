@@ -1235,7 +1235,7 @@ attention rows fill the surfaces).
 | 563 | X-05 | Law/consequence persists past the rail — heat, wanted, witnesses in sandbox | BUILD | OPEN |
 | 564 | X-06 | Per-sector bark banks so ambient comms register outside the rail (joint with ledger V-01) | BUILD | OPEN |
 | 565 | X-07 | Mining payoff surface — seam/overheat skill variance | BUILD | landed f903289329 devin-lanea (audit✓3 plan✓3; impl review pending) |
-| 566 | X-08 | Sling income verb — authored thrown-mass kill payoff | BUILD | OPEN |
+| 566 | X-08 | Sling income verb — authored thrown-mass kill payoff | BUILD | landed 414d4ea94b devin-lanea (audit✓3 plan✓3; impl review pending) |
 | 567 | X-09 | Per-cause death lessons beyond massline-snap (joint with ledger V-04) | BUILD | landed 94909073cd devin-lanea (audit✓3 plan✓3; impl review pending) |
 
 ### Landed rows index (consolidated 2026-10-15)
