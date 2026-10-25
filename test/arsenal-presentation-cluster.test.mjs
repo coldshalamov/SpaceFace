@@ -131,22 +131,29 @@ test('a press on a socket is passed to the flight canvas, once, unchanged', () =
   try {
     view = mount(state, t);
     const socket = socketOf(view.root, 'Pull');
-    const press = { button: 0, buttons: 1, clientX: 84, clientY: 641 };
-    for (const fn of socket.listeners.mousedown || []) fn(press);
-    assert.equal(t.canvas.dispatched.length, 1, 'the press reaches the canvas the input owner listens on');
-    const forwarded = t.canvas.dispatched[0];
-    assert.equal(forwarded.type, 'mousedown');
-    assert.equal(forwarded.button, 0);
-    assert.equal(forwarded.clientX, 84);
-    assert.equal(forwarded.clientY, 641);
-    assert.equal(passPressToFlight(forwarded, t.doc), false, 'a forwarded press is never forwarded again');
+    // A real press arrives as pointerdown then mousedown: the input owner listens for the mouse press, the
+    // world-object gesture (right-button select / mine) for the pointer press. Both reach the canvas.
+    let prevented = 0;
+    const press = (type, init) => { for (const fn of socket.listeners[type] || []) fn({ type, preventDefault() { prevented += 1; }, ...init }); };
+    press('pointerdown', { button: 0, buttons: 1, clientX: 84, clientY: 641, pointerId: 1, pointerType: 'mouse' });
+    press('mousedown', { button: 0, buttons: 1, clientX: 84, clientY: 641 });
+    assert.deepEqual(t.canvas.dispatched.map((ev) => ev.type), ['pointerdown', 'mousedown'], 'the press reaches the canvas the owners listen on');
+    for (const forwarded of t.canvas.dispatched) {
+      assert.equal(forwarded.button, 0);
+      assert.equal(forwarded.clientX, 84);
+      assert.equal(forwarded.clientY, 641);
+      assert.equal(forwarded.bubbles, false, 'a forwarded press does not bubble a second time');
+    }
+    assert.equal(t.canvas.dispatched[0].pointerId, 1);
+    assert.equal(prevented, 1, 'only the mouse press is prevented: that is what stops the socket taking keyboard focus from flight');
+    assert.equal(passPressToFlight(t.canvas.dispatched[1], t.doc), false, 'a forwarded press is never forwarded again');
     // the right button (mining) passes too; and the socket swallows the browser menu
-    for (const fn of socket.listeners.mousedown || []) fn({ button: 2, buttons: 2, clientX: 10, clientY: 11 });
-    assert.equal(t.canvas.dispatched.length, 2);
-    assert.equal(t.canvas.dispatched[1].button, 2);
-    let prevented = false;
-    for (const fn of socket.listeners.contextmenu || []) fn({ preventDefault() { prevented = true; } });
-    assert.equal(prevented, true);
+    press('mousedown', { button: 2, buttons: 2, clientX: 10, clientY: 11 });
+    assert.equal(t.canvas.dispatched.length, 3);
+    assert.equal(t.canvas.dispatched[2].button, 2);
+    let menu = false;
+    for (const fn of socket.listeners.contextmenu || []) fn({ preventDefault() { menu = true; } });
+    assert.equal(menu, true);
     // labels and counts never take the cursor
     const css = findAll(t.doc.head, (n) => n.id === 'sf-orrery-cluster-style')[0]?.textContent || '';
     assert.match(css, /\.orr-cluster__keytag, \.orr-cluster__count \{ pointer-events:none; \}/);

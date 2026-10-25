@@ -170,21 +170,27 @@ function injectStyle(doc = globalThis.document) {
 
 /**
  * A socket is a readout: it answers hover and focus, but a press on it is the pilot firing or mining.
- * The flight input listens on the game canvas, so a press that lands on a socket would be swallowed —
- * reading a tip must never cost a shot. Re-dispatch the press on the canvas, unchanged.
+ * The flight input listens for `mousedown` on the game canvas and the world-object gesture (RMB select /
+ * mine) for `pointerdown`, so a press that lands on a socket would be swallowed — reading a tip must never
+ * cost a shot. Re-dispatch the press on the canvas, unchanged and non-bubbling (the real one still
+ * bubbles to whoever listens above the socket).
  */
 export function passPressToFlight(e, doc = globalThis.document) {
   if (!e || e.__sfPassedToFlight === true) return false;
   const canvas = doc && typeof doc.getElementById === 'function' ? doc.getElementById('gl-canvas') : null;
   if (!canvas || typeof canvas.dispatchEvent !== 'function') return false;
+  const type = e.type === 'pointerdown' ? 'pointerdown' : 'mousedown';
   const fields = ['clientX', 'clientY', 'screenX', 'screenY', 'button', 'buttons', 'ctrlKey', 'shiftKey', 'altKey', 'metaKey'];
+  if (type === 'pointerdown') fields.push('pointerId', 'pointerType', 'isPrimary', 'width', 'height', 'pressure');
+  const Ctor = type === 'pointerdown' && typeof globalThis.PointerEvent === 'function' ? globalThis.PointerEvent
+    : (typeof globalThis.MouseEvent === 'function' ? globalThis.MouseEvent : null);
   let forwarded;
-  if (typeof globalThis.MouseEvent === 'function') {
-    const init = { bubbles: true, cancelable: true, view: globalThis.window };
+  if (Ctor) {
+    const init = { bubbles: false, cancelable: true, view: globalThis.window };
     for (const f of fields) if (e[f] !== undefined) init[f] = e[f];
-    forwarded = new globalThis.MouseEvent('mousedown', init);
+    forwarded = new Ctor(type, init);
   } else if (typeof globalThis.Event === 'function') {
-    forwarded = new globalThis.Event('mousedown', { bubbles: true, cancelable: true });
+    forwarded = new globalThis.Event(type, { bubbles: false, cancelable: true });
     for (const f of fields) if (e[f] !== undefined) forwarded[f] = e[f];
   } else return false;
   forwarded.__sfPassedToFlight = true;
@@ -376,7 +382,13 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const mkSocket = ({ node, icon, label, sub, id = '', tip = '', power = '' }) => {
     const k = el('div', `orr-cluster__key${node ? ' is-node' : ''}`);
     k.setAttribute('tabindex', '0');
-    k.addEventListener('mousedown', (e) => passPressToFlight(e));
+    k.addEventListener('pointerdown', (e) => passPressToFlight(e));
+    k.addEventListener('mousedown', (e) => {
+      passPressToFlight(e);
+      // A readout must not take keyboard focus from flight: input drops flight keys while a focused element
+      // sits inside #ui-root (isUiCommandTarget). Hover reveal and Tab focus are unaffected.
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    });
     // no browser menu over a readout either: the right button is the mining beam
     k.addEventListener('contextmenu', (e) => { if (e && typeof e.preventDefault === 'function') e.preventDefault(); });
     if (id) k.setAttribute(node ? 'data-group' : 'data-slot', id);
