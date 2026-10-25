@@ -23,6 +23,7 @@ import path from 'node:path';
 
 import {
   BARK_CORPUS_TARGET,
+  BARK_VOICE_SEED,
   BARK_UTTERANCE_SECONDS,
   DELIVERED_WAV_SECONDS,
   MECHANIC_LINES,
@@ -56,6 +57,10 @@ const writeAll = argv.includes('--all');
 // and only ever deletes files the pipeline provably does not own under voice/. It is
 // disabled under --check so the verify-only mode never mutates the tree.
 const pruneStrays = argv.includes('--prune') && !checkOnly;
+if (argv.includes('--prune') && !writeAll) {
+  console.error('--prune only applies to --all');
+  process.exit(2);
+}
 
 function wavFromPcm(pcm) {
   return encodeWavPcm16(pcm, SR);
@@ -106,7 +111,7 @@ if (corpus !== BARK_CORPUS_TARGET || pipeline.length !== BARK_CORPUS_TARGET) {
 }
 
 if (catalogOnly) {
-  console.log(`PQ-158.04 catalog seed=${15804} lines=${pipeline.length} mechanic=${mechanic.length}`);
+  console.log(`PQ-158.04 catalog seed=${BARK_VOICE_SEED} lines=${pipeline.length} mechanic=${mechanic.length}`);
   for (const row of pipeline) {
     console.log(`${row.factionId}\t${row.situation}\t${row.speech.f0}\t${row.speech.rate}\t${row.caption}`);
   }
@@ -172,7 +177,7 @@ if (mismatches.length) {
   process.exitCode = 1;
 } else {
   console.log(
-    `PQ-158.04 seed=15804 corpus=${pipeline.length}/${BARK_CORPUS_TARGET} `
+    `PQ-158.04 seed=${BARK_VOICE_SEED} corpus=${pipeline.length}/${BARK_CORPUS_TARGET} `
     + `registers=${Object.keys(FACTION_VOICE_REGISTERS).length} mechanic=${mechanic.length} `
     + `wavs=${jobs.length} blind=${BLIND_REGISTER_CLIPS.length}${checkOnly ? ' (verified)' : ''}`,
   );
