@@ -316,6 +316,59 @@ test('a contact carrying a hull defId resolves its class glyph through the ship 
   }
 });
 
+test('the HUD fixture clones DOM state without sharing descendants or listeners', () => {
+  const document = new HudDocument();
+  const source = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  source.setAttribute('stroke', 'currentColor');
+  source.setAttribute('class', 'original');
+  source.classList.add('live');
+  source.style.setProperty('--tone', 'cyan');
+  source.dataset.kind = 'travel';
+  source.id = 'travel';
+  source.hidden = true;
+  source.innerHTML = '<text>label</text>';
+  source.append('tail');
+  source.addEventListener('click', () => {});
+  document.body.appendChild(source);
+
+  const shallow = source.cloneNode();
+  assert.ok(shallow !== source);
+  assert.ok(shallow.ownerDocument === document);
+  assert.equal(shallow.namespaceURI, source.namespaceURI);
+  assert.equal(shallow.tagName, source.tagName);
+  assert.equal(shallow.parentNode, null);
+  assert.equal(shallow.children.length, 0, 'cloning is shallow by default');
+  assert.equal(shallow.innerHTML, '');
+  assert.equal(shallow.getAttribute('stroke'), 'currentColor');
+  assert.equal(shallow.classList.contains('live'), true, 'copy the current class list');
+  assert.equal(shallow.style['--tone'], 'cyan');
+  assert.equal(shallow.dataset.kind, 'travel');
+  assert.equal(shallow.id, 'travel');
+  assert.equal(shallow.hidden, true);
+  assert.equal(clickListeners(shallow), 0, 'addEventListener handlers are not cloned');
+  shallow.setAttribute('stroke', 'red');
+  shallow.classList.remove('live');
+  shallow.style.setProperty('--tone', 'red');
+  shallow.dataset.kind = 'other';
+  assert.equal(source.getAttribute('stroke'), 'currentColor');
+  assert.equal(source.classList.contains('live'), true);
+  assert.equal(source.style['--tone'], 'cyan');
+  assert.equal(source.dataset.kind, 'travel');
+
+  const deep = source.cloneNode(true);
+  assert.equal(deep.textContent, 'labeltail');
+  assert.equal(deep.innerHTML, source.innerHTML);
+  for (let i = 0; i < source.children.length; i++) {
+    assert.ok(deep.children[i] !== source.children[i]);
+    assert.ok(deep.children[i].parentNode === deep);
+    assert.ok(source.children[i].parentNode === source);
+  }
+  assert.ok(deep.children[0].children[0] !== source.children[0].children[0]);
+  deep.children[0].textContent = 'changed';
+  deep.children[1].textContent = 'changed';
+  assert.equal(source.textContent, 'labeltail', 'element and text descendants are independent');
+});
+
 // ---------------------------------------------------------------------------------------------
 // fixture
 
@@ -497,11 +550,13 @@ class HudText {
   constructor(text) { this.nodeType = 3; this._text = text; this.parentNode = null; }
   get textContent() { return this._text; }
   set textContent(value) { this._text = String(value); }
+  cloneNode() { return new HudText(this._text); }
 }
 
 class HudElement {
-  constructor(document, tagName) {
+  constructor(document, tagName, namespaceURI = 'http://www.w3.org/1999/xhtml') {
     this.ownerDocument = document;
+    this.namespaceURI = namespaceURI;
     this.tagName = String(tagName).toUpperCase();
     this.nodeType = 1;
     this.children = [];
@@ -522,6 +577,22 @@ class HudElement {
   }
   get className() { return this._className; }
   set className(value) { this._className = String(value || ''); this.classList.reset(this._className); }
+  cloneNode(deep = false) {
+    const clone = new HudElement(this.ownerDocument, this.tagName, this.namespaceURI);
+    for (const [name, value] of this.attributes) clone.setAttribute(name, value);
+    // The shim stores these reflected properties separately from its attribute map.
+    clone.id = this.id;
+    clone.className = [...this.classList.values].join(' ');
+    clone.hidden = this.hidden;
+    Object.assign(clone.style, this.style);
+    Object.assign(clone.dataset, this.dataset);
+    // Like the DOM, clones are detached and never inherit addEventListener handlers.
+    if (deep) {
+      clone._innerHTML = this._innerHTML;
+      for (const child of this.children) clone.appendChild(child.cloneNode(true));
+    }
+    return clone;
+  }
   get innerHTML() { return this._innerHTML; }
   set innerHTML(value) {
     this._innerHTML = String(value || '');
@@ -621,7 +692,7 @@ class HudDocument {
   }
   createElement(tagName) { return new HudElement(this, tagName); }
   createTextNode(text) { return new HudText(String(text)); }
-  createElementNS(_ns, tagName) { return this.createElement(tagName); }
+  createElementNS(namespaceURI, tagName) { return new HudElement(this, tagName, namespaceURI); }
   getElementById(id) { return findElement([this.head, this.body], (node) => node.id === id); }
   querySelector(selector) { return this.head.querySelector(selector) || this.body.querySelector(selector); }
   querySelectorAll(selector) { return [...this.head.querySelectorAll(selector), ...this.body.querySelectorAll(selector)]; }
