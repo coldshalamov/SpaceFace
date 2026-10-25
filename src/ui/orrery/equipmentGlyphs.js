@@ -1,7 +1,7 @@
 // Authored equipment silhouettes for the Crucible. These are SVG source assets, not an icon font.
 // Every object shares a 128-unit optical frame; silhouettes describe a FUNCTION, not a fictional
 // model render. Known hulls continue to use their produced hull posters. No fetch or render loop.
-import { arsenalGlyph } from './arsenalGlyphs.js';
+import { arsenalGlyph, arsenalIcon } from './arsenalGlyphs.js';
 const p = (d, fill = false) => ({ tag: 'path', d, ...(fill ? { fill: 'currentColor', 'fill-opacity': '.12' } : {}) });
 const c = (cx, cy, r) => ({ tag: 'circle', cx, cy, r });
 export const EQUIPMENT_GLYPHS = Object.freeze({
@@ -61,7 +61,9 @@ export function equipmentKind(spec = {}) {
   if (id === 'weapon') return 'cannon';
   if (id === 'engine') return 'engine';
   return ({ Weapons: 'cannon', Defense: 'shield', Motion: 'engine', Bay: 'cargo',
-    Prospecting: 'mining', Hulls: 'hull', Service: 'repair' })[spec.category] || 'module';
+    Prospecting: 'mining', Hulls: 'hull', Service: 'repair' })[spec.category]
+    || ({ shield: 'shield', engine: 'engine', thruster: 'engine', cargo: 'cargo', mining: 'mining', weapon: 'cannon' })[spec.slotType]
+    || 'module';
 }
 
 /**
@@ -92,4 +94,20 @@ export function equipmentSvg(spec = {}, doc = globalThis.document) {
     svg.appendChild(node);
   }
   return svg;
+}
+
+/**
+ * The same fallback as a markup string, for the screens that build HTML (the shipworks rows): the item's
+ * own authored mark when there is one, otherwise its FAMILY's generic mark — dashed, class `is-family`,
+ * `data-glyph-source="family"` — so a row with no authored drawing still has a mark, and never one that
+ * passes for an authored identity.
+ */
+export function equipmentIcon(spec = {}, size = 24) {
+  const own = arsenalIcon(typeof spec === 'string' ? spec : spec.defId || spec.id, size);
+  if (own) return own;
+  const kind = equipmentKind(spec);
+  const paths = EQUIPMENT_GLYPHS[kind] || EQUIPMENT_GLYPHS.module;
+  const dimension = Number.isFinite(Number(size)) ? Math.max(8, Math.min(128, Number(size))) : 24;
+  const body = paths.map(({ tag, ...attrs }) => `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ')}/>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="dp-icon arsenal-icon is-family" viewBox="0 0 128 128" width="${dimension}" height="${dimension}" fill="none" stroke="currentColor" stroke-width="5" stroke-dasharray="14 9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" data-glyph-source="family" data-glyph="${kind}">${body}</svg>`;
 }

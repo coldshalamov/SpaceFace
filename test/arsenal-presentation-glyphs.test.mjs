@@ -8,7 +8,7 @@ import { ARSENAL_IDENTITIES } from '../src/data/arsenalIdentity.js';
 import {
   ARSENAL_GLYPHS, ARSENAL_TOOL_IDS, arsenalGlyph, arsenalGlyphFamily, arsenalGlyphKey, arsenalGlyphSource, arsenalIcon,
 } from '../src/ui/orrery/arsenalGlyphs.js';
-import { equipmentGlyphSource, equipmentSvg } from '../src/ui/orrery/equipmentGlyphs.js';
+import { equipmentGlyphSource, equipmentIcon, equipmentSvg } from '../src/ui/orrery/equipmentGlyphs.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { MODULES } from '../src/data/modules.js';
 import { BOMB_DEFS } from '../src/data/bombs.js';
@@ -116,6 +116,27 @@ test('every weapon, bomb, field, power and call-in has an authored mark; every m
     }
   }
   assert.ok(family > 0, 'the audit saw real generic fittings');
+});
+
+test('the shipworks rows draw every module: its authored mark, or a dashed family mark that says so', () => {
+  let authored = 0, family = 0;
+  for (const mod of MODULES) {
+    const markup = equipmentIcon(mod, 24);
+    assert.ok(markup.startsWith('<svg'), `${mod.id} always has a mark`);
+    assert.doesNotMatch(markup, /<text|<filter|<animate|<image/);
+    if (arsenalGlyph(mod.id)) {
+      authored += 1;
+      assert.ok(markup.includes(`data-arsenal="${mod.id}"`), `${mod.id}: the row draws its own authored mark`);
+      assert.doesNotMatch(markup, /is-family|data-glyph-source="family"/);
+    } else {
+      family += 1;
+      assert.match(markup, /class="dp-icon arsenal-icon is-family"/, `${mod.id}: a generic mark is classed as one`);
+      assert.match(markup, /data-glyph-source="family"/);
+      assert.match(markup, /stroke-dasharray="/, `${mod.id}: and drawn dashed`);
+      assert.doesNotMatch(markup, /data-arsenal=/, `${mod.id}: a generic mark never claims the item's identity`);
+    }
+  }
+  assert.ok(authored > 10 && family > 10, `both kinds are present (${authored} authored, ${family} family)`);
 });
 
 test('the rail speaks only in authored marks, and the primary-weapon entry shows the fitted weapon itself', () => {
