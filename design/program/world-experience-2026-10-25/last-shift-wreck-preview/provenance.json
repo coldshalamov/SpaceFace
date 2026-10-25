@@ -1,0 +1,144 @@
+{
+  "kind": "isolated exported-package CPU close-up",
+  "commit": "878409729c815a17e9959e488f715e89d2dd0cc2",
+  "entityId": 947,
+  "occupantGeneration": 219,
+  "clue": "fairlead",
+  "selector": "FNV1a(String(id)) % 6",
+  "hash": 1287714325,
+  "bankIndex": 1,
+  "sourceUrl": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb",
+  "renderUrl": "assets/ships/release/render-packages/aftermath-aft-cockpit-section/render.glb",
+  "renderBlob": "382fa3155ce9f11488c70a1acf65705aa57fd826",
+  "sha256": "d4df5f01d5afce0b79dcda38267ae8e50085f2b43ccff95a94e1f4a82913df23",
+  "bytes": 279720,
+  "bindingMeaning": "Current generic wreck appearance selected by actual native entity ID; not a custom fairlead model. No other clue identities or captured layout inferred.",
+  "maps": [
+    {
+      "name": "forge_panel_normal",
+      "width": 1024,
+      "height": 1024,
+      "ktxBytes": 29332,
+      "rgbaSha256": "9cfb60d57542ff1203368ec0c011357124aeeedb0b5efb6c14d02dc58dae7998",
+      "pngBytes": 36134
+    },
+    {
+      "name": "forge_panel_orm",
+      "width": 1024,
+      "height": 1024,
+      "ktxBytes": 21717,
+      "rgbaSha256": "805280b6c64caf247d5d12ca034fd5eacf552aaca0ec5467b5b94bbc84feb93c",
+      "pngBytes": 19857
+    },
+    {
+      "name": "forge_panel_albedo",
+      "width": 1024,
+      "height": 1024,
+      "ktxBytes": 22990,
+      "rgbaSha256": "73038b9e4edd38fb68126eafdb92b9f46e1120afaae55fdfe928ed3ddb562090",
+      "pngBytes": 23073
+    },
+    {
+      "name": "forge_machinery_normal",
+      "width": 512,
+      "height": 512,
+      "ktxBytes": 5381,
+      "rgbaSha256": "ce8ec25d60c9e4a84d3d3d40cd1700ef0645b3d564139024aedae2b529c84f8f",
+      "pngBytes": 8455
+    },
+    {
+      "name": "forge_machinery_orm",
+      "width": 512,
+      "height": 512,
+      "ktxBytes": 13407,
+      "rgbaSha256": "77de2342cfef1188fa52c8f3603a339f70dd9ecc706516fc560d2db1cf3537d7",
+      "pngBytes": 17331
+    },
+    {
+      "name": "forge_machinery_albedo",
+      "width": 512,
+      "height": 512,
+      "ktxBytes": 10835,
+      "rgbaSha256": "8b5c86c40b9574461270a12858cabd7f84ea316cbf64055885a6bf9b3918ef6d",
+      "pngBytes": 6243
+    }
+  ],
+  "blender": {
+    "blender": "4.3.2",
+    "engine": "Cycles CPU",
+    "samples": 32,
+    "denoise": false,
+    "visibleMeshes": 28,
+    "triangles": 4956,
+    "images": [
+      {
+        "name": "forge_machinery_albedo",
+        "size": [
+          512,
+          512
+        ],
+        "colorSpace": "sRGB"
+      },
+      {
+        "name": "forge_machinery_normal",
+        "size": [
+          512,
+          512
+        ],
+        "colorSpace": "Non-Color"
+      },
+      {
+        "name": "forge_machinery_orm",
+        "size": [
+          512,
+          512
+        ],
+        "colorSpace": "Non-Color"
+      },
+      {
+        "name": "forge_panel_albedo",
+        "size": [
+          1024,
+          1024
+        ],
+        "colorSpace": "sRGB"
+      },
+      {
+        "name": "forge_panel_normal",
+        "size": [
+          1024,
+          1024
+        ],
+        "colorSpace": "Non-Color"
+      },
+      {
+        "name": "forge_panel_orm",
+        "size": [
+          1024,
+          1024
+        ],
+        "colorSpace": "Non-Color"
+      }
+    ],
+    "camera": {
+      "position": [
+        25.0,
+        -33.0,
+        25.0
+      ],
+      "target": [
+        0,
+        0,
+        0.4
+      ],
+      "orthoScale": 48
+    },
+    "lighting": "neutral world plus two area lights; no game lighting",
+    "ao": "Authored AO retained in importer settings socket but NOT applied to shading; no base-color multiplication"
+  },
+  "limits": "Offline CPU studio reconstruction. Authored AO not applied; no live lighting/post or visual acceptance. Original package mesh, UVs, material assignments and factors retained. All model bytes and decode data remained RAM. Only JPEG and provenance written.",
+  "image": {
+    "bytes": 36053,
+    "sha256": "61f005c90ecd23ebea80d7beb1552d4c83b1f642173b9ae1310ff6ff2f37db3c"
+  }
+}
