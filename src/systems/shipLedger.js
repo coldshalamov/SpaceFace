@@ -1568,7 +1568,9 @@ export function serializeShipLedgerBoard(state) {
  * Restore the board from serialized input. Missing/absent `board` leaves `state.shipLedger`
  * untouched (old saves stay lazy). Present input is validated: pins are nonempty string ids
  * (deduped, capped), links are canonical string pairs whose endpoints are pinned, with
- * self-links, duplicates, and malformed rows dropped rather than trusted.
+ * self-links, duplicates, and malformed rows dropped rather than trusted. Surviving pins are
+ * then re-checked against `admissibleLedgerEvidence` — a pin whose evidence never landed in the
+ * restored state drops, and every link that needed it drops with it.
  */
 export function deserializeShipLedgerBoard(data, state) {
   if (!isRecord(data) || !Object.hasOwn(data, 'board')) return false;
@@ -1598,6 +1600,28 @@ export function deserializeShipLedgerBoard(data, state) {
   const board = ensureLedgerBoard(state);
   board.pins = pins;
   board.links = links;
+  return true;
+}
+
+/**
+ * Re-validate a restored board against the evidence the restored state actually earned: a pin
+ * only survives when a real acquisition route surfaces its page — a pin whose evidence never
+ * landed drops, and every link that needed it drops with it. The save system calls this after
+ * deserializeShipLedgerBoard once the evidence sources are live; the deserialize itself stays a
+ * pure shape round trip.
+ */
+export function revalidateShipLedgerBoard(state) {
+  const board = state && state.shipLedger && isRecord(state.shipLedger.board)
+    ? state.shipLedger.board : null;
+  if (!board) return false;
+  const pins = Array.isArray(board.pins) ? board.pins : [];
+  const links = Array.isArray(board.links) ? board.links : [];
+  const admissible = admissibleLedgerEvidence(state);
+  const kept = pins.filter((id) => admissible.has(id));
+  if (kept.length === pins.length) return true;
+  const keptSet = new Set(kept);
+  board.pins = kept;
+  board.links = links.filter((link) => keptSet.has(link[0]) && keptSet.has(link[1]));
   return true;
 }
 

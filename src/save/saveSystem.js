@@ -1,3 +1,6 @@
+import { shipbreakingYardSavePlanEntry, serializeShipbreakingYardSteps, restoreShipbreakingYardSteps, afterContinueShipbreakingYard } from '../features/shipbreakingYard/save.js';
+import { captureIndustrialDisasters, restoreIndustrialDisasters, validateIndustrialDisastersSave } from '../features/industrialDisasters/saveAdapter.js';
+import { rigWorkshopSavePlanEntry, captureRigWorkshopSaveSlot, restoreRigWorkshopSaveSlot } from '../features/rigWorkshop/integration.js';
 import { validateNativeAttestationTables, compactNativeAttestationTables } from './nativeAttestationTables.js';
 import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
 // save system (ARCHITECTURE §4.5 + design/specs/11). Owns serialization: assembles a versioned
@@ -36,6 +39,7 @@ import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
 import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { stationLifeSaveProjection } from '../systems/stationContactLoadBoundary.js';
+import { serializeShipLedgerBoard, deserializeShipLedgerBoard, revalidateShipLedgerBoard } from '../systems/shipLedger.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import { laneCommandSink, laneBusEmit } from '../core/simLaneCommands.js';
@@ -890,6 +894,7 @@ export const save = {
       ['ruud', () => this._callSerialize('ruud') || {}],
       ['docket', () => this._callSerialize('docket') || {}],
       ['salvage', () => this._callSerialize('salvage') || {}],
+      ['salvageOutfits', () => this._callSerialize('salvageOutfits')],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
       // stripped pod re-promotes as a live one.
@@ -908,6 +913,7 @@ export const save = {
       ['world', () => this._callSerialize('world') || {}],
       ['entities', () => this._serializeEntities()],
       ['combat', () => serializeCombatState(state)],
+      rigWorkshopSavePlanEntry(this.registry),
       // SG-02 world snapshot (solver warm-start, islands, contacts) — entity scalars alone
       // cannot rebuild a bit-identical world, and reload determinism hinges on it.
       ['physics', () => this._serializeNativePhysics()],
@@ -968,6 +974,8 @@ export const save = {
       ['palletJack', () => this._callSerialize('palletJack')],
       ['secondRinse', () => this._callSerialize('secondRinse')],
       ['towlineTable', () => this._callSerialize('towlineTable')],
+      shipbreakingYardSavePlanEntry(this),
+      ['industrialDisasters', () => captureIndustrialDisasters(this)],
       ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
       ['provenance', () => this._serializeBoundedMemory('provenance')],
@@ -981,6 +989,9 @@ export const save = {
       ['fieldDepletion', () => this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {})],
       ['livingPoiBehaviors', () => this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {})],
       ['signalInvestigation', () => this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {})],
+      // GOLD-LEDGER (row 444): the player-authored evidence board — absent key keeps an
+      // untouched run lazy; evidence re-validation happens on restore, not here.
+      ['shipLedger', () => serializeShipLedgerBoard(state) || {}],
       ['recoveryEncounters', () => this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {})],
       // Genie 01: world memory + inbox (inbox is part of the save; serialize() does not drain it).
       ['chronicler', () => this._serializeBoundedMemory('chronicler')],
@@ -1055,6 +1066,8 @@ export const save = {
     data.docket = this._callSerialize('docket') || {};
     data.salvage = this._callSerialize('salvage') || {};
     yield 'serialize:salvage';
+    data.salvageOutfits = this._callSerialize('salvageOutfits');
+    yield 'serialize:salvageOutfits';
     data.survivorPod = this._callSerialize('survivorPod') || {};
     yield 'serialize:survivorPod';
     data.economy = this._callSerialize('economy') || {};
@@ -1078,6 +1091,8 @@ export const save = {
     yield 'serialize:entities';
     data.combat = serializeCombatState(state);
     yield 'serialize:combat';
+    captureRigWorkshopSaveSlot(data, this.registry);
+    yield 'serialize:rigWorkshop';
     // SG-02 world snapshot: the Rapier solver's private state (contact warm starts, island
     // sleep) is what entity scalars cannot rebuild — restore adopts it when the backend resets.
     data.physics = this._serializeNativePhysics();
@@ -1160,6 +1175,9 @@ export const save = {
     yield 'serialize:secondRinse';
     data.towlineTable = this._callSerialize('towlineTable');
     yield 'serialize:towlineTable';
+    yield* serializeShipbreakingYardSteps(this, data);
+    data.industrialDisasters = captureIndustrialDisasters(this);
+    yield 'serialize:industrialDisasters';
     data.borrowedVoice = this._callSerialize('borrowedVoice');
     yield 'serialize:borrowedVoice';
     yield 'serialize:enemyMind';
@@ -1183,6 +1201,9 @@ export const save = {
     yield 'serialize:livingPoiBehaviors';
     data.signalInvestigation = this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {});
     yield 'serialize:signalInvestigation';
+    // GOLD-LEDGER: owner-serialized board (pins/links); absent-board writes the absent bag.
+    data.shipLedger = serializeShipLedgerBoard(state) || {};
+    yield 'serialize:shipLedger';
     data.recoveryEncounters = this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {});
     yield 'serialize:recoveryEncounters';
     data.chronicler = this._serializeBoundedMemory('chronicler');
@@ -6677,6 +6698,8 @@ export const save = {
       flightAdmissionPending,
     } = s;
     try {
+      const industrialVerdict = validateIndustrialDisastersSave(data.industrialDisasters);
+      if (!industrialVerdict.ok) throw new Error('Industrial disasters save refused: ' + industrialVerdict.reason);
       // 1. meta (seed/version/playtime) first — enterSector & rng depend on meta.seed.
       this._restoreMeta(data.meta);
       // Clock must land before spawn/enterSector. Leaving the outgoing run's simTime in place
@@ -6721,6 +6744,8 @@ export const save = {
       yield 'docket-restored';
       this._callDeserialize('salvage', data.salvage);
       yield 'salvage-restored';
+      this._callDeserialize('salvageOutfits', data.salvageOutfits);
+      yield 'salvage-outfits-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
       // listener must already see durable pod records (stripped stays stripped, oxygen keeps
       // its clock). Absent key (pre-pod saves) → deserialize seeds an empty table.
@@ -6776,6 +6801,10 @@ export const save = {
       yield 'second-rinse-restored';
       this._callDeserialize('towlineTable', data.towlineTable);
       yield 'towline-table-restored';
+      yield* restoreShipbreakingYardSteps(this, data);
+      const industrialRestore = restoreIndustrialDisasters(data.industrialDisasters, this);
+      if (!industrialRestore.ok) throw new Error('Industrial disasters restore refused: ' + industrialRestore.reason);
+      yield 'industrial-disasters-restored';
       this._callDeserialize('borrowedVoice', data.borrowedVoice);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
@@ -6907,6 +6936,8 @@ export const save = {
       // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
       yield* this._restoreCombatSteps(data.combat, entityIdRemap);
       yield 'combat-ledger-restored';
+      restoreRigWorkshopSaveSlot(data, this.registry, entityIdRemap);
+      yield 'rigWorkshop-restored';
       // Each afterContinue re-derives session state from the restored world —
       // splitting the run lets a dense save's per-system reconciles paint between.
       this.registry.get('lastShift')?.afterContinue?.();
@@ -6925,6 +6956,8 @@ export const save = {
       yield 'after-continue-secondRinse';
       this.registry.get('towlineTable')?.afterContinue?.();
       yield 'after-continue-towlineTable';
+      afterContinueShipbreakingYard(this);
+      yield 'after-continue-shipbreakingYard';
       this.registry.get('borrowedVoice')?.afterContinue?.();
       yield 'after-continue-applied';
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
@@ -7151,6 +7184,12 @@ export const save = {
         this.bus.emit('mode:changed', { mode: state.mode, previousMode });
       }
 
+      // GOLD-LEDGER (row 444): the evidence board restores AFTER its evidence sources (story in
+      // the missions bag, scanner clues, site records) so the re-validation reads what the
+      // restored state actually earned — an unfound page drops, and its links go with it.
+      deserializeShipLedgerBoard(data.shipLedger, state);
+      revalidateShipLedgerBoard(state);
+      yield 'ship-ledger-restored';
       this._reportRestoreProgress(0.24, 'Priming the flight deck');
       yield 'pre-loaded';
       // A mature save's save:loaded reconcile (economy reseed, traffic relink, navigation
