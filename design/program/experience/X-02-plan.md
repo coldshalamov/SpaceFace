@@ -22,7 +22,7 @@ As things stand the wing could never fire. `authorizeAIEngagement` denies `stati
    - It spawns only when the stage is not a clinic, `!raid.wingDone`, and the slot is empty.
    - Spawn call: `makeEnemySpawnSpec('wasp_swarmer', 1, at(480, -0.6), { startedTick: st.tick })`, named `Claim Jumper's Wing`.
    - Body: hull 60, shield 0, no regen.
-   - Weapon: `data.weapons = [{ id:'wpn_pulse_laser_s', dmgOverride:2, rofOverride:2 }]`, with the resolved entry's `impulsePerHit = 0` so it never shoves the tow.
+   - Weapon (amended after plan-gate REJECT 4964e62b — `data.weapons` holds only *resolved* mounts, `combat.js:344-356`, read at fire time by `defId`/`dmg`/`rof`, `weapons.js:1250`): keep the resolved `wpn_pulse_laser_s` entry `makeEnemySpawnSpec` already produced for `wasp_swarmer` (drop every other resolved mount), then set that entry's `dmg = 2`, `rof = 2` and `impulsePerHit = 0` in place, so it never shoves the tow. If the wasp's resolved kit carries no pulse laser, resolve one through the same exported path the spec builder uses (export the resolver rather than hand-building an entry). Test: the wing actually emits `combat:fire` and lands `combat:damage` on the player after the first latch.
    - Tags: `data.onboardingRaidWing = true`, `ai.roe = 'hold_fire'`.
 2. **Arm.** `_onRaidLatched` (`:3315`) sets `roe = 'weapons_free'` on the first latch of `raid.ids.raider`.
    - Wing comms: *"Hands off his boat."*
@@ -76,6 +76,16 @@ As things stand the wing could never fire. `authorizeAIEngagement` denies `stati
 - No retune of archetypes, the player, or global weapons. No change to the 1400 wu radius.
 - No new encounter.
 
+
+## v3 amendment (after plan-gate REJECT 390312bc)
+
+- **No wing→Claim Jumper kill loop.** The damage gate already rejects same-team NPC hits unless `npcCrossfireAdmits` finds a `'reckless'` shooter (`src/combat/damage.js:33-45,187-188`; `src/ai/temperament.js:79-98` — reckless pilots fire through same-team hulls *that are not their own wingmates*). (a) Stamp the wing and the Claim Jumper as wingmates using whatever wingmate key that crossfire rule honours (find it where the "own wingmates" exclusion is evaluated; reuse it, do not invent one), so a wing round into the towed raider is rejected as `friendly_fire`. (b) Belt and braces in `_onRaidKilled` (`onboarding.js:3359-3366`): when `payload.killerId`/`ownerId === raid.ids.wing`, do not say "the raider broke off"; restage silently and count `raid.strayKills += 1`; a second stray resolves the beat exactly like the second gun kill (`_beatDone` + `momentumKill {cause:'stray'}`) so the beat always converges. Test: force a reckless wing temperament with the wingmate stamp removed → the stray path converges in ≤2 restages; with the stamp → zero `combat:damage` packets from wing to raider over a 60 s tow.
+- **Restage fork named.** `_respawnRaidRaider(line, opts = {})` gains `opts.wing`: `'keep'` (default for gun-kill retry and drift restage — the wing stays and stays armed if it was armed; pressure during the retry is intended), `'disarm'` (player-death path `_onRaidPlayerDeath` — the wing, if alive, is set back to `roe:'hold_fire'` and re-arms on the next first latch), and the wing is never respawned once `raid.wingDone` (fled or killed). `_spawnRaidCast` keeps `_removeRaidActors` from deleting a kept wing (skip the `wing` slot when `opts.wing !== 'respawn'`).
+- Cite fixes: `_resolveRaidDone` is `:3403`; `protectedStationAt` `:599-617`; station-protection deny `:181`.
+
 ## Approvals
 
+- v1 REJECT 4964e62b (dead weapon mount); v2 amended — gate restarted
+- v2: abc98e75 APPROVE, cd65c632 APPROVE, 390312bc REJECT (wing-credited raider kill loop; restage fork unnamed)
+- v3: amendment section above — gate restarted
 - (pending)

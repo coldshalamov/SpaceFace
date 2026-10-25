@@ -37,15 +37,15 @@ All numbers are computed at speak time from `gateTollFor(sector)` and the active
 3. **Paid.** In `_onMissionCompleted` (`:1863`), before the `dock` beat early-return:
    - Condition: `payload.source === FIRST_TRADE_CONTRACT_SOURCE`.
    - Speak `_showHint('firstTradePaid', \`Paid ${pay}. Keep ${home} for the gate home.\`, {})` (8 words).
-   - `pay` comes from the payload reward field if present, else `FIRST_TRADE_CONTRACT.terms.paysCr`.
-4. **Refusal remedy.** In `src/ui/jumpNotice.js:49`, change the string to `Gate toll ${needed} cr — purse holds ${held} cr. Earn it at a dock.` That is true everywhere: sell the hold or work the board. String only. The generic fallback at :51 stays.
+   - `pay` comes from the payload's `rewardCr` (`missions.js:5107`) if present, else `FIRST_TRADE_CONTRACT.terms.paysCr`.
+4. **Refusal remedy.** In `src/ui/jumpNotice.js:50`, change the string to `Gate toll ${needed} cr — purse holds ${held} cr. Earn it at a dock.` That is true everywhere: sell the hold or work the board. String only. The generic fallback at :51 stays.
 
 **Fallthrough:** a run already abandoned, or an id mismatch, gives silence. A player who reached the gate before accepting heard `firstGate`. `firstGateToll` stays a separate key, so it can still speak on the next approach while holding the run.
 
 ## Exact files
 
 - `src/systems/onboarding.js`: the gate handler branch, one `jump:arrive` listener, and the `_onMissionCompleted` hint. Imports `gateTollFor` from `../data/travelChoices.js` and `FIRST_TRADE_CONTRACT` (already imported partially, `:77`).
-- `src/ui/jumpNotice.js:49`: one template.
+- `src/ui/jumpNotice.js:50`: one template.
 - Run `node scripts/extract-localization.mjs --write`.
 
 ## Numbers
@@ -64,7 +64,7 @@ No draws and no credit flows. `player.hints` gains up to three booleans, plus `f
 4. Raising Ceres security in a fixture makes the line follow `gateTollFor`, which proves there are no literals.
 5. `jump:arrive {sectorId:'sector_ceres_belt'}` with the run gives `firstGateArrive` once. No run gives silence.
 6. Completion with `source:'firstTradeContract'` gives `Paid 760. Keep 246 for the gate home.` once.
-7. `jumpAbortText('credits',{creditsNeeded:194,creditsHeld:120})` returns `Gate toll 194 cr — purse holds 120 cr. Earn it at a dock.`
+7. `jumpAbortText({ reason:'credits', creditsNeeded:194, creditsHeld:120 })` (single payload object, `jumpNotice.js:34-36`) returns `Gate toll 194 cr — purse holds 120 cr. Earn it at a dock.`
 
 ## Must stay green
 
@@ -79,4 +79,7 @@ No draws and no credit flows. `player.hints` gains up to three booleans, plus `f
 
 ## Approvals
 
-- (pending)
+- v1 APPROVE-with-corrections 4964e62b; v2 applies the three literal corrections (signature, line, rewardCr) — gate restarted
+- v2: plan-gate reviewer abc98e75 — APPROVE (2026-10-24)
+- v2: plan-gate reviewer cd65c632 — APPROVE (2026-10-24)
+- v2: plan-gate reviewer 390312bc — APPROVE (2026-10-24) — plan✓3

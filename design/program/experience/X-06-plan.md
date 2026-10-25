@@ -47,7 +47,7 @@ History and trophy still win. The ambient gap clock (`:3267-3286`, 12 s base, +1
 - Procession's walking past Smear Marker 7. Give it room.
 - The Pit Line bearing isn't for sightseers. Hold your lane.
 
-**`sector_helios_prime` · `faction_mts`**
+**`sector_helios_prime` · `faction_scn`** (continued — v3 re-key: the two `faction_mts` cells were dead because passing traffic takes the sector's own faction (`traffic.js:1837` etc.) and convoys the station's (`trafficConvoyOps.js:80,345`); Helios stations are SCN-only (`sectors.js:63,68`), Ceres DMC-only (`sectors.js:294,303`), so every line now sits under the faction that actually hails there — six lines per cell)
 - Helios Weigh-Point counted the raid twice. Nobody pays for the second.
 - Helios Bay 7 runs cold. Don't ask what's in the lockers.
 - Shift Bell 3 rang early. Somebody's getting docked pay.
@@ -57,9 +57,9 @@ History and trophy still win. The ambient gap clock (`:3267-3286`, 12 s base, +1
 - The Kettle Line's shedding off the gate approach. Mind your drift.
 - Second Measure Shipbreak's paying by the plate. Bring a cutter.
 
-**`sector_ceres_belt` · `faction_mts`**
+**`sector_ceres_belt` · `faction_dmc`** (continued — v3 re-key, see above)
 - Follow the Refinery Flare Rack in. The scale pays honest.
-- Belt Outpost buys ore. Refinery buys better. Fly the extra.
+- Belt Outpost buys ore. Ceres Refinery buys better. Fly the extra.
 - Wreck Cathedral's lit again. Insurers want nobody near it.
 
 ## Numbers
@@ -95,4 +95,7 @@ History and trophy still win. The ambient gap clock (`:3267-3286`, 12 s base, +1
 
 ## Approvals
 
+- v1 APPROVE-with-nit 4964e62b; v2 fixes the place name (Ceres Refinery) — gate restarted
+- v2: abc98e75 APPROVE, 390312bc APPROVE, cd65c632 REJECT (faction_mts cells unreachable in Helios/Ceres)
+- v3: re-keyed to the sector-owner factions (scn Helios, dmc Ceres); the data shape is still `SECTOR_BARKS[sector][faction][situation]` so a later sector can key other factions — gate restarted
 - (pending)
