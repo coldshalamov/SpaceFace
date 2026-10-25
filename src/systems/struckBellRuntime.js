@@ -7,6 +7,7 @@ import { queryAsteroidField } from '../world/asteroidField.js';
 import { forEachDressingRow } from '../world/dressingTable.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { phoebePracticeDirection } from '../data/phoebePracticeConnection.js';
 
 export const STRUCK_BELL_ID = 'scene_struck_bell';
 export const STRUCK_BELL_SITE = Object.freeze({
@@ -111,6 +112,8 @@ export function createStruckBellRuntime(spec) {
     if (outcome === 'a') { d.grant(30, STRUCK_BELL_ID); d.rep('faction_choir', 2, STRUCK_BELL_ID); }
     if (outcome === 'b') { d.rep('faction_vael', 1, STRUCK_BELL_ID); d.rep('faction_choir', -1, STRUCK_BELL_ID); }
     d.resolve(live, outcome, { speak: true });
+    const direction = phoebePracticeDirection(state);
+    if (outcome !== 'c' && direction) say(d, live, 'CANTOR: ' + direction);
   };
   const validWork = (d, live, state, w) => {
     if (!w || w.finished || live.phase === 'done') return false;
