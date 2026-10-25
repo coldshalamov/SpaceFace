@@ -1362,7 +1362,7 @@ export function topUpBarkSituationCells(barks, factions, situations, eventSituat
       if (Array.isArray(cell) && Array.isArray(extra)) {
         const seen = new Set(cell);
         for (const line of extra) {
-          if (typeof line !== 'string' || line.length === 0 || seen.has(line)) continue;
+          if (typeof line !== 'string' || line.trim().length === 0 || seen.has(line)) continue;
           cell.push(line);
           seen.add(line);
         }

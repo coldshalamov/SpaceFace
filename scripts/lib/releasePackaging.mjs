@@ -177,20 +177,22 @@ export async function createReleaseCopyPlans({
       destination: safeRelativePath(rawMapping?.destination, 'release copy destination'),
     };
     const projection = mapping.projection || 'exact';
+    // Cheap authoring guards first: a malformed mapping must fail before the expensive
+    // render-package omission walk (GLB hashing, runtime-table rebuild).
+    if (projection !== 'exact' && projection !== RENDER_PACKAGE_SOURCE_PROJECTION) {
+      throw new Error(`unknown release copy projection ${projection}`);
+    }
+    if (mapping.exclude != null && (!Array.isArray(mapping.exclude) || mapping.exclude.length === 0)) {
+      throw new Error(`release copy exclude for ${mapping.source} must be a non-empty array`);
+    }
+    if (mapping.exclude != null && projection === RENDER_PACKAGE_SOURCE_PROJECTION) {
+      throw new Error(`release copy ${mapping.source} cannot combine projection with exclude — the overlap semantics are untested; split the tree instead`);
+    }
     await assertNoSymlinkPath(projectRoot, mapping.source, 'release copy source');
     const omissions = projection === RENDER_PACKAGE_SOURCE_PROJECTION
       ? await renderPackageSourceOmissions(projectRoot, mapping, pilots)
       : [];
-    if (projection !== 'exact' && projection !== RENDER_PACKAGE_SOURCE_PROJECTION) {
-      throw new Error(`unknown release copy projection ${projection}`);
-    }
     if (mapping.exclude != null) {
-      if (!Array.isArray(mapping.exclude) || mapping.exclude.length === 0) {
-        throw new Error(`release copy exclude for ${mapping.source} must be a non-empty array`);
-      }
-      if (projection === RENDER_PACKAGE_SOURCE_PROJECTION) {
-        throw new Error(`release copy ${mapping.source} cannot combine projection with exclude — the overlap semantics are untested; split the tree instead`);
-      }
       omissions.push(...await collectExcludedOmissions(projectRoot, mapping));
       omissions.sort((a, b) => lexicalCompare(a.path, b.path));
     }

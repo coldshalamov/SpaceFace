@@ -18,7 +18,7 @@ test('the fill table holds no dead keys — every faction id and situation key i
       assert.ok(SITUATION_KEYS.includes(situation), `fill key ${factionId}/${situation} is not a live situation`);
       const cell = BARK_SITUATION_FILL[factionId][situation];
       assert.ok(
-        Array.isArray(cell) && cell.every((l) => typeof l === 'string' && l.length > 0),
+        Array.isArray(cell) && cell.every((l) => typeof l === 'string' && l.trim().length > 0),
         `fill cell ${factionId}/${situation} is not an array of non-empty strings — authored content the mutator silently skips`,
       );
     }

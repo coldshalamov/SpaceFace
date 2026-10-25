@@ -107,7 +107,7 @@ const mechanic = enumerateMechanicPipeline();
 
 if (corpus !== BARK_CORPUS_TARGET || pipeline.length !== BARK_CORPUS_TARGET) {
   console.error(`bark corpus ${corpus} / pipeline ${pipeline.length}, expected ${BARK_CORPUS_TARGET}`);
-  process.exit(1); // fail fast — rendering 1415 jobs against a drifted corpus is wasted work
+  process.exit(1); // fail fast — rendering the full job set against a drifted corpus is wasted work
 }
 
 if (catalogOnly) {
