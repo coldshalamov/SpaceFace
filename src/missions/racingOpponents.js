@@ -231,6 +231,12 @@ export function createRacingOpponents({ state, bus, helpers }) {
       releasedAtS: Number(state.simTime) || 0, releaseReason: reason });
     if (qualified) bus?.emit?.('race:rivalAnchorUsed', { missionId: heat.missionId, rivalId: row.id,
       lap: anchor.lapAtAttach | 0, anchorId: anchor.anchorId, attachmentId: anchor.attachmentId });
+    if (reason === 'timeout') {
+      // A held-out anchor that never paid its gate is burned for this lap — without this the
+      // rival re-selects the same apex on the same approach and loops the full hold window.
+      const burned = driver.burnedAnchors || (driver.burnedAnchors = new Set());
+      burned.add(`${anchor.anchorId}:${anchor.lapAtAttach | 0}`);
+    }
     driver.anchor = null;
     releaseReservation(row);
   }
@@ -257,6 +263,7 @@ export function createRacingOpponents({ state, bus, helpers }) {
       if (!anchor || !anchor.pos) continue;
       const reserved = heat.anchorReservations.get(anchorId);
       if (reserved != null && reserved !== row.id) continue;
+      if (driver.burnedAnchors && driver.burnedAnchors.has(`${anchorId}:${row.params.lap | 0}`)) continue;
       candidateScratch.push(anchor);
     }
     const selection = selectRacingAnchor(driver, { entity, params: row.params, gates: heat.gates,
