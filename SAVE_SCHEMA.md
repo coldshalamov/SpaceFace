@@ -19,6 +19,7 @@ Current save version: `21`
 - `ruud`
 - `docket`
 - `salvage`
+- `salvageOutfits`
 - `survivorPod`
 - `economy`
 - `economyContracts`
@@ -30,9 +31,11 @@ Current save version: `21`
 - `kineticLeague`
 - `mercyService`
 - `wreckCourt`
+- `industrialDisasters`
 - `world`
 - `entities`
 - `combat`
+- `rigWorkshop`
 - `physics`
 - `bombs`
 - `snares`
@@ -71,6 +74,7 @@ Current save version: `21`
 - `palletJack`
 - `secondRinse`
 - `towlineTable`
+- `shipbreakingYard`
 - `borrowedVoice`
 - `lossLedger`
 - `provenance`
@@ -273,6 +277,25 @@ Current save version: `21`
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
 | `$.ilexArk` | null | null |
+| `$.industrialDisasters` | object | {} |
+| `$.industrialDisasters.schemaVersion` | number | 1 |
+| `$.industrialDisasters.site` | object | {} |
+| `$.industrialDisasters.site.anchor` | object | {} |
+| `$.industrialDisasters.site.anchor.x` | number | -13808 |
+| `$.industrialDisasters.site.anchor.z` | number | 8432 |
+| `$.industrialDisasters.site.attempt` | number | 0 |
+| `$.industrialDisasters.site.completed` | array | length 0 |
+| `$.industrialDisasters.site.crisis` | null | null |
+| `$.industrialDisasters.site.declined` | boolean | false |
+| `$.industrialDisasters.site.discovered` | boolean | false |
+| `$.industrialDisasters.site.drill` | boolean | false |
+| `$.industrialDisasters.site.history` | array | length 0 |
+| `$.industrialDisasters.site.id` | string | industrial_hinge_works |
+| `$.industrialDisasters.site.inspected` | boolean | false |
+| `$.industrialDisasters.site.returnCrisis` | null | null |
+| `$.industrialDisasters.site.rewardReceipts` | object | {} |
+| `$.industrialDisasters.site.sectorId` | string | sector_ceres_belt |
+| `$.industrialDisasters.site.signalled` | boolean | false |
 | `$.kilnback` | null | null |
 | `$.kineticLeague` | null | null |
 | `$.lastShift` | null | null |
@@ -420,11 +443,13 @@ Current save version: `21`
 | `$.recoveryEncounters` | object | {} |
 | `$.redKite` | null | null |
 | `$.regionalEcology` | object | {} |
+| `$.rigWorkshop` | null | null |
 | `$.rubric` | object | {} |
 | `$.ruckus` | object | {} |
 | `$.ruud` | object | {} |
 | `$.sableVenn` | null | null |
 | `$.salvage` | object | {} |
+| `$.salvageOutfits` | null | null |
 | `$.scenario` | object | {} |
 | `$.scenario.active` | null | null |
 | `$.scenario.actorBindings` | object | {} |
@@ -530,6 +555,28 @@ Current save version: `21`
 | `$.settings.video.shadowsDefaultVersion` | number | 1 |
 | `$.settings.video.sharpen` | boolean | false |
 | `$.settings.video.vsync` | boolean | true |
+| `$.shipbreakingYard` | object | {} |
+| `$.shipbreakingYard.activeJobId` | null | null |
+| `$.shipbreakingYard.anchor` | null | null |
+| `$.shipbreakingYard.cycles` | object | {} |
+| `$.shipbreakingYard.cycles.bellwether` | number | 0 |
+| `$.shipbreakingYard.cycles.lark` | number | 0 |
+| `$.shipbreakingYard.cycles.vesper` | number | 0 |
+| `$.shipbreakingYard.discovered` | boolean | false |
+| `$.shipbreakingYard.history` | array | length 0 |
+| `$.shipbreakingYard.jobs` | object | {} |
+| `$.shipbreakingYard.nextJob` | number | 1 |
+| `$.shipbreakingYard.revision` | number | 0 |
+| `$.shipbreakingYard.schema` | number | 1 |
+| `$.shipbreakingYard.sectorId` | string | sector_ceres_belt |
+| `$.shipbreakingYard.seed` | number | 47 |
+| `$.shipbreakingYard.slots` | object | {} |
+| `$.shipbreakingYard.stats` | object | {} |
+| `$.shipbreakingYard.stats.completedJobs` | number | 0 |
+| `$.shipbreakingYard.stats.deliveredParts` | number | 0 |
+| `$.shipbreakingYard.stats.earnedCr` | number | 0 |
+| `$.shipbreakingYard.stats.lostParts` | number | 0 |
+| `$.shipbreakingYard.stats.spentCr` | number | 0 |
 | `$.shipLedger` | object | {} |
 | `$.signalInvestigation` | object | {} |
 | `$.sites` | object | {} |

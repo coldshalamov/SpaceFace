@@ -12,6 +12,8 @@
 // nothing explains the rejection (adapter-fallback is always unintentional:
 // the adapter exists and still failed).
 
+import { SHIPBREAKING_YARD_EVENT_BRIDGE_ADAPTERS } from '../../src/features/shipbreakingYard/bridge.js';
+
 export const EVENT_BRIDGE_DEPTH = 4;
 
 // Presentation-lane types: on the real architecture these drain through main's
@@ -106,6 +108,7 @@ export function flattenEventPayload(value, depth = 0, hits = null, path = '') {
 // projection cannot flatten. Adapters return the complete wire shape; returning
 // undefined falls back to the generic deep-flat path.
 export const EVENT_BRIDGE_ADAPTERS = {
+  ...SHIPBREAKING_YARD_EVENT_BRIDGE_ADAPTERS,
   // entity:spawned carries the live entity — consumers resolve it via the
   // main-side read model by entityId (the spawn already rode the journal).
   'entity:spawned': (p) => (p && typeof p === 'object'

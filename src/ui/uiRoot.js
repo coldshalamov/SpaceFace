@@ -42,6 +42,7 @@ import { mountSpectrumOverlay } from '../render/spectrum/overlay.js';
 import { createPhysicalJobsPrompt } from './physicalJobsPrompt.js';
 import { createBlackFlagPrompt } from './blackFlag.js';
 import { createLogbookRecap } from './logbookRecap.js';
+import { mountProExperiencesBrowser } from '../features/proExperiencesBrowser.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
@@ -611,6 +612,8 @@ export const ui = {
   name: 'ui',
 
   init(ctx) {
+    this.proExperiences?.destroy();
+    this.proExperiences = null;
     invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
@@ -850,6 +853,10 @@ export const ui = {
     this.longBerthPrompt = createLongBerthPrompt(ctx);
     this.crewPrompt = createCrewPrompt(ctx);
     this.lawfulInspectionPrompt = createLawfulInspectionPrompt(ctx);
+    this.proExperiences = mountProExperiencesBrowser({
+      ...ctx,
+      root: typeof document !== 'undefined' ? document.getElementById('ui-root') : null,
+    });
 
     // Wingman command radial (Micro-Loops) — a quick fleet-command wheel on the Z key.
     this.wingmanRadial = createWingmanRadial(ctx);
@@ -1934,6 +1941,7 @@ export const ui = {
       this.physicalJobsPrompt?.frame();
       this.blackFlagPrompt?.frame();
       this.logbookRecap?.frame();
+      this.proExperiences?.frame(dt, st, hudVisible);
       // Authored capital warnings draw over the flight picture and hold still while the sim is
       // frozen; the mount clears its canvas outside flight so menus never inherit a stale warning.
       if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function') {
@@ -1957,6 +1965,8 @@ export const ui = {
   },
 
   destroy() {
+    this.proExperiences?.destroy();
+    this.proExperiences = null;
     this.blackFlagPrompt?.dispose();
     this.blackFlagPrompt = null;
     this.logbookRecap?.dispose();
