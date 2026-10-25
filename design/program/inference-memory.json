@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "al-pr-15-caption-bearing",
-      "date": "2026-10-23",
-      "wf": "WF-13",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A telegraph from 8 o'clock captions as 8 o'clock, using the same position that pans the cue.",
-      "fingerprint": "verb=hear,subject=bearing,sector=any,layer=caption,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "66deeb0e84",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-se-07-travel-captions",
       "date": "2026-10-23",
       "wf": "WF-13",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "95e18bf9fa29cf8d3f02a3b12ac18be68fe9d7e0",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-gate-quote",
+      "date": "2026-10-25",
+      "wf": "WF-10",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The chart quotes a gate hop as no fuel and a three-second align.",
+      "fingerprint": "verb=quote,subject=gate,sector=helios,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "ad1b3ba4acbbcbc1942238efcd14001187121785",
       "verification": "focused_green"
     }
   ],
