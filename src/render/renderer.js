@@ -20899,6 +20899,9 @@ export const render = {
       this._sessionLiveSectorCookedId = null;
       this._sessionRecookKeepGpu = false;
       if (state.render) state.render.sessionLiveSectorCookedId = null;
+      // Claim-defense warm rosters are per-run bookkeeping. run:ended fires only for
+      // non-adventure runs, so the campaign's title → New Game cycle clears them here.
+      if (this._claimDefenseRosters) this._claimDefenseRosters.clear();
     });
     onBus('game:scenePrepared', () => {
       // The sandbox hook stages the survival run inside this same emit; defer one microtask so
@@ -20946,6 +20949,9 @@ export const render = {
     onBus('game:startFailed', () => { this._discardEarlyCrucibleWarm(); });
     onBus('save:restoring', () => {
       for (const record of this._appearanceReplacements?.values() || []) record.cancel('appearance-save-restoring');
+      // Continue / quick-load replaces the run: drop the outgoing run's claim-defense rosters.
+      // The director's restore republishes any warning still mid-countdown after this fires.
+      if (this._claimDefenseRosters) this._claimDefenseRosters.clear();
       // The save system emits this synchronously before it destroys the current entity graph.
       // Keep the current sector's decoded authored resources resident across that short gap; the
       // registry hands this temporary hold back only after rebuilt live boundaries cover every
