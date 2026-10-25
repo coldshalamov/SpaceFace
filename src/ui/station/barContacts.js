@@ -6,6 +6,7 @@
 // with role-specific dialog that pulls real game data (economy events, market
 // intel, mission boards, sector danger, asteroid fields). Read-only except for
 // the mission-accept button which emits ui:acceptMission.
+import { lastShiftLocalReport } from '../../data/lastShift.js';
 import { FACTION_META } from '../../data/factions.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS, surveyDataPrice } from '../../data/sectors.js';
@@ -629,7 +630,32 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampChoirReliefMemory(listed, stationId, state);
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   stampAceRouteRumor(listed, stationId, state);
+  stampLastShiftLocalReport(listed, stationId, state);
   return listed;
+}
+
+// The existing refinery host can discuss a filed local record without replacing local work,
+// rumors, calendar greetings, named contacts, or their choices. Nothing is announced on arrival.
+function stampLastShiftLocalReport(contacts, stationId, state) {
+  if (stationId !== 'station_ceres' || !lastShiftLocalReport(state)) return;
+  const host = contacts.find(contact => contact.id === 'contact_station_ceres_0' && contact.role === 'barkeep');
+  if (!host) return;
+  host.choices = [...getChoices(host.role, host), {
+    id: 'last_shift_report', label: 'What did the Last Shift record establish?',
+  }];
+}
+
+function lastShiftLocalReply(state, stationId, contact) {
+  if (stationId !== 'station_ceres' || contact?.id !== 'contact_station_ceres_0'
+    || contact.role !== 'barkeep') return { text: 'Ask the Ceres Refinery host about its filed local record.' };
+  const report = lastShiftLocalReport(state);
+  if (!report) return { text: 'No verified Last Shift report is filed. File what you learned with the archive first.' };
+  const custody = report.recorderReturned
+    ? (report.recorderStationId === stationId
+      ? 'The original tug recorder was accepted by this refinery\'s archive.'
+      : 'The original tug recorder was accepted by another archive, not this refinery.')
+    : 'The filed evidence does not confirm a physical recorder handoff.';
+  return { text: `Crews here need to know whether those lanes are safe. The filed account says: ${report.text} ${custody} Filing the account and returning the original are separate; it is a record, not a bounty.` };
 }
 
 /** WORLD-05 — a new game can hear a station's wreck rumor before the wreck is scanned. */
@@ -1142,6 +1168,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: "It stays open. The courier doesn't repeat the offer." };
   }
   const state = ctx.state || {};
+  if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
   if (contact && contact.id === VONN_FREIGHT_CONTACT_ID && choiceId === 'wrecks') {
     const reply = buildVonnFreightLossReply(state);
