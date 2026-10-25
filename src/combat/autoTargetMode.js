@@ -22,6 +22,7 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { solveTetherLeadSolution, orbitalConstraintState, masslineOwnsGuns } from './tetherFireControl.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { applyAutoTargetHelmProfile, applyAutoTargetPathProfile } from '../systems/flightV3.js';
+import { concealedFromPlayer, observeSelection, selectionIsRecycled } from './targetIdentity.js';
 
 export const AUTO_TARGET_REFRESH_S = 0.12;
 const RETICLE_EDGE_MARGIN = 28;
@@ -86,6 +87,12 @@ export function lockedHostileEntity(state) {
   if (e.type !== 'ship' && e.type !== 'drone') return null;
   const player = state.entities.get(state.playerId);
   if (!player || !isHostileToPlayer(e, player.team, state)) return null;
+  // Packet 02 target truth. The selection is a NUMBER; the player picked a BODY. A recycled id must
+  // not hand the old bracket (and the aim assist riding on it) to an unrelated hull, and a hull the
+  // player's sensors cannot see must not keep drawing the assist's aim — that is a wallhack. Both
+  // gates live in targetIdentity.js; sensor truth is cloak.js's single perception gate.
+  if (selectionIsRecycled(state, e)) return null;
+  if (concealedFromPlayer(state, e)) return null;
   return e;
 }
 
@@ -177,6 +184,9 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
     if (inp.autoAim) inp.autoAim = null;
     return;
   }
+  // Packet 02: bind the selection to its occupant and keep the sensor fix / last-known mark fresh
+  // even when no HUD is mounted. Runtime memory only — GameState is untouched.
+  observeSelection(state);
 
   const target = (inp.targetAssistDisabled === true || targetAssistScale(state) <= 0)
     ? null

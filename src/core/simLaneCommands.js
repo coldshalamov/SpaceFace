@@ -11,6 +11,8 @@
 // The command ring (scripts/lib/simCommandChannel.mjs) imports the shared appliers + the
 // settings allowlist from here — one source of truth for "which writes are legal".
 
+import { bindSelection } from '../combat/targetIdentity.js';
+
 let _sink = null;
 let _tokenSeq = 0;
 
@@ -36,7 +38,11 @@ export function nextLaneToken(prefix) {
 // take (state, value) — the same mutation the direct site performed, verbatim.
 // ---------------------------------------------------------------------------
 export const LANE_INPUT_FOLD_WRITERS = {
-  'player.targetId': (state, v) => { if (state.player) state.player.targetId = (v == null ? null : v); },
+  // bindSelection records WHICH occupant of that number the player picked (runtime memory, never
+  // state), so a recycled id cannot inherit the bracket and a deliberate re-pick re-binds.
+  'player.targetId': (state, v) => {
+    if (state.player) { state.player.targetId = (v == null ? null : v); bindSelection(state); }
+  },
   'input.targetAssistDisabled': (state, v) => { if (state.input) state.input.targetAssistDisabled = !!v; },
   'input.autoAim': (state, v) => { if (state.input) state.input.autoAim = v; },
   'input.autoFire': (state, v) => { if (state.input) state.input.autoFire = v; },
