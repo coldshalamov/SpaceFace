@@ -1213,7 +1213,7 @@ Claim rows by editing the ledger, not this table.
 | 553 | ATT-E01 | Onboarding rail + first hour (minutes 0-60): rail texture, tier-0 life, ambient traffic (directions 1-3 joint with §1P X-01; guided beat joint with §1P X-04; raid beat joint with §1P X-02) | BUILD | OPEN |
 | 554 | ATT-V01 | Comms/bark density: per-sector bark banks so ambient life registers outside the rail (joint with §1P X-06) | BUILD | OPEN |
 | 555 | ATT-T02 | Station life: named regulars, rumors, overheard plots on the most-docked stations | BUILD | OPEN |
-| 556 | ATT-S13 | Wreck/debris fields: named dead, salvage notes, kill-marks across the wreck surfaces | BUILD | OPEN |
+| 556 | ATT-S13 | Wreck/debris fields: named dead, salvage notes, kill-marks across the wreck surfaces | BUILD | DONE 2026-10-24 — eight memorial-marker find-sites landed beside the unplated frontier wrecks (tribunal: `design/program/attention/s-13-plan.md`); catalog's ten shrank to eight — the two core wrecks already carried plates |
 | 557 | ATT-H01/H02 | Hull markings: stencils and wear on starter hulls; kill tallies and owner names on traffic variants | ART | OPEN |
 | 558 | ATT-E04 | Secrets layer: easter eggs, coded barks, ritual sights that reward poking | BUILD | OPEN |
 
