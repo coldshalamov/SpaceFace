@@ -65,6 +65,7 @@ test('audio copy exclusions omit exactly the acceptance corpus — never a runti
   ]);
   const omitted = new Set(audio.omissions.map((o) => o.path));
   assert.deepEqual(omitted, expected);
+  for (const o of audio.omissions) assert.equal(o.reason, 'exclude', `${o.path} omission is untagged`);
   for (const entry of SAMPLE_MANIFEST.values()) {
     assert.ok(
       !omitted.has(entry.file.replace('assets/audio/', '')),

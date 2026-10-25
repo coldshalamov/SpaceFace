@@ -60,6 +60,9 @@ export const BARK_SITUATIONS = [
 export const BARK_EVENT_SITUATIONS = Object.freeze(['distress']);
 
 // Corpus: BARKS[factionId][situation] = [lines...]. Each array is non-empty.
+// Authoring rule: APPEND at cell end only — delivered voice WAVs are named by positional
+// corpus index (deliveredBarkWavRelPath), so a mid-array insert or reorder renumbers the
+// whole shipped WAV set downstream of it. Same rule as barkSituationFill.js.
 export const BARKS = {
   // ── Concord — procedural / bureaucratic ────────────────────────────────────
   faction_scn: {

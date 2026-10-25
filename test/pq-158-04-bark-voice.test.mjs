@@ -193,7 +193,11 @@ test(`seed ${MEASURE_SEED}: f0/rate/filter names each faction register without t
 test(`seed ${MEASURE_SEED}: all ${BARK_CORPUS_TARGET} directed-voice lines exist as WAVs on disk`, () => {
   const rows = enumerateDeliveredBarkWavs();
   assert.equal(rows.length, BARK_CORPUS_TARGET);
+  // Literal pins: the naming scheme itself is the contract (4-digit positional index), not
+  // just internal consistency — an assertion that re-derives the name can't fail.
+  assert.equal(rows[0].file, 'assets/audio/voice/line_0000_faction_scn.wav');
   for (let i = 0; i < rows.length; i++) {
+    assert.match(rows[i].file, /^assets\/audio\/voice\/line_\d{4}_[A-Za-z0-9_-]+\.wav$/);
     assert.equal(rows[i].file, deliveredBarkWavRelPath(i, rows[i].registerId));
     const file = path.join(ROOT, rows[i].file);
     assert.ok(existsSync(file), `missing delivered line ${rows[i].file}`);

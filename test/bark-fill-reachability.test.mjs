@@ -58,7 +58,8 @@ test('every live cell meets the floor directly — not just via the mutator repo
     assert.ok(pack, `${factionId} missing from BARKS`);
     for (const situation of SITUATION_KEYS) {
       const cell = pack[situation];
-      if (Array.isArray(cell) && cell.length > 0 && cell.length < BARK_CELL_MIN) {
+      assert.ok(Array.isArray(cell), `${factionId}/${situation} is missing or not an array`);
+      if (cell.length > 0 && cell.length < BARK_CELL_MIN) {
         under.push(`${factionId}/${situation} (${cell.length})`);
       }
     }

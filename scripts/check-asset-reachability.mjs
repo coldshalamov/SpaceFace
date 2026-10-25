@@ -143,8 +143,18 @@ for (const [asset, files] of [...referenced]) {
   }
 }
 
+// Mapping.exclude prefixes are omitted from the retail copy even though their parent root is
+// bundled — a referenced asset under one 404s exactly like an asset outside every root.
+const EXCLUDED_PREFIXES = RELEASE_COPY_MAPPINGS.flatMap((m) =>
+  (m.exclude ?? []).map((e) => {
+    const stripped = `${m.source}/${String(e).replace(/\/+$/, '')}`;
+    return String(e).endsWith('/') ? `${stripped}/` : stripped;
+  }));
+
 const issues = [];
-const underBundledRoot = (asset) => BUNDLED_ROOTS.some((r) => asset === r || asset.startsWith(`${r}/`));
+const underBundledRoot = (asset) =>
+  BUNDLED_ROOTS.some((r) => asset === r || asset.startsWith(`${r}/`))
+  && !EXCLUDED_PREFIXES.some((p) => asset.startsWith(p));
 const packageRouteFor = (asset) => renderPackagePilotForSourceUrl(asset);
 const physicallyBundled = (asset) => underBundledRoot(asset) && !packageRouteFor(asset);
 

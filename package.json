@@ -411,6 +411,7 @@
     "check:assets": "node scripts/check-runtime-asset-contract.mjs",
     "audit:texture-channels": "node scripts/audit-texture-channels.mjs",
     "check:asset-reachability": "node scripts/check-asset-reachability.mjs",
+    "check:bark-voice-corpus": "node scripts/generate-bark-voice.mjs --all --check",
     "check:launch-policy": "node scripts/check-launch-policy.mjs",
     "check:player-save-store": "node --test test/player-save-store.test.mjs",
     "check:electron:packaged-startup": "node scripts/check-electron-packaged-startup.mjs",

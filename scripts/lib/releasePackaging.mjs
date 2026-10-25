@@ -67,7 +67,7 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   Object.freeze({
     source: 'assets/audio',
     destination: 'assets/audio',
-    exclude: ['voice/line_', 'voice/blind/'],
+    exclude: Object.freeze(['voice/line_', 'voice/blind/']),
   }),
   // Runtime plume/RCS masks are loaded through template paths in vfx.js. Copy only this manifest-
   // governed subtree; the labelled FX reference sheets in assets/fx/ remain authoring-only.
