@@ -5933,7 +5933,10 @@ export function consumeTerminalProceduralFallback(parentData, nowMs) {
  * root gets at mesh-build time: buffers that are not yet resident hold the whole boundary
  * behind `geometryPending` — the bound-roots scan hands every latched mesh to the live
  * admission lane on the next frame — and the root compiles through the normal subject
- * pipeline, whose counted pipelinesPending hold keeps it hidden until the programs link.
+ * pipeline under a counted pipelinesPending hold. A substrate that never linked stays hidden
+ * behind that hold; one already stamped sfAdmittedOnce keeps drawing its marker/stand-in and
+ * bloom's per-material scan + renderBufferDirect guard skip the fallback's still-unlinked
+ * drawables until the compile lands (entityMeshVisibility / hideUnreadySceneDrawables).
  */
 function admitTerminalProceduralFallback(mesh, fallback, entity, state) {
   if (!mesh || !fallback) return;
