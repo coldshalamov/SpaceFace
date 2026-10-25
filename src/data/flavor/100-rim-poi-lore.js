@@ -928,5 +928,137 @@ export default defineFlavorPack({
         { id: 'sse_03', text: 'The alternative is admitting nobody is coming. The etching continues.' },
       ],
     },
+    // ── The rim POIs merged onto the same sectors: claim stakes with their authored
+    // micro-histories, and the six sector wonders — every one carries scan lore too. ──
+    {
+      id: 'nyx_unwritten_bridge',
+      displayName: 'The Unwritten Bridge',
+      location: { sectorId: 'sector_nyx_march', poiId: 'world_site_nyx_unwritten_bridge' },
+      lines: [
+        { id: 'ub_01', text: 'Two spans hold a gap the March never bridged on paper. The clamps are the only filing.' },
+        { id: 'ub_02', text: 'The crosswind is a toll with no collector. Open the second clamp and it stops billing.' },
+        { id: 'ub_03', text: 'Nobody wrote the bridge down. Building it twice is how the lane keeps the secret.' },
+      ],
+    },
+    {
+      id: 'nyx_blackglass_lease',
+      displayName: 'Blackglass Lease',
+      location: { sectorId: 'sector_nyx_march', poiId: 'poi_claim_blackglass' },
+      lines: [
+        { id: 'bg_01', text: 'Glass-sheared rock under a Quiet cutting front. The docket never carried an origin line.' },
+        { id: 'bg_02', text: 'The lease lapsed the week the Cut-Runner went down. The Fence sells the lapse forward.' },
+        { id: 'bg_03', text: 'A claim whose paper ends at the fence is a claim that was never meant to be read.' },
+      ],
+    },
+    {
+      id: 'hyperion_cutwater',
+      displayName: 'Cutwater Anchorage',
+      location: { sectorId: 'sector_hyperion_cut', poiId: 'poi_claim_cutwater' },
+      lines: [
+        { id: 'cwa_01', text: 'The cut\u2019s first anchorage: mooring rings, an assay scale, bunks for four crews.' },
+        { id: 'cwa_02', text: 'Consolidated the season the Shaft took its drift crew. The rings kept the old sizes.' },
+        { id: 'cwa_03', text: 'Haulers still fit the moorings. Nobody files the fit as a vacancy.' },
+      ],
+    },
+    {
+      id: 'kepler_scarline',
+      displayName: 'Scarline Hold',
+      location: { sectorId: 'sector_kepler_scar', poiId: 'poi_claim_scarline' },
+      lines: [
+        { id: 'slh_01', text: 'Eleven owners filed straight down the carrier\u2019s debris scar. None of them left it empty.' },
+        { id: 'slh_02', text: 'The Bazaar gets first pick of every plate. That is not a tax; it is the succession rule.' },
+        { id: 'slh_03', text: 'Under the launch rails, ownership is whoever the stalls vouch for this week.' },
+      ],
+    },
+    {
+      id: 'orcus_last_lantern',
+      displayName: 'The Last Lantern',
+      location: { sectorId: 'sector_orcus_shadow', poiId: 'world_site_orcus_last_lantern' },
+      lines: [
+        { id: 'll_01', text: 'A dead lantern on a live intake. The Shadow kept the post after the light filed out.' },
+        { id: 'll_02', text: 'Its dish still aims where the count said light should go. The instrument outlasted the flame.' },
+        { id: 'll_03', text: 'Vael survey marks ring the mount. Whatever the lantern last showed, they measured it.' },
+      ],
+    },
+    {
+      id: 'rhea_red_sun_engine',
+      displayName: 'The Red Sun Engine',
+      location: { sectorId: 'sector_rhea_cinder', poiId: 'world_site_rhea_red_sun_engine' },
+      lines: [
+        { id: 'rse_01', text: 'A stationary engine bolted to the burn\u2019s math. The ash wall is its exhaust note.' },
+        { id: 'rse_02', text: 'The bleed valve failed mid-cycle. The core stayed hot; the socket stayed cold.' },
+        { id: 'rse_03', text: 'Foundry crews file it as weather. The valve disagrees, on schedule.' },
+      ],
+    },
+    {
+      id: 'rhea_emberwake',
+      displayName: 'Emberwake Plot',
+      location: { sectorId: 'sector_rhea_cinder', poiId: 'poi_claim_emberwake' },
+      lines: [
+        { id: 'ew_01', text: 'A corner lot off the Cinder Claim. The flare took the timbers and the assay office together.' },
+        { id: 'ew_02', text: 'The Claim bought ore trucks after. The corner lot was never re-filed.' },
+        { id: 'ew_03', text: 'Scorched stakes at regulation spacing. The burn read the survey before the surveyor did.' },
+      ],
+    },
+    {
+      id: 'haumea_glass_harp',
+      displayName: 'The Glass Harp',
+      location: { sectorId: 'sector_haumea_rift', poiId: 'world_site_haumea_glass_harp' },
+      lines: [
+        { id: 'ghp_01', text: 'Three bent chords strung across the fissure\u2019s throat. It sounds when the crack shifts.' },
+        { id: 'ghp_02', text: 'The Observatory logs every note and files the harp as an instrument it did not order.' },
+        { id: 'ghp_03', text: 'Each chord is a real free mass pretending to be a string. The last one ends the music.' },
+      ],
+    },
+    {
+      id: 'nereid_ship_in_ice',
+      displayName: 'The Ship Inside the Ice',
+      location: { sectorId: 'sector_nereid_shoal', poiId: 'world_site_nereid_ship_in_ice' },
+      lines: [
+        { id: 'sii_01', text: 'A whole keel inside the floe, grown into the ice like a set bone.' },
+        { id: 'sii_02', text: 'The rime keeps it pristine. The shoal keeps it catalogued under weather.' },
+        { id: 'sii_03', text: 'Salvors cut the seam once and stopped. The shore cradle is still waiting.' },
+      ],
+    },
+    {
+      id: 'nereid_shoal_exchange',
+      displayName: 'Shoal Exchange Rock',
+      location: { sectorId: 'sector_nereid_shoal', poiId: 'poi_claim_shoal_exchange' },
+      lines: [
+        { id: 'sx_01', text: 'One scale, same shift: ice crews and the Shoal Claim settling under the Collective\u2019s cut.' },
+        { id: 'sx_02', text: 'It outlived two waystation managers and every indoor-market proposal on file.' },
+        { id: 'sx_03', text: 'The rock is the referee because the rock never left. That is the whole charter.' },
+      ],
+    },
+    {
+      id: 'eunomia_stepwell',
+      displayName: 'The Stepwell',
+      location: { sectorId: 'sector_eunomia_gulf', poiId: 'world_site_eunomia_stepwell' },
+      lines: [
+        { id: 'swl_01', text: 'Two ballast steps sunk into the band like a stair built for weather.' },
+        { id: 'swl_02', text: 'The gulf recoils on a schedule the steps interrupt. Nobody signed the plumbing.' },
+        { id: 'swl_03', text: 'The Understory gardens around it. Whatever it steps down to stays unlisted.' },
+      ],
+    },
+    {
+      id: 'sedna_far_ledger',
+      displayName: 'Far Ledger',
+      location: { sectorId: 'sector_sedna_dark', poiId: 'poi_claim_far_ledger' },
+      lines: [
+        { id: 'fld_01', text: 'A plinth of filed claims the registries refused: plates, bearers, debts in hull-mark.' },
+        { id: 'fld_02', text: 'The survey post reads every entry and amends none. Reading is not agreeing.' },
+        { id: 'fld_03', text: 'Every line is honored. Nobody has survived dishonoring one to contest the custom.' },
+      ],
+    },
+    {
+      id: 'dione_wayline',
+      displayName: 'Wayline Charter',
+      location: { sectorId: 'sector_dione_lane', poiId: 'poi_claim_wayline' },
+      lines: [
+        { id: 'wl_01', text: 'A chartered berth where convoys formed before the customs read. The clock still runs.' },
+        { id: 'wl_02', text: 'Concord moved the scan line half a lane inward. The charter did not move with it.' },
+        { id: 'wl_03', text: 'The formation marks are still painted. Convoys form at the Exchange now, on newer paint.' },
+      ],
+    },
   ],
 });

@@ -6,7 +6,7 @@ import { UNIQUE_WRECKS } from '../src/data/uniqueWrecks.js';
 import { WORLD_ONE_OFFS } from '../src/data/worldOneOffs.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { SECTORS } from '../src/data/sectors.js';
-import { FRONTIER_SECTORS } from '../src/data/frontierRegions/index.js';
+import { FRONTIER_SECTOR_IDS, FRONTIER_SECTORS } from '../src/data/frontierRegions/index.js';
 import {
   HEADLINE_TEMPLATES,
   REGIME_TEMPLATES,
@@ -96,23 +96,48 @@ test('PULSE-07: every landmark lore entry has ≥3 lines', () => {
 
 test('PULSE-07: every authored rim POI id has a lore entry with ≥3 lines', () => {
   const byPoi = new Map(rimPoiLore.entries.map((e) => [e.location?.poiId, e]));
+  const frontierSectorIds = new Set(FRONTIER_SECTOR_IDS);
 
-  // Every frontier-region POI is authored rim content and must carry lore.
+  // Every POI authored onto a rim sector is rim content and must carry lore — the
+  // frontier-region files plus the merged-in claim stakes and sector wonders.
   const frontierPoiIds = new Set();
-  for (const s of FRONTIER_SECTORS) {
-    for (const p of s.pois || []) {
-      frontierPoiIds.add(p.id);
-      const e = byPoi.get(p.id);
-      assert.ok(e, `rim POI ${p.id} (${s.id}) has no lore entry`);
-      assert.ok((e.lines || []).length >= 3, `rim POI ${p.id} lore <3 lines`);
-    }
+  for (const s of FRONTIER_SECTORS) for (const p of s.pois || []) frontierPoiIds.add(p.id);
+  const rimPoiIds = new Set();
+  for (const s of SECTORS) {
+    if (!frontierSectorIds.has(s.id)) continue;
+    for (const p of s.pois || []) rimPoiIds.add(p.id);
+  }
+  assert.ok(rimPoiIds.size >= frontierPoiIds.size, 'merged rim sectors must contain the authored set');
+  for (const poiId of rimPoiIds) {
+    const e = byPoi.get(poiId);
+    assert.ok(e, `rim POI ${poiId} has no lore entry`);
+    assert.ok((e.lines || []).length >= 3, `rim POI ${poiId} lore <3 lines`);
   }
 
   // Every entry's poiId resolves against a real sector POI (frontier or core/junction).
-  const realPoiIds = new Set(frontierPoiIds);
+  const realPoiIds = new Set(rimPoiIds);
   for (const s of SECTORS) for (const p of s.pois || []) realPoiIds.add(p.id);
   for (const e of rimPoiLore.entries) {
     assert.ok(realPoiIds.has(e.location?.poiId), `lore entry ${e.id} names unknown poiId ${e.location?.poiId}`);
     assert.ok((e.lines || []).length >= 3, `lore entry ${e.id} <3 lines`);
   }
+});
+
+test('PULSE-07: every live flavorTargetRef resolves to a landmark entry with ≥3 lines', () => {
+  const byRef = new Map(landmarkLore.entries.map((e) => [e.targetRef, e]));
+  let wired = 0;
+  for (const s of SECTORS) {
+    for (const p of s.pois || []) {
+      if (!p.flavorTargetRef) continue;
+      wired++;
+      const e = byRef.get(p.flavorTargetRef);
+      assert.ok(e, `${p.id} (${s.id}) targets unknown landmark ref ${p.flavorTargetRef}`);
+      assert.ok((e.lines || []).length >= 3, `landmark ${p.flavorTargetRef} lore <3 lines`);
+      if (e.location?.sectorId) {
+        assert.equal(e.location.sectorId, s.id,
+          `landmark ${p.flavorTargetRef} bound to ${e.location.sectorId}, poi sits in ${s.id}`);
+      }
+    }
+  }
+  assert.ok(wired >= 16, `expected the wired landmark set, found ${wired} flavorTargetRefs`);
 });
