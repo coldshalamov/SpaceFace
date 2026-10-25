@@ -134,8 +134,9 @@ export const MECHANIC_VOICE_REGISTER = register('mechanic', 'Mechanic', {
 });
 
 // The instructor: the first-hour tutorial voice. Low, clean, unhurried — a dispatcher register a
-// stranger can tell apart blind from the faction registers and the mechanic (least noise and drive in
-// the set; the bandpass sits high enough to stay soft over the comms bed).
+// stranger can tell apart on the full signature from the faction registers and the mechanic (least
+// noise and drive in the set; the bandpass sits high enough to stay soft over the comms bed — its
+// f0 sits inside the blind-identification tolerance of pitborn's, so pitch alone does not separate).
 export const INSTRUCTOR_VOICE_REGISTER = register('instructor', 'Instructor', {
   sampleId: 'bark_instructor', f0: 118, pitch: 0.92, rate: 0.96,
   filterHz: 1500, q: 0.9, noise: 0.01, bandpassLo: 340, bandpassHi: 2700, drive: 0.04,

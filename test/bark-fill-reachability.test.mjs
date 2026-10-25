@@ -41,7 +41,6 @@ test('the fill table holds no dead keys — every faction id and situation key i
 });
 
 test('every fill line is reachable in the merged BARKS cell', () => {
-  const unreachable = [];
   let fillLineCount = 0;
   for (const factionId of BARK_FACTIONS) {
     const pack = BARKS[factionId];
@@ -52,14 +51,18 @@ test('every fill line is reachable in the merged BARKS cell', () => {
       const cell = pack[situation];
       if (!Array.isArray(extra) || extra.length === 0) continue;
       assert.ok(Array.isArray(cell), `${factionId}/${situation}: fill exists but no live cell`);
-      for (const line of extra) {
-        fillLineCount += 1;
-        if (!cell.includes(line)) unreachable.push(`${factionId}/${situation}: ${line.slice(0, 40)}`);
-      }
+      fillLineCount += extra.length;
+      // Tail-equality, not membership: `includes` also passes when the mutator's `seen` dedupe
+      // silently dropped a fill line that duplicates a base line — dead authored weight of the
+      // exact D254 class. Fill must land verbatim at the cell's tail.
+      assert.deepEqual(
+        cell.slice(cell.length - extra.length),
+        extra,
+        `${factionId}/${situation}: fill must land verbatim at the cell tail — a deduped, dropped, or reordered fill line is silent dead weight`,
+      );
     }
   }
   assert.ok(fillLineCount > 0, 'fill corpus is non-empty (test is measuring real lines)');
-  assert.deepEqual(unreachable, []);
 });
 
 test('no touched cell ends under the BARK_CELL_MIN floor', () => {
