@@ -1264,6 +1264,14 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
      Vector Reaction Drive M reads whole beside STOCK · M instead of "Vector Rea…" in 220px */
   ${W} .orr-sw-jig .orr-sw-node.is-right { width:max-content !important; max-width:300px !important; }
 }
+/* 1001-1100 x 461-640 (1024×640): the identity (STARTER · 1/7 systems fitted · 0 t modules) wrapped in
+   its 220px box and its second line sat on the hull drawing's top-right numeral (05, Mining). Keep it to
+   one line beside DOCKED. Not at 960×540, where the hardpoint cards rise to the nameplate's line and the
+   identity has to wrap clear of them. */
+@media (min-width:1001px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) and (hover:hover) {
+  ${W}.orr-sw--jig > .sx-sw__side { max-width:none !important; }
+  ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:nowrap !important; white-space:nowrap !important; }
+}
 /* 1280×720 / 1366×768 desktop: Range / Record / Paint own a foot inside the main
    column, leaving the schematic its own height above it instead of pinning to the viewport. */
 @media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {
