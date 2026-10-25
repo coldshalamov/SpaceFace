@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 25 October 2026, 01:23 UTC.
+Updated: 25 October 2026, 01:45 UTC.
 
 All **12 goals remain OPEN**. Exact owners retain paths; no merge/deploy or schedule change.
 
@@ -26,11 +26,11 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; PR602 Tally successor dcdc6e62 published, new gates pending. Prior59949/89 and6021/49/89 pass but full CI failed. PR598 is P08 recovery, not runtime acceptance.
+- State: OPEN; PR6025beb49b9 moves unchanged Tally3 gate to sim, pending; dcdc Tally3 was unrun. Earlier1/49/89 passes are not new-head proof. P08 source remains held.
 - Owner: publisher, root and exact feature owners.
 - Evidence: [PR599](https://github.com/coldshalamov/SpaceFace/pull/599); checkpoint separates exact heads, passes and failures.
-- Next: qualify exact-head PR602 CI; P08 large writes remain stopped: one success, one uncertain, three unattempted.
-- Awaiting user: existing publication holds; no repeated approval cards.
+- Next: qualify exact-head PR602 CI; preserve separate uncertain Contents and denied inline-tree histories.
+- Awaiting user: exact847KB partsLibrary public upload approval; no retry or substitute route.
 
 ## SF-RECOVER
 - Outcome: recoverable source, models, tests and handoff beyond a disposable environment, including GitHub.
@@ -42,7 +42,7 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 
 ## SF-VISUALS
 - Outcome: new inspected actual-work images and live game-camera acceptance.
-- State: OPEN; Nursery comparison and original P08 source preview are reviewed and delivered; live camera, PBR and performance remain unverified.
+- State: OPEN; recovered-fairlead/current-cockpit CPU comparison delivered; recovered model not integrated. Live camera/performance acceptance open.
 - Owner: root visual review and exact feature owners.
 - Evidence: [Pitborn preview/PR582](https://github.com/coldshalamov/SpaceFace/pull/582), [measured chart](../world-experience-2026-10-24/hosted-custody-evidence/README.md).
 - Next: show meaningful new work; qualify new Camp binding workload and actual camera readability/lighting when permitted.
@@ -59,9 +59,9 @@ History: [full register archive](archive/OPEN_GOALS_FULL_2026-10-24T1720Z.md), b
 ## SF-ASSET-QUALITY
 - Outcome: cohesive detail/materials with distinctive industrial, civilian, military, salvaged and alien character.
 - State: OPEN; Camp visual/native parity is published; authored Tradehub workload and final materials remain unqualified.
-- Owner: root and asset reviewers; no duplicate writers.
+- Owner: align_ceres body/helper/registry; inspect_last_shift_visual_binding visual overrides/tests.
 - Evidence: PR480 history in archive; Pitborn actual exported-material comparison.
-- Next: inspect weak exported pieces/placements; retain physical/visual parity and stage distinctions.
+- Next: qualify recovered fairlead compatibility and placement; preserve physical/visual parity and acceptance boundaries.
 - Awaiting user: final quality acceptance; no optional per-piece decision.
 
 ## SF-LIVING-WORLD
