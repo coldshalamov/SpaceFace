@@ -1,6 +1,4 @@
 
-| R-5da188c | 5da188cfe0 | board 430 (adopted): set-piece Clips collector, authored-place replay, ten score phrases | Re-check the collector bounds: a 30 s clip is never manufactured from short footage (MAX_SEALED 2, MAX_PENDING 3), a duplicate marker id is refused, and the marker→seal path never touches the sim — only reads the existing pose tape and mix window | OPEN |
-
 | R-bfea032 | bfea03251b | board 436 (adopted): station life presenter + scheduled bay traffic | Re-check speech etiquette and lifecycle: competingUntil suppresses PA under barkDirector/tutorial/caption traffic, the shift bell requires a real watch-key change, hide() parks the clock without losing elapsed time, and nothing under ui/station or render/ writes sim state | OPEN |
 
 | R-5f0aad1 | 5f0aad109c | board 498/499 (adopted): class hull hardware, strain readout, heat cable; vfx.js landed via filtered hunks | Re-check the split: the commit must contain ONLY the lineVisual/lineHardware/overheat/applyLineClassCableProfile hunks — the Row-492 held-annulus and resolveMasslineCableRadiance swap belong to a foreign lane and stay dirty; also confirm arcade/survival runs never read permanent winchHeat or class hardware | OPEN |
