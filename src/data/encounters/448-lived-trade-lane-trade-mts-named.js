@@ -97,6 +97,13 @@ const spec = {
       "verb": "say",
       "line": "The pin has a serial someone still loves.",
       "channel": "info",
+      "next": "a2x"
+    },
+    {
+      "id": "a2x",
+      "verb": "say",
+      "line": "A second pin on the board has been marked sold three times this hour.",
+      "channel": "info",
       "next": "p2"
     },
     {

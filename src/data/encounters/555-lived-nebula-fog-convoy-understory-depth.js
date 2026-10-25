@@ -97,6 +97,13 @@ const spec = {
       "verb": "say",
       "line": "The cradle has a serial someone still loves.",
       "channel": "info",
+      "next": "a2x"
+    },
+    {
+      "id": "a2x",
+      "verb": "say",
+      "line": "The manifest counts eleven lamps in the convoy. The fog keeps count of twelve.",
+      "channel": "info",
       "next": "p2"
     },
     {

@@ -107,6 +107,13 @@ const spec = {
       "verb": "say",
       "line": "The lamp has a serial someone still loves.",
       "channel": "info",
+      "next": "a2x"
+    },
+    {
+      "id": "a2x",
+      "verb": "say",
+      "line": "The bench ledger lists a hand that has not clocked in for two seasons.",
+      "channel": "info",
       "next": "p2"
     },
     {

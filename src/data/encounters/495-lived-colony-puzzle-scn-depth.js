@@ -97,6 +97,13 @@ const spec = {
       "verb": "say",
       "line": "The cradle has a serial someone still loves.",
       "channel": "info",
+      "next": "a2x"
+    },
+    {
+      "id": "a2x",
+      "verb": "say",
+      "line": "Three of the marks on the cradle board share the same careful handwriting.",
+      "channel": "info",
       "next": "p2"
     },
     {
