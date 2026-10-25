@@ -47,17 +47,17 @@ Row format: `id | surface | what the player sees | register | sanctioned detail 
 
 | id | surface | what the player sees | register | sanctioned detail | status |
 |----|---------|---------------------|----------|-------------------|--------|
-| H-01 | Player starter hulls | kestrel/pelican/wasp close-up | used-machine pride | stencils (exists), wear, named quirks | in-review |
-| H-02 | NPC hulls on traffic | wasp/helios/ashline variants | faction liveries | per-variant markings, kill tallies, owner names | in-review |
-| H-03 | Module/outfitting catalog | shop list, stats | parts-yard | part flavor, maker marks, install notes | in-review |
-| H-04 | Weapons & gear | stat lines, fire feel | industrial | recoil/read feedback, lore tags, wear | in-review |
+| H-01 | Player starter hulls | kestrel/pelican/wasp close-up | used-machine pride | stencils (exists), wear, named quirks | shipped 9b1a6664d7 |
+| H-02 | NPC hulls on traffic | wasp/helios/ashline variants | faction liveries | per-variant markings, kill tallies, owner names | shipped 9b1a6664d7 |
+| H-03 | Module/outfitting catalog | shop list, stats | parts-yard | part flavor, maker marks, install notes | shipped 9b1a6664d7 |
+| H-04 | Weapons & gear | stat lines, fire feel | industrial | recoil/read feedback, lore tags, wear | shipped 9b1a6664d7 |
 
 ## T. Stations & interiors
 
 | id | surface | what the player sees | register | sanctioned detail | status |
 |----|---------|---------------------|----------|-------------------|--------|
-| T-01 | Station screens (ledger, outfitting, board) | menus, lists | ORRERY instrument | micro-copy, posters, notices, kiosk ads — content only; ORRERY owns layout | in-review |
-| T-02 | Station life (people, comms) | barks, radio | crowded, gossiping | named regulars, rumors, overheard plots | in-review |
+| T-01 | Station screens (ledger, outfitting, board) | menus, lists | ORRERY instrument | micro-copy, posters, notices, kiosk ads — content only; ORRERY owns layout | shipped 9b1a6664d7 |
+| T-02 | Station life (people, comms) | barks, radio | crowded, gossiping | named regulars, rumors, overheard plots | shipped 9b1a6664d7 |
 | T-03 | Dock interiors | hangar bays | workyard | dressed bays per faction, signage, workers | open |
 | T-04 | Claim outposts & mining sites | frontier rigs | improvised, proud | camp texture, owner logs, warning signs | open |
 
@@ -66,32 +66,32 @@ Row format: `id | surface | what the player sees | register | sanctioned detail 
 | id | surface | what the player sees | register | sanctioned detail | status |
 |----|---------|---------------------|----------|-------------------|--------|
 | V-01 | Comms popups/barks | radio chatter | sector voice | per-sector bark banks, traffic flavor — joint with §1P X-06 | done 2026-10-24 |
-| V-02 | Objective/story tracker | guide text | clipped, useful | voice per arc, deadpan flavor | in-review |
-| V-03 | Help/codex | guides | manual tone | lore sidebars, technician notes | in-review |
-| V-04 | Death/defeat screens | after-action | insurance corporate | per-cause lessons (exists), condolences, bills — joint with §1P X-09 | in-review |
+| V-02 | Objective/story tracker | guide text | clipped, useful | voice per arc, deadpan flavor | shipped 9b1a6664d7 |
+| V-03 | Help/codex | guides | manual tone | lore sidebars, technician notes | shipped 9b1a6664d7 |
+| V-04 | Death/defeat screens | after-action | insurance corporate | per-cause lessons (exists), condolences, bills — joint with §1P X-09 | shipped 9b1a6664d7 |
 
 ## E. Experience edges
 
 | id | surface | what the player sees | register | sanctioned detail | status |
 |----|---------|---------------------|----------|-------------------|--------|
-| E-01 | Onboarding rail + first hour (minutes 0-60) | tutorial rail then open space | should be alive | rail texture, tier-0 deck, ambient traffic — see dossier; joint with §1P X-01 (directions 1-3); guided beat joint with §1P X-04; raid beat joint with §1P X-02 | in-review |
-| E-02 | Save/load & persistence | resume flow | invisible | continuity touches, remembered state flavor | in-review |
-| E-03 | Economy surfaces | prices, tolls, payouts | market math | margin drama, price-talk, debt culture | in-review |
-| E-04 | Easter eggs & secrets | rare one-offs | reward the curious | hidden props, coded barks, ritual sights | in-review |
+| E-01 | Onboarding rail + first hour (minutes 0-60) | tutorial rail then open space | should be alive | rail texture, tier-0 deck, ambient traffic — see dossier; joint with §1P X-01 (directions 1-3); guided beat joint with §1P X-04; raid beat joint with §1P X-02 | shipped 9b1a6664d7 |
+| E-02 | Save/load & persistence | resume flow | invisible | continuity touches, remembered state flavor | shipped 9b1a6664d7 |
+| E-03 | Economy surfaces | prices, tolls, payouts | market math | margin drama, price-talk, debt culture | shipped 9b1a6664d7 |
+| E-04 | Easter eggs & secrets | rare one-offs | reward the curious | hidden props, coded barks, ritual sights | shipped 9b1a6664d7 |
 
 ## U. Screen families (33 registered screens in src/ui/uiRoot.js + helper panels — content/micro-copy rows only; ORRERY owns layout)
 
 | id | surface | register | sanctioned detail | status |
 |----|---------|----------|-------------------|--------|
-| U-01 | Front door: mainMenu, newGame, credits, demoEnd, motionAsk (first-boot) | threshold | title texture, cold-open polish | in-review |
-| U-02 | Session: pause, settings, saveLoad, saveNotices | utility | micro-copy, confirm flavor | in-review |
+| U-01 | Front door: mainMenu, newGame, credits, demoEnd, motionAsk (first-boot) | threshold | title texture, cold-open polish | shipped 9b1a6664d7 |
+| U-02 | Session: pause, settings, saveLoad, saveNotices | utility | micro-copy, confirm flavor | shipped 9b1a6664d7 |
 | U-03 | Charts: galaxyMap (live map), starmap, localmap | navigational | map annotations, rumor pins | open |
-| U-04 | Career/records: missionLog, manifest, achievements, statistics, techTree, footprint, resultsSheet | archival | record texture, footnotes, stamps | in-review |
-| U-05 | Labs/modes: crucible, drill, sandbox, physicsVenues, range, raceBoard, survival/swarm drafts | testbed | lab flavor, mode posters | in-review |
+| U-04 | Career/records: missionLog, manifest, achievements, statistics, techTree, footprint, resultsSheet | archival | record texture, footnotes, stamps | shipped 9b1a6664d7 |
+| U-05 | Labs/modes: crucible, drill, sandbox, physicsVenues, range, raceBoard, survival/swarm drafts | testbed | lab flavor, mode posters | shipped 9b1a6664d7 |
 | U-06 | Replay/share: replay, flightFootage, theater, clips, shareCode | broadcast | broadcast flavor, credits | open |
-| U-07 | Automation/industry: automationPanel, industryReadout (passive-income UVP) | ledger | plant flavor, yield talk | in-review |
-| U-08 | Audio surface: stationLifeAudio, audioRecipes | ambient | audio texture rows — lands via audio dossier | in-review |
-| U-09 | System surfaces: crew, nemesis, mail, docket, survey/scan, ship (shared shipworks stage) | operational | system flavor, notices | in-review |
+| U-07 | Automation/industry: automationPanel, industryReadout (passive-income UVP) | ledger | plant flavor, yield talk | shipped 9b1a6664d7 |
+| U-08 | Audio surface: stationLifeAudio, audioRecipes | ambient | audio texture rows — lands via audio dossier | shipped 9b1a6664d7 |
+| U-09 | System surfaces: crew, nemesis, mail, docket, survey/scan, ship (shared shipworks stage) | operational | system flavor, notices | shipped 9b1a6664d7 |
 
 Deferred, already owned: **flight HUD** → `design/HUD_FLIGHT_ATTENTION.md`;
 **UI layout/redesign** → ORRERY lane (`design/frontend/ORRERY.md`).
