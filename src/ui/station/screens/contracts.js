@@ -950,7 +950,11 @@ export function createContractsScreen(ctx) {
           // the line as drawn (its path's lowest row is the horizontal run), not the key box's arithmetic
           const drawn = tether.querySelector('.sx-ct-tether__core').getBoundingClientRect();
           const lineY = drawn.height > 0 ? drawn.bottom - 0.5 : dr.top + ky;
-          const push = ((lineY - 6) - bottom) / z;
+          // ...but never past the column's own foot: a push the column cannot hold is taken back by flex
+          // from the tracked row (sliced through its name) and the board, leaving a dead gap above YOURS
+          const hangBox = yours.parentElement ? yours.parentElement.getBoundingClientRect() : null;
+          const reach = hangBox ? Math.min(lineY - 6, hangBox.bottom - 2) : lineY - 6;
+          const push = (reach - bottom) / z;
           // the sheet's own margin is !important: the push must be too
           if (push > 0) yours.style.setProperty('margin-top', `${Math.round(push)}px`, 'important');
           // the seam between the board and YOURS carries the rail, so the ladder stays one scale with a block gap
