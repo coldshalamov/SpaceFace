@@ -117,12 +117,25 @@ export const raceBoardScreen={
     if(current)rootEl.appendChild(el('p','k-sentence','A race is active. Finish it or use Leave run in the flight instrument before joining another.'));
     // One guarded launch path for START and the in-flight retry: the guard drops before the
     // first await so a double click can never stage two launches.
-    const launch=async(contractId,level)=>{
+    const launch=async(contractId,level,from='.race-board-launch')=>{
       if(this._launching)return;
       this._launching=true;
       rootEl.querySelectorAll('.race-board-launch,.race-board-retry').forEach(b=>{b.disabled=true;});
       cue('confirm');
-      try{await runContract(ctx,contractId,level,{...fit});}finally{this._launching=false;if(this._root)this.refresh(ctx);}
+      let launched=false;
+      try{launched=await runContract(ctx,contractId,level,{...fit});}finally{
+        this._launching=false;
+        if(this._root){
+          this.refresh(ctx);
+          // Back/Escape on the confirm (or a refused arm) leaves focus on a control the refresh
+          // just replaced; put a keyboard or pad player back on the key they pressed.
+          const root=this._root,active=globalThis.document?.activeElement;
+          if(!launched&&root&&!(active&&typeof root.contains==='function'&&root.contains(active))){
+            const key=root.querySelector?.(from);
+            if(key&&!key.disabled)try{key.focus({preventScroll:true});}catch{/* detached or hidden */}
+          }
+        }
+      }
     };
     const result=lastRacingResult();
     if(result&&result.raceMode==='time-trial'&&result.status!=='dnf'&&Number.isFinite(result.raceElapsedS)&&!result.medalChecked){
@@ -146,7 +159,7 @@ export const raceBoardScreen={
         const retry=el('button','k-word race-board-retry','Retry in this flight');retry.type='button';
         retry.disabled=!!current||!!this._launching||!inFlight(ctx)||!!ctx.state.ui?.docked||ctx.state.world?.currentSectorId!==level.sectorId;
         retry.title=`Undock in ${level.name}'s sector to retry with your current ship. No new game or save reset.`;
-        retry.addEventListener('click',()=>launch(contract.id,level));receipt.appendChild(retry);
+        retry.addEventListener('click',()=>launch(contract.id,level,'.race-board-retry'));receipt.appendChild(retry);
       }
       rootEl.appendChild(receipt);
     }

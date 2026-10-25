@@ -77,7 +77,10 @@ function boardDocument() {
   const make = (tag) => {
     const node = doc._make(tag);
     node.nodeType = 1;
-    node.replaceChildren = (...children) => { node.children.length = 0; node.append(...children); };
+    node.replaceChildren = (...children) => {
+      for (const old of node.children) old.parentNode = null; // detached, as in a real DOM
+      node.children.length = 0; node.append(...children);
+    };
     node.querySelector = (sel) => queryAll(node, sel)[0] || null;
     node.querySelectorAll = (sel) => queryAll(node, sel);
     node.contains = (other) => { let p = other; while (p) { if (p === node) return true; p = p.parentNode; } return false; };
@@ -315,6 +318,30 @@ test('seed 4242: a same-sector time trial waits for the asynchronous arm before 
     await flush();
     assert.equal(h.pops.length, 1, 'still exactly one pop');
     assert.equal(h.emitted.filter((e) => e.event === 'game:new').length, 0);
+  } finally { b.restore(); restoreScreen(); uninstallSimCommandSink(); }
+});
+
+test('seed 4242: a launch that does not go (refused arm / Back) puts focus back on the fresh START', async () => {
+  const restoreScreen = saveScreen();
+  const h = harness({ mode: 'flight', sectorId: 'sector_helios_prime' });
+  let deferred = null;
+  installSimCommandSink(() => (deferred ? deferred.promise : null));
+  const b = mountBoard(h.ctx, { storage: memoryStorage() });
+  // Track focus on every node the refresh builds; the old START is replaced by the refresh.
+  const make = b.doc.createElement;
+  b.doc.createElement = (tag) => { const node = make(tag); node.focus = () => { b.doc.activeElement = node; }; return node; };
+  try {
+    const oldStart = startButton(b.root);
+    b.doc.activeElement = oldStart;
+    let resolve; deferred = { promise: new Promise((r) => { resolve = r; }) };
+    oldStart.click();
+    await flush();
+    resolve({ ok: false });
+    await flush();
+    const fresh = startButton(b.root);
+    assert.notEqual(fresh, oldStart, 'the refresh rebuilt START');
+    assert.equal(b.doc.activeElement, fresh, 'focus returns to the live START, not the detached one');
+    assert.equal(h.pops.length, 0);
   } finally { b.restore(); restoreScreen(); uninstallSimCommandSink(); }
 });
 
