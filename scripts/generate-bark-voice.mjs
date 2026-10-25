@@ -57,8 +57,8 @@ const writeAll = argv.includes('--all');
 // and only ever deletes files the pipeline provably does not own under voice/. It is
 // disabled under --check so the verify-only mode never mutates the tree.
 const pruneStrays = argv.includes('--prune') && !checkOnly;
-if (argv.includes('--prune') && !writeAll) {
-  console.error('--prune only applies to --all');
+if (argv.includes('--prune') && (!writeAll || checkOnly)) {
+  console.error('--prune only applies to --all without --check');
   process.exit(2);
 }
 

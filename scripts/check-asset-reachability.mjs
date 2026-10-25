@@ -173,7 +173,7 @@ for (const [asset, files] of referenced) {
   const packageRoute = packageRouteFor(asset);
   if (!underBundledRoot(asset) && !packageRoute) {
     issues.push(`NOT RETAIL-ROUTABLE: "${asset}" (referenced by ${files.join(', ')}) is outside the bundled roots [${BUNDLED_ROOTS.join(', ')}] and has no render-package route. ` +
-      `Add its directory to build-bundle.mjs + package.json build.files, or drop the reference.`);
+      `Add its directory to build-bundle.mjs + package.json build.files, drop the reference, or check whether it sits under a release-copy exclude prefix [${EXCLUDED_PREFIXES.join(', ')}] — excluded files are never retail-routable.`);
   }
   if (packageRoute) {
     if (!existsSync(join(ROOT, packageRoute.metadataUrl))) {
