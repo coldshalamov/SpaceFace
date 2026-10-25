@@ -2825,7 +2825,8 @@ const LIVED_FRONTIER_SET_LIST = [
         anchor: { kind: 'station', id: 'station_phoebe_echo' },
         actors: [
           // The shrine round: out toward the resonance on its true bearing and back, end to end.
-          { id: 'phoebe_shrine_tender', role: 'tender', kind: 'surveyor', spawn: [38, -1.2],
+          // Fresh bodies clear the research station's compiled skin; saved actors keep their poses.
+          { id: 'phoebe_shrine_tender', role: 'tender', kind: 'surveyor', spawn: [94, -1.2],
             routeId: 'phoebe_shrine_run', durationS: 73,
             marks: [
               ['phoebe_tender_resonance_leg', -30.8, 105.6, 'activity:phoebe-resonance-leg'],
