@@ -2032,6 +2032,12 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain { height:264px !important; min-height:0 !important; }
   ${D} .orr-ind-chain .orr-chain__qty { font-size:30px !important; line-height:1 !important; }
 }
+/* Missions on short desktops: the tracked job is the one row the player chose, so it keeps its height and
+   the board window above (which already scrolls and snaps to a whole row) is the part that yields. */
+@media (min-width:1101px) and (max-height:800px) {
+  ${T} .sx-ct__hang > .sx-ct__active { flex:none !important; }
+  ${T} .sx-ct__hang > .sx-ct__board { min-height:0 !important; }
+}
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {

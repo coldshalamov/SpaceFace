@@ -805,6 +805,44 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${MD} .sx-qty .sx-qty__k { top:43px; }
   ${MD} .sx-qty .sx-qty__words { top:78px; }
 }
+/* ---- 1101+ wide × 461–719 tall (ui-polish-125): the console ran 375px tall (dial 204, total 71,
+   BUY 46, breakdown 33) into a body of only H − 355px, so at 1152×648 BUY/SELL sat under UNDOCK and
+   at 1280×540 they fell below the glass. The dial now stands beside the total, its three words run
+   across under both, and BUY/SELL and the quote breakdown follow — ~210px at 601–719 tall, ~170px
+   at ≤600 tall. 720 tall and up keep the stacked console. */
+@media (min-width:1101px) and (min-height:461px) and (max-height:719px) {
+  ${MD} .sx-trade { grid-template-columns:auto auto !important; grid-template-rows:none !important;
+    grid-template-areas:"dial total" "note note" "verb verb" "breakdown breakdown" !important;
+    justify-content:center !important; justify-items:center; align-items:start !important; column-gap:14px !important; row-gap:4px !important; }
+  ${MD} .sx-trade > .sx-qty { width:108px; height:136px; justify-self:start; }
+  ${MD} .sx-qty .orr-qdial { left:0; top:0; width:108px; height:108px; }
+  ${MD} .sx-qty .sx-qty__k { left:0; width:108px; top:33px; font-size:12px !important; letter-spacing:.1em !important; line-height:13px !important; }
+  ${MD} .sx-qty .sx-qty__in { left:19px; width:70px !important; top:47px; height:32px !important; font-size:28px !important; line-height:32px !important; }
+  ${MD} .sx-qty .sx-qty__words { top:113px; left:0; right:auto; width:216px; }
+  ${MD} .so-trade-total { display:flex !important; flex-direction:column !important; align-items:flex-start !important; justify-self:start; gap:2px !important; padding-top:12px !important; }
+  ${MD} .so-trade-total > span { text-align:left; white-space:nowrap; }
+  ${MD} .so-trade-total > strong { white-space:nowrap !important; }
+  ${MD} .orr-mkt-holdarc { margin-top:2px !important; justify-content:flex-start; }
+  ${MD} .orr-mkt-holdarc svg { display:none !important; }
+  ${MD} .orr-mkt-holdarc__t { white-space:nowrap; }
+  ${MD} .orr-mkt-holdarc__t b { display:inline !important; margin-left:6px; }
+  ${MD} .sx-trade__words { margin:0 !important; justify-content:center; }
+  ${MD} .so-trade-breakdown > summary { line-height:16px !important; }
+}
+@media (min-width:1101px) and (min-height:461px) and (max-height:600px) {
+  ${MD} .sx-trade { row-gap:2px !important; }
+  ${MD} .sx-trade > .sx-qty { width:88px; height:108px; }
+  ${MD} .sx-qty .orr-qdial { width:88px; height:88px; }
+  ${MD} .sx-qty .sx-qty__k { display:none !important; }
+  ${MD} .sx-qty .sx-qty__in { left:14px; width:60px !important; top:28px; height:30px !important; font-size:26px !important; line-height:30px !important; }
+  ${MD} .sx-qty .sx-qty__words { top:88px; }
+  ${MD} .so-trade-total { padding-top:2px !important; }
+  ${MD} .so-trade-total > strong { font-size:24px !important; }
+  ${MD} .sx-trade__go.orr-lampkey { min-height:36px !important; }
+  /* a refusal line ("Not enough credits, stock, or hold space.") must not push the breakdown under UNDOCK */
+  ${MD} .sx-trade__note { line-height:14px !important; margin:0 !important; }
+  ${MD} .so-trade-breakdown > summary { padding:2px 0 !important; }
+}
 `;
 
 export function injectOrreryMarket(doc = globalThis.document) {
