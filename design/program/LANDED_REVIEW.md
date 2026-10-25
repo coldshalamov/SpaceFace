@@ -137,5 +137,5 @@ The oldest OPEN row is the next second look.
 
 
 
-| R-1da2393 | 1da2393289 | Row 394: adopt race:takedown receipt surface + AL-HF-04 HUD Restart button (verified foreign hunks) | Re-check the toast gate: racingHud voices race:takedown only when p.missionId equals the mounted authored-race id (missionId state var or activeAuthoredRace fallback) — confirm the legacy Rook receipt (missionId from heat) and the physical set-piece receipt (mission.id) both match on the live route, and that racingTakedownText null-guards foreign payloads on the board rows without dropping the legacy lostS line | OPEN |
-| R-80753fe | 80753fecb8 | Row 394: contactRecovery >=2 s floor / <=6 s expiry bounds in racingDriver + now wired through racingOpponents | Re-check the floor is honest: a rival that re-aligns instantly still flies capped-pace rejoin for 2 s (not a scripted hold) — confirm the recoveryCap steer at racingDriver.js:245-260 cannot park or orbit the hull off the line during the floor window on the live route, and that the expired flag never lies when elapsed>=6 coincides with alignedTicks>=12 | OPEN |
+
+
