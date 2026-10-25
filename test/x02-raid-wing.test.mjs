@@ -187,3 +187,21 @@ test('X-02 a wing stray into the towed raider converges like a gun kill', () => 
   assert.equal(h.state.onboarding.raid.strayKills, 2);
   assert.ok(Number.isFinite(h.state.onboarding.beatDoneAt.raid), 'the second stray resolves the beat');
 });
+
+// X-02 review: entity ids recycle. A wing that egressed or died keeps its slot (wingDone guards
+// the respawn), so the slot must never arm or delete whatever hull wears that id next.
+test('X-02 review: a recycled wing id is never armed or removed', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wingId = raid.ids.wing;
+  // The wing leaves without a kill receipt and its id is reused by an unrelated hull.
+  const stranger = { id: wingId, type: 'ship', alive: true, team: 1, pos: { x: 9, z: 9 },
+    data: { ai: { roe: 'hold_fire' } } };
+  h.entities.set(wingId, stranger);
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  assert.equal(stranger.data.ai.roe, 'hold_fire', 'a foreign hull is never armed');
+  assert.equal(isOnboardingRaidWingAuthorized(h.state, stranger, h.entities.get(1)), false);
+  h.ob._removeRaidActors();
+  assert.equal(h.removed.includes(wingId), false, 'a foreign hull is never removed');
+  assert.equal(raid.ids.wing, null);
+});

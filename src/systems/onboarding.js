@@ -3336,6 +3336,7 @@ export const onboarding = {
     const id = raid.ids && raid.ids[slot];
     if (id == null || !this.state.entities) return null;
     const entity = this.state.entities.get(id);
+    if (slot === 'wing' && !(entity && entity.data && entity.data.onboardingRaidWing === true)) return null;
     return entity && entity.alive !== false ? entity : null;
   },
 
@@ -3496,6 +3497,15 @@ export const onboarding = {
           if (wing && wing.data && wing.data.ai) wing.data.ai.roe = 'hold_fire';
         }
         continue;
+      }
+      // A dead or egressed wing keeps its slot (wingDone guards the respawn), and entity ids
+      // recycle — never remove whatever hull now wears that id.
+      if (slot === 'wing' && id != null && this.state.entities) {
+        const held = this.state.entities.get(id);
+        if (!held || !held.data || held.data.onboardingRaidWing !== true) {
+          raid.ids[slot] = null;
+          continue;
+        }
       }
       if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
         this.helpers.removeEntity(id);
