@@ -273,6 +273,31 @@ export function isIronmanDeath(ctx = {}) {
 }
 
 /**
+ * Row 463 — the "Retry act" offer on the after-action screen. Only while the durable receipt
+ * names a capital fight, that fight's mission row is still active, and the run is not Ironman.
+ * Combat's boss_staging plan re-prices the same berth economics onto a staging point ~1100 WU
+ * off the boss; any missing piece falls back to the ordinary berth server-side.
+ */
+export function capitalBossRetryOffer(ctx = {}) {
+  if (isIronmanDeath(ctx)) return null;
+  const receipt = currentDefeat(ctx);
+  const fightId = receipt && receipt.capitalBossFightId;
+  if (fightId == null) return null;
+  const state = ctx.state || {};
+  const active = (state.missions && Array.isArray(state.missions.active) && state.missions.active) || [];
+  const mission = active.find((m) => m && String(m.id) === String(fightId));
+  if (!mission || mission.status !== 'active') return null;
+  const bossName = String(receipt.capitalBossName || 'the boss');
+  const actTitle = String(receipt.capitalBossActTitle || 'the current act');
+  return {
+    fightId,
+    bossName,
+    actTitle,
+    caption: `Back to ${bossName} — ${actTitle}. Same costs as the berth.`,
+  };
+}
+
+/**
  * PRO-14 — the after-action model, and the "Load latest" verb the death screen was missing.
  *
  * The death screen offered exactly one save route: "Load save", which pushes the whole save browser.
@@ -480,6 +505,21 @@ export const gameOverScreen = {
       ctx.bus.emit('player:recoveryRequested', { source: 'after_action' });
     });
     this._retryButton = bRetry;
+
+    // Row 463: an active authored capital fight earns a second recovery verb beside the berth —
+    // the same consequences, a staging point back at the boss. The offer re-settles in
+    // _refreshSummary so a settled mission or a lost receipt removes it without a stale click.
+    const bBossRetry = wordItem(list, 'Retry act', 'sf-go-boss-retry');
+    bBossRetry.setAttribute('aria-label', 'Retry the boss act from a staging point with the shown consequences');
+    bBossRetry.addEventListener('click', () => {
+      const offer = capitalBossRetryOffer(ctx);
+      if (!offer) { this._refreshSummary(ctx); return; }
+      cue('confirm');
+      ctx.bus.emit('player:recoveryRequested', {
+        source: 'after_action', plan: 'boss_staging', fightId: offer.fightId,
+      });
+    });
+    this._bossRetryButton = bBossRetry;
 
     const bLoad = wordItem(list, 'Load save');
     bLoad.title = 'Open saved games without applying recovery consequences';
@@ -1023,6 +1063,13 @@ export const gameOverScreen = {
       }
     }
     setWordHidden(this._retryButton, !recoverable);
+    // Row 463: the retry-act verb rides with recoverable but adds its own gates — the receipt's
+    // fight must still map to a live mission and the run must not be Ironman.
+    const bossOffer = recoverable ? capitalBossRetryOffer(ctx) : null;
+    if (this._bossRetryButton) {
+      setWordHidden(this._bossRetryButton, !bossOffer);
+      this._bossRetryButton.title = bossOffer ? bossOffer.caption : '';
+    }
     setWordHidden(this._loadButton, false);
     setWordHidden(this._newButton, recoverable);
     setWordHidden(this._menuButton, recoverable);

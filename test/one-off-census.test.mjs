@@ -59,6 +59,13 @@ import { KILNBACK } from '../src/data/kilnback.js';
 import { MOTHLIGHT } from '../src/data/mothlight.js';
 import { SCISSORWAKE } from '../src/data/scissorwake.js';
 import { DOCKET } from '../src/data/docket.js';
+import { TARE } from '../src/data/tare.js';
+import { LAMPLIGHTER } from '../src/data/lamplighter.js';
+import { SHEPHERD12 } from '../src/data/shepherd12.js';
+import { QUILL } from '../src/data/quill.js';
+import { HOLDFAST } from '../src/data/holdfast.js';
+import { BELLHOP } from '../src/data/bellhop.js';
+import { GRAVEDIGGER } from '../src/data/gravedigger.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const LIVE_SYSTEM_IDS = new Set([...PRODUCTION_INIT_ORDER, ...PRODUCTION_UPDATE_ORDER]);
@@ -232,6 +239,13 @@ test('the census agrees with the code about where each one-off lives', () => {
     kilnback: [KILNBACK.sectorId],
     mothlight: [MOTHLIGHT.sectorId],
     docket: [DOCKET.sectorId],
+    tare: [TARE.sectorId],
+    lamplighter: [LAMPLIGHTER.sectorId],
+    shepherd_12: [SHEPHERD12.sectorId],
+    quill: [QUILL.sectorId],
+    holdfast: [HOLDFAST.sectorId],
+    bellhop: [BELLHOP.sectorId],
+    gravedigger: [GRAVEDIGGER.sectorId],
   };
   for (const [id, sectorIds] of Object.entries(EXPECTED)) {
     const oneOff = CAST_BY_ID.get(id);
@@ -303,7 +317,7 @@ test('every named sector has a resident', () => {
     const oneOff = CAST_BY_ID.get(id);
     assert.ok(oneOff, `the census lost the authored Orphaned Shift resident ${id}`);
     assert.deepEqual(oneOff.sectorIds, [sid], `${id} must live where 03 §4.3 put it: ${sid}`);
-    if (id === 'docket' || id === 'bouncer' || id === 'receipt' || id === 'mop' || id === 'tallyho') {
+    if (id === 'docket' || id === 'bouncer' || id === 'receipt' || id === 'mop' || id === 'tallyho' || id === 'tare' || id === 'lamplighter' || id === 'shepherd_12' || id === 'quill' || id === 'holdfast' || id === 'bellhop' || id === 'gravedigger') {
       // Row 506's shipped members: implemented, on the contact surface, live in the
       // authoritative manifest — the chart-surface check above resolves them.
       assert.equal(oneOff.implemented, true, `${id} shipped its encounter and is implemented`);

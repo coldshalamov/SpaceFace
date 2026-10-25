@@ -388,6 +388,9 @@ export const FIRST_USE_LINE = Object.freeze({
   // The shield visibly regrows; the hull does not. The first bite that reaches the hull
   // names the survival rule once — plate stays hurt until a repair berth welds it.
   firstHullBite: 'The shield grows back. Hull does not — a berth repairs it.',
+  // X-01: the salvage bay loop already pays; the first fill and the first cash-in say so once.
+  firstSalvageBay: 'Salvage is in the bay. Dock to cash it.',
+  firstSalvageCashIn: 'Bay paid out. Fight, fill, dock.',
   firstStation: 'Dock.',
   firstGate: 'Plot a jump.',
   firstCargoFull: 'Sell cargo.',

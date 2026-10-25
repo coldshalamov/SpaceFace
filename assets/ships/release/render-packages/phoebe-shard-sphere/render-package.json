@@ -1,0 +1,6515 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.phoebe-shard-sphere",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "9d2f7ad0f912270cb35c90ae30d881a86c029d2a12333b6fcd526f8819a678c5",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.027499999850988388,
+          1.090000033378601,
+          0.027499999850988388
+        ],
+        "min": [
+          -0.027499999850988388,
+          0.9100000262260437,
+          -0.027499999850988388
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "45bf0cde07497407a6b1505bc7078731b38f6b5dd17f002a8285bb377a26655d",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard00.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard00",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard00",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.16286048293113708,
+          1.0661016702651978,
+          0.20188578963279724
+        ],
+        "min": [
+          -0.21786047518253326,
+          0.8661016821861267,
+          0.14688579738140106
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cb112d47577f50db86a13ead5293662e472a8e67b3b950cf130402d8cab6da50",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard01.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard01",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard01",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.05914241820573807,
+          1.042203426361084,
+          -0.3330490291118622
+        ],
+        "min": [
+          0.00414241710677743,
+          0.8222033977508545,
+          -0.38804903626441956
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fcb8027c6f42978ca1d8c2368d534b41714d0c4b426ae96e7f85019046237091",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard02.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard02",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard02",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.29483115673065186,
+          0.9883050918579102,
+          0.37618616223335266
+        ],
+        "min": [
+          0.23983114957809448,
+          0.8083050847053528,
+          0.3211861550807953
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "13d6ab0fd62591205b160a2c49250d5390701084d880289b2c62ff73ddea7c3c",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard03.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard03",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard03",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.46760717034339905,
+          0.9644067883491516,
+          -0.0600774846971035
+        ],
+        "min": [
+          -0.522607147693634,
+          0.7644068002700806,
+          -0.11507748812437057
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6ae13bf1effa8f0cb2b2abd6387b0dca0ab3f607c35d7fe14753a739ad84b887",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard04.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard04",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard04",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4974767565727234,
+          0.9405084848403931,
+          -0.27146074175834656
+        ],
+        "min": [
+          0.442476749420166,
+          0.7205084562301636,
+          -0.32646074891090393
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4e1d647b620153a83bf8d6007660e06a80a6f647425d60501d6f43aca9cdcfe3",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard05.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard05",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard05",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.12942908704280853,
+          0.8866101503372192,
+          0.6112683415412903
+        ],
+        "min": [
+          -0.1844290792942047,
+          0.7066101431846619,
+          0.5562683343887329
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "697359d8fb159b45c3227359021d6404d23875ec2c71f6282a092955604ad497",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard06.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard06",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard06",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.2705862820148468,
+          0.8627118468284607,
+          -0.5464470386505127
+        ],
+        "min": [
+          -0.3255862891674042,
+          0.6627118587493896,
+          -0.6014469861984253
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bb787ce25ae77c98bb57ed28cd98d4719fc7ff9debc80e1a21289d372a1c1967",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard07.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard07",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard07",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6706647276878357,
+          0.8388135433197021,
+          0.26238274574279785
+        ],
+        "min": [
+          0.6156647801399231,
+          0.6188135743141174,
+          0.20738273859024048
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c31296b87b0475629fff2a086f23df3ec8b20acf0e8c562992328791e6f1f95a",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard08.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard08",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard08",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6371891498565674,
+          0.7849152684211731,
+          0.3018740117549896
+        ],
+        "min": [
+          -0.6921891570091248,
+          0.6049152612686157,
+          0.24687401950359344
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8812fcc2161c33b51196cbb10f3a9be6cc8aebaec7fea3add5acf94e21766405",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard09.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard09",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard09",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.34554174542427063,
+          0.6885169744491577,
+          -0.5796366930007935
+        ],
+        "min": [
+          0.29054173827171326,
+          0.6335169672966003,
+          -0.7796366810798645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d00eac6c0479805946693b7f883abae5d03c0971c023c166a23ee03882de7cbe",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard10.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard10",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard10",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.26061931252479553,
+          0.6546186208724976,
+          0.8532211184501648
+        ],
+        "min": [
+          0.20561930537223816,
+          0.599618673324585,
+          0.6332210898399353
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2d466a73cb0cacd7c60065a4b8b11fdcca9d8833e8e728c998ad444a66cd78c2",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard11.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard11",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard11",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6065297722816467,
+          0.6207203269004822,
+          -0.37615323066711426
+        ],
+        "min": [
+          -0.7865297794342041,
+          0.5657203197479248,
+          -0.43115323781967163
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5fe3b465d6d026a4c3b274affe2194014415e734a0acf415d71d8611c6a8ddf9",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard12.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard12",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard12",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9096158146858215,
+          0.5868220329284668,
+          -0.15049177408218384
+        ],
+        "min": [
+          0.7096158266067505,
+          0.5318220257759094,
+          -0.20549176633358002
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dd63eb4fe27983c5804c15ded9df4ee0c7c1d073fc8516813e61e88d556aacf0",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard13.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard13",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard13",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.4618435204029083,
+          0.5529237389564514,
+          0.8060408234596252
+        ],
+        "min": [
+          -0.5168435573577881,
+          0.49792373180389404,
+          0.5860407948493958
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "700aa40573d18d8cddd92c0d8b3479117afc11365632851641ded9afc5826feb",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard14.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard14",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard14",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.08441523462533951,
+          0.519025444984436,
+          -0.7736421227455139
+        ],
+        "min": [
+          -0.13941523432731628,
+          0.46402543783187866,
+          -0.9536421298980713
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ee0f077f1da0a41460157837e1a1dc70aa885e32bd12ebd7deb1dab061882a30",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard15.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard15",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard15",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7798832058906555,
+          0.48512712121009827,
+          0.6005063056945801
+        ],
+        "min": [
+          0.5798832178115845,
+          0.4301271140575409,
+          0.5455062985420227
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7a004f69d8d8853d0eada06bad134cd22af67460a400968dc6d60b5ff0c92601",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard16.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard16",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard16",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.7950156331062317,
+          0.4512288272380829,
+          0.06492523849010468
+        ],
+        "min": [
+          -1.0150156021118164,
+          0.3962288200855255,
+          0.00992523692548275
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "343d9cf1317f8cb3caaf3964502866bd350b1a6965f3e893592c4e1a6967412d",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard17.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard17",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard17",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7427515387535095,
+          0.4173305034637451,
+          -0.6220749616622925
+        ],
+        "min": [
+          0.5627515316009521,
+          0.36233049631118774,
+          -0.6770749688148499
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cfabb9dfaef31b9327ff5380f9e1a82c7d8a390c8490b2fc4fd768d506232d31",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard18.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard18",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard18",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.015666449442505836,
+          0.38343220949172974,
+          1.0335142612457275
+        ],
+        "min": [
+          -0.07066644728183746,
+          0.32843220233917236,
+          0.8335142731666565
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2690988fd7bc7e9304e6201f383423421e88a30ed8054f54143d9c68a3d3e1a5",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard19.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard19",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard19",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.5790773630142212,
+          0.34953388571739197,
+          -0.6168824434280396
+        ],
+        "min": [
+          -0.6340773701667786,
+          0.294533908367157,
+          -0.8368824124336243
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0a14e98faebea1b9788e6ae05935892faeadb41bd01c9cdf42589163ec1b015a",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard20.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard20",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard20",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.039037823677063,
+          0.3156355917453766,
+          0.15519168972969055
+        ],
+        "min": [
+          0.8590377569198608,
+          0.2606355845928192,
+          0.10019169002771378
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5e7e89be6e35eae79e81c2b5a0f159d626c4a0cb11d4f3b33a0b28720a5803f1",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard21.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard21",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard21",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6938864588737488,
+          0.2817372977733612,
+          0.5798655152320862
+        ],
+        "min": [
+          -0.8938864469528198,
+          0.22673729062080383,
+          0.5248655080795288
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "43f91e8b00fded48390fc17b8d1954bc882982e148b7262d99a0295f21c09dee",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard22.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard22",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard22",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.24158725142478943,
+          0.24783898890018463,
+          -0.8416393399238586
+        ],
+        "min": [
+          0.18658725917339325,
+          0.19283898174762726,
+          -1.0616393089294434
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "37466cc1b6e03575e74a3fc374d2e0d8e9c7fea7dcccb2983b73bf821c45b4c4",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard23.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard23",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard23",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5159634351730347,
+          0.21394068002700806,
+          0.942433774471283
+        ],
+        "min": [
+          0.4609634280204773,
+          0.15894067287445068,
+          0.7624337673187256
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3e8c9336f083108c3d373173bfa7c6331189ccd1d99e6a6e178f4bde69adba54",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard24.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard24",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard24",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.8415433764457703,
+          0.18004237115383148,
+          -0.2728780210018158
+        ],
+        "min": [
+          -1.0415433645248413,
+          0.1250423789024353,
+          -0.3278779983520508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0788a10bfcdc05622c96078075e58ef8a0a64a3ae0b9f80da62454233d42d9b4",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard25.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard25",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard25",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0113792419433594,
+          0.1461440622806549,
+          -0.3889600932598114
+        ],
+        "min": [
+          0.7913792729377747,
+          0.09114407002925873,
+          -0.4439600706100464
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a4f877094620dbff41f394a92230e56d6084eef2bc9c2b51b8b1a6a5d9cfebf8",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard26.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard26",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard26",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.35717228055000305,
+          0.11224576085805893,
+          1.0091546773910522
+        ],
+        "min": [
+          -0.41217225790023804,
+          0.05724576115608215,
+          0.8291547298431396
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a855744d29d9404a3211242418aee6a87d69e0d05ae8a4f010510fce242b1066",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard27.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard27",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard27",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.3105144798755646,
+          0.07834745943546295,
+          -0.8397663235664368
+        ],
+        "min": [
+          -0.36551445722579956,
+          0.023347457870841026,
+          -1.0397663116455078
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7df6eddea3f1e20ee6dff6cba1cf38f63db3acb7c87e69b0d62c1fe1c72de85b",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard28.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard28",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard28",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9950622916221619,
+          0.044449154287576675,
+          0.4926639199256897
+        ],
+        "min": [
+          0.7750622630119324,
+          -0.01055084727704525,
+          0.4376639425754547
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e281f771adf016319fc40d7a647063ce0361f63fd3e9a8f1c88df2ac1fb4ca93",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard29.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard29",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard29",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.8768311142921448,
+          0.01055084727704525,
+          0.28235357999801636
+        ],
+        "min": [
+          -1.0568311214447021,
+          -0.044449154287576675,
+          0.22735357284545898
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7bc5ecefb62e248fd2a0f2782f9572d9a6375e52c0f32f106f629ddda5d4e8dc",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard30.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard30",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard30",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.567638099193573,
+          -0.023347457870841026,
+          -0.7400388717651367
+        ],
+        "min": [
+          0.5126381516456604,
+          -0.07834745943546295,
+          -0.9400389194488525
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ad7a916ddad6057dc1dae482ad548f06b6980aa0f9d1c648bcc4ade45eb1238e",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard31.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard31",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard31",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19626685976982117,
+          -0.05724576115608215,
+          1.0920060873031616
+        ],
+        "min": [
+          0.1412668526172638,
+          -0.11224576085805893,
+          0.8720060586929321
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2b9ffcb1ee964ee9f510f5d5b33d691ac7714ce87053c3d89ddc6c698ccaf7ac",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard32.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard32",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard32",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6950388550758362,
+          -0.09114407002925873,
+          -0.5804782509803772
+        ],
+        "min": [
+          -0.8750388622283936,
+          -0.1461440622806549,
+          -0.6354782581329346
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aa91a5e789d216cd94cd5c481d8b81660a17496bb7dce939b9cd8b97fb28d2af",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard33.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard33",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard33",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0849225521087646,
+          -0.1250423789024353,
+          -0.05409882217645645
+        ],
+        "min": [
+          0.8849225640296936,
+          -0.18004237115383148,
+          -0.10909882187843323
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "34c316af956e938c5c4a7faf5025ea6818e644341dd7b51a63d808e720f776c2",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard34.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard34",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard34",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6396725177764893,
+          -0.15894067287445068,
+          0.8311939239501953
+        ],
+        "min": [
+          -0.6946725249290466,
+          -0.21394068002700806,
+          0.6111939549446106
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0c1d84cbc60ada8dbf9470538d84632711b5f9711f220041ee584a23e1aa3ede",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard35.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard35",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard35",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.03225838392972946,
+          -0.19283898174762726,
+          -0.8854117393493652
+        ],
+        "min": [
+          -0.022741613909602165,
+          -0.24783898890018463,
+          -1.0654118061065674
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "62340d8b6c918648005f0a0eb07be1bced55eb50af2ba245f987fbedef24826c",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard36.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard36",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard36",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6773082613945007,
+          -0.22673729062080383,
+          0.8163188099861145
+        ],
+        "min": [
+          0.6223082542419434,
+          -0.2817372977733612,
+          0.6163187623023987
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2234a057db678567f97db22df4f5f70353e2e119356d381551c50451914d95ae",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard37.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard37",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard37",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.8435032963752747,
+          -0.2606355845928192,
+          -0.060870472341775894
+        ],
+        "min": [
+          -1.0635032653808594,
+          -0.3156355917453766,
+          -0.11587046831846237
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c6ee53685b1b21d65d00255e60713d76e37466ab5b3ea7c5e757dfff8fb2a4c5",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard38.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard38",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard38",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8441252112388611,
+          -0.294533908367157,
+          -0.5448541641235352
+        ],
+        "min": [
+          0.6641252636909485,
+          -0.34953388571739197,
+          -0.5998541712760925
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bb8b032b55ba5267dd574af55e8a25e3434946cec301f9215733c0f265521b55",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard39.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard39",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard39",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.1397622674703598,
+          -0.32843220233917236,
+          1.0194213390350342
+        ],
+        "min": [
+          -0.19476225972175598,
+          -0.38343220949172974,
+          0.8194213509559631
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5ae59090b9dfa6d56dd03cef09f3217882b24b39be34b0b15421fae086b4edba",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard40.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard40",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard40",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.4629693627357483,
+          -0.36233049631118774,
+          -0.6694048643112183
+        ],
+        "min": [
+          -0.5179693698883057,
+          -0.4173305034637451,
+          -0.8894048929214478
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "700d60c7a1710bbf1effe78f26c2e2af205a8e4282319bd500b8852cc83e7ed3",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard41.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard41",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard41",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9635766744613647,
+          -0.3962288200855255,
+          0.2669111490249634
+        ],
+        "min": [
+          0.7835766673088074,
+          -0.4512288272380829,
+          0.211911141872406
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e8c562a41be01bc4363b2543fe6858b8414bc76c8dea2db25edaa6cf9259f6c",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard42.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard42",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard42",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.691059410572052,
+          -0.4301271140575409,
+          0.4334586262702942
+        ],
+        "min": [
+          -0.891059398651123,
+          -0.48512712121009827,
+          0.3784586489200592
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0c1354cc9a886637079e1a0b098b8ecea897d5850f55b9403ef6f7e827278267",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard43.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard43",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard43",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.33022668957710266,
+          -0.46402543783187866,
+          -0.7065532803535461
+        ],
+        "min": [
+          0.2752267122268677,
+          -0.519025444984436,
+          -0.9265533089637756
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8bad4fc3aa30d0a8f8fb40b2fe02a60cc7abecd21e3af742cd0158c5ecef775d",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard44.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard44",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard44",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3483032286167145,
+          -0.49792373180389404,
+          0.8780451416969299
+        ],
+        "min": [
+          0.2933032512664795,
+          -0.5529237389564514,
+          0.6980451941490173
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8784e905dffcb587d2843d4bf8e979f1ffb65b33dd57f95016e7d8eacd9d65de",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard45.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard45",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard45",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6490859389305115,
+          -0.5318220257759094,
+          -0.32750579714775085
+        ],
+        "min": [
+          -0.8490859270095825,
+          -0.5868220329284668,
+          -0.3825058043003082
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0dafcba7031cfcf69b5bc39536f4e574c19dc90526d077bb80299b1d8c5d70f3",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard46.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard46",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard46",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8793066143989563,
+          -0.5657203197479248,
+          -0.20968545973300934
+        ],
+        "min": [
+          0.6593066453933716,
+          -0.6207203269004822,
+          -0.2646854519844055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "737aa468b35064ee6066066cd4cc546d94411eefb3dfdeb43dd12aa36191dd13",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard47.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard47",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard47",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.3663412630558014,
+          -0.599618673324585,
+          0.7620202898979187
+        ],
+        "min": [
+          -0.42134127020835876,
+          -0.6546186208724976,
+          0.5820202827453613
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "103cea30dd5ea59e5a4607f86bbc1ac8e58c1612075a697fa2e54ace68bf9f9b",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard48.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard48",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard48",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.130042165517807,
+          -0.6335169672966003,
+          -0.6336464285850525
+        ],
+        "min": [
+          -0.18504217267036438,
+          -0.6885169744491577,
+          -0.8336464166641235
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "63124c1a5d165f682655b45cc60cdc36fbfc6c650adc5be637a826dd833bdb4d",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard49.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard49",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard49",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6137373447418213,
+          -0.584915280342102,
+          0.4439355432987213
+        ],
+        "min": [
+          0.5587373375892639,
+          -0.8049152493476868,
+          0.38893553614616394
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1a61bc9dba3b3877d32e4067db9b1ccddedef9eebc72d883c9627a58a348aea0",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard50.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard50",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard50",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6519558429718018,
+          -0.6388135552406311,
+          0.11217927187681198
+        ],
+        "min": [
+          -0.7069558501243591,
+          -0.8188135623931885,
+          0.057179272174835205
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6f10f12cbeee03bd3281cff3fc8f102cf22affff0c9323ae6a4a7dcdf567e0f3",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard51.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard51",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard51",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.44669613242149353,
+          -0.6627118587493896,
+          -0.4649887979030609
+        ],
+        "min": [
+          0.39169612526893616,
+          -0.8627118468284607,
+          -0.5199887752532959
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fc6198ac411dc37d213468e18a5b032a80bb35eabf945f5a0bf4a8fc02f8b7a5",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard52.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard52",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard52",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.04952968657016754,
+          -0.6866101622581482,
+          0.631591796875
+        ],
+        "min": [
+          -0.005470313131809235,
+          -0.9066101908683777,
+          0.5765918493270874
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "55744518e5d0107986817c3e3f3d37343dc2c4c3e1bcf9c3b9a8fd712365b42c",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard53.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard53",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard53",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.3634701371192932,
+          -0.740508496761322,
+          -0.36923420429229736
+        ],
+        "min": [
+          -0.4184701144695282,
+          -0.9205085039138794,
+          -0.42423421144485474
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ae6759bf142e94dd29f96740df72dcfdb6652dec6886b0816fe2426985e43a5b",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard54.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard54",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard54",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5296371579170227,
+          -0.7644068002700806,
+          0.05317461118102074
+        ],
+        "min": [
+          0.4746371805667877,
+          -0.9644067883491516,
+          -0.0018253891030326486
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d011a850b18513a94cb6296953fe554e340a30dbff88161611dd2dff25cfe64e",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard55.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard55",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard55",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.31121212244033813,
+          -0.7883051037788391,
+          0.30736082792282104
+        ],
+        "min": [
+          -0.3662121295928955,
+          -1.0083050727844238,
+          0.25236082077026367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa003e612c6f2e29b91ca572671193af0b479c0735d671532eb3afc166d4e2db",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard56.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard56",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard56",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.07751219719648361,
+          -0.8422033786773682,
+          -0.3309628665447235
+        ],
+        "min": [
+          0.022512199357151985,
+          -1.0222034454345703,
+          -0.3859628438949585
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "91b11ea8d78c87eb6fbfe787178196dd51e90dd1a4da6e16c951c9b38af191d9",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard57.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard57",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard57",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.17390888929367065,
+          -0.8661016821861267,
+          0.24013102054595947
+        ],
+        "min": [
+          0.11890889704227448,
+          -1.0661016702651978,
+          0.1851310133934021
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b178e4876410ccd8d7c3ce279b5af0b30189f2b96516bdc9112154a9cf14ca93",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard58.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard58",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard58",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.027499999850988388,
+          -0.8899999856948853,
+          0.027499999850988388
+        ],
+        "min": [
+          -0.027499999850988388,
+          -1.1100000143051147,
+          -0.027499999850988388
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e0686648fa82d815a76084b7b826531377f348e3a608a8af83de4adcd063316",
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard59.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "materialPipelineKey": "opaque",
+      "meshName": "Shard59",
+      "nodeId": "sf.render.phoebe-shard-sphere.mesh.shard59",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "ec131ec35bee659210ce5af2ee4594b97175d43b63093a77b30c41549c799671",
+      "id": "material:ec131ec35bee659210ce5af2",
+      "name": "ShardCrystal",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard00",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard00",
+      "nodeName": "Shard00",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard01",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard01",
+      "nodeName": "Shard01",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard02",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard02",
+      "nodeName": "Shard02",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard03",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard03",
+      "nodeName": "Shard03",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard04",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard04",
+      "nodeName": "Shard04",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard05",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard05",
+      "nodeName": "Shard05",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard06",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard06",
+      "nodeName": "Shard06",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard07",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard07",
+      "nodeName": "Shard07",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard08",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard08",
+      "nodeName": "Shard08",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard09",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard09",
+      "nodeName": "Shard09",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard10",
+      "nodeName": "Shard10",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard11",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard11",
+      "nodeName": "Shard11",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard12",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard12",
+      "nodeName": "Shard12",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard13",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard13",
+      "nodeName": "Shard13",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard14",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard14",
+      "nodeName": "Shard14",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard15",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard15",
+      "nodeName": "Shard15",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard16",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard16",
+      "nodeName": "Shard16",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard17",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard17",
+      "nodeName": "Shard17",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard18",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard18",
+      "nodeName": "Shard18",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard19",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard19",
+      "nodeName": "Shard19",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard20",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard20",
+      "nodeName": "Shard20",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard21",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard21",
+      "nodeName": "Shard21",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard22",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard22",
+      "nodeName": "Shard22",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard23",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard23",
+      "nodeName": "Shard23",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard24",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard24",
+      "nodeName": "Shard24",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard25",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard25",
+      "nodeName": "Shard25",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard26",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard26",
+      "nodeName": "Shard26",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard27",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard27",
+      "nodeName": "Shard27",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard28",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard28",
+      "nodeName": "Shard28",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard29",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard29",
+      "nodeName": "Shard29",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard30",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard30",
+      "nodeName": "Shard30",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard31",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard31",
+      "nodeName": "Shard31",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard32",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard32",
+      "nodeName": "Shard32",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard33",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard33",
+      "nodeName": "Shard33",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard34",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard34",
+      "nodeName": "Shard34",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard35",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard35",
+      "nodeName": "Shard35",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard36",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard36",
+      "nodeName": "Shard36",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard37",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard37",
+      "nodeName": "Shard37",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard38",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard38",
+      "nodeName": "Shard38",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard39",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard39",
+      "nodeName": "Shard39",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard40",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard40",
+      "nodeName": "Shard40",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard41",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard41",
+      "nodeName": "Shard41",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard42",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard42",
+      "nodeName": "Shard42",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard43",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard43",
+      "nodeName": "Shard43",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard44",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard44",
+      "nodeName": "Shard44",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard45",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard45",
+      "nodeName": "Shard45",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard46",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard46",
+      "nodeName": "Shard46",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard47",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard47",
+      "nodeName": "Shard47",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard48",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard48",
+      "nodeName": "Shard48",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard49",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard49",
+      "nodeName": "Shard49",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard50",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard50",
+      "nodeName": "Shard50",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard51",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard51",
+      "nodeName": "Shard51",
+      "nodePath": [
+        0,
+        51
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard52",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard52",
+      "nodeName": "Shard52",
+      "nodePath": [
+        0,
+        52
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard53",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard53",
+      "nodeName": "Shard53",
+      "nodePath": [
+        0,
+        53
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard54",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard54",
+      "nodeName": "Shard54",
+      "nodePath": [
+        0,
+        54
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard55",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard55",
+      "nodeName": "Shard55",
+      "nodePath": [
+        0,
+        55
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard56",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard56",
+      "nodeName": "Shard56",
+      "nodePath": [
+        0,
+        56
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard57",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard57",
+      "nodeName": "Shard57",
+      "nodePath": [
+        0,
+        57
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard58",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard58",
+      "nodeName": "Shard58",
+      "nodePath": [
+        0,
+        58
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.mesh.shard59",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Shard59",
+      "nodeName": "Shard59",
+      "nodePath": [
+        0,
+        59
+      ],
+      "parentId": "sf.render.phoebe-shard-sphere.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.phoebe-shard-sphere.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_phoebe_shard_sphere",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.phoebe-shard-sphere.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "2a578eaa4a5f570aa38a726c0cd0acb5e259f8f81bb73958940ed289956df315"
+    },
+    "sourceGlb": {
+      "bytes": 72188,
+      "sha256": "59a22977b1fc3872bb79d10580f96c3f498d114f06f0cb2545932cceaf84ffee",
+      "uri": "place_phoebe_shard_sphere.glb"
+    },
+    "sourceManifest": {
+      "bytes": 278907,
+      "sha256": "1e526975a39d02df087520fd3a22f17d46ddd210dbd1917a8e1034479568ec81",
+      "uri": "assets/ships/render-packages/pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 86212,
+    "sha256": "f2c1c0ccad753abfc92774bcd7ebf7333492732358616d8096144e1a721f363f",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.010709643363952637,
+        -0.009999990463256836,
+        0.01329714059829712
+      ],
+      "max": [
+        1.0849225521087646,
+        1.090000033378601,
+        1.0920060873031616
+      ],
+      "min": [
+        -1.0635032653808594,
+        -1.1100000143051147,
+        -1.0654118061065674
+      ],
+      "size": [
+        2.148425817489624,
+        2.200000047683716,
+        2.157417893409729
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 60
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 25,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 27,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 28,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 33,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 34,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 36,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 37,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 38,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 39,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 40,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 42,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 43,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 44,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 45,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 46,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 47,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 48,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 49,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 50,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 51,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 52,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 53,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 54,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 55,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 56,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 57,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 58,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 59,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 60,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 61,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 62,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard00",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard01",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard02",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard03",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard04",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard05",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard06",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard07",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard08",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard09",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard10",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard11",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard12",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard13",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard14",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard15",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard16",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard17",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard18",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard19",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard20",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard21",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard22",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard23",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard24",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard25",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard26",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard27",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard28",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard29",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard30",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard31",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard32",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard33",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard34",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard35",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard36",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard37",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard38",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard39",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard40",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard41",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard42",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard43",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard44",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard45",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard46",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard47",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard48",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard49",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard50",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard51",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard52",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard53",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard54",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard55",
+        "planIndex": 57,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard56",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard57",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard58",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Shard59",
+        "planIndex": 61,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_phoebe_shard_sphere.glb"
+  },
+  "runtimeHash": "61a9896e884ce9b754caa6f845f4172a7e05b4e3559ae0e599f27aa9210077f7",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.0849225521087646,
+          1.090000033378601,
+          1.0920060873031616
+        ],
+        "min": [
+          -1.0635032653808594,
+          -1.1100000143051147,
+          -1.0654118061065674
+        ]
+      },
+      "id": "sf.render.phoebe-shard-sphere.body",
+      "nodeIds": [
+        "sf.render.phoebe-shard-sphere.mesh.shard00",
+        "sf.render.phoebe-shard-sphere.mesh.shard01",
+        "sf.render.phoebe-shard-sphere.mesh.shard02",
+        "sf.render.phoebe-shard-sphere.mesh.shard03",
+        "sf.render.phoebe-shard-sphere.mesh.shard04",
+        "sf.render.phoebe-shard-sphere.mesh.shard05",
+        "sf.render.phoebe-shard-sphere.mesh.shard06",
+        "sf.render.phoebe-shard-sphere.mesh.shard07",
+        "sf.render.phoebe-shard-sphere.mesh.shard08",
+        "sf.render.phoebe-shard-sphere.mesh.shard09",
+        "sf.render.phoebe-shard-sphere.mesh.shard10",
+        "sf.render.phoebe-shard-sphere.mesh.shard11",
+        "sf.render.phoebe-shard-sphere.mesh.shard12",
+        "sf.render.phoebe-shard-sphere.mesh.shard13",
+        "sf.render.phoebe-shard-sphere.mesh.shard14",
+        "sf.render.phoebe-shard-sphere.mesh.shard15",
+        "sf.render.phoebe-shard-sphere.mesh.shard16",
+        "sf.render.phoebe-shard-sphere.mesh.shard17",
+        "sf.render.phoebe-shard-sphere.mesh.shard18",
+        "sf.render.phoebe-shard-sphere.mesh.shard19",
+        "sf.render.phoebe-shard-sphere.mesh.shard20",
+        "sf.render.phoebe-shard-sphere.mesh.shard21",
+        "sf.render.phoebe-shard-sphere.mesh.shard22",
+        "sf.render.phoebe-shard-sphere.mesh.shard23",
+        "sf.render.phoebe-shard-sphere.mesh.shard24",
+        "sf.render.phoebe-shard-sphere.mesh.shard25",
+        "sf.render.phoebe-shard-sphere.mesh.shard26",
+        "sf.render.phoebe-shard-sphere.mesh.shard27",
+        "sf.render.phoebe-shard-sphere.mesh.shard28",
+        "sf.render.phoebe-shard-sphere.mesh.shard29",
+        "sf.render.phoebe-shard-sphere.mesh.shard30",
+        "sf.render.phoebe-shard-sphere.mesh.shard31",
+        "sf.render.phoebe-shard-sphere.mesh.shard32",
+        "sf.render.phoebe-shard-sphere.mesh.shard33",
+        "sf.render.phoebe-shard-sphere.mesh.shard34",
+        "sf.render.phoebe-shard-sphere.mesh.shard35",
+        "sf.render.phoebe-shard-sphere.mesh.shard36",
+        "sf.render.phoebe-shard-sphere.mesh.shard37",
+        "sf.render.phoebe-shard-sphere.mesh.shard38",
+        "sf.render.phoebe-shard-sphere.mesh.shard39",
+        "sf.render.phoebe-shard-sphere.mesh.shard40",
+        "sf.render.phoebe-shard-sphere.mesh.shard41",
+        "sf.render.phoebe-shard-sphere.mesh.shard42",
+        "sf.render.phoebe-shard-sphere.mesh.shard43",
+        "sf.render.phoebe-shard-sphere.mesh.shard44",
+        "sf.render.phoebe-shard-sphere.mesh.shard45",
+        "sf.render.phoebe-shard-sphere.mesh.shard46",
+        "sf.render.phoebe-shard-sphere.mesh.shard47",
+        "sf.render.phoebe-shard-sphere.mesh.shard48",
+        "sf.render.phoebe-shard-sphere.mesh.shard49",
+        "sf.render.phoebe-shard-sphere.mesh.shard50",
+        "sf.render.phoebe-shard-sphere.mesh.shard51",
+        "sf.render.phoebe-shard-sphere.mesh.shard52",
+        "sf.render.phoebe-shard-sphere.mesh.shard53",
+        "sf.render.phoebe-shard-sphere.mesh.shard54",
+        "sf.render.phoebe-shard-sphere.mesh.shard55",
+        "sf.render.phoebe-shard-sphere.mesh.shard56",
+        "sf.render.phoebe-shard-sphere.mesh.shard57",
+        "sf.render.phoebe-shard-sphere.mesh.shard58",
+        "sf.render.phoebe-shard-sphere.mesh.shard59",
+        "sf.render.phoebe-shard-sphere.root"
+      ]
+    }
+  ]
+}

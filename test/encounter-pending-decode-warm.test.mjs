@@ -61,3 +61,21 @@ test('place and cargo commit paths refuse stale admission runs like the ship com
   assert.match(placeGuard, /installedPreparedDisposer\s*\?\s*installedPreparedDisposer\(\)\s*:\s*disposePreparedPlace\(\)\s*\)\s*\|\|\s*disposeOwnedPreparedBoundary\(boundary/,
     'place commit must dispose only its own prepared tree');
 });
+
+// D231 / F-LOAD-04: the claim-defense roster map is per-run bookkeeping on a renderer that
+// outlives the run. run:ended fires only for non-adventure runs (runSession._onExitToMenu), so
+// the campaign's title → New Game / Continue cycle must clear it on game:new and save:restoring
+// too — otherwise every defense live at exit leaves a permanent entry.
+test('claim-defense warm rosters clear on every run boundary', () => {
+  const handlerBody = (event) => {
+    const marker = `onBus('${event}', `;
+    const start = rendererSrc.indexOf(marker);
+    assert.notEqual(start, -1, `renderer must subscribe ${event}`);
+    const next = rendererSrc.indexOf('\n    onBus(', start + marker.length);
+    return rendererSrc.slice(start, next === -1 ? start + 4000 : next);
+  };
+  for (const event of ['run:ended', 'game:new', 'save:restoring']) {
+    assert.match(handlerBody(event), /this\._claimDefenseRosters\)\s*this\._claimDefenseRosters\.clear\(\)/,
+      `${event} must clear _claimDefenseRosters`);
+  }
+});

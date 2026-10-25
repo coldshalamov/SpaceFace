@@ -105,7 +105,9 @@ export const ENEMY_TYPES = [
     combatDoctrineId: 'brawler_commit',
     hull: 280, armor: 80, armorFlat: 3, shield: 90, shieldRegen: 12, shieldRegenCapable: true, cap: 180, capRegen: 24,
     maxSpeed: 112, accel: 91, turnRate: 1.65, collisionRadius: 20, mass: 70,
-    weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_autocannon_m' }, { id: 'wpn_pulse_laser_s' }],
+    // dmgOverride pins the pre-row-482 chip damage: the shared pulse S was retuned to the
+    // player's nudge role (weapons.js, 2026-10-23); the bruiser keeps its authored 8.
+    weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_autocannon_m' }, { id: 'wpn_pulse_laser_s', dmgOverride: 8 }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 240, leashRadius: 2400 },
     physicalClass: 'terrain',
     telegraph: { bark: 'warn', line: 'The bruiser is squaring its prow for a committed run. Slip the pass and take the flank.', cue: 'engine_flare' },
@@ -451,7 +453,9 @@ export const ENEMY_TYPES = [
     hull: 300, armor: 90, armorFlat: 3, shield: 110, shieldRegen: 13, shieldRegenCapable: true,
     cap: 190, capRegen: 26,
     maxSpeed: 96, accel: 78, turnRate: 1.4, collisionRadius: 21, mass: 96,
-    weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_pulse_laser_s' }],
+    // dmgOverride pins the pre-row-482 chip damage (shared pulse S retuned to the player's
+    // nudge role in weapons.js, 2026-10-23); the warden keeps its authored 8.
+    weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_pulse_laser_s', dmgOverride: 8 }],
     aiDoctrine: { defaultActivity: 'screen', roe: 'weapons_free', preferredRange: 150, leashRadius: 2600 },
     physicalClass: 'specialist',
     telegraph: { bark: 'warn', line: 'Enemy screen deploying. The warden is guarding the pack, not hunting you.', cue: 'engine_flare' },
@@ -688,3 +692,21 @@ export const ENEMY_TYPES = [
   MOTH_ENEMY,
   PALLET_JACK_ENEMY,
 ];
+
+const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
+
+/**
+ * Row 463 elite-intent vocabulary: the hulls a player must be able to read before they fire —
+ * authored bosses (isBoss / encounterBoss / missionBoss spawn marks), remembered aces, nemesis
+ * rivals, and archetype rare specialists. Doctrine-driven combatants already telegraph through
+ * combatDoctrine; this predicate names the elite set that can fire with no doctrine tell at all.
+ * Pure read — never mutates the entity.
+ */
+export function isEliteCombatant(entity) {
+  const data = entity && entity.data;
+  if (!data || typeof data !== 'object') return false;
+  if (data.isBoss === true || data.encounterBoss != null || data.missionBoss != null) return true;
+  if (data.aceMemory || data.nemesis) return true;
+  const def = ENEMY_BY_ID.get(data.lootTableId || data.enemyTypeId);
+  return !!(def && def.rareSpecialist === true);
+}

@@ -131,11 +131,13 @@ test('forty-six legal kit identities route through the release place family', ()
       .filter((id) => !EVERYDAY_SPACE_KIT_LEGAL_IDS.includes(id))
       .sort(),
     [
+      'place_haumea_fracture_mouth',
       'place_hush_gap',
       'place_hyperion_caved_shaft',
       'place_io_reach_wreck',
       'place_nyx_false_gate',
       'place_orcus_signal_plinth',
+      'place_phoebe_shard_sphere',
       'place_sedna_ringworld_arc',
       'place_triton_aperture_monolith',
     ],

@@ -5,7 +5,13 @@ import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
 import { settleOpeningCompositionTail } from './precompile.js';
+import { openingGateBudgetMs } from './startupPacing.js';
 import { yieldToBrowser } from './startupGpuResidency.js';
+
+// Device-scaled default for the short fail-closed startup budgets (startupPacing.js): a
+// handset meets the same ceilings several times over, and the fixed 20 s wall refused every
+// phone launch back to the main menu (D188/D242).
+const DEFAULT_OPENING_BUDGET_MS = openingGateBudgetMs(20000);
 
 function gpuContextIsLost(state) {
   const render = state && state.render;
@@ -146,7 +152,7 @@ export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure,
   const baseline = Number(render.worldSubmittedFrames) || 0;
   const schedule = options.schedule || setTimeout;
   const cancelTimer = options.cancel || clearTimeout;
-  const timeoutMs = Math.max(0, Number(options.timeoutMs ?? 20000) || 0);
+  const timeoutMs = Math.max(0, Number(options.timeoutMs ?? DEFAULT_OPENING_BUDGET_MS) || 0);
   const inactivePollMs = Math.max(25, Number(options.inactivePollMs ?? 250) || 0);
   const visibilityTarget = openingVisibilityTarget(options);
   const lifecyclePort = openingLifecyclePort(options);
@@ -301,7 +307,7 @@ function openingPresentBudgetMs(state, timeoutMs, options = {}) {
 }
 
 /** Both launch routes join one exact-picture preparation owned by this renderer/run/context. */
-export function waitForOpeningFirstPicture(state, timeoutMs = 20000, options = {}) {
+export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BUDGET_MS, options = {}) {
   const render = state?.render;
   if (!render) return Promise.reject(new Error('opening renderer is unavailable'));
   const world = state.world;
@@ -457,7 +463,7 @@ export function waitForOpeningFirstPicture(state, timeoutMs = 20000, options = {
  */
 export async function prepareMobileOpeningFirstPicture(render, options = {}) {
   if (!render) throw new Error('mobile opening renderer is unavailable');
-  const timeoutMs = Math.max(1, Number(options.timeoutMs) || 20000);
+  const timeoutMs = Math.max(1, Number(options.timeoutMs) || DEFAULT_OPENING_BUDGET_MS);
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
   let active = true;
   const isActive = () => active
@@ -1302,7 +1308,7 @@ export function createGpuResidencyAdmissionTracker(prepare) {
  * in the scene. The second phase is intentionally invoked only after authored visual readiness:
  * compiling before GLB composition exists merely warms a different set of program keys.
  */
-export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
+export async function waitForCurrentRenderPipelines(state, timeoutMs = DEFAULT_OPENING_BUDGET_MS) {
   const render = state && state.render;
   if (!render) return true;
 
@@ -1728,7 +1734,7 @@ export async function settleRequiredPackageAdmission(state) {
   return render.requiredPackageAdmission || classification;
 }
 
-export async function waitForOpeningGpuResources(state, timeoutMs = 20000, options = {}) {
+export async function waitForOpeningGpuResources(state, timeoutMs = DEFAULT_OPENING_BUDGET_MS, options = {}) {
   const render = state && state.render;
   const sectorId = state && state.world && state.world.currentSectorId;
   const capturedGeneration = render ? render.admissionRunGeneration : undefined;
@@ -1772,7 +1778,7 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
   const settleTail = async () => {
     if (options.settleTail !== true || !(state && state.mode === 'loading')) return;
     const tailStarted = ledgerNow();
-    const tail = await settleOpeningCompositionTail(state, { budgetMs: 20000 });
+    const tail = await settleOpeningCompositionTail(state, { budgetMs: DEFAULT_OPENING_BUDGET_MS });
     if (render) render.openingCompositionTail = tail;
     recordOpeningCookStep(render, 'opening.compositionTail', tailStarted,
       tail && tail.skipped === true ? 'skipped' : 'resolved');

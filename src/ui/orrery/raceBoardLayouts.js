@@ -100,6 +100,13 @@ ${R} .race-board-contract:not(.race-board-contract ~ .race-board-contract) > but
   color:#17120a !important; background:var(--dp-lamp, #f2b950) !important; border-color:var(--dp-lamp, #f2b950) !important; }
 ${R} .race-board-contract:not(.race-board-contract ~ .race-board-contract) > button.race-board-launch:hover:not(:disabled) { background:var(--dp-lamp-hot, #ffd98c) !important; }
 ${R} .race-board-contract > button.k-word:disabled { opacity:.42 !important; cursor:not-allowed; }
+/* The selected event answers its pick on the card itself, not only in the START panel: the
+   card's select word (aria-pressed) stays lit like a hovered word of light and its card edge
+   takes the lamp. */
+${R} .race-board-course .dp-lit__item[aria-pressed="true"] { color:var(--dp-lamp-hot, #ffd98c) !important;
+  font-variation-settings:"wght" 780, "wdth" 100 !important;
+  text-shadow:0 0 22px rgb(255 226 178 / .34), 0 0 6px rgb(255 226 178 / .22), 0 1px 0 rgb(0 0 0 / .6) !important; }
+${R} .race-board-course:has(.dp-lit__item[aria-pressed="true"]) { border-color:rgb(242 185 80 / .55) !important; }
 
 /* ---------- physics-venue board: lone Back rail, launch rows straight in the card ---------- */
 ${R} > .race-board-tools:has(> button:only-child) { background:none !important; border-color:transparent !important; padding:0 !important; margin:0 0 12px !important; }

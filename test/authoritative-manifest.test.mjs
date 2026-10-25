@@ -142,8 +142,22 @@ test('production init + update order lengths match the live browser baseline', (
   // weld-spike ledger's proximity read joins the same clock (row 542 complete).
   // 238 -> 239 init / 185 -> 186 update: W-SHIFT registers bouncer — the door robot's
   // firing-report enforcement plus a calendar drift-home pass (row 506 member 2).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 242);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 188);
+  // 242 -> 243 init / 188 -> 189 update: W-SHIFT registers tare — the scale deck's
+  // weigh census reads settled bodies on the same calendar clock (row 506 member 6).
+  // 243 -> 244 init / 189 -> 190 update: W-SHIFT registers lamplighter — the arm
+  // ring and stock census is a seconds-scale read on the same clock (member 7).
+  // 244 -> 245 init / 190 -> 191 update: W-SHIFT registers shepherd12 — the flock
+  // census and the broken shepherd's patrol walk ride the same clock (member 8).
+  // 245 -> 246 init / 191 -> 192 update: W-SHIFT registers quill — the read ring
+  // and drift-home are a seconds-scale read on the same clock (member 9).
+  // 246 -> 247 init / 192 -> 193 update: W-SHIFT registers holdfast — the crack
+  // meter, clamp seats, and drift-home ride the same clock (member 10).
+  // 247 -> 248 init / 193 -> 194 update: W-SHIFT registers bellhop — the floor
+  // restock and drift-home ride the clock; judging is event-driven (member 11).
+  // 248 -> 249 init / 194 -> 195 update: W-SHIFT registers gravedigger — the
+  // race, the bury, and the pit ride the same clock (member 12 — the roster).
+  assert.equal(PRODUCTION_INIT_ORDER.length, 249);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 195);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

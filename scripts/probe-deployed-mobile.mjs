@@ -11,6 +11,11 @@ import {
 // Real-route startup/control acceptance (world visibility requires separate evidence): fresh profile, real menu taps, no debug/state/storage injection.
 // MOBILE_PROBE_URL=https://... MOBILE_PROBE_ENGINE=webkit node scripts/probe-deployed-mobile.mjs
 // MOBILE_PROBE_CONTINUE=1 also reloads the same browser context and taps the public Continue route.
+// MOBILE_PROBE_THROTTLE=handset applies handset timing acceptance (4x CPU + Slow-4G-class network)
+//   through CDP — Chromium only; tokens cpu:<n> and net:slow4g|fast3g|slow3g|off may be combined
+//   comma-separated (e.g. cpu:6,net:off). The 3G profiles are stress tokens, not the acceptance bar.
+// MOBILE_PROBE_CONTEXT_LOSS=1 injects a WEBGL_lose_context driver reset mid-flight and requires the
+//   public route to pause, rebuild, resume the simulation, and keep touch controls (D188 renderer recovery).
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { chromium, webkit, devices } from 'playwright';
@@ -25,17 +30,77 @@ const drawErrorMode = process.env.MOBILE_PROBE_DRAW_ERRORS || 'off';
 const drawErrorProbe = ['1', 'on-error'].includes(drawErrorMode);
 const headed = process.env.MOBILE_PROBE_HEADED === '1';
 const channel = process.env.MOBILE_PROBE_CHANNEL || null;
+const throttleRequest = process.env.MOBILE_PROBE_THROTTLE || 'off';
+const contextLossExercise = process.env.MOBILE_PROBE_CONTEXT_LOSS === '1';
 const mobileDeviceName = 'iPhone 14';
 const mobileDeviceProfile = devices[mobileDeviceName];
+// Chromium's literal-loopback path is pathologically slow on some loaded Windows hosts — local
+// acceptance saw domcontentloaded at 19-45 s against a server curl reaches in 30 ms, while the
+// same page over a mapped hostname lands in ~0.1 s. Local loopback targets are navigated
+// through a fixed mapped hostname so the ordinary network path is used (D188 local acceptance).
+const LOOPBACK_PROBE_HOST = 'spaceface-probe-loopback.test';
+const isLoopbackTarget = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname);
+// The mapped hostname exists so CDP *network* emulation reaches the loopback target (Chromium
+// exempts literal loopback from network conditions). CPU-only throttle keeps 127.0.0.1: the
+// .test hostname over plain http is an insecure context, where the game's SHA-256 package
+// verification loses crypto.subtle and boot crashes before the menu — an artifact of the probe
+// environment, not the deployment (production is https).
+const throttleNeedsMappedHost = /net:(?!off)/.test(throttleRequest) || /handset/.test(throttleRequest);
+const probeUrl = (() => {
+  if (!isLoopbackTarget || engine !== 'chromium' || !throttleNeedsMappedHost) return url;
+  const mapped = new URL(url.href);
+  mapped.hostname = LOOPBACK_PROBE_HOST;
+  return mapped;
+})();
 if (channel && engine !== 'chromium') throw new Error('MOBILE_PROBE_CHANNEL is supported only for Chromium');
+// Handset-class timing acceptance (D188): Chrome DevTools network presets, bytes/second.
+// `handset` is the acceptance profile — 4x CPU slowdown (DevTools mid-tier mobile) plus a
+// Slow-4G-class pipe (4 Mbps down / 3 Mbps up / 100 ms RTT), a conservative real-phone
+// cellular day. The 3G presets stay available as stress tokens: the cold boot plan is ~78 MB
+// of render packages, so a 1.6 Mbps pipe cannot finish a first attempt inside the startup
+// budget no matter how healthy the code is — that is a budget fact, not a defect.
+const HANDSET_NETWORK_PROFILES = {
+  slow4g: { latency: 100, downloadThroughput: 4e6 / 8, uploadThroughput: 3e6 / 8 },
+  fast3g: { latency: 150, downloadThroughput: 1.6e6 / 8, uploadThroughput: 750e3 / 8 },
+  slow3g: { latency: 400, downloadThroughput: 400e3 / 8, uploadThroughput: 400e3 / 8 },
+};
+function parseMobileThrottle(value, engine) {
+  const text = String(value || '').trim();
+  if (!text || text === 'off') return null;
+  if (engine !== 'chromium')
+    throw new Error('MOBILE_PROBE_THROTTLE requires the Chromium engine (CDP emulation); rerun with MOBILE_PROBE_ENGINE=chromium');
+  let cpuRate = null, networkName = null, networkOff = false;
+  for (const token of text.split(',').map(part => part.trim()).filter(Boolean)) {
+    if (token === 'handset') { cpuRate = 4; if (!networkOff) networkName = 'slow4g'; continue; }
+    const cpu = /^cpu:(\d+(?:\.\d+)?)$/.exec(token);
+    if (cpu) {
+      const rate = Number(cpu[1]);
+      if (!(rate > 1) || rate > 100) throw new Error(`Invalid CPU throttle rate (must be 1-100): ${token}`);
+      cpuRate = rate; continue;
+    }
+    const net = /^net:(slow4g|fast3g|slow3g|off)$/.exec(token);
+    if (net) {
+      if (net[1] === 'off') { networkOff = true; networkName = null; }
+      else networkName = net[1];
+      continue;
+    }
+    throw new Error(`Unknown MOBILE_PROBE_THROTTLE token "${token}" — use handset, cpu:<n>, net:slow4g|fast3g|slow3g|off`);
+  }
+  return { cpuRate, network: networkName ? HANDSET_NETWORK_PROFILES[networkName] : null };
+}
+const throttle = parseMobileThrottle(throttleRequest, engine);
 await mkdir(out, { recursive: true });
 const report = { url: url.href, engine, startedAt: new Date().toISOString(), passed: false,
   launch: { headless: !headed, channel }, drawErrorProbe, drawErrorMode,
+  throttle: { requested: throttleRequest, cpuRate: throttle ? throttle.cpuRate : null,
+    network: throttle ? throttle.network : null, applied: false },
+  contextLossExercise: { requested: contextLossExercise },
   mobileProfile: { requested: { name: mobileDeviceName, isMobile: mobileDeviceProfile.isMobile === true,
     hasTouch: mobileDeviceProfile.hasTouch === true, viewport: mobileDeviceProfile.viewport,
     deviceScaleFactor: mobileDeviceProfile.deviceScaleFactor }, effective: null, mismatches: [] },
   acceptance: { startupAndControls: 'pending', mobileCapabilities: 'pending', continue: checkContinue ? 'pending' : 'not-requested',
-    workerContract: 'pending', rendererHealth: 'pending', worldVisibility: 'unverified' },
+    workerContract: 'pending', rendererHealth: 'pending',
+    rendererRecovery: contextLossExercise ? 'pending' : 'not-requested', worldVisibility: 'unverified' },
   continue: { requested: checkContinue, status: checkContinue ? 'pending' : 'not-requested' },
   ...createMobileResponseLedger(), pageErrors: [], console: [], stages: [], observations: [], lifecycle: [],
   startupErrors: [], runtimeMessages: [], rendererErrors: [], rendererErrorCount: 0,
@@ -274,11 +339,84 @@ async function captureFailureDiagnostics(page, { report, snapshot, screenshotPat
       error: String(diagnosticError?.stack || diagnosticError) });
   }
 }
+// D188 renderer-recovery exercise: a driver-class WEBGL_lose_context reset on the live
+// main canvas, driven only through public DOM + standard WebGL — no debug API. The game
+// must observe the loss, pause the sim, rebuild GPU resources after restoration, resume
+// the sim, and keep the player's touch controls.
+const injectContextLoss = page => boundedBrowserRead(() => page.evaluate(() => {
+  const canvas = document.getElementById('gl-canvas');
+  const gl = canvas && (canvas.getContext('webgl2') || canvas.getContext('webgl'));
+  const ext = gl && typeof gl.getExtension === 'function' ? gl.getExtension('WEBGL_lose_context') : null;
+  if (!ext || typeof ext.loseContext !== 'function') return { available: false };
+  ext.loseContext();
+  return { available: true, contextLost: typeof gl.isContextLost === 'function' ? gl.isContextLost() : null };
+}));
+const restoreInjectedContextLoss = page => boundedBrowserRead(() => page.evaluate(() => {
+  const canvas = document.getElementById('gl-canvas');
+  const gl = canvas && (canvas.getContext('webgl2') || canvas.getContext('webgl'));
+  const ext = gl && typeof gl.getExtension === 'function' ? gl.getExtension('WEBGL_lose_context') : null;
+  if (!ext || typeof ext.restoreContext !== 'function') return { restored: false };
+  ext.restoreContext();
+  return { restored: true };
+}));
+async function exerciseRendererRecovery(page, { report, timeoutMs = 120000 } = {}) {
+  const startedAt = Date.now();
+  const before = await snapshot(page, true);
+  const beforeTick = Number(before.runtime?.frame?.tick);
+  const beforeRecovery = before.runtime?.context?.recovery || null;
+  const exercise = report.contextLossExercise = {
+    requested: true, injectedAt: new Date().toISOString(),
+    before: { tick: Number.isFinite(beforeTick) ? beforeTick : null, recovery: beforeRecovery },
+    loss: null, restore: null, lossObserved: null, observations: [], recovered: false,
+  };
+  const loss = await injectContextLoss(page);
+  exercise.loss = { ...loss, at: new Date().toISOString() };
+  if (!loss.available) throw new Error('WEBGL_lose_context is unavailable; cannot exercise context-loss recovery');
+  await page.waitForTimeout(1000);
+  exercise.lossObserved = await snapshot(page, true);
+  const restore = await restoreInjectedContextLoss(page);
+  exercise.restore = { ...restore, at: new Date().toISOString() };
+  if (!restore.restored) throw new Error('restoreContext() unavailable after the injected loss');
+  const deadline = Date.now() + timeoutMs;
+  let recoveredState = null;
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(1500);
+    const state = await snapshot(page, true);
+    if (exercise.observations.length < 24) {
+      exercise.observations.push({ elapsedMs: Date.now() - startedAt, ...state });
+    }
+    const recovery = state.runtime?.context?.recovery;
+    const lossesSeen = !recovery || recovery.losses >= (beforeRecovery?.losses || 0) + 1;
+    const restoresSeen = !!recovery && recovery.restores >= (beforeRecovery?.restores || 0) + 1
+      && recovery.pending !== true;
+    const contextBack = state.runtime?.context?.lost !== true;
+    const tick = Number(state.runtime?.frame?.tick);
+    const simResumed = !Number.isFinite(beforeTick) || !Number.isFinite(tick) || tick > beforeTick;
+    if (lossesSeen && restoresSeen && contextBack && simResumed) { recoveredState = state; break; }
+  }
+  if (!recoveredState) {
+    exercise.lastObservation = exercise.observations.at(-1) || null;
+    throw new Error(`Injected WebGL context loss did not fully recover within ${timeoutMs / 1000} seconds `
+      + '(loss/restore receipts, context back, or sim resume missing); see contextLossExercise');
+  }
+  exercise.recovered = true;
+  exercise.recoveryElapsedMs = Date.now() - startedAt;
+  exercise.recoveredTick = Number(recoveredState.runtime?.frame?.tick);
+  await page.screenshot({ path: join(out, '05b-context-recovered.png') });
+  for (const selector of ['.mf-gun', '.mf-tether', '.mf-pause']) {
+    if (!(await visible(page, selector))) {
+      throw new Error(`Touch control missing after context recovery: ${selector}`);
+    }
+  }
+  report.acceptance.rendererRecovery = 'passed';
+  return exercise;
+}
 const visible = async (page, selector) => boundedBrowserRead(() => page.locator(selector).first().isVisible()).catch(() => false);
 try {
   browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: !headed,
     ...(channel ? { channel } : {}),
-    ...(engine === 'chromium' ? { args: ['--enable-webgl', '--ignore-gpu-blocklist', '--mute-audio'] } : {}) });
+    ...(engine === 'chromium' ? { args: ['--enable-webgl', '--ignore-gpu-blocklist', '--mute-audio',
+      ...(isLoopbackTarget ? [`--host-resolver-rules=MAP ${LOOPBACK_PROBE_HOST} 127.0.0.1`] : [])] } : {}) });
   const context = await browser.newContext({ ...mobileDeviceProfile, serviceWorkers: 'block',
     // Official Vercel E2E header: exclude preview-only feedback UI, not game code
     // or deployment protection. Production visitors do not normally load this toolbar.
@@ -286,10 +424,34 @@ try {
   if (drawErrorProbe) await context.addInitScript(installMobileDrawErrorObserver,
     { startArmed: drawErrorMode === '1' });
   const page = await context.newPage(); page.setDefaultTimeout(20000);
+  if (throttle) {
+    try {
+      const cdp = await context.newCDPSession(page);
+      if (throttle.cpuRate) await cdp.send('Emulation.setCPUThrottlingRate', { rate: throttle.cpuRate });
+      if (throttle.network) {
+        await cdp.send('Network.enable');
+        await cdp.send('Network.emulateNetworkConditions', { offline: false, ...throttle.network });
+      }
+      report.throttle.applied = true;
+    } catch (error) {
+      report.throttle.error = String(error?.message || error);
+      throw new Error(`Handset throttle could not be applied: ${report.throttle.error}`);
+    }
+  }
   const tapControl = async selector => {
     const control = typeof selector === 'string' ? page.locator(selector).first() : selector;
     await control.waitFor({ state: 'visible' });
-    await control.scrollIntoViewIfNeeded();
+    try {
+      // Locator tap computes its point at dispatch time and re-targets itself while a moving
+      // title/ORRERY instrument slides away — the manual bounding-box path measured the box
+      // and tapped stale coordinates whenever the animation moved on between the two steps
+      // (the throttled local run's New Game tap landed on empty space that way).
+      await control.tap({ timeout: 20000 });
+      return;
+    } catch { /* fall through to the touchscreen tap below */ }
+    // Under handset-class CPU throttle the animated menu never settles enough for the
+    // scroll helper's stability gate; scrolling is best-effort (the tap reads the live box).
+    await control.scrollIntoViewIfNeeded({ timeout: 500 }).catch(() => {});
     const box = await control.boundingBox();
     if (!box) throw new Error(`Mobile control has no visible bounds: ${selector}`);
     // Moving title/ORRERY instruments never become "stable". A player taps their current position.
@@ -374,7 +536,9 @@ try {
     recordMobileResponse(report, { url: response.url(), status: response.status(),
       type: response.request().resourceType(), mime: response.headers()['content-type'], bytes: response.headers()['content-length'] });
   });
-  const navigation = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  // A throttled handset run downloads the document on emulated Slow-4G-class conditions;
+  // the unthrottled 60 s navigation budget does not describe that route.
+  const navigation = await page.goto(probeUrl.href, { waitUntil: 'domcontentloaded', timeout: throttle ? 180000 : 60000 });
   report.navigation = { status: navigation?.status(), url: page.url() }; report.html = await boundedBrowserRead(() => page.content());
   const menu = '[data-screen="mainMenu"] button[data-action="newGame"]';
   const inspectMenuState = async (page, timeoutMs = 5000) => boundedBrowserRead(() => page.evaluate(() => {
@@ -390,6 +554,10 @@ try {
     const cinematicBegin = document.querySelector('#cinematic-splash .cine-begin');
     const motionFull = [...document.querySelectorAll('[data-screen="motionAsk"] button')]
       .find(element => /^Full/i.test(element.textContent || '')) || null;
+    // Row 473: the fresh-profile "First light" offer opens a shared confirm over the title.
+    // It is a real player question with real answers — a public actor answers it like a player.
+    const firstLightPlay = [...document.querySelectorAll('#sf-confirm-root button, .sf-confirm button')]
+      .find(element => /^Play$/i.test((element.textContent || '').trim())) || null;
     let frame = null, witnessReadError = null;
     try { frame = window.__SF_WITNESS__?.snapshot?.() || null; }
     catch (error) { witnessReadError = String(error?.stack || error); }
@@ -402,6 +570,7 @@ try {
       mainMenuVisible: visible(mainMenu),
       motionAskVisible: visible(motionAsk),
       motionFullVisible: visible(motionFull),
+      firstLightPlayVisible: visible(firstLightPlay),
       cinematicVisible: visible(cinematic),
       cinematicBeginVisible: visible(cinematicBegin),
       witnessReadError,
@@ -411,7 +580,10 @@ try {
   }), timeoutMs);
   const waitForMenu = async () => {
     const beforeMenu = Date.now();
-    const deadline = beforeMenu + 180000;
+    // The menu deadline is a ceiling on the boot cook, not a wait. A throttled handset pays
+    // the same cook several times over — and the unbundled local dev route pays it again —
+    // so the ceiling follows the device class.
+    const deadline = beforeMenu + (throttle ? 360000 : 180000);
     let nextObservationAt = beforeMenu;
     let lastState = null;
     while (Date.now() < deadline) {
@@ -425,7 +597,10 @@ try {
         state = { available: false, error: String(error?.stack || error) };
         lastState = state;
       }
-      if (state.available !== false && state.mainMenuVisible && state.newGameButtonVisible) return;
+      // The title under a First-light offer is not playable — the dialog owns the screen until
+      // it is answered, so keep looping (the handler above taps Play) before calling the menu ready.
+      if (state.available !== false && state.mainMenuVisible && state.newGameButtonVisible
+        && !state.firstLightPlayVisible) return;
       if (Date.now() >= nextObservationAt) {
         const observation = { route: activeRoute, actorStage, elapsedMs: Date.now() - beforeMenu,
           at: new Date().toISOString(), ...state };
@@ -438,6 +613,12 @@ try {
       if (state.available !== false && state.cinematicBeginVisible) {
         try { await tapControl('#cinematic-splash .cine-begin'); }
         catch (error) { state.cinematicTapError = String(error?.message || error); }
+      }
+      if (state.available !== false && state.firstLightPlayVisible) {
+        const play = page.locator('#sf-confirm-root button, .sf-confirm button')
+          .filter({ hasText: /^Play$/i }).first();
+        try { await tapControl(play); report.firstLightAnswered = true; }
+        catch (error) { state.firstLightTapError = String(error?.message || error); }
       }
       if (state.available !== false && state.motionFullVisible) {
         const motion = page.locator('[data-screen="motionAsk"] button').filter({ hasText: /^Full/i }).first();
@@ -544,46 +725,52 @@ try {
     throw new Error(`${label} did not reach mobile flight UI with the loading shell cleared within five minutes`);
   };
   await waitForMenu();
-  await page.screenshot({ path: join(out, '01-menu.png') });
+  await page.screenshot({ path: join(out, '01-menu.png') }).catch(error => report.finalDiagnosticErrors.push({ kind: 'stage-screenshot', name: '01-menu.png', at: new Date().toISOString(), error: String(error?.message || error) }));
   await boundedBrowserRead(() => page.evaluate(installStartupObserver));
   report.stages.push({ stage: 'menu', ...await snapshot(page) });
   console.log(`[mobile:${engine}] menu ready`);
   actorStage = 'new-game-menu';
   await tapControl(menu);
-  await page.locator('.sf-ng-launch').waitFor({ state: 'visible', timeout: 30000 });
+  // Screen reveals are CPU/first-paint work; a throttled handset reveals them proportionally
+  // later, so the actor's visibility budget follows the emulated device class.
+  await page.locator('.sf-ng-launch').waitFor({ state: 'visible', timeout: throttle ? 120000 : 30000 });
   report.stages.push({ stage: 'new-game', ...await snapshot(page) });
   console.log(`[mobile:${engine}] launching`);
-  await page.screenshot({ path: join(out, '02-new-game.png') });
+  await page.screenshot({ path: join(out, '02-new-game.png') }).catch(error => report.finalDiagnosticErrors.push({ kind: 'stage-screenshot', name: '02-new-game.png', at: new Date().toISOString(), error: String(error?.message || error) }));
   actorStage = 'new-game-launch';
   await tapControl('.sf-ng-launch');
   report.launchMs = await waitForFlight('new-game', Date.now());
   actorStage = 'new-game-flight-controls';
   report.stages.push({ stage: 'flight', ...await snapshot(page, true) });
-  await page.screenshot({ path: join(out, '03-flight.png') });
+  await page.screenshot({ path: join(out, '03-flight.png') }).catch(error => report.finalDiagnosticErrors.push({ kind: 'stage-screenshot', name: '03-flight.png', at: new Date().toISOString(), error: String(error?.message || error) }));
   // Only the player-facing DOM is read. Keyboard labels alone are not mobile acceptance.
   for (const selector of ['.mf-gun', '.mf-tether', '.mf-edge', '.mf-pause']) {
     if (!(await visible(page, selector))) throw new Error(`Missing visible touch control: ${selector}`);
   }
   actorStage = 'new-game-powers';
-  await page.locator('.mf-edge').tap();
+  await tapControl('.mf-edge');
   await page.locator('.mf-wheel').waitFor({ state: 'visible' });
-  await page.screenshot({ path: join(out, '04-powers.png') });
+  await page.screenshot({ path: join(out, '04-powers.png') }).catch(error => report.finalDiagnosticErrors.push({ kind: 'stage-screenshot', name: '04-powers.png', at: new Date().toISOString(), error: String(error?.message || error) }));
   await page.touchscreen.tap(100, 320);
   await page.locator('.mf-wheel').waitFor({ state: 'hidden' });
   actorStage = 'new-game-pause';
-  await page.locator('.mf-pause').tap();
+  await tapControl('.mf-pause');
   await page.locator('[data-screen="pause"]').waitFor({ state: 'visible' });
   report.stages.push({ stage: 'pause', ...await snapshot(page) });
-  await page.screenshot({ path: join(out, '05-pause.png') });
+  await page.screenshot({ path: join(out, '05-pause.png') }).catch(error => report.finalDiagnosticErrors.push({ kind: 'stage-screenshot', name: '05-pause.png', at: new Date().toISOString(), error: String(error?.message || error) }));
   actorStage = 'new-game-resume';
   await page.locator('[data-screen="pause"] button').filter({ hasText: /^Resume/i }).first().tap();
   await page.locator('[data-screen="pause"]').waitFor({ state: 'hidden' });
+  if (contextLossExercise) {
+    actorStage = 'new-game-context-loss';
+    await exerciseRendererRecovery(page, { report });
+  }
   actorStage = 'new-game-rotation';
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(1500);
   const landscape = await snapshot(page, true); report.stages.push({ stage: 'landscape', ...landscape });
   if (landscape.flight !== '1') throw new Error('Touch flight did not survive rotation');
-  await page.screenshot({ path: join(out, '06-landscape.png') });
+  await page.screenshot({ path: join(out, '06-landscape.png') }).catch(error => report.finalDiagnosticErrors.push({ kind: 'stage-screenshot', name: '06-landscape.png', at: new Date().toISOString(), error: String(error?.message || error) }));
   for (const selector of ['.mf-gun', '.mf-tether', '.mf-pause']) {
     const box = await page.locator(selector).boundingBox();
     if (!box || box.x < 0 || box.y < 0 || box.x + box.width > 845 || box.y + box.height > 391)
@@ -648,12 +835,12 @@ try {
     report.saveReceipt = await waitForPublicSave(page, { slot: saveSlot, afterAt: saveAt });
     report.stages.push({ stage: 'continue-save-completed', saveReceipt: report.saveReceipt, ...await snapshot(page) });
     actorStage = 'continue-reload';
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: throttle ? 180000 : 60000 });
     await waitForMenu();
     actorStage = 'continue-menu';
     await boundedBrowserRead(() => page.evaluate(installStartupObserver));
     report.stages.push({ stage: 'continue-menu', ...await snapshot(page) });
-    await page.screenshot({ path: join(out, '07-continue-menu.png') });
+    await page.screenshot({ path: join(out, '07-continue-menu.png') }).catch(error => report.finalDiagnosticErrors.push({ kind: 'stage-screenshot', name: '07-continue-menu.png', at: new Date().toISOString(), error: String(error?.message || error) }));
     actorStage = 'continue-enabled-wait';
     await waitForContinueEnabled(page);
     actorStage = 'continue-launch';
@@ -667,7 +854,7 @@ try {
     report.continueLaunchMs = await waitForFlight('continue', Date.now());
     actorStage = 'continue-flight-controls';
     report.stages.push({ stage: 'continue-flight', ...await snapshot(page, true) });
-    await page.screenshot({ path: join(out, '08-continue-flight.png') });
+    await page.screenshot({ path: join(out, '08-continue-flight.png') }).catch(error => report.finalDiagnosticErrors.push({ kind: 'stage-screenshot', name: '08-continue-flight.png', at: new Date().toISOString(), error: String(error?.message || error) }));
     for (const selector of ['.mf-gun', '.mf-tether', '.mf-pause']) {
       if (!(await visible(page, selector))) throw new Error(`Continue is missing a visible touch control: ${selector}`);
     }
@@ -692,6 +879,9 @@ try {
   }
 } catch (error) {
   report.failedStage = actorStage;
+  if (contextLossExercise && report.acceptance.rendererRecovery !== 'passed') {
+    report.acceptance.rendererRecovery = 'failed';
+  }
   if (activeRoute === 'continue') {
     report.acceptance.continue = 'failed';
     report.continue.status = 'failed';
@@ -715,14 +905,20 @@ try {
 } finally {
   await Promise.allSettled([...pendingDiagnosticReads]);
   const contextFailures = new Set();
+  // An injected loss that fully recovered (receipts + sim resume) is acceptance evidence,
+  // not a renderer failure; anything unresolved stays a failure.
+  const injectedLossRecovered = report.contextLossExercise?.recovered === true;
   let observedInvalidDraws = 0;
   // Preview contexts are deliberately retired; only loss of the main game canvas fails health.
   for (const state of [...report.stages, ...report.observations, report.final].filter(Boolean)) {
     if (drawErrorProbe) observedInvalidDraws = Math.max(observedInvalidDraws,
       state.drawErrors?.invalidDraws || (state.drawErrors?.witnesses?.length ? 1 : 0));
-    if (state.runtime?.context?.lost === true) contextFailures.add('main WebGL context reported lost');
+    if (!injectedLossRecovered && state.runtime?.context?.lost === true)
+      contextFailures.add('main WebGL context reported lost');
     for (const event of state.startupObserver?.events || []) {
-      if (event.canvasId === 'gl-canvas' && ['webglcontextlost', 'webglcontextcreationerror'].includes(event.type))
+      if (event.canvasId === 'gl-canvas'
+          && (event.type === 'webglcontextcreationerror'
+            || (event.type === 'webglcontextlost' && !injectedLossRecovered)))
         contextFailures.add(`main canvas ${event.type}: ${event.statusMessage || 'no driver message'}`);
     }
   }
@@ -737,6 +933,7 @@ try {
     const timer = setTimeout(resolve, 5000); timer.unref();
   })]);
   console.log(JSON.stringify({ engine, passed: report.passed, acceptance: report.acceptance,
+    throttle: report.throttle, contextLossExercise: report.contextLossExercise,
     launchMs: report.launchMs, continueLaunchMs: report.continueLaunchMs, rendererErrorCount: report.rendererErrorCount,
     failure: report.failure, final: report.final, pageErrors: report.pageErrors,
     failedHttp: report.criticalResponses, criticalResponseCount: report.criticalResponseCount,

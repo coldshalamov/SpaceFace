@@ -1,7 +1,8 @@
 // Circuit selection is a real launch path, not a second campaign-save namespace.
-import { el, cue } from '../kit/index.js';
+import { el, cue, words } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectRaceBoardLayouts } from '../orrery/raceBoardLayouts.js';
+import { dressLampKey } from '../orrery/lampKey.js';
 import { confirm } from '../confirm.js';
 import { RACE_LEVELS, courseForLevel, practiceContractForLevel, raceContractById, raceLevelById, racingOfferFor, racingSeedFor, storyContracts } from '../../data/raceLevels.js';
 import { readRaceRecords, raceRecordKey, normalizeSteeringView, STEERING_VIEWS, activeRaceMission } from '../../systems/racingSteer.js';
@@ -25,16 +26,17 @@ const manager=ctx=>ctx?.screenManager||ctx?.screens||ctx?.registry?.get?.('ui')?
 const pop=ctx=>manager(ctx)?.popScreen?.();
 const inFlight=ctx=>ctx?.state?.mode==='flight';
 
-async function runContract(ctx, contractId, level, fit) {
+export async function runContract(ctx, contractId, level, fit, confirmLaunch = confirm) {
   if(!ctx?.bus)return false;
   const temporary=isRacingCorridorSession(ctx.state);
   if(inFlight(ctx)&&!temporary&&fit.raceMode==='time-trial'&&ctx.state.world?.currentSectorId===level.sectorId){
-    const result=armRacingContract(ctx,contractId,{...fit,allowEnterSector:false});
+    // The arm can resolve on a worker rpc ack — a promise is not an acceptance result.
+    const result=await armRacingContract(ctx,contractId,{...fit,allowEnterSector:false});
     if(result?.ok&&!result.reused){pop(ctx);return true;}
     return false;
   }
   const live=inFlight(ctx);
-  const ok=temporary||await confirm({
+  const ok=temporary||ctx?.state?.mode==='menu'||await confirmLaunch({
     title:live?'Leave this flight for a circuit?':'Launch a temporary circuit flight?',
     body:live
       ? 'This replaces the current in-memory flight. Save it first to keep unsaved progress. Campaign slots cannot be overwritten during the circuit, including by autosave. Local racing bests are retained.'
@@ -57,7 +59,7 @@ export const raceBoardScreen={
     rootEl.setAttribute('aria-label','Racing circuits');this._root=rootEl;
     const title=el('header','k-title');
     title.append(el('p','k-sentence','CIRCUITS / FLIGHT'),el('h1','k-display k-t-title','Thread the needle.'),
-      el('p','k-sentence',`Three circuits with the same ships and drives you fly in adventure. ${BINDINGS.steeringView.label} switches chase / overhead in free flight; mission locks return your preferred view when they end.`));
+      el('p','k-sentence',`${RACE_LEVELS.length} circuits with the same ships and drives you fly in adventure. ${BINDINGS.steeringView.label} switches chase / overhead in free flight; mission locks return your preferred view when they end.`));
     rootEl.appendChild(title);
     const tools=el('div','race-board-tools');
     const restored=restoreRacingCup(storageOf());
@@ -113,10 +115,14 @@ export const raceBoardScreen={
     }
     const current=activeRaceMission(ctx?.state);
     if(current)rootEl.appendChild(el('p','k-sentence','A race is active. Finish it or use Leave run in the flight instrument before joining another.'));
+    // One guarded launch path for START and the in-flight retry: the guard drops before the
+    // first await so a double click can never stage two launches.
     const launch=async(contractId,level)=>{
       if(this._launching)return;
-      this._launching=true;rootEl.querySelectorAll('.race-board-launch,.race-board-retry').forEach(b=>b.disabled=true);cue('confirm');
-      try{await runContract(ctx,contractId,level,{...fit});}finally{this._launching=false;this.refresh(ctx);}
+      this._launching=true;
+      rootEl.querySelectorAll('.race-board-launch,.race-board-retry').forEach(b=>{b.disabled=true;});
+      cue('confirm');
+      try{await runContract(ctx,contractId,level,{...fit});}finally{this._launching=false;if(this._root)this.refresh(ctx);}
     };
     const result=lastRacingResult();
     if(result&&result.raceMode==='time-trial'&&result.status!=='dnf'&&Number.isFinite(result.raceElapsedS)&&!result.medalChecked){
@@ -144,57 +150,126 @@ export const raceBoardScreen={
       }
       rootEl.appendChild(receipt);
     }
-    const records=readRaceRecords(storageOf()),ghosts=listRacingGhosts(storageOf()),stories=storyContracts(),grid=el('div','race-board-grid');
-    const buttons=[];
-    for(const [index,level] of RACE_LEVELS.entries()){
-      const course=courseForLevel(level.id),card=el('section','race-board-course dp-plate');
-      card.append(el('p','k-sentence',`CIRCUIT 0${index+1}`),el('h2','k-t-sub',level.name));
-      const map=createRacingMap(course.gates,`${level.name} route, start and finish`);
-      if(map)card.appendChild(map.element);
-      card.append(el('p','k-sentence',level.blurb),el('p','k-sentence',`${Math.round(course.courseLengthWU).toLocaleString()} wu / lap · ${course.gates.length-1} legs · start / finish aligned`));
-      const pieces=racingSetPieceDefinitions(course.courseId);
-      if(pieces)card.appendChild(el('p','k-sentence',`Optional Massline anchors. ${pieces.crossing?'Watch for the scheduled cargo crossing; the amber ring marks a refuge.':pieces.wave?'Read the debris warning, then take a gap or wait in the amber refuge.':pieces.shutter?'A customs shutter closes the main cut; the green service lane stays open.':'Follow the marked line through the technical turns.'}`));
-      if(fit.raceMode==='time-trial'&&course.medalTimes){
-        const times=course.medalTimes;
-        card.appendChild(el('p','k-sentence',`${level.name} medal times · Gold ${formatRaceTime(times.gold)} · Silver ${formatRaceTime(times.silver)} · Bronze ${formatRaceTime(times.bronze)}`));
-        const earned=readRacingCareer(storageOf()).medals?.[level.id];
-        if(earned)card.appendChild(el('p','k-sentence',`Your medal: ${earned.medal}`));
-      }
-      const contracts=[practiceContractForLevel(level.id),...(fit.raceMode==='cup'?[]:stories.filter(row=>row.levelId===level.id))].filter(Boolean);
+    const records=readRaceRecords(storageOf()),ghosts=listRacingGhosts(storageOf()),stories=storyContracts();
+    const modeRow=RACING_MODES.find(row=>row.id===fit.raceMode);
+    // One selectable entry per authored contract, in level order. Cup mode lists practices
+    // only and keeps the existing next-heat eligibility rule.
+    const entries=[];
+    for(const level of RACE_LEVELS){
+      const course=courseForLevel(level.id);
+      if(!course)continue;
+      const contracts=[practiceContractForLevel(level.id),
+        ...(fit.raceMode==='cup'?[]:stories.filter(row=>row.levelId===level.id))].filter(Boolean);
       for(const row of contracts){
-        const offer=racingOfferFor(row.id),recordPrefix=raceRecordKey(offer.params);
-        const fitTimes=Object.entries(records).filter(([key])=>key.startsWith(`${recordPrefix}:fit5-`)
-          &&(fit.raceMode==='time-trial'?!key.includes(':pack-'):key.endsWith(`:pack-${fit.raceDifficulty}`))).map(([,time])=>time);
-        const best=fitTimes.length?Math.min(...fitTimes):null;
-        const block=el('div','race-board-contract');
-        const cupReady=fit.raceMode!=='cup'||level.id===CUP_HEATS[continuing?cup.nextHeat:0].levelId;
-        const b=el('button','k-word race-board-launch',row.practice?(fit.raceMode==='cup'?(continuing?'Continue cup':'Start cup'):fit.raceMode==='race'?'Race':'Time trial'):row.title);b.type='button';buttons.push(b);
-        b.disabled=!!current||!!this._launching||!cupReady;b.title=row.summary;
-        b.addEventListener('click',async()=>{
-          if(this._launching)return;this._launching=true;buttons.forEach(x=>x.disabled=true);cue('confirm');
-          try{await runContract(ctx,row.id,level,{...fit});}finally{this._launching=false;if(this._root)this.refresh(ctx);}
-        });
-        block.append(b,el('p','k-sentence',`${row.laps} ${row.laps===1?'lap':'laps'} · ${row.practice?'view optional':'chase view required'} · ${Number.isFinite(best)?`best across fits ${formatRaceTime(best)}`:'no clean fit record yet'}`));
-        if(!row.practice)block.appendChild(el('p','k-sentence',row.summary));
-        card.appendChild(block);
+        const offer=racingOfferFor(row.id);
+        const eligible=!!offer&&(fit.raceMode!=='cup'||level.id===CUP_HEATS[continuing?cup.nextHeat:0]?.levelId);
+        entries.push({contractId:row.id,level,course,contract:row,offer,eligible});
       }
-      for(const tape of ghosts.filter(t=>t.courseId===course.courseId)){
-        const saved=el('div','race-board-contract');
-        saved.appendChild(el('p','k-sentence',`PERSONAL GHOST · ${tape.hullId.replace(/^ship_/,'')} · ${formatRaceTime(tape.elapsedS)}`));
-        const exportButton=el('button','k-word','Export ghost');exportButton.type='button';
-        exportButton.addEventListener('click',()=>{
-          const json=exportRacingGhostByKey(storageOf(),tape.key);if(!json)return;
-          const url=URL.createObjectURL(new Blob([json],{type:'application/json'})),link=document.createElement('a');
-          link.href=url;link.download=`spaceface-${course.courseId}-ghost.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),0);
-        });
-        const remove=el('button','k-word','Delete ghost');remove.type='button';remove.addEventListener('click',()=>{
-          const outcome=clearRacingGhostByKey(storageOf(),tape.key);
-          if(outcome.ok)this.refresh(ctx);else ctx.bus.emit('toast',{text:'This browser could not delete the ghost.',kind:'warn',ttl:3});
-        });saved.append(exportButton,remove);card.appendChild(saved);
-      }
-      grid.appendChild(card);
     }
+    this._entries=entries;
+    // Selection is transient screen state: never a launch, never a ticket, never persisted.
+    if(!entries.some(e=>e.contractId===this._selectedContractId&&e.eligible)){
+      const preferred=continuing?CUP_HEATS[cup.nextHeat]?.contractId:null;
+      const fallback=entries.find(e=>e.contractId===preferred&&e.eligible)
+        ||entries.find(e=>e.eligible&&e.contract.practice);
+      this._selectedContractId=fallback?fallback.contractId:null;
+    }
+    const startPanel=el('section','race-board-result dp-glass');
+    startPanel.setAttribute('aria-label','Selected event');
+    const startTitle=el('h2','k-t-sub'),startMeta=el('p','k-sentence'),startStatus=el('p','k-sentence');
+    startStatus.setAttribute('role','status');
+    const start=el('button','race-board-launch','START');start.type='button';
+    start.setAttribute('aria-label','Start the selected event');
+    dressLampKey(start);
+    const selectControls=new Map();
+    const applySelection=()=>{
+      const entry=entries.find(e=>e.contractId===this._selectedContractId)||null;
+      for(const [id,button] of selectControls)button.setAttribute('aria-pressed',String(!!entry&&id===entry.contractId));
+      const heatIndex=entry?CUP_HEATS.findIndex(heat=>heat.levelId===entry.level.id):-1;
+      startTitle.textContent=entry?entry.contract.title:'No event selected';
+      startMeta.textContent=entry
+        ?`${entry.course.courseName} · ${modeRow.name}${fit.raceMode==='cup'&&heatIndex>=0?` · Cup heat ${heatIndex+1} of ${CUP_HEATS.length}`:''}`
+        :modeRow.name;
+      startStatus.textContent=!entry?'Select an event to start.'
+        :current?'A race is active. Finish it before starting another.'
+        :entry.eligible?'Ready to start.'
+        :'Cup heats run in order. Finish the current heat to open this one.';
+      start.disabled=!!current||!!this._launching||!entry||!entry.eligible;
+    };
+    start.addEventListener('click',()=>{
+      const entry=entries.find(e=>e.contractId===this._selectedContractId);
+      if(!entry||start.disabled)return;
+      launch(entry.contractId,entry.level);
+    });
+    startPanel.append(startTitle,startMeta,start,startStatus);
+    this._selectControls=selectControls;
+    const grid=el('div','race-board-grid');
+    const select=contractId=>{this._selectedContractId=contractId;applySelection();};
+    for(const [index,level] of RACE_LEVELS.entries()){
+      const course=courseForLevel(level.id);
+      if(!course)continue;
+      for(const entry of entries.filter(e=>e.level===level)){
+        const {contractId,contract:row,offer,eligible}=entry;
+        const card=el('section','race-board-course dp-plate');
+        card.dataset.contractId=contractId;
+        card.append(el('p','k-sentence',`CIRCUIT 0${index+1} · ${course.courseName}`),el('h2','k-t-sub',row.title));
+        const map=createRacingMap(course.gates,`${row.title} on ${level.name}, start and finish`);
+        if(map)card.appendChild(map.element);
+        card.append(el('p','k-sentence',level.blurb),
+          el('p','k-sentence',`${Math.round(course.courseLengthWU).toLocaleString()} wu / lap · ${course.gates.length-1} legs · start / finish aligned`));
+        const pieces=racingSetPieceDefinitions(course.courseId);
+        if(pieces)card.appendChild(el('p','k-sentence',`Optional Massline anchors. ${pieces.crossing?'Watch for the scheduled cargo crossing; the amber ring marks a refuge.':pieces.wave?'Read the debris warning, then take a gap or wait in the amber refuge.':pieces.shutter?'A customs shutter closes the main cut; the green service lane stays open.':'Follow the marked line through the technical turns.'}`));
+        if(fit.raceMode==='time-trial'&&course.medalTimes){
+          const times=course.medalTimes;
+          card.appendChild(el('p','k-sentence',`${level.name} medal times · Gold ${formatRaceTime(times.gold)} · Silver ${formatRaceTime(times.silver)} · Bronze ${formatRaceTime(times.bronze)}`));
+          const earned=readRacingCareer(storageOf()).medals?.[level.id];
+          if(earned)card.appendChild(el('p','k-sentence',`Your medal: ${earned.medal}`));
+        }
+        card.appendChild(el('p','k-sentence',row.summary));
+        const recordPrefix=offer&&raceRecordKey(offer.params);
+        const fitTimes=recordPrefix?Object.entries(records).filter(([key])=>key.startsWith(`${recordPrefix}:fit5-`)
+          &&(fit.raceMode==='time-trial'?!key.includes(':pack-'):key.endsWith(`:pack-${fit.raceDifficulty}`))).map(([,time])=>time):[];
+        const best=fitTimes.length?Math.min(...fitTimes):null;
+        card.appendChild(el('p','k-sentence',`${row.laps} ${row.laps===1?'lap':'laps'} · ${row.practice?'view optional':'chase view required'} · ${Number.isFinite(best)?`best across fits ${formatRaceTime(best)}`:'no clean fit record yet'}`));
+        if(fit.raceMode==='cup'&&!eligible){
+          const heatIndex=CUP_HEATS.findIndex(heat=>heat.levelId===level.id);
+          card.appendChild(el('p','k-sentence',heatIndex>=0&&heatIndex<(cup?.nextHeat||0)
+            ?`Cup heat ${heatIndex+1} of ${CUP_HEATS.length} — already finished.`
+            :`Cup heat ${heatIndex+1>=0?heatIndex+1:CUP_HEATS.length} of ${CUP_HEATS.length} — finish the current heat to unlock.`));
+        }
+        const pickList=words([{action:contractId,label:row.title}],{system:'light',
+          ariaLabel:`Select event on ${level.name}`,onPick:()=>select(contractId)});
+        const pickButton=pickList.querySelector&&pickList.querySelector('button');
+        if(pickButton){pickButton.setAttribute('aria-label',`Select ${row.title} on ${level.name}`);selectControls.set(contractId,pickButton);}
+        card.appendChild(pickList);
+        grid.appendChild(card);
+      }
+      // Personal ghosts belong to the course, so their controls render once per course
+      // rather than once per contract on that course.
+      const tapes=ghosts.filter(t=>t.courseId===course.courseId);
+      if(tapes.length){
+        const saved=el('section','race-board-course dp-plate');
+        saved.append(el('p','k-sentence',`CIRCUIT 0${index+1} · ${course.courseName}`),el('h2','k-t-sub',`Personal ghosts · ${level.name}`));
+        for(const tape of tapes){
+          const row=el('div','race-board-contract');
+          row.appendChild(el('p','k-sentence',`PERSONAL GHOST · ${tape.hullId.replace(/^ship_/,'')} · ${formatRaceTime(tape.elapsedS)}`));
+          const exportButton=el('button','k-word','Export ghost');exportButton.type='button';
+          exportButton.addEventListener('click',()=>{
+            const json=exportRacingGhostByKey(storageOf(),tape.key);if(!json)return;
+            const url=URL.createObjectURL(new Blob([json],{type:'application/json'})),link=document.createElement('a');
+            link.href=url;link.download=`spaceface-${course.courseId}-ghost.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),0);
+          });
+          const remove=el('button','k-word','Delete ghost');remove.type='button';remove.addEventListener('click',()=>{
+            const outcome=clearRacingGhostByKey(storageOf(),tape.key);
+            if(outcome.ok)this.refresh(ctx);else ctx.bus.emit('toast',{text:'This browser could not delete the ghost.',kind:'warn',ttl:3});
+          });row.append(exportButton,remove);saved.appendChild(row);
+        }
+        grid.appendChild(saved);
+      }
+    }
+    rootEl.appendChild(startPanel);
     rootEl.appendChild(grid);
+    applySelection();
     const career=readRacingCareer(storageOf()),paint=el('section','race-board-result dp-glass');
     paint.setAttribute('aria-label','Earned circuit paint');
     paint.append(el('h2','k-t-sub','Wear your finish'),el('p','k-sentence','Finish a cup to earn paint. Bronze 3 · Silver 9 · Gold 15 points, at any opponent level. Paint changes no handling stats.'));
@@ -226,7 +301,8 @@ export const raceBoardScreen={
   },
   // Screens are cached after mount; refresh on every reopen so records and results never stale.
   refresh(ctx){if(this._root)this.mount(this._root,ctx);},
-  unmount(){if(this._root)this._root.replaceChildren();this._root=null;},
+  unmount(){if(this._root)this._root.replaceChildren();this._root=null;
+    this._entries=null;this._selectControls=null;this._selectedContractId=null;this._launching=false;},
   dispose(){this.unmount();},
   update(){},
 };

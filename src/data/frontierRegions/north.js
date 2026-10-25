@@ -140,6 +140,15 @@ export const NORTH_SECTORS = Object.freeze([
     ]),
     pois: Object.freeze([
       Object.freeze({ id: 'poi_rhea_slag', type: 'derelict', name: 'Slag Hauler Hulk' }),
+      Object.freeze({
+        id: 'poi_rhea_slag_memorial',
+        type: 'beacon',
+        name: "Slagman's Lantern",
+        discoveryPlate: Object.freeze({
+          title: "Slagman's Lantern",
+          body: "Somebody wired a furnace lantern to a cell that still takes charge beside the hulk. Burned into a slag ingot under it: 'Pall Vess, Nera Oku, and the apprentice — refused the torch, slag-bound.' The torch found them anyway; the scoring on the bell reads inward.",
+        }),
+      }),
       // Sealed-cache payoff rows: world.js _spawnCachePayoffs pops `contents` as a real
       // anchored cargo pod once the cache is investigated.
       Object.freeze({
@@ -207,6 +216,15 @@ export const NORTH_SECTORS = Object.freeze([
       }),
       Object.freeze({ id: 'poi_haumea_buoy', type: 'beacon', name: 'Rift Range Buoy' }),
       Object.freeze({ id: 'poi_haumea_probe', type: 'derelict', name: 'Rift Probe Shell' }),
+      Object.freeze({
+        id: 'poi_haumea_probe_memorial',
+        type: 'beacon',
+        name: "Probe-Keeper's Stake",
+        discoveryPlate: Object.freeze({
+          title: "Probe-Keeper's Stake",
+          body: "A survey stake bound in Anchor knot-work, left by the machine that minds the crack. The tag reads: 'The probe RIME-4 came back wrong. Ansi Toro and Bes Mar are recorded at the Anchor.' The shell's scoring runs inward, which no weapon does.",
+        }),
+      }),
     ]),
   }),
 
@@ -263,6 +281,15 @@ export const NORTH_SECTORS = Object.freeze([
         contents: Object.freeze({ commodityId: 'cmdty_salvage_electronics', amount: 3 }),
       }),
       Object.freeze({ id: 'poi_eris_wreck', type: 'wreck', name: 'Toll-Runner Wreck' }),
+      Object.freeze({
+        id: 'poi_eris_toll_memorial',
+        type: 'beacon',
+        name: 'Toll-Book Marker',
+        discoveryPlate: Object.freeze({
+          title: 'Toll-Book Marker',
+          body: 'A buoy with a torn toll-book page sealed under the plate: the runner HALKETT paid through seventeen times, and on the eighteenth the toll was the hull. Salvors took drive and holds the first day; the margin keeps what is left.',
+        }),
+      }),
       Object.freeze({
         id: 'poi_eris_dead_drop',
         type: 'cache',
@@ -400,6 +427,11 @@ export const NORTH_ANCHORS = Object.freeze({
         landmark: true,
       }),
       Object.freeze({
+        id: 'poi_rhea_slag_memorial',
+        pos: Object.freeze({ x: 1060, z: 700 }),
+        landmarkGlb: 'place_nav_buoy',
+      }),
+      Object.freeze({
         id: 'poi_rhea_claim',
         pos: Object.freeze({ x: -1380, z: -280 }),
         landmarkGlb: 'place_debris_chunk',
@@ -429,8 +461,10 @@ export const NORTH_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_haumea_fissure',
         pos: Object.freeze({ x: 0, z: 180 }),
-        landmarkGlb: 'place_asteroid_seamed',
+        landmarkGlb: 'place_haumea_fracture_mouth',
         landmark: true,
+        placeTargetRadius: 48,
+        visualRadius: 48,
       }),
       Object.freeze({
         id: 'poi_haumea_buoy',
@@ -441,6 +475,11 @@ export const NORTH_ANCHORS = Object.freeze({
         id: 'poi_haumea_probe',
         pos: Object.freeze({ x: 960, z: -640 }),
         landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        id: 'poi_haumea_probe_memorial',
+        pos: Object.freeze({ x: 1090, z: -560 }),
+        landmarkGlb: 'place_nav_buoy',
       }),
     ]),
   }),
@@ -480,6 +519,11 @@ export const NORTH_ANCHORS = Object.freeze({
         landmark: true,
       }),
       Object.freeze({
+        id: 'poi_eris_toll_memorial',
+        pos: Object.freeze({ x: 1160, z: 780 }),
+        landmarkGlb: 'place_nav_buoy',
+      }),
+      Object.freeze({
         id: 'poi_eris_dead_drop',
         pos: Object.freeze({ x: 420, z: -1100 }),
         landmarkGlb: 'place_debris_chunk',
@@ -517,8 +561,10 @@ export const NORTH_ANCHORS = Object.freeze({
         id: 'poi_phoebe_echo',
         // The dockable research module is the sphere's center, not a second landmark 1,000 WU away.
         pos: Object.freeze({ x: 280, z: -960 }),
-        landmarkGlb: 'place_asteroid_seamed',
+        landmarkGlb: 'place_phoebe_shard_sphere',
         landmark: true,
+        placeTargetRadius: 120,
+        visualRadius: 120,
       }),
       Object.freeze({
         id: 'poi_phoebe_vault',
