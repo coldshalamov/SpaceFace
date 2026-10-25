@@ -926,3 +926,59 @@ test('game:new alone clears warnings, readouts, and the announcement ledger', ()
     h.capSys.destroy();
   } finally { env.restore(); }
 });
+
+// ── review · one live-region write per frame, pooled readouts ─────────────────────────
+test('identities opened in one frame share one announcement, cast first; readouts are pooled', () => {
+  const env = installDom(1280, 720);
+  try {
+    const h = bootScoreFight(TOLLMAN);
+    const score = requireCapitalBossEncounter(TOLLMAN).score;
+    const project = (w, out) => { out.x = 640 + w.x; out.y = 360 + w.z; out.onScreen = true; return out; };
+    tick(h, score.introTicks + score.transitionTicks + 30);
+    const fight = h.state.capitalBossEncounters.fights[h.fightId];
+    assert.ok(fight.cast, 'a cast is live before the mount exists');
+    const beat = score.beats.find((b) => b.id === fight.cast.beatId);
+    const act = score.acts[fight.actIndex];
+    const mount = mountCapitalBossOverlay({ root: env.root, bus: h.bus, state: h.state, helpers: { worldToScreen: project } });
+    const writes = [];
+    const liveRegion = findAll(env.root, (n) => n.attributes && n.attributes['aria-live'] === 'polite')[0];
+    Object.defineProperty(liveRegion, 'textContent', {
+      get() { return liveRegion._live || ''; },
+      set(v) { liveRegion._live = v; writes.push(v); },
+    });
+    const expectOneJoined = (label) => {
+      assert.equal(writes.length, 1, `${label}: one live-region write for the frame, got ${writes.length}`);
+      const text = writes[0];
+      assert.ok(text.startsWith(`${beat.title}. ${beat.counter}`), `${label}: the cast instruction leads (${text})`);
+      assert.ok(text.includes(`${score.name} is on you.`), `${label}: the boss intro is not overwritten (${text})`);
+      assert.ok(text.includes(`${score.name}: ${act.title}`), `${label}: the act is not overwritten (${text})`);
+    };
+    mount.draw(h.state);
+    expectOneJoined('late mount');
+    writes.length = 0;
+    mount.draw(h.state);
+    assert.equal(writes.length, 0, 'a steady frame speaks nothing');
+    h.bus.emit('save:loaded', { reason: 'test' });
+    mount.draw(h.state);
+    expectOneJoined('save:loaded');
+
+    // The pooled projection reuses its array and readout objects frame to frame.
+    const pool = [];
+    const first = capitalBossReadouts(h.state, pool);
+    const r0 = first[0];
+    const m0 = r0.move;
+    const second = capitalBossReadouts(h.state, pool);
+    assert.equal(second, pool, 'the caller array is the result');
+    assert.equal(second[0], r0, 'the readout object is reused');
+    assert.equal(second[0].move, m0, 'the move record is reused');
+    assert.deepEqual(Object.keys(r0).sort(), Object.keys(capitalBossReadouts(h.state)[0]).sort(),
+      'a pooled readout carries the same public fields as a fresh one');
+    h.state.mode = 'docked';
+    assert.equal(capitalBossReadouts(null, pool).length, 0, 'no state, no readouts');
+    mount.draw(h.state);
+    const shown = groupNodes(env.root).filter((g) => g.style.display === 'block');
+    assert.equal(shown.length, 0, 'leaving flight hides every readout');
+    mount.destroy();
+    h.capSys.destroy();
+  } finally { env.restore(); }
+});

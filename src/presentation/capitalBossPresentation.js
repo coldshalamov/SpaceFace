@@ -37,53 +37,72 @@ export function drawCapitalWarning(ctx,warning,clock,project,{reducedMotion=fals
  }
 }
 const clamp01=(v)=>v<=0?0:v>=1?1:v;
+const byFightId=(a,b)=>a.fightId<b.fightId?-1:a.fightId>b.fightId?1:0;
 /**
  * Pure readout projection of the live capital fights (row 463): existing fight records,
  * the encounter catalog's authored name/act/move data, and the boss entity's own hull.
- * No state writes, no RNG, no persistent fields — the mount redraws this every frame.
+ * No state writes, no RNG, no persistent fields. The mount redraws this every frame, so it
+ * passes its own `out` array: the array and its readout/move objects are reused in place
+ * (length trimmed to the live count), and a frame with no live fight allocates nothing.
+ * Callers that pass nothing get a fresh array, as before.
  */
-export function capitalBossReadouts(state) {
+export function capitalBossReadouts(state,out) {
+ const list=Array.isArray(out)?out:[];
+ let n=0;
  const fights=state&&state.capitalBossEncounters&&state.capitalBossEncounters.fights;
- if(!fights||typeof fights!=='object')return[];
- const entities=state&&state.entities,out=[];
- for(const r of Object.values(fights)){
-  if(!r||r.started!==true||r.suspended===true||r.terminal!=null)continue;
-  if(r.targetId!==state.playerId)continue;
-  const boss=entities&&typeof entities.get==='function'?entities.get(r.bossId):null;
-  if(!boss||boss.alive===false)continue;
-  let spec=null;
-  try{spec=requireCapitalBossEncounter(r.encounterId);}catch{spec=null;}
-  const score=spec&&spec.score||null;
-  const acts=score&&Array.isArray(score.acts)?score.acts:[];
-  const act=Number.isInteger(r.actIndex)&&r.actIndex>=0&&r.actIndex<acts.length?acts[r.actIndex]:null;
-  const hullMax=Number.isFinite(boss.hullMax)?boss.hullMax:NaN;
-  // One sanitized hull feeds both the published figure and the fraction — a missing or
-  // non-finite hull reads 0, so the gauge's aria-valuenow can never print NaN.
-  const hull=Math.max(0,Number.isFinite(boss.hull)?boss.hull:0);
-  const readout={
-   fightId:r.fightId,encounterId:r.encounterId,bossId:r.bossId,
-   name:score&&score.name||'',actId:act?act.id:null,actTitle:act?act.title:'',
-   hull,
-   hullMax:Number.isFinite(hullMax)?hullMax:0,
-   hullFraction:Number.isFinite(hullMax)&&hullMax>0?clamp01(hull/hullMax):0,
-   phase:r.phase,clock:r.clock,move:null,
-  };
-  const cast=r.cast;
-  if(cast&&score&&Array.isArray(score.beats)){
-   const beat=score.beats.find(b=>b&&b.id===cast.beatId);
-   if(beat){
-    const fireAt=cast.startedAt+beat.tellTicks;
-    const endAt=cast.startedAt+beat.tellTicks+beat.activeTicks;
-    if(cast.startedAt<=r.clock&&r.clock<endAt){
-     readout.move={castId:cast.id,beatId:beat.id,title:beat.title,counter:beat.counter,
-      startedAt:cast.startedAt,fireAt,endAt,locked:cast.locked===true};
+ if(fights&&typeof fights==='object'){
+  const entities=state.entities;
+  for(const key in fights){
+   const r=fights[key];
+   if(!r||r.started!==true||r.suspended===true||r.terminal!=null)continue;
+   if(r.targetId!==state.playerId)continue;
+   const boss=entities&&typeof entities.get==='function'?entities.get(r.bossId):null;
+   if(!boss||boss.alive===false)continue;
+   let spec=null;
+   try{spec=requireCapitalBossEncounter(r.encounterId);}catch{spec=null;}
+   const score=spec&&spec.score||null;
+   const acts=score&&Array.isArray(score.acts)?score.acts:null;
+   const act=acts&&Number.isInteger(r.actIndex)&&r.actIndex>=0&&r.actIndex<acts.length?acts[r.actIndex]:null;
+   const hullMax=Number.isFinite(boss.hullMax)?boss.hullMax:NaN;
+   // One sanitized hull feeds both the published figure and the fraction — a missing or
+   // non-finite hull reads 0, so the gauge's aria-valuenow can never print NaN.
+   const hull=Math.max(0,Number.isFinite(boss.hull)?boss.hull:0);
+   let readout=list[n];
+   if(!readout||typeof readout!=='object'){
+    readout={fightId:null,encounterId:null,bossId:null,name:'',actId:null,actTitle:'',
+     hull:0,hullMax:0,hullFraction:0,phase:null,clock:0,move:null};
+    // The pooled move record rides a hidden slot so a readout still reads as plain data.
+    Object.defineProperty(readout,'_move',{value:null,writable:true,enumerable:false});
+    list[n]=readout;
+   }
+   n+=1;
+   readout.fightId=r.fightId;readout.encounterId=r.encounterId;readout.bossId=r.bossId;
+   readout.name=score&&score.name||'';readout.actId=act?act.id:null;readout.actTitle=act?act.title:'';
+   readout.hull=hull;
+   readout.hullMax=Number.isFinite(hullMax)?hullMax:0;
+   readout.hullFraction=Number.isFinite(hullMax)&&hullMax>0?clamp01(hull/hullMax):0;
+   readout.phase=r.phase;readout.clock=r.clock;readout.move=null;
+   const cast=r.cast;
+   if(cast&&score&&Array.isArray(score.beats)){
+    let beat=null;
+    for(let i=0;i<score.beats.length;i+=1){const b=score.beats[i];if(b&&b.id===cast.beatId){beat=b;break;}}
+    if(beat){
+     const fireAt=cast.startedAt+beat.tellTicks;
+     const endAt=cast.startedAt+beat.tellTicks+beat.activeTicks;
+     if(cast.startedAt<=r.clock&&r.clock<endAt){
+      const move=readout._move||(readout._move={castId:null,beatId:null,title:'',counter:'',
+       startedAt:0,fireAt:0,endAt:0,locked:false});
+      move.castId=cast.id;move.beatId=beat.id;move.title=beat.title;move.counter=beat.counter;
+      move.startedAt=cast.startedAt;move.fireAt=fireAt;move.endAt=endAt;move.locked=cast.locked===true;
+      readout.move=move;
+     }
     }
    }
   }
-  out.push(readout);
  }
- out.sort((a,b)=>a.fightId<b.fightId?-1:a.fightId>b.fightId?1:0);
- return out;
+ list.length=n;
+ if(n>1)list.sort(byFightId);
+ return list;
 }
 export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight,reducedMotion=false}) {
  if(!canvas?.getContext||!bus?.on||typeof worldToScreen!=='function'||typeof clockForFight!=='function')throw new TypeError('Capital overlay ports missing');

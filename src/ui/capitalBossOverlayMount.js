@@ -56,12 +56,26 @@ function makeReadoutGroup(host, index) {
     index, el, name, act, moveTitle, counter, scaleInst, scaleHost, gauge,
     shown: false, fightId: null, castId: null, actId: null, frac: -1, pct: -1, gaugeName: null,
     stacked: false, dense: false, _bossPos: null,
+    // The group's own seat, rewritten in place by each placement (never a fresh rect per
+    // frame), and the last px values written to its box.
+    rect: { x: 0, y: 0, width: 0, height: 0 }, boxX: NaN, boxY: NaN, boxW: NaN,
   };
 }
 
 function rectsIntersect(a, b) {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
+function hitsAny(rect, reserved) {
+  for (let i = 0; i < reserved.length; i += 1) if (rectsIntersect(rect, reserved[i])) return true;
+  return false;
+}
+const clampTo = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
+// The stagger ladder, as multiples of the column and row steps: anchor first, then above /
+// below, then the same ladder one and two columns either way.
+const LADDER_DX = Object.freeze([0, -1, 1, -2, 2]);
+const LADDER_DY = Object.freeze([0, -1, 1, -2, 2, -3, 3, -4, 4]);
+const OFFSCREEN_ANCHOR = Object.freeze({ x: -1e6, y: -1e6 });
+const INSTANT = Object.freeze({ instant: true });
 
 export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   if (typeof document === 'undefined' || !root || !bus) return null;
@@ -176,17 +190,61 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   stackHost.style.maxWidth = '100%';
   readoutLayer.appendChild(stackHost);
   const announced = new Set();
-  const announce = (key, text) => {
+  // One live-region write per frame. Several identities can open in the same frame — a
+  // restored save re-opens boss, act and cast together; two fights can cast at once — and
+  // each textContent write replaces the one before it, so writing them one by one left only
+  // the last message for a screen reader. They are joined instead, the cast instruction
+  // (the time-critical one) first.
+  let pendingCasts = '';
+  let pendingOther = '';
+  const announce = (key, text, urgent = false) => {
     if (!text || announced.has(key)) return;
     announced.add(key);
-    liveRegion.textContent = text;
+    if (urgent) pendingCasts = pendingCasts ? `${pendingCasts} ${text}` : text;
+    else pendingOther = pendingOther ? `${pendingOther} ${text}` : text;
   };
+  const flushAnnouncements = () => {
+    if (!pendingCasts && !pendingOther) return;
+    liveRegion.textContent = pendingCasts && pendingOther
+      ? `${pendingCasts} ${pendingOther}` : (pendingCasts || pendingOther);
+    pendingCasts = '';
+    pendingOther = '';
+  };
+  // Per-layout data is built once per viewport size, never per frame: the HUD's reserved
+  // rectangles and the two readout footprints.
   let cachedLayout = null;
+  const baseReserved = [];
+  const full = { w: 180, h: 96, dense: false };
+  const dense = { w: 120, h: 140, dense: true };
   const layoutFor = (width, height) => {
     if (!cachedLayout || cachedLayout.viewport.width !== width || cachedLayout.viewport.height !== height) {
       cachedLayout = resolveObjectiveHudLayout(width, height);
+      baseReserved.length = 0;
+      for (const r of [cachedLayout.objective, cachedLayout.vitals, cachedLayout.action,
+        cachedLayout.rightDock, cachedLayout.commandDeck]) if (r) baseReserved.push(r);
+      full.w = Math.min(340, Math.max(180, cachedLayout.safe.width / 4));
+      dense.w = Math.max(120, Math.min(180, Math.round(full.w * 0.72)));
     }
     return cachedLayout;
+  };
+  // Frame scratch, reused: the readout projection, the live/pending lists, the seated
+  // rectangles, and the reservation list a placement searches against.
+  const readoutPool = [];
+  const live = [];
+  const pending = [];
+  const retry = [];
+  const occupied = [];
+  const reservedScratch = [];
+  // Box writes are cached per group so an unmoved readout writes no style and builds no
+  // px string; any path that writes left/top/width directly forgets the cache.
+  const forgetBox = (group) => { group.boxX = NaN; group.boxY = NaN; group.boxW = NaN; };
+  const writeBox = (group, rect) => {
+    const x = Math.round(rect.x);
+    const y = Math.round(rect.y);
+    const w = Math.round(rect.width);
+    if (group.boxX !== x) { group.boxX = x; group.el.style.left = `${x}px`; }
+    if (group.boxY !== y) { group.boxY = y; group.el.style.top = `${y}px`; }
+    if (group.boxW !== w) { group.boxW = w; group.el.style.width = `${w}px`; }
   };
   // Readouts dodge the HUD's reserved rectangles AND each other: every group placed this
   // frame reserves its rect, so two simultaneous fights can never share the same pixels.
@@ -228,77 +286,83 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
       group.stacked = false;
       detachEl(group.el);
       readoutLayer.appendChild(group.el);
+      group.el.style.position = 'absolute';
+      group.el.style.maxWidth = '340px';
+      group.el.style.marginBottom = '';
+      forgetBox(group);
     }
-    group.el.style.position = 'absolute';
-    group.el.style.maxWidth = '340px';
-    group.el.style.marginBottom = '';
   };
   // The bounded cell search: anchor first, then the stagger ladder ±(h+8) over five
   // lateral columns, then the reservation-edge sweep, nearest legal cell to the anchor.
-  const searchRect = (layout, reserved, anchor, w, height) => {
+  // The common path (a ladder cell is free) allocates nothing: candidates are probed in one
+  // scratch rect and the winner is copied into the caller's `out`.
+  const probe = { x: 0, y: 0, width: 0, height: 0 };
+  const searchRect = (layout, reserved, anchor, w, height, out) => {
     const xLo = layout.safe.left + 8;
     const xHi = layout.safe.right - w - 8;
     if (xHi < xLo) return null; // the footprint cannot clear the safe frame at all
     const yHi = Math.max(8, layout.viewport.height - height - 8);
     let x = Number.isFinite(anchor.x) ? anchor.x + 44 : layout.safe.left + 40;
     let y = Number.isFinite(anchor.y) ? anchor.y - height - 24 : layout.viewport.height * 0.18;
-    x = Math.max(xLo, Math.min(x, xHi));
-    y = Math.max(8, Math.min(y, yHi));
-    const clampX = (v) => Math.max(xLo, Math.min(v, xHi));
-    const clampY = (v) => Math.max(8, Math.min(v, yHi));
-    const tryAt = (cx, cy) => {
-      const next = { x: clampX(cx), y: clampY(cy), width: w, height };
-      return reserved.some((hit) => rectsIntersect(next, hit)) ? null : next;
-    };
+    x = clampTo(x, xLo, xHi);
+    y = clampTo(y, 8, yHi);
+    probe.width = w;
+    probe.height = height;
     // The anchor first, then the stagger ladder above and below it, then the same ladder
     // shifted one and two columns either way. An upward-only walk dead-ends at the top
     // edge, and a fixed stride can still step over a narrow clear band.
     const step = height + 8;
     const colStep = w + 32;
-    for (const dx of [0, -colStep, colStep, -2 * colStep, 2 * colStep]) {
-      for (const dy of [0, -step, step, -2 * step, 2 * step, -3 * step, 3 * step, -4 * step, 4 * step]) {
-        const next = tryAt(x + dx, y + dy);
-        if (next) return next;
+    for (let i = 0; i < LADDER_DX.length; i += 1) {
+      for (let j = 0; j < LADDER_DY.length; j += 1) {
+        probe.x = clampTo(x + LADDER_DX[i] * colStep, xLo, xHi);
+        probe.y = clampTo(y + LADDER_DY[j] * step, 8, yHi);
+        if (hitsAny(probe, reserved)) continue;
+        out.x = probe.x; out.y = probe.y; out.width = w; out.height = height;
+        return out;
       }
     }
-    // Reservation-aware sweep: any open cell's boundary is a blocked rect's edge or the
-    // frame's own, so candidate columns and rows snap just clear of each reservation.
-    // The legal cell nearest the anchor wins — the readout still points at its boss.
+    // Reservation-aware sweep (crowded frames only): any open cell's boundary is a blocked
+    // rect's edge or the frame's own, so candidate columns and rows snap just clear of each
+    // reservation. The legal cell nearest the anchor wins — the readout still points at its boss.
     const cols = new Set([x, xLo, xHi]);
     const rows = new Set([y, 8, yHi]);
     for (const hit of reserved) {
-      cols.add(clampX(hit.x - w - 8));
-      cols.add(clampX(hit.x + hit.width + 8));
-      rows.add(clampY(hit.y - height - 8));
-      rows.add(clampY(hit.y + hit.height + 8));
+      cols.add(clampTo(hit.x - w - 8, xLo, xHi));
+      cols.add(clampTo(hit.x + hit.width + 8, xLo, xHi));
+      rows.add(clampTo(hit.y - height - 8, 8, yHi));
+      rows.add(clampTo(hit.y + hit.height + 8, 8, yHi));
     }
     const ax = Number.isFinite(anchor.x) ? anchor.x : x;
     const ay = Number.isFinite(anchor.y) ? anchor.y : y;
-    let best = null;
+    let bestX = 0;
+    let bestY = 0;
     let bestD = Infinity;
     for (const cx of cols) {
       for (const cy of rows) {
-        const next = tryAt(cx, cy);
-        if (!next) continue;
-        const d = (next.x - ax) * (next.x - ax) + (next.y - ay) * (next.y - ay);
-        if (d < bestD) { bestD = d; best = next; }
+        probe.x = cx;
+        probe.y = cy;
+        if (hitsAny(probe, reserved)) continue;
+        const d = (cx - ax) * (cx - ax) + (cy - ay) * (cy - ay);
+        if (d < bestD) { bestD = d; bestX = cx; bestY = cy; }
       }
     }
-    return best;
+    if (bestD === Infinity) return null;
+    out.x = bestX; out.y = bestY; out.width = w; out.height = height;
+    return out;
   };
-  const placeGroup = (group, bossPos, layout, fp, occupied) => {
-    const anchor = bossPos ? project(bossPos) : { x: -1e6, y: -1e6 };
-    const reserved = [layout.objective, layout.vitals, layout.action, layout.rightDock, layout.commandDeck]
-      .concat(occupied || []).filter(Boolean);
-    const rect = searchRect(layout, reserved, anchor, fp.w, fp.h);
+  const placeGroup = (group, bossPos, layout, fp, seated) => {
+    const anchor = bossPos ? project(bossPos) : OFFSCREEN_ANCHOR;
+    reservedScratch.length = 0;
+    for (let i = 0; i < baseReserved.length; i += 1) reservedScratch.push(baseReserved[i]);
+    for (let i = 0; i < seated.length; i += 1) reservedScratch.push(seated[i]);
+    const rect = searchRect(layout, reservedScratch, anchor, fp.w, fp.h, group.rect);
     if (!rect) return false;
     unstack(group);
-    group.el.style.left = `${Math.round(rect.x)}px`;
-    group.el.style.top = `${Math.round(rect.y)}px`;
-    group.el.style.width = `${Math.round(rect.width)}px`;
+    writeBox(group, rect);
     applyDensity(group, fp.dense);
     group.el._rect = rect;
-    if (occupied) occupied.push(rect);
+    seated.push(rect);
     return true;
   };
   // Largest reservation-free rectangle, found the way an honest layout must find it:
@@ -353,7 +417,7 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     return best;
   };
   const setGroup = (group, readout, showHealth, entities) => {
-    group.el.style.display = 'block';
+    if (group.el.style.display !== 'block') group.el.style.display = 'block';
     group.shown = true;
     if (group.fightId !== readout.fightId) {
       group.fightId = readout.fightId;
@@ -371,18 +435,18 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     if (group.castId !== castId) {
       group.castId = castId;
       if (readout.move) {
-        announce(`cast|${readout.fightId}|${castId}`, `${readout.move.title}. ${readout.move.counter}`);
+        announce(`cast|${readout.fightId}|${castId}`, `${readout.move.title}. ${readout.move.counter}`, true);
       }
     }
     setLine(group.moveTitle, readout.move ? readout.move.title : '');
     setLine(group.counter, readout.move ? readout.move.counter : '');
     if (showHealth) {
-      group.scaleHost.style.display = 'block';
+      if (group.scaleHost.style.display !== 'block') group.scaleHost.style.display = 'block';
       if (group.gauge.style.display === 'none') group.gauge.style.display = 'block';
       const frac = readout.hullFraction;
       if (group.frac !== frac) {
         group.frac = frac;
-        group.scaleInst.set(frac, { instant: true });
+        group.scaleInst.set(frac, INSTANT);
       }
       const pct = Math.round(frac * 100);
       if (group.pct !== pct) {
@@ -412,6 +476,7 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     unstack(group);
     group.el.style.display = 'none';
     group.el.style.left = '-10000px';
+    forgetBox(group);
     group.el._rect = null;
     group.shown = false;
     group.fightId = null;
@@ -419,51 +484,79 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     group.castId = null;
     group.gaugeName = null;
   };
+  // Seat every group of `source` at footprint `fp`; the ones that found no cell land in
+  // `left` (cleared first). Plain loops over reused lists: no per-frame filter arrays.
+  const seatAll = (source, fp, left, layout) => {
+    left.length = 0;
+    for (let i = 0; i < source.length; i += 1) {
+      const group = source[i];
+      if (!placeGroup(group, group._bossPos, layout, fp, occupied)) left.push(group);
+    }
+  };
+  const anyShown = () => {
+    for (let i = 0; i < groups.length; i += 1) if (groups[i].shown) return true;
+    return false;
+  };
+  const copyInto = (to, from) => { to.length = 0; for (let i = 0; i < from.length; i += 1) to.push(from[i]); };
   const syncReadouts = (st) => {
-    const readouts = st && st.mode === 'flight' ? capitalBossReadouts(st) : [];
+    const readouts = capitalBossReadouts(st && st.mode === 'flight' ? st : null, readoutPool);
+    // The ordinary frame: no fight on the player, nothing on screen. Nothing to place,
+    // nothing to write — return before any layout work.
+    if (readouts.length === 0 && !anyShown() && !stackHost._rect) {
+      flushAnnouncements();
+      return;
+    }
     const showHealth = !(st && st.run && st.run.kind === 'survival');
     const layout = layoutFor(canvas.width / dpr || 1280, canvas.height / dpr || 720);
-    const live = [];
+    live.length = 0;
     for (const group of groups) {
       const readout = readouts[group.index];
       if (readout) { setGroup(group, readout, showHealth, st && st.entities); live.push(group); }
       else hideGroup(group);
     }
+    flushAnnouncements();
     // Placement maximizes SEATED readouts — never pixels-per-readout at the price of a
     // hidden instruction. Full boxes first; any readout that found no cell retries at
     // the dense footprint; if the greedy mix still stranded someone, the whole frame
     // re-seats dense (uniform narrow boxes fit where mixed ones could not) and keeps the
     // denser seating only when it strictly seats more live readouts.
-    const full = { w: Math.min(340, Math.max(180, layout.safe.width / 4)), h: 96, dense: false };
-    const dense = {
-      w: Math.max(120, Math.min(180, Math.round(full.w * 0.72))), h: 140, dense: true,
-    };
-    const occupied = [];
-    let pending = live.filter((group) => !placeGroup(group, group._bossPos, layout, full, occupied));
+    occupied.length = 0;
+    seatAll(live, full, pending, layout);
     if (pending.length) {
-      pending = pending.filter((group) => !placeGroup(group, group._bossPos, layout, dense, occupied));
+      seatAll(pending, dense, retry, layout);
+      copyInto(pending, retry);
     }
     if (pending.length && pending.length < live.length) {
+      // Crowded frames only. Group seats are pooled and rewritten in place, so the
+      // snapshot copies their values rather than holding references.
       const mixSeated = live.length - pending.length;
       const mixSnap = live.map((group) => ({
         group, left: group.el.style.left, top: group.el.style.top,
-        width: group.el.style.width, rect: group.el._rect, dense: group.dense,
+        width: group.el.style.width, dense: group.dense,
+        ownRect: group.el._rect === group.rect,
+        rect: group.el._rect ? { ...group.el._rect } : null,
+        seatRef: group.el._rect,
       }));
       const mixOccupied = occupied.slice();
       occupied.length = 0;
-      const densePending = live.filter((group) => !placeGroup(group, group._bossPos, layout, dense, occupied));
-      if (live.length - densePending.length > mixSeated) {
-        pending = densePending;
+      seatAll(live, dense, retry, layout);
+      if (live.length - retry.length > mixSeated) {
+        copyInto(pending, retry);
       } else {
         for (const s of mixSnap) {
           s.group.el.style.left = s.left;
           s.group.el.style.top = s.top;
           s.group.el.style.width = s.width;
-          s.group.el._rect = s.rect;
+          forgetBox(s.group);
+          if (s.ownRect) {
+            Object.assign(s.group.rect, s.rect);
+            s.group.el._rect = s.group.rect;
+          } else {
+            s.group.el._rect = s.seatRef;
+          }
           applyDensity(s.group, s.dense);
         }
-        occupied.length = 0;
-        occupied.push(...mixOccupied);
+        copyInto(occupied, mixOccupied);
       }
     }
     // Still standing? The stack column takes every leftover live readout inside the
@@ -473,8 +566,7 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     // rect exists at all, a live readout stacks rather than hides.
     let column = null;
     if (pending.length) {
-      const reserved = [layout.objective, layout.vitals, layout.action, layout.rightDock, layout.commandDeck]
-        .concat(occupied).filter(Boolean);
+      const reserved = baseReserved.concat(occupied);
       column = largestFreeRect(layout, reserved, 96, 16);
       if (column) {
         stackHost.style.left = `${Math.round(column.x)}px`;
@@ -487,13 +579,14 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
             group.stacked = true;
             detachEl(group.el);
             stackHost.appendChild(group.el);
+            group.el.style.position = 'relative';
+            group.el.style.left = '';
+            group.el.style.top = '';
+            group.el.style.width = 'auto';
+            group.el.style.maxWidth = '100%';
+            group.el.style.marginBottom = '6px';
+            forgetBox(group);
           }
-          group.el.style.position = 'relative';
-          group.el.style.left = '';
-          group.el.style.top = '';
-          group.el.style.width = 'auto';
-          group.el.style.maxWidth = '100%';
-          group.el.style.marginBottom = '6px';
           applyDensity(group, true);
           group.el._rect = column;
         }
@@ -507,7 +600,8 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
         }
       }
     }
-    stackHost.style.display = column ? 'block' : 'none';
+    const stackDisplay = column ? 'block' : 'none';
+    if (stackHost.style.display !== stackDisplay) stackHost.style.display = stackDisplay;
     if (!column) stackHost._rect = null;
   };
 
@@ -518,6 +612,8 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   // identities reset — a warning replayed from the restored score is spoken again.
   const resetAnnouncements = () => {
     announced.clear();
+    pendingCasts = '';
+    pendingOther = '';
     for (const group of groups) {
       group.fightId = null;
       group.actId = null;
