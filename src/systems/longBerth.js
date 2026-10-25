@@ -10,8 +10,16 @@ import {
   BERTH_CLAIM_RANGE_WU, BERTH_YARD_RADIUS_WU, BERTH_DOCK_RADIUS_WU, BERTH_MARKER_OFFSET_WU,
   BERTH_STAGES, berthStageDef, berthGrant, berthTrophyLabel,
 } from '../data/longBerth.js';
+import { COMMODITIES } from '../data/commodities.js';
 import { STATION_INFO } from './missions.js';
 import { removeCargo } from './cargo.js';
+
+const COMMODITY_NAME = new Map(COMMODITIES.map((row) => [row.id, row.name]));
+
+function goodsLabel(id, qty) {
+  const name = COMMODITY_NAME.get(id) || String(id || 'cargo').replace(/^cmdty_/, '').replace(/_/g, ' ');
+  return `${qty}u ${name}`;
+}
 
 const SCAN_S = 1.0;
 const TOW_SPEED_EPS = 8; // WU/s — the tug must be parked before the claim holds
@@ -231,7 +239,7 @@ export const longBerth = {
     const costBits = [];
     if (next) {
       costBits.push(`${next.cost.credits} cr`);
-      for (const [c, n] of Object.entries(next.cost.cargo || {})) costBits.push(`${n}u ${c.replace('cmdty_', '')}`);
+      for (const [c, n] of Object.entries(next.cost.cargo || {})) costBits.push(goodsLabel(c, n));
     }
     this.bus.emit('longBerth:restoreOffer', {
       visible,
@@ -254,7 +262,7 @@ export const longBerth = {
     for (const [cid, n] of Object.entries(next.cost.cargo || {})) {
       const have = cargo && cargo.items ? (cargo.items[cid] || 0) : 0;
       if (have < n) {
-        this.bus.emit('toast', { text: `The yard needs ${n}u ${cid.replace('cmdty_', '')} you don't carry.`, kind: 'error', ttl: 4 });
+        this.bus.emit('toast', { text: `The yard needs ${goodsLabel(cid, n)} you don't carry.`, kind: 'error', ttl: 4 });
         return;
       }
     }
