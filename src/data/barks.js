@@ -2873,6 +2873,181 @@ export function trafficRoleHail(role, rng) {
   return null;
 }
 
+// ── V-01 — sector voice ────────────────────────────────────────────────────────────────────────
+// Event banks carry reactive flavor; ambient pass-by hails carried none — the same faction pool
+// spoke in every one of the twenty-five sectors. `SECTOR_GREETING_BARKS[sectorId]` holds lines a
+// LOCAL might say on an open hail: lane rules, hazards, landmarks, rumors. Speaker faction varies,
+// so every line stays voice-neutral — no house register, no names a stranger could not know.
+export const SECTOR_GREETING_BARKS = Object.freeze({
+  sector_helios_prime: Object.freeze([
+    'Core control has the lane painted tight today. Fly the number.',
+    'First time in the Prime? Keep your transponder loud.',
+    'Everything here is insured. Try to look insurable.',
+    'The yard takes anything. The yard prices everything.',
+  ]),
+  sector_ceres_belt: Object.freeze([
+    'Dust off Ceres gets in the seals and the pay.',
+    'Rock pays slow but rock pays. Ask anybody floating here.',
+    'Watch your paint. The claims office is backed up a week.',
+    'Half these rocks are spoken for. The other half are watched.',
+  ]),
+  sector_tethys_junction: Object.freeze([
+    'Every lane crosses here once. Wave like you mean to come back.',
+    'Junction rule: brake early, hail late, hit nothing painted.',
+    'Three lanes in, three out. The middle belongs to whoever pays.',
+    'Read the whole map from this junction if you watch long enough.',
+  ]),
+  sector_vesta_forge: Object.freeze([
+    'The forge never sleeps. Neither do the invoices.',
+    'Slag off the foundry floor still glows. Give it room.',
+    'Everything metal here was something else yesterday.',
+    'Buy your fittings at Vesta or pay double down-lane.',
+  ]),
+  sector_pallas_drift: Object.freeze([
+    'The drift does not forgive a fat hull. Trim or tow.',
+    'Half the wrecks out here were somebody\'s shortcut.',
+    'Pallas keeps what it catches. Keep moving.',
+    'Quiet lanes out here. Quiet is not the same as safe.',
+  ]),
+  sector_io_reach: Object.freeze([
+    'Parcel boat through the Reach pays better than it looks.',
+    'The docket machine on the parcel deck weighs everything twice.',
+    'Deliveries through the Reach get signed for. Every gram.',
+    'Cold run out to the Reach. Keep your cabin heat honest.',
+  ]),
+  sector_charon_expanse: Object.freeze([
+    'Something tethered a wreck out here and never collected.',
+    'Charon pays bounties on hulls it half-remembers. Check the writs.',
+    'The expanse is wide enough to lose a debt in. Tried it.',
+    'An old fight marked this stretch. Read it before you fly it.',
+  ]),
+  sector_sker_haven: Object.freeze([
+    'Haven rule one: the guns stay cold inside the ring.',
+    'The bouncer at the ring counts your safeties twice. Land polite.',
+    'Sker sells peace at the door. Your teeth stay outside.',
+    'Quietest port on the frontier. The quiet is enforced.',
+  ]),
+  sector_veil_nebula: Object.freeze([
+    'In the Veil you fly the beacon, not the horizon.',
+    'Saw a shape in the fog once. Hailed it. It was mine.',
+    'The Veil eats transponders. Shout louder than the static.',
+    'Keep your running lights bright. The fog reads intentions.',
+  ]),
+  sector_ashfall_reach: Object.freeze([
+    'Ash gets into everything past the buoy line. Filter twice.',
+    'The Reach rewards the careful and buries the rest in gray.',
+    'Nobody charts Ashfall twice the same way. Ask the drifters.',
+    'Far end of the map. Act like someone coming back.',
+  ]),
+  sector_nyx_march: Object.freeze([
+    'The march is full of quiet hulls. Something keeps it tidy.',
+    'Wrecks out here get swept before you finish circling. Mind the sweeper.',
+    'Evidence does not last on the march. Photograph fast.',
+    'The dead outnumber the living in Nyx. Speak respectfully on comms.',
+  ]),
+  sector_hyperion_cut: Object.freeze([
+    'The Cut is shorter than the long way for a reason.',
+    'Scrapes on every hull through Hyperion. The walls collect tolls.',
+    'Keep center in the Cut and mind the overhangs.',
+    'Fast lane through Hyperion, if your paint can afford it.',
+  ]),
+  sector_kepler_scar: Object.freeze([
+    'The scar remembers every fight. Something out here prints the receipts.',
+    'Score enough kills in the scar and the feed learns your name.',
+    'Kepler keeps a tally board nobody admits to reading.',
+    'A printer counts the dead out here. The paper never lies.',
+  ]),
+  sector_orcus_shadow: Object.freeze([
+    'The debris ring at Orcus moves like something herds it.',
+    'Loose rock out there always drifts home. Nobody claims the dog work.',
+    'The tide line holds a flock together. Strange thing to watch.',
+    'A shepherd counts its flock out there. You will hear it.',
+  ]),
+  sector_rhea_cinder: Object.freeze([
+    'The cinder rates every fight it sees. Watch the board.',
+    'Somebody keeps score at the rail in Rhea. Shoot pretty.',
+    'The pit crowd cheers a clean kill. They remember sloppy.',
+    'Fight inside the ring or the board will not count it.',
+  ]),
+  sector_haumea_rift: Object.freeze([
+    'The crack at Haumea widens a little every cycle. The clamps hold.',
+    'Something on the rift holds the ice together. Do not ask.',
+    'Spires drift off the rift and get towed back. Steady work.',
+    'The rift talks in groans. The crew answers in clamps.',
+  ]),
+  sector_eris_margin: Object.freeze([
+    'The margin charges a toll on everything that drifts. Pay or turn.',
+    'A toll-runner wrecked out here once. The memorial marks where.',
+    'Eris prices the lane honestly, which is more than most out here.',
+    'Everything past the buoy has a price at the margin.',
+  ]),
+  sector_phoebe_echo: Object.freeze([
+    'The crystals out here ring when you strike them right. In order.',
+    'Something tunes the song at the echo. Tip when it finishes.',
+    'Hit the chimes wrong and the whole field hears you fail.',
+    'The echo answers a clean strike. A drone keeps the notes.',
+  ]),
+  sector_nereid_shoal: Object.freeze([
+    'The shoal is shallow where it counts. Ride the markers.',
+    'Ice hulls beach on the shoal and stay. Mind where you settle.',
+    'Nereid hides its teeth under calm. Sound before you run it.',
+    'A memorial buoy marks the crossing. Read it on the way by.',
+  ]),
+  sector_proteus_well: Object.freeze([
+    'The well pulls slow and keeps what it catches.',
+    'Deeper than it charts, the well. Sound twice.',
+    'Something hauled a driller into the well once. It stayed.',
+    'Proteus takes the patient. Take the long line out.',
+  ]),
+  sector_triton_wake: Object.freeze([
+    'Scanned a wreck out here and something copied my scan. Fair trade.',
+    'The wake copies everything it loses. So does the archivist.',
+    'A drone files the dead on the rim. Bring it a page.',
+    'The wake remembers every hull it sank. Ask the archive.',
+  ]),
+  sector_eunomia_gulf: Object.freeze([
+    'The wreck field out here grows gardens. Something plants them.',
+    'Race the gardener to a loose hull or lose it.',
+    'The gulf buries its dead neatly. The markers say who tended.',
+    'Compost pays out here if you feed the pit. The gardener teaches.',
+  ]),
+  sector_sedna_dark: Object.freeze([
+    'The dead buoys on the dark rim burn again. Something relights them.',
+    'Fly the dark by the new lamps. They mark the way home.',
+    'Sedna eats beacons. A lamplighter out on the rim eats the dark.',
+    'The rim glows warmer now. Count the lamps and thank them.',
+  ]),
+  sector_dione_lane: Object.freeze([
+    'The lane scale weighs you honest. Every gram counts out here.',
+    'A machine on the lane knows your mass before you dock.',
+    'Dione tolls by the gram. Lighten up or pay the difference.',
+    'The lane is exact about everything. The scale keeper most of all.',
+  ]),
+  sector_the_bolus: Object.freeze([
+    'You feel the Bolus before the chart admits you are inside it.',
+    'Nothing out here hails first. Keep your own light.',
+    'The Bolus does not care what you named your ship.',
+    'Turn back if the hum bothers you. It does not get quieter.',
+  ]),
+});
+
+/**
+ * Sector-share pick for the ambient pass-by hail (V-01). Returns a sector line for
+ * the even-index share of hails in a banked sector, `null` otherwise — the caller
+ * falls back to the faction pool, so half the traffic voice stays faction and half
+ * sounds local. The share and the line pick ride different bits of the one
+ * deterministic per-hull index, so the mix is save-stable.
+ */
+export function sectorGreetingBarkFor(sectorId, index) {
+  const lines = (sectorId && SECTOR_GREETING_BARKS[sectorId]) || null;
+  if (!lines || lines.length === 0) return null;
+  const n = Number(index);
+  if (!Number.isFinite(n) || n % 2 !== 0) return null;
+  const pick = Math.floor(n / 2) % lines.length;
+  const line = lines[pick];
+  return (typeof line === 'string' && line.length) ? line : null;
+}
+
 export default {
   BARKS,
   BARK_FACTIONS,
@@ -2890,6 +3065,8 @@ export default {
   DOCK_DEED_BARKS,
   TUMBLE_RAKE_BARKS,
   LAW_STEP_BARKS,
+  SECTOR_GREETING_BARKS,
+  sectorGreetingBarkFor,
   FRONTIER_FIRST_NAMES,
   FRONTIER_LAST_NAMES,
   PASSENGER_WHY_LINES,

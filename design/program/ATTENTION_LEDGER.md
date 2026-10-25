@@ -65,7 +65,7 @@ Row format: `id | surface | what the player sees | register | sanctioned detail 
 
 | id | surface | what the player sees | register | sanctioned detail | status |
 |----|---------|---------------------|----------|-------------------|--------|
-| V-01 | Comms popups/barks | radio chatter | sector voice | per-sector bark banks, traffic flavor — joint with §1P X-06 | open |
+| V-01 | Comms popups/barks | radio chatter | sector voice | per-sector bark banks, traffic flavor — joint with §1P X-06 | done 2026-10-24 |
 | V-02 | Objective/story tracker | guide text | clipped, useful | voice per arc, deadpan flavor | open |
 | V-03 | Help/codex | guides | manual tone | lore sidebars, technician notes | open |
 | V-04 | Death/defeat screens | after-action | insurance corporate | per-cause lessons (exists), condolences, bills — joint with §1P X-09 | open |

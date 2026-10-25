@@ -1211,7 +1211,7 @@ Claim rows by editing the ledger, not this table.
 | 551 | ATT-SEED | Attention program scaffolding: program law + coverage ledger + dossier phase | PLAN | DONE — this section |
 | 552 | ATT-DOSSIER-A | Four evidence dossiers (first hour, audio/feel, world memory, economy/failure) → `design/program/attention/` | ANALYZE | IN PROGRESS — first-hour landed; three running |
 | 553 | ATT-E01 | Onboarding rail + first hour (minutes 0-60): rail texture, tier-0 life, ambient traffic (directions 1-3 joint with §1P X-01; guided beat joint with §1P X-04; raid beat joint with §1P X-02) | BUILD | OPEN |
-| 554 | ATT-V01 | Comms/bark density: per-sector bark banks so ambient life registers outside the rail (joint with §1P X-06) | BUILD | OPEN |
+| 554 | ATT-V01 | Comms/bark density: per-sector bark banks so ambient life registers outside the rail (joint with §1P X-06) | BUILD | DONE 2026-10-24 — SECTOR_GREETING_BARKS banked all 25 sectors (4 voice-neutral lines each) and the deterministic even-index share of patrol-greeting hails now speaks local through the same _speak budget (tribunal: `design/program/attention/v-01-plan.md`); X-06's §1P half stays open for its own claim |
 | 555 | ATT-T02 | Station life: named regulars, rumors, overheard plots on the most-docked stations | BUILD | OPEN |
 | 556 | ATT-S13 | Wreck/debris fields: named dead, salvage notes, kill-marks across the wreck surfaces | BUILD | DONE 2026-10-24 — eight memorial-marker find-sites landed beside the unplated frontier wrecks (tribunal: `design/program/attention/s-13-plan.md`); catalog's ten shrank to eight — the two core wrecks already carried plates |
 | 557 | ATT-H01/H02 | Hull markings: stencils and wear on starter hulls; kill tallies and owner names on traffic variants | ART | OPEN |

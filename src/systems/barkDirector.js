@@ -17,6 +17,7 @@ import {
   oreFloodBarkFor,
   pursuitBarkFor,
   rivalScavengerLineFor,
+  sectorGreetingBarkFor,
   surrenderBarkFor,
   trafficRoleHail,
   tumbleRakeBarkFor,
@@ -1086,7 +1087,10 @@ export const barkDirector = {
       ? historyBarkFor(factionId, history, index)
       : trophy
         ? aceTrophyBarkFor(factionId, index, { ace: trophy.aceName, head: trophy.name })
-        : barkFor(factionId, situation, index);
+        : (situation === 'patrol-greeting'
+            ? sectorGreetingBarkFor(currentSectorId(state), index)
+            : null)
+          || barkFor(factionId, situation, index);
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
 
