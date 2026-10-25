@@ -805,6 +805,52 @@ const CORE_SECTORS = [
           body: 'Collective marks and Free marks layered until the paint is a census. The drift crews tag what they worked and nothing else — a whole rock of labor and not one name. Senna\u2019s book has them anyway.',
         },
       },
+      // S-05 ATTENTION — drift culture: the kitchen's line, the kept mooring, the den's
+      // doorbell, the off-ledger float, the last cheap air. Inline pos; admitted GLBs.
+      {
+        // The Mess Line: Drift Market feeds the fringe (the authored 2.4 food surplus);
+        // this is the loading bay the ration run actually uses.
+        id: 'poi_pallas_mess_line',
+        type: 'derelict', name: 'The Mess Line', factionId: 'faction_mts',
+        pos: { x: 900, z: -1100 }, landmarkGlb: 'place_container_rack', visualRadius: 13,
+        chartNote: 'Ration pods staged for the outbound skiffs. The fringe\u2019s kitchen.',
+        discoveryPlate: { title: 'The Mess Line',
+          body: 'Racks of ration pods staged off the market\u2019s south apron, chalk-sorted by skiff and shift. Every unlisted crew on the fringe eats through this line — the intake always overshoots and the surplus always clears. Nobody asks where a pod goes once it leaves the rack. That is the whole arrangement.' } },
+      {
+        // Skerward Ward-Buoy: a local-maintained marker on the Sker leg, kept lit out of
+        // pocket — last cheap air before Sker prices.
+        id: 'poi_pallas_sker_ward',
+        type: 'beacon', name: 'Skerward Ward-Buoy', factionId: 'faction_mts',
+        pos: { x: -1400, z: 2100 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10,
+        chartNote: 'Last cheap air before Sker. Kept lit by the crews, not the lane fee.',
+        discoveryPlate: { title: 'Skerward Ward-Buoy',
+          body: 'A lane keeper on the Sker corridor, maintained out of pocket by the crews that use it — the lane fee ends at the last station. Its lamp reads both directions: AIR CHEAP THIS SIDE, one way; PAY BEFORE YOU BREATHE, the other. Skerbound crews check the lamp the way other people check a door.' } },
+      {
+        // The Eighteenth Mooring: an empty berth kept on the Quiessence's approach, outside
+        // the fleet's exclusion. Drift custom — keep the place, don't ask the name.
+        id: 'poi_pallas_eighteenth',
+        type: 'beacon', name: 'The Eighteenth Mooring',
+        pos: { x: -1100, z: -1550 }, landmarkGlb: 'place_lane_pin', visualRadius: 8,
+        chartNote: 'An empty kept berth, lamp burning. The count stays at eighteen.',
+        discoveryPlate: { title: 'The Eighteenth Mooring',
+          body: 'A mooring pin planted on the Quiessence\u2019s approach, lamp burning, berth empty. Seventeen freighters hold formation inside the murk; the drift keeps an eighteenth slot on the outside for the one that never arrived — or the one that might still leave. The pin is repainted every season. Nobody knows whose season keeps it, and asking is considered bad bookkeeping.' } },
+      {
+        // Off-Books Berth: unlogged freight at the nebula's south rim — the murk eats the
+        // scanner, the grease-pencil tallies keep the count.
+        id: 'poi_pallas_off_books',
+        type: 'derelict', name: 'Off-Books Berth', factionId: 'faction_quiet',
+        pos: { x: 250, z: 1350 }, landmarkGlb: 'place_cold_locker', visualRadius: 11,
+        discoveryPlate: { title: 'Off-Books Berth',
+          body: 'Cold lockers staged where the murk eats a scanner clean. The tally marks are grease pencil, not stencil — wiped and rewritten between shifts, legible only at arm\u2019s length. Freight here never met a manifest, and the berths turn over too fast to keep a grudge. It is still a ledger. It is just a ledger that can be erased.' } },
+      {
+        // The Quiet Bell: a whistle-buoy on the Smuggler Den approach. Regulars ring it
+        // once — the den's doorbell, and the only record the house keeps of who called.
+        id: 'poi_pallas_quiet_bell',
+        type: 'beacon', name: 'The Quiet Bell', factionId: 'faction_quiet',
+        pos: { x: -950, z: 700 }, landmarkGlb: 'place_whistle', visualRadius: 6,
+        chartNote: 'Ring once on approach. The house keeps no other record.',
+        discoveryPlate: { title: 'The Quiet Bell',
+          body: 'A whistle-buoy on the den\u2019s approach lane. Regulars run their manifold across it once — one note, no more — and the house hears a regular the way a door hears a key. Strangers who ring twice are answered by silence, which at the den is a complete sentence. It is the only roll the house calls, and nobody is asked to sign it.' } },
     ],
   },
   {

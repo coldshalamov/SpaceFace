@@ -30,6 +30,8 @@ export default defineFlavorPack({
         { id: 'c2_02', text: 'Pulse interval is shorter than your previous scan record.' },
         { id: 'c2_03', text: 'Vael patrol logs tighten after every recorded pulse increase.' },
         { id: 'c2_04', text: 'The dark companion is a door that forgot its other side.' },
+        // ATTENTION S-12 — fifth scan beat: who reads the pulses now.
+        { id: 'c2_05', text: 'Dr. Suhl\u2019s team stopped requesting the pulse data. The data keeps arriving.' },
       ],
     },
     {
@@ -51,6 +53,8 @@ export default defineFlavorPack({
         { id: 'c4_02', text: 'Thousands of keyholes cover the teeth. One is real.' },
         { id: 'c4_03', text: 'Wrong keys wake the guard before they fit.' },
         { id: 'c4_04', text: 'One seam answers a filing code absent from every public ledger.' },
+        // ATTENTION S-12 — fifth scan beat: who counts the tries.
+        { id: 'c4_05', text: 'The keykeepers\u2019 tally runs to eleven hundred tries. The real keyhole has never been photographed.' },
       ],
     },
     {
@@ -72,6 +76,8 @@ export default defineFlavorPack({
         { id: 'c6_02', text: 'Every ordinary probe returns without telemetry.' },
         { id: 'c6_03', text: 'The snapped auger struck something harder than drill-steel.' },
         { id: 'c6_04', text: 'One special probe returned a single image. No telemetry followed.' },
+        // ATTENTION S-12 — fifth scan beat: the crews' marks predate the cave.
+        { id: 'c6_05', text: 'The cut crews painted their marks on the face before the cave. The marks outlasted the drill.' },
       ],
     },
     {
@@ -83,6 +89,8 @@ export default defineFlavorPack({
         { id: 'c7_02', text: 'Destination field: GARDEN WORLD. Navigation answer: NO MATCH.' },
         { id: 'c7_03', text: 'Air, medicine, and seeds buy more here than pride.' },
         { id: 'c7_04', text: 'A snapped tether can turn a home into a distress signal.' },
+        // ATTENTION S-12 — fifth scan beat: the people who stayed.
+        { id: 'c7_05', text: 'The barge keeps gardens in the tether shadow. The gardeners call the wreck by its first name.' },
       ],
     },
     {
@@ -93,6 +101,8 @@ export default defineFlavorPack({
         { id: 'c8_02', text: 'Launch rails hang above the stalls. Tall pilots duck.' },
         { id: 'c8_03', text: 'Reach neon spells: we killed this, now we live in it.' },
         { id: 'c8_04', text: 'Carrier-grade surplus moves beneath the deck that once launched it.' },
+        // ATTENTION S-12 — fifth scan beat: who the market answers to.
+        { id: 'c8_05', text: 'Stall rent is paid to whoever holds the launch rails that week. The rails have held everyone.' },
       ],
     },
     {
@@ -103,6 +113,8 @@ export default defineFlavorPack({
         { id: 'c9_02', text: 'Each shard remembers one note of the Vael schism.' },
         { id: 'c9_03', text: 'Together they replay a song nobody finished.' },
         { id: 'c9_04', text: 'Hostility turns the instrument into a storm.' },
+        // ATTENTION S-12 — fifth scan beat: the pilgrims' missing note.
+        { id: 'c9_05', text: 'Vael pilgrims hum the missing note when they pass. The sphere has never once corrected them.' },
       ],
     },
     {
@@ -113,6 +125,8 @@ export default defineFlavorPack({
         { id: 'c10_02', text: 'Large hulls enter one-way. Quiet craft leave single-file.' },
         { id: 'c10_03', text: 'Violet strips mark the safe path and the ambush path.' },
         { id: 'c10_04', text: 'Something valuable sleeps beneath debris ordinary scanners call floor.' },
+        // ATTENTION S-12 — fifth scan beat: what the dock moves has no line item.
+        { id: 'c10_05', text: 'The Understory files the throat as a loading dock. What loads has no line item.' },
       ],
     },
     {
@@ -145,6 +159,8 @@ export default defineFlavorPack({
         { id: 'c13a_02', text: "The gold sun is core space's largest authorized hologram." },
         { id: 'c13a_03', text: 'Original registry still reads STATION COALITION beneath the armor.' },
         { id: 'c13a_04', text: 'Order begins here, with every broadside already loaded.' },
+        // ATTENTION S-12 — fifth scan beat: the recruits' second watch.
+        { id: 'c13a_05', text: 'Coalition recruits salute the sun their first watch. Nobody schedules the second one.' },
       ],
     },
     {
@@ -155,6 +171,8 @@ export default defineFlavorPack({
         { id: 'c13b_02', text: 'Meridian records list all twelve as continuously represented.' },
         { id: 'c13b_03', text: 'Board access opens doors the public manifest omits.' },
         { id: 'c13b_04', text: 'Every price in Tethys looks upward toward this spire.' },
+        // ATTENTION S-12 — fifth scan beat: the dark platforms still vote.
+        { id: 'c13b_05', text: 'The three dark platforms keep board seats warm. The minutes attend in their place.' },
       ],
     },
     {
@@ -165,6 +183,8 @@ export default defineFlavorPack({
         { id: 'c13c_02', text: 'Ore-haulers feed it while shift crews change beneath them.' },
         { id: 'c13c_03', text: "Founders' names are welded where the molten load can see them." },
         { id: 'c13c_04', text: "Half the sector's economy leaves this cage as metal." },
+        // ATTENTION S-12 — fifth scan beat: the welded names read the roster.
+        { id: 'c13c_05', text: 'When the cage slows, the welded names read the shift roster in order. The last name is always next.' },
       ],
     },
     {
@@ -186,6 +206,8 @@ export default defineFlavorPack({
         { id: 'c13e_02', text: 'Twin magenta spires tune themselves to the old shift rhythm.' },
         { id: 'c13e_03', text: 'The resonance arch turns industrial noise into liturgy.' },
         { id: 'c13e_04', text: "Shield telemetry falls inside the arch's surviving note." },
+        // ATTENTION S-12 — fifth scan beat: the Choir counts the humming.
+        { id: 'c13e_05', text: 'Welders passing under the arch hum the foundry note. The Choir counts that attendance.' },
       ],
     },
     {
@@ -207,6 +229,8 @@ export default defineFlavorPack({
         { id: 'c15_02', text: 'Stellar drift says a star once occupied its gaze.' },
         { id: 'c15_03', text: 'Enter the sightline. Your scanners dim; one note sounds.' },
         { id: 'c15_04', text: 'A second silent vigil changed the warning into a greeting.' },
+        // ATTENTION S-12 — fifth scan beat: the eye predates the lane.
+        { id: 'c15_05', text: 'Wardens file the vigil as a navigation aid. The eye predates the lane it now marks.' },
       ],
     },
   ],

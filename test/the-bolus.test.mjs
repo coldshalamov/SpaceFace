@@ -74,7 +74,9 @@ test('cone, iris, sample-once, and suture follow the room rules', () => {
 test('physical row, zones, and station are the throat and not a pirate belt', () => {
   assert.deepEqual(differingPhysical(BOLUS_SECTOR_ID), ['patrolResponse']);
   const zones = zonesForSector(BOLUS_SECTOR_ID);
-  assert.equal(zones.length, 3);
+  // ATTENTION S-15 added the authored Nursery zone (wall-warm fingerling water the play
+  // code already simulates); the row is still all-throat — no presence anywhere.
+  assert.equal(zones.length, 4);
   assert.ok(zones.every((zone) => zone.presence == null));
   assert.equal(bolus.stations[0].id, 'station_bolus_rib');
   assert.equal(bolus.stations[0].archetypeGlb, 'place_station_research');

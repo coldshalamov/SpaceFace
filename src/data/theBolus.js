@@ -306,6 +306,37 @@ export function bolusSectorCard() {
         name: 'Swallowed Charon Buoy',
         pos: { x: -1100, z: -1700 },
         scannerSignalKind: 'anomaly',
+        // ATTENTION S-15 — the gut's only signpost gets its provenance on the record.
+        discoveryPlate: {
+          title: 'Swallowed Charon Buoy',
+          body: 'A Charon customs buoy swallowed with the last intake convoy — the casing is acid-etched, the beacon cell still answers on schedule. It reports a lane position inside nothing the chart admits exists. The Rib reads it as proof the gut keeps what it takes.',
+        },
+      },
+      // ATTENTION S-15 — what the Cough keeps: a swallowed hauler whose manifest outlived
+      // its crew, and the watch buoy the Rib keeps lit off its own berth.
+      {
+        id: 'poi_bolus_manifest',
+        type: 'derelict',
+        name: 'The Last Manifest',
+        pos: { x: 1700, z: 820 },
+        landmarkGlb: 'place_dead_hulk',
+        visualRadius: 22,
+        discoveryPlate: {
+          title: 'The Last Manifest',
+          body: 'A Meridian hauler swallowed whole and coughed up against the far lip — holds intact, manifest sealed. It lists foreman Ila Vess and crew of six, cargo: seed stock and surgical steel. The Rib\u2019s log says the gut kept it eleven years and decided against digestion. The crew are filed as the manifest\u2019s last entry.',
+        },
+      },
+      {
+        id: 'poi_bolus_rib_watch',
+        type: 'beacon',
+        name: 'Rib Watch Buoy',
+        pos: { x: -880, z: -780 },
+        landmarkGlb: 'place_nav_buoy',
+        visualRadius: 10,
+        discoveryPlate: {
+          title: 'Rib Watch Buoy',
+          body: 'The Swallowed Rib\u2019s watch buoy, moored off the berth so the throat can\u2019t close between the station and its own lamp. Station log, shift three: WATCH LIVE. THROAT QUIET. The buoy\u2019s keeper initials it every watch — the only signature in the gut the station insists on.',
+        },
       },
     ],
   };
@@ -325,6 +356,8 @@ export const BOLUS_ANCHORS = Object.freeze({
     ]),
     pois: Object.freeze([
       Object.freeze({ id: 'poi_bolus_charon_buoy', pos: Object.freeze({ x: -1100, z: -1700 }) }),
+      Object.freeze({ id: 'poi_bolus_manifest', pos: Object.freeze({ x: 1700, z: 820 }) }),
+      Object.freeze({ id: 'poi_bolus_rib_watch', pos: Object.freeze({ x: -880, z: -780 }) }),
     ]),
   }),
 });
@@ -357,6 +390,17 @@ export const BOLUS_ZONES = Object.freeze({
       reason: 'The far lip opens on Ashfall. What the gut would not keep is piled here.',
       center: Object.freeze({ x: 1800, z: 900 }),
       radius: 700,
+    }),
+    // ATTENTION S-15 — the fingerling nursery the play code already simulates
+    // (bolusPlay nurseryX/-560, nurseryZ/-400); the chart just never named it.
+    Object.freeze({
+      id: 'zone_bolus_nursery',
+      name: 'The Nursery',
+      type: 'anomaly_deep',
+      factionId: 'faction_free',
+      reason: 'The small ones school where the wall is warmest. The Rib marks it off-limits on the first watch of every shift.',
+      center: Object.freeze({ x: -560, z: -400 }),
+      radius: 300,
     }),
   ]),
 });

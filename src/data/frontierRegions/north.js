@@ -225,6 +225,26 @@ export const NORTH_SECTORS = Object.freeze([
           body: "A survey stake bound in Anchor knot-work, left by the machine that minds the crack. The tag reads: 'The probe RIME-4 came back wrong. Ansi Toro and Bes Mar are recorded at the Anchor.' The shell's scoring runs inward, which no weapon does.",
         }),
       }),
+      // ATTENTION S-14 (5/5) — the observatory crews' bored marks: a frost-tag on the icy
+      // field's face and a listening pin the paperwork lost.
+      Object.freeze({
+        id: 'poi_haumea_frost_tag',
+        type: 'beacon',
+        name: 'Frost Mark',
+        discoveryPlate: Object.freeze({
+          title: 'Frost Mark',
+          body: 'Observatory crews get bored on the long scans: a frost-etched tag on the ice field\u2019s clearest face, instrument-log date stamps, one doodle of the fracture the chart won\u2019t name. The survey post files it as surface contamination, benign.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_haumea_listen_pin',
+        type: 'beacon',
+        name: 'Listen Pin',
+        discoveryPlate: Object.freeze({
+          title: 'Listen Pin',
+          body: 'A dropped receiver on the crystalline seam\u2019s edge, still answering the observatory\u2019s ping schedule on channel four. The acquisition paperwork lists it as recovered. The ping log disagrees; whoever minds the equipment cage stopped reconciling the two.',
+        }),
+      }),
     ]),
   }),
 
@@ -309,6 +329,26 @@ export const NORTH_SECTORS = Object.freeze([
         discoveryPlate: Object.freeze({
           title: 'The Metronome',
           body: 'Ancient navigational beacon maintaining an unyielding 8.00-second sweep across the galactic rim. Navigators calibrate deep-space chronometers to its pulse, though high-energy telemetry suggests it was engineered as an area-denial emitter rather than an aid to navigation.',
+        }),
+      }),
+      // ATTENTION S-14 (3/5) — the margin's deniable marks: a watch pin pointed at
+      // nothing, and a tag stone whose real filing lives somewhere else.
+      Object.freeze({
+        id: 'poi_eris_watch_pin',
+        type: 'derelict',
+        name: 'Watch Pin',
+        discoveryPlate: Object.freeze({
+          title: 'Watch Pin',
+          body: 'A burned survey pin set dead-center on the metallic field, pointed at nothing the telescope admits. The Quiet don\u2019t pull dead pins — a pin that watches nothing is exactly the kind that still works.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_eris_mark_stone',
+        type: 'beacon',
+        name: 'Mark Stone',
+        discoveryPlate: Object.freeze({
+          title: 'Mark Stone',
+          body: 'A tagged rock on the common seam\u2019s rim in a hand nobody at the Fence teaches: a name, a hull weight, a date. The filing it answers to is in somebody else\u2019s registry. On the Margin, the mark that matters is never where the marker is.',
         }),
       }),
     ]),
@@ -481,6 +521,20 @@ export const NORTH_ANCHORS = Object.freeze({
         pos: Object.freeze({ x: 1090, z: -560 }),
         landmarkGlb: 'place_nav_buoy',
       }),
+      Object.freeze({
+        // ATTENTION S-14 — f_haumea_1 rim (center -380,520, r460).
+        id: 'poi_haumea_frost_tag',
+        pos: Object.freeze({ x: -320, z: 470 }),
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_haumea_2 inner edge (center 860,240, r400).
+        id: 'poi_haumea_listen_pin',
+        pos: Object.freeze({ x: 800, z: 300 }),
+        landmarkGlb: 'place_nav_buoy',
+        visualRadius: 10,
+      }),
     ]),
   }),
 
@@ -533,6 +587,20 @@ export const NORTH_ANCHORS = Object.freeze({
         pos: Object.freeze({ x: -60, z: 1700 }),
         landmarkGlb: 'place_comms_array',
         landmark: true,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_eris_1 rim (center 540,-420, r450).
+        id: 'poi_eris_watch_pin',
+        pos: Object.freeze({ x: 600, z: -360 }),
+        landmarkGlb: 'place_ash_pin',
+        visualRadius: 6,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_eris_2 inner edge (center -480,-880, r400).
+        id: 'poi_eris_mark_stone',
+        pos: Object.freeze({ x: -420, z: -820 }),
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
       }),
     ]),
   }),

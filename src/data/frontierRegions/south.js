@@ -189,6 +189,26 @@ export const SOUTH_SECTORS = Object.freeze([
           body: 'A world-shaped gap in the band. Inside its shadow the receiver loses carrier and static together; gain climbs and the silence stays level. Signal only resumes past the edge of its orbital shadow, as if the planet had closed its mouth around everything that tried to speak.',
         }),
       }),
+      // ATTENTION S-14 (4/5) — the licensed yard's marks: the fence crews' gulf-stake on
+      // the exotic seam, and the lamp row strung along the licensed plate drift.
+      Object.freeze({
+        id: 'poi_eunomia_gulf_stake',
+        type: 'beacon',
+        name: 'Gulf Stake',
+        discoveryPlate: Object.freeze({
+          title: 'Gulf Stake',
+          body: 'A claim stake stamped LICENSE E-1140 in the Understory\u2019s plate script: the fence\u2019s cutting crews file what they pull under a yard license, not a name. The exotic seam\u2019s last three filings are stamped the same way — licensed, uninspected, unreturned.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_lamp_row',
+        type: 'derelict',
+        name: 'Lamp Row',
+        discoveryPlate: Object.freeze({
+          title: 'Lamp Row',
+          body: 'A strung line of worklamps along the licensed plate drift, half dead and half burning on scavenged cells — the yard\u2019s shift line, strung so the cutting crews can find the drift after the fog lifts. The lit half marks where the last crew stopped.',
+        }),
+      }),
     ]),
   }),
 
@@ -332,6 +352,26 @@ export const SOUTH_SECTORS = Object.freeze([
           body: 'A sealed case rides the field\'s shadow off the relay — pack marks on the clasp, Meridian rate cards inside. The toll lane quotes two prices, and the lawful one is the discount.',
         }),
       }),
+      // ATTENTION S-14 (2/5) — the watched lane's own marks: the tally post the convoys
+      // wait out customs against, and the lawful lane's neater graffiti.
+      Object.freeze({
+        id: 'poi_dione_convoy_tally',
+        type: 'beacon',
+        name: 'Convoy Tally Post',
+        discoveryPlate: Object.freeze({
+          title: 'Convoy Tally Post',
+          body: 'A weigh-post on the seam where the hauler lines form up before the customs read: chalk manifests, berth numbers, the convoy count in Meridian hands. It is the only scale on the lane every flag agrees is honest.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_dione_way_tag',
+        type: 'beacon',
+        name: 'Wayline Tag',
+        discoveryPlate: Object.freeze({
+          title: 'Wayline Tag',
+          body: 'Paint on the field\u2019s quiet edge — neat block letters, a lane number, a date, filed to within an inch of regulation. Even the graffiti on the watched lane keeps to the margin. The customs desk logs it under morale, admissible.',
+        }),
+      }),
     ]),
   }),
 ]);
@@ -403,6 +443,20 @@ export const SOUTH_ANCHORS = Object.freeze({
         landmarkGlb: 'place_hush_gap',
         placeTargetRadius: 420,
         landmark: true,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_eunomia_1 rim (center 200,380, r400).
+        id: 'poi_eunomia_gulf_stake',
+        pos: Object.freeze({ x: 260, z: 330 }),
+        landmarkGlb: 'place_claim_mark',
+        visualRadius: 5,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_eunomia_2's lane side (center 1000,700, r400).
+        id: 'poi_eunomia_lamp_row',
+        pos: Object.freeze({ x: 940, z: 760 }),
+        landmarkGlb: 'place_worklight_tower',
+        visualRadius: 12,
       }),
     ]),
   }),
@@ -507,6 +561,20 @@ export const SOUTH_ANCHORS = Object.freeze({
         id: 'poi_dione_deaddrop',
         pos: Object.freeze({ x: -140, z: 860 }),
         landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_dione_1's lane side (center -320,540, r420).
+        id: 'poi_dione_convoy_tally',
+        pos: Object.freeze({ x: -400, z: 470 }),
+        landmarkGlb: 'place_tally_post',
+        visualRadius: 9,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — same seam's quiet edge.
+        id: 'poi_dione_way_tag',
+        pos: Object.freeze({ x: -260, z: 620 }),
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
       }),
     ]),
   }),

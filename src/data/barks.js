@@ -198,6 +198,7 @@ export const BARKS = {
       'Rock’s spoken for. Move along before somebody makes a thing of it.',
       'You’re in a worked belt. We already had a rough cycle. Don’t add to it.',
       'That’s our vein. MTS already skimmed a third. We bleed for what’s left. Move off.',
+      'The belt eats the loud ones. Throttle down or feed it.',
     ],
     'demand-cargo': [
       'Look, drop the ore and we’re square. Nobody wants to bleed over rocks.',
@@ -236,6 +237,7 @@ export const BARKS = {
       'Crew of nine down Shaft Four. Two up here. Same ore. Same quotas. Fly past.',
       'Ceres yard hail: keep your distance from the refinery docks, shift is running hot.',
       'Ceres trader inbound: Drift ore haul from the belt, clear the conveyor.',
+      'Expanse long-haul: the lane stays open for crews that work it.',
     ],
     distress: [
       'She’s coming apart. Tell the shift I stayed with her.',
@@ -264,6 +266,7 @@ export const BARKS = {
       'The Reach owns this stretch. Pay the crossing or don’t cross.',
       'Wake is salted. Turn now or fly through our work.',
       'This lane cost us four hulls to take. You can pay it in cargo or you can pay it in hull. We are flexible.',
+      'The Bazaar only looks open. Turn around before the scale tips.',
     ],
     'demand-cargo': [
       'Everything in the hold, right now, and maybe you keep the ship.',
@@ -296,12 +299,14 @@ export const BARKS = {
       'Your salvage value’s climbing by the second. Keep shooting.',
       'We tag you before you cool. The weigh-slip’s already printed.',
       'We were cargo once. Tagged, weighed, filed under someone’s margin. Now we run the scales.',
+      'We keep name boards for crews we liked. Yours isn’t cut yet.',
     ],
     'patrol-greeting': [
       'Reach territory. Keep moving and maybe we let you.',
       'You’re alive because we’re bored. Don’t push it.',
       'Passing through? Fast, then. Real fast.',
       'Fly past. Our last three friends who stopped are welded into the Throne.',
+      'Haven space. Your flag means less than your toll.',
     ],
     distress: [
       'We’re lit! Any Reach hull — pull him off us and split the salvage!',
@@ -355,6 +360,7 @@ export const BARKS = {
       'Predictable.',
       'Ghost already has the shot.',
       'You filed a name. Names are weight. We drop weight.',
+      'Loud wake. Short file.',
     ],
     'patrol-greeting': [
       'Pass. Say nothing.',
@@ -362,6 +368,7 @@ export const BARKS = {
       'Keep it quiet.',
       'No log. No wave. Go.',
       'Pass. The number stays the same either way.',
+      'The post counts your scans. Fourth today.',
     ],
     distress: [
       'Dying. Say nothing.',
@@ -509,12 +516,14 @@ export const BARKS = {
       'Your continuance breaches the boundary-accord. Amend, or the accord amends you.',
       'The terms do not admit you here. Withdrawal is the offered remedy.',
       'Clause 3.7: boundary breached. Your vessel predates the notice by eleven of your cycles. The notice is still valid.',
+      'Clause 3.9: your hull is trespass rendered in alloy. Withdrawal remains cheaper.',
     ],
     'demand-cargo': [
       'Clause 7: your holdings are subject to Vael claim. Render them to satisfy the term.',
       'The contents of your vessel are, by accord, forfeit. Deliver, and the ledger balances.',
       'Surrender the carried-mass. This settles the debt you did not know you incurred.',
       'Clause 7.2: the mass is claimed by prior entry. Your transit was its temporary custody.',
+      'The Maw audits all mass in its shadow. Yours is overdue.',
     ],
     attack: [
       'Clause 9 invoked. The penalty is enacted upon your form.',
@@ -540,6 +549,8 @@ export const BARKS = {
       'The ledger closes with or without your assent.',
       'Clause 19: the losing party bears the cost of the verdict. This is the verdict.',
       'Your species negotiates. The accord pre-dates negotiation. It will outlast yours.',
+      'Clause 19.4: your defiance is a recognized offering. It is declined.',
+      'The Deep-Mother is dead. The accord it guarded is not.',
     ],
     'patrol-greeting': [
       'Vael passage. The terms hold. You are permitted, for now.',
@@ -679,6 +690,7 @@ export const BARKS = {
       'Mind the fence line. Trespass gets sold, not chased.',
       'You\'re drifting into the burn zone, kin. Steer.',
       'Concord rules end at the yard light. Yard law started already.',
+      'That\'s burn-zone drift, kin. The yard tows survivors by the pound.',
     ],
     'demand-cargo': [
       'Fence takes it all — the hold, not the hull. Your choice.',
@@ -709,6 +721,8 @@ export const BARKS = {
       'Your guns were bought, not born. The yard melts both.',
       'Bright target, dim pilot. The yard prices both.',
       'That hull\'s worth more dead than you are flying it.',
+      'Kin, your blade-work reads like a grocery list. The yard grades it anyway.',
+      'Nice cuts on that hull. Shame about the pilot holding them.',
     ],
     'patrol-greeting': [
       'Yard keeps the lights on. Wrecks welcome, Concord ain\'t.',
@@ -1069,6 +1083,7 @@ export const HISTORY_RECOGNITION = Object.freeze({
     kills: Object.freeze([
       'Registry cross-reference: {kills} Concord hulls lost to {ship}. Your file is thick.',
       '{ship}. {kills} open incident files. Ref 44-C notes repeat offenders.',
+      '{ship} tally check: {kills} Concord hulls struck from the register. The register remembers.',
     ]),
     hunts: Object.freeze([
       '{captain} filed a standing grievance against {ship}. It is approved.',
@@ -1087,6 +1102,7 @@ export const HISTORY_RECOGNITION = Object.freeze({
     kills: Object.freeze([
       '{kills} of our hulls, {ship}. Someone has been paying your premiums.',
       '{ship} — {kills} write-offs this quarter. The board knows your name.',
+      'The ledger on {ship}: {kills} Meridian hulls depreciated to scrap. Fully itemized.',
     ]),
     hunts: Object.freeze([
       '{captain} bought your debt, {ship}. Collections is on the lane.',
@@ -1105,6 +1121,7 @@ export const HISTORY_RECOGNITION = Object.freeze({
     kills: Object.freeze([
       '{kills} rigs. That is {kills} shift whistles that went quiet. We know, {ship}.',
       '{ship}. {kills} of our hulls on the scrap list this cycle. Long war.',
+      '{kills} crews off the tally board because of {ship}. Senna reads the names either way.',
     ]),
     hunts: Object.freeze([
       '{captain} keeps a wrench with {ship}\'s name scratched in it.',
@@ -1123,6 +1140,7 @@ export const HISTORY_RECOGNITION = Object.freeze({
     kills: Object.freeze([
       '{ship}. {kills} hulls on their weigh-slip. The Reach counts, friend.',
       '{kills} of ours, by {ship}\'s guns. That is a debt with mass.',
+      '{ship} ran the count to {kills}. Weigh-slips like that get framed, not filed.',
     ]),
     hunts: Object.freeze([
       '{captain} opened the weigh-slip on {ship}. The number keeps climbing.',
@@ -1141,6 +1159,7 @@ export const HISTORY_RECOGNITION = Object.freeze({
     kills: Object.freeze([
       '{kills}. Counted. {ship}.',
       '{ship}. {kills} of ours. The number holds.',
+      '{kills} silent hulls. {ship} knows which number it is.',
     ]),
     hunts: Object.freeze([
       '{captain} speaks your name, {ship}. Once.',
@@ -1159,6 +1178,7 @@ export const HISTORY_RECOGNITION = Object.freeze({
     kills: Object.freeze([
       '{kills} voices, {ship}, silenced into the Pattern. It remembers.',
       '{ship} carries {kills} of our names. Heavy cargo.',
+      'The count is {kills}, {ship}. Each one is a verse the choir still holds open.',
     ]),
     hunts: Object.freeze([
       '{captain} notates {ship}\'s correction. The interval approaches.',
@@ -1177,6 +1197,7 @@ export const HISTORY_RECOGNITION = Object.freeze({
     kills: Object.freeze([
       '{ship}. Folks say {kills} hulls went down to your guns. We keep count out here too.',
       '{kills} of ours, {ship}. Neighbors remember.',
+      '{ship} — {kills} gone by your hand. The drift don\'t forgive, but it respects a count.',
     ]),
     hunts: Object.freeze([
       '{captain} is asking after {ship}. Nothing good comes of that ask.',
@@ -1195,6 +1216,7 @@ export const HISTORY_RECOGNITION = Object.freeze({
     kills: Object.freeze([
       'Clause {kills}: {ship} stands in breach. The ledger accumulates.',
       '{ship}. {kills} entries under breach-of-accord. The terms remember.',
+      'Breach count {kills}, {ship}. The accord does not round down.',
     ]),
     hunts: Object.freeze([
       '{captain} holds an open term against {ship}. It matures soon.',
@@ -1711,6 +1733,7 @@ export const BAR_GREETING_BARKS = Object.freeze({
     barkeep: Object.freeze([
       'Your account is on file. State your order.',
       'The counter is open. Orders are logged.',
+      'Your docking record clears you for a table, not for a conversation.',
     ]),
   }),
   faction_mts: Object.freeze({
@@ -1723,6 +1746,7 @@ export const BAR_GREETING_BARKS = Object.freeze({
     barkeep: Object.freeze([
       'Your tab is a ledger. Keep it interesting.',
       'Order. The house takes its margin either way.',
+      'The tab has a margin. So does your chair.',
     ]),
   }),
   faction_dmc: Object.freeze({
@@ -1735,6 +1759,7 @@ export const BAR_GREETING_BARKS = Object.freeze({
     barkeep: Object.freeze([
       'Pour\'s honest. Talk ain\'t free, but close.',
       'Rest your rig. The belt can wait a pour.',
+      'Dust off. The canteen ain\'t the claim office.',
     ]),
   }),
   faction_reach: Object.freeze({
@@ -1747,6 +1772,7 @@ export const BAR_GREETING_BARKS = Object.freeze({
     barkeep: Object.freeze([
       'House weighs the pour. You weigh the company.',
       'Drink is cheap. Your cargo is not.',
+      'Stool by the scale. Everything in this bar is weighed twice.',
     ]),
   }),
   faction_quiet: Object.freeze({
@@ -1759,6 +1785,7 @@ export const BAR_GREETING_BARKS = Object.freeze({
     barkeep: Object.freeze([
       'Same drawer. Same rates. Ask.',
       'Drink. Then quiet.',
+      'Tab. Name optional. Numbers are not.',
     ]),
   }),
   faction_free: Object.freeze({
@@ -1771,6 +1798,7 @@ export const BAR_GREETING_BARKS = Object.freeze({
     barkeep: Object.freeze([
       'Drink first, story second. What will it be?',
       'Room is open. So is the tap.',
+      'Half this station owes me a drink. Be the paying half.',
     ]),
   }),
   faction_vael: Object.freeze({
@@ -1783,6 +1811,7 @@ export const BAR_GREETING_BARKS = Object.freeze({
     barkeep: Object.freeze([
       'The pour is a standing clause. Obligations follow.',
       'Your order is granted. The ledger remains open.',
+      'A seat at the counter constitutes consent to the standing terms.',
     ]),
   }),
   faction_choir: Object.freeze({
@@ -1795,6 +1824,7 @@ export const BAR_GREETING_BARKS = Object.freeze({
     barkeep: Object.freeze([
       'The pour is consecrated. The question is not.',
       'Rest. The chorus holds your place.',
+      'The tab is a hymn of small debts. Pay in measure.',
     ]),
   }),
   // STAGED: the five deep factions below have no station or sector carrying their factionId
@@ -2659,6 +2689,7 @@ export const FRONTIER_FIRST_NAMES = Object.freeze([
   'Cira', 'Nev', 'Soren', 'Tova', 'Zara', 'Calder', 'Rhea', 'Vek', 'Inara', 'Koda',
   'Maeve', 'Cassius', 'Lira', 'Draven', 'Ember', 'Tycho', 'Neve', 'Ash', 'Selene', 'Rook',
   'Brynn', 'Orin', 'Callum', 'Vesper', 'Idris', 'Sully', 'Kira', 'Jace', 'Nova', 'Petra',
+  'Okafor', 'Bly', 'Tallis', 'Imra', 'Havel', 'Marn', 'Cole', 'Del',
 ]);
 
 export const FRONTIER_LAST_NAMES = Object.freeze([
@@ -2666,6 +2697,7 @@ export const FRONTIER_LAST_NAMES = Object.freeze([
   'Aldric', 'Craine', 'Falken', 'Stroud', 'Varek', 'Holden', 'Rennick', 'Deckard',
   'Torren', 'Briggs', 'Calloway', 'Sagan', 'Tull', 'Graves', 'Huxley', 'Kepler',
   'Madsen', 'Oakes', 'Stark', 'Merrik', 'Calder', 'Voss',
+  'Fairweather', 'Gannet', 'Hales', 'Latch', 'Morro', 'Penn', 'Stow', 'Dock',
 ]);
 
 // The one-line "why I'm traveling" printed under the board row. {dest} always resolves.
@@ -2680,6 +2712,10 @@ export const PASSENGER_WHY_LINES = Object.freeze([
   'I heard {dest} pays debt collectors. I am one, and I am owed.',
   'Contract at {dest}, three cycles, no extensions. Same as anyone.',
   'Not running from anything. Ask me again at {dest} and I may answer.',
+  'My hull is in the impound at {dest}. Paying it out is the whole trip.',
+  '{dest} hires loaders by the cycle. My back has two good ones left.',
+  'Someone at {dest} still owes a wedding. Mine. It keeps.',
+  'The manifest says one passenger. The manifest, for once, is right.',
 ]);
 
 // The three riding beats. board: spoken as the umbilical clears. midrun: once, at the route
@@ -2695,6 +2731,10 @@ export const PASSENGER_BEATS = Object.freeze({
     'Couch is fine, the case stays on my knees. Punch it when you are ready.',
     'You fly, I nap. Wake me for anything louder than a customs ping.',
     'No stops, no questions, and nobody looks in the case. Deal and deal.',
+    'My papers are better than my name. Fly the papers, forget the name.',
+    'Third pilot this cycle. The other two asked the wrong questions.',
+    'I am owed two favors in the drift and none here. Let us fix that.',
+    'If you see my cousin\'s hull out there, do not wave. He owes me money.',
   ]),
   midrun: Object.freeze([
     'Halfway, by my count. The seat still beats walking.',
@@ -2704,6 +2744,8 @@ export const PASSENGER_BEATS = Object.freeze({
     'When we land, leave the manifest to me. It is simpler that way.',
     'Quiet run so far. Do not jinx it by agreeing.',
     'The old pilot I rode with said lanes feel shorter talking. Talk.',
+    'I used to fly this lane myself. You take the bend tighter. Better.',
+    'That beacon blinks the same as it did twenty years ago. Same debt, too.',
   ]),
   arrive: Object.freeze([
     'You got me here in one piece. That puts you ahead of my last pilot.',
@@ -2712,6 +2754,8 @@ export const PASSENGER_BEATS = Object.freeze({
     'Here is fine. Here is finally fine.',
     'Tell the board the trip was boring. Best thing a trip can be.',
     'Good hull, good hands. I will ask for you by name — not mine.',
+    'If my cousin hails you later, you never saw me. Tell him the money is safe.',
+    'Land here and forget my face. Remember my tip rate instead.',
   ]),
 });
 
@@ -2730,6 +2774,8 @@ export const TOURIST_HAIL_REGISTER = Object.freeze([
   'Scenic liner. The window is the cargo. Mind the glass.',
   'Tour pass. We are looking, not hauling. Hold your lane.',
   'Liner on the view. Passengers at the ports. No freight aboard.',
+  'Sightseeing run, scheduled and dull. The itinerary is the insurance.',
+  'Passenger manifest reads tourists. The telescope reads everything else.',
 ]);
 
 export const HAULER_REGISTER = Object.freeze([

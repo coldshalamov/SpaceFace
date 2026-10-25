@@ -318,6 +318,26 @@ const REGION_HYPERION = freezeRegion({
         },
       },
       { id: 'poi_hyperion_beacon', type: 'beacon', name: 'Cut Lane Beacon' },
+      // ATTENTION S-14 (1/5) — the Cut is a worked cut: the stake-line off the metallic
+      // seam, and the face the drill crews marked before the cave (lore c6_05).
+      {
+        id: 'poi_hyperion_stake_line',
+        type: 'beacon',
+        name: 'Second Stake Line',
+        discoveryPlate: {
+          title: 'Second Stake Line',
+          body: 'A line of cut-crew claim stakes hammered along the metallic seam\u2019s shadow, filed in the Outpost\u2019s own shorthand: S-LINE TWO, WORKED BEFORE THE CAVE. Half the stakes name crews the Shaft\u2019s roster no longer lists.',
+        },
+      },
+      {
+        id: 'poi_hyperion_tag_face',
+        type: 'beacon',
+        name: 'Marked Face',
+        discoveryPlate: {
+          title: 'Marked Face',
+          body: 'The drill crews painted their marks on the field\u2019s largest face before the cave took the mast — auger tally, shift codes, one name in a circle. The refinery calls it vandalism. The claim crews call it the shift board.',
+        },
+      },
     ],
   },
   anchors: {
@@ -356,6 +376,20 @@ const REGION_HYPERION = freezeRegion({
         id: 'poi_hyperion_beacon',
         pos: { x: -320, z: 1280 },
         landmarkGlb: 'place_lane_beacon',
+      },
+      {
+        // ATTENTION S-14 — at f_hyperion_1's rim (center 380,-640, r460).
+        id: 'poi_hyperion_stake_line',
+        pos: { x: 440, z: -580 },
+        landmarkGlb: 'place_claim_mark',
+        visualRadius: 5,
+      },
+      {
+        // ATTENTION S-14 — at f_hyperion_2's inner edge (center -820,220, r400).
+        id: 'poi_hyperion_tag_face',
+        pos: { x: -760, z: 280 },
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
       },
     ],
   },

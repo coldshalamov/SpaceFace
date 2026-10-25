@@ -74,6 +74,10 @@ export default defineFlavorPack({
         { id: 'concord_58', text: 'Detention wings report full occupancy on schedule.' },
         { id: 'concord_59', text: 'The ombuds window is open between closures.' },
         { id: 'concord_60', text: 'Correction: an earlier bulletin overstated the corridor.' },
+        { id: 'concord_61', text: 'Marker Twelve-K broadcasts within tolerance. The tolerance was revised around the broadcast.' },
+        { id: 'concord_62', text: 'The Lost Freight Apron remains in transit. The destination berth remains under review.' },
+        { id: 'concord_63', text: 'Shift Bell Three is not a navigation aid. Its ring remains mandatory.' },
+        { id: 'concord_64', text: 'Checkpoint Niner recorded zero incidents. The lamp recorded the same.' },
       ],
     },
     {
@@ -141,6 +145,8 @@ export default defineFlavorPack({
         { id: 'margin_58', text: 'Wraith Kell stamps manifests at customs. The stamps precede the cargo.' },
         { id: 'margin_59', text: 'We sent the auditor a question. The question was audited.' },
         { id: 'margin_60', text: 'Proof of life is filed quarterly. Late filing voids the life.' },
+        { id: 'margin_61', text: 'Sker Bazaar sold the same berth to four crews. All four paid. None docked.' },
+        { id: 'margin_62', text: 'A Haven shrine plate lists donors by what they owed, not who they were.' },
       ],
     },
     {
@@ -208,6 +214,16 @@ export default defineFlavorPack({
         { id: 'static_58', text: 'Slow hauler ahead. Patience is a toll.' },
         { id: 'static_59', text: 'A wingman stole his own wingtip. The wing saluted.' },
         { id: 'static_60', text: 'If your hold is light, your grave is too. Fly heavy.' },
+        { id: 'static_61', text: 'Reach Station flips flags between breakfast and lunch. The board still says temporary.' },
+        { id: 'static_62', text: 'The contracting post vets your standing before your hull. Both come back quiet.' },
+        { id: 'static_63', text: 'Io weld pools pay in air shares. The meter is the only foreman who never sleeps.' },
+        { id: 'static_64', text: 'Half of Sker\u2019s berths are cold by policy. The other half by price.' },
+        { id: 'static_65', text: 'Sker Bazaar receipts are the only law with a signature on it.' },
+        { id: 'static_66', text: 'Ashfall toll collectors ask twice: once for the fee, once for the blade you swear by.' },
+        { id: 'static_67', text: 'The Vault Maw\u2019s keyways are all false. Crews still die filing the right one.' },
+        // S-03: heckling the junction's new furniture by name.
+        { id: 'static_68', text: 'Marshal Nine counts your hulls so you do not have to. Count them again anyway.' },
+        { id: 'static_69', text: 'The Re-filed Hull has been HELD longer than most crews hold a job.' },
       ],
     },
     {
@@ -275,6 +291,14 @@ export default defineFlavorPack({
         { id: 'ballad_58', text: 'She sewed the flag from funeral bunting. It still flies.' },
         { id: 'ballad_59', text: 'A beacon counts the fathoms no one sounds.' },
         { id: 'ballad_60', text: 'The last light on the dock belongs to no one. Keep it lit.' },
+        { id: 'ballad_61', text: 'The tether snapped mid-shift; the pod still calls it Tuesday.' },
+        { id: 'ballad_62', text: 'In the Expanse the canisters outlive the names.' },
+        { id: 'ballad_63', text: 'Sker welds its dead into the gate so the gate remembers.' },
+        // S-02 Ceres verses: the wet weigh, the re-stake, the pin that still pings.
+        { id: 'ballad_64', text: 'Forty-Tag grew a second pin. The first one kept the crew.' },
+        { id: 'ballad_65', text: 'The scale read wet that winter; the ledger read it dry.' },
+        { id: 'ballad_66', text: 'A worklight on the Cathedral approach drinks a cell a week.' },
+        { id: 'ballad_67', text: 'The books are what the belt has instead of graves.' },
       ],
     },
     {
@@ -342,6 +366,12 @@ export default defineFlavorPack({
         { id: 'vespers_58', text: 'What the ledger drops, the Pattern files.' },
         { id: 'vespers_59', text: 'Be the note that refuses to resolve.' },
         { id: 'vespers_60', text: 'When you are counted, the count continues. Rest there.' },
+        { id: 'vespers_61', text: 'The fog is a verse the Pattern has not finished. Listen kindly.' },
+        { id: 'vespers_62', text: 'What the Veil counts, the Pattern already sang.' },
+        // S-04: the Forge's watch and the slag's count, in the Choir register.
+        { id: 'vespers_63', text: 'Twenty minutes at the face. The Pattern measures watches, not hours.' },
+        { id: 'vespers_64', text: 'The slag keeps the names the roster releases. Ask it gently.' },
+        { id: 'vespers_65', text: 'The stamp outlives the stamper. Strike it like a hymn.' },
       ],
     },
     {
@@ -409,6 +439,9 @@ export default defineFlavorPack({
         { id: 'routing_58', text: 'LABEL SURVIVED THE PARCEL. SHIPMENT DECLARED COMPLETE.' },
         { id: 'routing_59', text: 'COUNTER CLOSED FOR COUNTING. COUNTING CLOSED FOR LUNCH.' },
         { id: 'routing_60', text: 'RECEIVED AT 04:00. LOGGED AT NEVER.' },
+        // S-03: the junction's legs, named on the wire.
+        { id: 'routing_61', text: 'IO CORRIDOR: FORMING IN THREES. THE FOURTH IS A NARRATIVE.' },
+        { id: 'routing_62', text: 'VESTA LEG: COUNTED TWICE. SECOND COUNT PREDATES THE DESK.' },
       ],
     },
     {
@@ -476,6 +509,15 @@ export default defineFlavorPack({
         { id: 'numbers_58', text: 'THE WATCHER TIDE-LOCKED. THE WATCHER ANSWERED.' },
         { id: 'numbers_59', text: 'PALLAS. SEVEN-TWO. ANSWER WHEN READY.' },
         { id: 'numbers_60', text: 'NO MESSAGE FOLLOWS. THE MESSAGE FOLLOWED.' },
+        { id: 'numbers_61', text: 'CHARON. FOUR. THE LUNG DOES NOT FORGIVE.' },
+        { id: 'numbers_62', text: 'TWELVE CANISTERS IN. NINE COUNTED OUT. REMAINDER: ONE HULL.' },
+        { id: 'numbers_63', text: 'THE EXPANSE ANSWERS IN BEDLIGHT. DO NOT ANSWER BACK.' },
+        { id: 'numbers_64', text: 'VEIL. ZERO-ZERO. THE FOG READS YOU FIRST.' },
+        { id: 'numbers_65', text: 'SOUNDING TWO. THE SECOND APERTURE IS NOT ON YOUR CHART.' },
+        { id: 'numbers_66', text: 'SEVEN PYLONS. THE COUNT CHANGES WHEN OBSERVED. RE-VERIFY.' },
+        // S-05: the census voice noticing the drift's new furniture without naming it.
+        { id: 'numbers_67', text: 'EIGHTEEN BERTHS. SEVENTEEN WARM. THE LAMP DOES NOT COUNT.' },
+        { id: 'numbers_68', text: 'ONE RING. THE HOUSE HEARD. DO NOT RING AGAIN.' },
       ],
     },
     {
