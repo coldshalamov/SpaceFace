@@ -70,6 +70,27 @@ export const DYING_FORCE_LAW = Object.freeze({
   massScaleFloor: 0.35,
 });
 
+/**
+ * The visual roll/pitch of a failing hull. These are the presentation pose fields the hull mesh
+ * already reads (entity.pitch / entity.bank); the planar collision footprint and every authoritative
+ * quantity are untouched. Eased in so the hull rolls late and hard, like a body losing its last
+ * attitude control. Reduced motion keeps the smoke/state cue and no tilt.
+ */
+export const DYING_POSE_LAW = Object.freeze({ pitch: 0.55, bank: 1.0, ease: 1.7 });
+
+/** Pure: the tilt added to the pose the hull died in, at progress 0..1 through its window. */
+export function dyingPose(progress, side, reduced = false) {
+  if (reduced) return { pitch: 0, bank: 0 };
+  const t = clamp(finite(progress), 0, 1);
+  const k = Math.pow(t * t * (3 - 2 * t), DYING_POSE_LAW.ease);
+  return { pitch: DYING_POSE_LAW.pitch * k, bank: (side < 0 ? -1 : 1) * DYING_POSE_LAW.bank * k };
+}
+
+function motionReduced(state) {
+  const settings = state && state.settings;
+  return !!(settings && ((settings.video && settings.video.motionReduce) || (settings.accessibility && settings.accessibility.flashReduce)));
+}
+
 /** Tear-off pieces shed at the rupture, by tier. Light hulls just burst. */
 export const DYING_FRAGMENTS = Object.freeze({ light: 0, medium: 1, heavy: 2, capital: 2 });
 
@@ -196,6 +217,7 @@ export const dyingHull = {
       const wreck = state.entities && state.entities.get ? state.entities.get(rec.wreckId) : null;
       if (!this._stillThisBody(wreck, rec)) { this._lose(state, rec, 'gone'); continue; }
       if (now >= rec.ruptureAt) this._rupture(state, rec, wreck, now);
+      else this._tilt(state, rec, wreck, now);
     }
   },
 
@@ -305,6 +327,8 @@ export const dyingHull = {
       direction: dir,
       ruptured: false,
       nozzle: null,
+      side: (hash32(state.meta && state.meta.seed, item.markerId, 'dyingNozzleSide') & 1) ? 1 : -1,
+      pose0: { pitch: finite(wreck.pitch), bank: finite(wreck.bank) },
     };
     rt.byWreckId[wreck.id] = rec;
     rt.count += 1;
@@ -346,7 +370,16 @@ export const dyingHull = {
     }
   },
 
-  // ---- rupture / loss -------------------------------------------------------------------------
+  // ---- pose / rupture / loss ------------------------------------------------------------------
+
+  /** Presentation roll/pitch only: a function of sim time, written to the pose fields the mesh reads. */
+  _tilt(state, rec, wreck, now) {
+    const span = rec.ruptureAt - rec.startedAt;
+    if (!(span > 0)) return;
+    const pose = dyingPose((now - rec.startedAt) / span, rec.side, motionReduced(state));
+    wreck.pitch = rec.pose0.pitch + pose.pitch;
+    wreck.bank = rec.pose0.bank + pose.bank;
+  },
 
   _stillThisBody(wreck, rec) {
     if (!wreck || wreck.alive === false || wreck.type !== 'wreck' || !wreck.data) return false;

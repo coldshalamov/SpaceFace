@@ -29,6 +29,7 @@ export {
 };
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, IMPACT_KICK_WU_MAX, shakeDistanceAttenuation } from './camera.js';
+import { createShakeAdmission } from './shakeAdmission.js';
 import {
   clearanceCellInRange,
   clearanceGridRawAt,
@@ -20765,6 +20766,9 @@ export const render = {
     // player-scoped by construction (player hit / death / respawn, drill, tether, presentation cues)
     // and passes through unchanged. Attenuating here rather than at each emitter means the twelve
     // sites nobody has audited are covered too.
+    // Packet 08: discrete blows are admitted with diminishing returns inside a draining window, so a
+    // swarm fight or a shotgun burst bounds the camera instead of pinning trauma at 1.
+    const shakeAdmission = createShakeAdmission();
     onBus('camera:shake', (payload) => {
       const amount = (payload && payload.amount) || 0.3;
       const at = payload && payload.position;
@@ -20775,6 +20779,8 @@ export const render = {
           scaled = amount * shakeDistanceAttenuation(Math.hypot(at.x - p.pos.x, at.z - p.pos.z));
         }
       }
+      if (scaled <= 0.001) return;
+      scaled = shakeAdmission.admit(scaled, state.simTime);
       if (scaled <= 0.001) return;
       // FB-072 — a shake that carries a direction is a knock, not noise: the view is pushed
       // along the real hit axis via the kick envelope instead of undirected trauma. The kick

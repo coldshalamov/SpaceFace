@@ -408,3 +408,89 @@ test('a re-delivered aftermath spawn for an old wreck (sector re-entry) is simpl
   assert.equal(events(h, 'dyingHull:begin').length, before, 'an old kill stamp cannot begin a new failure');
   assert.equal(lifecycleOf(h.state, wreck), LIFECYCLE.WRECK);
 });
+
+test('floating-origin rebase mid-window: the rupture is reported at the hull\'s live (shifted) position', () => {
+  const h = boot();
+  killByGunfire(h, liveHostiles(h)[0]);
+  h.tick(1);
+  const wreck = dyingWreckOf(h);
+  assert.ok(wreck);
+  // The world re-centres: every body's coordinates shift by the same offset.
+  wreck.pos.x -= 5000; wreck.pos.z += 3000;
+  h.tick(300);
+  const ruptured = events(h, 'dyingHull:ruptured');
+  assert.equal(ruptured.length, 1);
+  assert.equal(ruptured[0].payload.pos.x, wreck.pos.x);
+  assert.equal(ruptured[0].payload.pos.z, wreck.pos.z);
+  assert.equal(h.state.dyingHullRuntime.count, 0);
+});
+
+test('the schedule is deterministic: the same seeded kill ruptures on the same tick with the same pieces', () => {
+  const run = () => {
+    const h = boot({ seed: 8008 });
+    const [a, b] = liveHostiles(h);
+    a.mass = 20; b.mass = 130; b.radius = 26;
+    killByGunfire(h, a);
+    killByGunfire(h, b);
+    h.tick(400);
+    const trace = h.emitted
+      .filter((e) => e.event === 'dyingHull:begin' || e.event === 'dyingHull:ruptured')
+      .map((e) => [e.event, e.tick, e.payload.windowS ?? null, e.payload.pos.x, e.payload.pos.z, (e.payload.pieceIds || []).length]);
+    const rngProbe = h.state.rng();
+    return { trace, rngProbe };
+  };
+  const first = run();
+  const second = run();
+  assert.ok(first.trace.length >= 4, 'two begins and two ruptures');
+  assert.deepEqual(second, first);
+});
+
+test('idle is free: no queued work means no rng draw, no event and no state churn', () => {
+  const h = boot();
+  let draws = 0;
+  const original = h.state.rng;
+  h.state.rng = (...args) => { draws++; return original(...args); };
+  const before = JSON.stringify(h.state.dyingHullRuntime);
+  const emittedBefore = h.emitted.length;
+  // dyingHull alone, ticking with nothing to do
+  for (let i = 0; i < 600; i++) {
+    h.state.tick += 1; h.state.simTime += DT;
+    h.dyingSystem.update(DT, h.state);
+  }
+  assert.equal(draws, 0, 'the dying system draws no rng while idle');
+  assert.equal(JSON.stringify(h.state.dyingHullRuntime), before);
+  assert.equal(h.emitted.length, emittedBefore, 'and emits nothing');
+});
+
+test('the failing hull rolls and pitches through its window - presentation pose only, footprint untouched', () => {
+  const h = boot();
+  killByGunfire(h, liveHostiles(h)[0]);
+  h.tick(1);
+  const wreck = dyingWreckOf(h);
+  assert.ok(wreck);
+  const begin = events(h, 'dyingHull:begin')[0].payload;
+  const pitch0 = wreck.pitch || 0;
+  const bank0 = wreck.bank || 0;
+  const radius0 = wreck.radius;
+  const bankSeen = [];
+  const total = Math.ceil(begin.windowS * 60);
+  for (let i = 0; i < total - 3; i++) { h.tick(1); bankSeen.push(Math.abs((wreck.bank || 0) - bank0)); }
+  for (let i = 1; i < bankSeen.length; i++) assert.ok(bankSeen[i] >= bankSeen[i - 1] - 1e-9, 'the roll only deepens');
+  assert.ok(bankSeen[bankSeen.length - 1] > 0.2, `it visibly rolls (${bankSeen[bankSeen.length - 1]})`);
+  assert.ok((wreck.pitch || 0) - pitch0 > 0.05, 'and pitches');
+  assert.equal(wreck.radius, radius0, 'the collision footprint is the authoritative planar body, unchanged');
+  h.tick(300);
+  assert.ok(Number.isFinite(wreck.pitch) && Number.isFinite(wreck.bank));
+});
+
+test('reduced motion keeps the state cue but no tilt', () => {
+  const h = boot();
+  h.state.settings = { video: { motionReduce: true }, accessibility: {} };
+  killByGunfire(h, liveHostiles(h)[0]);
+  h.tick(1);
+  const wreck = dyingWreckOf(h);
+  const bank0 = wreck.bank || 0;
+  h.tick(10);
+  assert.equal(wreck.bank || 0, bank0);
+  assert.equal(lifecycleOf(h.state, wreck), LIFECYCLE.DYING, 'the lifecycle read is unchanged');
+});
