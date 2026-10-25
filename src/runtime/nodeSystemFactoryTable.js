@@ -202,6 +202,7 @@ import { mop } from '../systems/mop.js';
 import { tallyho } from '../systems/tallyho.js';
 import { tare } from '../systems/tare.js';
 import { lamplighter } from '../systems/lamplighter.js';
+import { shepherd12 } from '../systems/shepherd12.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -449,6 +450,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['tallyho', tallyho],
     ['tare', tare],
     ['lamplighter', lamplighter],
+    ['shepherd12', shepherd12],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

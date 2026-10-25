@@ -146,8 +146,10 @@ test('production init + update order lengths match the live browser baseline', (
   // weigh census reads settled bodies on the same calendar clock (row 506 member 6).
   // 243 -> 244 init / 189 -> 190 update: W-SHIFT registers lamplighter — the arm
   // ring and stock census is a seconds-scale read on the same clock (member 7).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 244);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 190);
+  // 244 -> 245 init / 190 -> 191 update: W-SHIFT registers shepherd12 — the flock
+  // census and the broken shepherd's patrol walk ride the same clock (member 8).
+  assert.equal(PRODUCTION_INIT_ORDER.length, 245);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 191);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));
