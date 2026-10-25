@@ -766,7 +766,11 @@ export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = n
  * tell telegraphs again. Sustained fire is never re-held.
  */
 const ELITE_CHARGE_TELL_TICKS = 24;
-const eliteChargeTellLedger = new WeakMap(); // entity object -> { tellAt, consumed, wasFiring }
+// A lull this long (no firing intent at all) ends a burst: the next firing edge is a fresh
+// engagement and telegraphs again. Short aim-cone flicker inside a burst stays unheld.
+const ELITE_CHARGE_REARM_TICKS = 60;
+// entity object -> { tellAt (-1 = no running tell), lastWantTick, released }
+const eliteChargeTellLedger = new WeakMap();
 
 export function applyEliteChargeTell(entity, decision, state, tick, bus) {
   const intent = entity && entity.data && entity.data.intent;
@@ -780,36 +784,43 @@ export function applyEliteChargeTell(entity, decision, state, tick, bus) {
   const ai = entity.data && entity.data.ai;
   if ((ai && ai.combatDoctrineId) || (decision && decision.combatDoctrine)) return;
   const now = Number.isInteger(tick) ? tick : (Number.isInteger(state && state.tick) ? state.tick : 0);
-  const entry = eliteChargeTellLedger.get(entity) || { tellAt: -1, consumed: true, wasFiring: false };
-  if (!entry.wasFiring) {
-    if (!entry.consumed && now - entry.tellAt >= ELITE_CHARGE_TELL_TICKS) {
-      // The running tell finished its lead — this firing edge releases.
-      entry.consumed = true;
-    } else {
-      if (entry.consumed || entry.tellAt < 0 || now - entry.tellAt >= ELITE_CHARGE_TELL_TICKS) {
-        entry.tellAt = now;
-        entry.consumed = false;
-        if (bus && typeof bus.emit === 'function') {
-          bus.emit('ai:telegraph', {
-            entityId: entity.id,
-            targetId: decision && decision.directive && decision.directive.objective
-              ? decision.directive.objective.targetId : null,
-            doctrineId: null,
-            phase: null,
-            kind: 'weapon_charge',
-            durationTicks: ELITE_CHARGE_TELL_TICKS,
-            attackLine: null,
-            bossStage: 0,
-            turretEdge: 0,
-            tick: now,
-          });
-        }
-      }
-      clearAIFiringIntent(intent, 'elite_charge_tell');
+  let entry = eliteChargeTellLedger.get(entity);
+  if (!entry) {
+    entry = { tellAt: -1, lastWantTick: -Infinity, released: false };
+    eliteChargeTellLedger.set(entity, entry);
+  }
+  const gap = now - entry.lastWantTick;
+  // A burst that went quiet re-arms; a tell whose hold was abandoned for longer than its own
+  // lead is stale and must not release a later edge with no fresh warning.
+  if (entry.released && gap > ELITE_CHARGE_REARM_TICKS) entry.released = false;
+  if (!entry.released && entry.tellAt >= 0 && gap > ELITE_CHARGE_TELL_TICKS) entry.tellAt = -1;
+  entry.lastWantTick = now;
+  if (entry.released) return; // sustained fire is never re-held
+  if (entry.tellAt >= 0 && now - entry.tellAt >= ELITE_CHARGE_TELL_TICKS) {
+    // The running tell finished its lead — this firing edge releases.
+    entry.released = true;
+    entry.tellAt = -1;
+    return;
+  }
+  if (entry.tellAt < 0) {
+    entry.tellAt = now;
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('ai:telegraph', {
+        entityId: entity.id,
+        targetId: decision && decision.directive && decision.directive.objective
+          ? decision.directive.objective.targetId : null,
+        doctrineId: null,
+        phase: null,
+        kind: 'weapon_charge',
+        durationTicks: ELITE_CHARGE_TELL_TICKS,
+        attackLine: null,
+        bossStage: 0,
+        turretEdge: 0,
+        tick: now,
+      });
     }
   }
-  entry.wasFiring = intent.fire === true;
-  eliteChargeTellLedger.set(entity, entry);
+  clearAIFiringIntent(intent, 'elite_charge_tell');
 }
 
 /**

@@ -185,11 +185,16 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       // never stepped again — a returning player used to find a permanently silent, braked boss
       // that still completed the mission when shot. Player respawn rewinds every such fight whose
       // mission is still active; a save:loaded heal covers older saves written mid-defeat.
-      listen('player:respawn',()=>system._rewindDefeatedFights('recovery'));
+      // Recovery also rewinds a fight the death INTERRUPTED before the score stepped to 'defeat':
+      // when the boss's own authored hit lands the kill inside the score's step, the after-action
+      // screen pauses the sim before the next tick, so the record is still live at the berth.
+      listen('player:respawn',()=>system._rewindDefeatedFights('recovery',{interrupted:true}));
       listen('save:loaded',()=>{
         const player=ctx.state.entities&&typeof ctx.state.entities.get==='function'
           ?ctx.state.entities.get(ctx.state.playerId):null;
-        if(player&&player.alive===false) return;
+        // Heal only over a live hull: a missing player or an open wreck (recovery pending) waits
+        // for player:respawn instead of re-arming a fight against a dead target.
+        if(!player||player.alive===false||(player.flags&&player.flags.defeated)) return;
         system._rewindDefeatedFights('save_loaded');
       });
     },
@@ -247,9 +252,13 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
      * it only when the player is back in range. Swarm champions and the Last Argument are
      * excluded: they have their own lifecycle owners.
      */
-    rewindAct(fightId,reason='retry') {
+    rewindAct(fightId,reason='retry',{interrupted=false}={}) {
       const store=root(),r=store.fights[String(fightId)];
-      if(!r||r.terminal!=='defeat'||r.bossKilled===true) return false;
+      if(!r||r.bossKilled===true) return false;
+      // `interrupted` (recovery only): a started, still non-terminal fight against the player
+      // whose death the score never observed — the paused after-action screen froze it first.
+      const live=interrupted&&r.terminal==null&&r.started===true&&r.targetId===ctx.state.playerId;
+      if(r.terminal!=='defeat'&&!live) return false;
       if(typeof r.fightId==='string'&&r.fightId.startsWith('swarm:')) return false;
       if(r.encounterId===LAST_ARGUMENT.scoreId) return false;
       if(r.cast) ctx.bus.emit('capitalBoss:telegraphEnd',{fightId:r.fightId,castId:r.cast.id,reason:'rewind'});
@@ -264,14 +273,15 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
     },
     // Every defeat-terminal fight whose mission row is still live gets its act rewound. The
     // mission owner settles the contract; a settled or absent row leaves the hulk terminal.
-    _rewindDefeatedFights(reason) {
+    _rewindDefeatedFights(reason,{interrupted=false}={}) {
       const fights=root().fights;
       const active=(ctx.state.missions&&Array.isArray(ctx.state.missions.active)&&ctx.state.missions.active)||[];
       for(const [id,r] of Object.entries(fights)) {
-        if(!r||r.terminal!=='defeat'||r.bossKilled===true) continue;
+        if(!r||r.bossKilled===true) continue;
+        if(r.terminal!=='defeat'&&!(interrupted&&r.terminal==null)) continue;
         const m=active.find(row=>row&&String(row.id)===String(r.fightId));
         if(!m||m.status!=='active') continue;
-        system.rewindAct(id,reason);
+        system.rewindAct(id,reason,{interrupted});
       }
     },
     detach(fightId) {

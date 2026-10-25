@@ -191,6 +191,34 @@ test('the defeat receipt carries capitalBossFightId and boss_staging places ~110
   assert.equal(fightOf(h).terminal, null, 'the staged return rewound the act');
 });
 
+test('review 2: a death the paused score never observed still stages and rewinds the act', () => {
+  // The boss's own authored hit kills inside the score's step; the after-action screen pauses
+  // the sim before the next tick, so the fight is still live (not 'defeat') at the Retry click.
+  const h = boot({
+    sectorId: 'sector_helios_prime',
+    stationId: 'station_helios',
+    stationPos: { x: 1400, z: 0 },
+    bossPos: { x: 300, z: 0 },
+  });
+  h.state.player.credits = 5000;
+  runUntilStarted(h);
+  const actIndex = fightOf(h).actIndex;
+  combat.kill(h.player, h.boss.id, { origin: { kind: 'weapon', id: 'wpn_test' } });
+  assert.equal(fightOf(h).terminal, null, 'no score tick ran after the death');
+  h.bus.emit('player:recoveryRequested', { source: 'after_action', plan: 'boss_staging', fightId: h.fightId });
+  assert.equal(h.player.alive, true);
+  const dist = Math.hypot(h.player.pos.x - h.boss.pos.x, h.player.pos.z - h.boss.pos.z);
+  assert.ok(Math.abs(dist - 1100) < 1, `Retry act stages off the boss, not at the berth (got ${dist})`);
+  const fight = fightOf(h);
+  assert.equal(fight.suspended, true, 'the interrupted fight re-arms suspended');
+  assert.equal(fight.sequence, 0, 'the act replays from its opening');
+  assert.equal(fight.actIndex, actIndex);
+  assert.equal(fight.cast, null, 'no stale cast survives the rewind');
+  h.tick(5);
+  assert.equal(fightOf(h).terminal, null, 'the revived player never reads as a defeat');
+  assert.equal(fightOf(h).suspended, true, 'staging sits outside the engage radius');
+});
+
 test('a save written mid-defeat heals on save:loaded with an alive player', () => {
   const h = boot();
   runUntilStarted(h);
@@ -217,6 +245,7 @@ test('a save written mid-defeat heals on save:loaded with an alive player', () =
   assert.equal(h.state.capitalBossEncounters.fights[h.fightId].terminal, 'defeat',
     'a dead player on load leaves the hulk terminal');
   h.player.alive = true;
+  delete h.player.flags.defeated; // a recovered hull — the shape old saves wrote after the berth
   bus2.emit('save:loaded', {});
   const healed = h.state.capitalBossEncounters.fights[h.fightId];
   assert.equal(healed.terminal, null, 'save:loaded rewinds the restored defeat');
@@ -272,6 +301,23 @@ test('elite with no doctrine telegraphs weapon_charge and holds its first firing
   // Sustained fire is never re-held.
   applyEliteChargeTell(elite, decision, state, 125, bus);
   assert.equal(elite.data.intent.fire, true);
+
+  // Review 2: a short aim-cone flicker inside the burst stays unheld...
+  emitted.length = 0;
+  applyEliteChargeTell(elite, decision, state, 150, bus);
+  assert.equal(elite.data.intent.fire, true, 'a brief lull inside a burst is not a new edge');
+  // ...but after a real lull the next firing edge telegraphs again.
+  applyEliteChargeTell(elite, decision, state, 300, bus);
+  assert.equal(elite.data.intent.fire, false, 'a fresh engagement edge is held again');
+  assert.equal(emitted.filter((e) => e.event === 'ai:telegraph').length, 1, 'and gets its own tell');
+
+  // A tell whose hold was abandoned (fire dropped mid-lead) never releases a later edge unwarned.
+  emitted.length = 0;
+  elite.data.intent.fire = true;
+  applyEliteChargeTell(elite, decision, state, 400, bus);
+  assert.equal(emitted.length, 1, 'stale tell replaced by a fresh one');
+  assert.equal(elite.data.intent.fire, false);
+  assert.equal(emitted[0].payload.tick, 400);
 });
 
 test('non-elites, doctrine combatants and score-owned capitals are untouched by the tell gate', () => {

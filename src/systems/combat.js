@@ -1371,10 +1371,20 @@ export const combat = {
     if (fightId == null) return null;
     const fights = state.capitalBossEncounters && state.capitalBossEncounters.fights;
     const fight = fights && fights[String(fightId)];
-    if (!fight || fight.terminal !== 'defeat' || fight.bossKilled === true) return null;
+    if (!fight || fight.bossKilled === true) return null;
+    // 'defeat' is the settled shape; a still-live record is the same loss the score never got to
+    // observe — the boss's own authored hit kills inside the score's step and the paused
+    // after-action screen freezes the sim before the next tick. Recovery rewinds both.
+    const interrupted = fight.terminal == null && fight.started === true
+      && fight.targetId === state.playerId;
+    if (fight.terminal !== 'defeat' && !interrupted) return null;
     const active = (state.missions && Array.isArray(state.missions.active) && state.missions.active) || [];
     const mission = active.find((m) => m && String(m.id) === String(fightId));
     if (!mission || mission.status !== 'active' || !mission.destSectorId) return null;
+    // The boss's live position is only meaningful in the loaded sector; a fight whose room is
+    // elsewhere falls back to the berth rather than staging on another sector's coordinates.
+    const currentSectorId = state.world && state.world.currentSectorId;
+    if (currentSectorId && currentSectorId !== mission.destSectorId) return null;
     const boss = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(fight.bossId) : null;
     if (!boss || boss.alive === false || !boss.pos) return null;
