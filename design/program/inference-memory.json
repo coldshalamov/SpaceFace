@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-veil-wreck",
-      "date": "2026-10-22",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "Veil step stops in front of a solid wreck instead of dropping the hull inside it.",
-      "fingerprint": "verb=stop,subject=veil-wreck,sector=belt,domain=wf-15",
-      "references": [],
-      "integration": "live",
-      "commit": "05a5eb5543a0c59ad3e2a60ede99e0de9e911763",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-paper-wash",
       "date": "2026-10-22",
       "wf": "WF-14",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "ec222ba6a9691eebfb501aa902072cf2dd2b1d2f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-pod-buyer",
+      "date": "2026-10-25",
+      "wf": "WF-06",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Only the fence who buys pods takes a towed mayday pod.",
+      "fingerprint": "verb=sell,subject=mayday-pod,sector=kepler,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "d5067163de58fc190975db363d3bb297eebc50cc",
       "verification": "focused_green"
     }
   ],
