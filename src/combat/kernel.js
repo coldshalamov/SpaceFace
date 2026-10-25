@@ -134,7 +134,10 @@ export function createCombatKernel(ctx, options = {}) {
       if (hooks.onKill) hooks.onKill(target, killerId, lethal);
       else {
         target.alive = false;
-        if (bus) bus.emit('entity:killed', { id: target.id, killerId, type: target.type, pos: { x: target.pos.x, z: target.pos.z } });
+        // Same law-relevant shape as combat.kill's emit: the collision partner is the impactor
+        // law must never let occlude the kill it caused.
+        if (bus) bus.emit('entity:killed', { id: target.id, killerId, type: target.type, pos: { x: target.pos.x, z: target.pos.z },
+          impactorId: lethal?.packet?.source?.collisionPresentation?.otherId ?? null });
       }
     },
   });

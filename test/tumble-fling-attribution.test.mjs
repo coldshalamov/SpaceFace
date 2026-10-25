@@ -459,7 +459,7 @@ test('X-08 review: a throw\'s own tether:released echo keeps its record; a later
 // seam: a thrown rock's physics:impact through collisionConsequences + the combat kernel, whose
 // own entity:killed reaches lawSecurity and heat. A witnessed lawful hull ended by the player's
 // rock charges lawful_kill and prices heat; the same rock unthrown (or past its hold) bills nobody.
-function x08LawfulRockScene({ thrown, flightTicks = 60 }) {
+function x08LawfulRockScene({ thrown, flightTicks = 60, impactorType = 'asteroid', witnessPos = { x: 320, z: 60 }, extraBodies = [] }) {
   const sim = x08Sim({ seed: 4242, systems: [x08Law, x08Heat] });
   const { state, bus } = sim;
   state.mode = 'flight';
@@ -468,11 +468,12 @@ function x08LawfulRockScene({ thrown, flightTicks = 60 }) {
   state.playerId = pilot.id;
   state.player.heat = 0;
   // Rock surface touches the victim (20 + 10 = 30 wu apart) so it never occludes the witness.
-  const rock = sim.spawn({ type: 'asteroid', pos: { x: 270, z: 40 }, vel: { x: 90, z: 0 }, radius: 20, mass: 400,
+  const rock = sim.spawn({ type: impactorType, pos: { x: 270, z: 40 }, vel: { x: 90, z: 0 }, radius: 20, mass: 400,
     hull: 4000, hullMax: 4000, data: { oreHP: 400, oreHPMax: 400 } });
   const lawful = sim.spawn({ type: 'ship', team: 2, factionId: 'faction_scn', pos: { x: 300, z: 40 }, radius: 10, mass: 16,
     hull: 1, hullMax: 30, data: { ai: { lawful: true, archetype: 'patrol_lawman' } } });
-  sim.spawn({ type: 'ship', team: 2, factionId: 'faction_scn', pos: { x: 320, z: 60 }, radius: 9, hull: 100, hullMax: 100,
+  for (const body of extraBodies) sim.spawn(body);
+  sim.spawn({ type: 'ship', team: 2, factionId: 'faction_scn', pos: witnessPos, radius: 9, hull: 100, hullMax: 100,
     data: { ai: { lawful: true, archetype: 'patrol_lawman' } } });
   const helpers = { ...sim.helpers, combatPhysics: { applyImpulse: () => true } };
   const kernel = x08Kernel({ state, bus, helpers, registry: { get: () => null } });
@@ -491,7 +492,7 @@ function x08LawfulRockScene({ thrown, flightTicks = 60 }) {
   bus.emit('physics:impact', { consequenceKernelVersion: 1, aId: rock.id, bId: lawful.id,
     impulse: 400 * 90, dp: 400 * 90, tick: state.tick, pos: { x: 290, z: 40 }, normal: { x: -1, z: 0 },
     preSolveClosingSpeed: 90 });
-  return { sim, state, pilot, lawful, killed, adjudicated };
+  return { sim, state, pilot, rock, lawful, killed, adjudicated };
 }
 
 test('X-08 review 2: a real thrown-rock contact that ends a witnessed lawful hull charges the player and prices heat', () => {
@@ -523,5 +524,37 @@ test('X-08 review 2: the same real contact from an unthrown rock, or past the ho
         assert.equal(s.state.player.heat, 0, `no heat (${JSON.stringify(opts)})`);
       } finally { s.sim.dispose(); }
     }
+  });
+});
+
+// X-08 review fix — a thrown body never occludes the kill it caused. The kill receipt carries
+// `impactorId` (the collision partner) and law's witness sightline drops it from the occluder
+// set: a lawful witness sitting behind the impactor on the thrower's side still saw the kill.
+// A body that is NOT the impactor still occludes fairly.
+test('X-08 review fix: the thrown impactor never occludes its own kill; an unrelated body still does', () => {
+  x08WithFlags(() => {
+    // Witness at (235,40) → victim at (300,40): the impactor wreck at (270,40) r20 sits
+    // squarely on the sightline — without the exclusion this kill is invisible.
+    const seen = x08LawfulRockScene({ thrown: true, impactorType: 'wreck', witnessPos: { x: 235, z: 40 } });
+    try {
+      const kill = seen.killed.find((k) => k.id === seen.lawful.id);
+      assert.ok(kill, 'the real entity:killed fired');
+      assert.equal(kill.impactorId, seen.rock.id, 'the receipt names the body the victim struck');
+      const verdict = seen.adjudicated.find((a) => a.victimEntityId === seen.lawful.id);
+      assert.ok(verdict, 'law adjudicated');
+      assert.equal(verdict.witnessed, true, 'the impactor cannot hide the kill it caused');
+      assert.equal(verdict.outcome, 'charged');
+      assert.ok(seen.state.player.heat > 0, 'heat priced');
+    } finally { seen.sim.dispose(); }
+
+    // Same geometry, but the occluder is an unrelated body — not the impactor — so the
+    // sightline is still fairly blocked and the kill stays unwitnessed.
+    const blocked = x08LawfulRockScene({ thrown: true, witnessPos: { x: 235, z: 40 },
+      extraBodies: [{ type: 'wreck', pos: { x: 270, z: 40 }, radius: 20, mass: 400, hull: 4000, hullMax: 4000 }] });
+    try {
+      const verdict = blocked.adjudicated.find((a) => a.victimEntityId === blocked.lawful.id);
+      assert.equal(verdict.witnessed, false, 'an unrelated body still occludes the kill');
+      assert.equal(blocked.state.player.heat, 0, 'an unwitnessed kill prices no heat');
+    } finally { blocked.sim.dispose(); }
   });
 });

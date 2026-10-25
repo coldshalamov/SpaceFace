@@ -663,6 +663,8 @@ export function buildKillPresentationReceipt(state, target, killerId, lethal = {
     playerCaused: !!state && killerId === state.playerId,
     impact,
     impactLink,
+    // The body the victim struck — a thrown rock must not occlude the kill it caused.
+    impactorId: collision && collision.otherId != null ? collision.otherId : null,
   });
 }
 
@@ -1113,6 +1115,8 @@ export const combat = {
       baseKind: d.baseKind || null,
       // A lethal whip need not leave an impulse record; keep its damage-owned cause.
       ...(lethal?.origin?.kind === 'massline_whip' ? { cause: 'massline_whip' } : {}),
+      // The collision partner — law's witness sightline must not let it occlude its own kill.
+      impactorId: presentation.impactorId ?? null,
       presentation,
     });
     // SEAM-BASE: a destructible base entity is an ordinary damageable station carrying
