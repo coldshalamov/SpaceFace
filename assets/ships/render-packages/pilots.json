@@ -6533,6 +6533,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/haumea-fracture-mouth",
       "metadataUrl": "assets/ships/release/render-packages/haumea-fracture-mouth/render-package.json"
+    },
+    {
+      "key": "phoebe-shard-sphere",
+      "assetId": "sf.render.phoebe-shard-sphere",
+      "runtimeAssetId": "place_phoebe_shard_sphere",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_phoebe_shard_sphere",
+      "sourceUrl": "assets/ships/release/parts/places/place_phoebe_shard_sphere.glb",
+      "releaseSha256": "59a22977b1fc3872bb79d10580f96c3f498d114f06f0cb2545932cceaf84ffee",
+      "releaseBytes": 72188,
+      "rootNode": "place_phoebe_shard_sphere",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/phoebe-shard-sphere",
+      "metadataUrl": "assets/ships/release/render-packages/phoebe-shard-sphere/render-package.json"
     }
   ]
 }

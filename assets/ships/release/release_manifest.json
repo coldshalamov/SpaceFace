@@ -5891,6 +5891,16 @@
       "releaseSha256": "d64d1e66e14e6fe5270a9dca9ced39616c53ad542d10bed06bafd15d36fcad0d",
       "sourceBytes": 3912,
       "releaseBytes": 3912
+    },
+    {
+      "id": "place_phoebe_shard_sphere",
+      "kind": "part:places",
+      "source": "assets/ships/release/parts/places/place_phoebe_shard_sphere.glb",
+      "release": "assets/ships/release/parts/places/place_phoebe_shard_sphere.glb",
+      "sourceSha256": "59a22977b1fc3872bb79d10580f96c3f498d114f06f0cb2545932cceaf84ffee",
+      "releaseSha256": "59a22977b1fc3872bb79d10580f96c3f498d114f06f0cb2545932cceaf84ffee",
+      "sourceBytes": 72188,
+      "releaseBytes": 72188
     }
   ]
 }

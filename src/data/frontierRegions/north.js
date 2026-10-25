@@ -519,8 +519,10 @@ export const NORTH_ANCHORS = Object.freeze({
         id: 'poi_phoebe_echo',
         // The dockable research module is the sphere's center, not a second landmark 1,000 WU away.
         pos: Object.freeze({ x: 280, z: -960 }),
-        landmarkGlb: 'place_asteroid_seamed',
+        landmarkGlb: 'place_phoebe_shard_sphere',
         landmark: true,
+        placeTargetRadius: 120,
+        visualRadius: 120,
       }),
       Object.freeze({
         id: 'poi_phoebe_vault',

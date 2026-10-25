@@ -3611,6 +3611,16 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "d64d1e66e14e6fe5270a9dca9ced39616c53ad542d10bed06bafd15d36fcad0d",
     "sourceUrl": "assets/ships/release/parts/places/place_haumea_fracture_mouth.glb"
+  },
+  {
+    "assetId": "sf.render.phoebe-shard-sphere",
+    "expectedContentHash": "9d2f7ad0f912270cb35c90ae30d881a86c029d2a12333b6fcd526f8819a678c5",
+    "key": "phoebe-shard-sphere",
+    "metadataUrl": "assets/ships/release/render-packages/phoebe-shard-sphere/render-package.json",
+    "runtimeAssetId": "place_phoebe_shard_sphere",
+    "slot": "place",
+    "sourceSha256": "59a22977b1fc3872bb79d10580f96c3f498d114f06f0cb2545932cceaf84ffee",
+    "sourceUrl": "assets/ships/release/parts/places/place_phoebe_shard_sphere.glb"
   }
 ];
 
