@@ -54,6 +54,12 @@ const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 // identity check still treats it as the rope's doing and not as a fresh contact cause.
 const THROW_PROVENANCE_WEAPON = 'massline';
 const THROW_PROVENANCE_TAG = 'massline_throw';
+// X-08 — the "4 s flight" the impulse hold was designed for: a thrown body's kill credit
+// outlives the raw 180-tick record only inside its own latch envelope.
+export const THROW_CREDIT_HOLD_TICKS = 240;
+// X-08 — the repo's standing "that was a throw" floor (RAID_THROW_MIN_SPEED_WU, onboarding.js).
+// A set-down below it carries no credit.
+export const THROW_CREDIT_MIN_SPEED_WU = 25;
 // INF-027: post-tumble stabilization window. Long enough to read as its own beat (the ship
 // damps spin and thrusts weakly with no guns), short enough to never be helpless. Sim-time
 // stamped on entity data so save/load cannot strand or skip it.
@@ -118,6 +124,10 @@ export const tumbleStates = {
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('tether:whipImpact', (p) => this._onWhipImpact(p || {})));
       this._unsubs.push(this.bus.on('massline:throw', (p) => this._onThrow(p || {})));
+      // X-08: a deliberate cut of a swung body releases it with no massline:throw at all — the
+      // sling still earns its kill. An involuntary break speaks a different event and stamps
+      // nothing here.
+      this._unsubs.push(this.bus.on('tether:released', (p) => this._onSlingRelease(p || {})));
       this._unsubs.push(this.bus.on(HITSTUN_IMPULSE_EVENT, (p) => this._onHitstunImpulse(p || {})));
       // Boundary wakes: not in FRESH_RUN_SYSTEMS — save/run transitions reach this
       // system only through the bus. subsystemDisabled can flip capabilities.drive
@@ -282,6 +292,31 @@ export const tumbleStates = {
     if (this.state) publishTumbleStatesQuiet(this.state, false);
   },
 
+  // X-08 — the plain sling release: a deliberate cut puts a swung body on its own vector with
+  // no massline:throw behind it. A cut rock flying ≥25 wu/s is a thrown mass for kill credit;
+  // a gentle set-down and anything slower bills nobody. Only released-from-the-player's-line
+  // bodies arrive here — ships and drones keep their existing tumble provenance untouched.
+  _onSlingRelease(payload) {
+    const state = this.state;
+    if (!combatFlag('tumbleFling') || !state) return;
+    const victim = entityById(state, payload.targetId);
+    if (!canCarryThrowCredit(state, victim)) return;
+    if (victim.type === 'ship' || victim.type === 'drone') return;
+    const vel = victim.vel || {};
+    if (Math.hypot(vel.x || 0, vel.z || 0) < THROW_CREDIT_MIN_SPEED_WU) return;
+    const tick = state.tick | 0;
+    const existing = readRecentImpulseProvenance(victim, tick, 0);
+    if (existing && existing.tag === THROW_PROVENANCE_TAG) return;
+    recordImpulseProvenance(victim, {
+      actorId: state.playerId,
+      weaponId: THROW_PROVENANCE_WEAPON,
+      tag: THROW_PROVENANCE_TAG,
+      appliedTick: tick,
+      magnitude: Math.hypot(vel.x || 0, vel.z || 0) * massOf(victim),
+    });
+    holdImpulseProvenance(victim, tick + THROW_CREDIT_HOLD_TICKS, tick, tick);
+  },
+
   _onThrow(payload) {
     const state = this.state;
     if (!massline2Flag('tumble') || !state) return;
@@ -303,6 +338,12 @@ export const tumbleStates = {
         appliedTick: throwTick,
         magnitude: deltaV * massOf(victim),
       });
+      // X-08: ships and drones carry their credit inside the tumble itself
+      // (_beginFromImpulse's own hold); rocks, wrecks and pods never tumble, so their
+      // record gets the flight hold here or dies at the raw 180-tick age-out.
+      if (victim.type !== 'ship' && victim.type !== 'drone') {
+        holdImpulseProvenance(victim, throwTick + THROW_CREDIT_HOLD_TICKS, throwTick, throwTick);
+      }
     }
     this._beginFromImpulse(victim, {
       source: 'rope_throw',
@@ -683,12 +724,14 @@ export const tumbleStates = {
   },
 };
 
-// A thrown hull carries the thrower's credit only if it is a live non-player ship or drone: the same
-// bodies the tumble itself admits (_beginFromImpulse), and only when there is a player to credit.
+// A thrown body carries the thrower's credit when it is live, non-player and of a type the
+// sling can actually launch: ships and drones tumble; asteroids, wrecks and payload pods
+// (lootShards spawn pods as `payload` bodies) do not, and need the separate flight hold.
 function canCarryThrowCredit(state, victim) {
   return !!(victim && victim.alive !== false && victim.data
     && state.playerId != null && victim.id !== state.playerId
-    && (victim.type === 'ship' || victim.type === 'drone'));
+    && (victim.type === 'ship' || victim.type === 'drone'
+      || victim.type === 'asteroid' || victim.type === 'wreck' || victim.type === 'payload'));
 }
 
 function freezeTumbleAnnouncement(payload) {
