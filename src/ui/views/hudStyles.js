@@ -556,6 +556,22 @@ export function injectHudCss() {
     stroke:currentColor; stroke-width:1.5; stroke-linejoin:round; stroke-linecap:round; }
   .sf-aimtag__mark path:last-child { fill:currentColor; fill-opacity:.4; }
 
+  /* Minimal contact mark (packet 02, src/combat/contactClassifier.js) — a living hull too small on
+     screen to read by silhouette. The radar's IFF shapes (hostile triangle, friendly diamond,
+     neutral square); a dashed outline when the hull is down, a filled core when it has the player
+     in its sights. Static: reduced motion and flash need no variant. Tokens only. */
+  .sf-cmark { position:absolute; left:0; top:0; width:17px; height:17px; pointer-events:none; z-index:12;
+    opacity:0; visibility:hidden; will-change:transform;
+    transition:opacity .12s ease, visibility 0s linear .12s; color:var(--sf-neutral); }
+  .sf-cmark.visible { visibility:visible; opacity:.88; transition:opacity .12s ease; }
+  .sf-cmark[data-relation="hostile"] { color:var(--sf-hostile); }
+  .sf-cmark[data-relation="friendly"] { color:var(--sf-friendly); }
+  .sf-cmark svg { display:block; width:100%; height:100%; overflow:visible; fill:none;
+    stroke:currentColor; stroke-width:1.5; stroke-linejoin:round; }
+  .sf-cmark[data-variant="down"] .sf-cmark__shape { stroke-dasharray:2 2; }
+  .sf-cmark__core { display:none; fill:currentColor; stroke:none; }
+  .sf-cmark[data-variant="on-you"] .sf-cmark__core { display:inline; }
+
   /* Prograde tick (FR-1) — the kit's twin-tick prograde bracket (assets/ui/kit/assets/svg/
      reticle/reticle-pro-tick.svg) ported as light: a bloom stroke under a core stroke, token
      ink. The 8x2 wrapper stays the placement anchor (pinned transform); the mark is centred on
@@ -686,6 +702,7 @@ export function injectHudCss() {
     .sf-leadpip__svg { filter:none; }
     .sf-leadpip__full, .sf-leadpip__arc, .sf-leadpip__tick { stroke:CanvasText; }
     .sf-aimtag { color:CanvasText; text-shadow:none; forced-color-adjust:none; }
+    .sf-cmark { color:CanvasText; forced-color-adjust:none; }
     .sf-threat-halo__slot--arc .sf-threat-halo__arc {
       border-color:CanvasText; forced-color-adjust:none;
     }

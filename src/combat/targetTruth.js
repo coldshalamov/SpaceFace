@@ -21,7 +21,7 @@
 //                 free-aim kill-switch). The selection is an information focus: it must never
 //                 silently enable aim correction or firing. effective = null, the cursor decides.
 //   'free-aim'    no hostile claims the guns: nothing selected, or the selection is a friendly /
-//                 neutral / rock / cargo (information only), dead, recycled, or unobserved.
+//                 neutral / rock / cargo (information only), dead, dying, recycled, or unobserved.
 //
 // manualAimAuthoritative is the player-facing promise "moving the mouse still matters": false only
 // when something is genuinely overriding the cursor (a hostile on the line, or aim correction > 0).
@@ -39,6 +39,7 @@ import {
   selectionIsRecycled,
 } from './targetIdentity.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { LIFECYCLE, lifecycleOf } from './lifecycle.js';
 
 export const TARGET_REASON = Object.freeze({
   LINE_TARGET: 'line-target',
@@ -52,6 +53,7 @@ export const SELECTION_STATUS = Object.freeze({
   NONE: 'none',
   LIVE: 'live',
   DEAD: 'dead',
+  DYING: 'dying',          // an irreversibly failing hull (packet 08 lifecycle): no bracket, no affordances
   RECYCLED: 'recycled',
   CONCEALED: 'concealed',
 });
@@ -126,6 +128,8 @@ export function projectTargetTruth(state, out = createTargetTruth()) {
       out.selectedStatus = SELECTION_STATUS.DEAD;
     } else if (selectionIsRecycled(state, sel)) {
       out.selectedStatus = SELECTION_STATUS.RECYCLED;
+    } else if (sel.type === 'wreck' && lifecycleOf(state, sel) === LIFECYCLE.DYING) {
+      out.selectedStatus = SELECTION_STATUS.DYING;
     } else if (concealedFromPlayer(state, sel)) {
       out.selectedStatus = SELECTION_STATUS.CONCEALED;
       noteSelectionObserved(state, sel, true);

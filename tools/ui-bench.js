@@ -1037,7 +1037,7 @@ async function goto(rawId) {
       document.body.classList.add('k-screen-top');
       document.body.dataset.kScreen = id;
       if (id === 'crucibleHud') await mountCrucibleHud();
-      else await mountFlightHud({ lineTarget: rawId === 'flight-line-target' });
+      else await mountFlightHud({ lineTarget: rawId === 'flight-line-target', contactMarks: rawId === 'flight-contacts' });
       if (id === 'mobileFlight') await mountMobileDeck(shot);
       current = id;
       currentScreen = null;
@@ -1304,6 +1304,31 @@ async function mountFlightHud(opts = {}) {
     state.entityList.push(e);
   }
   state.player.targetId = 11;
+  if (opts.contactMarks) {
+    // Packet 02: living contacts too small on screen to read by silhouette get one mark in the
+    // radar's IFF shapes; debris (the wreck) and the selected hull get none. Team 1 is the player's.
+    const pid = state.playerId;
+    const living = [
+      { id: 21, team: 3, x: -120, z: -230, data: { ai: { huntPlayer: true }, callsign: 'RAIDER 21' } },
+      { id: 22, team: 3, x: 210, z: -170, data: { combat: { targetId: pid }, intent: { fire: true }, callsign: 'RAIDER 22' } },
+      { id: 23, team: 1, x: -260, z: 40, data: { callsign: 'WINGMAN 23', ownerId: pid } },
+      { id: 24, team: 2, x: 150, z: 130, data: { trafficRole: 'miner', ai: { archetype: 'miner', passive: true }, callsign: 'MINER 24' } },
+      { id: 25, team: 3, x: 330, z: 30, data: { ai: { huntPlayer: true }, callsign: 'RAIDER 25 (drive out)' } },
+    ];
+    for (const lc of living) {
+      if (state.entities.has(lc.id)) continue;
+      const e = { id: lc.id, type: 'ship', alive: true, team: lc.team, radius: 14, pos: { x: lc.x, y: 0, z: lc.z },
+        vel: { x: 0, y: 0, z: 0 }, rot: 0, mass: 60, data: { defId: 'ship_kestrel', ...lc.data } };
+      state.entities.set(lc.id, e); state.entityList.push(e);
+    }
+    if (!state.entities.has(26)) {
+      const wreck = { id: 26, type: 'wreck', alive: true, team: 0, radius: 12, pos: { x: -40, y: 0, z: 170 }, vel: { x: 0, y: 0, z: 0 }, data: { callsign: 'DERELICT' } };
+      state.entities.set(26, wreck); state.entityList.push(wreck);
+    }
+    state.combat = state.combat || {};
+    state.combat.entities = { ...(state.combat.entities || {}), 25: { capabilities: { drive: false }, statuses: {} } };
+    state.player.targetId = null;
+  }
   if (opts.lineTarget) {
     // Packet 02 (target truth): a hostile is SELECTED (11, the hexagram bracket) while a second
     // hostile (13) hangs on the player's Massline. The line owns the guns, so the lead pip and the

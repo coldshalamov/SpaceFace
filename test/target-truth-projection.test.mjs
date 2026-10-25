@@ -331,3 +331,15 @@ test('the selection lane writer binds the occupant, so a deliberate re-pick of a
   laneInputWrite(h.state, 'player.targetId', null);
   assert.equal(h.project().selectedStatus, SELECTION_STATUS.NONE);
 });
+
+test('an irreversibly dying wreck gets no bracket (packet 08 lifecycle: no combat affordances)', () => {
+  const h = boot();
+  const wreck = { id: 8, type: 'wreck', alive: true, flags: {}, team: 0, radius: 9, pos: { x: 120, z: 0 },
+    vel: { x: 0, z: 0 }, rot: 0, mass: 50, data: { killedAt: 40, markerId: 'm1' } };
+  h.add(wreck).select(8);
+  h.state.dyingHullRuntime = { byWreckId: { 8: { killedAt: 40, markerId: 'm1', ruptureAt: h.state.simTime + 1, ruptured: false } } };
+  assert.equal(h.project().selectedStatus, SELECTION_STATUS.DYING);
+  assert.equal(h.truth.selectedId, null);
+  h.state.simTime += 2; // the rupture has happened: an inert wreck can be picked again
+  assert.equal(h.project().selectedStatus, SELECTION_STATUS.LIVE);
+});

@@ -38,6 +38,7 @@ import { commodityCatalogLegality, restrictedSalvageForWreck } from '../data/sal
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { createTargetTruth, projectTargetTruth } from '../combat/targetTruth.js';
+import { exploitableStatusChips } from '../combat/contactClassifier.js';
 import { IDENTITY_WING_ROLE } from '../ai/squad.js';
 import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
@@ -1060,7 +1061,13 @@ export function createTargetPanel(ctx) {
       // the countdowns tick without per-frame writes; hidden on clean hulls.
       if (t.type === 'ship' || t.type === 'drone') {
         const condition = targetConditionReadout(state, t);
-        const conditionText = condition ? condition.text : '';
+        // Packet 02: a status earns a chip only when the FITTED attack can act on it (an ionized
+        // hull reads ARC READY only if a fitted chain hops to Ionized targets). Sim-sourced clock.
+        let conditionText = condition ? condition.text : '';
+        for (const chip of exploitableStatusChips(state, t)) {
+          const word = `${chip.label} ${(Math.round(chip.secondsLeft * 10) / 10).toFixed(1)}s`;
+          conditionText = conditionText ? `${conditionText} · ${word}` : word;
+        }
         const conditionKey = `${tid}:${conditionText}`;
         if (conditionKey !== lastConditionKey) {
           lastConditionKey = conditionKey;

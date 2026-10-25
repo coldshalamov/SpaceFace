@@ -79,6 +79,7 @@ import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeap
 import {
   createTargetTruth, projectTargetTruth, tetherLeadSolution, SELECTION_STATUS, TARGET_REASON,
 } from '../combat/targetTruth.js';
+import { classifyContact, contactMark } from '../combat/contactClassifier.js';
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
@@ -2579,6 +2580,40 @@ export function createHud(ctx, alerts) {
     '<path d="M0 5H9.5"/><path d="M9.5 5 12.5 2 15.5 5 12.5 8Z"/></svg>' +
     '<span class="sf-aimtag__text">LINE TARGET</span>';
   root.appendChild(lineTargetTag);
+  // Minimal contact marks (packet 02): a living contact whose hull is too small on screen to read as
+  // a ship by silhouette gets one restrained mark in the radar's own IFF shapes — triangle
+  // (hostile), diamond (friendly), square (neutral worker); dashed when it is down, a filled core
+  // when it has the player in its sights. Shape carries relation, colour only reinforces; debris
+  // and the selected hull never get one. A fixed pool of the nearest few; static (no animation),
+  // so reduced motion needs no variant.
+  const CONTACT_MARK_POOL = 8;
+  // One path per mark, its geometry swapped by shape (3 DOM nodes a mark, not 6: the flight HUD is
+  // already over its DOM grammar budget, so the pool stays small and flat).
+  const CONTACT_MARK_PATH = {
+    triangle: 'M7 2.6 11.8 11 2.2 11Z',
+    square: 'M3 3H11V11H3Z',
+    diamond: 'M7 1.8 12.2 7 7 12.2 1.8 7Z',
+  };
+  const CONTACT_MARK_RANGE_SQ = 900 * 900;
+  const contactMarkEls = [];
+  for (let i = 0; i < CONTACT_MARK_POOL; i++) {
+    const el = document.createElement('div');
+    el.className = 'sf-cmark';
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML =
+      '<svg viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path class="sf-cmark__shape" d="M7 2.6 11.8 11 2.2 11Z"/>' +
+      '<circle class="sf-cmark__core" cx="7" cy="7" r="1.5"/></svg>';
+    el._sfShapePath = el.firstElementChild.firstElementChild;
+    root.appendChild(el);
+    contactMarkEls.push(el);
+  }
+  const contactMarkNear = Array.from({ length: CONTACT_MARK_POOL }, () => ({ e: null, d2: 0 }));
+  const contactMarkClass = {};
+  const contactMarkWorld = { x: 0, y: 0, z: 0 };
+  const contactMarkScreen = { x: 0, y: 0, onScreen: false };
+  const contactMarkEdgeWorld = { x: 0, y: 0, z: 0 };
+  const contactMarkEdgeScreen = { x: 0, y: 0, onScreen: false };
   // The pip's solver: the line's own constrained solve for the hull on the line, the free-flight
   // lead for everything else. Created once; no per-frame allocation.
   const truthLeadSolution = (shooter, target, speed) => (
@@ -4146,6 +4181,57 @@ export function createHud(ctx, alerts) {
   // ---------------------------------------------------------------------------
   // Combat HUD update — lock ring + target lock diamond
   // ---------------------------------------------------------------------------
+  function hideContactMarks(from = 0) {
+    for (let j = from; j < contactMarkEls.length; j++) setClass(contactMarkEls[j], 'visible', false);
+  }
+
+  function updateContactMarks(p, selectedId) {
+    if (!p || !p.pos || !helpers.worldToScreen) { hideContactMarks(0); return; }
+    let n = 0;
+    for (const e of indexedShipLikeScan(state)) {
+      if (!e || e === p || e.alive === false || !e.pos) continue;
+      const dx = e.pos.x - p.pos.x;
+      const dz = e.pos.z - p.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > CONTACT_MARK_RANGE_SQ) continue;
+      // keep the nearest few, sorted by range (insertion into a fixed pool: no allocation)
+      let at = n < CONTACT_MARK_POOL ? n : CONTACT_MARK_POOL - 1;
+      if (n >= CONTACT_MARK_POOL && d2 >= contactMarkNear[at].d2) continue;
+      if (n < CONTACT_MARK_POOL) n += 1;
+      while (at > 0 && contactMarkNear[at - 1].d2 > d2) {
+        contactMarkNear[at].e = contactMarkNear[at - 1].e;
+        contactMarkNear[at].d2 = contactMarkNear[at - 1].d2;
+        at -= 1;
+      }
+      contactMarkNear[at].e = e;
+      contactMarkNear[at].d2 = d2;
+    }
+    let used = 0;
+    for (let i = 0; i < n && used < CONTACT_MARK_POOL; i++) {
+      const e = contactMarkNear[i].e;
+      const anchor = presentedEntityAnchor(e);
+      if (!anchor) continue;
+      classifyContact(state, e, contactMarkClass, { selectedId });
+      if (!contactMarkClass.living || !contactMarkClass.observed || contactMarkClass.selected) continue;
+      contactMarkWorld.x = anchor.x; contactMarkWorld.y = 0; contactMarkWorld.z = anchor.z;
+      const c = helpers.worldToScreen(contactMarkWorld, contactMarkScreen);
+      if (!c.onScreen) continue;
+      contactMarkEdgeWorld.x = anchor.x + (Number(e.radius) || 8); contactMarkEdgeWorld.y = 0; contactMarkEdgeWorld.z = anchor.z;
+      const edge = helpers.worldToScreen(contactMarkEdgeWorld, contactMarkEdgeScreen);
+      const px = edge.onScreen ? Math.max(1, Math.abs(edge.x - c.x)) : 0;
+      const mark = contactMark(contactMarkClass, px);
+      if (!mark) continue;
+      const el = contactMarkEls[used++];
+      setAttr(el._sfShapePath, 'd', CONTACT_MARK_PATH[mark.shape] || CONTACT_MARK_PATH.square);
+      setAttr(el, 'data-shape', mark.shape);
+      setAttr(el, 'data-variant', mark.variant);
+      setAttr(el, 'data-relation', mark.relation);
+      setClass(el, 'visible', true);
+      setHudScreenTransform(el, c.x, c.y - px - 11);
+    }
+    hideContactMarks(used);
+  }
+
   function updateCombatHud(p, slow, overlayTick) {
     if (!p) {
       setClass(lockRing, 'active', false);
@@ -4155,6 +4241,7 @@ export function createHud(ctx, alerts) {
       setDisplay(targetEdge, false);
       setClass(leadPip, 'visible', false);
       setClass(lineTargetTag, 'visible', false);
+      hideContactMarks(0);
       updateGravityMarkOverlays(null);
       updateMomentumSinkOverlays(null);
       threatHalo.update(null, null, null);
@@ -4355,7 +4442,10 @@ export function createHud(ctx, alerts) {
     if (!tagShown) setClass(lineTargetTag, 'visible', markStillLive(lineTargetTag));
     // Edge-of-screen threat indicators live on the overlay cadence: their inputs (hostile set,
     // projected edge placement) are refreshed at 30 Hz alongside the other world-anchored DOM.
-    if (overlayTick) threatHalo.update(p, state, helpers.worldToScreen);
+    if (overlayTick) {
+      threatHalo.update(p, state, helpers.worldToScreen);
+      updateContactMarks(p, truth.selectedId);
+    }
   }
 
   // ---------------------------------------------------------------------------

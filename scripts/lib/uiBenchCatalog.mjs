@@ -54,6 +54,9 @@ export const UI_BENCH_SHOTS = Object.freeze([
   // Packet 02 target truth: a hostile SELECTED while another hangs on the Massline and owns the guns
   // — the lead pip and the LINE TARGET tag ride the line's hull, not the selection.
   { id: 'flight-line-target', screen: 'flight', backdrop: 'world' },
+  // Packet 02 contact marks: living hulls too small to read by silhouette wear one mark in the
+  // radar's IFF shapes (triangle hostile, diamond friendly, square neutral worker); debris none.
+  { id: 'flight-contacts', screen: 'flight', backdrop: 'world' },
   // The phone deck over the flight HUD (ui-bench --phone). `mobile` is the pose a thumb holds.
   { id: 'mobile-flight', screen: 'mobileFlight', backdrop: 'world', mobile: 'idle' },
   { id: 'mobile-stick', screen: 'mobileFlight', backdrop: 'world', mobile: 'stick' },
