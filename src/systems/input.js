@@ -1527,9 +1527,11 @@ export const input = {
       const padHeld = this._padHeld(gp, power);
       const held = keyHeld || padHeld;
       let hold = holds[power];
-      // The context moved under the grip — a new sector, or a pad grip fenced on resume (its
-      // fenced button reads as not held). Cancel; the eventual release must not fire.
-      if (hold && (hold.sector !== sector || (hold.pad && !keyHeld && !this._gamepadLifecycleActionAllowed(power)))) {
+      // The context moved under the grip — a new sector, a pad grip fenced on resume (its fenced button
+      // reads as not held), or a pad that vanished with the button down (no release will ever come, and
+      // the pilot did not let go). Cancel; the eventual release must not fire.
+      if (hold && (hold.sector !== sector
+        || (hold.pad && !keyHeld && (!this._gamepadLifecycleActionAllowed(power) || !(gp && gp.isConnected()))))) {
         delete holds[power];
         hold = null;
       }
