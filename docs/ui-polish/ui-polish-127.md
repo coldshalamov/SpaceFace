@@ -8,4 +8,9 @@
 
 **Result (ui-bench findings, base → after).** station-contracts 1920x1080 6→0, 1440x900 6→0; station-dock 1920x1080 6→0, 1440x900 6→0; station-ledger 1920x1080 4→0, 1440x900 6→0; station-shipworks 1920x1080 2→0, 1440x900 11→2. Market shows four more commodity rows at 1920x1080. 1280x720, 960x540 and 390x844 are unchanged (media queries don't reach them; only animated pixels differ). 1600x900, 1280x800 and 1920x1200 Missions read 0.
 
+**Review fixes (after Code Work's HOLD).**
+- 1101–1280 × 801–1140: the five dials stay on one row (the ≤800 crown rule now reaches 1140 tall). Before, they towered 2·2·1 over the station wire and REARM at 1101x801.
+- Shipworks verb row (TAKE THE HITCH / RECORD / PAINT): it's seated `position:fixed` and was only re-seated when the stage resized. Going 1101x801 → 1100x900 moves the stage without resizing it, so the row stayed at its old seat mid-dossier. `shipworks.js` now re-seats it on window resize too (only while Shipworks is showing).
+- 801–1000 tall at 1101+: the reward (48px), its margins and the term rows (2px) close up again, so a live berth's five terms stand above ACCEPT at 1440x900.
+
 **Leftovers.** station-industry 1440x900 (6, unchanged); phone station tabs (15–29 each, unchanged); BUY behind UNDOCK at 1101x480; Shipworks 1280x540 clips.

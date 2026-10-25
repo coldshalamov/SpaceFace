@@ -395,8 +395,9 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* …and at 1101–1280 the crown column was the strip's 326px cap, so the five dials wrapped 2·2·1 into a
    ~330px tower: CREDIT LINE OPEN ran off the right edge and, at 540 tall, LEDGER's DRAW and the
    Munitions dial printed over the station wire. The note column takes what the strip leaves and the
-   five dials stand on one row, as they do from 1281 up. */
-@media (min-width:1101px) and (max-width:1280px) and (min-height:461px) and (max-height:800px) {
+   five dials stand on one row, as they do from 1281 up. The same at 801–1140 tall, where the head is the
+   same one-band head (1101×801: the tower ran down over the station wire and REARM). */
+@media (min-width:1101px) and (max-width:1280px) and (min-height:461px) and (max-height:1140px) {
   ${D} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 1fr) max-content !important; }
   ${D} .sxb-berth .sxb-crown { width:auto !important; justify-self:end !important; left:0 !important; right:auto !important; }
   ${D} .sxb-crown .sxb-vitals { max-width:none !important; flex-wrap:nowrap !important; gap:6px !important; justify-content:flex-end !important; }

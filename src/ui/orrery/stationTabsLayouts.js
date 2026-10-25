@@ -2054,6 +2054,17 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
 @media (min-width:1101px) and (max-width:1499px) and (min-height:801px) and (max-height:1140px) {
   ${T} .sx-dossier__title { font-size:26px !important; line-height:1.15 !important; }
 }
+/* …and at 801-1000 tall (1440x900, 1600x900) a live berth's head carries the arrival notice too, so a
+   five-term offer still ran two rows (FOLLOW-UP, READINESS) under ACCEPT: the reward, its margins and the
+   term rows close up again (the scales keep their height: shorter, their SVG
+   words shrank under 12px), and the five terms stand above the key. */
+@media (min-width:1101px) and (min-height:801px) and (max-height:1000px) {
+  ${T} .sx-dossier__client { margin-top:4px !important; }
+  ${T} .sx-dossier__reward { margin-top:6px !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:48px !important; }
+  ${T} .sx-dossier > .orr-ct-scales { margin-top:0 !important; }
+  ${T} .sx-dossier__terms > li { padding:2px 0 !important; }
+}
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {

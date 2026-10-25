@@ -5259,6 +5259,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // The rack's row count changes with the fit; a resize there must re-pin the side plate's top.
     if (gaugeRackEl) stageResizeObserver.observe(gaugeRackEl);
   }
+  // The verb rack is seated position:fixed in viewport px. A window resize that moves the stage without
+  // resizing it (the station head changes height across a breakpoint) leaves the observer silent and the
+  // rack at its old seat, floating mid-dossier, so the window's own resize re-seats it too.
+  const onWindowResize = () => { if (stageShown) scheduleSpatialProjection(); };
+  if (typeof window !== 'undefined') window.addEventListener('resize', onWindowResize);
 
   let buyConfirmBusy = false;
   chooserEl.addEventListener('click', async (ev) => {
@@ -5552,6 +5557,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (presetRejectedUnsub) { try { presetRejectedUnsub(); } catch (_) {} presetRejectedUnsub = null; }
       if (presetAppliedUnsub) { try { presetAppliedUnsub(); } catch (_) {} presetAppliedUnsub = null; }
       if (stageResizeObserver) stageResizeObserver.disconnect();
+      if (typeof window !== 'undefined') window.removeEventListener('resize', onWindowResize);
       if (typeof rangeIntentUnsub === 'function') { try { rangeIntentUnsub(); } catch (_) {} }
       rangeIntentUnsub = null;
       try { powerBeam.dispose(); } catch (_) {}
