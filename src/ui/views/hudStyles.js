@@ -542,6 +542,20 @@ export function injectHudCss() {
   .sf-leadpip:not(.on-solution) .sf-leadpip__arc { opacity:1; }
   .sf-leadpip__tick { stroke:var(--hud-cyan); stroke-width:1.5; stroke-linecap:round; }
 
+  /* LINE TARGET tag (packet 02, src/combat/targetTruth.js) — a word with a mark, anchored under the
+     hull the Massline has claimed the guns for when that hull is NOT the selection. The mark is a
+     hairline running into a diamond node (the line landing on a body), so the tag reads without
+     colour; the Hand colour is only a reinforcement. No plate, no animation: reduced-motion safe. */
+  .sf-aimtag { position:absolute; left:0; top:0; display:flex; align-items:center; gap:6px;
+    pointer-events:none; z-index:13; opacity:0; visibility:hidden; will-change:transform;
+    white-space:nowrap; font-family:var(--hud-data); font-size:var(--k-fs-data);
+    letter-spacing:.08em; color:var(--dp-lamp, var(--hud-amber)); text-shadow:${INK_SHADOW};
+    transition:opacity .12s ease, visibility 0s linear .12s; }
+  .sf-aimtag.visible { visibility:visible; opacity:1; transition:opacity .12s ease; }
+  .sf-aimtag__mark { width:16px; height:10px; flex:none; overflow:visible; fill:none;
+    stroke:currentColor; stroke-width:1.5; stroke-linejoin:round; stroke-linecap:round; }
+  .sf-aimtag__mark path:last-child { fill:currentColor; fill-opacity:.4; }
+
   /* Prograde tick (FR-1) — the kit's twin-tick prograde bracket (assets/ui/kit/assets/svg/
      reticle/reticle-pro-tick.svg) ported as light: a bloom stroke under a core stroke, token
      ink. The 8x2 wrapper stays the placement anchor (pinned transform); the mark is centred on
@@ -671,6 +685,7 @@ export function injectHudCss() {
   @media (forced-colors: active) {
     .sf-leadpip__svg { filter:none; }
     .sf-leadpip__full, .sf-leadpip__arc, .sf-leadpip__tick { stroke:CanvasText; }
+    .sf-aimtag { color:CanvasText; text-shadow:none; forced-color-adjust:none; }
     .sf-threat-halo__slot--arc .sf-threat-halo__arc {
       border-color:CanvasText; forced-color-adjust:none;
     }

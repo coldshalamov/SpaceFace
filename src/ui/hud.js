@@ -76,6 +76,9 @@ import {
 } from './objectiveRecall.js';
 import { mountRadarKit } from './views/flightInstruments.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
+import {
+  createTargetTruth, projectTargetTruth, tetherLeadSolution, SELECTION_STATUS, TARGET_REASON,
+} from '../combat/targetTruth.js';
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
@@ -2562,6 +2565,26 @@ export function createHud(ctx, alerts) {
     `</svg>`;
   root.appendChild(leadPip);
   const leadPipArc = leadPip.querySelector('.sf-leadpip__arc');
+  // Packet 02 target truth. ONE projection (src/combat/targetTruth.js) says what is selected and
+  // what the guns will actually address; the bracket, the pip and this tag all read it. When the
+  // Massline owns the guns the effective hull can differ from the selection, and a confident
+  // bracket or pip on the selected hull would lie — so that hull wears a small LINE TARGET tag
+  // (shape + words, never colour alone) and the lead pip rides it with the tether-constrained solve.
+  const targetTruth = createTargetTruth();
+  const lineTargetTag = document.createElement('div');
+  lineTargetTag.className = 'sf-aimtag';
+  lineTargetTag.setAttribute('aria-hidden', 'true');
+  lineTargetTag.innerHTML =
+    '<svg class="sf-aimtag__mark" viewBox="0 0 16 10" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<path d="M0 5H9.5"/><path d="M9.5 5 12.5 2 15.5 5 12.5 8Z"/></svg>' +
+    '<span class="sf-aimtag__text">LINE TARGET</span>';
+  root.appendChild(lineTargetTag);
+  // The pip's solver: the line's own constrained solve for the hull on the line, the free-flight
+  // lead for everything else. Created once; no per-frame allocation.
+  const truthLeadSolution = (shooter, target, speed) => (
+    targetTruth.tetherTargetId != null && target && target.id === targetTruth.tetherTargetId
+      ? tetherLeadSolution(shooter, target, speed)
+      : leadSolution(shooter, target, speed));
   // Shared hidden verdict: computeLeadPipOverlay is only called with a live target; the
   // no-target path below runs every frame and never mutates the verdict (visible/x/y reads).
   const leadPipHidden = Object.freeze({ visible: false });
@@ -4131,6 +4154,7 @@ export function createHud(ctx, alerts) {
       setClass(lockDiamond, 'visible', false);
       setDisplay(targetEdge, false);
       setClass(leadPip, 'visible', false);
+      setClass(lineTargetTag, 'visible', false);
       updateGravityMarkOverlays(null);
       updateMomentumSinkOverlays(null);
       threatHalo.update(null, null, null);
@@ -4214,7 +4238,14 @@ export function createHud(ctx, alerts) {
     _wasLocked = isLocked;
 
     // ---- Target lock diamond (world-space overlay on locked/selected target) ----
-    const tid = (state.player || {}).targetId;
+    // Packet 02: the bracket's subject is the SELECTION as target truth judges it — a recycled id,
+    // a dead body or a hull the player's sensors cannot see gets no bracket (no wallhack, no
+    // inheritance). A concealed/recycled hull retires at once instead of riding the mark grace.
+    const truth = projectTargetTruth(state, targetTruth);
+    const tid = truth.selectedId;
+    if (truth.selectedStatus === SELECTION_STATUS.CONCEALED || truth.selectedStatus === SELECTION_STATUS.RECYCLED) {
+      lockDiamond._sfOkAt = 0;
+    }
     const tgt = tid != null ? resolveWorldPresentationEntity(state, tid) : null;
     const tgtAnchor = tgt && tgt.alive ? presentedEntityAnchor(tgt) : null;
     if (tgt && tgt.alive && tgtAnchor && helpers.worldToScreen) {
@@ -4264,10 +4295,15 @@ export function createHud(ctx, alerts) {
     // ---- Lead pip (BP-02) — pure gate in gunnery; HUD only applies screen coords ----
     // The opts literal stays per-call: helpers.worldToScreen is rebound on renderer
     // regeneration, so a mount-time capture would go stale (the hidden verdict is shared).
-    const pipOverlay = tgtAnchor ? computeLeadPipOverlay(p, tgt, state, {
+    // Packet 02: the pip belongs on the hull the guns address (the effective target, or a selected
+    // hostile when assist is off), not on the selection when the line has claimed the guns.
+    const leadId = truth.leadTargetId;
+    const leadEnt = leadId == null ? null : (leadId === tid ? tgt : resolveWorldPresentationEntity(state, leadId));
+    const leadAnchor = leadEnt && leadEnt.alive ? presentedEntityAnchor(leadEnt) : null;
+    const pipOverlay = leadAnchor ? computeLeadPipOverlay(p, leadEnt, state, {
       worldToScreen: helpers.worldToScreen,
       isHostileToPlayer,
-      leadSolution,
+      leadSolution: truthLeadSolution,
       hasBallisticWeapon,
       primaryProjSpeed,
     }) : leadPipHidden;
@@ -4297,6 +4333,26 @@ export function createHud(ctx, alerts) {
     } else {
       setClass(leadPip, 'visible', markStillLive(leadPip));
     }
+    // LINE TARGET: shown only when the guns address a hull that is NOT the selection, so the
+    // player is never left reading a confident mark on the wrong ship.
+    let tagShown = false;
+    if (truth.divergent && truth.reason === TARGET_REASON.LINE_TARGET && helpers.worldToScreen) {
+      const effId = truth.effectiveGunTargetId;
+      const effEnt = effId === tid ? tgt : resolveWorldPresentationEntity(state, effId);
+      const effAnchor = effEnt && effEnt.alive ? presentedEntityAnchor(effEnt) : null;
+      if (effAnchor) {
+        const effProj = projectTargetCenter(effAnchor);
+        if (effProj.onScreen) {
+          const effX = effProj.x;
+          const effY = effProj.y + Math.max(16, targetPixelRadius(effAnchor, Number(effEnt.radius) || 8, effProj)) + 8;
+          stampMarkLive(lineTargetTag);
+          setClass(lineTargetTag, 'visible', true);
+          setHudScreenTransform(lineTargetTag, effX, effY, { offset: 'translate(-50%,0)' });
+          tagShown = true;
+        }
+      }
+    }
+    if (!tagShown) setClass(lineTargetTag, 'visible', markStillLive(lineTargetTag));
     // Edge-of-screen threat indicators live on the overlay cadence: their inputs (hostile set,
     // projected edge placement) are refreshed at 30 Hz alongside the other world-anchored DOM.
     if (overlayTick) threatHalo.update(p, state, helpers.worldToScreen);
@@ -4918,7 +4974,9 @@ export function createHud(ctx, alerts) {
   }
 
   function updateTargetArcs() {
-    const tid = state.player && state.player.targetId;
+    // Packet 02: health rings follow the identity- and sensor-true selection (no rings on a hull
+    // the player's sensors cannot see, none on a recycled number).
+    const tid = projectTargetTruth(state, targetTruth).selectedId;
     const tgt = tid != null ? resolveWorldPresentationEntity(state, tid) : null;
     const tgtAnchor = tgt && tgt.alive ? presentedEntityAnchor(tgt) : null;
 
@@ -5362,7 +5420,9 @@ export function createHud(ctx, alerts) {
     if (objDirty) refreshObjectives();
 
     // --- target panel: DOM/compositor surface; update on a fixed HUD cadence ---
-    const tgtId = (state.player || {}).targetId;
+    // Packet 02: the panel describes the selection as target truth judges it — never a concealed
+    // or recycled hull. selectedId passes ledger bodies (rocks, far actors) through unchanged.
+    const tgtId = projectTargetTruth(state, targetTruth).selectedId;
     const target = tgtId != null ? resolveWorldPresentationEntity(state, tgtId) : null;
     const targetSurrendered = isSurrenderedContact(target);
     const surrenderChanged = targetSurrendered !== lastTargetSurrendered;

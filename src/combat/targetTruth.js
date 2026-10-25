@@ -30,6 +30,7 @@ import {
   tetheredGunTarget,
   targetAssistScale,
 } from './autoTargetMode.js';
+import { solveTetherLeadSolution, orbitalConstraintState } from './tetherFireControl.js';
 import {
   concealedFromPlayer,
   ensureBound,
@@ -158,4 +159,31 @@ export function projectTargetTruth(state, out = createTargetTruth()) {
   }
   out.divergent = out.effectiveGunTargetId != null && out.effectiveGunTargetId !== out.selectedId;
   return out;
+}
+
+const _victim = { pos: null, vel: null, mass: 1 };
+const _shooter = { pos: null, vel: null, mass: 1 };
+const _zeroVel = Object.freeze({ x: 0, z: 0 });
+
+/**
+ * The lead pip's solution for the hull the Massline addresses, in gunnery.leadSolution's shape
+ * ({valid, angle, x, z, dist}). It is the SAME constrained solve weapons.js fires with
+ * (tetherFireControl.solveTetherLeadSolution), so the pip never describes a linear lead over a
+ * circular orbit the guns will not honour.
+ */
+export function tetherLeadSolution(shooter, target, projSpeed) {
+  if (!shooter || !shooter.pos || !target || !target.pos) {
+    return { valid: false, angle: 0, x: 0, z: 0, dist: 0 };
+  }
+  _shooter.pos = shooter.pos; _shooter.vel = shooter.vel || _zeroVel; _shooter.mass = shooter.mass;
+  _victim.pos = target.pos; _victim.vel = target.vel || _zeroVel; _victim.mass = target.mass;
+  const speed = Number.isFinite(projSpeed) && projSpeed > 0 ? projSpeed : 360;
+  const angle = solveTetherLeadSolution(_shooter, _victim, speed, {
+    taut: orbitalConstraintState(_shooter, _victim).constrained,
+  }).angle;
+  const dx = target.pos.x - shooter.pos.x;
+  const dz = target.pos.z - shooter.pos.z;
+  const dist = Math.hypot(dx, dz);
+  if (!(dist > 1e-3)) return { valid: false, angle, x: target.pos.x, z: target.pos.z, dist: 0 };
+  return { valid: true, angle, x: shooter.pos.x + Math.cos(angle) * dist, z: shooter.pos.z + Math.sin(angle) * dist, dist };
 }

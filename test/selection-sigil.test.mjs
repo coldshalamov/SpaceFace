@@ -27,6 +27,11 @@ import {
 } from '../src/render/selectionSigil.js';
 import { resolveTargetContour, resolveTargetContourEntity } from '../src/render/targetContour.js';
 import { targetBracketShape } from '../src/ui/targetBracket.js';
+import { applyFeatureConfigToMaps, PRODUCTION_FEATURES } from '../src/data/featureFlags.js';
+
+// Packet 02: the engaged gun target now comes from the target-truth projection, whose only source
+// of a gun target that is NOT the selection is a hostile on the Massline (fireControl).
+applyFeatureConfigToMaps(PRODUCTION_FEATURES);
 
 function ship(id, team, x = 100, z = -40, radius = 12, hostile = false) {
   return {
@@ -45,7 +50,11 @@ function stateFor(playerTeam, target, gunTarget = null) {
   return {
     mode: 'flight',
     playerId: 1,
-    player: { targetId: target ? target.id : null, gunTargetId: gunTarget ? gunTarget.id : null, team: playerTeam },
+    player: {
+      targetId: target ? target.id : null,
+      tether: gunTarget ? { active: true, targetId: gunTarget.id, phase: 'slack' } : null,
+      team: playerTeam,
+    },
     entities,
     entityList: [...entities.values()],
   };

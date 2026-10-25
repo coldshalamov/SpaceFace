@@ -37,6 +37,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { commodityCatalogLegality, restrictedSalvageForWreck } from '../data/salvageLegality.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
+import { createTargetTruth, projectTargetTruth } from '../combat/targetTruth.js';
 import { IDENTITY_WING_ROLE } from '../ai/squad.js';
 import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
@@ -386,21 +387,23 @@ export function targetRangeBand(distance, player) {
   return 'DISTANT';
 }
 
+const _readoutTruth = createTargetTruth();
+
 /**
- * THE READER for state.player.gunTargetId (written by src/systems/weapons.js:181-188).
- *
- * Resolves which contact the panel takes as its subject and whether the guns have diverged from
- * the selection. Pure and DOM-free so the divergence rule is checkable headlessly; createTargetPanel
- * below is its only production consumer.
+ * Which contact the panel takes as its subject, and whether the guns have diverged from the
+ * selection. Pure and DOM-free so the divergence rule is checkable headlessly; createTargetPanel
+ * below is its only production consumer. Source: the target-truth projection
+ * (src/combat/targetTruth.js), which reads the selection, the tether and resolvePlayerGunTarget().
  *
  * Returns:
- *   subjectId / subject   — what the panel describes. The SELECTION (targetId) wins whenever it is
- *                           alive, because targetId is also what aims a Massline throw and the two
- *                           must not be conflated. The engaged contact is the subject only when
+ *   subjectId / subject   — what the panel describes. The SELECTION wins whenever it is live and
+ *                           observed, because targetId is also what aims a Massline throw and the
+ *                           two must not be conflated. The engaged contact is the subject only when
  *                           there is no live selection, so the guns are never firing at a ship with
  *                           no readout anywhere.
- *   engaged               — the diverged gun target, or null when the guns agree with the selection
- *                           (the ordinary case, which must not print a second name for one ship).
+ *   engaged               — the diverged gun target (a hostile on the Massline that is not the
+ *                           selection), or null when the guns agree with the selection (the
+ *                           ordinary case, which must not print a second name for one ship).
  *   subjectIsEngaged      — true when the subject IS the gun target and there is no selection.
  *   text                  — the row copy, or '' when there is nothing to report.
  */
@@ -408,19 +411,23 @@ export function engagedContactReadout(state) {
   const player = (state && state.player) || null;
   const entities = (state && state.entities) || null;
   if (!player || !entities) return { subjectId: null, subject: null, engaged: null, subjectIsEngaged: false, text: '' };
-  const selId = player.targetId != null ? player.targetId : null;
+  // Packet 02: the ONE target-truth projection (src/combat/targetTruth.js) decides what is selected
+  // and what the guns address — identity-safe and sensor-true. The weapons-written gunTargetId
+  // mirror is no longer a second reader's source.
+  const truth = projectTargetTruth(state, _readoutTruth);
+  const selId = truth.selectedId;
   const selection = selId != null ? resolveWorldPresentationEntity(state, selId) : null;
   const liveSelection = selection && selection.alive !== false && selection.pos ? selection : null;
-  // An absent gunTargetId (flag off, or no player firing this tick) is "no divergence", never an error.
-  const gunId = player.gunTargetId != null ? player.gunTargetId : null;
-  const engagedCandidate = gunId != null && gunId !== selId ? entities.get(gunId) : null;
+  // Divergence is "the guns address a hull that is not the selection" (the Massline owns them).
+  const gunId = truth.divergent ? truth.effectiveGunTargetId : null;
+  const engagedCandidate = gunId != null ? entities.get(gunId) : null;
   const engaged = engagedCandidate && engagedCandidate.alive ? engagedCandidate : null;
   const subjectIsEngaged = !liveSelection && !!engaged;
   const subject = liveSelection || (subjectIsEngaged ? engaged : null);
   const subjectId = subjectIsEngaged ? gunId : selId;
   let text = '';
-  if (subjectIsEngaged) text = '⌖ GUNS ENGAGED · NO SELECTION';
-  else if (engaged && liveSelection) text = `⌖ GUNS ▸ ${targetDisplayName(engaged)}`;
+  if (subjectIsEngaged) text = '⌖ LINE TARGET · NO SELECTION';
+  else if (engaged && liveSelection) text = `⌖ LINE TARGET ▸ ${targetDisplayName(engaged)}`;
   return { subjectId, subject, engaged, subjectIsEngaged, text };
 }
 
