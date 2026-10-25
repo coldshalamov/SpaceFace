@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "seed-hf-09",
-      "date": "2026-10-22",
-      "wf": "WF-12",
-      "mode": "opportunity",
-      "verdict": "cut",
-      "reason": "Breaking an enemy part names that part. Your own ship still uses the long sentences.",
-      "fingerprint": "verb=name,subject=enemy-part,sector=enemy,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "10bab5f7ac95306f0367213337062e0b02dd1b54",
-      "verification": "focused_green"
-    },
-    {
       "id": "al-lg-12-verb-ladder-hour-15",
       "date": "2026-10-23",
       "wf": "WF-07",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "cf6ece9d547ff794fec3170e2a03b0605809ea57",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-berth-gone",
+      "date": "2026-10-25",
+      "wf": "WF-10",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Standing at the nearer empty berth, the scan says the hauler is gone.",
+      "fingerprint": "verb=say,subject=empty-berth,sector=scan,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "33469628691631b05a9eb210847173bb8af0a3ee",
       "verification": "focused_green"
     }
   ],
