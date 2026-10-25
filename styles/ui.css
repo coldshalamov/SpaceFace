@@ -2170,7 +2170,7 @@ html.sf-reduce-motion .sf-drawer--entity .sf-drawer__deck > * { animation: none;
 .orr-replay__readout { position:absolute; top:0; left:2px; right:2px; margin:0;
   font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600; font-size:12px;
   letter-spacing:.12em; text-transform:uppercase; line-height:1.4; color:rgb(236 230 216 / .78);
-  text-shadow:0 1px 8px rgb(0 0 0 / .8); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  text-shadow:0 1px 8px rgb(0 0 0 / .8); white-space:normal; text-wrap:balance; max-width:96ch; }
 .orr-replay__ev { position:absolute; margin:0; transform:translateX(-50%); white-space:nowrap;
   font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600; font-size:12px;
   letter-spacing:.1em; text-transform:uppercase; color:rgb(236 230 216 / .88);
@@ -2261,7 +2261,7 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
 .orr-clips__readout { margin:0; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
   font-weight:600; font-size:12px; letter-spacing:.12em; text-transform:uppercase; line-height:1.4;
   color:rgb(236 230 216 / .8); text-shadow:0 1px 8px rgb(0 0 0 / .8);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  min-width:0; max-width:96ch; white-space:normal; text-wrap:balance; }
 .orr-clips__actions { position:absolute; left:0; right:0; bottom:22px; z-index:3;
   display:flex; justify-content:center; align-items:center; gap:clamp(18px, 3vw, 40px); }
 .orr-clip__dial { display:flex; align-items:flex-end; gap:0; }
@@ -2272,12 +2272,18 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
 .orr-clip__dial-opt:focus-visible { outline:1px solid rgb(255 217 140 / .9); outline-offset:2px; }
 @media (max-width:640px) {
   .orr-clips__readline { flex-direction:column; align-items:center; gap:6px; }
-  .orr-clips__readout, .orr-replay__readout { white-space:normal; overflow:visible; text-overflow:clip; }
   .orr-clip__plate.is-ghost .orr-clip__name { font-size:15px; letter-spacing:0; }
   .orr-clip__plate.is-ghost .orr-clip__sub { font-size:12px; letter-spacing:.08em; }
 }
 @media (max-height:640px) and (min-width:641px) {
   .orr-clips__rail { top:20%; }
+}
+/* Short desktop frame, empty reel: the wrapped legend crossed the rail's arc (it dips lower the
+   wider the frame), so it sits in the clear band above the ghost plates instead. ≤460 tall keeps
+   its own bottom placement below. */
+@media (min-width:641px) and (min-height:461px) and (max-height:640px) {
+  .orr-clips:has(.orr-clip__plate.is-ghost) .orr-clips__readline { top:76px; bottom:auto; }
+  .orr-clips:has(.orr-clip__plate.is-ghost) .orr-clips__readout { max-width:66ch; }
 }
 @media (max-width:640px) and (min-height:700px) {
   .orr-clips__rail { top:33%; }
@@ -2298,6 +2304,8 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
 @media (min-width:641px) and (max-height:460px) {
   .orr-clips__count { font-size:clamp(36px, 5.2vw, 56px); }
   .orr-clips__runtime { font-size:16px; margin-top:4px; }
+  /* No clear band for a wrapped legend this short (arc below, plates above): keep one line. */
+  .orr-clips__readout { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .orr-clip__plate.is-ghost .orr-clip__name { font-size:15px; }
   .orr-clip__plate.is-ghost .orr-clip__sub { font-size:12px; letter-spacing:.06em; }
 }
