@@ -134,7 +134,7 @@ export const MECHANIC_VOICE_REGISTER = register('mechanic', 'Mechanic', {
 });
 
 // The instructor: the first-hour tutorial voice. Low, clean, unhurried — a dispatcher register a
-// stranger can tell apart blind from the thirteen faction registers and the mechanic (least noise and drive in
+// stranger can tell apart blind from the faction registers and the mechanic (least noise and drive in
 // the set; the bandpass sits high enough to stay soft over the comms bed).
 export const INSTRUCTOR_VOICE_REGISTER = register('instructor', 'Instructor', {
   sampleId: 'bark_instructor', f0: 118, pitch: 0.92, rate: 0.96,
@@ -368,8 +368,11 @@ export function identifyRegisterFromSpeech(speech = {}) {
 /** Pipeline delivery path: one WAV per corpus row, written by generate-bark-voice.mjs --all.
  *  Four-digit padding keeps lexicographic order = row order now that the corpus exceeds 999. */
 export function deliveredBarkWavRelPath(index, registerId) {
-  if (!Number.isInteger(index) || index < 0) {
-    throw new Error(`deliveredBarkWavRelPath index must be a non-negative integer, got ${index}`);
+  if (!Number.isInteger(index) || index < 0 || index > 9999) {
+    throw new Error(`deliveredBarkWavRelPath index must be an integer 0-9999, got ${index}`);
+  }
+  if (typeof registerId !== 'string' || !/^[A-Za-z0-9_-]+$/.test(registerId)) {
+    throw new Error(`deliveredBarkWavRelPath registerId must be a safe filename segment, got ${registerId}`);
   }
   const n = String(index).padStart(4, '0');
   return `assets/audio/voice/line_${n}_${registerId}.wav`;

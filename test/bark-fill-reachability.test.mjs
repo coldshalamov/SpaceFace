@@ -9,6 +9,17 @@ import { BARK_SITUATION_FILL, BARK_CELL_MIN, topUpBarkSituationCells } from '../
 
 const SITUATION_KEYS = [...BARK_SITUATIONS, ...BARK_EVENT_SITUATIONS];
 
+test('the fill table holds no dead keys — every faction id and situation key is live', () => {
+  // A fill cell under a misspelled faction or a non-live situation key is dead space of the
+  // exact D254 class: authored, iterated by nobody, caught by no reachability count.
+  for (const factionId of Object.keys(BARK_SITUATION_FILL)) {
+    assert.ok(BARK_FACTIONS.includes(factionId), `fill faction '${factionId}' is not a live BARK_FACTIONS id`);
+    for (const situation of Object.keys(BARK_SITUATION_FILL[factionId])) {
+      assert.ok(SITUATION_KEYS.includes(situation), `fill key ${factionId}/${situation} is not a live situation`);
+    }
+  }
+});
+
 test('every fill line is reachable in the merged BARKS cell', () => {
   const unreachable = [];
   let fillLineCount = 0;
@@ -39,8 +50,8 @@ test('no touched cell ends under the BARK_CELL_MIN floor', () => {
 });
 
 test('every live cell meets the floor directly — not just via the mutator report', () => {
-  // The mutator only reports cells in fill-having factions; the floor contract belongs to
-  // the corpus itself, so assert it straight off BARKS for every faction × situation.
+  // The floor contract belongs to the corpus itself, so assert it straight off BARKS for
+  // every faction × situation rather than trusting the mutator's own report.
   const under = [];
   for (const factionId of BARK_FACTIONS) {
     const pack = BARKS[factionId];

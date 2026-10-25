@@ -118,6 +118,8 @@ assert.ok(shippedAssets.omittedBytes > 0, 'the projection must remove real dupli
 for (const omission of shippedAssets.omissions) {
   assert.equal(existsSync(join(BUILD_WEB, 'assets', 'ships', 'release', ...omission.path.split('/'))), false,
     `${omission.path} must not duplicate its compiled render package in retail`);
+  assert.ok(omission.replacement,
+    `omission ${omission.path} carries no replacement — exclude-projection omissions do not belong on the ships/release copy`);
   assert.ok(existsSync(join(BUILD_WEB, 'assets', 'ships', 'release', ...omission.replacement.metadataPath.split('/'))),
     `${omission.replacement.metadataPath} must remain bundled`);
   assert.ok(existsSync(join(BUILD_WEB, 'assets', 'ships', 'release', ...omission.replacement.renderPath.split('/'))),

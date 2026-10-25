@@ -185,7 +185,15 @@ export async function createReleaseCopyPlans({
       throw new Error(`unknown release copy projection ${projection}`);
     }
     if (mapping.exclude != null) {
-      omissions.push(...await collectExcludedOmissions(projectRoot, mapping));
+      if (!Array.isArray(mapping.exclude) || mapping.exclude.length === 0) {
+        throw new Error(`release copy exclude for ${mapping.source} must be a non-empty array`);
+      }
+      const byPath = new Map(omissions.map((o) => [o.path, o]));
+      for (const o of await collectExcludedOmissions(projectRoot, mapping)) {
+        if (!byPath.has(o.path)) byPath.set(o.path, o);
+      }
+      omissions.length = 0;
+      omissions.push(...byPath.values());
       omissions.sort((a, b) => lexicalCompare(a.path, b.path));
     }
     plans.push({ mapping, projection, omissions });
@@ -353,17 +361,20 @@ function digestFileRecords(inputFiles) {
 }
 
 async function collectExcludedOmissions(projectRoot, mapping) {
+  // Entries ending in '/' are directory prefixes (match only inside the dir); other entries are
+  // raw path prefixes (e.g. 'voice/line_' matches every line_*.wav under voice/).
   const prefixes = mapping.exclude.map((entry) => {
-    const rel = safeRelativePath(String(entry).replace(/\/+$/, ''), 'release copy exclude');
+    const raw = String(entry);
+    const rel = safeRelativePath(raw.replace(/\/+$/, ''), 'release copy exclude');
     if (!rel) throw new Error('release copy exclude entries must be non-empty');
-    return rel;
+    return raw.endsWith('/') ? `${rel}/` : rel;
   });
+  const matches = (rel) => prefixes.some((prefix) => rel.startsWith(prefix));
   const sourceRoot = resolveContained(projectRoot, mapping.source, 'release copy source');
   const files = [];
-  await walk(sourceRoot, sourceRoot, files, new Set());
-  const omissions = files.filter((f) => prefixes.some((prefix) => f.path.startsWith(prefix)));
+  await walk(sourceRoot, sourceRoot, files, new Set(), matches);
   const matched = new Set();
-  for (const f of omissions) {
+  for (const f of files) {
     for (const prefix of prefixes) if (f.path.startsWith(prefix)) matched.add(prefix);
   }
   for (const prefix of prefixes) {
@@ -371,7 +382,8 @@ async function collectExcludedOmissions(projectRoot, mapping) {
       throw new Error(`release copy exclude '${prefix}' matches nothing under ${mapping.source} — stale rule or renamed tree`);
     }
   }
-  return omissions;
+  for (const f of files) f.reason = 'exclude';
+  return files;
 }
 
 async function renderPackageSourceOmissions(projectRoot, mapping, pilots) {
@@ -509,7 +521,7 @@ async function copyProjectedDir(sourceRoot, destinationRoot, directory, excluded
   }
 }
 
-async function walk(base, directory, files, exclude) {
+async function walk(base, directory, files, exclude, include) {
   const entries = await readdir(directory, { withFileTypes: true });
   entries.sort((a, b) => lexicalCompare(a.name, b.name));
   for (const entry of entries) {
@@ -518,10 +530,11 @@ async function walk(base, directory, files, exclude) {
     if (exclude.has(rel)) continue;
     if (entry.isSymbolicLink()) throw new Error(`release receipt refuses symbolic link ${absolute}`);
     if (entry.isDirectory()) {
-      await walk(base, absolute, files, exclude);
+      await walk(base, absolute, files, exclude, include);
       continue;
     }
     if (!entry.isFile()) continue;
+    if (typeof include === 'function' && !include(rel)) continue;
     const info = await stat(absolute);
     const sha256 = createHash('sha256').update(await readFile(absolute)).digest('hex');
     files.push({ path: rel, bytes: info.size, sha256 });

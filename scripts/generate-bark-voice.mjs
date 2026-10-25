@@ -101,14 +101,16 @@ if (catalogOnly) {
   process.exit(process.exitCode || 0);
 }
 
-const jobs = writeAll
+// --all covers the corpus rows AND the runtime representative clips (bark_* register files,
+// mechanic, instructor), so a lone `--all --check` is a complete voice-tree audit.
+const jobs = (writeAll
   ? pipeline.map((row, i) => ({
     file: path.join(ROOT, deliveredBarkWavRelPath(i, row.registerId)),
     rel: deliveredBarkWavRelPath(i, row.registerId),
     resolved: row,
     seconds: 1.4,
   }))
-  : representativeJobs();
+  : []).concat(representativeJobs());
 
 mkdirSync(OUT_DIR, { recursive: true });
 const mismatches = [];

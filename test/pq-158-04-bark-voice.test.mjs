@@ -1,7 +1,7 @@
 // test/pq-158-04-bark-voice.test.mjs — PQ-158.04 leaf gate.
 //
 // DONE WHEN: every corpus line through the pipeline (BARK_CORPUS_TARGET-pinned); subtitles; determinism untouched.
-// Seed 15804. Eight faction registers + mechanic. Directed synthetic voice, no recorded actors.
+// Seed 15804. Fourteen faction registers + mechanic. Directed synthetic voice, no recorded actors.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -187,7 +187,7 @@ test(`seed ${MEASURE_SEED}: f0/rate/filter names each faction register without t
     assert.equal(named, factionId, `${factionId} must resolve from speech params, not from its label`);
   }
   assert.equal(identifyRegisterFromSpeech({ f0: 0, rate: 0, filterHz: 0 }), null);
-  console.log(`[pq-158.04 blind-stand-in] seed=${MEASURE_SEED} 8/8 speech-params residual=no-stranger-headphones`);
+  console.log(`[pq-158.04 blind-stand-in] seed=${MEASURE_SEED} 14/14 speech-params residual=no-stranger-headphones`);
 });
 
 test(`seed ${MEASURE_SEED}: all ${BARK_CORPUS_TARGET} directed-voice lines exist as WAVs on disk`, () => {
@@ -205,7 +205,7 @@ test(`seed ${MEASURE_SEED}: all ${BARK_CORPUS_TARGET} directed-voice lines exist
   console.log(`[pq-158.04 delivered] seed=${MEASURE_SEED} wavs=${rows.length}/${BARK_CORPUS_TARGET}`);
 });
 
-test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all thirteen registers (no filename, no label)`, () => {
+test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all fourteen registers (no filename, no label)`, () => {
   const shuffled = [...BARK_FACTIONS];
   // Deterministic shuffle from the seed, not Math.random.
   let s = MEASURE_SEED >>> 0;
@@ -227,7 +227,7 @@ test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all thirteen registers 
   console.log(`[pq-158.04 pcm-blind] seed=${MEASURE_SEED} order=${shuffled.join(',')} named=${named.join(',')}`);
 });
 
-test(`seed ${MEASURE_SEED}: unlabeled on-disk clips name thirteen registers without using filenames`, () => {
+test(`seed ${MEASURE_SEED}: unlabeled on-disk clips name fourteen registers without using filenames`, () => {
   const named = [];
   for (const clip of BLIND_REGISTER_CLIPS) {
     const buf = readFileSync(path.join(ROOT, clip.file));
@@ -253,7 +253,7 @@ test(`seed ${MEASURE_SEED}: shipped utterance PCM names each faction register (n
   console.log(`[pq-158.04 utterance-pcm] seed=${MEASURE_SEED} named=${named.join(',')}`);
 });
 
-test(`seed ${MEASURE_SEED}: player-heard bark WAVs name thirteen registers from PCM, never from the filename`, () => {
+test(`seed ${MEASURE_SEED}: player-heard bark WAVs name fourteen registers from PCM, never from the filename`, () => {
   const named = [];
   for (const factionId of BARK_FACTIONS) {
     const sampleId = FACTION_VOICE_REGISTERS[factionId].sampleId;

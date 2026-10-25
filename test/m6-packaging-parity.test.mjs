@@ -19,6 +19,7 @@ import {
 } from '../scripts/lib/releasePackaging.mjs';
 import { RENDER_PACKAGE_PILOTS } from '../src/render/renderPackageManifest.js';
 import { SAMPLE_MANIFEST } from '../src/audio/sampleLibrary.js';
+import { BLIND_REGISTER_CLIPS, enumerateDeliveredBarkWavs } from '../src/audio/barkVoice.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -47,6 +48,27 @@ test('release copy map ships the authored audio tree used by the sample manifest
     assert.ok(
       entry.file.startsWith('assets/audio/'),
       `sample ${entry.file} must live under the shipped assets/audio root`,
+    );
+  }
+});
+
+test('audio copy exclusions omit exactly the acceptance corpus — never a runtime-fetched file', async () => {
+  // The stale-prefix guard only fires on under-matching; an over-matching exclude (e.g.
+  // 'voice/') would silently strip shipped bark_* clips while the receipt stays valid.
+  // Pin the omission set to exactly the delivered corpus + blind fixtures.
+  const plans = await createReleaseCopyPlans({ root: ROOT });
+  const audio = plans.find((p) => p.mapping.source === 'assets/audio');
+  assert.ok(audio, 'assets/audio copy plan missing');
+  const expected = new Set([
+    ...enumerateDeliveredBarkWavs().map((r) => r.file.replace('assets/audio/', '')),
+    ...BLIND_REGISTER_CLIPS.map((c) => c.file.replace('assets/audio/', '')),
+  ]);
+  const omitted = new Set(audio.omissions.map((o) => o.path));
+  assert.deepEqual(omitted, expected);
+  for (const entry of SAMPLE_MANIFEST.values()) {
+    assert.ok(
+      !omitted.has(entry.file.replace('assets/audio/', '')),
+      `runtime-fetched sample ${entry.file} is excluded from the retail bundle`,
     );
   }
 });
