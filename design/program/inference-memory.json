@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-drone-hail",
-      "date": "2026-10-22",
-      "wf": "WF-12",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "A drone whose hold is full hails Reach Station by name instead of calling a named berth a depot.",
-      "fingerprint": "verb=hail,subject=drone-hold,sector=io,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "d925058f9b44da61e217748b4458510603be9302",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-cradle-bay",
       "date": "2026-10-22",
       "wf": "WF-16",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "6b4b42bc84",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-trader-ports",
+      "date": "2026-10-25",
+      "wf": "WF-01",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A hired trader card names the ports on its route and on the last delivery.",
+      "fingerprint": "verb=name,subject=trader-route,sector=helios,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "d5d2ba8931387d14f0b5cd848d4476145885ee7e",
       "verification": "focused_green"
     }
   ],
