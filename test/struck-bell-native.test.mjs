@@ -6,6 +6,7 @@ import { combat } from '../src/systems/combat.js';
 import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
+import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { snapshotFeatureMaps,applyFeatureConfigToMaps,restoreFeatureMaps } from '../src/data/featureFlags.js';
 import { STRUCK_BELL_ID, STRUCK_BELL_SITE as S, struckBellAdmission, struckBellPlacementClear } from '../src/systems/struckBellRuntime.js';
@@ -13,7 +14,7 @@ import { STRUCK_BELL_ID, STRUCK_BELL_SITE as S, struckBellAdmission, struckBellP
 // Full production owners are the shipping gate; reduced-system diagnosis is explicit opt-in.
 const POPULATED = !process.env.BELL_ISOLATED;
 
-test(process.env.BELL_RESTORE ? 'populated Save/Continue interrupts an unpaid offered lesson' : 'native player latch, gentle propulsion, release and original rock impact earn the lesson', async () => {
+test(process.env.BELL_RESTORE ? 'populated Save/Continue interrupts an unpaid offered lesson' : 'native player latch, gentle propulsion, release and original rock impact earn the lesson', {skip:!!process.env.BELL_BEARING_ONLY}, async () => {
  const h=POPULATED ? await populated() : await bootRealPath({seed:113,systems:['tacticalAI','flightV3','aiPorts',combat,tetherGameplay,encounterDirector,'physics'],
   bounds:{center:S.anchor,radius:4000,hardRadius:4500},
   hulls:[{hullId:'ship_wasp',isPlayer:true,pos:{x:S.anchor.x-30,z:S.anchor.z},rot:0}],
@@ -82,7 +83,7 @@ test(process.env.BELL_RESTORE ? 'populated Save/Continue interrupts an unpaid of
  }finally{h.dispose();}
 });
 
-async function populated(){
+async function populated(arrivalOffset={x:0,z:0}){
  const rt=createAuthoritativeRuntime({profileId:'production',seed:113,nodeSafeOnly:true}),state=rt.state;
  state.mode='flight';state.ui.screenStack=[];state.settings.gameplay.controlScheme='classic';state.settings.gameplay.physicsBackend='rapier-dynamic';state.settings.gameplay.flightBackend='v3';state.settings.gameplay.aiBackend='sg06-tactical';
  const withFeatures=fn=>{const old=snapshotFeatureMaps();applyFeatureConfigToMaps(rt.config.features);try{return fn()}finally{restoreFeatureMaps(old)}};
@@ -90,10 +91,61 @@ async function populated(){
  const phy=rt.getSystem('physics');const old=snapshotFeatureMaps();applyFeatureConfigToMaps(rt.config.features);try{await phy.prepareBackend(state,{reset:true})}finally{restoreFeatureMaps(old)}
  const w=rt.getSystem('world');withFeatures(()=>w.enterSector('sector_phoebe_echo'));
  // Configured arrival in the authored practice clearing; no in-flight teleport.
- const selected = {x:S.anchor.x,z:S.anchor.z};
+ const selected = {x:S.anchor.x+arrivalOffset.x,z:S.anchor.z+arrivalOffset.z};
  withFeatures(()=>w.relocatePlayerInSector({x:selected.x,z:selected.z,heading:0},{reason:'test-configured-bell-arrival'}));
  const h={runtime:rt,state,bus:rt.bus,player,withFeatures,step(n){for(let i=0;i<n;i++)rt.step(1/60)},dispose(){rt.dispose()},
  assertBodies(es){for(const e of es){const r=phy._sg02.records.get(e.id);assert.equal(r?.entity,e);assert.equal(r.body.isValid(),true);}},
  proof(){return {backend:phy._diag.backend,manifest:rt.fingerprint,entities:state.entityList.length,fieldRows:state.world.asteroidField?.rocks?.length,dressingRows:state.world.dressing?.rows?.length,nativeBodies:phy._sg02.records.size}}};
  h.step(2);return h;
 }
+
+
+test('populated quiet bearing earns the actual Vael/Choir tradeoff once across Save/Continue', {skip:!!process.env.BELL_RESTORE || !!process.env.BELL_ISOLATED}, async () => {
+ // Configured quiet arrival, not a flown journey; no transform/velocity writes after admission.
+ const h=await populated({x:0,z:-80});
+ try {
+  const d=h.runtime.getSystem('encounterDirector'), events=[], samples=[];
+  let beforeSettlement;
+  for(const name of ['economy:grantCredits','faction:repDelta','faction:repChanged','faction:repSpillover','encounter:resolved','encounter:voice']) h.bus.on(name,p=>events.push({name,at:h.state.simTime,p:structuredClone(p),row:p.factionId?structuredClone(h.state.factions[p.factionId]??null):undefined}));
+  let live;
+  for(let i=0;i<30*60;i++){h.step(1);live=Object.values(h.state.encounterDirector.live).find(l=>l.shapeId===STRUCK_BELL_ID);if(live)break;}
+  assert.ok(live,'ordinary populated admission, not a forced request');
+  const observer=h.state.entities.get(live.ids.find(id=>live.roles[id]==='ship_2'));
+  assert.ok(observer);h.assertBodies([h.player,observer]);
+  const credits=h.state.player.credits;
+  const before=Object.fromEntries(['faction_vael','faction_choir'].map(id=>[id,structuredClone(h.state.factions[id]??null)]));
+  h.withFeatures(()=>d._onChoose({encounterId:live.id,choiceId:'b'}));
+  const start=h.state.simTime;
+  for(let i=0;i<30*60&&h.state.encounterDirector.live[live.id];i++){
+   beforeSettlement=Object.fromEntries(Object.keys(before).map(id=>[id,structuredClone(h.state.factions[id]??null)]));
+   h.step(1);
+   if(i%60===0)samples.push({at:h.state.simTime,player:{pos:{...h.player.pos},vel:{...h.player.vel}},observer:{pos:{...observer.pos},vel:{...observer.vel}},range:Math.hypot(h.player.pos.x-observer.pos.x,h.player.pos.z-observer.pos.z)});
+  }
+  console.log('NATIVE_BEARING',JSON.stringify({anchor:live.anchor,start,end:h.state.simTime,events,samples,before,beforeSettlement,after:h.state.factions,proof:h.proof()}));
+  assert.equal(h.state.encounterDirector.stats.livedSeen?.[STRUCK_BELL_ID],'b');
+  assert.ok(h.state.simTime-start>=7,'eight spaced readings cannot finish immediately');
+  assert.ok(samples.length>=8);
+  for(const row of samples){assert.ok(row.range>=S.bearingMin&&row.range<=S.bearingMax);assert.ok(Math.hypot(row.player.vel.x,row.player.vel.z)<=S.bearingSpeed);assert.ok(Math.hypot(row.observer.vel.x,row.observer.vel.z)<=S.bearingSpeed);}
+  const voices=events.filter(e=>e.name==='encounter:voice').map(e=>e.p.text);
+  assert.ok(voices.includes('OBSERVER: Quiet reading 1 of 8.'));assert.ok(voices.includes('OBSERVER: Quiet reading 4 of 8.'));
+  assert.equal(events.some(e=>e.name==='economy:grantCredits'&&e.p.reason===STRUCK_BELL_ID),false);
+  assert.equal(h.state.player.credits,credits);
+  const after=Object.fromEntries(Object.keys(before).map(id=>[id,structuredClone(h.state.factions[id])]));
+  for(const [id,delta] of [['faction_vael',1],['faction_choir',-1]]){
+   const applied=events.filter(e=>e.name==='faction:repChanged'&&e.p.reason===STRUCK_BELL_ID&&e.p.factionId===id);
+   assert.equal(applied.length,1);assert.equal(applied[0].p.delta,delta);assert.equal(applied[0].row.rep,applied[0].p.newRep);
+   const spillovers=events.filter(e=>e.name==='faction:repSpillover'&&e.p.factionId===id);
+   const net=delta+spillovers.reduce((sum,e)=>sum+e.p.delta,0);
+   assert.equal(after[id].rep,(beforeSettlement[id]?.rep??NEW_GAME.factionRep[id])+net);
+   assert.deepEqual(after[id].history.filter(e=>e.reason===STRUCK_BELL_ID).map(e=>e.value),[delta]);
+  }
+  const save=h.runtime.getSystem('save'),env=h.withFeatures(()=>save.serialize('bell-bearing-native'));
+  assert.equal(h.withFeatures(()=>save.loadEnvelope(env,'bell-bearing-native')),true);
+  h.withFeatures(()=>d._onChoose({encounterId:live.id,choiceId:'b'}));h.step(120);
+  for(const id of Object.keys(after))assert.deepEqual(h.state.factions[id],after[id]);
+  assert.equal(h.state.player.credits,credits);assert.equal(h.state.encounterDirector.stats.livedSeen?.[STRUCK_BELL_ID],'b');
+  assert.equal(Object.values(h.state.encounterDirector.live).some(l=>l.shapeId===STRUCK_BELL_ID),false);
+  assert.deepEqual(events.filter(e=>e.name==='faction:repDelta'&&e.p.reason===STRUCK_BELL_ID).map(e=>[e.p.factionId,e.p.delta]),[['faction_vael',1],['faction_choir',-1]]);
+  console.log('BEARING_RESTORE_PASS',JSON.stringify({credits,before,beforeSettlement,after,ownerChanges:events.filter(e=>e.name==='faction:repChanged'||e.name==='faction:repSpillover'),restored:Object.fromEntries(Object.keys(after).map(id=>[id,h.state.factions[id]])),proof:h.proof()}));
+ } finally { h.dispose(); }
+});
