@@ -151,6 +151,9 @@ test('three burials teaches the compost verb — the pit pays for a settled offe
   assert.equal(flags(state).gravedigger_taught, true);
   assert.equal(says(popups, 'gravedigger_teach').length, 1);
   assert.match(says(popups, 'gravedigger_teach')[0].text, /Even the ground/);
+  assert.match(says(popups, 'gravedigger_teach')[0].text, /release your line/i);
+  assert.match(says(popups, 'gravedigger_teach')[0].text, /stop your beam/i);
+  assert.match(says(popups, 'gravedigger_teach')[0].text, /let it settle/i);
   // An offering in the pit pays the fee; the chase does not.
   addWreck(state, { x: GRAVEDIGGER.post.x + 40, z: GRAVEDIGGER.post.z });
   sys.update(0.5, state);
@@ -273,6 +276,12 @@ test('learn, release, compost, restore: the garden keeps the paid grave without 
     ...e.pos, serial: e.data.gravediggerGardenSerial,
   })), ledger);
   assert.equal(flags(restored.state).gravedigger_taught, true);
+  const arrival = says(restored.popups, 'gravedigger_announce');
+  assert.equal(arrival.length, 1, 'the taught return uses the existing arrival hail');
+  assert.equal(arrival[0].text, GRAVEDIGGER.teachLine);
+  assert.match(arrival[0].text, /release your line/i);
+  assert.match(arrival[0].text, /stop your beam/i);
+  assert.match(arrival[0].text, /let it settle/i);
   assert.equal(restored.grants.length, 0);
   assert.equal(restored.receipts.length, 0);
 

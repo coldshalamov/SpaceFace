@@ -36,7 +36,7 @@ export const GRAVEDIGGER = Object.freeze({
   callsign: 'UG-4',
   announce: 'UG-4 on the gulf floor. The wrecks belong to the ground. I only do the digging.',
   buryLine: 'IN THE GROUND.',
-  teachLine: 'You chase the same wrecks I do. Fine. Bring one to my pit and the ground pays you back. Everything goes in the ground. Even the ground.',
+  teachLine: 'You chase the same wrecks I do. Fine. Bring one to my pit. Release your line, stop your beam, let it settle. The ground pays you back. Everything goes in the ground. Even the ground.',
   compostLine: 'GOOD. THE GROUND TAKES IT BACK.',
   fullLine: 'THE BEDS ARE FULL. THE GROUND STILL TAKES IT.',
   goneLine: 'UG-4 DOWN. THE GARDEN KEEPS GROWING WITHOUT HANDS.',
