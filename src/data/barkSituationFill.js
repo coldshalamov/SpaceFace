@@ -1,5 +1,7 @@
 // Extra radio lines for PULSE-08. Pure data. Appended onto BARKS so index 0 of every
 // cell stays the line that already shipped. Voice stays with the house that opened the cell.
+// Every line in this file is live: topUpBarkSituationCells appends the whole cell, so a
+// tail append here always reaches a selector — there is no dead reservoir past a cap.
 
 export const BARK_SITUATION_FILL = {
   faction_scn: {
@@ -1332,11 +1334,16 @@ export const BARK_SITUATION_FILL = {
   },
 };
 
-const BARK_CELL_MIN = 12;
+// Floor target for every live cell: the corpus is authored so each touched situation ends at
+// least this deep. It is not an append cap — every fill line is reachable (D254).
+export const BARK_CELL_MIN = 12;
 
-/** Push house lines onto each situation until the cell reaches minLength. Index 0 stays. */
+/** Push house lines onto each situation, whole cell, deduped. Index 0 stays.
+ *  Returns the ids of any touched cells still under minLength — a corpus gap to fill,
+ *  asserted empty by test/bark-fill-reachability.test.mjs. */
 export function topUpBarkSituationCells(barks, factions, situations, eventSituations, minLength = BARK_CELL_MIN) {
   const keys = [];
+  const underFloor = [];
   if (Array.isArray(situations)) keys.push(...situations);
   if (Array.isArray(eventSituations)) keys.push(...eventSituations);
   for (const factionId of factions) {
@@ -1349,11 +1356,12 @@ export function topUpBarkSituationCells(barks, factions, situations, eventSituat
       if (!Array.isArray(cell) || !Array.isArray(extra)) continue;
       const seen = new Set(cell);
       for (const line of extra) {
-        if (cell.length >= minLength) break;
         if (typeof line !== 'string' || line.length === 0 || seen.has(line)) continue;
         cell.push(line);
         seen.add(line);
       }
+      if (cell.length < minLength) underFloor.push(`${factionId}/${situation}`);
     }
   }
+  return underFloor;
 }

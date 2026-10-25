@@ -9,10 +9,11 @@ import { SAMPLE_MANIFEST } from './sampleLibrary.js';
 import { detectPitchHz, decodePcmWav } from './themeCompose.js';
 
 export const BARK_VOICE_SEED = 15804;
-// Authored count follows the BARKS table. PULSE-08 tops every core cell to 12
-// (14 factions x 8 situations). Distress is event-only and is not in this count.
+// Authored count follows the BARKS table. PULSE-08 tops every core cell to >=12
+// (14 factions x 8 situations + the former dead fill tails, live since D254).
+// Distress is event-only and is not in this count.
 // The pin exists so unauthored corpus drift fails loudly.
-export const BARK_CORPUS_TARGET = 1344;
+export const BARK_CORPUS_TARGET = 1399;
 
 export const BARK_RECIPE_ID = 'sfx_bark_radio';
 
