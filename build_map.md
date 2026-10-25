@@ -653,7 +653,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | admit-world | done (claude-oct17) | admit SFQ-P10–P17 family candidates (mining/regions/people/alien/xenotech/machines/precursor/discovery) — ~80 build + ~32 inference | - |
 | admit-craft | done (claude-oct17) | admit SFQ-P18/P19/P21–P24 family candidates (models/VFX/ORRERY/perf/save/finish) — ~60 build + ~24 inference | - |
 | admit-content | done (claude-oct17) | admit mission briefs M01–M36, model briefs A01–A36, and the Depth roll-up — mints rows for missions/models/depth | - |
-| rope-world | devin-fleet-oct20 | `tetherGameplay.js` obstruction/wrap seam, `combat/attachments.js`, `world/asteroidField.js`, `masslineThrow.js`, `combat/masslineTargetScoring.js`, cable render, `cameraDirector.js` throw framing (§31 THE HAND) | 390 |
+| rope-world | devin-lanea | `tetherGameplay.js` obstruction/wrap seam, `combat/attachments.js`, `world/asteroidField.js`, `masslineThrow.js`, `combat/masslineTargetScoring.js`, cable render, `cameraDirector.js` throw framing (§31 THE HAND) | 390 |
 | hostile-hands | devin-fleet-oct20 | `src/ai/` doctrine/maneuver/reflexes/fireDiscipline/temperament/squad, `aiPorts.js`, `engagementAuthority.js`, `combat/damage.js` friendly-fire flag, weapons splash path, `lawSecurity.js` retaliation, `collisionConsequences.js`, capacitor in `combat.js` (§31 THE FIGHT) | 393 |
 | racing | devin-lanea | `racing*` systems/ui/render, `ai/racingDriver.js`, `missions/racing*`, `raceLevels.js`, `raceCourses.js`, `world/racingCorridor.js`, `raceBoard.js` (§31 THE FIGHT) | 394, 395, 472 |
 | world-answers-2 | done (devin-25-oct22) | ending application in `story.js`, `postEndingReplay.js`, `sectorSim.js` readers, faction territory-flip embodiment, `traffic.js` pickets/identity, `npcJobsRuntime.js`, `stationContacts.js`, standing-order offers (§31 THE WORLD) | - |
@@ -1048,7 +1048,7 @@ production units, and never build what they write.
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 390 | AL-HAND-1 | The Line touches the world — obstruction provider (AL-HF-08), terrain wrap pivots only during a deliberate swing (owner 2026-10-19: towing never snags), unwrap on reversal, no tunnelling (§31.3) | BUILD | OPEN |
+| 390 | AL-HAND-1 | The Line touches the world — obstruction provider (AL-HF-08), terrain wrap pivots only during a deliberate swing (owner 2026-10-19: towing never snags), unwrap on reversal, no tunnelling (§31.3) | BUILD |OPEN — obstruction slice landed 124c2b3efb+provider (11/11 test green); remaining: visible+physical wrap pivots ≥24 WU, ≥1.3× release speed, unwrap-on-reversal, swept no-tunnelling, wrapped-line invalidation in throw solver, deliberate-swing-only admission (deferred by plan §3 — sg02DynamicBodyOwner outside §1C boundary) |
 | 393 | AL-FIGHT-3 | Verbs feed verbs — mass kills spill latchable charge cells; guns-only tape runs dry (§31.3) | BUILD | OPEN — after 391 + 392 |
 | 394 | AL-RACE-1 | The line is contested — RF-05 second slice: rivals take anchors, takedowns, medal times, instant restart; AL-HF-03/04/09/10/12 inside (§31.3) | BUILD | OPEN — slice landed 96b52bec50 (anchors/reservations/qualified uses + Mira hook; medals+restart already shipped fc0d99e92f); remaining: anchored lap ≥0.8 s advantage (swing steer/release geometry), takedown ≥2 s + ≤6 s recovery assertion |
 | 395 | AL-RACE-2 | Every way of life is a course — six sector-signature circuits through the RF-02 validator (§31.3) | BUILD | OPEN — reuses 394's rival lines |
