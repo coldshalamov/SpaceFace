@@ -4,6 +4,26 @@ import { getCombatKernel } from '../combat/kernel.js';
 import { resolveDockRange } from '../core/dockRange.js';
 import { attachmentBindsOccupant } from '../combat/attachments.js';
 
+
+const returnRefusal = Object.freeze({
+  restoring: 'Return is paused while the saved world restores. Wait for the original recorder and its tow connection; reeling will not restore custody.',
+  already_returned: 'The original recorder was already accepted by the archive. Read evidence remains yours; there is no second return or payment.',
+  recorder_missing: 'The original recorder is not available for return here. That does not confirm it was lost. Any evidence you read can still be filed.',
+  receiver_range: 'Bring your ship and the original recorder into the same slow exterior berth before docking. Slow both bodies gradually before reeling.',
+  tow_required: 'There is no current tow joining your ship to the original recorder. Attach that recorder before requesting its return.',
+  native_custody_pending: 'The tow connection is not confirmed yet. Wait for confirmation before retrying; reeling will not restore custody.',
+  custody_changed: 'The recorder or berth changed during handoff. Check the original recorder and its current tow before retrying. No return was recorded.',
+  detach_refused: 'The tow could not be released, so the archive did not accept the recorder. Check the current line before retrying; do not reel to fix this.',
+  return_pending: 'The recorder handoff is already in progress. Wait for its result before requesting another return.',
+});
+function recorderReturnRefusal(reason, status) {
+  if (reason === 'recorder_missing' && (status === 'destroyed' || status === 'salvaged')) {
+    return 'The original recorder was destroyed or salvaged and cannot be returned. Any evidence you read can still be filed.';
+  }
+  return Object.hasOwn(returnRefusal, reason) ? returnRefusal[reason]
+    : 'Recorder return is unavailable. Check the current source register and tow before retrying.';
+}
+
 const terminal = new Set(['destroyed', 'salvaged', 'returned']);
 const distance = (a, b) => a && b ? Math.hypot(a.x - b.x, a.z - b.z) : Infinity;
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -34,7 +54,7 @@ export const lastShift = {
     });
     on('lastShift:returnRecorder', () => {
       const result = this.returnRecorder();
-      if (!result.ok) this.bus.emit('toast', { text: 'LAST SHIFT — return refused. Keep the actual recorder on your line and reel it into the same slow berth as your ship.', kind: 'warn', ttl: 5 });
+      if (!result.ok) this.bus.emit('toast', { text: `LAST SHIFT — ${recorderReturnRefusal(result.reason, this._row.bodies.recorder?.status)}`, kind: 'warn', ttl: 5 });
     });
     on('save:restoring', () => { this._restoring = true; this._bindings.clear(); });
     on('save:loaded', () => this.afterContinue());
@@ -226,7 +246,8 @@ export const lastShift = {
     return { ok: true, receipt: clone(receipt) };
   },
   _returnEligibility() {
-    if (this._restoring || this._row.recorderReturn) return { ok: false, reason: 'already_returned' };
+    if (this._restoring) return { ok: false, reason: 'restoring' };
+    if (this._row.recorderReturn) return { ok: false, reason: 'already_returned' };
     const recorder = this._find('recorder'), player = this.state.entities.get(this.state.playerId);
     if (!recorder || recorder.data.persistenceOwner !== C.persistenceOwner || !player?.alive) return { ok: false, reason: 'recorder_missing' };
     const receiver = resolveDockRange(this.state), recorderReceiver = resolveDockRange({ ...this.state, playerId: recorder.id });
