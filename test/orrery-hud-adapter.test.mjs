@@ -7,6 +7,7 @@ import {
   shipUnderInstrumentBox,
 } from '../src/ui/orrery/hudAdapter.js';
 import { speedPhase } from '../src/ui/orrery/flightCluster.js';
+import { staticVerbSentence } from '../src/data/arsenalWords.js';
 import { RAIL_SLOTS, SUPPORT_SLOTS } from '../src/ui/powerRail.js';
 import { resolveImpulseChargeCapacity } from '../src/systems/impulseCharges.js';
 import { DEFAULTS } from '../src/systems/input.js';
@@ -119,7 +120,7 @@ test('every ordnance key explains itself: bank sentence, live keys and live stat
   // power. The DRIVE lamp group rides ahead of the hotbar (FB-002 slot 0).
   const groups = buildOrdnanceGroups(bindings);
   const shove = groups.find((g) => g.name === 'Shove');
-  assert.equal(shove.tip, 'Shove — blast everything outward from your ship — and set off every charge and bomb you have armed (2)');
+  assert.equal(shove.tip, `Shove — ${staticVerbSentence('shove')} (2)`, 'a folded node explains its power in the arsenal\'s own sentence');
   assert.equal(groups.find((g) => g.name === 'Pull').slots[0].key, '1', 'the shelf reads as the number-row hotbar the player reaches for');
   assert.deepEqual(groups.map((g) => g.name), ['DRIVE', 'Pull', 'Shove', 'Pin', 'Bomb', 'Rig', 'Line', 'Gyre', 'Cloak']);
   const drive = groups.find((g) => g.name === 'DRIVE');

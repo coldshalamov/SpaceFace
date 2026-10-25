@@ -295,11 +295,12 @@ test('the Gyre reads gather / release from the Gyre system\'s own phase', () => 
   let e = read(state).entries.gyre;
   assert.equal(e.label, 'Gyre · Gathering');
   assert.match(e.sentence, /2 too big to take whole/);
-  state.gyreSnare = { phase: 'holding', refusal: { code: 'protected', short: 'CARGO', text: 'Cargo or quest wreck — towed, never swallowed' } };
-  e = read(state).entries.gyre;
+  state.gyreSnare = { phase: 'holding' };
+  e = read(state, { denial: { tool: 'gyre', code: 'protected', text: 'Cargo or quest wreck — towed, never swallowed', tick: 1 } }).entries.gyre;
   assert.equal(e.label, 'Gyre · Release');
   assert.match(e.sentence, /Release to throw it/);
-  assert.equal(e.denial.text, 'Cargo or quest wreck — towed, never swallowed', 'the refusal the Gyre published is carried verbatim');
+  assert.equal(e.denial.text, 'Cargo or quest wreck — towed, never swallowed', 'the refusal the owner published is carried verbatim');
+  assert.equal(read(state).entries.gyre.denial, undefined, 'and only while the caller carries one');
   state.gyreSnare = { phase: 'off', liveBalls: 1 };
   assert.equal(read(state).entries.gyre.label, 'Gyre · Thrown');
   // too little charge to wake

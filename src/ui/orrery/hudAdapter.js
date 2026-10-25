@@ -28,6 +28,7 @@ import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../..
 import { injectOrrery } from './tokens.js';
 import { createFlightCluster } from './flightCluster.js';
 import { applyOrreryHudSkin } from './hudSkin.js';
+import { currentDenial, mountArsenalDenials } from '../arsenalDenials.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 // The five powers (owner 2026-10-22): each power is its own band, so each prints by name.
@@ -128,14 +129,18 @@ function activeLineControlHint(state) {
   return parts.length ? `Hold ${hold} for line control: ${parts.join(' · ')}` : '';
 }
 
-export function readOrdnanceModel(state, tracker, bindings) {
+export function readOrdnanceModel(state, tracker, bindings, options = {}) {
   const nowS = Number(state && state.simTime) || 0;
   const rail = readRailModel(state, nowS);
   bindings ??= readClusterBindings(state);
   const labels = resolveSlotLabels(bindings);
   const keys = resolveSlotKeys(bindings);
   // The presentation reads the same remappable binding table; a caller's override wins per action.
-  const presented = presentationFor(state).read(state, { rail, nowS, bindings: { ...readArsenalBindings(state), ...bindings } });
+  const presented = presentationFor(state).read(state, {
+    rail, nowS, bindings: { ...readArsenalBindings(state), ...bindings },
+    // the owner's latest refusal ("Too big to take whole"), quoted while it still explains the dead net
+    denial: currentDenial(options.denial, Number(state && state.tick)),
+  });
   const out = {};
   for (const slot of [...RAIL_SLOTS, ...SUPPORT_SLOTS]) {
     const r = rail[slot.index] || {};
@@ -346,6 +351,9 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   const weaponHeatScratch = {};
   let ordnance = null;
   let ceiling = null;
+  // Refusals the matter tools publish reach the pilot as a toast and as the Gyre/Pull tip's last line.
+  let lastDenial = null;
+  const offDenials = mountArsenalDenials(bus, { onDenial: (record) => { lastDenial = record; } });
   const syncLegend = (liveState = state, livePlayer = liveState?.entities?.get?.(liveState.playerId)) => {
     cluster.setRingLegend(readActiveHullLegend(liveState, livePlayer));
   };
@@ -412,13 +420,14 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
       if (slow && typeof cluster.setHull === 'function') syncHull(liveState, p);
       if (!p) { syncShipUnder(null); return; }
       syncShipUnder(p);
-      if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker);
+      if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker, undefined, { denial: lastDenial });
       if (slow || ceiling == null) ceiling = readSpeedCeiling(liveState, p);
       const model = readClusterModel(liveState, p, { ordnance, speedMax: ceiling, weaponHeatScratch });
       if (model) cluster.update(model);
     },
     dispose() {
       if (typeof offName === 'function') { try { offName(); } catch (_) {} }
+      try { offDenials(); } catch (_) {}
       if (typeof window !== 'undefined' && window.removeEventListener) {
         window.removeEventListener('resize', markClusterBoxStale);
       }

@@ -53,6 +53,9 @@ import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { bombUsesCharge, playerImpulseCharges, resolveRigTarget } from '../systems/powerVerbs.js';
 import { armedOrdnanceCounts, readCloakState, resolveBombAction } from '../data/arsenalPresentation.js';
+import { LINE_BANK, staticVerbSentence } from '../data/arsenalWords.js';
+import { collectorRailSlot } from '../data/collectorKnot.js';
+import { collectorFitted } from '../systems/fields.js';
 
 export const BAND_DRIVE = 'DRIVE';
 export const BAND_PULL = 'PULL';
@@ -90,21 +93,21 @@ export const RAIL_SLOTS = Object.freeze([
   // hotbar seat) and no prompt may borrow it; it is the rail's one state socket: the latch's
   // off/spooling/engaged/cooldown reads where the pilot's eyes already live.
   { index: 0, band: BAND_DRIVE, action: 'travelBurn', name: 'Burn', glyph: 'rig',
-    description: 'latch the travel drive — a long burn that holds your speed' },
+    description: staticVerbSentence('travel') },
   // Slots 1–5 are the five powers; each index is its own number-row digit.
   { index: 1, band: BAND_PULL, action: 'pull', name: 'Pull', glyph: 'well',
-    description: 'drop a gravity well at your aim — it drags light ships, rocks and shots in, and grips your locked target three times as hard' },
+    description: staticVerbSentence('pull') },
   { index: 2, band: BAND_SHOVE, action: 'shove', name: 'Shove', glyph: 'repel',
-    description: 'blast everything outward from your ship — and set off every charge and bomb you have armed' },
+    description: staticVerbSentence('shove') },
   { index: 3, band: BAND_PIN, action: 'pin', name: 'Pin', glyph: 'seed',
-    description: 'fire an anchor that locks where it lands — latch your Line to it and swing' },
+    description: staticVerbSentence('pin') },
   { index: 4, band: BAND_BAY, action: 'bomb', name: 'Bomb', glyph: 'weapon',
-    description: 'throw a sticky charge that Shove sets off — or use the swarm call-in or drift bomb the cycle chose' },
+    description: staticVerbSentence('bomb') },
   { index: 5, band: BAND_RIG, action: 'rig', name: 'Rig', glyph: 'cone',
-    description: 'toggle your rig — the clearing cone sweeps debris ahead; in a planet band it opens the skim scoop' },
+    description: staticVerbSentence('rig') },
   // The Line has no digit (Space / F); index 6 keeps it off the power row's own numbers.
   { index: 6, band: BAND_LINE, action: 'tether', name: 'Line', glyph: 'tether',
-    description: 'throw the tether line onto a body and haul it — tap to latch or cut' },
+    description: LINE_BANK },
 ]);
 
 // Support verbs beside the rank. They are not number-row powers and no prompt may claim them, so they
@@ -113,9 +116,9 @@ export const RAIL_SLOTS = Object.freeze([
 // unfolds them after the Line; the words come from the arsenal presentation, never from here.
 export const SUPPORT_SLOTS = Object.freeze([
   { index: 7, band: 'GYRE', action: 'gyreSnare', name: 'Gyre', glyph: 'gyre',
-    description: 'hold to gather loose rocks and wrecks into a ball — release to throw it' },
+    description: staticVerbSentence('gyre') },
   { index: 8, band: 'CLOAK', action: 'cloak', name: 'Cloak', glyph: 'cloak',
-    description: 'go dark to anything outside your signature — firing, thrust and scans give you away' },
+    description: staticVerbSentence('cloak') },
 ]);
 
 /** The rail index of each power, the Line and the bomb bay (one place, so no reader hardcodes a digit). */
@@ -501,7 +504,9 @@ export function readRailModel(state, nowS) {
     // 1 PULL — the well.
     1: { ...(wellCd || { state: 'ready' }),
       live: wellCd ? undefined : (wellLiveWhy != null || undefined),
-      why: wellCd ? `Recharging — ${Math.ceil(wellCd.cooldownMs / 1000)}s` : (wellLiveWhy || 'Ready') },
+      why: wellCd ? `Recharging — ${Math.ceil(wellCd.cooldownMs / 1000)}s` : (wellLiveWhy || 'Ready'),
+      // The Collector Maw (packet 05): the socket names the current role and the next press.
+      ...(collectorRailSlot(s, collectorFitted(s)) || {}) },
     // 2 SHOVE — the repulsor, plus the detonation of armed ordnance. Armed ordnance makes the key
     // ARMED even while the repulsor recharges: the press still sets the ordnance off.
     2: armedOrdnance ? {
