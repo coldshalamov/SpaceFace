@@ -306,6 +306,14 @@ export const MOBILE_SCREEN_CSS = `
       display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; text-overflow:clip !important; }
     ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { gap:0 12px !important; }
     ${B} .sxb-ops .sx-tile__label { letter-spacing:.05em !important; }
+    /* Each dial column is ~66px wide here, so the dial grows to fill it and its reading drops a line: at 60x40
+       the "/ 100" and "/ 40 u" lines ran into the ends of the arc. The crown gives back its bottom margin so the
+       Market trade keeps its keys above the foot at 360x780. */
+    ${B} :is(.sxb-vital__track, .sxb-vital > .orr-vdial-bare, .orr-vdial) { width:66px !important; height:54px !important; }
+    ${B} .sxb-vital__value { top:15px !important; }
+    ${B} .sxb-crown { margin-bottom:0 !important; }
+    ${B} .sxb-vital__value .orr-vden { letter-spacing:0 !important; }
+    ${B} .sxb-vital:has(.sxb-vital__value .orr-vnum.is-word) .sxb-vital__value { height:54px !important; }
   }
   /* …and a phone under 390 wide (360–389: 360, 375, 384 Android) closes the tab words and the crown labels once
      more for the same four columns; at 376–389 the wider spacing left SHIPWORKS and INDUSTRY ~3px apart and the
@@ -377,8 +385,9 @@ export const MOBILE_SCREEN_CSS = `
   ${M} .sx-trade > .sx-qty { grid-area:dial; width:128px !important; height:146px !important; position:relative !important; }
   ${M} .sx-qty .orr-qdial { left:8px !important; top:0 !important; width:112px !important; height:112px !important; }
   ${M} .orr-qdial__end { font-size:16.1px; }
-  ${M} .sx-qty .sx-qty__k { left:8px !important; width:112px !important; top:32px !important; font-size:12px !important; letter-spacing:.18em !important; }
-  ${M} .sx-qty .sx-qty__in { left:24px !important; width:80px !important; top:44px !important; height:32px !important; min-height:32px !important;
+  /* The word sits under the number, where the ring is widest; above it, QUANTITY ran into the arc on both sides. */
+  ${M} .sx-qty .sx-qty__k { left:8px !important; width:112px !important; top:56px !important; font-size:12px !important; letter-spacing:.03em !important; }
+  ${M} .sx-qty .sx-qty__in { left:24px !important; width:80px !important; top:26px !important; height:32px !important; min-height:32px !important;
     font-size:28px !important; line-height:32px !important; }
   ${M} .sx-qty .sx-qty__words { top:104px !important; left:0 !important; right:0 !important; justify-content:space-between !important; }
   ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { font-size:12px !important; letter-spacing:.08em !important; min-height:44px !important; padding:0 !important; min-width:40px !important;
