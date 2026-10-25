@@ -1354,10 +1354,14 @@ export const BARK_CELL_MIN = 12;
  *  Returns the ids of every iterated cell still under minLength — a corpus gap to fill,
  *  asserted empty by test/bark-fill-reachability.test.mjs. */
 export function topUpBarkSituationCells(barks, factions, situations, eventSituations, minLength = BARK_CELL_MIN) {
-  const keys = [];
   const underFloor = [];
-  if (Array.isArray(situations)) keys.push(...situations);
-  if (Array.isArray(eventSituations)) keys.push(...eventSituations);
+  // Dedupe: a situation id listed in both arrays would merge its fill twice and double-report.
+  const keys = [
+    ...new Set([
+      ...(Array.isArray(situations) ? situations : []),
+      ...(Array.isArray(eventSituations) ? eventSituations : []),
+    ]),
+  ];
   for (const factionId of factions) {
     const pack = barks && barks[factionId];
     const fill = BARK_SITUATION_FILL[factionId];
