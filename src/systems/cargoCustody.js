@@ -131,7 +131,7 @@ export function ensureCommittedIntents(state) {
  * cargo never carry a declaration.
  */
 export function massDeclarationForTarget(state, target) {
-  if (!state || !target) return null;
+  if (!state || !target || target.alive === false || target.destroyed === true) return null;
   const data = target.data && typeof target.data === 'object' ? target.data : null;
   if (!data) return null;
   const missionId = data.missionId != null && data.missionId !== ''
@@ -141,11 +141,13 @@ export function massDeclarationForTarget(state, target) {
   const active = state.missions && Array.isArray(state.missions.active) ? state.missions.active : null;
   if (!active) return null;
   const mission = active.find((m) => m && String(m.id) === String(missionId));
-  const decl = mission && mission.params && mission.params.massDeclaration;
+  if (!mission || mission.status !== 'active' || mission.type !== 'tow_recovery') return null;
+  const decl = mission.params && mission.params.massDeclaration;
   if (!decl || typeof decl !== 'object') return null;
   const declaredMassT = Number(decl.declaredMassT);
   const targetSlot = Number(decl.targetSlot);
-  if (!(declaredMassT > 0) || !Number.isInteger(targetSlot) || targetSlot < 0) return null;
+  if (!Number.isFinite(declaredMassT) || !(declaredMassT > 0)
+      || !Number.isSafeInteger(targetSlot) || targetSlot < 0) return null;
   if (massTargetSlotOf(data, missionId) !== targetSlot) return null;
   return {
     version: Number.isFinite(Number(decl.version)) ? Number(decl.version) : 1,
@@ -189,13 +191,17 @@ export function physicalMassT(target) {
 export function massDiscrepancy(declaredMassT, measuredMassT) {
   const declared = Number(declaredMassT);
   const measured = Number(measuredMassT);
-  if (!(declared > 0) || !(measured > 0)) return null;
+  if (!Number.isFinite(declared) || !Number.isFinite(measured)
+      || !(declared > 0) || !(measured > 0)) return null;
+  const deltaMassT = measured - declared;
+  const ratio = measured / declared;
+  if (!Number.isFinite(ratio) || !(ratio > 0)) return null;
   return {
     declaredMassT: declared,
     measuredMassT: measured,
-    deltaMassT: measured - declared,
-    ratio: measured / declared,
-    discrepant: Math.abs(measured - declared) > Math.max(0.1, declared * 0.05),
+    deltaMassT,
+    ratio,
+    discrepant: Math.abs(deltaMassT) > Math.max(0.1, declared * 0.05),
   };
 }
 
@@ -242,12 +248,11 @@ function normalizeMassSlip(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const slipId = typeof raw.slipId === 'string' && raw.slipId ? raw.slipId : null;
   const kind = typeof raw.kind === 'string' && raw.kind ? raw.kind : null;
-  const declaredMassT = Number(raw.declaredMassT);
-  const measuredMassT = Number(raw.measuredMassT);
+  const discrepancy = massDiscrepancy(raw.declaredMassT, raw.measuredMassT);
   const targetSlot = Number(raw.targetSlot);
   const sourceOfferId = raw.sourceOfferId != null ? String(raw.sourceOfferId) : null;
-  if (!slipId || !kind || !(declaredMassT > 0) || !(measuredMassT > 0)
-      || !Number.isInteger(targetSlot) || targetSlot < 0 || !sourceOfferId) return null;
+  if (!slipId || !kind || !discrepancy
+      || !Number.isSafeInteger(targetSlot) || targetSlot < 0 || !sourceOfferId) return null;
   const filedAtStations = {};
   const filed = raw.filedAtStations;
   if (filed && typeof filed === 'object' && !Array.isArray(filed)) {
@@ -269,11 +274,7 @@ function normalizeMassSlip(raw) {
     issuer: raw.issuer != null ? String(raw.issuer) : null,
     reference: raw.reference != null ? String(raw.reference) : null,
     targetSlot,
-    declaredMassT,
-    measuredMassT,
-    deltaMassT: Number.isFinite(Number(raw.deltaMassT)) ? Number(raw.deltaMassT) : measuredMassT - declaredMassT,
-    ratio: Number.isFinite(Number(raw.ratio)) ? Number(raw.ratio) : measuredMassT / declaredMassT,
-    discrepant: raw.discrepant === true,
+    ...discrepancy,
     issuingStationId: raw.issuingStationId != null ? String(raw.issuingStationId) : null,
     weighedTick: Number.isFinite(Number(raw.weighedTick)) ? Number(raw.weighedTick) : null,
     weighedSimTime: Number.isFinite(Number(raw.weighedSimTime)) ? Number(raw.weighedSimTime) : null,

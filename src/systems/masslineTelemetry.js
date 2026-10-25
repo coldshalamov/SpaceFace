@@ -246,8 +246,8 @@ export const masslineTelemetry = {
   /**
    * The rope is a scale. While the mirrored tether is under real load (phase loaded/overload,
    * strain > 0, the declared body genuinely moving) on a target whose ACTIVE mission carries
-   * params.massDeclaration, qualifying ticks accrue; at MASS_WEIGH_DWELL_TICKS the measurement
-   * is real: telemetry.massWeighing mirrors it and exactly one tether:massWeighed event fires
+   * params.massDeclaration, qualifying simulation time accrues. After MASS_WEIGH_DWELL_S,
+   * telemetry.massWeighing mirrors the measurement and exactly one tether:massWeighed event fires
    * for this latch. The key stays ABSENT until emission — sim snapshots hash state.player and
    * must not see a placeholder. Slack, release, a swapped or lost target, or leaving flight
    * spends unfinished dwell; a completed weigh's projection lives until the latch ends.
@@ -280,6 +280,7 @@ export const masslineTelemetry = {
     const measuredMassT = physicalMassT(target);
     if (measuredMassT == null) { this._weigh = null; delete telemetry.massWeighing; return; }
     const disc = massDiscrepancy(decl.declaredMassT, measuredMassT);
+    if (!disc) { this._weigh = null; delete telemetry.massWeighing; return; }
     const result = {
       slipId,
       sourceOfferId: decl.sourceOfferId,
