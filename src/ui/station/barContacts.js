@@ -6,6 +6,7 @@
 // with role-specific dialog that pulls real game data (economy events, market
 // intel, mission boards, sector danger, asteroid fields). Read-only except for
 // the mission-accept button which emits ui:acceptMission.
+import { BORROWED_SUN } from '../../data/borrowedSun.js';
 import { lastShiftLocalReport } from '../../data/lastShift.js';
 import { FACTION_META } from '../../data/factions.js';
 import { BINDINGS } from '../bindings.js';
@@ -242,6 +243,25 @@ for (const sec of SECTORS) {
   for (const st of sec.stations) {
     STATION_INDEX.set(st.id, { station: st, sector: sec });
   }
+}
+
+// The visiting carrier publishes its current berth through the existing owner projection.
+// Metadata answers identity and local context only; it never grants docking or service access.
+function barStationInfo(stationId, state) {
+  if (stationId !== BORROWED_SUN.stationId) return STATION_INDEX.get(stationId);
+  const projected = state?.content?.sectors;
+  const sectors = Array.isArray(projected) ? projected
+    : projected && typeof projected === 'object' ? Object.values(projected) : [];
+  let found = null;
+  for (const sector of sectors) {
+    if (!sector || !Array.isArray(sector.stations)) continue;
+    for (const station of sector.stations) {
+      if (station?.id !== stationId) continue;
+      if (found) return null;
+      found = { station, sector };
+    }
+  }
+  return found;
 }
 
 /* ── deterministic RNG (FNV-1a hash + mulberry32 PRNG) ──────────── */
@@ -529,6 +549,8 @@ const SHIFT_END_LINE = 'Shift just turned — the rail is three deep and the tab
 const FESTIVAL_MOOD_LINE = 'The whole berth is keeping the day. Tabs run light, voices run loud.';
 
 export function generateContacts(stationId, state = {}, opts = {}) {
+  const info = barStationInfo(stationId, state);
+  if (stationId === BORROWED_SUN.stationId && !info) return [];
   const seed = fnvHash('bar_contacts_' + stationId);
   const rng  = mulberry32(seed);
   let count = 2 + Math.floor(rng() * 3); // 2-4 contacts
@@ -537,10 +559,9 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   // keeps them all night. Both are deterministic reads of simTime + stationId.
   const pressure = barPressureAt(stationId, state && state.simTime);
   const festival = festivalAt(stationId, state && state.simTime,
-    (STATION_INDEX.get(stationId) || {}).station && STATION_INDEX.get(stationId).station.type);
+    info?.station?.type);
   if (pressure >= 0.6 || festival) count = Math.min(count + 1, 5);
 
-  const info = STATION_INDEX.get(stationId);
   const stationFactionId = info ? info.station.factionId : 'faction_scn';
   const sector = info ? info.sector : SECTORS[0];
 
@@ -743,7 +764,7 @@ function stampChoirReliefMemory(contacts, stationId, state) {
 }
 
 function stampAceRouteRumor(contacts, stationId, state) {
-  const info = STATION_INDEX.get(stationId);
+  const info = barStationInfo(stationId, state);
   const sector = info ? info.sector : null;
   const sectorId = sector ? sector.id : null;
   if (!sectorId) return;
@@ -894,24 +915,24 @@ function commodityName(id) {
   const c = COMMODITY_BY_ID.get(id);
   return c ? c.name : id;
 }
-function stationName(id) {
-  const info = STATION_INDEX.get(id);
+function stationName(id, state) {
+  const info = barStationInfo(id, state);
   return info ? info.station.name : id;
 }
-function sectorForStation(id) {
-  const info = STATION_INDEX.get(id);
+function sectorForStation(id, state) {
+  const info = barStationInfo(id, state);
   return info ? info.sector : null;
 }
 
-function stationFor(stationId) {
-  const info = STATION_INDEX.get(stationId);
+function stationFor(stationId, state) {
+  const info = barStationInfo(stationId, state);
   return info ? info.station : null;
 }
 
 /** Find the sector this stationId belongs to */
-function currentSector(stationId) {
-  const info = STATION_INDEX.get(stationId);
-  return info ? info.sector : SECTORS[0];
+function currentSector(stationId, state) {
+  const info = barStationInfo(stationId, state);
+  return info ? info.sector : stationId === BORROWED_SUN.stationId ? null : SECTORS[0];
 }
 
 function sectorDiscovered(state, sectorId) {
@@ -920,7 +941,8 @@ function sectorDiscovered(state, sectorId) {
 }
 
 export function availableSurveyOffer(state, stationId) {
-  const sec = currentSector(stationId);
+  const sec = currentSector(stationId, state);
+  if (!sec) return null;
   const candidates = [];
   for (const nId of (sec.neighbors || [])) {
     const ns = SECTOR_BY_ID.get(nId);
@@ -943,8 +965,9 @@ export function surveyOfferLabel(offer) {
 }
 
 /** Find a dangerous neighbor sector */
-function dangerousSector(stationId) {
-  const sec = currentSector(stationId);
+function dangerousSector(stationId, state) {
+  const sec = currentSector(stationId, state);
+  if (!sec) return null;
   let worst = null;
   for (const nId of (sec.neighbors || [])) {
     const ns = SECTOR_BY_ID.get(nId);
@@ -1022,8 +1045,9 @@ function combatSlots(slots) {
   return slots.filter((m) => m && (m.type === 'bounty_hunt' || m.type === 'patrol_clear' || m.type === 'escort'));
 }
 
-function blackmarketLead(stationId) {
-  const here = currentSector(stationId);
+function blackmarketLead(stationId, state) {
+  const here = currentSector(stationId, state);
+  if (!here) return null;
   const markets = findBlackmarkets();
   return markets.find((m) => m.sector.id === here.id)
     || markets.find((m) => (here.neighbors || []).includes(m.sector.id))
@@ -1031,8 +1055,9 @@ function blackmarketLead(stationId) {
     || null;
 }
 
-function miningLead(stationId) {
-  const here = currentSector(stationId);
+function miningLead(stationId, state) {
+  const here = currentSector(stationId, state);
+  if (!here) return null;
   const fields = findMiningFields();
   return fields.find((m) => m.sector.id === here.id)
     || fields.find((m) => (here.neighbors || []).includes(m.sector.id))
@@ -1041,8 +1066,8 @@ function miningLead(stationId) {
     || null;
 }
 
-function serviceSummary(stationId) {
-  const st = stationFor(stationId);
+function serviceSummary(stationId, state) {
+  const st = stationFor(stationId, state);
   const services = st && Array.isArray(st.services) ? st.services : [];
   if (!services.length) return 'field repairs only';
   const names = [];
@@ -1056,7 +1081,8 @@ function serviceSummary(stationId) {
 
 export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   const role = contact.role || 'barkeep';
-  const sec = currentSector(stationId);
+  const sec = currentSector(stationId, state);
+  if (!sec) return [{ label: 'Station', text: 'No current Borrowed Sun berth record', kind: 'warn' }];
   const slots = missionBoardSlots(state, stationId);
   const tags = [];
   const add = (label, text, kind = 'info') => {
@@ -1080,29 +1106,29 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
 
   if (role === 'merchant') {
     const route = bestTradeRoute(state, stationId);
-    if (route) add('Route', commodityName(route.cmdtyId) + ' → ' + stationName(route.sellStationId) + ' +' + Math.round(route.spread) + '/u', 'ok');
+    if (route) add('Route', commodityName(route.cmdtyId) + ' → ' + stationName(route.sellStationId, state) + ' +' + Math.round(route.spread) + '/u', 'ok');
     const ev = localEconEvent(state, stationId);
     if (ev) add('Market', commodityName(ev.commodityId) + ' ' + String(ev.type || 'event'), 'warn');
   } else if (role === 'pilot') {
     add('Board', slots.length ? slots.length + ' live contract' + (slots.length === 1 ? '' : 's') : 'board quiet', slots.length ? 'ok' : 'warn');
-    const danger = dangerousSector(stationId);
+    const danger = dangerousSector(stationId, state);
     if (danger) add('Outside', danger.name + ' ' + securityLabel(danger), danger.security < 0.35 ? 'bad' : 'warn');
   } else if (role === 'smuggler') {
-    const market = blackmarketLead(stationId);
+    const market = blackmarketLead(stationId, state);
     if (market) add('Black Market', market.station.name + ' / ' + market.sector.name, market.sector.security < 0.2 ? 'bad' : 'warn');
     add('Scan Risk', sec.security >= 0.6 ? 'high security customs' : 'patrol gaps', sec.security >= 0.6 ? 'bad' : 'ok');
   } else if (role === 'engineer') {
-    add('Station', serviceSummary(stationId), 'ok');
+    add('Station', serviceSummary(stationId, state), 'ok');
     add('Hull Note', sec.hazards && sec.hazards.length ? 'hazards tax armor' : 'routine wear', sec.hazards && sec.hazards.length ? 'warn' : 'info');
   } else if (role === 'bounty_hunter') {
     const combat = combatSlots(slots);
     add('Targets', combat.length ? combat.length + ' combat posting' + (combat.length === 1 ? '' : 's') : 'no clean tags', combat.length ? 'ok' : 'warn');
-    const danger = dangerousSector(stationId);
+    const danger = dangerousSector(stationId, state);
     if (danger) add('Heat', danger.name + ' density ' + Math.round((danger.enemyDensity || 0) * 100) + '%', (danger.enemyDensity || 0) > 0.45 ? 'bad' : 'warn');
   } else if (role === 'miner') {
-    const field = miningLead(stationId);
+    const field = miningLead(stationId, state);
     if (field && field.fields.length) add('Field', field.sector.name + ' / ' + fieldTypeName(field.fields[0].type), field.sector.security < 0.4 ? 'warn' : 'ok');
-    const services = serviceSummary(stationId);
+    const services = serviceSummary(stationId, state);
     add('Buyer', services.includes('market') ? 'sell ore here' : 'find ore buyer', services.includes('market') ? 'ok' : 'warn');
   } else {
     const ev = localEconEvent(state, stationId);
@@ -1168,6 +1194,9 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: "It stays open. The courier doesn't repeat the offer." };
   }
   const state = ctx.state || {};
+  if (stationId === BORROWED_SUN.stationId && !barStationInfo(stationId, state)) {
+    return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
+  }
   if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
   if (contact && contact.id === VONN_FREIGHT_CONTACT_ID && choiceId === 'wrecks') {
@@ -1221,7 +1250,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
 
   const aceRoute = role === 'barkeep' && choiceId === 'rumors'
     ? (() => {
-        const info = STATION_INDEX.get(stationId);
+        const info = barStationInfo(stationId, state);
         const sectorId = info && info.sector ? info.sector.id : null;
         return getActiveAceRouteForSector(sectorId, Number(state?.simTime) || 0);
       })()
@@ -1271,7 +1300,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
         if (events.length > 0) {
           const ev = events[0];
           const cName = commodityName(ev.commodityId);
-          const sName = stationName(ev.stationId);
+          const sName = stationName(ev.stationId, state);
           const dir = (ev.type === 'surplus' || ev.type === 'glut') ? 'down' : 'up';
           return { text: 'Word is there\'s a ' + ev.type + ' affecting ' + cName + ' at ' + sName + '. Prices are ' + dir + '.' };
         }
@@ -1285,7 +1314,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
             surveyOffer: survey,
           };
         }
-        const danger = dangerousSector(stationId);
+        const danger = dangerousSector(stationId, state);
         if (danger) {
           return { text: 'Watch the lanes near ' + danger.name + ' — security is thin out there. Patrols don\'t reach that far.' };
         }
@@ -1299,7 +1328,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
         if (route) {
-          return { text: 'Buy ' + commodityName(route.cmdtyId) + ' here, sell at ' + stationName(route.sellStationId) + ' — good margin right now. About ' + route.spread + ' credits per unit.' };
+          return { text: 'Buy ' + commodityName(route.cmdtyId) + ' here, sell at ' + stationName(route.sellStationId, state) + ' — good margin right now. About ' + route.spread + ' credits per unit.' };
         }
         return { text: 'Markets are tight everywhere. Nothing jumps out right now. Check back after a supply event shakes things up.' };
       }
@@ -1332,7 +1361,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
         return { text: 'Board\'s empty right now. Try a bigger station or come back later — jobs cycle regularly.' };
       }
       if (choiceId === 'outside') {
-        const danger = dangerousSector(stationId);
+        const danger = dangerousSector(stationId, state);
         if (danger) {
           const sec = danger.security < 0.3 ? 'lawless' : danger.security < 0.5 ? 'rough' : 'uneasy';
           return { text: danger.name + ' is ' + sec + ' space. Hostiles patrol the lanes — don\'t fly without shields charged.' };
@@ -1365,14 +1394,14 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     /* ── ENGINEER ──────────────────────────────────────── */
     case 'engineer': {
       if (choiceId === 'tech') {
-        const sec = currentSector(stationId);
+        const sec = currentSector(stationId, state);
         if (sec.security < 0.5) {
           return { text: 'Out here? Shield boosters and hull reinforcement. You\'ll take hits — make sure you can soak them. A good reactor helps everything run smoother too.' };
         }
         return { text: 'Cargo expanders if you\'re trading, mining lasers if you\'re cracking rock. Match the module to the mission. Don\'t waste slots on weapons in safe space.' };
       }
       if (choiceId === 'fix') {
-        const info = STATION_INDEX.get(stationId);
+        const info = barStationInfo(stationId, state);
         const stType = info ? info.station.type : 'station';
         const typeDesc = {
           trade_hub:   'Half the docking clamps need recalibration. Trade hubs run hard.',
@@ -1405,7 +1434,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
         return { text: 'Board\'s dry for combat work. Try the frontier stations — more trouble out there means more bounties.' };
       }
       if (choiceId === 'action') {
-        const sec = currentSector(stationId);
+        const sec = currentSector(stationId, state);
         let worst = null;
         for (const nId of (sec.neighbors || [])) {
           const ns = SECTOR_BY_ID.get(nId);
@@ -1451,7 +1480,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
           }
         }
         if (bestOre) {
-          return { text: commodityName(bestOre.oreId) + ' is fetching good prices at ' + stationName(bestOre.stationId) + ' — ' + Math.round(bestOre.price) + ' cr per unit. Worth the haul.' };
+          return { text: commodityName(bestOre.oreId) + ' is fetching good prices at ' + stationName(bestOre.stationId, state) + ' — ' + Math.round(bestOre.price) + ' cr per unit. Worth the haul.' };
         }
         return { text: 'Ore prices are flat right now. Refineries aren\'t paying premium for anything. Just steady work.' };
       }
@@ -1566,7 +1595,7 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
         if (route) {
-          return { text: 'Take ' + commodityName(route.cmdtyId) + ' to ' + stationName(route.sellStationId) + '. Keep the seal intact, let the spread explain itself, and do not ask why the weight changed.' };
+          return { text: 'Take ' + commodityName(route.cmdtyId) + ' to ' + stationName(route.sellStationId, state) + '. Keep the seal intact, let the spread explain itself, and do not ask why the weight changed.' };
         }
         return { text: 'No clean spread today. Contract 47-A is still the only line worth watching, and it is still pending.' };
       }
@@ -1609,7 +1638,7 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
     case 'hale':
       if (choiceId === 'work') return { text: 'There is always inspection work. Hold position, show the manifest, pay the second fine if the first one was inconvenient.' };
       if (choiceId === 'outside') {
-        const danger = dangerousSector(stationId);
+        const danger = dangerousSector(stationId, state);
         const name = danger ? danger.name : 'the outer lanes';
         return { text: name + ' is not lawless. It is documented poorly, which is worse.' };
       }
@@ -1619,7 +1648,7 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
     case 'mira':
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
-        if (route) return { text: 'Route is clear to ' + stationName(route.sellStationId) + '. Payment on delivery. The seal code should look familiar by then.' };
+        if (route) return { text: 'Route is clear to ' + stationName(route.sellStationId, state) + '. Payment on delivery. The seal code should look familiar by then.' };
         return { text: 'No route I would put my name on. Plenty I would put someone else on.' };
       }
       if (choiceId === 'market') return { text: 'Cargo insurance wants verified seals. Verification writes to the same database freight uses, so the seal becomes true when it arrives.' };
@@ -1635,7 +1664,7 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
     case 'drift':
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
-        if (route) return { text: commodityName(route.cmdtyId) + ' moves well to ' + stationName(route.sellStationId) + '. Quota met, credit transferred, loss rounded down.' };
+        if (route) return { text: commodityName(route.cmdtyId) + ' moves well to ' + stationName(route.sellStationId, state) + '. Quota met, credit transferred, loss rounded down.' };
         return { text: 'No margin today. Wait for the ledger to need a different answer.' };
       }
       if (choiceId === 'market') return { text: 'The exchange does not audit small losses. Enough small losses and a whole planet starts buying air.' };
