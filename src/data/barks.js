@@ -1369,7 +1369,8 @@ const HISTORY_STANCE_PRECEDENCE = Object.freeze(['hunts', 'fears', 'offers_work'
  */
 export function historyBarkFor(factionId, facts = {}, rng = 0) {
   if (!facts || facts.hasHistory !== true) return '';
-  const families = (factionId && HISTORY_RECOGNITION[factionId]) || HISTORY_RECOGNITION.faction_free;
+  const families = (factionId && Object.hasOwn(HISTORY_RECOGNITION, factionId) && HISTORY_RECOGNITION[factionId])
+    || HISTORY_RECOGNITION.faction_free;
   const captains = Array.isArray(facts.captains) ? facts.captains : [];
   let family = null;
   let captain = null;
@@ -2024,7 +2025,9 @@ export function barGreetingBarkFor(factionId, role, index) {
  * @returns {string|null} a non-empty line, or null if the corpus is empty.
  */
 export function barApproachBarkFor(factionId, index) {
-  return barLineAt(BAR_APPROACH_BARKS[factionId] || BAR_APPROACH_BARKS.faction_free, index);
+  const cell = (factionId && Object.hasOwn(BAR_APPROACH_BARKS, factionId) && BAR_APPROACH_BARKS[factionId])
+    || BAR_APPROACH_BARKS.faction_free;
+  return barLineAt(cell, index);
 }
 
 // ── Witness reaction: somebody watched the crime ────────────────────────────────────────────
@@ -2678,7 +2681,7 @@ export const LAW_STEP_BARKS = Object.freeze({
 
 /** The lawful-register receipt line for a law event; null for anything outside the corpus. */
 export function lawStepBarkFor(eventName) {
-  const line = eventName && LAW_STEP_BARKS[eventName];
+  const line = eventName && Object.hasOwn(LAW_STEP_BARKS, eventName) && LAW_STEP_BARKS[eventName];
   return typeof line === 'string' && line.length ? line : null;
 }
 
@@ -2781,7 +2784,7 @@ export const PASSENGER_BEATS = Object.freeze({
 
 /** One line from a passenger corpus by numeric index (0..2^32). Deterministic; never empty. */
 export function passengerBeatLine(kind, index) {
-  const pool = PASSENGER_BEATS[kind];
+  const pool = (kind && Object.hasOwn(PASSENGER_BEATS, kind)) ? PASSENGER_BEATS[kind] : null;
   if (!Array.isArray(pool) || !pool.length) return '';
   const i = (Number.isFinite(index) ? Math.abs(Math.trunc(index)) : 0) % pool.length;
   const line = pool[i];
@@ -3117,11 +3120,11 @@ export const SECTOR_GREETING_BARKS = Object.freeze({
  * deterministic per-hull index, so the mix is save-stable.
  */
 export function sectorGreetingBarkFor(sectorId, index) {
-  const lines = (sectorId && SECTOR_GREETING_BARKS[sectorId]) || null;
+  const lines = (sectorId && Object.hasOwn(SECTOR_GREETING_BARKS, sectorId) && SECTOR_GREETING_BARKS[sectorId]) || null;
   if (!lines || lines.length === 0) return null;
   const n = Number(index);
   if (!Number.isFinite(n) || n % 2 !== 0) return null;
-  const pick = Math.floor(n / 2) % lines.length;
+  const pick = ((Math.floor(n / 2) % lines.length) + lines.length) % lines.length;
   const line = lines[pick];
   return (typeof line === 'string' && line.length) ? line : null;
 }
@@ -3130,6 +3133,7 @@ export default {
   BARKS,
   BARK_FACTIONS,
   BARK_SITUATIONS,
+  BARK_EVENT_SITUATIONS,
   CONTACT_VOICE_REGISTERS,
   MAERA_FLIGHT_LINES,
   HULL_RECOGNITION,
@@ -3144,6 +3148,11 @@ export default {
   TUMBLE_RAKE_BARKS,
   LAW_STEP_BARKS,
   SECTOR_GREETING_BARKS,
+  BAR_GREETING_BARKS,
+  BAR_APPROACH_BARKS,
+  RIVAL_SCAVENGER_REGISTER,
+  FREIGHT_RAIDER_ESCAPE_REGISTER,
+  GRANDEE_REGISTER,
   sectorGreetingBarkFor,
   FRONTIER_FIRST_NAMES,
   FRONTIER_LAST_NAMES,
@@ -3152,17 +3161,24 @@ export default {
   barkFor,
   hullRecognitionBarkFor,
   historyBarkFor,
+  barGreetingBarkFor,
+  barApproachBarkFor,
   witnessCrimeBarkFor,
   pursuitBarkFor,
   surrenderBarkFor,
   escapeTauntBarkFor,
   podHuntBarkFor,
   oreFloodBarkFor,
+  dockDeedBarkFor,
   tumbleRakeBarkFor,
   lawStepBarkFor,
+  lawResponseBarkFor,
   passengerBeatLine,
   witnessSeamLineFor,
   syncWitnessSeamVoice,
+  rivalScavengerLineFor,
+  freightRaiderEscapeBarkFor,
+  grandeeHailFor,
   TOURIST_HAIL_REGISTER,
   HAULER_REGISTER,
   COURIER_HAIL_REGISTER,

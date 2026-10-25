@@ -60,6 +60,12 @@ if (argv.includes('--prune') && (!writeAll || checkOnly)) {
   console.error('--prune only applies to --all without --check');
   process.exit(2);
 }
+// Bare --check would audit only the 16 representative clips + 14 blind clips yet still print
+// "(verified)" — a subset pass presented as the full corpus gate. Require the complete audit.
+if (checkOnly && !writeAll) {
+  console.error('--check requires --all — a representative-only audit must not report a full verify');
+  process.exit(2);
+}
 
 function wavFromPcm(pcm) {
   return encodeWavPcm16(pcm, SR);

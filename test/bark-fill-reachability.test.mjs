@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import {
   BARKS, BARK_FACTIONS, BARK_SITUATIONS, BARK_EVENT_SITUATIONS, barkFor,
   HULL_RECOGNITION, hullRecognitionBarkFor,
+  HISTORY_RECOGNITION, historyBarkFor,
   BAR_GREETING_BARKS, barGreetingBarkFor,
+  BAR_APPROACH_BARKS, barApproachBarkFor,
+  SECTOR_GREETING_BARKS, sectorGreetingBarkFor,
   WITNESS_CRIME_BARKS, witnessCrimeBarkFor,
   PURSUIT_BARKS, pursuitBarkFor,
   SURRENDER_BARKS, surrenderBarkFor,
@@ -13,6 +16,9 @@ import {
   dockDeedBarkFor,
   rivalScavengerLineFor,
   witnessSeamLineFor,
+  lawStepBarkFor,
+  passengerBeatLine,
+  TUMBLE_RAKE_BARKS, tumbleRakeBarkFor,
 } from '../src/data/barks.js';
 import { BARK_SITUATION_FILL, BARK_CELL_MIN, topUpBarkSituationCells } from '../src/data/barkSituationFill.js';
 import { resolveBarkVoice, resolveVoiceRegister, identifyRegisterFromPcm, FACTION_VOICE_REGISTERS } from '../src/audio/barkVoice.js';
@@ -150,6 +156,15 @@ test('prototype-keyed ids take the documented fallback at every selector — nev
     const expectedHull = HULL_RECOGNITION.faction_free.map((l) => l.replace(/\{ship\}/g, 'that hull').replace(/\{class\}/g, 'hull'));
     assert.ok(expectedHull.includes(hullRecognitionBarkFor(key, 0, {})), `hullRecognitionBarkFor(${key}) must speak faction_free`);
     assert.ok(BAR_GREETING_BARKS.faction_free.any.includes(barGreetingBarkFor(key, key, 0)), `barGreetingBarkFor(${key}) must speak faction_free.any`);
+    assert.ok(BAR_APPROACH_BARKS.faction_free.includes(barApproachBarkFor(key, 0)), `barApproachBarkFor(${key}) must speak faction_free`);
+    // kills>0 qualifies the 'kills' family — a prototype key must still reach faction_free,
+    // not return '' and silently eat the line on the live scan path.
+    const expectedHistory = HISTORY_RECOGNITION.faction_free.kills.map((l) =>
+      l.replace(/\{ship\}/g, 'that hull').replace(/\{kills\}/g, '2').replace(/\{captain\}/g, 'the captain'));
+    assert.ok(expectedHistory.includes(historyBarkFor(key, { hasHistory: true, kills: 2 }, 0)), `historyBarkFor(${key}) must speak faction_free`);
+    assert.equal(sectorGreetingBarkFor(key, 0), null, `sectorGreetingBarkFor(${key}) must return null for an unknown sector`);
+    assert.equal(lawStepBarkFor(key), null, `lawStepBarkFor(${key}) must return null for an unknown event`);
+    assert.equal(passengerBeatLine(key, 0), '', `passengerBeatLine(${key}) must return '' for an unknown kind`);
     assert.ok(WITNESS_CRIME_BARKS.faction_free.includes(witnessCrimeBarkFor(key, 0)), `witnessCrimeBarkFor(${key}) must speak faction_free`);
     assert.ok(PURSUIT_BARKS.faction_free.includes(pursuitBarkFor(key, 0)), `pursuitBarkFor(${key}) must speak faction_free`);
     assert.ok(SURRENDER_BARKS.faction_free.includes(surrenderBarkFor(key, 0)), `surrenderBarkFor(${key}) must speak faction_free`);
@@ -167,4 +182,8 @@ test('prototype-keyed ids take the documented fallback at every selector — nev
   }
   assert.equal(identifyRegisterFromPcm(null), null, 'identifyRegisterFromPcm(null) must return null, not throw');
   assert.equal(identifyRegisterFromPcm([]), null, 'identifyRegisterFromPcm([]) must return null, not throw');
+  // Index selectors wrap negatives into range like pickIndex — lines[-1] must never be null.
+  assert.ok(TUMBLE_RAKE_BARKS.includes(tumbleRakeBarkFor(-1)), 'tumbleRakeBarkFor(-1) must wrap into the corpus');
+  assert.ok(SECTOR_GREETING_BARKS.sector_helios_prime.includes(sectorGreetingBarkFor('sector_helios_prime', -2)),
+    'sectorGreetingBarkFor(-2) must wrap into the sector cell');
 });
