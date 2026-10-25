@@ -149,8 +149,10 @@ export function bombWords(act) {
     };
   }
   return {
-    name: 'Bomb', verb: 'Rack empty', role: 'Detonate', glyph: '',
-    sentence: 'Your bomb rack is empty. Restock at a station shipworks; a charge in the hold is thrown instead.',
+    name: 'Bomb', verb: 'Rack empty', role: 'Detonate', glyph: act && act.kind === 'dry' ? act.id : '',
+    sentence: act && act.kind === 'dry'
+      ? `Your ${act.name} socket is empty. Restock at a station shipworks; a charge in the hold is thrown instead.`
+      : 'Your bomb rack is empty. Restock at a station shipworks; a charge in the hold is thrown instead.',
     limits: [], target: 'your aim', range: null, cost: { kind: 'stock', unit: 'bomb' }, cooldownS: 0, combos: [],
     sources: { stock: 'bombs.rack.cells' },
   };

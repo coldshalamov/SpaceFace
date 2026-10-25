@@ -140,7 +140,15 @@ export function resolveBombAction(state) {
   const cell = loaded ? (loaded.find((c) => c.id === bays.selectedId) || loaded[0]) : null;
   const id = cell ? cell.id : (cells ? null : bays.selectedId);
   const def = id && BOMB_DEFS[id] ? BOMB_DEFS[id] : (cells ? null : bombDef(bays.selectedId));
-  if (!def) return { action: 'empty', kind: 'none', id: '', name: 'Bomb rack', short: 'Rack', stock: 0, capacity: null, owner: 'bombs.rack' };
+  if (!def) {
+    // A fitted cell that has been shot dry is still that family (an unassigned socket is the only empty rack).
+    const dry = cells ? cells.find((c) => c && c.count === 0 && c.id != null && BOMB_DEFS[c.id]) : null;
+    if (dry) {
+      const d = BOMB_DEFS[dry.id];
+      return { action: 'empty', kind: 'dry', id: d.id, name: d.name, short: payloadShortName(d), stock: 0, capacity: d.magazine || null, owner: 'bombs.rack.cells' };
+    }
+    return { action: 'empty', kind: 'none', id: '', name: 'Bomb rack', short: 'Rack', stock: 0, capacity: null, owner: 'bombs.rack' };
+  }
   return { action: 'drop', kind: 'bay', id: def.id, name: def.name, short: payloadShortName(def), stock: cell ? cell.count : null,
     capacity: def.magazine || null, owner: 'bombs.rack.cells' };
 }
@@ -395,7 +403,8 @@ export function createArsenalPresentation() {
     b.charges = bomb.stock == null ? null : { count: bomb.stock, capacity: bomb.capacity };
     const stockText = bomb.stock == null ? '' : ` ×${bomb.stock}`;
     b.next = bomb.action === 'throw' ? 'throw' : bomb.action === 'callin' ? 'call in' : bomb.action === 'drop' ? 'drop' : '';
-    b.label = bomb.action === 'empty' ? 'Bomb · Rack empty' : `Bomb · ${bomb.short}${stockText} · ${b.next}`;
+    b.label = bomb.action === 'empty' ? (bomb.kind === 'dry' ? `Bomb · ${bomb.short} empty` : 'Bomb · Rack empty')
+      : `Bomb · ${bomb.short}${stockText} · ${b.next}`;
     if (bomb.action !== 'empty') b.sentence = `Next press: ${b.next} ${bomb.name}${stockText}. ${b.sentence}`;
     // — Rig: the CURRENT function before use.
     const rig = entries.rig;

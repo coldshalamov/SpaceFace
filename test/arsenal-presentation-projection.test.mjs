@@ -158,6 +158,22 @@ test('BOMB names the exact payload, its stock, and whether the next press throws
   assert.equal(resolveBombAction(state).action, 'empty');
 });
 
+test('a retired payload still in an old rack keeps its own name, never a power\'s (no "Bomb · Pull" beside the Pull power)', () => {
+  for (const def of Object.values(BOMB_DEFS)) {
+    const state = makeState({ bombs: { selectedId: def.id, rack: { cells: [{ id: def.id, count: 2 }] } } });
+    const bomb = read(state).entries.bomb;
+    assert.equal(bomb.glyph, def.id, `${def.id} draws its own mark`);
+    assert.match(bomb.label, /^Bomb · .+ ×2 · drop$/);
+    assert.doesNotMatch(bomb.label, /^Bomb · (Pull|Shove|Pin|Rig|Line|Gyre) ×/, `${def.id}: the payload is never named like a power`);
+    assert.ok(bomb.sentence.includes(def.name), `${def.id}: the sentence names the payload`);
+  }
+  // a fitted-but-dry socket keeps the family and says empty rather than inventing a payload
+  const dry = makeState({ bombs: { selectedId: 'bomb_frag', rack: { cells: [{ id: 'bomb_frag', count: 0 }] } } });
+  assert.equal(read(dry).entries.bomb.label, 'Bomb · Frag empty');
+  assert.equal(read(dry).entries.bomb.glyph, 'bomb_frag', 'a dry fitted socket keeps its own mark');
+  assert.equal(read(makeState({ bombs: { selectedId: null, rack: { cells: [null, null] } } })).entries.bomb.glyph, '', 'an unassigned rack has no payload mark');
+});
+
 // The projection and the press must agree. Drive the REAL input owner (the same harness the hold-preview
 // test uses) in each ordnance situation and compare which internal flag fired with what the label says.
 function bootInput() {
