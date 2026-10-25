@@ -176,6 +176,30 @@ const rfClosestOnSegment = (pos, a, b) => {
   const x = a.x + u.x * s, z = a.z + u.z * s;
   return { x, z, distance: Math.hypot(pos.x - x, pos.z - z) };
 };
+/** Union occupancy: true when some point inside the aperture disc clears every
+ * intruding body by `reach`. The per-solid strip test answers "is there a channel
+ * beside this one rock"; this answers the question the hull actually asks. The
+ * scan is anchored on the gate center so a free line through the middle can
+ * never fall between samples; a free sliver thinner than the scan step is
+ * treated as unthreadable, which is the conservative call for authored gates. */
+const rfGateThreads = (gate, aperture, intruders, reach) => {
+  const step = Math.max(6, reach / 4);
+  const span = Math.ceil(aperture / step);
+  for (let kx = -span; kx <= span; kx++) {
+    const ox = kx * step;
+    for (let kz = -span; kz <= span; kz++) {
+      const oz = kz * step;
+      if (ox * ox + oz * oz > aperture * aperture) continue;
+      const x = gate.x + ox, z = gate.z + oz;
+      let clear = true;
+      for (const s of intruders) {
+        if (Math.hypot(x - s.x, z - s.z) < s.r + reach - RF02_EPS) { clear = false; break; }
+      }
+      if (clear) return true;
+    }
+  }
+  return false;
+};
 
 /**
  * RF-02 validation of one authored circuit.
@@ -277,13 +301,27 @@ export function validateRacingCircuit(course, options = {}) {
 
   // Static clearance: a gate admits the hull when one side of the aperture still
   // carries a full-body channel; the grid is the hold strip behind the start line.
+  // `reach` is the hull radius plus the same body margin the strip check prices in.
+  const hullReach = hullRadiusWU + 4;
   for (let i = 0; i < n; i++) {
     if (!rfFinite(gates[i]) || aperture <= 0) break;
+    let intruders = null;
     for (const solid of solids) {
       const r = Number(solid && (solid.radiusWU ?? solid.radius)) || 0;
       if (!rfFinite(solid) || r <= 0) continue;
       const d = rfDist(solid, gates[i]);
       if (aperture + d - r < 2 * hullRadiusWU + 8 - RF02_EPS) push('blocked_gate', i, solid.id);
+      if (d - r < aperture + hullReach + RF02_EPS) {
+        (intruders || (intruders = [])).push({ x: solid.x, z: solid.z, r, d, id: solid.id });
+      }
+    }
+    // A wall needs no single offender: two or more bodies can overlap their
+    // clearance so no point inside the aperture still fits the hull. The per-solid
+    // strip check above cannot see that union, so ask the question directly.
+    // (One intruder alone can never union-block without already failing the strip.)
+    if (intruders && intruders.length >= 2 && !rfGateThreads(gates[i], aperture, intruders, hullReach)) {
+      intruders.sort((a, b) => (a.d - a.r) - (b.d - b.r));
+      push('blocked_gate', i, intruders[0].id);
     }
   }
   if (rfFinite(gates[0]) && rfFinite(gates[1])) {
@@ -310,7 +348,7 @@ export function validateRacingCircuit(course, options = {}) {
     const from = Array.isArray(edge) ? edge[0] : edge && edge.from;
     const to = Array.isArray(edge) ? edge[1] : edge && edge.to;
     if (!Number.isInteger(from) || !Number.isInteger(to)
-        || from < 1 || to < 1 || from > lastInterior || to > lastInterior || from === to) {
+        || from < 1 || to < 1 || from > lastInterior || to > lastInterior || from >= to) {
       push('invalid_branch', Number.isInteger(from) ? from : undefined);
     }
   }

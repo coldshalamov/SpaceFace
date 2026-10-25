@@ -37,10 +37,15 @@ function projectPhase(nativePhase) {
   return 'clear'; // calm, quiet, gather, discharge — the window to fly
 }
 
-/** waitPos: `waitBackWU` behind the served gate along its incoming leg, clamped to the leg. */
+/** waitPos: `waitBackWU` behind the served gate along its incoming leg, clamped to the leg.
+ *  Gate 0 of a closed circuit inherits its incoming leg from the seam approach. */
 function waitPosFor(gates, gateIndex, waitBackWU) {
   const gate = gates[gateIndex];
-  const before = gates[gateIndex - 1];
+  let before = gates[gateIndex - 1];
+  if (!before && gateIndex === 0 && gates.length > 2) {
+    const first = gates[0], last = gates[gates.length - 1];
+    if (Math.hypot(first.x - last.x, first.z - last.z) <= 1) before = gates[gates.length - 2];
+  }
   if (!gate || !before) return null;
   const dx = gate.x - before.x, dz = gate.z - before.z;
   const len = Math.hypot(dx, dz) || 1;
@@ -84,9 +89,12 @@ export function projectRacingSectorHazards(state, params, definitions, previousC
   const player = state && state.entities && state.entities.get
     ? state.entities.get(state.playerId) : null;
   const previousById = new Map((previousCues || []).map((cue) => [cue.id, cue]));
+  const seen = new Set();
   for (let i = 0; i < definitions.length; i++) {
     const def = definitions[i];
-    if (!def || typeof def.id !== 'string') continue;
+    // One record per def id — a repeated id would alias the same cue twice.
+    if (!def || typeof def.id !== 'string' || seen.has(def.id)) continue;
+    seen.add(def.id);
     const cue = cueFor(previousById.get(def.id), def);
     let pos = null;
     let phase = 'unavailable';
@@ -127,17 +135,20 @@ export function projectRacingSectorHazards(state, params, definitions, previousC
       const zone = sector && Array.isArray(sector.hazards) ? sector.hazards[def.zoneIndex] : null;
       if (zone && Number.isFinite(zone.radius)) {
         const center = zone.center || zone.pos;
-        pos = sectorLocalToGlobalForSector({ x: center.x, z: center.z }, sectorId);
-        // Static zones have no cycle; they matter only on their associated leg.
-        const near = player && player.pos
-          && Math.hypot(player.pos.x - pos.x, player.pos.z - pos.z) <= zone.radius + 200;
-        phase = near ? 'active' : 'clear';
+        if (center && Number.isFinite(center.x) && Number.isFinite(center.z)) {
+          pos = sectorLocalToGlobalForSector({ x: center.x, z: center.z }, sectorId);
+          // Static zones have no cycle; they matter only on their associated leg.
+          const near = player && player.pos
+            && Math.hypot(player.pos.x - pos.x, player.pos.z - pos.z) <= zone.radius + 200;
+          phase = near ? 'active' : 'clear';
+        }
       }
     }
     cue.phase = phase;
     cue.countdownS = countdownS;
     if (pos) { cue.pos.x = pos.x; cue.pos.z = pos.z; }
-    const waitPos = waitPosFor(gates, def.gateIndex, def.waitBackWU);
+    // An uncomputable hold point inherits the hazard position, never the world origin.
+    const waitPos = waitPosFor(gates, def.gateIndex, def.waitBackWU) || pos;
     if (waitPos) { cue.waitPos.x = waitPos.x; cue.waitPos.z = waitPos.z; }
     // Transition bookkeeping: the owner announces each entry into `warning` once.
     cue.announceWarning = phase === 'warning' && cue._lastPhase !== 'warning';

@@ -258,6 +258,31 @@ test('RF-02 rejects authoring defects with exact diagnostic codes', () => {
   assert.ok(gridBlock.errors.some((e) => e.code === 'blocked_grid' && e.bodyId === 'gridrock'));
   const branch = validateRacingCircuit(baseCourse(), { ...OPTS, branchGraph: [{ from: 1, to: 1 }] });
   assert.ok(codes(branch).includes('invalid_branch'));
+  // A rejoin before the entry is not a branch — the declared "entry before rejoin"
+  // contract rejects {from:4,to:2} and the 2->4,4->2 cycle with it.
+  assert.ok(codes(validateRacingCircuit(baseCourse(),
+    { ...OPTS, branchGraph: [{ from: 4, to: 2 }] })).includes('invalid_branch'));
+  assert.ok(codes(validateRacingCircuit(baseCourse(),
+    { ...OPTS, branchGraph: [{ from: 2, to: 4 }, { from: 4, to: 2 }] })).includes('invalid_branch'));
+  // Four rocks ring gate 1 so no point inside its aperture fits the hull — each
+  // one alone clears the single-solid strip check, but the union still blocks.
+  const wall = validateRacingCircuit(baseCourse(), {
+    ...OPTS, solids: [45, 135, 225, 315].map((deg, i) => ({
+      id: `w${i}`, x: 800 + Math.cos((deg * Math.PI) / 180) * 95,
+      z: Math.sin((deg * Math.PI) / 180) * 95, radius: 60,
+    })),
+  });
+  assert.ok(wall.errors.some((e) => e.code === 'blocked_gate' && e.gateIndex === 1),
+    `pincered gate: ${JSON.stringify(wall.errors)}`);
+  // The union check must not swallow a gate that still threads around two rocks.
+  const threads = validateRacingCircuit(baseCourse(), {
+    ...OPTS, solids: [
+      { id: 'n1', x: 800, z: 130, radius: 60 },
+      { id: 'n2', x: 800, z: -140, radius: 50 },
+    ],
+  });
+  assert.ok(!codes(threads).includes('blocked_gate'),
+    `threadable pair must not block: ${JSON.stringify(threads.errors)}`);
   const boost = baseCourse(); boost.boostGateIndex = 2;
   boost.gates[3] = { x: 1250, z: 660 }; // exit leg far too short to bleed boost
   assert.ok(codes(validateRacingCircuit(boost, OPTS)).includes('insufficient_boost_exit'));
@@ -441,6 +466,51 @@ test('hazard warnings announce once per transition and stay leg-scoped in run.cu
     const ids = warnings.map((w) => `${w.id}`);
     assert.equal(new Set(ids).size, ids.length, 'no duplicate warning ids in one cycle window');
     pieces.stop('done');
+  } finally { f.dispose(); }
+});
+
+test('hazard projection holds its contract on malformed defs', async () => {
+  const f = await sectorFixture('sector_kepler_scar');
+  try {
+    const level = raceLevelById('level_kepler_scar');
+    const mission = { params: { courseSectorId: level.sectorId, gates: level.course.gates, nextGate: 3 } };
+    // A repeated def id projects once — the published array never aliases a record.
+    const dupes = projectRacingSectorHazards(f.state, mission.params,
+      [level.sectorHazards[0], level.sectorHazards[0]], []);
+    assert.equal(dupes.length, 1);
+    // A served gate outside the chain waits on the hazard body, not the origin.
+    const offchain = projectRacingSectorHazards(f.state, mission.params,
+      [{ ...level.sectorHazards[0], gateIndex: 99 }], [])[0];
+    assert.equal(offchain.waitPos.x, offchain.pos.x);
+    assert.equal(offchain.waitPos.z, offchain.pos.z);
+    assert.ok(Number.isFinite(offchain.waitPos.x), 'finite hold point');
+    // Gate 0 of the closed lap holds on the seam approach, not at the origin.
+    const zero = projectRacingSectorHazards(f.state, mission.params,
+      [{ ...level.sectorHazards[0], gateIndex: 0 }], [])[0];
+    assert.ok(Number.isFinite(zero.waitPos.x) && Number.isFinite(zero.waitPos.z));
+    assert.ok(Math.hypot(zero.waitPos.x - zero.pos.x, zero.waitPos.z - zero.pos.z) > 1,
+      'the gate-0 hold comes off the seam approach, not the hazard position');
+    // A zone row with a radius but no center is unavailable — never a thrown tick.
+    const sector = SECTOR_BY_ID.get(level.sectorId);
+    const authored = sector.hazards[0];
+    try {
+      sector.hazards[0] = { type: 'radiation', radius: 400 };
+      const broken = projectRacingSectorHazards(f.state, mission.params,
+        [{ id: 'broken_zone', kind: 'staticZone', zoneIndex: 0, gateIndex: 7 }], [])[0];
+      assert.equal(broken.phase, 'unavailable');
+    } finally { sector.hazards[0] = authored; }
+    // A courseSectorId the player is not in still projects in the course's own
+    // frame — the hazard's true global position, not a fabricated local one.
+    const elsewhere = await sectorFixture('sector_helios_prime');
+    try {
+      const cue = projectRacingSectorHazards(elsewhere.state, mission.params,
+        level.sectorHazards, [])[0];
+      const zone = sector.hazards[level.sectorHazards[0].zoneIndex];
+      const expected = sectorLocalToGlobalForSector({ x: zone.center.x, z: zone.center.z }, level.sectorId);
+      assert.equal(cue.pos.x, expected.x);
+      assert.equal(cue.pos.z, expected.z);
+      assert.equal(cue.phase, 'clear', 'a distant pilot does not stand inside the zone');
+    } finally { elsewhere.dispose(); }
   } finally { f.dispose(); }
 });
 
