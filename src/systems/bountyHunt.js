@@ -1128,8 +1128,8 @@ function settleQuarryDown(state, bus, killed, contractId, quarryId, byPlayer) {
   const qhunt = (killed && killed.data && killed.data.bountyHunt) || {};
   if (byPlayer) {
     recordOutcome(state, bus, contractId, 'player_helped_hunter', { id: quarryId, killerId: state.playerId });
-    releaseHunterFor(state, quarryId);
     const hunterFaction = hunterFactionForQuarry(state, quarryId);
+    releaseHunterFor(state, quarryId);
     emit(bus, 'economy:grantCredits', { amount: QT.hunterCutCr, reason: 'bounty_collectors_cut', contractId });
     if (hunterFaction) {
       emit(bus, 'faction:repDelta', {
