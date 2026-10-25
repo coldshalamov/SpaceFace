@@ -1,6 +1,6 @@
 // Struck Bell — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
-import { compileVignette } from '../../systems/vignetteInterpreter.js';
+import { createStruckBellRuntime } from '../../systems/struckBellRuntime.js';
 
 export const spec = {
   "id": "scene_struck_bell",
@@ -12,162 +12,46 @@ export const spec = {
       "role": "runner",
       "archetype": "choir_zealot",
       "factionId": "faction_choir",
-      "dx": 0,
-      "dz": 0,
+      "dx": -20,
+      "dz": 150,
       "scanLabel": "BELL KEEPER"
     },
     {
       "role": "ship_1",
       "archetype": "choir_zealot",
       "factionId": "faction_choir",
-      "dx": -150,
-      "dz": 90,
+      "dx": 130,
+      "dz": 160,
       "scanLabel": "BELL KEEPER"
     },
     {
       "role": "ship_2",
       "archetype": "customs_cutter",
       "factionId": "faction_vael",
-      "dx": 160,
-      "dz": 70,
+      "dx": -140,
+      "dz": -160,
       "scanLabel": "VAEL OBSERVER"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Strike the low bell",
-      "playerLine": "I will throw at the low spire on the keeper's count."
+      "label": "Strike the practice bell",
+      "playerLine": "I will release the marked stone toward your practice bell."
     },
     {
       "id": "b",
-      "label": "Hold the observer's fix",
-      "playerLine": "I will hold the observer's bearing while the bells answer."
+      "label": "Hold Vael bearing · Choir disapproves",
+      "playerLine": "I will hold a quiet bearing for eight measured readings."
     },
     {
       "id": "c",
-      "label": "Leave the song",
-      "playerLine": "I am not the hand this song is waiting for."
+      "label": "Leave the lesson",
+      "playerLine": "I will leave your practice set alone."
     }
   ],
   "timeoutChoice": "c",
-  "phases": [
-    {
-      "id": "spawn",
-      "verb": "spawn",
-      "next": "prop"
-    },
-    {
-      "id": "prop",
-      "verb": "prop",
-      "scanLabel": "SINGING CRYSTAL",
-      "dx": 54,
-      "dz": -28,
-      "radius": 9,
-      "mass": 48,
-      "next": "hail"
-    },
-    {
-      "id": "hail",
-      "verb": "say",
-      "line": "CANTOR: The garden answers one struck stone at a time. Throw low, and in order.",
-      "channel": "info",
-      "primary": true,
-      "next": "run"
-    },
-    {
-      "id": "run",
-      "verb": "motion",
-      "motion": "orbit",
-      "seconds": 6,
-      "next": "a0"
-    },
-    {
-      "id": "a0",
-      "verb": "say",
-      "line": "The crystal spires ring when anything moves; the keepers are tuning for a song nobody finished.",
-      "channel": "info",
-      "next": "offer"
-    },
-    {
-      "id": "offer",
-      "verb": "offer",
-      "motion": "orbit",
-      "windowS": 22,
-      "onChoice": {
-        "a": "say_a",
-        "b": "say_b",
-        "c": "say_c"
-      }
-    },
-    {
-      "id": "say_a",
-      "verb": "say",
-      "line": "The low bell answered in order. The keepers marked your count.",
-      "channel": "info",
-      "next": "grant_a"
-    },
-    {
-      "id": "grant_a",
-      "verb": "grant",
-      "amount": 30,
-      "reason": "scene_struck_bell",
-      "next": "rep_a"
-    },
-    {
-      "id": "rep_a",
-      "verb": "rep",
-      "factionId": "faction_choir",
-      "delta": 2,
-      "reason": "scene_struck_bell",
-      "next": "resolve_a"
-    },
-    {
-      "id": "resolve_a",
-      "verb": "resolve",
-      "outcome": "a"
-    },
-    {
-      "id": "say_b",
-      "verb": "say",
-      "line": "The observer's trace held. The song stayed unfinished, but written.",
-      "channel": "info",
-      "next": "rep_b_runner"
-    },
-    {
-      "id": "rep_b_runner",
-      "verb": "rep",
-      "factionId": "faction_vael",
-      "delta": 1,
-      "reason": "scene_struck_bell",
-      "next": "rep_b_authority"
-    },
-    {
-      "id": "rep_b_authority",
-      "verb": "rep",
-      "factionId": "faction_choir",
-      "delta": -1,
-      "reason": "scene_struck_bell",
-      "next": "resolve_b"
-    },
-    {
-      "id": "resolve_b",
-      "verb": "resolve",
-      "outcome": "b"
-    },
-    {
-      "id": "say_c",
-      "verb": "say",
-      "line": "You left the garden to the keepers and the ringing.",
-      "channel": "info",
-      "next": "resolve_c"
-    },
-    {
-      "id": "resolve_c",
-      "verb": "resolve",
-      "outcome": "c"
-    }
-  ]
+  "phases": []
 };
 
 export const encounterOrder = 925;
@@ -202,7 +86,7 @@ export const trigger = deepFreeze({
     "externalOnly": true
   }
 });
-export const runtime = compileVignette(spec);
+export const runtime = createStruckBellRuntime(spec);
 export default defineEncounter(trigger, {
   "shape": {
     "situation": "anomaly",
@@ -219,29 +103,29 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "Struck Bell",
-  "primaryLine": "CANTOR: The garden answers one struck stone at a time. Throw low, and in order.",
+  "primaryLine": "CANTOR: Our practice bell is not the Shrine’s song. Throw your stone, or log a bearing for Vael; the keepers will resent that record.",
   "factionId": "faction_choir",
   "choices": [
     {
       "id": "a",
-      "label": "Strike the low bell",
-      "playerLine": "I will throw at the low spire on the keeper's count."
+      "label": "Strike the practice bell",
+      "playerLine": "I will release the marked stone toward your practice bell."
     },
     {
       "id": "b",
-      "label": "Hold the observer's fix",
-      "playerLine": "I will hold the observer's bearing while the bells answer."
+      "label": "Hold Vael bearing · Choir disapproves",
+      "playerLine": "I will hold a quiet bearing for eight measured readings."
     },
     {
       "id": "c",
-      "label": "Leave the song",
-      "playerLine": "I am not the hand this song is waiting for."
+      "label": "Leave the lesson",
+      "playerLine": "I will leave your practice set alone."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The low bell answered in order. The keepers marked your count.",
-    "b": "The observer's trace held. The song stayed unfinished, but written.",
-    "c": "You left the garden to the keepers and the ringing."
+    "a": "Your released stone struck the practice bell. The keepers heard the real impact; the Shrine’s song remains its own work.",
+    "b": "You held the observer’s quiet bearing for eight measured readings. No song fragment was claimed.",
+    "c": "You left Cantor’s practice lesson untouched."
   }
 });

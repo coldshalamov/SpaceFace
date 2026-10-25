@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import struckBellScene, { runtime as struckBellRuntime, spec as struckBellSpec } from '../src/data/encounters/925-scene-struck-bell.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { ENCOUNTER_MODULES } from '../src/data/encounters/index.generated.js';
 import { SECTORS } from '../src/data/sectors.js';
@@ -34,6 +35,23 @@ const UNPAID_CHOICE_A = new Set([
   'scene_fog_edge_wait',               // fog-edge inspection assist is not paid work
 ]);
 const CHARGED_CHOICE_A = new Set(['scene_fare_dodger_chase']);
+
+// This placed scene is not an interpreter graph: real release/contact and sampled
+// bearing settlement are exercised by check:struck-bell. Keep every other ambient
+// scene on the full legacy compiler/phase/choice assertions below.
+function assertStruckBellModule(module) {
+  assert.equal(module.default, struckBellScene, 'catalog uses the shipping Struck Bell scene');
+  assert.equal(module.spec, struckBellSpec, 'catalog uses the shipping Struck Bell spec');
+  assert.equal(module.runtime, struckBellRuntime, 'catalog uses the custom runtime, not a recompile');
+  for (const method of ['fire', 'tick', 'choose']) {
+    assert.equal(typeof module.runtime[method], 'function', `Struck Bell runtime.${method}`);
+  }
+  assert.equal(module.spec.id, 'scene_struck_bell');
+  assert.deepEqual(module.spec.choices, module.default.choices);
+  assert.deepEqual(module.spec.choices.map(({ id }) => id), ['a', 'b', 'c']);
+  assert.equal(module.spec.timeoutChoice, 'c');
+  assert.deepEqual(module.spec.phases, [], 'do not retain an unused instant-payout graph');
+}
 
 function runVignetteChoice(runtime, encounter, spec, choiceId) {
   const choices = (spec && spec.choices) || encounter.choices;
@@ -160,7 +178,7 @@ test('generated lived vignettes cover situations and configured places evenly', 
   for (const place of LIVED_PLACES) assert.ok(places.has(place), `missing generated place ${place}`);
 });
 
-test('ambient scenes compile, use the lived trigger contract, and cover every non-Bolus sector', () => {
+test('ambient scenes bind their runtime, use the lived trigger contract, and cover every non-Bolus sector', () => {
   const modules = ENCOUNTER_MODULES.filter((module) => module.default && module.default.ambientScene === true);
   assert.equal(modules.length, 16);
   const validMotions = new Set(['hold', 'orbit', 'creep', 'ring', 'weave', 'depart', 'face', 'chase', 'tow', 'column', 'vulture']);
@@ -170,7 +188,7 @@ test('ambient scenes compile, use the lived trigger contract, and cover every no
     const enc = module.default;
     const spec = module.spec;
     assert.ok(spec, `${enc.id} exports its compiled source spec`);
-    assert.doesNotThrow(() => compileVignette(spec), enc.id);
+    if (enc.id !== 'scene_struck_bell') assert.doesNotThrow(() => compileVignette(spec), enc.id);
     assert.equal(enc.livedVignette, true, enc.id);
     assert.equal(enc.tier, 'ambient', enc.id);
     assert.equal(enc.deck, 'civilian', enc.id);
@@ -185,6 +203,11 @@ test('ambient scenes compile, use the lived trigger contract, and cover every no
     assert.ok(Array.isArray(enc.choices), `${enc.id} encounter choices are an array`);
     assert.ok(spec.cast.every((member) => member.scanLabel), `${enc.id} cast has role labels`);
     for (const sectorId of enc.sectorIds) covered.add(sectorId);
+
+    if (enc.id === 'scene_struck_bell') {
+      assertStruckBellModule(module);
+      continue;
+    }
 
     const phases = new Map(spec.phases.map((phase) => [phase.id, phase]));
     const run = phases.get('run');
@@ -227,13 +250,17 @@ test('ambient scenes compile, use the lived trigger contract, and cover every no
   }
 });
 
-test('every ambient vignette executes a/b choices and times out through c', () => {
+test('legacy ambient choices execute and Struck Bell binds its tested custom runtime', () => {
   const modules = ENCOUNTER_MODULES.filter((module) => (
     module.default && module.default.ambientScene === true
   ));
   for (const module of modules) {
     const encounter = module.default;
     const spec = module.spec;
+    if (encounter.id === 'scene_struck_bell') {
+      assertStruckBellModule(module);
+      continue;
+    }
     for (const choiceId of ['a', 'b', 'c']) {
       let result;
       assert.doesNotThrow(() => {
