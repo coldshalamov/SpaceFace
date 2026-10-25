@@ -18,11 +18,13 @@ export const HOLDFAST = Object.freeze({
   clampBearing: 0.9,
   clampSpacing: 140,
   // A spire parked inside a socket seats; a spire still screaming through is
-  // mid-throw, not an anchor.
+  // mid-throw, not an anchor. A seated spire is anchored to the RIFT at its
+  // recorded seat — drag it past the slip band and the clamp lets go.
   seatRadius: 46,
   seatSpeed: 25,
+  slipBand: 1.6,            // × seatRadius — the wobble a clamp tolerates
   // The crack: a meter that climbs on sim time. Each seated spire knocks it
-  // back; topping it out runs the crack and shakes the oldest seat loose.
+  // back; topping it out runs the crack and shakes the lowest seat loose.
   crackRate: 1.6,          // per sim second — the lip gives ~60 s of slack
   crackMax: 100,
   crackSeatDrop: 30,
@@ -47,5 +49,7 @@ export const HOLDFAST = Object.freeze({
   // Canon payoff line: "Holding. Holding. Holding."
   holdingLine: 'HOLDING. HOLDING. HOLDING.',
   crackRanLine: 'THE CRACK RAN. A SEAT GAVE. HOLDING ANYWAY.',
+  crackRanEmptyLine: 'THE CRACK RAN ON AN EMPTY LIP. HOLDING ANYWAY.',
+  seatSlippedLine: 'A SEAT SLIPPED. THE CLAMP LET GO.',
   goneLine: 'AN-1 DOWN. THE RIFT TAKES THE POST BACK.',
 });

@@ -18,7 +18,7 @@
 import { HOLDFAST } from '../data/holdfast.js';
 import {
   holdfastClampSpot, holdfastSpireSpot, holdfastSocketFor, holdfastCrackAfter,
-  holdfastSpireOwed, holdfastDriftHome, holdfastFragmentSpot,
+  holdfastSpireOwed, holdfastDriftHome, holdfastFragmentSpot, holdfastSlipped,
 } from '../characters/holdfastRules.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
@@ -231,6 +231,17 @@ export function createHoldfast() {
       if (dv && robot.mass > 0) {
         queuePhysicsImpulse(robot, { x: dv.x * robot.mass, z: dv.z * robot.mass }, { tick: s.tick });
       }
+      // The slip pass: a spire dragged past the band lets go — its stamp rides
+      // the seat recorded at anchor time, so the clamp frees even if the
+      // robot has since walked on. A slip re-arms the hold like a run does.
+      for (const e of this._anchored()) {
+        if (!holdfastSlipped(e)) continue;
+        e.data.holdfastAnchored = false;
+        delete e.data.holdfastClamp;
+        delete e.data.holdfastClampAt;
+        this._say(`holdfast_slip_${s.tick}`, HOLDFAST.seatSlippedLine, 5);
+        break; // one slip per pass — the clamps close deliberately
+      }
       // The seat pass: one spire per census, lowest free socket it parks in.
       const claimed = this._claimed();
       if (claimed.size < HOLDFAST.clampCount) {
@@ -239,6 +250,7 @@ export function createHoldfast() {
           if (socket < 0) continue;
           e.data.holdfastAnchored = true;
           e.data.holdfastClamp = socket;
+          e.data.holdfastClampAt = holdfastClampSpot(socket, robot.pos);
           e.data.holdfastAnchoredBy = robot.id;
           e.data.holdfastAnchoredAt = Number(s.simTime) || 0;
           flags[HOLDFAST.crackFlag] = holdfastCrackAfter(flags[HOLDFAST.crackFlag], 0, 1);
@@ -255,13 +267,14 @@ export function createHoldfast() {
       const crack = holdfastCrackAfter(flags[HOLDFAST.crackFlag], Math.max(0, now - last), 0);
       flags[HOLDFAST.crackFlag] = crack;
       if (crack >= HOLDFAST.crackMax) {
-        // The run: the oldest seat gives — unstamp it and throw it off the lip
+        // The run: the lowest seat gives — unstamp it and throw it off the lip
         // through the impulse membrane (a fast body is mid-throw, never a seat).
         flags[HOLDFAST.crackFlag] = HOLDFAST.crackRunFloor;
         const anchored = this._anchored().sort((a, b) => a.data.holdfastClamp - b.data.holdfastClamp)[0];
         if (anchored) {
           anchored.data.holdfastAnchored = false;
           delete anchored.data.holdfastClamp;
+          delete anchored.data.holdfastClampAt;
           const dx = anchored.pos.x - robot.pos.x, dz = anchored.pos.z - robot.pos.z;
           const d = Math.hypot(dx, dz) || 1;
           const shake = HOLDFAST.seatSpeed * 3;
@@ -269,7 +282,7 @@ export function createHoldfast() {
             queuePhysicsImpulse(anchored, { x: (dx / d) * shake * anchored.mass, z: (dz / d) * shake * anchored.mass }, { tick: s.tick });
           }
         }
-        this._say(`holdfast_ran_${s.tick}`, HOLDFAST.crackRanLine, 7);
+        this._say(`holdfast_ran_${s.tick}`, anchored ? HOLDFAST.crackRanLine : HOLDFAST.crackRanEmptyLine, 7);
       }
       // RIFT HELD — every socket claimed while the robot stands. The flag is the
       // durable receipt; the fragment pays once ever; later re-holds speak the verb.

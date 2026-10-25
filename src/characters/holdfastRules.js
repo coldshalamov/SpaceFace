@@ -58,6 +58,18 @@ export function holdfastCrackAfter(meter, dtSeconds, seatsDropped = 0, opts = HO
   return Math.min(opts.crackMax, Math.max(0, next));
 }
 
+/** A seated spire is anchored to the RIFT at the seat recorded on its data —
+ *  not to the robot. Drag one past the slip band and the clamp lets go; the
+ *  stamp clears and the socket stands empty again. */
+export function holdfastSlipped(entity, slipBand = HOLDFAST.slipBand) {
+  if (!entity || entity.alive === false) return false;
+  const d = entity.data || {};
+  if (d.holdfastAnchored !== true || !finiteXZ(d.holdfastClampAt)) return false;
+  if (!finiteXZ(entity.pos)) return false;
+  return Math.hypot(entity.pos.x - d.holdfastClampAt.x, entity.pos.z - d.holdfastClampAt.z)
+    > HOLDFAST.seatRadius * slipBand;
+}
+
 /** How much loose stock the rift still owes: authored count minus drifting
  *  spires minus anchored ones — a seated spire is spent stock, not owed. */
 export function holdfastSpireOwed(looseAlive, anchoredAlive, spireCount = HOLDFAST.spireCount) {

@@ -115,7 +115,7 @@ test('four seats is RIFT HELD and pays the fragment exactly once', () => {
   assert.equal(frags(state).length, 1);
 });
 
-test('a topped-out crack shakes the oldest seat loose through the impulse membrane', () => {
+test('a topped-out crack shakes the lowest seat loose through the impulse membrane', () => {
   const { state, popups, sys } = fixture();
   toSocket(state, 0); sys.update(0.5, state);
   toSocket(state, 1); sys.update(0.5, state);
@@ -124,7 +124,7 @@ test('a topped-out crack shakes the oldest seat loose through the impulse membra
   state.simTime += 10; // enough elapsed to top it out this pass
   sys.update(0.5, state);
   assert.equal(state.story.flags.holdfast_crack, HOLDFAST.crackRunFloor);
-  assert.equal(anchored(state).length, 1, 'the oldest seat gave');
+  assert.equal(anchored(state).length, 1, 'the lowest seat gave');
   assert.equal(anchored(state)[0].data.holdfastClamp, 1, 'socket 0 is the seat that ran');
   const thrown = loose(state).find((e) => e.data.holdfastSpireIndex != null && impulses(e).length > 0);
   assert.ok(thrown, 'the shaken spire leaves through the impulse membrane');
@@ -165,6 +165,30 @@ test('kill the anchor: seated ice stays seated, nothing holds the post', () => {
   const before = state.story.flags.holdfast_crack;
   sys.update(0.5, state);
   assert.equal(state.story.flags.holdfast_crack, before, 'no anchor, no count — the meter freezes');
+});
+
+test('a spire towed out of its clamp slips free — the socket stands empty', () => {
+  const { state, popups, sys } = fixture();
+  const s0 = toSocket(state, 2);
+  sys.update(0.5, state);
+  assert.equal(s0.data.holdfastAnchored, true);
+  // The player drags it off the lip — the clamp lets go of the stamp, not the
+  // fiction: held re-arms on the next census.
+  s0.pos = { x: HOLDFAST.post.x - 2000, z: HOLDFAST.post.z };
+  sys.update(0.5, state);
+  assert.equal(s0.data.holdfastAnchored, false);
+  assert.equal(s0.data.holdfastClamp, undefined);
+  assert.equal(s0.data.holdfastClampAt, undefined);
+  assert.equal(says(popups, 'holdfast_slip_').length, 1);
+});
+
+test('a run on an empty lip never claims a seat gave', () => {
+  const { state, popups, sys } = fixture();
+  sys.update(0.5, state); // baseline
+  state.story.flags.holdfast_crack = HOLDFAST.crackMax - 0.5;
+  state.simTime += 10;
+  sys.update(0.5, state);
+  assert.match(says(popups, 'holdfast_ran_')[0].text, /EMPTY LIP/);
 });
 
 test('a killed loose spire is owed back to the rift', () => {
