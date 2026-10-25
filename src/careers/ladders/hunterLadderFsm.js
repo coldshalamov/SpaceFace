@@ -7,6 +7,7 @@
 // careerLadders system instance.
 
 import { normalizeCombatDoctrineId } from '../../ai/combatDoctrine.js';
+import { SECTORS } from '../../data/sectors.js';
 import { isPlayerWanted } from '../../systems/heat.js';
 import { classifyHunterContact } from '../origins/hunterOrigin.js';
 import {
@@ -69,6 +70,14 @@ const DISABLE_SUBSYSTEMS = new Set([
 
 const MILITARY_TYPES = new Set(['military', 'law', 'patrol', 'navy', 'concord']);
 const BLACKMARKET_TYPES = new Set(['blackmarket', 'black_market', 'outlaw', 'smuggler']);
+const STATION_TYPE_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    if (station && station.id && typeof station.type === 'string') {
+      STATION_TYPE_BY_ID.set(station.id, station.type.toLowerCase());
+    }
+  }
+}
 
 export {
   HUNTER_LADDER_CAREER_ID,
@@ -141,21 +150,57 @@ function isActiveHunter(leaf) {
     && leaf.steps[leaf.stepId].status === STEP_STATUS.ACTIVE);
 }
 
+function namedStationType(value) {
+  if (typeof value !== 'string' || !value) return null;
+  const type = value.toLowerCase();
+  // Live station entities use type 'station'. That word is not a desk.
+  if (type === 'station') return null;
+  return type;
+}
+
+function stationIdOf(state, payload) {
+  if (payload && typeof payload.stationId === 'string' && payload.stationId) return payload.stationId;
+  const ui = state && state.ui;
+  if (ui && ui.docked === true && typeof ui.dockedStationId === 'string' && ui.dockedStationId) {
+    return ui.dockedStationId;
+  }
+  const player = state && state.player;
+  if (ui && ui.docked === true && player && typeof player.dockedStationId === 'string' && player.dockedStationId) {
+    return player.dockedStationId;
+  }
+  return null;
+}
+
+function catalogStationType(state, stationId) {
+  if (!stationId) return null;
+  const authored = STATION_TYPE_BY_ID.get(stationId);
+  if (authored) return authored;
+  const active = state && state.world && state.world.activeSector;
+  const rows = active && Array.isArray(active.stations) ? active.stations : [];
+  const row = rows.find((entry) => entry && (entry.stationId === stationId || entry.id === stationId));
+  const fromRow = namedStationType(row && (row.stationTypeId || row.stationType || row.type));
+  if (fromRow) return fromRow;
+  const list = state && state.entityList;
+  if (!Array.isArray(list)) return null;
+  const entity = list.find((item) => item && item.type === 'station' && item.data && item.data.stationId === stationId);
+  const fromEntity = namedStationType(entity && entity.data && entity.data.stationTypeId);
+  if (fromEntity) return fromEntity;
+  const world = state && state.world;
+  const stations = (world && world.stations) || (state && state.stations) || null;
+  if (!stations) return null;
+  let listed = null;
+  if (typeof stations.get === 'function') listed = stations.get(stationId);
+  else if (Array.isArray(stations)) listed = stations.find((entry) => entry && entry.id === stationId);
+  else listed = stations[stationId];
+  return namedStationType(listed && (listed.stationTypeId || listed.stationType || listed.type || listed.kind));
+}
+
 function stationTypeOf(state, payload = {}) {
-  if (payload && typeof payload.stationType === 'string') return payload.stationType.toLowerCase();
-  if (payload && typeof payload.kind === 'string') return payload.kind.toLowerCase();
-  if (payload && typeof payload.type === 'string') return payload.type.toLowerCase();
-  const stationId = payload && payload.stationId;
-  if (stationId == null || !state) return null;
-  const world = state.world || {};
-  const stations = world.stations || state.stations || {};
-  let st = null;
-  if (typeof stations.get === 'function') st = stations.get(stationId);
-  else st = stations[stationId];
-  if (!st && Array.isArray(stations)) st = stations.find((s) => s && s.id === stationId);
-  if (!st) return null;
-  const t = st.type || st.stationType || st.kind || null;
-  return t ? String(t).toLowerCase() : null;
+  const explicit = namedStationType(payload && payload.stationType)
+    || namedStationType(payload && payload.kind)
+    || namedStationType(payload && payload.type);
+  if (explicit) return explicit;
+  return catalogStationType(state, stationIdOf(state, payload));
 }
 
 function isMilitaryStation(type) {
@@ -511,14 +556,19 @@ export function createHunterLadderFsm(opts = {}) {
           }
           const chosen = this.ladders.choose(HUNTER_LADDER_CAREER_ID, 'capture', opts);
           if (!chosen || !chosen.ok) return chosen;
-          if (chosen.duplicate) return chosen;
           // Re-fetch: choose → ensureLadderLeaf may replace the leaf object.
+          // A duplicate receipt still has to remember the choice on this step,
+          // or a later military dock never sees it.
           const live = activeLeaf(this.ladders, this.state);
           const livePayload = ensurePayload(live);
           livePayload.choiceId = 'capture';
           stampCapturePreferred(live, true);
-          // Capture requires military dock — do not complete yet unless forced.
-          if (opts.completeNow || (opts.stationType && isMilitaryStation(stationTypeOf(this.state, opts)))) {
+          if (chosen.duplicate) {
+            if (opts.completeNow || isMilitaryStation(stationType)) return this._completeCapture(live, opts);
+            return chosen;
+          }
+          // Already standing in a military dock counts. A trade hub does not.
+          if (opts.completeNow || isMilitaryStation(stationType)) {
             return this._completeCapture(live, opts);
           }
           return chosen;
