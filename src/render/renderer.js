@@ -1,5 +1,6 @@
 import { createContactShadowSelection, selectContactShadowsOnReceivers } from './contactShadowReceivers.js';
 import { isPhysicalMachinery, bindMachineryPresentation, machineryPresentationPlace, machineryRequestedPresentation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
+import { createVeilSettle } from './veilSettle.js';
 import { noteLaneFault, serviceFaultEpoch } from '../core/warnDedup.js';
 import { busFaultSummary } from '../core/eventBus.js';
 import { ceresWorkfleetRole } from './ceresWorkfleetVisuals.js';
@@ -15117,7 +15118,9 @@ export const render = {
       return pipelines;
     };
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileExplicit(scene);
-    state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
+    // The veil-settle term is non-zero only after the first picture while the veil holds the sim.
+    const veilSettlePending = createVeilSettle(state.render);
+    state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount + veilSettlePending();
     // Cook-ledger sampler (1 Hz while the opening cook runs): the admission lane and the upgrade queue.
     state.render.sampleOpeningCookLane = () => {
       const upgrades = describeAuthoredUpgradeQueue(scene);
