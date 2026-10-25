@@ -213,3 +213,93 @@ test('audio fuse follows the dying record and falls back to the fixed 0.4 s', ()
   state.dyingHullRuntime.byWreckId[7].ruptureAt = 400;
   assert.ok(dyingFuseS(state, 3, 0.4) <= 3.5, 'bounded');
 });
+
+function killFor(id, x) {
+  return Object.freeze({
+    id, type: 'ship', alive: false, pos: { x, z: 40 }, vel: { x: 60, z: 0 }, rot: 0.4, radius: 12, mass: 16,
+    presentation: Object.freeze({
+      cause: 'gun', position: Object.freeze({ x, z: 40 }), direction: Object.freeze({ x: 1, z: 0 }),
+      targetVelocity: Object.freeze({ x: 60, y: 0, z: 0 }),
+    }),
+  });
+}
+
+function beginFor(id, wreckId, ruptureAt = 2.0) {
+  return {
+    wreckId, victimId: id, markerId: `m${id}`, killedAt: 1, ruptureAt, windowS: ruptureAt - 1, tier: 'light',
+    mass: 16, radius: 12, cause: 'gun', pos: { x: 100, z: 40 }, vel: { x: 60, z: 0 }, direction: { x: 1, z: 0 },
+  };
+}
+
+function ruptureFor(id, wreckId, x) {
+  return { wreckId, victimId: id, tier: 'light', cause: 'gun', pos: { x, z: 40 }, vel: { x: 60, z: 0 }, direction: { x: 1, z: 0 }, mass: 16, radius: 12 };
+}
+
+test('the sim stamps inside the kill emit, so begin may reach presentation BEFORE the kill slice: still held, still one blast', () => {
+  const { system, state, bus, wreck, queued } = makeHarness();
+  // begin first (queue order), then the kill's own slice schedules the fuse
+  bus.emit('dyingHull:begin', beginFor(KILL.id, wreck.id));
+  bus.flush?.();
+  assert.equal(queued.length, 0);
+  const slot = schedule(system);
+  assert.ok(slot.at >= 2.0, 'the fresh slot is held for the hull\'s scheduled rupture');
+  assert.equal(slot.wreckId, wreck.id);
+  state.simTime = 1.6;
+  system.update(DT);
+  assert.equal(queued.length, 0, 'no blast at the stale 0.4 s mark');
+  bus.emit('dyingHull:ruptured', ruptureFor(KILL.id, wreck.id, 230));
+  bus.flush?.();
+  assert.equal(queued.length, 1);
+  assert.equal(queued[0].p.presentation.position.x, 230);
+  state.simTime = 6;
+  system.update(DT);
+  assert.equal(queued.length, 1);
+});
+
+test('a swarm that overruns the 12-slot pool: every hull explodes exactly once, held slots are never detonated at the stale site', () => {
+  const { system, state, bus, wreck, queued } = makeHarness();
+  const N = 15;
+  const wrecks = [];
+  for (let i = 0; i < N; i++) {
+    const w = { ...wreck, id: 100 + i, pos: { x: 100 + i * 5, z: 40 }, vel: { x: 60, z: 0 } };
+    state.entities.set(w.id, w);
+    state.entityList.push(w);
+    wrecks.push(w);
+    const victim = killFor(200 + i, 100 + i * 5);
+    system._scheduleDetonation(victim, 'small', 10, 'gun');
+    bus.emit('dyingHull:begin', beginFor(victim.id, w.id, 2.0 + i * 0.01));
+    bus.flush?.();
+  }
+  assert.equal(queued.length, 0, 'pool pressure released held slots without a stale-site detonation');
+  state.simTime = 1.5;
+  system.update(DT);
+  assert.equal(queued.length, 0, 'and none fire at the old 0.4 s fuse');
+  // every hull ruptures
+  for (let i = 0; i < N; i++) {
+    state.simTime = 2.0 + i * 0.01;
+    bus.emit('dyingHull:ruptured', ruptureFor(200 + i, 100 + i, 300 + i * 7));
+    bus.flush?.();
+  }
+  assert.equal(queued.length, N, 'explosions equal kills');
+  const positions = queued.map((q) => q.p.presentation.position.x).sort((a, b) => a - b);
+  assert.deepEqual(positions, Array.from({ length: N }, (_, i) => 300 + i * 7), 'each at its own hull');
+  state.simTime = 9;
+  system.update(DT);
+  assert.equal(queued.length, N, 'nothing fires twice later');
+  assert.equal(system._pendingDetonations.filter((r) => r.active).length, 0);
+  assert.equal(system._dyingHulls.length, 0);
+});
+
+test('a rupture that lands AFTER the fallback timer already blasted that hull is ignored', () => {
+  const { system, state, bus, wreck, queued } = makeHarness();
+  schedule(system);
+  bus.emit('dyingHull:begin', beginFor(KILL.id, wreck.id, 1.5));
+  bus.flush?.();
+  wreck.pos.x = 190;
+  state.simTime = 2.0; // past ruptureAt + slack
+  system.update(DT);
+  assert.equal(queued.length, 1, 'the timer blasted it at the hull');
+  bus.emit('dyingHull:ruptured', ruptureFor(KILL.id, wreck.id, 195));
+  bus.flush?.();
+  assert.equal(queued.length, 1, 'the late rupture does not explode it a second time');
+});

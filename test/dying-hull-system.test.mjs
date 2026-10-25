@@ -38,6 +38,7 @@ import {
 } from '../src/data/featureFlags.js';
 import {
   LIFECYCLE,
+  dyingFuseS,
   dyingWindowS,
   isCombatant,
   isIrreversiblyDying,
@@ -169,6 +170,10 @@ test('a gunfire kill leaves a dying successor with the victim momentum, then rup
   victim.rot = 0.9;
   victim.mass = 16;
   killByGunfire(h, victim);
+  // Stamped inside the kill's own emit: audio / presenters that read the record while handling
+  // `entity:killed` (whenever the presentation drain reaches it) find it with no tick of lag.
+  assert.equal(h.state.dyingHullRuntime.count, 1, 'the record exists before any further tick');
+  assert.ok(dyingFuseS(h.state, victim.id, 0.1) > 0.3, 'and the audio fuse already reads the rupture time');
   h.tick(1);
 
   const begins = events(h, 'dyingHull:begin');
@@ -204,6 +209,8 @@ test('a gunfire kill leaves a dying successor with the victim momentum, then rup
   assert.equal(ruptured.length, 1, 'exactly one rupture');
   assert.equal(ruptured[0].payload.wreckId, wreck.id);
   assert.equal(ruptured[0].payload.victimId, victim.id);
+  assert.ok(Math.abs(ruptured[0].payload.direction.x - 1) < 1e-9, 'the ejection direction is the killing blow\'s, back-filled from the kill receipt');
+  assert.equal(ruptured[0].payload.cause, 'gun');
   assert.equal(ruptured[0].payload.pos.x, wreck.pos.x, 'the rupture is reported where the wreck actually is');
   assert.equal(lifecycleOf(h.state, wreck), LIFECYCLE.WRECK);
   assert.equal(readDying(h.state, wreck), null);

@@ -97,7 +97,6 @@ export const DYING_FRAGMENTS = Object.freeze({ light: 0, medium: 1, heavy: 2, ca
 const STAMP_WINDOW_TICKS = 3; // a successor older than this was not minted by the kill we heard
 const KILL_NOTE_TTL_TICKS = 4;
 const KILL_NOTE_CAP = 64;
-const QUEUE_CAP = 64;
 const RECORD_CAP = 24; // simultaneous dying hulls; the oldest ruptures early rather than pile up
 const LATE_RUPTURE_S = 1.5; // resumed from a long pause/dock: skip the staged beat, still rupture once
 
@@ -176,7 +175,6 @@ export const dyingHull = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers || {};
     this._kills = new Map(); // victimId -> { tick, payload }
-    this._queue = [];
     this._unsubs = [];
     ensureDyingRuntime(this.state);
     if (this.bus && typeof this.bus.on === 'function') {
@@ -193,23 +191,15 @@ export const dyingHull = {
     for (const off of this._unsubs || []) { if (typeof off === 'function') off(); }
     this._unsubs = [];
     this._kills.clear();
-    this._queue.length = 0;
     const rt = this.state && this.state[DYING_RUNTIME_KEY];
     if (rt) { rt.byWreckId = {}; rt.count = 0; }
   },
 
   update(dt, state) {
-    const rt = state[DYING_RUNTIME_KEY];
-    const queued = this._queue.length;
-    if (!queued && (!rt || rt.count === 0)) {
-      if (this._kills.size) this._pruneKills(state);
-      return;
-    }
-    if (state.mode !== 'flight') return;
-    if (queued) this._drainQueue(state);
-    if (this._kills.size) this._pruneKills(state);
     const live = state[DYING_RUNTIME_KEY];
+    if (this._kills.size) this._pruneKills(state);
     if (!live || live.count === 0) return;
+    if (state.mode !== 'flight') return;
     const now = simNow(state);
     for (const key of Object.keys(live.byWreckId)) {
       const rec = live.byWreckId[key];
@@ -221,25 +211,40 @@ export const dyingHull = {
     }
   },
 
-  // ---- event intake (queue only; the stamp happens in update, after every kill-tick writer) -----
+  // ---- event intake ---------------------------------------------------------------------------
+  // The stamp happens SYNCHRONOUSLY inside the aftermath spawn event, i.e. inside the kill's own
+  // emit: audio and presenters that read the record when they handle `entity:killed` (whenever the
+  // presentation drain gets to it) therefore always find it, with no one-tick lag for kills that
+  // land late in the update order. aftermathWrecks registers before this system, so the kill note
+  // may not exist yet when the wreck arrives; `_noteKill` back-fills the record's direction/cause.
 
   _noteKill(payload) {
     if (!payload || payload.id == null) return;
     const state = this.state;
     if (this._kills.size >= KILL_NOTE_CAP) this._pruneKills(state, true);
     this._kills.set(payload.id, { tick: state.tick | 0, payload });
+    const rt = state[DYING_RUNTIME_KEY];
+    if (!rt || rt.count === 0) return;
+    for (const key of Object.keys(rt.byWreckId)) {
+      const rec = rt.byWreckId[key];
+      if (!rec || rec.victimId !== payload.id) continue;
+      const presentation = payload.presentation && typeof payload.presentation === 'object' ? payload.presentation : null;
+      if (presentation) {
+        if (typeof presentation.cause === 'string') rec.cause = presentation.cause;
+        const d = presentation.direction;
+        if (d && Number.isFinite(d.x) && Number.isFinite(d.z)) rec.direction = { x: d.x, z: d.z };
+      }
+    }
   },
 
   _noteWreck(payload) {
     if (!payload || payload.entityId == null) return;
     const state = this.state;
     if (!combatFlag('tumbleFling', featuresOf(state))) return;
-    if (this._queue.length >= QUEUE_CAP) return;
-    this._queue.push({
+    this._begin(state, {
       entityId: payload.entityId,
       markerId: payload.markerId,
       sectorId: payload.sectorId,
-      tick: state.tick | 0,
     });
   },
 
@@ -252,7 +257,6 @@ export const dyingHull = {
 
   _clearAll(reason) {
     const state = this.state;
-    this._queue.length = 0;
     this._kills.clear();
     const rt = state && state[DYING_RUNTIME_KEY];
     if (!rt || rt.count === 0) return;
@@ -265,12 +269,6 @@ export const dyingHull = {
   },
 
   // ---- begin ----------------------------------------------------------------------------------
-
-  _drainQueue(state) {
-    const items = this._queue.splice(0, this._queue.length);
-    if (!combatFlag('tumbleFling', featuresOf(state))) return;
-    for (const item of items) this._begin(state, item);
-  },
 
   _begin(state, item) {
     const wreck = state.entities && state.entities.get ? state.entities.get(item.entityId) : null;

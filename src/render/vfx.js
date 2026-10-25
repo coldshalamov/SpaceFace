@@ -1394,6 +1394,11 @@ export const vfx = {
     this._pendingDetonationsQuietEmpty = false;
     // Packet 08: smoke/vent trail state for hulls in their failure window (cap = the detonation pool).
     this._dyingHulls = [];
+    // victimId -> begin payload, for a `dyingHull:begin` that reaches presentation before the kill's
+    // own slice (the sim stamps inside the kill's emit, so queue order is not kill-first).
+    this._dyingBegins = new Map();
+    // victimIds whose held detonation already fired on the fallback timer: a late rupture is ignored.
+    this._dyingBlasted = new Set();
     // Transit sweep (feature 19): a fixed count of cyan streaks marching bow→stern over ~0.55 s
     // while the ship passes the gate throat. Scalar fields only — the render loop must not allocate.
     this._transitSweepT = -1;
@@ -5751,12 +5756,24 @@ export const vfx = {
     // Pool pressure: under a massacre the oldest queued tell detonates immediately rather than
     // dropping the explosion outright.
     let rec = null;
+    let held = null;
     for (let i = 0; i < this._pendingDetonations.length; i++) {
       const slot = this._pendingDetonations[i];
-      if (!slot.active) { rec = slot; break; }
+      if (!slot.active) { rec = slot; held = null; break; }
+      // Packet 08: a slot held for a dying hull is evicted only as a last resort (see below).
+      if (slot.wreckId != null) { if (!held || slot.at < held.at) held = slot; continue; }
       if (!rec || slot.at < rec.at) rec = slot;
     }
-    if (rec && rec.active) this._queueExplosion(rec.p, rec.classId, rec.radius, rec.cause);
+    if (!rec && held) rec = held;
+    if (rec && rec.active) {
+      if (rec.wreckId != null) {
+        // Releasing a held slot must NOT detonate it at the stale kill site: that hull's own
+        // `dyingHull:ruptured` still owns its single explosion (the recycled-slot path).
+        rec.wreckId = null;
+      } else {
+        this._queueExplosion(rec.p, rec.classId, rec.radius, rec.cause);
+      }
+    }
     if (!rec) return;
     // Dirty-wake: a fresh queued kill must leave the quiet empty latch.
     this._pendingDetonationsQuietEmpty = false;
@@ -5769,6 +5786,10 @@ export const vfx = {
     rec.radius = scaledRadius;
     rec.cause = cause;
     if (pos) { rec.x = pos.x; rec.z = pos.z; } else { rec.x = NaN; rec.z = NaN; }
+    // Packet 08: the sim's dying-hull begin may already have arrived (it is stamped inside the kill's
+    // own emit): hold this fresh slot for that hull's scheduled rupture.
+    const stashed = this._dyingBegins && p && p.id != null ? this._dyingBegins.get(p.id) : null;
+    if (stashed) { this._holdDetonation(rec, stashed); this._dyingBegins.delete(p.id); }
   },
 
   /**
@@ -5832,11 +5853,13 @@ export const vfx = {
         let payload = rec.p;
         rec.p = null;
         // A held (dying-hull) detonation whose rupture event never landed still blows where the
-        // hull actually is now, not where it was killed.
+        // hull actually is now, not where it was killed - and a rupture arriving after that is
+        // ignored, so the hull explodes once.
         if (rec.wreckId != null) {
           const wreck = this._ent(rec.wreckId);
           if (wreck && wreck.pos) payload = this._dyingBlastPayload(payload, wreck.pos, wreck.vel, null);
           this._removeDyingTrail(rec.wreckId);
+          this._markDyingBlasted(payload && payload.id);
           rec.wreckId = null;
         }
         this._queueExplosion(payload, rec.classId, rec.radius, rec.cause);
@@ -5856,11 +5879,12 @@ export const vfx = {
   _onDyingHullBegin(p) {
     if (!p || p.wreckId == null) return;
     const rec = this._pendingDetonationFor(p.victimId);
-    if (rec) {
-      rec.at = (Number.isFinite(p.ruptureAt) ? p.ruptureAt : rec.at) + DYING_HOLD_SLACK_S;
-      rec.sputterAt = rec.at; // the static kill-site spit is replaced by a trail that follows the hull
-      rec.wreckId = p.wreckId;
-      this._pendingDetonationsQuietEmpty = false;
+    if (rec) this._holdDetonation(rec, p);
+    else if (p.victimId != null) {
+      // The kill's own presentation slice has not run yet: keep the begin for _scheduleDetonation.
+      const begins = this._dyingBegins || (this._dyingBegins = new Map());
+      if (begins.size >= DYING_TRAIL_CAP * 2) begins.delete(begins.keys().next().value);
+      begins.set(p.victimId, p);
     }
     const list = this._dyingHulls || (this._dyingHulls = []);
     if (list.length >= DYING_TRAIL_CAP) list.shift();
@@ -5877,9 +5901,28 @@ export const vfx = {
     });
   },
 
+  _holdDetonation(rec, p) {
+    rec.at = (Number.isFinite(p.ruptureAt) ? p.ruptureAt : rec.at) + DYING_HOLD_SLACK_S;
+    rec.sputterAt = rec.at; // the static kill-site spit is replaced by a trail that follows the hull
+    rec.wreckId = p.wreckId;
+    this._pendingDetonationsQuietEmpty = false;
+  },
+
+  _markDyingBlasted(victimId) {
+    if (victimId == null) return;
+    const set = this._dyingBlasted || (this._dyingBlasted = new Set());
+    if (set.size >= 64) set.delete(set.values().next().value);
+    set.add(victimId);
+  },
+
   _onDyingHullRuptured(p) {
     if (!p) return;
     this._removeDyingTrail(p.wreckId);
+    if (this._dyingBegins) this._dyingBegins.delete(p.victimId);
+    if (this._dyingBlasted && this._dyingBlasted.has(p.victimId)) {
+      this._dyingBlasted.delete(p.victimId); // already blasted on the fallback timer: exactly once
+      return;
+    }
     const rec = this._pendingDetonationFor(p.victimId);
     if (rec) {
       const payload = this._dyingBlastPayload(rec.p, p.pos, p.vel, p.direction);
@@ -5900,6 +5943,7 @@ export const vfx = {
   _onDyingHullLost(p) {
     if (!p) return;
     this._removeDyingTrail(p.wreckId);
+    if (this._dyingBegins) this._dyingBegins.delete(p.victimId);
     const rec = this._pendingDetonationFor(p.victimId);
     // The world the hold described is gone (teardown) or the body was destroyed by something that
     // owns its own explosion: release the hold without a second blast.
@@ -5991,6 +6035,8 @@ export const vfx = {
     if (!this._pendingDetonations) return;
     for (const rec of this._pendingDetonations) { rec.active = false; rec.p = null; rec.wreckId = null; }
     if (this._dyingHulls) this._dyingHulls.length = 0;
+    if (this._dyingBegins) this._dyingBegins.clear();
+    if (this._dyingBlasted) this._dyingBlasted.clear();
     this._pendingDetonationsQuietEmpty = false;
     this._transitSweepT = -1;
     this._transitSweepSpawned = 0;
