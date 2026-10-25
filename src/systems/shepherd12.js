@@ -208,6 +208,10 @@ export function createShepherd12() {
       if (!flags) return;
       const waveAt = Number(flags[SHEPHERD12.waveFlag]);
       if (!Number.isFinite(waveAt) || this.state.simTime < waveAt) return;
+      // Re-read the flock: restocked strays are shy by construction, and a wave
+      // must never loose extra strays into a flock already shy — the cap counts
+      // the shy the restock just made, not the snapshot before it.
+      members = this._members();
       const shyNow = members.filter((m) => shepherd12Shy(m)).length;
       if (shyNow > 0) { delete flags[SHEPHERD12.waveFlag]; return; }
       const straysToLoose = Math.min(SHEPHERD12.waveStrays, SHEPHERD12.strayCap - shyNow);
@@ -285,7 +289,11 @@ export function createShepherd12() {
       this._shy = shyNow;
       const stillOut = shyNow.size;
       if (stillOut > 0) {
+        const wasWhole = flags.shepherd_whole === true;
         flags.shepherd_whole = false;
+        if (wasWhole) {
+          this._say(`shepherd12_shy_${flags[SHEPHERD12.flocksFlag]}`, shepherd12ShyLine(stillOut), 6);
+        }
         if (cameHome.length > 0) {
           this._say(`shepherd12_home_${s.tick}`, shepherd12HomeLine(stillOut), 5);
         }
