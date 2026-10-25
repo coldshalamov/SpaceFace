@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "seed-hf-08-wreck-station-block",
-      "date": "2026-10-23",
-      "wf": "WF-05",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A latch whose open segment crosses a live wreck or station hull is refused, and a sidestep that clears the hull opens the line.",
-      "fingerprint": "verb=latch,subject=massline,sector=field,layer=obstruction,domain=wf-05",
-      "references": [],
-      "integration": "live",
-      "commit": "b37fea99d8",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-hf-11-thrown-mass-kill-line",
       "date": "2026-10-23",
       "wf": "WF-16",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "88b1ef869b9d86ea8e99fa29098b6d57858da8bc",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-nozzle-light",
+      "date": "2026-10-25",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The warm light stays behind the nozzles when the ship turns.",
+      "fingerprint": "verb=sit,subject=cooldown-light,sector=nozzle,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "3b512c0b15f00f62238d4bccb4b03c1f4a3d1c10",
       "verification": "focused_green"
     }
   ],
