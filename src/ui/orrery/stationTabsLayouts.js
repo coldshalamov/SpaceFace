@@ -1132,10 +1132,14 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
 }
 /* …but a wide, short desktop (1101+ × ≤720) has a dossier too short to carry the key under the reward
    (ACCEPT at y≈610 in a 600px window at 1366×600, y≈721 at 1101×480): ACCEPT takes the top of the route
-   column, beside the title, and the route ring follows beneath it — nothing rides over the terms */
-@media (min-width:1101px) and (max-height:720px) {
+   column, beside the title, and the route ring follows beneath it — nothing rides over the terms.
+   Up to 800 tall: at 1366×768 a job with PAYLOAD and a blocked READINESS pushed the in-flow key under
+   the station tab bar, where a mouse missed it. The key's reason wraps beneath it, not off the edge */
+@media (min-width:1101px) and (max-height:800px) {
   ${T} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 4 !important; align-self:start !important; margin:0 !important; padding:0 !important; }
   ${T} .sx-dossier > .orr-ct-route { grid-row:4 / span 18 !important; }
+  ${T} .sx-dossier > .sx-dossier__foot > li { flex-wrap:wrap !important; row-gap:4px !important; }
+  ${T} .sx-dossier > .sx-dossier__foot .k-word-sub { flex-basis:100% !important; min-width:0 !important; white-space:normal !important; }
 }
 /* even tighter (960×540, dossier ~192px): the terms stay on the board — a second column beside the
    title, reward and ACCEPT — and the dossier scrolls for the route; a player never accepts blind */
@@ -1316,6 +1320,17 @@ ${T} .sx-dossier__terms > li.sx-term--threat::before { background:var(--dp-dange
   ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(248 244 234) !important; }
   ${T} .sx-ct__rows .sx-ct-row { padding-top:3px !important; padding-bottom:3px !important; }
   ${T} .sx-dossier > .orr-ct-route .orr-route__caption { top:auto !important; bottom:-26px !important; left:0 !important; right:0 !important; justify-content:center !important; }
+}
+/* the route-column key placement (1101+ × ≤800) sits ACCEPT above the ring, so the key→ring tether (and the
+   jump reading it carries) has no run and hides. The ring's own "1 JUMP · TO …" caption comes back over the
+   ring, between the key and the ring, which steps down and in to make the room above the tab bar */
+@media (min-width:1101px) and (max-height:800px) {
+  ${T} .sx-dossier > .orr-ct-route { margin-top:34px !important; height:clamp(206px, calc(37vh - 34px), 266px) !important; }
+  ${T} .sx-dossier > .orr-ct-route.is-tether:not(.is-off) > .orr-route__caption { display:flex !important; top:-28px !important; bottom:auto !important; left:0 !important; right:0 !important; justify-content:center !important; }
+}
+/* from 721 tall the narrower ring would otherwise set its right-hand names past the dossier's edge (TETHYS JUNCTIC) */
+@media (min-width:1101px) and (min-height:721px) and (max-height:800px) {
+  ${T} .sx-dossier > .orr-ct-route { width:calc(100% - 32px) !important; }
 }
 
 /* ================================ ROUND 5: LEDGER =========================================== */
