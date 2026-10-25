@@ -888,7 +888,7 @@ export const barkDirector = {
         const state = this.state;
         const own = ensureState(state);
         const entityId = String(entity.id);
-        const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+        const rec = entityRecordFor(own, entityId, entity);
         rec.said['npc-counterplay'] = true;
         rec.lastSpokenAt = state.simTime || 0;
         rec.history.push({ situation: 'npc-counterplay', reason: 'massline:npcCounterplay', t: rec.lastSpokenAt, text: admitted.text });
@@ -1068,7 +1068,7 @@ export const barkDirector = {
     const state = this.state;
     const own = ensureState(state);
     const entityId = String(entity.id);
-    const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+    const rec = entityRecordFor(own, entityId, entity);
     if (rec.lastSituation === situation || rec.said[situation]) return false;
     if (this._isSuppressed(entity, situation, rec)) return false;
 
@@ -1421,7 +1421,7 @@ export const barkDirector = {
     const state = this.state;
     const own = ensureState(state);
     const entityId = String(entity.id);
-    const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+    const rec = entityRecordFor(own, entityId, entity);
     if (rec.said[situation]) return false;
     const factionId = factionFor(entity);
     const seed = state.meta && state.meta.seed;
@@ -1525,19 +1525,22 @@ export const barkDirector = {
     const record = stuntRecognitionRecord(ensureState(state));
     if (['delivered', 'suppressed'].includes(incident.barkStatus) || record.deliveredIds.includes(incident.id)) return null;
     if (record.pending.some(p => p.incidentId === incident.id)) return null;
-    const witness = (incident.witnesses || []).find(w => {
+    const witness = (Array.isArray(incident.witnesses) ? incident.witnesses : []).find(w => {
+      if (!w || typeof w !== 'object') return false;
       const profile=observerProfile(state, state.entities?.get?.(w.id));
       return completeWitness(w) && profile?.canSpeak && profile.lifeId===w.lifeId;
     });
     if (!witness) return null;
-    const title = (incident.titleIds || []).map(id => state.story.titles.byId[id]).find(t => t?.knownWitnesses?.includes(witness.identity));
+    const title = (Array.isArray(incident.titleIds) ? incident.titleIds : []).map(id => state.story.titles.byId?.[id])
+      .find(t => t && Array.isArray(t.knownWitnesses) && t.knownWitnesses.includes(witness.identity));
     const rule = title && STUNT_TITLE_RULES.find(r => r.id === title.titleId);
     const lines = (Object.hasOwn(STUNT_SITUATION_LINES, incident.trickId) && STUNT_SITUATION_LINES[incident.trickId])
       || ['That changed the fight.', 'I saw that impact.', 'Keep clear.'];
     // THE WORLD ANSWERS: a variant (own wingman, bolas pair) or the cargo of an Ore Shotgun speaks
     // ahead of the generic title bark.
     const text = stuntSpecificLine(incident) || rule?.bark || lines[witness.role === 'hostile' ? 2 : witness.role === 'patrol' ? 0 : 1];
-    const first = !!title || !(state.story.titles.stuntIncidents || []).some(i => i.id !== incident.id && i.trickId === incident.trickId && i.barkDelivered);
+    const first = !!title || !(Array.isArray(state.story.titles.stuntIncidents) ? state.story.titles.stuntIncidents : [])
+      .some(i => i && i.id !== incident.id && i.trickId === incident.trickId && i.barkDelivered);
     const queued = { id: `stunt:${incident.id}:${witness.identity}`, incidentId: incident.id, speakerId: witness.id,
       speakerIdentity: witness.identity, speakerLife: witness.lifeId, speakerName: witness.name, factionId: witness.factionId, trickId: incident.trickId,
       title: title?.title || null, titleId: title?.titleId || null, text, first, tick: state.tick,
@@ -1562,10 +1565,10 @@ export const barkDirector = {
     const record = stuntRecognitionRecord(ensureState(state));
     const encounter = incidentIdentity(state,{}).encounterId ?? entity.data?.encounter?.id ?? entity.data?.encounterId ?? null;
     if (encounter == null) return;
-    const speaker = record.speakers[profile.identity] ||= { titleEncounter: null, lines: [] };
+    const speaker = speakerRow(record, profile.identity);
     if (speaker.titleEncounter === encounter || record.pending.some(p => p.speakerIdentity === profile.identity)) return;
     const known = knownStuntTitles(state, entity);
-    const title = known.find(t => !speaker.lines.slice(-3).some(l => l.titleId === t.titleId));
+    const title = known.find(t => !speaker.lines.slice(-3).some(l => l && l.titleId === t.titleId));
     if (!title) return;
     const rule = STUNT_TITLE_RULES.find(r => r.id === title.titleId); if (!rule) return;
     if (record.pending.length >= 8) return;
@@ -1653,7 +1656,7 @@ export const barkDirector = {
     record.count = (record.count || 0)+1; record.recentTicks.push(tick);
     if (!queued.recognition) record.deliveredIds.push(queued.incidentId);
     if (record.deliveredIds.length > 128) record.deliveredIds.shift();
-    const speaker = record.speakers[queued.speakerIdentity] ||= { titleEncounter: null, lines: [] };
+    const speaker = speakerRow(record, queued.speakerIdentity);
     speaker.titleEncounter = queued.encounterId; speaker.lines.push({ titleId: queued.titleId, text: queued.text, encounterId: queued.encounterId });
     if (speaker.lines.length>3) speaker.lines.shift();
     const incident = findStuntIncident(state, queued.incidentId);
@@ -1916,7 +1919,7 @@ export const barkDirector = {
     if (!state || !entity) return false;
     const own = ensureState(state);
     const entityId = String(entity.id);
-    const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+    const rec = entityRecordFor(own, entityId, entity);
     if (rec.said[situation]) return false;
     if (this._isSuppressed(entity, 'patrol-greeting', rec)) return false;
     const seed = state.meta && state.meta.seed;
@@ -2399,7 +2402,7 @@ export const barkDirector = {
     markHaulerRescueThanked(state, key, now);
     const own = ensureState(state);
     const entityId = String(entity.id);
-    const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+    const rec = entityRecordFor(own, entityId, entity);
     rec.said['patrol-greeting'] = true;
     rec.lastSituation = 'hauler-rescue';
     rec.lastSpokenAt = now;
@@ -2571,7 +2574,9 @@ export const barkDirector = {
     } else if (Object.getPrototypeOf(own.raiderEscapesSaid) !== null) {
       own.raiderEscapesSaid = Object.assign(Object.create(null), own.raiderEscapesSaid);
     }
-    if (own.raiderEscapesSaid[custodyId]) return false;
+    // A corrupt truthy-primitive row would mute this custody id forever — only a real record
+    // dedupes; a dead value is overwritten below.
+    if (own.raiderEscapesSaid[custodyId] && typeof own.raiderEscapesSaid[custodyId] === 'object') return false;
 
     const raider = entityFromState(state, payload.raiderId);
     if (raider && raider.alive !== false) {
@@ -3019,7 +3024,12 @@ function stuntRecognitionRecord(own) {
   }
   const record = own.stuntRecognition;
   if (!Array.isArray(record.pending)) record.pending = [];
+  // Entries always carry a finite expiresTick by construction — a foreign queue can hold
+  // null/primitive/shapeless entries that crash the expiry sweep or wedge the head of the
+  // queue forever (no expiresTick means they can never expire and never speak).
+  record.pending = record.pending.filter((q) => q && typeof q === 'object' && !Array.isArray(q) && Number.isFinite(q.expiresTick));
   if (!Array.isArray(record.recentTicks)) record.recentTicks = [];
+  record.recentTicks = record.recentTicks.filter(Number.isFinite);
   if (!Array.isArray(record.deliveredIds)) record.deliveredIds = [];
   // speakers keys on record-derived observer identities — a restored plain-proto bag re-opens
   // the '__proto__'/'toString' read seam, so re-home it as null-prototype.
@@ -3027,6 +3037,19 @@ function stuntRecognitionRecord(own) {
     record.speakers = Object.assign(Object.create(null), record.speakers);
   }
   return record;
+}
+
+// A foreign/null row inside the speakers bag is dead data of the same class as a corrupt
+// entity record — a fresh row replaces it; a non-array `lines` resets so writers can push.
+function speakerRow(record, identity) {
+  let row = Object.hasOwn(record.speakers, identity) ? record.speakers[identity] : null;
+  if (!row || typeof row !== 'object' || Array.isArray(row)) {
+    row = { titleEncounter: null, lines: [] };
+    record.speakers[identity] = row;
+    return row;
+  }
+  if (!Array.isArray(row.lines)) row.lines = [];
+  return row;
 }
 
 function ensureState(state) {
@@ -3059,6 +3082,21 @@ function freshEntityRecord(entity) {
     said: {},
     history: [],
   };
+}
+
+// The entities bag adopts foreign rows the same way ambientBySector does — a restored or
+// hand-built primitive/shapeless row is dead data, not a speaker history. Rebuild it, and
+// normalize said/history so every writer below can deref without a TypeError.
+function entityRecordFor(own, entityId, entity) {
+  let rec = Object.hasOwn(own.entities, entityId) ? own.entities[entityId] : null;
+  if (!rec || typeof rec !== 'object' || Array.isArray(rec)) {
+    rec = freshEntityRecord(entity);
+    own.entities[entityId] = rec;
+    return rec;
+  }
+  if (!rec.said || typeof rec.said !== 'object' || Array.isArray(rec.said)) rec.said = {};
+  if (!Array.isArray(rec.history)) rec.history = [];
+  return rec;
 }
 
 function occupationalRoleOf(entity) {
@@ -3417,7 +3455,7 @@ function speakerRecentlySpoke(own, entity, now) {
 
 function noteSpeakerSpoke(own, entity, situation, now, text) {
   const id = String(entity.id);
-  const rec = own.entities[id] || (own.entities[id] = freshEntityRecord(entity));
+  const rec = entityRecordFor(own, id, entity);
   rec.lastSituation = situation;
   rec.lastSpokenAt = now;
   rec.history.push({ situation, reason: 'world-answer', t: now, text });
