@@ -13,5 +13,5 @@ The wide-short placement from ui-polish-128 (key at the top of the route column,
 - 1920×1080, 960×540, 390×844 and 844×390 are outside the query and unchanged.
 - `node scripts/check-type-floor.mjs` OK.
 
-## Note
-In this placement the route uses no tether, so the "1 JUMP · TO …" caption isn't shown — the same as master already does at 1280×720.
+## Jump reading (Code Work hold, 37305a191d)
+With the key above the ring there's no key→ring tether, so the "1 JUMP · TO …" reading it carries was hidden. The ring's own caption (always rendered, hidden in tether mode) now shows centred just above the ring in this placement; the ring steps down 34px and loses 34px of height so its foot still clears the tab bar. From 721 tall the route box is 32px narrower so right-hand names (TETHYS JUNCTION) stay inside the dossier. 1280×720 gains the reading too; its ring is otherwise master's (TETHYS JUNCTIC clip there predates this branch). Checked 1366×768, 1440×800, 1280×720 walks (findings unchanged), 1366×600 and 1101×561.

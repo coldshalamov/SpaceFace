@@ -1321,6 +1321,17 @@ ${T} .sx-dossier__terms > li.sx-term--threat::before { background:var(--dp-dange
   ${T} .sx-ct__rows .sx-ct-row { padding-top:3px !important; padding-bottom:3px !important; }
   ${T} .sx-dossier > .orr-ct-route .orr-route__caption { top:auto !important; bottom:-26px !important; left:0 !important; right:0 !important; justify-content:center !important; }
 }
+/* the route-column key placement (1101+ × ≤800) sits ACCEPT above the ring, so the key→ring tether (and the
+   jump reading it carries) has no run and hides. The ring's own "1 JUMP · TO …" caption comes back over the
+   ring, between the key and the ring, which steps down and in to make the room above the tab bar */
+@media (min-width:1101px) and (max-height:800px) {
+  ${T} .sx-dossier > .orr-ct-route { margin-top:34px !important; height:clamp(206px, calc(37vh - 34px), 266px) !important; }
+  ${T} .sx-dossier > .orr-ct-route.is-tether:not(.is-off) > .orr-route__caption { display:flex !important; top:-28px !important; bottom:auto !important; left:0 !important; right:0 !important; justify-content:center !important; }
+}
+/* from 721 tall the narrower ring would otherwise set its right-hand names past the dossier's edge (TETHYS JUNCTIC) */
+@media (min-width:1101px) and (min-height:721px) and (max-height:800px) {
+  ${T} .sx-dossier > .orr-ct-route { width:calc(100% - 32px) !important; }
+}
 
 /* ================================ ROUND 5: LEDGER =========================================== */
 /* the reading's left edge is the axis; the ladder's read mark is light on the rail, no arrowhead */
