@@ -125,12 +125,21 @@ export function createContactHailPrompt(ctx) {
     active = { ...payload };
     const lines = Array.isArray(payload.lines) ? payload.lines : [];
     const actions = Array.isArray(payload.actions) ? payload.actions : [];
+    // Scanner deliberately caps normal lines at two; advice has its own bounded
+    // transport field and one visible wrapped row. Never extend receipt lifetime.
+    const towAdvice=payload.kind==='tally_three'&&typeof payload.towAdvice==='string'
+      ?payload.towAdvice.trim().slice(0,240):'';
     linesEl.replaceChildren(...lines.slice(0, 2).map((line) => {
       const row = document.createElement('div');
       row.className = 'sf-contact-hail__line';
       row.textContent = line;
       return row;
     }));
+    if(towAdvice){
+      const row=document.createElement('div');
+      row.className='sf-contact-hail__line sf-contact-hail__tow-advice';
+      row.textContent=towAdvice;linesEl.appendChild(row);
+    }
     actionsEl.replaceChildren(...actions.slice(0, 3).map((action, index) => {
       const button = document.createElement('button');
       button.type = 'button';
@@ -145,7 +154,7 @@ export function createContactHailPrompt(ctx) {
       toldRequestId = payload.requestId;
       markTold(state, payload.deedId, { by: `hail:${payload.targetId}` });
     }
-    panel.setAttribute('aria-label', lines.slice(0, 2).join(' '));
+    panel.setAttribute('aria-label', [...lines.slice(0,2),...(towAdvice?[towAdvice]:[])].join(' '));
     nextRibbonUpdateAt = Number(state.simTime) || 0;
     updateDeckVisual(true);
     return true;
@@ -317,6 +326,8 @@ function injectStyle() {
   .sf-contact-hail__lines { display:grid; gap:2px; }
   .sf-contact-hail__line { overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     font-size:12px; line-height:1.35; letter-spacing:.02em; }
+  .sf-contact-hail__line.sf-contact-hail__tow-advice { white-space:normal;
+    overflow:visible; overflow-wrap:anywhere; text-overflow:clip; }
   .sf-contact-hail__line + .sf-contact-hail__line { color:var(--sf-calm); }
   .sf-contact-hail__actions { display:flex; gap:6px; margin-top:8px; }
   .sf-contact-hail__actions:empty { display:none; }

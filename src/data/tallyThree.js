@@ -1,3 +1,4 @@
+import {normalizeLineProgression,lineClassForIndex} from './lineProgression.js';
 // SF20-03: one finite claim crate. Salvage owns this source; Tally only reads its facts.
 import { CERES_SECOND_MEASURE_LOCAL_POS } from './sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
@@ -48,4 +49,25 @@ export function tallyThreeHail(state,target,player) {
   return {enabled:true,reason:null,targetId:target.id,kind:'tally_three',entity:target,distance,
     label:receiver?'HAIL RECOVERY RECEIVER':'HAIL TALLY-3',ordinaryReceiver:receiver,assessorAvailable:!!assessor,
     source,crate};
+}
+
+/** Read-only hail snapshot of the original crate, never the selected assessor/station.
+ * Unlike the progression owner's defensive 1T fallback, unknown physical mass is
+ * not evidence for reassuring a pilot: guidance explicitly reports unavailable.
+ */
+export function tallyThreeTowAssessment(state) {
+  const crate=tallyThreeBody(state,TALLY_THREE.worldRecordId);
+  const physical=Number(crate?.physicsBody?.mass),fallback=Number(crate?.mass);
+  const massT=Number.isFinite(physical)&&physical>0?physical:Number.isFinite(fallback)&&fallback>0?fallback:null;
+  if(!crate||massT==null)return {available:false,text:'Tow assessment unavailable: original crate mass is not known.'};
+  const progress=normalizeLineProgression(state?.lineProgression);
+  const cls=lineClassForIndex(progress.classIndex),overClass=massT>cls.fullControlMassT;
+  const amount=n=>Number(n.toFixed(2)).toString();
+  // Preserve the strict over-class distinction when compact rounding would hide it.
+  const massLabel=overClass&&Number(amount(massT))<=cls.fullControlMassT
+    ?'>'+amount(cls.fullControlMassT):amount(massT);
+  return {available:true,massT,classIndex:cls.index,fullControlMassT:cls.fullControlMassT,overClass,
+    text:`${massLabel}T load · Class ${cls.label} controls ${amount(cls.fullControlMassT)}T. ${overClass
+      ?'Temporary hold: heat can snap the line.'
+      :'Keep custody; settle below 8 WU/s.'}`};
 }
