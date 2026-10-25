@@ -162,8 +162,10 @@ test('production init + update order lengths match the live browser baseline', (
   // 250 -> 251 init / 196 -> 197 update: Controlled Chaos packet 06 registers shieldPylons — the
   // linked shield pylons' lifecycle, hull interception and the single energy debit, right after
   // gyreSnare in the pre-physics slot, on the table clock.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 251);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 197);
+  // 251 -> 252 init / 197 -> 198 update: packet 06 also registers pylonHud — the DOM-guarded
+  // next-operation label and wall-state pill (massSeedHud / gyreHud sibling).
+  assert.equal(PRODUCTION_INIT_ORDER.length, 252);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 198);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

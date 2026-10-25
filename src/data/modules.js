@@ -454,7 +454,7 @@ const SHIPPED_MODULES = [
     // wall has one energy pool, strains, overloads and collapses; each pylon is a body hostile fire
     // can destroy, which drops the whole wall at once. Two pairs at a time. Tuned in data/shieldPylons.js,
     // run by systems/shieldPylons.js (the Digit6 verb; the binding owner labels the key).
-    id: 'mod_pylon_projector_m', name: 'Pylon Projector M', slotType: 'utility', size: 'M', tier: 2, mass: 5, price: 28000,
+    id: 'mod_pylon_projector_s', name: 'Pylon Projector S', slotType: 'utility', size: 'S', tier: 2, mass: 5, price: 28000,
     requiresTech: 'tech_deflector_theory',
     // First-station rack at first-haul terms (same door as Gravity Bumper): a pilot docked at Helios can
     // buy the wall without a research stop; the catalog price and the research gate stand elsewhere.

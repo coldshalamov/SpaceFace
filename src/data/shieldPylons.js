@@ -9,7 +9,7 @@
 // All numbers marked PROTOTYPE are starting hypotheses, not measured balance.
 
 /** The fitted utility module that gives the pilot the projector. */
-export const PYLON_MODULE_ID = 'mod_pylon_projector_m';
+export const PYLON_MODULE_ID = 'mod_pylon_projector_s';
 
 export const SHIELD_PYLON_DEF = Object.freeze({
   id: 'shield_pylon_pair',

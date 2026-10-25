@@ -106,6 +106,7 @@ import { planetRuntime } from '../systems/planetRuntime.js';     // PQ-013/SF-14
 import { massSeedHud } from '../ui/massSeedHud.js';              // PQ-011: seed status pill + lock-point marker (DOM-guarded)
 import { fieldHud } from '../ui/fieldHud.js';                    // PQ-012: field state/cooldown/denial chip (DOM-guarded)
 import { gyreHud } from '../ui/gyreHud.js';                      // Gyre Snare lash state pill (DOM-guarded)
+import { pylonHud } from '../ui/pylonHud.js';                    // Linked shield pylons: next-operation label + wall state pill (DOM-guarded)
 import { planetHud } from '../ui/planetHud.js';                  // PQ-013: band pill + heat readout (DOM-guarded)
 import { miningHud } from '../ui/miningHud.js';                  // INF: mining beam's vent/rich-core/seam rhythms at the contact (DOM-guarded)
 // Massline Physics Identity — Wave M2 (design/revamp/MASSLINE_PHYSICS_IDENTITY.md). All eight are
@@ -753,6 +754,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['massSeedHud', massSeedHud],
     ['fieldHud', fieldHud],
     ['gyreHud', gyreHud],
+    ['pylonHud', pylonHud],
     ['planetHud', planetHud],
     ['miningHud', miningHud],
     ['sectorPostcard', sectorPostcard],

@@ -283,6 +283,12 @@ const VERB_BINDINGS = {
   scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
   cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
   autopursuit:    [],         // retired; retained as an inert save/input compatibility field.
+  // Linked shield pylons (Controlled Chaos packet 06): ONE labeled edge whose meaning is named by
+  // the HUD pill each time (PLACE FIRST ENDPOINT / LINK SECOND ENDPOINT / RECALL PAIR / CAPACITY
+  // REACHED) - it is not folded into another power. Digit6 is free repo-wide (checked against both
+  // scheme tables, ui/bindings.js, the UI key router and the prompt-digit claims). The shieldPylons
+  // system owns fitting, cost, placement and the pair lifecycle.
+  deployShieldPylon: ['Digit6'],
   deployBeacon:   ['KeyU'],   // edge: drop a claim beacon in open space (beacons system owns cost/cap).
                               //   The UI router owns U only when a claimable body is in range; in open
                               //   space it falls through to this flight verb (see check-claim-base-input).
@@ -455,7 +461,7 @@ export const TAUGHT_FLIGHT_ACTIONS = Object.freeze([
   'forward', 'reverse', 'brake', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight',
   'boost', 'fire', 'autoFire', 'countermeasure', 'tether', 'reelIn', 'reelOut',
   'pull', 'shove', 'pin', 'bomb', 'rig', 'cycleBomb',
-  'siteBeam', 'scanPulse', 'cruise',
+  'siteBeam', 'scanPulse', 'cruise', 'deployShieldPylon',
 ]);
 
 /**
@@ -631,7 +637,7 @@ function applyFlightKeyTransition(keys, nextKeys) {
 // Verbs that must not collapse into the key map. Movement stays on the map itself.
 const SAMPLED_EDGE_ACTIONS = new Set([
   'tether', 'pull', 'shove', 'pin', 'bomb', 'rig', 'scanPulse', 'cruise', 'deployBeacon',
-  'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot',
+  'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot', 'deployShieldPylon',
 ]);
 
 // Pad verbs that must re-prove a deliberate press after a lifecycle reset (blur, dock, resume).
@@ -650,7 +656,7 @@ const GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS = Object.freeze([
   'massline', 'countermeasure', 'travelBurn', 'autoTarget', 'shove',
   'bomb', 'cycleBomb',
   'scanPulse', 'cruise', 'deployBeacon', 'pin', 'pull', 'rig',
-  'siteBeam', 'bulletTime', 'cloak', 'jettisonLot',
+  'siteBeam', 'bulletTime', 'cloak', 'jettisonLot', 'deployShieldPylon',
   // gyreSnare is a held pad chord (RB+Y): a grip held across a dock or tab-hide must not
   // re-fire the beam the moment the pad publishes again.
   'gyreSnare',
@@ -1686,7 +1692,7 @@ export const input = {
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
       siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false,
-      jettisonLotAll: false, gyreSnare: false,
+      jettisonLotAll: false, gyreSnare: false, deployShieldPylon: false,
       // The five powers' read surface ({ held, pressed } once sampled; null = untouched).
       pull: null, shove: null, pin: null, bomb: null, rig: null,
     });
@@ -1705,6 +1711,7 @@ export const input = {
       acts.brake = false; acts.cruise = false; acts.tetherFire = false; acts.tetherCut = false;
       acts.reelDelta = 0; acts.chargeThrow = false; acts.chargeDetonate = false; acts.scanPulse = false; acts.autopursuit = false;
       acts.deployBeacon = false;
+      acts.deployShieldPylon = false;
       acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false; acts.travelBurn = false;
       acts.siteBeam = false; acts.aimedMine = false;
       acts.autoTargetToggle = false;
@@ -2188,6 +2195,7 @@ export const input = {
     acts.cruise = edge('cruise') || this._padEdge(gp, 'cruise');
     acts.autopursuit = false;
     acts.deployBeacon = edge('deployBeacon') || this._padEdge(gp, 'deployBeacon');
+    acts.deployShieldPylon = edge('deployShieldPylon') || this._padEdge(gp, 'deployShieldPylon');
     acts.deployMassSeed = fire.pin;
     acts.deployWell = fire.pull;
     acts.deployRepulsor = fire.shove;

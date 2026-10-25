@@ -101,6 +101,7 @@ import { planetRuntime } from '../systems/planetRuntime.js';
 import { massSeedHud } from '../ui/massSeedHud.js';
 import { fieldHud } from '../ui/fieldHud.js';
 import { gyreHud } from '../ui/gyreHud.js';
+import { pylonHud } from '../ui/pylonHud.js';
 import { planetHud } from '../ui/planetHud.js';
 import { miningHud } from '../ui/miningHud.js';
 import { survivalHud } from '../ui/survivalHud.js';
@@ -498,6 +499,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['massSeedHud', massSeedHud],
     ['fieldHud', fieldHud],
     ['gyreHud', gyreHud],
+    ['pylonHud', pylonHud],
     ['planetHud', planetHud],
     ['miningHud', miningHud],
     ['survivalHud', survivalHud],
