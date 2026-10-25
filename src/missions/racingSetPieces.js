@@ -14,14 +14,18 @@ import { segmentDistanceSquared } from '../world/arranger.js';
 const ROCK = ASTEROIDS.find(row => row.id === 'ast_common_rock');
 const anchorRadius = 24;
 const rockSize = 8;
+const NO_CUES = Object.freeze([]);
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 
 function lateralPoint(frame, lateral) {
-  return { x: frame.x - frame.nz * lateral, z: frame.z + frame.nx * lateral };
+  // A non-finite authored lateral reads as on-line, never as NaN geometry.
+  const off = Number.isFinite(lateral) ? lateral : 0;
+  return { x: frame.x - frame.nz * off, z: frame.z + frame.nx * off };
 }
 
 function shutterSpec(frame, def, sectorId) {
-  const radius = def.radiusWU, mass = def.mass;
+  const radius = Number.isFinite(def.radiusWU) && def.radiusWU > 0 ? def.radiusWU : 20;
+  const mass = Number.isFinite(def.mass) && def.mass > 0 ? def.mass : 400;
   return { type: 'payload', pos: lateralPoint(frame, def.openLateralWU),
     rot: Math.atan2(frame.nx, -frame.nz), radius, mass, hull: 1600, hullMax: 1600,
     collides: true, flags: { missionPinned: true },
@@ -37,14 +41,19 @@ function driveShutter(entity, frame, def, closed) {
   const target = lateralPoint(frame, closed ? def.closedLateralWU : def.openLateralWU);
   let vx = (target.x - entity.pos.x) * 0.8, vz = (target.z - entity.pos.z) * 0.8;
   const speed = Math.hypot(vx, vz);
-  if (speed > def.maxSpeedWU) { vx *= def.maxSpeedWU / speed; vz *= def.maxSpeedWU / speed; }
+  const maxSpeed = Number.isFinite(def.maxSpeedWU) && def.maxSpeedWU > 0 ? def.maxSpeedWU : 12;
+  if (speed > maxSpeed) { vx *= maxSpeed / speed; vz *= maxSpeed / speed; }
   let ax = (vx - (entity.vel?.x || 0)) * 3, az = (vz - (entity.vel?.z || 0)) * 3;
   const accel = Math.hypot(ax, az);
-  if (accel > def.maxAccelWU) { ax *= def.maxAccelWU / accel; az *= def.maxAccelWU / accel; }
+  const maxAccel = Number.isFinite(def.maxAccelWU) && def.maxAccelWU > 0 ? def.maxAccelWU : 8;
+  if (accel > maxAccel) { ax *= maxAccel / accel; az *= maxAccel / accel; }
   const error = Math.atan2(frame.nx, -frame.nz) - (entity.rot || 0);
   const angularAccel = clamp(Math.atan2(Math.sin(error), Math.cos(error)) * 3 - (entity.angVel || 0) * 3, -0.8, 0.8);
+  const mass = Number.isFinite(def.mass) && def.mass > 0 ? def.mass : 400;
+  const inertia = Number.isFinite(entity.physicsBody?.inertiaY) && entity.physicsBody.inertiaY > 0
+    ? entity.physicsBody.inertiaY : 1;
   writePhysicsControl(entity, { source: 'race-customs-shutter', mode: 'actuator',
-    force: { x: ax * def.mass, z: az * def.mass }, torque: { y: angularAccel * entity.physicsBody.inertiaY } });
+    force: { x: ax * mass, z: az * mass }, torque: { y: angularAccel * inertia } });
   return Math.hypot(target.x - entity.pos.x, target.z - entity.pos.z);
 }
 
@@ -54,7 +63,12 @@ function frameFor(gates, definition) {
   const length = Math.hypot(b.x - a.x, b.z - a.z) || 1;
   const nx = (b.x - a.x) / length, nz = (b.z - a.z) / length;
   const point = { x: a.x + (b.x - a.x) * definition.fraction, z: a.z + (b.z - a.z) * definition.fraction };
-  return { ...point, nx, nz, waitPos: { x: point.x - nx * definition.waitBackWU, z: point.z - nz * definition.waitBackWU } };
+  const waitPos = { x: point.x - nx * definition.waitBackWU, z: point.z - nz * definition.waitBackWU };
+  // A def whose fraction or hold-back is not finite makes NaN geometry — the
+  // piece is skipped, never published where the course view cannot draw it.
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.z)
+    || !Number.isFinite(waitPos.x) || !Number.isFinite(waitPos.z)) return null;
+  return { ...point, nx, nz, waitPos };
 }
 
 function rockSpec(pos, size, sectorId, name, anchor, seed) {
@@ -96,7 +110,8 @@ export function createRacingSetPieces({ state, bus, helpers }) {
   const eligible = mission => mission?.type === 'race' && mission.status === 'active'
     && mission.params?.racingContractId && !mission.params.adventureSpeedId && isRacingCorridorSession(state);
   function spawn(spec, id, kind) {
-    Object.assign(spec.data, { missionTag: run.missionId, raceSetPiece: { id, kind, missionId: run.missionId } });
+    if (!spec || typeof spec !== 'object') return null;
+    Object.assign((spec.data ||= {}), { missionTag: run.missionId, raceSetPiece: { id, kind, missionId: run.missionId } });
     const entity = helpers.spawnEntity?.(spec);
     if (entity) run.entities.add(entity.id);
     return entity;
@@ -114,14 +129,20 @@ export function createRacingSetPieces({ state, bus, helpers }) {
     stop('race_replaced');
     const p = mission.params, defs = racingSetPieceDefinitions(p.courseId), gates = raceGateGlobals(p);
     if (!defs || gates.length < 2) return false;
-    run = { missionId: mission.id, sectorId: p.courseSectorId, entities: new Set(), cues: [],
+    run = { missionId: mission.id, sectorId: p.courseSectorId, courseId: p.courseId,
+      levelId: p.levelId, entities: new Set(), cues: [],
       gates, lastTime: Number(state.simTime) || 0, dynamics: [],
       // AL-RACE-2: the level's static hazard references, projected live against the
       // sector's own machinery each tick — never a duplicate native field or body.
-      hazardDefs: raceLevelById(p.levelId)?.sectorHazards || [],
+      // A levelId/courseId mismatch projects nothing rather than the wrong course's cues.
+      hazardDefs: (() => {
+        const level = raceLevelById(p.levelId);
+        return level && (!p.courseId || level.course?.courseId === p.courseId)
+          ? level.sectorHazards || [] : [];
+      })(),
       hazardCues: [] };
     const anchors = [];
-    for (const row of defs.anchors) {
+    for (const row of Array.isArray(defs.anchors) ? defs.anchors : []) {
       const pos = anchorPosition(state, gates, row, Number(p.gateRadiusWU) || 90, anchors);
       if (!pos) continue;
       const entity = spawn(rockSpec(pos, anchorRadius, run.sectorId, row.name, true, state.meta?.seed), row.id, 'anchor');
@@ -132,7 +153,13 @@ export function createRacingSetPieces({ state, bus, helpers }) {
         hint: 'Optional Massline apex anchor. The gate corridor stays clear.' });
     }
     for (const [kind, def] of [['crossing', defs.crossing], ['wave', defs.wave], ['shutter', defs.shutter]]) {
-      if (!def) continue;
+      // A def without a finite clock can never fire or re-open, a wave without
+      // a finite speed/lifetime would write NaN impulse or never clear, and a
+      // crossing without a hull id cannot spawn a ship at all.
+      if (!def || !Number.isFinite(def.startsAtS)
+        || (kind === 'shutter' && !Number.isFinite(def.opensAtS))
+        || (kind === 'crossing' && typeof def.hullId !== 'string')
+        || (kind === 'wave' && (!Number.isFinite(def.speedWU) || !Number.isFinite(def.lifetimeS)))) continue;
       const frame = frameFor(gates, def);
       if (!frame) continue;
       const cue = { id: def.id, kind, name: def.name, label: def.name, phase: 'scheduled', countdownS: def.startsAtS,
@@ -143,7 +170,9 @@ export function createRacingSetPieces({ state, bus, helpers }) {
           : 'Three spaced rocks cross the wash. Wait at the refuge marker or choose a gap.' };
       if (kind === 'shutter') Object.assign(cue, { servicePos: lateralPoint(frame, def.serviceLateralWU),
         serviceWidthWU: def.serviceWidthWU, serviceHint: 'LEFT SERVICE CUT · ALWAYS OPEN' });
-      run.cues.push(cue); run.dynamics.push({ kind, def, frame, cue, launched: false, spawned: false, announced: false });
+      // warningS defaults to 0 — a def without an announce window still fires.
+      run.cues.push(cue); run.dynamics.push({ kind, def, frame, cue, launched: false, spawned: false,
+        announced: false, warnS: Number.isFinite(def.warningS) ? def.warningS : 0 });
     }
     run.hazardCues = projectRacingSectorHazards(state, p, run.hazardDefs, run.hazardCues);
     for (const cue of run.hazardCues) run.cues.push(cue);
@@ -151,8 +180,25 @@ export function createRacingSetPieces({ state, bus, helpers }) {
   }
   function update(mission) {
     if (!eligible(mission)) { if (run?.missionId === mission?.id) stop('ineligible'); return []; }
-    if (!run || run.missionId !== mission.id) if (!start(mission)) return [];
-    const p = mission.params, now = Number(state.simTime) || 0;
+    // One run, one mission: a second simultaneous race mission gets no set
+    // pieces rather than trading the run — and re-spawning its anchors,
+    // re-arming its warnings, and re-shooting its dynamics — every other tick.
+    // A displaced mission also loses its published array: the cues it still
+    // carries describe the previous run's geometry, not this one's.
+    if (run && run.missionId !== mission.id) { mission.params.raceSetPieces = NO_CUES; return NO_CUES; }
+    const p = mission.params;
+    // The resolved course is the run's ground truth. A mid-run params swap
+    // (gates array, course, level or sector identity) would leave the old
+    // frames, anchors and hold points lying in the new course's space, so the
+    // run rebuilds against the current course instead of publishing stale
+    // geometry. raceGateGlobals is identity-stable while the params' gates and
+    // sector stay put, so an unchanged course never rebuilds.
+    if (run && (p.courseId !== run.courseId || p.levelId !== run.levelId
+      || p.courseSectorId !== run.sectorId || raceGateGlobals(p) !== run.gates)) {
+      stop('course_changed');
+    }
+    if (!run && !start(mission)) { p.raceSetPieces = NO_CUES; return NO_CUES; }
+    const now = Number(state.simTime) || 0;
     const startS = Number.isFinite(p.raceStartSimS) ? p.raceStartSimS : p.gridUntilSimS;
     const elapsed = Number.isFinite(startS) ? Math.max(0, now - startS) : 0;
     const dt = Math.max(0, Math.min(0.1, now - run.lastTime)); run.lastTime = now;
@@ -162,13 +208,13 @@ export function createRacingSetPieces({ state, bus, helpers }) {
       else { cue.pos.x = entity.pos.x; cue.pos.z = entity.pos.z; }
     }
     for (const event of run.dynamics) {
-      const { def, frame, cue } = event;
+      const { def, frame, cue, warnS } = event;
       cue.countdownS = Math.max(0, def.startsAtS - elapsed);
-      if (elapsed < def.startsAtS - def.warningS) continue;
+      if (elapsed < def.startsAtS - warnS) continue;
       if (!event.announced) {
         event.announced = true; cue.phase = 'warning';
-        bus?.emit?.('race:setPieceWarning', { missionId: mission.id, ...cue, warningS: def.warningS });
-        bus?.emit?.('toast', { text: `${def.name} in ${def.warningS}s. ${cue.hint}`, kind: 'warn', ttl: 5 });
+        bus?.emit?.('race:setPieceWarning', { missionId: mission.id, ...cue, warningS: warnS });
+        bus?.emit?.('toast', { text: `${def.name} in ${warnS}s. ${cue.hint}`, kind: 'warn', ttl: 5 });
       }
       if (!event.spawned) {
         event.spawned = true;
@@ -179,16 +225,19 @@ export function createRacingSetPieces({ state, bus, helpers }) {
         } else if (event.kind === 'crossing') {
           const spec = makeShipEntitySpec(def.hullId, { team: 2, pos, rot: Math.atan2(-frame.nx, frame.nz),
             fittings: fittingsFromDefaultModules(def.hullId, ['mod_engine_ion_m']), ai: { passive: true, roe: 'hold_fire' } });
-          spec.flags = { ...spec.flags, missionPinned: true };
-          Object.assign(spec.data, { name: 'Textile Cargo 04', scanLabel: 'Textile Cargo 04 · scheduled crossing' });
+          if (spec) {
+            spec.flags = { ...spec.flags, missionPinned: true };
+            spec.data = { ...spec.data, name: 'Textile Cargo 04', scanLabel: 'Textile Cargo 04 · scheduled crossing' };
+          }
           const entity = spawn(spec, def.id, event.kind);
           if (entity) cue.entityIds.push(entity.id);
-          const end = { x: frame.x + frame.nz * def.lateralWU, z: frame.z - frame.nx * def.lateralWU };
+          const end = lateralPoint(frame, -def.lateralWU);
           event.route = [pos, end]; event.params = { nextGate: 1, lap: 0, gateRadiusWU: 26 };
           event.driver = createRacingDriver({ pace: 0.23, corner: 0.8, lane: 0 }, 'expert');
         } else {
-          for (const offset of def.offsetsWU) {
-            const piecePos = { x: pos.x + frame.nx * offset, z: pos.z + frame.nz * offset };
+          for (const offset of Array.isArray(def.offsetsWU) ? def.offsetsWU : []) {
+            const off = Number.isFinite(offset) ? offset : 0;
+            const piecePos = { x: pos.x + frame.nx * off, z: pos.z + frame.nz * off };
             const entity = spawn(rockSpec(piecePos, rockSize, run.sectorId, 'Veil wash fragment', false, state.meta?.seed), def.id, event.kind);
             if (entity) cue.entityIds.push(entity.id);
           }

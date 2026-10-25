@@ -184,16 +184,18 @@ export function createRacingCorridorArranger(sector, options = {}) {
     createField(fdef) {
       // A layout may skip a field id, carry an empty leg list, or lack the fields
       // map entirely — every one of those banks all legs rather than indexing
-      // nothing or a missing entry.
+      // nothing or a missing entry. Legs that cannot index a segment (negative,
+      // fractional, out of range) drop out instead of reading segments[-1].
       const authoredLegs = plan.layout.fields ? plan.layout.fields[fdef.id] : null;
-      const legs = Array.isArray(authoredLegs) && authoredLegs.length
-        ? authoredLegs : plan.segments.map((_, i) => i);
+      const inRange = (leg) => Number.isInteger(leg) && leg >= 0 && leg < plan.segments.length;
+      const authored = Array.isArray(authoredLegs) ? authoredLegs.filter(inRange) : [];
+      const legs = authored.length ? authored : plan.segments.map((_, i) => i);
       return {
         place(original, bodyRadius, slotIndex) {
           const radius = asteroidColliderRadius(fdef.type, bodyRadius);
           const seed = hash32(fdef.id, slotIndex, original.x, original.z) >>> 0;
           for (let attempt = 0; attempt < 96; attempt++) {
-            const leg = legs[(slotIndex + Math.floor(attempt / 8)) % legs.length] % plan.segments.length;
+            const leg = legs[((slotIndex | 0) + Math.floor(attempt / 8)) % legs.length];
             const { a, b } = plan.segments[leg];
             const length = Math.hypot(b.x - a.x, b.z - a.z) || 1;
             const t = 0.12 + (((seed % 65521) / 65521 + attempt * 0.381966) % 1) * 0.76;

@@ -57,7 +57,30 @@ function waitPosFor(gates, gateIndex, waitBackWU) {
 }
 
 function cueFor(previous, def) {
-  if (previous && previous.id === def.id) return previous;
+  if (previous && previous.id === def.id) {
+    // The reuse path still owes the record contract — a foreign prior record
+    // with a matching id must not republish a non-string name, carry a missing
+    // or non-finite position into the finite-write path, or lose its id list.
+    if (typeof previous.name !== 'string' || !previous.name) previous.name = def.id;
+    // Def-owned fields re-read from the def every projection: a foreign prior
+    // cannot carry a stale gateIndex past the leg-scope guard or foreign copy
+    // into the HUD.
+    previous.kind = 'sectorHazard';
+    previous.label = def.label || 'SECTOR HAZARD';
+    previous.hint = def.hint || '';
+    previous.gateIndex = def.gateIndex;
+    if (!Number.isFinite(previous.waitRadiusWU)) previous.waitRadiusWU = 42;
+    if (!previous.pos || typeof previous.pos !== 'object'
+      || !Number.isFinite(previous.pos.x) || !Number.isFinite(previous.pos.z)) {
+      previous.pos = { x: 0, z: 0 };
+    }
+    if (previous.waitPos && (typeof previous.waitPos !== 'object'
+      || !Number.isFinite(previous.waitPos.x) || !Number.isFinite(previous.waitPos.z))) {
+      previous.waitPos = null;
+    }
+    if (!Array.isArray(previous.entityIds)) previous.entityIds = [];
+    return previous;
+  }
   return {
     id: def.id,
     kind: 'sectorHazard',
@@ -95,12 +118,15 @@ export function projectRacingSectorHazards(state, params, definitions, previousC
   const sector = SECTOR_BY_ID.get(sectorId) || null;
   const player = state && state.entities && state.entities.get
     ? state.entities.get(state.playerId) : null;
-  const previousById = new Map((previousCues || []).map((cue) => [cue.id, cue]));
+  const previousById = new Map((previousCues || [])
+    .filter((cue) => cue && typeof cue.id === 'string')
+    .map((cue) => [cue.id, cue]));
   const seen = new Set();
   for (let i = 0; i < definitions.length; i++) {
     const def = definitions[i];
-    // One record per def id — a repeated id would alias the same cue twice.
-    if (!def || typeof def.id !== 'string' || seen.has(def.id)) continue;
+    // One record per def id — a repeated id would alias the same cue twice,
+    // and an empty id would publish a nameless record that dedupes to itself.
+    if (!def || typeof def.id !== 'string' || !def.id || seen.has(def.id)) continue;
     seen.add(def.id);
     const cue = cueFor(previousById.get(def.id), def);
     let pos = null;

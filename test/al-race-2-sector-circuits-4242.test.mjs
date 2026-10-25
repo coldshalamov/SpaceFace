@@ -207,6 +207,51 @@ test('six new courses: distinct geometry, Time-trial-only, revision 1, 90 wu ape
     assert.ok(Array.isArray(level.sectorHazards) && level.sectorHazards.length >= 1, 'hazard descriptors');
   }
   assert.equal(signatures.size, 6, 'six physically distinct routes');
+  // The same field-leg contract binds the original three layouts: a leg index
+  // that cannot index the segment chain would read segments[-1] at placement.
+  for (const level of RACE_LEVELS) {
+    const layout = RACING_CIRCUIT_LAYOUTS[level.sectorId];
+    assert.ok(layout && layout.fields, level.sectorId);
+    const sectorFieldIds = new Set((SECTOR_BY_ID.get(level.sectorId).fields || []).map((f) => f.id));
+    for (const fieldId of Object.keys(layout.fields)) {
+      assert.ok(sectorFieldIds.has(fieldId), `${level.sectorId}:${fieldId} is a native field id`);
+      for (const leg of layout.fields[fieldId]) {
+        assert.ok(Number.isInteger(leg) && leg >= 0 && leg < level.course.gates.length - 1,
+          `${level.sectorId}:${fieldId} leg ${leg} indexes a segment`);
+      }
+    }
+  }
+});
+
+test('authored dynamics carry finite geometry and clocks on every course', () => {
+  for (const level of RACING_CIRCUITS) {
+    const defs = racingSetPieceDefinitions(level.course.courseId);
+    assert.ok(defs, level.course.courseId);
+    for (const [kind, def] of [['crossing', defs.crossing], ['wave', defs.wave], ['shutter', defs.shutter]]) {
+      if (!def) continue;
+      assert.ok(Number.isInteger(def.legIndex) && def.legIndex >= 0
+        && def.legIndex <= level.course.gates.length - 2, `${def.id} leg inside the chain`);
+      for (const key of ['fraction', 'startsAtS', 'warningS', 'waitBackWU']) {
+        assert.ok(Number.isFinite(def[key]), `${def.id}.${key} finite`);
+      }
+      assert.ok(def.fraction >= 0 && def.fraction <= 1, `${def.id} fraction on its leg`);
+      if (kind === 'wave') {
+        assert.ok(Array.isArray(def.offsetsWU) && def.offsetsWU.every(Number.isFinite),
+          `${def.id} finite offsets`);
+      }
+      if (kind === 'shutter') {
+        for (const key of ['opensAtS', 'openLateralWU', 'closedLateralWU', 'serviceLateralWU',
+          'serviceWidthWU', 'radiusWU', 'mass', 'maxSpeedWU', 'maxAccelWU']) {
+          assert.ok(Number.isFinite(def[key]), `${def.id}.${key} finite`);
+        }
+      }
+      if (kind === 'crossing') assert.equal(typeof def.hullId, 'string', `${def.id} hull id`);
+    }
+    // Anchor rows keep interior gates with both neighbors — off-seam by contract.
+    for (const a of defs.anchors) {
+      assert.ok(a.gateIndex >= 1 && a.gateIndex <= level.course.gates.length - 3, `${a.id} interior`);
+    }
+  }
 });
 
 // ── 2. RF-02 ──────────────────────────────────────────────────────────────────
@@ -469,6 +514,41 @@ test('hazard warnings announce once per transition and stay leg-scoped in run.cu
   } finally { f.dispose(); }
 });
 
+test('one run, one mission: a second simultaneous race gets no pieces; a course swap rebuilds', async () => {
+  const f = await sectorFixture('sector_pallas_drift');
+  try {
+    const level = raceLevelById('level_pallas_reef');
+    const mk = (id) => ({ id, type: 'race', status: 'active', params: {
+      racingContractId: 'contract_pallas_reef', raceMode: 'time-trial',
+      courseId: level.course.courseId, courseSectorId: level.sectorId, levelId: level.id,
+      gates: level.course.gates, gateRadiusWU: 90, nextGate: 4, laps: 1,
+      gridUntilSimS: 0.5, raceStartSimS: 0.5 } });
+    const a = mk('race-a'), b = mk('race-b');
+    f.state.missions.active = [a, b];
+    const pieces = createRacingSetPieces(f.ctx);
+    f.state.simTime = 1; f.state.tick = 60;
+    const cuesA = pieces.update(a);
+    assert.ok(cuesA.length >= 1, 'mission A owns the run');
+    const ownedIds = pieces.inspect().entityIds.slice();
+    assert.equal(pieces.inspect().missionId, 'race-a');
+    assert.deepEqual(pieces.update(b), [], 'the interloper gets no pieces, no thrash');
+    assert.equal(b.params.raceSetPieces.length, 0, 'no stale cue array left published on B');
+    assert.equal(pieces.inspect().missionId, 'race-a', 'the incumbent keeps the run');
+    assert.deepEqual(pieces.inspect().entityIds, ownedIds, 'anchors never re-spawned');
+    // A mid-run gates-array swap is a new course: the run rebuilds its frames
+    // and anchors instead of serving the old geometry under the new scoring.
+    const runBefore = pieces.inspect();
+    a.params = { ...a.params, gates: a.params.gates.slice() };
+    const rebuilt = pieces.update(a);
+    assert.ok(rebuilt.length >= 1, 'the owner keeps its rebuilt run');
+    assert.equal(pieces.inspect().missionId, 'race-a');
+    assert.notEqual(pieces.inspect().cues, runBefore.cues, 'a fresh cue set on the new course');
+    if (ownedIds.length) assert.notDeepEqual(pieces.inspect().entityIds, ownedIds,
+      'anchors re-seeded on the new course');
+    pieces.stop('done');
+  } finally { f.dispose(); }
+});
+
 test('hazard projection holds its contract on malformed defs', async () => {
   const f = await sectorFixture('sector_kepler_scar');
   try {
@@ -521,6 +601,29 @@ test('hazard projection holds its contract on malformed defs', async () => {
       [{ id: 'nameless_zone', kind: 'weatherVolume', volumeId: 'not_a_volume', gateIndex: 3 }], [])[0];
     assert.equal(nameless.name, 'nameless_zone', 'an unnamed def falls back to its id');
     assert.ok(Number.isFinite(nameless.waitPos.x), 'the named-less def still holds on its leg');
+    // A non-string or empty name/id never reaches the published record.
+    for (const bad of [{ id: '', name: 'Ghost' }, { id: 'num_name', name: 0 },
+      { id: 'null_name', name: null }]) {
+      const rows = projectRacingSectorHazards(f.state, mission.params,
+        [{ ...bad, kind: 'staticZone', zoneIndex: 0, gateIndex: 3 }], []);
+      if (!bad.id) { assert.equal(rows.length, 0, 'an empty def id emits no record'); continue; }
+      assert.equal(typeof rows[0].name, 'string', `${bad.id} still carries a string name`);
+      assert.ok(rows[0].name.length > 0);
+    }
+    // A prior cue list carrying foreign or null rows is ignored, never indexed;
+    // a matching-id prior with a corrupted name is repaired on reuse.
+    const stale = projectRacingSectorHazards(f.state, mission.params,
+      [level.sectorHazards[0]], [null, { id: 7 }, { id: 'foreign' }]);
+    assert.equal(stale.length, 1);
+    const repaired = projectRacingSectorHazards(f.state, mission.params,
+      [level.sectorHazards[0]], [{ id: level.sectorHazards[0].id, name: 0 }]);
+    assert.equal(repaired[0].name, level.sectorHazards[0].id);
+    // A bare matching-id prior record carries no cue shape at all; reuse still
+    // owes the finite-position and name contracts instead of throwing.
+    const bare = projectRacingSectorHazards(f.state, mission.params,
+      [level.sectorHazards[0]], [{ id: level.sectorHazards[0].id }]);
+    assert.equal(bare[0].name, level.sectorHazards[0].id);
+    assert.ok(bare[0].pos && Number.isFinite(bare[0].pos.x), 'pos normalized on reuse');
     // A courseSectorId the player is not in still projects in the course's own
     // frame — the hazard's true global position, not a fabricated local one.
     const elsewhere = await sectorFixture('sector_helios_prime');
