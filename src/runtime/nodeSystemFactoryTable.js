@@ -200,6 +200,7 @@ import { bouncer } from '../systems/bouncer.js';
 import { receipt } from '../systems/receipt.js';
 import { mop } from '../systems/mop.js';
 import { tallyho } from '../systems/tallyho.js';
+import { tare } from '../systems/tare.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -445,6 +446,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['receipt', receipt],
     ['mop', mop],
     ['tallyho', tallyho],
+    ['tare', tare],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

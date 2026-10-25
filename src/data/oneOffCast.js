@@ -265,8 +265,8 @@ export const ONE_OFF_CAST = Object.freeze([
     id: 'tare', name: 'TARE / WG-2 — the weighing robot on the dead scale deck',
     sectorIds: ['sector_dione_lane'],
     books: { from: 4, to: 7 },
-    chart: { kind: 'planned', ref: null },
-    implemented: false,
+    chart: { kind: 'contact', ref: 'tare', presentVia: 'tare' },
+    implemented: true,
   }),
   entry({
     id: 'docket', name: 'DOCKET / PX-14 — the parcel drone that wants to be delivered',
