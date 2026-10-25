@@ -267,7 +267,7 @@ function stationIsLawful(station) {
   return !faction || !NON_LAWFUL_PERSONALITIES.has(faction.personality);
 }
 
-function liveStationPosition(state, stationId) {
+export function liveStationPosition(state, stationId) {
   const active = state.world && state.world.activeSector;
   const record = active && Array.isArray(active.stations)
     ? active.stations.find((station) => (station.stationId || station.id) === stationId)
@@ -293,6 +293,17 @@ export function chooseLawfulStation(state) {
   const helios = STATION_BY_ID.get('station_helios');
   if (helios) return helios;
   return [...STATION_BY_ID.values()].find(stationIsLawful) || null;
+}
+
+// Row 463 "Retry act": the boss-staging berth aims the player's re-entry bearing at the sector's
+// lawful recovery station, so the chooser needs the same lawful test scoped to a named sector
+// rather than the player's remembered/current dock.
+export function lawfulStationInSector(sectorId) {
+  const sector = SECTORS.find((s) => s.id === sectorId);
+  const station = sector && Array.isArray(sector.stations)
+    ? sector.stations.find(stationIsLawful)
+    : null;
+  return station ? { ...station, sectorId: sector.id, security: sector.security } : null;
 }
 
 // Recovery pricing as a pure quote so the docked service row can price the player's actual

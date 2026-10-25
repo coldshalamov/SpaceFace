@@ -53,7 +53,7 @@ import {
   ENEMY_DOCTRINE_OVERRIDES,
   MISSION_TAG_BOSS_DOCTRINE,
 } from '../data/combatDefs.js';
-import { ENEMY_TYPES } from '../data/enemies.js';
+import { ENEMY_TYPES, isEliteCombatant } from '../data/enemies.js';
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { applyNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
 import { stepEgressExits } from '../ai/egressExit.js';
@@ -578,7 +578,7 @@ export function createTacticalAISystem({
         if (lastManeuverRequests.length) replayLastManeuvers(liveStack, tick, state);
         driveChoreographyMembers(liveStack, state, tick, null, shipLikeList);
         driveCohortMembers(liveStack, state, tick, shipLikeList);
-        revalidateCachedAIFiringIntents(liveStack, state, lastDecisionEntityRefs);
+        revalidateCachedAIFiringIntents(liveStack, state, lastDecisionEntityRefs, ctxRef && ctxRef.bus);
         applySquadTokenFireGate(liveStack, state, shipLikeList);
         applyCapitalBossFireGate(state, shipLikeList, clearAIFiringIntent);
         stepHostileBodyLaunches(state, ctxRef.bus, bodyLaunchRt, liveStack.combatDoctrine);
@@ -652,6 +652,7 @@ export function createTacticalAISystem({
         applyTurretEdgeEffects(entity, doctrine, state);
         applyMindAwareFiringIntent(decision, state);
         applyNemesisFireGate(entity, state);
+        applyEliteChargeTell(entity, decision, state, tick, ctxRef && ctxRef.bus);
         const enemyId = entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
         const fieldsSys = ctxRef && ctxRef.registry && typeof ctxRef.registry.get === 'function'
           ? ctxRef.registry.get('fields')
@@ -735,7 +736,7 @@ export function applyMindAwareFiringIntent(decision, state) {
   applyAIFiringIntent(decision, state);
 }
 
-export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = null) {
+export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = null, bus = null) {
   const decisions = liveStack && liveStack.lastResult && liveStack.lastResult.decisions;
   if (!Array.isArray(decisions)) return 0;
   for (const decision of decisions) {
@@ -747,10 +748,68 @@ export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = n
     if (expectedEntity && entity !== expectedEntity) continue;
     if (entity && entityNeedsAiThink(entity, state) === false) continue;
     if (isCounterplayOwned(entity, state)) continue;
-    applyMindAwareFiringIntent(palletJackDecision(kilnbackDecision(decision, state), state), state);
+    const effective = palletJackDecision(kilnbackDecision(decision, state), state);
+    applyMindAwareFiringIntent(effective, state);
     applyNemesisFireGate(entity, state);
+    applyEliteChargeTell(entity, effective, state, state && state.tick, bus);
   }
   return decisions.length;
+}
+
+/**
+ * Row 463 elite intent: an elite with no combat doctrine used to open fire with no warning at
+ * all — doctrine-driven combatants telegraph through combatDoctrine.telegraphStarted and capital
+ * scores own their own telegraphs, but a boss/ace/nemesis/rare-specialist hull whose intent flips
+ * to firing published nothing. This gate emits the same ai:telegraph shape (weapon_charge) and
+ * holds the firing intent for its 24-tick lead — pure scheduling; no weapon number, cooldown, or
+ * damage value changes. A tell satisfies one firing edge; a fresh edge after a consumed or stale
+ * tell telegraphs again. Sustained fire is never re-held.
+ */
+const ELITE_CHARGE_TELL_TICKS = 24;
+const eliteChargeTellLedger = new WeakMap(); // entity object -> { tellAt, consumed, wasFiring }
+
+export function applyEliteChargeTell(entity, decision, state, tick, bus) {
+  const intent = entity && entity.data && entity.data.intent;
+  if (!entity || !intent || intent.fire !== true) {
+    return;
+  }
+  if (!isEliteCombatant(entity)) return;
+  // Authored capital scores telegraph through capitalBoss:telegraph; a doctrine presence
+  // (either the live decision's or the entity's authored id) means the doctrine path owns tells.
+  if (capitalScoreControls(state, entity.id)) return;
+  const ai = entity.data && entity.data.ai;
+  if ((ai && ai.combatDoctrineId) || (decision && decision.combatDoctrine)) return;
+  const now = Number.isInteger(tick) ? tick : (Number.isInteger(state && state.tick) ? state.tick : 0);
+  const entry = eliteChargeTellLedger.get(entity) || { tellAt: -1, consumed: true, wasFiring: false };
+  if (!entry.wasFiring) {
+    if (!entry.consumed && now - entry.tellAt >= ELITE_CHARGE_TELL_TICKS) {
+      // The running tell finished its lead — this firing edge releases.
+      entry.consumed = true;
+    } else {
+      if (entry.consumed || entry.tellAt < 0 || now - entry.tellAt >= ELITE_CHARGE_TELL_TICKS) {
+        entry.tellAt = now;
+        entry.consumed = false;
+        if (bus && typeof bus.emit === 'function') {
+          bus.emit('ai:telegraph', {
+            entityId: entity.id,
+            targetId: decision && decision.directive && decision.directive.objective
+              ? decision.directive.objective.targetId : null,
+            doctrineId: null,
+            phase: null,
+            kind: 'weapon_charge',
+            durationTicks: ELITE_CHARGE_TELL_TICKS,
+            attackLine: null,
+            bossStage: 0,
+            turretEdge: 0,
+            tick: now,
+          });
+        }
+      }
+      clearAIFiringIntent(intent, 'elite_charge_tell');
+    }
+  }
+  entry.wasFiring = intent.fire === true;
+  eliteChargeTellLedger.set(entity, entry);
 }
 
 /**

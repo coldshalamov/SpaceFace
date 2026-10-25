@@ -29,7 +29,9 @@ import { activeWebChords, noteArcWireShot } from '../combat/tetherWebs.js';
 import { markDirty, isDirty, hasDirty, DIRTY } from '../core/dirtyJournal.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
-import { buildDefeatReceipt, buildRecoveryPlan } from '../combat/playerDefeat.js';
+import { buildDefeatReceipt, buildRecoveryPlan, lawfulStationInSector,
+  liveStationPosition } from '../combat/playerDefeat.js';
+import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { DEFEAT_STREAK_WINDOW_S, defeatMercyScale } from '../data/difficulty.js';
 import { normalizeActivity, normalizeRoe, roeForActivity } from '../ai/doctrine.js';
 import {
@@ -55,6 +57,9 @@ const WHIP_DAMAGE_TYPES = new Set(['ship', 'station', 'drone']);
 const WHIP_DAMAGE_MOMENTUM_SCALE = 1 / 1600; // 640-mass rock at 60 wu/s (solid) -> 24 damage
 const WHIP_DAMAGE_MAX = 45;                  // ceiling for the heaviest slings
 const RECOVERY_BERTH_CLEARANCE_WU = 140;
+// Row 463 "Retry act": the staging point must sit outside the score's 900 WU suspend radius
+// (data/encounters/capital-boss scores) so the rewound act re-arms by approach, not in place.
+const BOSS_STAGING_DISTANCE_WU = 1100;
 /** Seconds of invulnerability after undock / soft respawn window extension (overnight B1). */
 export const UNDOCK_INVULN_S = 8;
 /**
@@ -1176,6 +1181,30 @@ export const combat = {
     setVecXZ(t.vel, 0, 0);
     this._pendingPlayerRecovery = { playerId: t.id, receipt };
     this.state.combat.lastPlayerDefeat = receipt;
+    // Row 463: a live authored capital fight that just killed the player owes the after-action
+    // screen a "Retry act" offer. finish('defeat') only lands on the score's next step, so the
+    // record is still non-terminal at this moment — stamp the durable receipt while it reads live.
+    // lastPlayerDefeat is save-durable, so the offer survives a save/load over the open sheet.
+    const bossFights = this.state.capitalBossEncounters && this.state.capitalBossEncounters.fights;
+    if (bossFights) {
+      for (const fight of Object.values(bossFights)) {
+        if (!fight || fight.terminal || fight.suspended || fight.started !== true) continue;
+        if (typeof fight.fightId === 'string' && fight.fightId.startsWith('swarm:')) continue;
+        if (fight.targetId !== t.id) continue;
+        receipt.capitalBossFightId = fight.fightId;
+        try {
+          const score = requireCapitalBossEncounter(fight.encounterId).score;
+          receipt.capitalBossName = (score && score.name) || '';
+          const act = score && Array.isArray(score.acts)
+            && Number.isInteger(fight.actIndex) && fight.actIndex >= 0 ? score.acts[fight.actIndex] : null;
+          receipt.capitalBossActTitle = (act && act.title) || '';
+        } catch (_) {
+          receipt.capitalBossName = '';
+          receipt.capitalBossActTitle = '';
+        }
+        break;
+      }
+    }
     // Defeat-streak bookkeeping (the adaptive floor in data/difficulty.js): a counter plus the
     // sim timestamp, written once per recoverable defeat. Ironman exits before this seam, so a
     // permadeath run never accrues mercy; Veteran accrues the count but its profile never eases.
@@ -1269,7 +1298,15 @@ export const combat = {
     this._recoveryInFlight = true;
     try {
       const receipt = pending.receipt || {};
-      const plan = receipt.recovery || buildRecoveryPlan(this.state, player);
+      let plan = receipt.recovery || buildRecoveryPlan(this.state, player);
+      // Row 463 "Retry act": same berth economics, a different berth — the staging point sits
+      // ~1100 WU off the boss on the recovery-station bearing, outside the score's 900 WU
+      // suspend radius so the rewound act re-arms by approach. A missing fight, mission, boss,
+      // or lawful station falls back to the ordinary berth plan.
+      if (payload.plan === 'boss_staging') {
+        const staged = this._bossStagingPlan(plan, receipt);
+        if (staged) plan = staged;
+      }
 
       // Place first. Cargo/credit consequences apply only after the berth is committed so a
       // failed cross-sector restore cannot strip inventory and leave the after-action modal stuck.
@@ -1323,6 +1360,45 @@ export const combat = {
     }
   },
 
+  /**
+   * Row 463 "Retry act": derive the boss-staging placement for a defeat-terminated fight whose
+   * mission is still active. Returns a recovery-plan-shaped object (same economics as the berth
+   * plan the caller already priced) or null to fall back to the ordinary berth.
+   */
+  _bossStagingPlan(plan, receipt) {
+    const state = this.state;
+    const fightId = receipt && receipt.capitalBossFightId;
+    if (fightId == null) return null;
+    const fights = state.capitalBossEncounters && state.capitalBossEncounters.fights;
+    const fight = fights && fights[String(fightId)];
+    if (!fight || fight.terminal !== 'defeat' || fight.bossKilled === true) return null;
+    const active = (state.missions && Array.isArray(state.missions.active) && state.missions.active) || [];
+    const mission = active.find((m) => m && String(m.id) === String(fightId));
+    if (!mission || mission.status !== 'active' || !mission.destSectorId) return null;
+    const boss = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(fight.bossId) : null;
+    if (!boss || boss.alive === false || !boss.pos) return null;
+    const station = lawfulStationInSector(mission.destSectorId);
+    if (!station) return null;
+    const stationPos = liveStationPosition(state, station.id)
+      || (station.pos && Number.isFinite(station.pos.x) ? { x: station.pos.x, z: station.pos.z } : null);
+    if (!stationPos) return null;
+    const dx = stationPos.x - boss.pos.x, dz = stationPos.z - boss.pos.z;
+    const dist = Math.hypot(dx, dz);
+    const ux = dist > 1 ? dx / dist : 1, uz = dist > 1 ? dz / dist : 0;
+    return {
+      ...plan,
+      sectorId: mission.destSectorId,
+      stationId: station.id,
+      stationName: station.name || plan.stationName,
+      stationPos,
+      pos: {
+        x: boss.pos.x + ux * BOSS_STAGING_DISTANCE_WU,
+        z: boss.pos.z + uz * BOSS_STAGING_DISTANCE_WU,
+      },
+    };
+  },
+
   restorePlayerAtRecoveryDock(t, plan) {
     const currentSectorId = this.state.world && this.state.world.currentSectorId;
     if (plan && plan.sectorId && plan.sectorId !== currentSectorId) {
@@ -1341,7 +1417,11 @@ export const combat = {
     // Recover beside the station rather than at its collision origin. Lawful-station engagement
     // authority already prevents attackers firing into this berth, so recovery needs no temporary
     // invulnerability reward-hack and stale projectiles remain back at the wreck site.
-    const pos = { x: stationPos.x + RECOVERY_BERTH_CLEARANCE_WU, z: stationPos.z };
+    // Row 463: a boss_staging plan carries its own computed pos — the same teleport path, a
+    // different point on the field.
+    const pos = plan && plan.pos && Number.isFinite(plan.pos.x) && Number.isFinite(plan.pos.z)
+      ? { x: plan.pos.x, z: plan.pos.z }
+      : { x: stationPos.x + RECOVERY_BERTH_CLEARANCE_WU, z: stationPos.z };
     t.alive = true;
     t.hull = t.hullMax;
     t.armorHp = t.armorMax;
