@@ -2,6 +2,9 @@
 // cell stays the line that already shipped. Voice stays with the house that opened the cell.
 // Every line in this file is live: topUpBarkSituationCells appends the whole cell, so a
 // tail append here always reaches a selector — there is no dead reservoir past a cap.
+// Authoring rule: APPEND at cell end only. Delivered voice WAVs are named by positional
+// corpus index (deliveredBarkWavRelPath) — a mid-array insert or reorder renumbers the
+// whole shipped WAV set downstream of it.
 
 export const BARK_SITUATION_FILL = {
   faction_scn: {
@@ -1353,14 +1356,15 @@ export function topUpBarkSituationCells(barks, factions, situations, eventSituat
     for (const situation of keys) {
       const cell = pack[situation];
       const extra = fill[situation];
-      if (!Array.isArray(cell) || !Array.isArray(extra)) continue;
-      const seen = new Set(cell);
-      for (const line of extra) {
-        if (typeof line !== 'string' || line.length === 0 || seen.has(line)) continue;
-        cell.push(line);
-        seen.add(line);
+      if (Array.isArray(cell) && Array.isArray(extra)) {
+        const seen = new Set(cell);
+        for (const line of extra) {
+          if (typeof line !== 'string' || line.length === 0 || seen.has(line)) continue;
+          cell.push(line);
+          seen.add(line);
+        }
       }
-      if (cell.length < minLength) underFloor.push(`${factionId}/${situation}`);
+      if (Array.isArray(cell) && cell.length < minLength) underFloor.push(`${factionId}/${situation}`);
     }
   }
   return underFloor;

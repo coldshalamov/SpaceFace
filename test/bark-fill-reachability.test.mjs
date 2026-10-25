@@ -38,6 +38,23 @@ test('no touched cell ends under the BARK_CELL_MIN floor', () => {
   assert.deepEqual(underFloor, []);
 });
 
+test('every live cell meets the floor directly — not just via the mutator report', () => {
+  // The mutator only reports cells in fill-having factions; the floor contract belongs to
+  // the corpus itself, so assert it straight off BARKS for every faction × situation.
+  const under = [];
+  for (const factionId of BARK_FACTIONS) {
+    const pack = BARKS[factionId];
+    assert.ok(pack, `${factionId} missing from BARKS`);
+    for (const situation of SITUATION_KEYS) {
+      const cell = pack[situation];
+      if (Array.isArray(cell) && cell.length > 0 && cell.length < BARK_CELL_MIN) {
+        under.push(`${factionId}/${situation} (${cell.length})`);
+      }
+    }
+  }
+  assert.deepEqual(under, []);
+});
+
 test('deep cell indices past the old cap resolve to authored lines', () => {
   // A cell longer than the old 12-cap proves its tail is live; barkFor must return the exact
   // line at every index, including the former dead zone.

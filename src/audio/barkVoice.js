@@ -365,9 +365,10 @@ export function identifyRegisterFromSpeech(speech = {}) {
   return bestDist < 8 ? best : null;
 }
 
-/** Pipeline delivery path: one WAV per corpus row, written by generate-bark-voice.mjs --all. */
+/** Pipeline delivery path: one WAV per corpus row, written by generate-bark-voice.mjs --all.
+ *  Four-digit padding keeps lexicographic order = row order now that the corpus exceeds 999. */
 export function deliveredBarkWavRelPath(index, registerId) {
-  const n = String(Number(index) || 0).padStart(3, '0');
+  const n = String(Number(index) || 0).padStart(4, '0');
   return `assets/audio/voice/line_${n}_${registerId}.wav`;
 }
 

@@ -11,7 +11,7 @@
 //   node scripts/generate-bark-voice.mjs --catalog
 //   node scripts/generate-bark-voice.mjs --all
 
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -25,6 +25,7 @@ import {
   INSTRUCTOR_VOICE_REGISTER,
   BLIND_REGISTER_CLIPS,
   countBarkCorpus,
+  deliveredBarkWavRelPath,
   enumerateBarkPipeline,
   enumerateMechanicPipeline,
   resolveBarkVoice,
@@ -102,8 +103,8 @@ if (catalogOnly) {
 
 const jobs = writeAll
   ? pipeline.map((row, i) => ({
-    file: path.join(OUT_DIR, `line_${String(i).padStart(3, '0')}_${row.registerId}.wav`),
-    rel: `assets/audio/voice/line_${String(i).padStart(3, '0')}_${row.registerId}.wav`,
+    file: path.join(ROOT, deliveredBarkWavRelPath(i, row.registerId)),
+    rel: deliveredBarkWavRelPath(i, row.registerId),
     resolved: row,
     seconds: 1.4,
   }))
@@ -134,6 +135,15 @@ for (const clip of BLIND_REGISTER_CLIPS) {
     else if (!readFileSync(file).equals(bytes)) mismatches.push(`drifted ${clip.file}`);
   } else {
     writeFileSync(file, bytes);
+  }
+}
+
+// Stray audit: a --check over --all also fails on line_*.wav files the pipeline no longer
+// owns — stale positional names silently survive a corpus renumber otherwise.
+if (checkOnly && writeAll) {
+  const expected = new Set(jobs.map((j) => path.basename(j.file)));
+  for (const f of readdirSync(OUT_DIR)) {
+    if (/^line_\d+_.+\.wav$/.test(f) && !expected.has(f)) mismatches.push(`stray assets/audio/voice/${f}`);
   }
 }
 
