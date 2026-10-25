@@ -272,6 +272,7 @@ export const mining = {
     this._pulseCommodityId = null;
     this._beamPegged = false;
     this._pulsePeggedS = 0;
+    this._ventCarry = 0;
     this._heatEmitPct = -1;
     this._noiseImpulseAt = -Infinity;
     this._ventTaught = false;
@@ -925,7 +926,12 @@ export const mining = {
     if (pct < BEAM_VENT_BAND_LO) return null;
     const depth = Math.min(1, (pct - BEAM_VENT_BAND_LO) / Math.max(1e-6, 1 - BEAM_VENT_BAND_LO));
     const clean = depth >= 0.85 && peggedS === 0;
-    const bonusU = Math.floor(pulseOre * BEAM_VENT_BONUS_MAX * depth);
+    // X-07: the fraction a pulse earned carries to the next vent. A rhythm pulse on a common rock
+    // banks ~1.3 u, so flooring each vent alone paid 0 and left holding the peg ahead of the
+    // rhythm; carried, the rhythm's ~+65% lands in the hold as the plan numbers say.
+    const rawU = pulseOre * BEAM_VENT_BONUS_MAX * depth + (this._ventCarry || 0);
+    const bonusU = Math.floor(rawU + 1e-9);
+    this._ventCarry = Math.max(0, rawU - bonusU);
     if (!(bonusU > 0)) return null;
     this._ventTaught = true;
     const rock = targetId != null ? this.state.entities.get(targetId) : null;
@@ -965,6 +971,7 @@ export const mining = {
     this._pulseCommodityId = null;
     this._beamPegged = false;
     this._pulsePeggedS = 0;
+    this._ventCarry = 0;
     this._heatEmitPct = -1;
     if (!beam) return;
     beam.heat = 0;

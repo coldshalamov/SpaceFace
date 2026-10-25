@@ -145,6 +145,36 @@ test('X-07 clean is 0.85 depth with zero pegged seconds', () => {
   assert.equal(vb3.clean, false);
 });
 
+// X-07 review 3: the player outcome itself. A rhythm pulse on a common rock banks ~1.3 u, so a
+// per-vent floor paid nothing and holding the peg out-earned the rhythm. The fraction carries.
+test('X-07 on a common rock the rhythm out-earns holding the peg (plan ~+65% vs ~+26%)', () => {
+  function mineOut(style) {
+    const h = bootBeam();
+    h.asteroid.data.oreHP = 320; h.asteroid.data.oreHPMax = 320; h.asteroid.hull = 320; h.asteroid.hullMax = 320;
+    const beam = h.player.data.miningBeam;
+    let base = 0; let bonus = 0; let on = true;
+    h.bus.on('mining:yield', (p) => { if (p.ventBonus) bonus += p.qty; else base += p.qty || 0; });
+    for (let i = 0; i < 60 * 120 && h.asteroid.data.oreHP > 0; i++) {
+      if (style === 'rhythm') {
+        const pct = beam.heat / beam.heatMax;
+        if (on && pct >= 0.95) on = false; else if (!on && pct <= 0.6) on = true;
+      }
+      step(h, 1, on);
+    }
+    release(h);
+    return { base, bonus, vents: h.ventBonus.length };
+  }
+  const hold = mineOut('hold');
+  const rhythm = mineOut('rhythm');
+  assert.equal(hold.base, rhythm.base, 'the base yield is the same rock either way');
+  const holdPct = hold.bonus / hold.base;
+  const rhythmPct = rhythm.bonus / rhythm.base;
+  assert.ok(rhythmPct >= 0.5, `rhythm pays about +65% (${(rhythmPct * 100).toFixed(0)}%)`);
+  assert.ok(holdPct <= 0.3, `a pegged hold pays about +26% or less (${(holdPct * 100).toFixed(0)}%)`);
+  assert.ok(rhythm.bonus >= hold.bonus * 2, `rhythm ${rhythm.bonus} u vs hold ${hold.bonus} u`);
+  assert.ok(rhythm.vents >= 5, 'most rhythm pulses cash a vent the player sees');
+});
+
 test('X-07 the CLEAN CUT word holds for 1.2 s then the seam word returns', () => {
   const hud = Object.create(miningHud);
   hud.init({ state: {}, helpers: {}, bus: null });
