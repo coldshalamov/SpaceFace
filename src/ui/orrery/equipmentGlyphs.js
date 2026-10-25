@@ -64,6 +64,14 @@ export function equipmentKind(spec = {}) {
     Prospecting: 'mining', Hulls: 'hull', Service: 'repair' })[spec.category] || 'module';
 }
 
+/**
+ * Where this item's mark comes from: `authored` (a drawing for exactly this id) or `family` (the
+ * generic mark for its kind of equipment). A family mark is a fallback, never an identity.
+ */
+export function equipmentGlyphSource(spec = {}) {
+  return arsenalGlyph(spec) ? 'authored' : 'family';
+}
+
 /** Decorative by design: the surrounding control always supplies the item name and fit. */
 export function equipmentSvg(spec = {}, doc = globalThis.document) {
   if (!doc || typeof doc.createElementNS !== 'function') return null;
@@ -73,7 +81,10 @@ export function equipmentSvg(spec = {}, doc = globalThis.document) {
   const exact = arsenalGlyph(spec);
   for (const [key, value] of Object.entries({ viewBox: exact ? '0 0 24 24' : '0 0 128 128', class: 'orr-equipment-glyph',
     fill: 'none', stroke: 'currentColor', 'stroke-width': exact ? '1.25' : '2', 'stroke-linejoin': 'round',
-    'stroke-linecap': 'round', 'aria-hidden': 'true', focusable: 'false', 'data-glyph': kind })) svg.setAttribute(key, value);
+    'stroke-linecap': 'round', 'aria-hidden': 'true', focusable: 'false', 'data-glyph': kind,
+    'data-glyph-source': exact ? 'authored' : 'family' })) svg.setAttribute(key, value);
+  // A generic family mark is drawn dashed: it reads as "a kind of equipment", never as this item's own drawing.
+  if (!exact) svg.setAttribute('stroke-dasharray', '7 5');
   if (exact) svg.setAttribute('data-arsenal', typeof spec === 'string' ? spec : spec.defId || spec.id);
   for (const { tag, ...attrs } of exact || EQUIPMENT_GLYPHS[kind]) {
     const node = doc.createElementNS(ns, tag);

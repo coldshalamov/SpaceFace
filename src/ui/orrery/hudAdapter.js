@@ -16,7 +16,8 @@
 //   tether              masslineInstrumentReadout(tether) + the attached body's mass — for a
 //                       declared manifest, only the measurement the loaded rope earned
 import { weaponHeatSummary } from '../weaponHeat.js';
-import { BOMB_SLOT_INDEX, readRailModel, RAIL_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
+import { BOMB_SLOT_INDEX, readRailModel, RAIL_SLOTS, SUPPORT_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
+import { createArsenalPresentation, readArsenalBindings } from '../../data/arsenalPresentation.js';
 import { masslineInstrumentReadout } from '../hudAttention.js';
 import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCustody.js';
 import { SHIPS } from '../../data/ships.js';
@@ -30,15 +31,16 @@ import { applyOrreryHudSkin } from './hudSkin.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 // The five powers (owner 2026-10-22): each power is its own band, so each prints by name.
-const GROUP_NAME = Object.freeze({ PULL: 'Pull', SHOVE: 'Shove', PIN: 'Pin', BAY: 'Bomb', RIG: 'Rig', LINE: 'Line' });
-const GROUP_ICON = Object.freeze({ Pull: 'well', Shove: 'repel', Pin: 'seed', Bomb: 'munitions', Rig: 'cone', Line: 'line' });
+const GROUP_NAME = Object.freeze({ PULL: 'Pull', SHOVE: 'Shove', PIN: 'Pin', BAY: 'Bomb', RIG: 'Rig', LINE: 'Line', GYRE: 'Gyre', CLOAK: 'Cloak' });
+const GROUP_ICON = Object.freeze({ Pull: 'well', Shove: 'repel', Pin: 'seed', Bomb: 'munitions', Rig: 'cone', Line: 'line', Gyre: 'well', Cloak: 'seed' });
 // One tint per power (design/expansion/05_ASSET_ROSTER.md §7.2): the Cluster colours each key's
 // mark so a glance tells the five apart. Armed/live states still override the tint.
-const GROUP_POWER = Object.freeze({ PULL: 'pull', SHOVE: 'shove', PIN: 'pin', BAY: 'bomb', RIG: 'rig', LINE: 'line' });
+const GROUP_POWER = Object.freeze({ PULL: 'pull', SHOVE: 'shove', PIN: 'pin', BAY: 'bomb', RIG: 'rig', LINE: 'line', GYRE: 'gyre', CLOAK: 'cloak' });
 // The rail's 24-px glyph names → the 48-px kit icon file names the Cluster masks.
 const SLOT_ICON = Object.freeze({ munitions: 'munitions', blast: 'fire', tether: 'line', seed: 'seed', well: 'well', repel: 'repel', cone: 'cone', skim: 'skim', weapon: 'munitions' });
-const SLOT_ARSENAL = Object.freeze({ 1: 'field_well_standard', 2: 'field_repulsor_standard',
-  3: 'field_seed_standard', 5: 'field_cone_standard', 6: 'power_massline' });
+const SLOT_ARSENAL = Object.freeze({ 0: 'power_travel_burn', 1: 'field_well_standard', 2: 'field_repulsor_standard',
+  3: 'field_seed_standard', 5: 'field_cone_standard', 6: 'power_massline', 7: 'power_gyre' });
+const PRESENTED_ID = Object.freeze({ 0: 'travel', 1: 'pull', 2: 'shove', 3: 'pin', 4: 'bomb', 5: 'rig', 6: 'line', 7: 'gyre', 8: 'cloak' });
 
 /** The rail's slots grouped by band, each with a stable id (its rail index) and its live key label. */
 export function buildOrdnanceGroups(bindings) {
@@ -46,7 +48,7 @@ export function buildOrdnanceGroups(bindings) {
   const keys = resolveSlotKeys(bindings);
   const groups = [];
   const byName = new Map();
-  for (const slot of RAIL_SLOTS) {
+  for (const slot of [...RAIL_SLOTS, ...SUPPORT_SLOTS]) {
     const name = GROUP_NAME[slot.band] || String(slot.band);
     const power = GROUP_POWER[slot.band] || '';
     let g = byName.get(name);
@@ -90,8 +92,22 @@ const RAIL_STATE = Object.freeze({ ready: 'ready', armed: 'armed', cooling: 'coo
 
 function readClusterBindings(state) {
   const bindings = {};
-  for (const slot of RAIL_SLOTS) if (slot.action) bindings[slot.action] = resolveActionCodes(state, slot.action);
+  for (const slot of [...RAIL_SLOTS, ...SUPPORT_SLOTS]) if (slot.action) bindings[slot.action] = resolveActionCodes(state, slot.action);
   return bindings;
+}
+
+// One presentation reader per game state: its static part (text, glyphs, key labels) is cached on the
+// fitting / mode / binding signature, so the slow HUD clock only recomputes readiness.
+const PRESENTATION = new WeakMap();
+function presentationFor(state) {
+  let reader = PRESENTATION.get(state);
+  if (!reader) { reader = createArsenalPresentation(); PRESENTATION.set(state, reader); }
+  return reader;
+}
+
+/** The words under a socket: what it does now, its most relevant limit, and any hint (cycle key, denial). */
+function presentedDescription(pe) {
+  return [pe.sentence, pe.limits[0], ...(pe.hints || [])].filter(Boolean).join(' ');
 }
 
 function activeLineControlHint(state) {
@@ -113,34 +129,52 @@ function activeLineControlHint(state) {
 }
 
 export function readOrdnanceModel(state, tracker, bindings) {
-  const rail = readRailModel(state, Number(state && state.simTime) || 0);
+  const nowS = Number(state && state.simTime) || 0;
+  const rail = readRailModel(state, nowS);
   bindings ??= readClusterBindings(state);
   const labels = resolveSlotLabels(bindings);
   const keys = resolveSlotKeys(bindings);
+  // The presentation reads the same remappable binding table; a caller's override wins per action.
+  const presented = presentationFor(state).read(state, { rail, nowS, bindings: { ...readArsenalBindings(state), ...bindings } });
   const out = {};
-  for (const slot of RAIL_SLOTS) {
+  for (const slot of [...RAIL_SLOTS, ...SUPPORT_SLOTS]) {
     const r = rail[slot.index] || {};
+    const pe = presented.entries[PRESENTED_ID[slot.index]];
     const st = RAIL_STATE[r.state] || 'ready';
     const isBomb = slot.index === BOMB_SLOT_INDEX;
-    // The bomb key shows the chosen ordnance: the sticky charge, or the selected drift bomb.
-    const bombArt = r.charge ? 'power_charge' : (r.glyph?.startsWith('bomb_') ? r.glyph : '');
-    const entry = { state: st, key: labels[slot.index] || '', arsenalId: isBomb ? bombArt : SLOT_ARSENAL[slot.index] || '' };
+    // Which mark the socket draws: the effective function's own authored glyph (the bomb it will throw,
+    // the rig it will toggle, the cloak module fitted), never a fixed per-socket symbol.
+    const arsenalId = pe && (isBomb || slot.index === 5 || slot.index === 8) ? pe.glyph : (SLOT_ARSENAL[slot.index] || '');
+    const entry = { state: st, key: labels[slot.index] || '', arsenalId };
     if (isBomb) entry.consumable = true;
     // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
     // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
     // inside the well) — a cue, not a new surface.
     if (r.live === true) entry.live = true;
     if (st === 'cooldown') entry.cooldown = tracker ? tracker(slot.index, r) ?? 0 : 0;
-    const count = /×(\d+)/.exec(String(r.name || ''));
-    if (count) entry.count = Number(count[1]);
-    // The tier-2 reveal phrase for this verb: the bank sentence, the live keys, the live state.
-    // Composed here (not in the Cluster) so every surface explains a verb in the same words.
-    entry.tip = railSlotTip({
-      name: r.name || slot.name,
-      keys: keys[slot.index] || labels[slot.index] || '',
-      description: r.description || slotDescription(slot.index),
-      why: r.why || '',
-    });
+    if (r.absent === true) entry.hidden = true;
+    if (slot.index === 8) entry.passive = true;
+    // The socket's own words: the EFFECTIVE verb ("Rig · Scoop"), not the band name.
+    if (pe && slot.index >= 1 && slot.index !== 6) entry.label = pe.label;
+    if (pe && pe.charges && Number.isFinite(pe.charges.count)) entry.count = pe.charges.count;
+    else {
+      const count = /×(\d+)/.exec(String(r.name || ''));
+      if (count) entry.count = Number(count[1]);
+    }
+    // The tier-2 reveal phrase for this verb: what the next press does, its limit, the live keys, the
+    // live state. Composed here (not in the Cluster) so every surface explains a verb in the same words.
+    entry.tip = pe && slot.index !== 0
+      ? railSlotTip({
+        name: pe.label, keys: keys[slot.index] || labels[slot.index] || '',
+        description: presentedDescription(pe),
+        why: [r.why, pe.denial && pe.denial.text].filter(Boolean).join(' — '),
+      })
+      : railSlotTip({
+        name: r.name || slot.name,
+        keys: keys[slot.index] || labels[slot.index] || '',
+        description: r.description || slotDescription(slot.index),
+        why: r.why || '',
+      });
     if (slot.action === 'tether') {
       const hint = activeLineControlHint(state);
       if (hint) entry.tip += `\n${hint}`;

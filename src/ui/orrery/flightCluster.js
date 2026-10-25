@@ -44,7 +44,9 @@ const DIAL_AT = Object.freeze({ x: 122, y: 134 });
 const GAUGE_FROM = 225;
 const GAUGE_TO = 495;
 const KEY_R = 20;
-const NODE_R = 14;
+// A collapsed node carries the same authored glyph as an unfolded key, so it must be big enough to read at
+// the Cluster's smallest live scale (.6): 16 → a 32 px socket holding a 22 px mark.
+const NODE_R = 16;
 const STEP_KEY = 14;
 const STEP_NODE = 12;
 const CRESCENT_START = 34;
@@ -92,9 +94,14 @@ const CSS = `
      the press is the key — so the click still falls through to the flight input underneath. */
   pointer-events:auto; }
 .orr-cluster__key svg { position:absolute; inset:0; width:48px; height:48px; overflow:visible; }
+/* the words and the count only LABEL the socket: they never take the cursor, so a click past the socket's own
+   48 px box is the pilot firing, whatever the label's reach */
+.orr-cluster__keytag, .orr-cluster__count { pointer-events:none; }
 .orr-cluster__icon { position:absolute; left:50%; top:50%; width:22px; height:22px; margin:-11px 0 0 -11px; background:currentColor;
   -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:1.0; }
-.orr-cluster__key.is-node .orr-cluster__icon { width:14px; height:14px; margin:-7px 0 0 -7px; opacity:.66; }
+.orr-cluster__key.is-node .orr-cluster__icon { width:22px; height:22px; margin:-11px 0 0 -11px; opacity:.88; }
+/* a generic FAMILY mark (no authored drawing for this item) is dashed and dimmer: a kind of equipment, not this item's own face */
+.orr-cluster__icon[data-glyph-source="family"] { opacity:.5; }
 /* The five powers (owner 2026-10-22): one tint per power so a glance tells them apart. Declared
    before the state rules so armed / live / cooldown still recolour the mark. */
 .orr-cluster__key[data-power="pull"] .orr-cluster__icon { color:var(--orr-power-pull, #f2c14e); }
@@ -104,7 +111,7 @@ const CSS = `
 .orr-cluster__key[data-power="rig"] .orr-cluster__icon { color:var(--orr-power-rig, #eef2f4); }
 .orr-cluster__key[data-power="line"] .orr-cluster__icon { color:var(--orr-power-line, #5fd6e8); }
 .orr-cluster__icon.has-arsenal { background:none; -webkit-mask:none; mask:none; }
-.orr-cluster__icon.has-arsenal svg { display:block; width:100%; height:100%; }
+.orr-cluster__icon.has-arsenal svg { display:block; width:100%; height:100%; stroke-width:1.9; }
 .orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); opacity:1; }
 /* Verbs that feel loaded: armed key exhales a slow transform-only breath */
 .orr-cluster__key.is-armed { animation: orr-key-armed-breath 2.4s ease-in-out infinite; }
@@ -120,7 +127,8 @@ const CSS = `
 .orr-cluster__keytag { position:absolute; top:50%; transform:translateY(-50%); white-space:nowrap; font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); font-weight:500; }
 .orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 10}px; color:rgb(232 226 212 / .88); }
 .orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 9}px; color:rgb(232 226 212 / .92); }
-.orr-cluster__keytag b { font-weight:700; color:var(--dp-ink, #e8e2d4); margin-left:6px; letter-spacing:.08em; }
+/* the key reads as a key, set off from the words: "SHOVE · REPULSE + 2 DETONATE | 2" must not read as a count */
+.orr-cluster__keytag b { font-weight:700; color:var(--dp-ink, #e8e2d4); margin-left:8px; padding-left:7px; letter-spacing:.08em; border-left:1px solid rgb(232 226 212 / .38); }
 .orr-cluster__key.is-node .orr-cluster__keytag b { font-weight:500; color:rgb(232 226 212 / .88); }
 .orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); font-weight:600; }
 .orr-cluster__key.is-armed .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); font-weight:700; }
@@ -158,6 +166,30 @@ function injectStyle(doc = globalThis.document) {
   style.id = STYLE_ID;
   style.textContent = CSS;
   doc.head.appendChild(style);
+}
+
+/**
+ * A socket is a readout: it answers hover and focus, but a press on it is the pilot firing or mining.
+ * The flight input listens on the game canvas, so a press that lands on a socket would be swallowed —
+ * reading a tip must never cost a shot. Re-dispatch the press on the canvas, unchanged.
+ */
+export function passPressToFlight(e, doc = globalThis.document) {
+  if (!e || e.__sfPassedToFlight === true) return false;
+  const canvas = doc && typeof doc.getElementById === 'function' ? doc.getElementById('gl-canvas') : null;
+  if (!canvas || typeof canvas.dispatchEvent !== 'function') return false;
+  const fields = ['clientX', 'clientY', 'screenX', 'screenY', 'button', 'buttons', 'ctrlKey', 'shiftKey', 'altKey', 'metaKey'];
+  let forwarded;
+  if (typeof globalThis.MouseEvent === 'function') {
+    const init = { bubbles: true, cancelable: true, view: globalThis.window };
+    for (const f of fields) if (e[f] !== undefined) init[f] = e[f];
+    forwarded = new globalThis.MouseEvent('mousedown', init);
+  } else if (typeof globalThis.Event === 'function') {
+    forwarded = new globalThis.Event('mousedown', { bubbles: true, cancelable: true });
+    for (const f of fields) if (e[f] !== undefined) forwarded[f] = e[f];
+  } else return false;
+  forwarded.__sfPassedToFlight = true;
+  canvas.dispatchEvent(forwarded);
+  return true;
 }
 
 const el = (tag, cls, text) => {
@@ -344,6 +376,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const mkSocket = ({ node, icon, label, sub, id = '', tip = '', power = '' }) => {
     const k = el('div', `orr-cluster__key${node ? ' is-node' : ''}`);
     k.setAttribute('tabindex', '0');
+    k.addEventListener('mousedown', (e) => passPressToFlight(e));
+    // no browser menu over a readout either: the right button is the mining beam
+    k.addEventListener('contextmenu', (e) => { if (e && typeof e.preventDefault === 'function') e.preventDefault(); });
     if (id) k.setAttribute(node ? 'data-group' : 'data-slot', id);
     if (power) k.setAttribute('data-power', power);
     if (tip) k.setAttribute('data-why', tip);
@@ -361,19 +396,26 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     ic.style.setProperty('--orr-icon', `url("${ICON_ROOT}icon-${icon}.svg")`);
     k.appendChild(ic);
     const tag = el('span', 'orr-label orr-cluster__keytag');
-    tag.textContent = label;
-    if (sub) tag.appendChild(el('b', null, sub));
+    // The words live in their own span so a verb whose meaning changes ("Rig · Cone" → "Rig · Scoop")
+    // rewrites only them, never the key beside them.
+    const labelNode = el('span', 'orr-cluster__keyword', label);
+    tag.appendChild(labelNode);
+    const keyNode = sub ? el('b', null, sub) : null;
+    if (keyNode) tag.appendChild(keyNode);
     k.appendChild(tag);
     const count = el('span', 'orr-cluster__count');
     k.appendChild(count);
     keyLayer.appendChild(k);
     const spring = createSpring({ value: 0, preset: 'settle', onUpdate: (v) => cd.setAttribute('stroke-dasharray', `${Math.max(0, Math.min(1, v))} 1`) });
-    return { el: k, armed, armedB, spring, count, label, tip, iconEl: ic, arsenalId: '' };
+    return { el: k, armed, armedB, spring, count, label, tip, iconEl: ic, arsenalId: '', labelNode, keyNode };
   };
 
   let openGroup = -1;
   let handSlot = restSlot != null ? String(restSlot) : null;
   let handPainted = false;
+  // Groups the model marks hidden (a support verb the ship does not carry, e.g. no cloak fitted) take no seat.
+  let hiddenGroups = new Set();
+  let hiddenSig = '';
   function layoutCrescent(armedGroup) {
     for (const sk of sockets) { sk.spring.stop(); sk.el.remove(); }
     sockets.length = 0;
@@ -381,6 +423,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     let first = null;
     let lastA = a;
     groups.forEach((group, gi) => {
+      if (hiddenGroups.has(gi)) return;
       if (gi === armedGroup) {
         group.slots.forEach((slot) => {
           const sk = mkSocket({ node: false, icon: slot.icon, label: slot.name, sub: slot.key, id: slot.id, power: slot.power || '' });
@@ -470,47 +513,71 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
           : `${group.name} — ${group.slots.map(slot => `${slot.name} ${slot.key}`).join(' · ')}`;
       }
     }
+    // A support verb the ship does not carry takes no seat on the crescent.
+    let nextHiddenSig = '';
+    const nextHidden = new Set();
+    groups.forEach((g, gi) => {
+      if (g.slots.length && g.slots.every((sl) => (slotStates[sid(sl)] || {}).hidden === true)) { nextHidden.add(gi); nextHiddenSig += `${gi},`; }
+    });
+    if (nextHiddenSig !== hiddenSig) { hiddenSig = nextHiddenSig; hiddenGroups = nextHidden; keysChanged = true; }
     let armedGroup = -1;
     groups.forEach((g, gi) => g.slots.forEach((sl) => {
-      if ((slotStates[sid(sl)] || {}).state === 'armed') { armedGroup = gi; handSlot = sid(sl); }
+      const st = slotStates[sid(sl)] || {};
+      // A passive latch (the cloak stays on for minutes) must not hold the Hand's seat from the verb in use.
+      if (st.state === 'armed' && st.passive !== true && !hiddenGroups.has(gi)) { armedGroup = gi; handSlot = sid(sl); }
     }));
     let openTo = armedGroup;
     if (openTo < 0) openTo = Math.max(0, groups.findIndex((g) => g.slots.some((sl) => sid(sl) === handSlot)));
     if (openTo !== openGroup || keysChanged) { openGroup = openTo; layoutCrescent(openTo); }
     let handAngle = null;
     let handArmed = false;
+    // One paint for every socket that speaks for ONE verb: an unfolded key, or a collapsed node whose band
+    // holds a single power (the five powers, the Gyre, the cloak). Write only what changed: a settled HUD
+    // frame must not dirty the SVG.
+    const paintSocket = (sk, slot, node) => {
+      const st = slotStates[sid(slot)] || {};
+      const state = st.state || 'ready';
+      const live = st.live === true;
+      const arsenalId = st.arsenalId || '';
+      if (sk.arsenalId !== arsenalId) {
+        sk.arsenalId = arsenalId;
+        const markup = arsenalIcon(arsenalId, 24);
+        sk.iconEl.innerHTML = markup;
+        const authored = markup.length > 0;
+        sk.iconEl.classList.toggle('has-arsenal', authored);
+        // With no authored drawing the socket keeps the generic kit mark and SAYS so (dim, family).
+        sk.iconEl.setAttribute('data-glyph-source', authored ? 'authored' : 'family');
+      }
+      if (sk.state !== state || sk.live !== live) {
+        sk.state = state;
+        sk.live = live;
+        sk.el.className = `orr-cluster__key${node ? ' is-node' : ''} is-${state}${live ? ' is-live' : ''}`;
+        sk.armed.setAttribute('opacity', state === 'armed' ? '1' : '0');
+        sk.armedB.setAttribute('opacity', state === 'armed' ? '.26' : '0');
+      }
+      sk.spring.set(state === 'cooldown' ? Number(st.cooldown) || 0 : 0);
+      const countText = Number.isFinite(st.count) ? `×${st.count}` : '';
+      if (sk.countText !== countText) { sk.countText = countText; sk.count.textContent = countText; }
+      // The verb's EFFECTIVE name ("Rig · Scoop", "Bomb · Frag ×4 · drop") — never the band's fixed word.
+      const label = typeof st.label === 'string' && st.label ? st.label : (node ? sk.group.name : slot.name);
+      if (sk.labelText !== label && sk.labelNode) { sk.labelText = label; sk.labelNode.textContent = label; }
+      // The verb's reveal phrase moves with its state ("Ready" → "Recharging — 3s"), so it is
+      // rewritten only when the words change: a settled frame still writes nothing.
+      const tip = st.tip || (node ? sk.group.tip || '' : '');
+      if (sk.tip !== tip) {
+        sk.tip = tip;
+        if (tip) sk.el.setAttribute('data-why', tip);
+        else sk.el.removeAttribute('data-why');
+        sk.el.setAttribute('aria-label', tip ? tip.replace(/\n/g, '. ') : `${sk.label}`);
+      }
+      return state;
+    };
     for (const sk of sockets) {
       if (sk.slot) {
-        const st = slotStates[sid(sk.slot)] || {};
-        const state = st.state || 'ready';
-        const live = st.live === true;
-        const arsenalId = st.arsenalId || '';
-        if (sk.arsenalId !== arsenalId) {
-          sk.arsenalId = arsenalId;
-          sk.iconEl.innerHTML = arsenalIcon(arsenalId, 24);
-          sk.iconEl.classList.toggle('has-arsenal', !!sk.iconEl.firstElementChild);
-        }
-        // write only what changed: a settled HUD frame must not dirty the SVG
-        if (sk.state !== state || sk.live !== live) {
-          sk.state = state;
-          sk.live = live;
-          sk.el.className = `orr-cluster__key is-${state}${live ? ' is-live' : ''}`;
-          sk.armed.setAttribute('opacity', state === 'armed' ? '1' : '0');
-          sk.armedB.setAttribute('opacity', state === 'armed' ? '.26' : '0');
-        }
-        sk.spring.set(state === 'cooldown' ? Number(st.cooldown) || 0 : 0);
-        const countText = Number.isFinite(st.count) ? `×${st.count}` : '';
-        if (sk.countText !== countText) { sk.countText = countText; sk.count.textContent = countText; }
-        // The verb's reveal phrase moves with its state ("Ready" → "Recharging — 3s"), so it is
-        // rewritten only when the words change: a settled frame still writes nothing.
-        const tip = st.tip || '';
-        if (sk.tip !== tip) {
-          sk.tip = tip;
-          if (tip) sk.el.setAttribute('data-why', tip);
-          else sk.el.removeAttribute('data-why');
-          sk.el.setAttribute('aria-label', tip ? tip.replace(/\n/g, '. ') : `${sk.label}`);
-        }
+        const state = paintSocket(sk, sk.slot, false);
         if (handAngle == null || sid(sk.slot) === handSlot) { handAngle = sk.angle; handArmed = state === 'armed'; }
+      } else if (sk.group.slots.length === 1) {
+        paintSocket(sk, sk.group.slots[0], true);
       } else {
         const readiness = sk.group.slots.reduce((m, sl) => {
           const st = slotStates[sid(sl)] || {};

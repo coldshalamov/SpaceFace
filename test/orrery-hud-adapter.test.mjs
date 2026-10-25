@@ -7,7 +7,7 @@ import {
   shipUnderInstrumentBox,
 } from '../src/ui/orrery/hudAdapter.js';
 import { speedPhase } from '../src/ui/orrery/flightCluster.js';
-import { RAIL_SLOTS } from '../src/ui/powerRail.js';
+import { RAIL_SLOTS, SUPPORT_SLOTS } from '../src/ui/powerRail.js';
 import { resolveImpulseChargeCapacity } from '../src/systems/impulseCharges.js';
 import { DEFAULTS } from '../src/systems/input.js';
 import { fakeDom, findAll } from './helpers/fake-dom.mjs';
@@ -31,7 +31,8 @@ function fakeState(extra = {}) {
 test('every rail slot lands in exactly one group, keyed by its rail index', () => {
   const groups = buildOrdnanceGroups(null);
   const ids = groups.flatMap((g) => g.slots.map((s) => s.id));
-  assert.deepEqual(ids.sort(), RAIL_SLOTS.map((s) => String(s.index)).sort());
+  assert.deepEqual(ids.sort(), [...RAIL_SLOTS, ...SUPPORT_SLOTS].map((s) => String(s.index)).sort(),
+    'the rank plus the Gyre and the cloak (support verbs beside the rank)');
   for (const g of groups) {
     assert.ok(g.name && g.icon, 'each group carries a name and an icon');
     for (const s of g.slots) assert.ok(s.name && s.icon && s.key, `slot ${s.id} carries a name, icon and key`);
@@ -107,8 +108,11 @@ test('every ordnance key explains itself: bank sentence, live keys and live stat
   state.player.cargo.items.cmdty_impulse_charge = 2;
   const ord = readOrdnanceModel(state, createCooldownTracker(), bindings);
   const capacity = resolveImpulseChargeCapacity(state);
-  assert.equal(ord['4'].tip,
-    `Charge ×2 — Sticky impulse charge. It sticks where it lands; Shove sets it off. Cycle to reach your drift bombs. (4 · Y)\nReady · up to ${capacity}`);
+  // The tip names the EFFECTIVE verb (what the next press does), the live keys, and why it is or is not ready.
+  assert.match(ord['4'].tip, /^Bomb · Charge ×2 · throw — Next press: throw Impulse charge ×2\. /);
+  assert.match(ord['4'].tip, /\(4 · Y\)\nReady · up to \d+$/);
+  assert.ok(ord['4'].tip.endsWith(`Ready · up to ${capacity}`));
+  assert.equal(ord['4'].label, 'Bomb · Charge ×2 · throw');
   assert.match(ord['6'].tip, /\(Space · F\)\nReady$/);
   assert.match(ord['2'].tip, /\(2 · R\)\nReady$/, 'nothing armed: SHOVE is the repulsor, ready');
   // A collapsed node answers "what is this" without unfolding it: a one-power band explains the
@@ -117,7 +121,7 @@ test('every ordnance key explains itself: bank sentence, live keys and live stat
   const shove = groups.find((g) => g.name === 'Shove');
   assert.equal(shove.tip, 'Shove — blast everything outward from your ship — and set off every charge and bomb you have armed (2)');
   assert.equal(groups.find((g) => g.name === 'Pull').slots[0].key, '1', 'the shelf reads as the number-row hotbar the player reaches for');
-  assert.deepEqual(groups.map((g) => g.name), ['DRIVE', 'Pull', 'Shove', 'Pin', 'Bomb', 'Rig', 'Line']);
+  assert.deepEqual(groups.map((g) => g.name), ['DRIVE', 'Pull', 'Shove', 'Pin', 'Bomb', 'Rig', 'Line', 'Gyre', 'Cloak']);
   const drive = groups.find((g) => g.name === 'DRIVE');
   assert.ok(drive && drive.slots.length === 1, 'the travel-drive lamp is its own group');
 });

@@ -224,7 +224,8 @@ test('the rail shows one socket per power, read from the real owners', () => {
   assert.deepEqual([1, 2, 3, 4, 5, 6].map((i) => labels[i]), ['1', '2', '3', '4', '5', 'Space']);
   const groups = buildOrdnanceGroups({ pull: ['Digit1'], shove: ['Digit2'], pin: ['Digit3'], bomb: ['Digit4'], rig: ['Digit5'], tether: ['Space'] });
   assert.deepEqual(groups.filter((g) => g.power).map((g) => `${g.name} ${g.slots.map((s) => s.key).join(' ')}`),
-    ['Pull 1', 'Shove 2', 'Pin 3', 'Bomb 4', 'Rig 5', 'Line Space'], 'each power prints by name with its key');
+    ['Pull 1', 'Shove 2', 'Pin 3', 'Bomb 4', 'Rig 5', 'Line Space', 'Gyre —', 'Cloak —'],
+    'each power prints by name with its key; the Gyre and the cloak ride after the Line, unbound here so no phantom key');
   const state = {
     simTime: 10, playerId: 1, mode: 'flight', entities: new Map([[1, { id: 1, alive: true, data: {} }]]), entityList: [],
     fields: { cooldowns: { well: 14 } },
