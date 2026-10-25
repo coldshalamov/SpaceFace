@@ -47,7 +47,7 @@ export function jumpAbortText(payload) {
     const needed = Number(payload && payload.creditsNeeded);
     const held = Number(payload && payload.creditsHeld);
     if (Number.isFinite(needed) && needed > 0 && Number.isFinite(held)) {
-      return `Gate toll ${needed} cr — purse holds ${held} cr`;
+      return `Gate toll ${needed} cr — purse holds ${held} cr. Earn it at a dock.`;
     }
     return 'Not enough credits for the gate toll';
   }

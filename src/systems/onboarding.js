@@ -73,9 +73,12 @@ import { fieldAffectsBody, fieldContainsPoint } from '../core/fields/fieldKernel
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import {
+  FIRST_TRADE_CONTRACT,
   FIRST_TRADE_CONTRACT_DEST_STATION_ID,
   FIRST_TRADE_CONTRACT_SOURCE,
 } from '../data/economyContractTemplates.js';
+import { gateTollFor } from '../data/travelChoices.js';
+import { SECTORS } from '../data/sectors.js';
 import {
   FLIGHT_DRILL_BRAKE_WU,
   FLIGHT_DRILL_BURST_SHOTS,
@@ -737,11 +740,30 @@ export const onboarding = {
       this._showHint('firstStation', firstUseLine('firstStation'), payload);
     });
 
-    // First jump gate approach: teach the player how gates work.
+    // First jump gate approach: teach the player how gates work. Holding the first trade run
+    // upgrades the generic "Plot a jump." once — the tolls are part of the pay, so the gate
+    // line quotes them and stamps firstGate so the generic line never follows.
     bus.on('gate:range', (payload) => {
       this._gateControlInRange = !!(payload && payload.inRange);
       if (!payload || !payload.inRange) return;
+      const run = this._firstTradeRun();
+      if (run && payload.gateTo === run.destSectorId) {
+        const out = gateTollFor(this._sectorById(run.destSectorId)) || 0;
+        const home = gateTollFor(this._sectorById(this._runOriginSectorId(run))) || 0;
+        const pay = Number(run.terms && run.terms.paysCr) || FIRST_TRADE_CONTRACT.terms.paysCr;
+        this._showHint('firstGateToll', `Toll ${out} out, ${home} home. The run pays ${pay}. Jump.`, payload);
+        if (!this.state.player.hints) this.state.player.hints = {};
+        this.state.player.hints.firstGate = true;
+        return;
+      }
       this._showHint('firstGate', firstUseLine('firstGate'), payload);
+    });
+
+    // X-04: landing in the contract's sector names the worklight lead-in once.
+    bus.on('jump:arrive', (p) => {
+      const run = this._firstTradeRun();
+      if (!run || !p || p.sectorId !== run.destSectorId) return;
+      this._showHint('firstGateArrive', 'Ceres. Follow the Flare Rack to the refinery.', {});
     });
 
     // An add that fit emits cargo:changed and, when it also overflowed, cargo:full
@@ -1882,7 +1904,40 @@ export const onboarding = {
     }
   },
 
+  // X-04 — the first trade run carries its own toll math: the out leg is priced by the
+  // destination's security, the home leg by the origin's. Everything below is computed at
+  // speak time from gateTollFor — no literals.
+  _firstTradeRun() {
+    const missions = this.state && this.state.missions && this.state.missions.active;
+    return Array.isArray(missions) ? missions.find((m) => m && m.source === FIRST_TRADE_CONTRACT_SOURCE) || null : null;
+  },
+
+  _sectorById(id) {
+    return SECTORS.find((s) => s && s.id === id) || null;
+  },
+
+  // The board station's sector is where the run started — the "gate home" toll is priced there.
+  _runOriginSectorId(run) {
+    if (run && run.originSectorId) return run.originSectorId;
+    const stationId = run && run.stationId;
+    if (stationId) {
+      const home = SECTORS.find((s) => s && Array.isArray(s.stations)
+        && s.stations.some((st) => st && st.id === stationId));
+      if (home) return home.id;
+    }
+    return this.state.world && this.state.world.currentSectorId;
+  },
+
   _onMissionCompleted(payload) {
+    // X-04: the paid line must speak even off-rail — accepting the run ends the rail, so the
+    // dock-beat early-return below cannot carry it. "Keep the home toll" is the round trip's
+    // last cost named at the moment the player has the purse for it.
+    if (payload && payload.source === FIRST_TRADE_CONTRACT_SOURCE) {
+      const run = this._firstTradeRun();
+      const pay = Number(payload.rewardCr) || (run && Number(run.terms && run.terms.paysCr)) || FIRST_TRADE_CONTRACT.terms.paysCr;
+      const home = gateTollFor(this._sectorById(this._runOriginSectorId(run))) || 0;
+      this._showHint('firstTradePaid', `Paid ${pay}. Keep ${home} for the gate home.`, {});
+    }
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!ob || !beat || beat.key !== 'dock') return;
