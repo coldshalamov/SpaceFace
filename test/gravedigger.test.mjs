@@ -160,6 +160,132 @@ test('three burials teaches the compost verb — the pit pays for a settled offe
   assert.equal(says(popups, 'gravedigger_compost_').length, 1);
 });
 
+
+for (const engagement of ['beam', 'line']) {
+  test(`a taught pit waits for the client's ${engagement} to release before composting`, () => {
+    const { state, grants, receipts, popups, sys } = fixture();
+    flags(state).gravedigger_taught = true;
+    const w = addWreck(state, GRAVEDIGGER.post);
+    if (engagement === 'beam') state.player.miningTargetId = w.id;
+    else state.player.tether = { active: true, targetId: w.id };
+
+    for (let i = 0; i < 3; i += 1) sys.update(0.5, state);
+    assert.equal(w.alive, true, 'a settled hull still in hand is not an offering');
+    assert.equal(grants.length, 0);
+    assert.equal(receipts.length, 0, 'the live salvage marker is not retired');
+    assert.equal(gardens(state).length, 0);
+    assert.equal(flags(state).gravedigger_gardens.length, 0);
+    assert.equal(flags(state).gravedigger_serial, undefined);
+    assert.equal(says(popups, 'gravedigger_compost_').length, 0);
+
+    if (engagement === 'beam') state.player.miningTargetId = null;
+    else state.player.tether.active = false;
+    w.vel.x = GRAVEDIGGER.settleSpeed + 1;
+    sys.update(0.5, state);
+    assert.equal(w.alive, true, 'release alone is not settlement');
+    assert.equal(grants.length, 0);
+    assert.equal(receipts.length, 0);
+
+    w.vel.x = 0;
+    sys.update(0.5, state);
+    sys.update(0.5, state);
+    assert.equal(w.alive, false, 'released and settled now belongs to the garden');
+    assert.equal(grants.length, 1);
+    assert.equal(grants[0].amount, GRAVEDIGGER.compostFee);
+    assert.equal(receipts.length, 1);
+    assert.equal(receipts[0].payload.wreckId, w.id);
+    assert.equal(receipts[0].aliveNow, true, 'canonical receipt still precedes removal');
+    assert.equal(gardens(state).length, 1);
+    assert.deepEqual(flags(state).gravedigger_gardens, [{ ...GRAVEDIGGER.post, serial: 1 }]);
+    assert.equal(flags(state).gravedigger_serial, 1);
+    assert.equal(says(popups, 'gravedigger_compost_').length, 1);
+  });
+}
+
+test('held pit candidates do not hide a different released offering', () => {
+  const { state, grants, receipts, sys } = fixture();
+  flags(state).gravedigger_taught = true;
+  const beamed = addWreck(state, GRAVEDIGGER.post);
+  const lined = addWreck(state, GRAVEDIGGER.post);
+  const offered = addWreck(state, { x: GRAVEDIGGER.post.x + 10, z: GRAVEDIGGER.post.z });
+  state.entityList.unshift(null); // A census hole is not an offering either.
+  state.player.miningTargetId = beamed.id;
+  state.player.tether = { active: true, targetId: lined.id };
+  sys.update(0.5, state);
+  sys.update(0.5, state);
+  assert.equal(beamed.alive, true);
+  assert.equal(lined.alive, true);
+  assert.equal(offered.alive, false);
+  assert.equal(grants.length, 1);
+  assert.equal(receipts.length, 1);
+  assert.equal(receipts[0].payload.wreckId, offered.id);
+  assert.deepEqual(flags(state).gravedigger_gardens, [{ ...offered.pos, serial: 1 }]);
+});
+
+test('releasing one of two live engagements does not offer the same hull', () => {
+  const { state, grants, receipts, sys } = fixture();
+  flags(state).gravedigger_taught = true;
+  const w = addWreck(state, GRAVEDIGGER.post);
+  state.player.miningTargetId = w.id;
+  state.player.tether = { active: true, targetId: w.id };
+  state.player.tether.active = false;
+  sys.update(0.5, state);
+  assert.equal(w.alive, true, 'the beam still owns the hull');
+  assert.equal(grants.length, 0);
+  assert.equal(receipts.length, 0);
+  state.player.miningTargetId = null;
+  sys.update(0.5, state);
+  assert.equal(w.alive, false);
+  assert.equal(grants.length, 1);
+  assert.equal(receipts.length, 1);
+});
+
+test('learn, release, compost, restore: the garden keeps the paid grave without paying again', () => {
+  const { state, grants, receipts, sys } = fixture();
+  for (let i = 0; i < GRAVEDIGGER.teachAfter; i += 1) {
+    addWreck(state, { x: GRAVEDIGGER.post.x + 10 + i * 8, z: GRAVEDIGGER.post.z });
+    sys.update(0.5, state);
+  }
+  assert.equal(flags(state).gravedigger_taught, true);
+  assert.equal(grants.length, 0, 'the original races do not pay');
+  const offering = addWreck(state, GRAVEDIGGER.post);
+  state.player.miningTargetId = offering.id;
+  sys.update(0.5, state);
+  assert.equal(offering.alive, true);
+  assert.equal(receipts.length, GRAVEDIGGER.teachAfter);
+  state.player.miningTargetId = null;
+  sys.update(0.5, state);
+  const savedFlags = JSON.parse(JSON.stringify(flags(state)));
+  assert.equal(grants.length, 1);
+  assert.equal(savedFlags.gravedigger_gardens.length, GRAVEDIGGER.teachAfter + 1);
+  assert.equal(savedFlags.gravedigger_serial, GRAVEDIGGER.teachAfter + 1);
+
+  // Adapter-level flag round-trip, not a claim about the full save envelope.
+  const restored = fixture({ sector: 'sector_io_reach' });
+  restored.state.story.flags = savedFlags;
+  restored.bus.emit('save:loaded');
+  assert.equal(gardens(restored.state).length, 0);
+  restored.state.world.currentSectorId = GRAVEDIGGER.sectorId;
+  restored.bus.emit('sector:enter', { sectorId: GRAVEDIGGER.sectorId });
+  restored.sys.update(0.5, restored.state);
+  const ledger = savedFlags.gravedigger_gardens;
+  assert.deepEqual(gardens(restored.state).map((e) => ({
+    ...e.pos, serial: e.data.gravediggerGardenSerial,
+  })), ledger);
+  assert.equal(flags(restored.state).gravedigger_taught, true);
+  assert.equal(restored.grants.length, 0);
+  assert.equal(restored.receipts.length, 0);
+
+  restored.state.world.currentSectorId = 'sector_io_reach';
+  restored.bus.emit('sector:enter', { sectorId: 'sector_io_reach' });
+  restored.state.world.currentSectorId = GRAVEDIGGER.sectorId;
+  restored.bus.emit('sector:enter', { sectorId: GRAVEDIGGER.sectorId });
+  restored.sys.update(0.5, restored.state);
+  assert.equal(gardens(restored.state).length, ledger.length, 'no duplicated bed on another visit');
+  assert.equal(restored.grants.length, 0);
+  assert.equal(restored.receipts.length, 0);
+});
+
 test('the plot caps — the ground still takes offerings into the old beds', () => {
   const { state, popups, grants, sys } = fixture();
   flags(state).gravedigger_taught = true;
