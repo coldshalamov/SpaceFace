@@ -1,6 +1,6 @@
 // Shared Ship Ledger panel for Station and Codex hosts. It mounts as a sibling panel (the station app and
 // the Codex "Ledger" tab both mount this same factory) and renders exactly one bounded archive page
-// at a time. Source state is never written; only this panel's local page cursor moves.
+// at a time. Board changes go through the ledger owner; page and tie selection stay local.
 //
 // Host-safe: every DOM id is derived from `hostId`, so the same factory can mount in two hosts
 // (station + codex) at once without colliding fixed IDs. Evidence rows open a single detail subtree
@@ -258,12 +258,22 @@ export function createShipLedgerPanel(ctx, options = {}) {
     return shipLedgerBoard(ctx && ctx.state) || { pins: [], links: [] };
   }
 
+  function renderDetailTools(current = boardState()) {
+    pinBtn.textContent = current.pins.includes(detailPageId) ? 'Unpin from board' : 'Pin to board';
+    tieBtn.textContent = linkAnchor === detailPageId && linkAnchor
+      ? 'Cancel tie'
+      : linkAnchor
+        ? `Tie to “${ledgerEvidencePageTitle(ctx && ctx.state, linkAnchor)}”`
+        : 'Start a tie';
+  }
+
   // Rebuild the chips + threads from live board state. If the armed anchor was unpinned or the
   // run was loaded without it, the tie quietly disarms — the anchor is UI-only intent, never state.
   function renderBoard() {
     const state = ctx && ctx.state;
     const current = boardState();
     if (linkAnchor && !current.pins.includes(linkAnchor)) linkAnchor = null;
+    renderDetailTools(current);
 
     const pinFrag = document.createDocumentFragment();
     for (const pinId of current.pins) {
@@ -465,11 +475,7 @@ export function createShipLedgerPanel(ctx, options = {}) {
     image.onload = () => { figure.setAttribute('data-ledger-figure-state', 'admitted'); };
     if (ev.media && ev.media.path) image.setAttribute('src', ev.media.path);
     // The pin/tie affordance mirrors live board state: pinned pages offer Unpin, others Pin.
-    const pinned = boardState().pins.includes(detailPageId);
-    pinBtn.textContent = pinned ? 'Unpin from board' : 'Pin to board';
-    tieBtn.textContent = linkAnchor && linkAnchor !== detailPageId
-      ? `Tie to “${ledgerEvidencePageTitle(ctx && ctx.state, linkAnchor)}”`
-      : 'Start a tie';
+    renderDetailTools();
     // Hide the bounded list + archive nav + board while reading one evidence page.
     detail.hidden = false;
     list.hidden = true;
@@ -530,6 +536,16 @@ export function createShipLedgerPanel(ctx, options = {}) {
     return !!(result && result.ok);
   }
 
+  function submitTie(other) {
+    const anchor = linkAnchor;
+    linkAnchor = null;
+    const ok = runBoardAct(linkEvidence(ctx && ctx.state, anchor, other), 'Thread tied.');
+    if (!ok) linkAnchor = anchor;
+    else if (ctx && ctx.bus && ctx.bus.emit) {
+      ctx.bus.emit('ledger:evidenceLinked', { a: anchor, b: other });
+    }
+  }
+
   function onDetailClick(event) {
     const target = event.target;
     const closest = (sel) => target && target.closest && target.closest(sel);
@@ -545,9 +561,6 @@ export function createShipLedgerPanel(ctx, options = {}) {
       const pinned = boardState().pins.includes(detailPageId);
       const result = pinned ? unpinEvidence(state, detailPageId) : pinEvidence(state, detailPageId);
       runBoardAct(result, pinned ? 'Unpinned.' : 'Pinned to the board.');
-      // Keep the affordance honest without closing the page the player is reading.
-      const nowPinned = boardState().pins.includes(detailPageId);
-      pin.textContent = nowPinned ? 'Unpin from board' : 'Pin to board';
       return;
     }
     const tie = closest('[data-ledger-tie]');
@@ -555,14 +568,7 @@ export function createShipLedgerPanel(ctx, options = {}) {
       const state = ctx && ctx.state;
       if (linkAnchor && linkAnchor !== detailPageId) {
         // Completing an armed tie against the open page IS the deliberate submission.
-        const anchor = linkAnchor;
-        const other = detailPageId;
-        linkAnchor = null;
-        const ok = runBoardAct(linkEvidence(state, anchor, other), 'Thread tied.');
-        if (ok && ctx && ctx.bus && ctx.bus.emit) {
-          ctx.bus.emit('ledger:evidenceLinked', { a: anchor, b: other });
-        }
-        if (!ok) linkAnchor = anchor;
+        submitTie(detailPageId);
         return;
       }
       if (linkAnchor === detailPageId) {
@@ -574,7 +580,6 @@ export function createShipLedgerPanel(ctx, options = {}) {
       }
       linkAnchor = detailPageId;
       boardSay(`Tying from “${ledgerEvidencePageTitle(state, linkAnchor)}” — pick another pinned page.`);
-      tie.textContent = 'Cancel tie';
       renderBoard(); // re-arm the chips so the other pinned pages offer "Tie here"
       cue();
     }
@@ -591,14 +596,7 @@ export function createShipLedgerPanel(ctx, options = {}) {
     }
     const tieTo = closest('[data-ledger-board-tie]');
     if (tieTo && linkAnchor) {
-      const other = tieTo.getAttribute('data-ledger-board-tie');
-      const anchor = linkAnchor;
-      linkAnchor = null;
-      const ok = runBoardAct(linkEvidence(ctx && ctx.state, anchor, other), 'Thread tied.');
-      if (ok && ctx && ctx.bus && ctx.bus.emit) {
-        ctx.bus.emit('ledger:evidenceLinked', { a: anchor, b: other });
-      }
-      if (!ok) linkAnchor = anchor;
+      submitTie(tieTo.getAttribute('data-ledger-board-tie'));
       return;
     }
     const unpin = closest('[data-ledger-board-unpin]');

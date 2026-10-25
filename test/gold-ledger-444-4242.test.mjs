@@ -466,6 +466,47 @@ test('444: the docked panel pins, ties, refuses, and navigates — all through o
   }
 });
 
+test('444: detail tie labels follow cancel, reopen, submission, and unpin', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = new MiniDocument();
+  const state = withVergeEvidence(blankState());
+  pinEvidence(state, VERGE_KELL);
+  pinEvidence(state, VERGE_ARCHIVE);
+  const emitted = [];
+  const panel = createShipLedgerPanel({ state, bus: { emit: (event) => emitted.push(event) } });
+  try {
+    panel.onShow();
+    panel.openEvidenceByPageId(VERGE_KELL);
+    const tie = find(panel.el, (n) => n.attributes.has('data-ledger-tie'));
+    const detail = tie.parentNode.parentNode;
+    const clickTie = () => detail.dispatch('click', { target: tie });
+    assert.equal(tie.textContent, 'Start a tie');
+    clickTie();
+    assert.equal(tie.textContent, 'Cancel tie');
+    clickTie();
+    assert.equal(tie.textContent, 'Start a tie', 'cancel restores the actual next action');
+    clickTie();
+    panel.closeDetail(false);
+    panel.openEvidenceByPageId(VERGE_KELL);
+    assert.equal(tie.textContent, 'Cancel tie', 'reopening the armed page still offers cancel');
+    panel.closeDetail(false);
+    panel.openEvidenceByPageId(VERGE_ARCHIVE);
+    assert.match(tie.textContent, /^Tie to /);
+    clickTie();
+    assert.equal(shipLedgerBoard(state).links.length, 1);
+    assert.equal(emitted.filter((event) => event === 'ledger:evidenceLinked').length, 1);
+    assert.equal(tie.textContent, 'Start a tie', 'submission spends the armed tie');
+    clickTie();
+    const pin = find(panel.el, (n) => n.attributes.has('data-ledger-pin'));
+    detail.dispatch('click', { target: pin });
+    assert.equal(pin.textContent, 'Pin to board');
+    assert.equal(tie.textContent, 'Start a tie', 'unpin disarms the tie and refreshes its label');
+  } finally {
+    panel.destroy();
+    globalThis.document = previousDocument;
+  }
+});
+
 // ── determinism: the projection stays a pure read ────────────────────────────────────────────
 
 test('444: the ledger projection is unchanged by the board and stays deterministic', () => {
