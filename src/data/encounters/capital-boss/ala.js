@@ -10,6 +10,12 @@ export const ALA = freezeDeep({
   subsystemRoles: SUBSYSTEM_ROLES,
   actors: [hullActor({ label: 'ALA DREADNOUGHT', archetype: 'bruiser_brawler', hull: 1060,
     mass: 560, radius: 34, speed: 42, doctrine: 'capital_broadside_ala' }), ballast('GRAVE BALLAST', 240,14)],
+  plates: [
+    { id: 'bay_plate', label: 'bay plate', anchor: { x: -0.18, z: 0.48 }, radius: 9, mass: 90,
+      holdTension: 0.75, covers: 'subsystem_tether_spool', shedOnAct: 0 },
+    { id: 'stern_plate', label: 'stern plate', anchor: { x: -0.58, z: 0 }, radius: 10, mass: 100,
+      holdTension: 0.8, covers: 'subsystem_drive', shedOnAct: 1 },
+  ],
   score: score({
     name: 'ALA', missionDefinitionId: 'capital_boss_ala', identity: 'range_and_inertia',
     rangeResponse: { minRange: 340, beatId: 'grave_lance' },

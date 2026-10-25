@@ -70,7 +70,7 @@ export function capitalBossReadouts(state,out) {
    let readout=list[n];
    if(!readout||typeof readout!=='object'){
     readout={fightId:null,encounterId:null,bossId:null,name:'',actId:null,actTitle:'',
-     hull:0,hullMax:0,hullFraction:0,phase:null,clock:0,move:null};
+     hull:0,hullMax:0,hullFraction:0,phase:null,clock:0,move:null,plates:null,plateHold:null};
     // The pooled move record rides a hidden slot so a readout still reads as plain data.
     Object.defineProperty(readout,'_move',{value:null,writable:true,enumerable:false});
     list[n]=readout;
@@ -82,6 +82,52 @@ export function capitalBossReadouts(state,out) {
    readout.hullMax=Number.isFinite(hullMax)?hullMax:0;
    readout.hullFraction=Number.isFinite(hullMax)&&hullMax>0?clamp01(hull/hullMax):0;
    readout.phase=r.phase;readout.clock=r.clock;readout.move=null;
+   // GOLD-COLOSSI: attached plate anchors ride the readout so the overlay can paint them in
+   // warning style and the latched player gets a PLATE/HOLD read without a second pass.
+   const platesOut=readout._plates||(readout._plates=[]);
+   platesOut.length=0;
+   let plateHold=readout._hold;
+   if(!plateHold){plateHold={strainTicks:0,holdTension:0,tension:0,label:'',x:0,z:0};readout._hold=plateHold;}
+   readout.plateHold=null;
+   const plateSpecs=spec&&Array.isArray(spec.plates)?spec.plates:null;
+   const plateRecs=Array.isArray(r.plates)?r.plates:null;
+   if(plateSpecs&&plateRecs){
+    const br=Math.max(1,Number(boss.radius)||20);
+    const rot=Number(boss.rot)||0;
+    const cosR=Math.cos(rot),sinR=Math.sin(rot);
+    // The latch contact point + live tension mirror the fight owner's tear check, so the
+    // readout never disagrees with the rope.
+    const attachments=state.combat&&state.combat.attachments&&state.combat.attachments.byId;
+    const tension=Number(state.player&&state.player.tether&&state.player.tether.tensionEstimate)||0;
+    let latch=null;
+    if(attachments){
+     for(const aid in attachments){const a=attachments[aid];
+      if(a&&a.state==='active'&&a.ownerId===state.playerId&&a.targetId===boss.id){latch=a;break;}}
+    }
+    let cellN=0;
+    for(let pi=0;pi<plateSpecs.length;pi+=1){
+     const pspec=plateSpecs[pi];
+     if(!pspec)continue;
+     const rec=plateRecs.find((q)=>q&&q.id===pspec.id);
+     if(!rec||rec.attached!==true)continue;
+     const lx=pspec.anchor.x*br,lz=pspec.anchor.z*br;
+     const px=boss.pos.x+lx*cosR-lz*sinR,pz=boss.pos.z+lx*sinR+lz*cosR;
+     let cell=platesOut[cellN];
+     if(!cell){cell={id:null,label:'',x:0,z:0,radius:0};platesOut[cellN]=cell;}
+     cellN+=1;
+     cell.id=pspec.id;cell.label=pspec.label||pspec.id;cell.x=px;cell.z=pz;cell.radius=pspec.radius;
+     if(latch&&latch.targetAnchorLocal){
+      const dx=Number(latch.targetAnchorLocal.x)-lx,dz=Number(latch.targetAnchorLocal.z)-lz;
+      if(dx*dx+dz*dz<=pspec.radius*pspec.radius){
+       plateHold.strainTicks=rec.strainTicks|0;plateHold.holdTension=pspec.holdTension;
+       plateHold.tension=tension;plateHold.label=cell.label;plateHold.x=px;plateHold.z=pz;
+       readout.plateHold=plateHold;
+      }
+     }
+    }
+    platesOut.length=cellN;
+   }
+   readout.plates=platesOut;
    const cast=r.cast;
    if(cast&&score&&Array.isArray(score.beats)){
     let beat=null;
@@ -111,6 +157,9 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
  // cost, so once the canvas is known-blank an empty draw() is a no-op. A canvas resize clears to
  // blank anyway, so the flag stays honest.
  let blank=false;
+ // GOLD-COLOSSI: attached-plate anchors and the PLATE/HOLD read ride the same canvas in
+ // warning style — fed per frame from capitalBossReadouts, never allocating here.
+ const anchors=[];
  const listen=(name,fn)=>{const remove=bus.on(name,fn);if(typeof remove==='function')off.push(remove);else if(bus.off)off.push(()=>bus.off(name,fn));};
  const remember=c=>{
   if(!warnings.has(c.castId)&&warnings.size>=3)throw new Error('Capital overlay exceeds three live fights');
@@ -118,13 +167,45 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
  };
  listen('capitalBoss:telegraph',remember);listen('capitalBoss:attack',remember);
  listen('capitalBoss:telegraphEnd',c=>warnings.delete(c.castId));
+ const _platePt={x:0,z:0};
+ const drawPlateAnchor=(p)=>{
+  // A short arc segment, not a ring — the plate is an edge, not an outline. Painted as a
+  // projected polyline so it rides the same beginPath/moveTo/lineTo/stroke call set the
+  // warnings use (no new ctx verbs, no per-frame allocation).
+  const steps=6,a0=-Math.PI*0.72,span=Math.PI*0.44;
+  ctx.strokeStyle='rgba(255,196,96,0.85)';ctx.lineWidth=2;
+  ctx.beginPath();
+  for(let i=0;i<=steps;i+=1){
+    const a=a0+span*i/steps;
+    _platePt.x=p.x+Math.cos(a)*p.radius;_platePt.z=p.z+Math.sin(a)*p.radius;
+    const screen=worldToScreen(_platePt);
+    if(!screen)continue;
+    if(i===0)ctx.moveTo(screen.x,screen.y);else ctx.lineTo(screen.x,screen.y);
+  }
+  ctx.stroke();
+ };
  return {
+  plateAnchors(list){
+   anchors.length=0;
+   if(Array.isArray(list))for(let i=0;i<list.length;i++)anchors.push(list[i]);
+  },
   draw(){
-  if(warnings.size===0){if(!blank){ctx.clearRect(0,0,canvas.width,canvas.height);blank=true;}return;}
+  if(warnings.size===0&&anchors.length===0){if(!blank){ctx.clearRect(0,0,canvas.width,canvas.height);blank=true;}return;}
   ctx.clearRect(0,0,canvas.width,canvas.height);blank=false;
   for(const c of warnings.values())drawCapitalWarning(ctx,c,clockForFight(c.fightId),worldToScreen,{reducedMotion});
+  for(let i=0;i<anchors.length;i++)drawPlateAnchor(anchors[i]);
+  const hold=anchors.hold;
+  if(hold){
+   _platePt.x=hold.x;_platePt.z=hold.z;
+   const screen=worldToScreen(_platePt);
+   if(screen){
+    ctx.font='11px system-ui, sans-serif';
+    ctx.fillStyle='rgba(255,220,140,0.92)';
+    ctx.fillText(`PLATE ${hold.tension.toFixed(1)} t / HOLD ${hold.holdTension.toFixed(1)} t`,screen.x+10,screen.y-10);
+   }
+  }
  },
-  restore(fights){warnings.clear();for(const r of Object.values(fights||{}))if(r.cast&&!r.suspended&&!r.terminal){
+  restore(fights){anchors.length=0;anchors.hold=null;warnings.clear();for(const r of Object.values(fights||{}))if(r.cast&&!r.suspended&&!r.terminal){
    const spec=requireCapitalBossEncounter(r.encounterId);
    const b=spec&&spec.score&&spec.score.beats&&spec.score.beats.find(b=>b.id===r.cast.beatId);
    if(!b) continue;

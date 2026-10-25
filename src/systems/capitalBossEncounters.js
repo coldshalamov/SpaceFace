@@ -1,5 +1,7 @@
 import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { LAST_ARGUMENT } from '../data/lastArgument.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { spawnSwarmCapitalBallast } from '../missions/capitalBossSpawn.js';
 import { createCapitalBossFight,restoreCapitalBossFight,rebindCapitalBossFight,
   bindCapitalBossWing,stepCapitalBossFight,validFightId } from '../combat/capitalBossScore.js';
@@ -154,6 +156,9 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(say) say.call(ctx.helpers.voice,{channel:c.priority,text:c.text,kind:'info',ttl:4,id:`capital:${r.fightId}`});
       else ctx.bus.emit('toast',{text:c.text,kind:'info',ttl:4});
     }
+    // GOLD-COLOSSI: entering an act tears the plates whose shedOnAct is the act that just
+    // ended — the rope is the faster route; the act shed guarantees the ladder.
+    if(c.type==='actChanged') system._shedPlatesForAct(r,c.index);
     // Presentation/telemetry are facts; they are not a second executor for damage or spawns.
     ctx.bus.emit(`capitalBoss:${c.type}`,c);
   };
@@ -241,7 +246,147 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
           boss:r.bossKilled?{id:r.bossId,alive:false,hull:0}:o.boss,
           target:r.targetKilled?{id:r.targetId,alive:false,hull:0}:o.target,
           tick:state.tick,simTime:state.simTime})) runCommand(c,r);
+        system._stepPlates(r,state);
       }
+    },
+    // GOLD-COLOSSI: a plate is fight data until it tears — no per-tick pose, no new joint.
+    // Swarm champions and the Last Argument keep their own lifecycles: their authored
+    // plates are data-only and never spawn bodies here.
+    _platesLive(r) {
+      return !!(r && !r.terminal && Array.isArray(r.plates) && r.plates.length
+        && typeof r.fightId === 'string' && !r.fightId.startsWith('swarm:')
+        && r.encounterId !== LAST_ARGUMENT.scoreId);
+    },
+    _plateSpec(r, plateId) {
+      let specs = null;
+      try { specs = requireCapitalBossEncounter(r.encounterId).plates; } catch (_) { specs = null; }
+      return Array.isArray(specs) ? specs.find((p) => p && p.id === plateId) || null : null;
+    },
+    // targetAnchorLocal is raw WU-local ({x,z}); authored anchors are normalized xradius —
+    // the same space SUBSYSTEM_DEFS volumes use.
+    _plateLatchNear(plateSpec, boss, attachment) {
+      if(!plateSpec || !boss || !attachment || !attachment.targetAnchorLocal) return false;
+      const br = Math.max(1, Number(boss.radius) || 20);
+      const dx = Number(attachment.targetAnchorLocal.x) - plateSpec.anchor.x * br;
+      const dz = Number(attachment.targetAnchorLocal.z) - plateSpec.anchor.z * br;
+      return (dx * dx + dz * dz) <= plateSpec.radius * plateSpec.radius;
+    },
+    _plateAnchorWorld(plateSpec, boss) {
+      const br = Math.max(1, Number(boss && boss.radius) || 20);
+      return entityLocalPointToWorld(boss,
+        { x: plateSpec.anchor.x * br, z: plateSpec.anchor.z * br });
+    },
+    _playerAttachmentOn(bossId, state) {
+      const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+      if(!byId) return null;
+      for (const id in byId) {
+        const a = byId[id];
+        if(a && a.state === 'active' && a.ownerId === state.playerId && a.targetId === bossId) return a;
+      }
+      return null;
+    },
+    _stampPlateCover(r, boss) {
+      if(!boss || !boss.data) return;
+      const cover = {};
+      for (const rec of (r.plates || [])) {
+        if(!rec || !rec.attached) continue;
+        const spec = this._plateSpec(r, rec.id);
+        if(spec && spec.covers) cover[spec.covers] = true;
+      }
+      boss.data.capitalPlateCover = Object.keys(cover).length ? cover : null;
+    },
+    _stepPlates(r, state) {
+      if(!this._platesLive(r)) return;
+      const boss = state.entities && state.entities.get(r.bossId);
+      if(!boss || boss.alive === false || !boss.pos) { this._stampPlateCover(r, boss); return; }
+      this._stampPlateCover(r, boss);
+      const attachment = this._playerAttachmentOn(boss.id, state);
+      const tension = Number(state.player && state.player.tether && state.player.tether.tensionEstimate) || 0;
+      for (const rec of r.plates) {
+        if(!rec || !rec.attached) continue;
+        const spec = this._plateSpec(r, rec.id);
+        if(!spec) { rec.attached = false; continue; }
+        const strained = !!(attachment && tension >= spec.holdTension
+          && this._plateLatchNear(spec, boss, attachment));
+        rec.strainTicks = strained ? (rec.strainTicks | 0) + 1 : 0;
+        if(rec.strainTicks >= 30) {
+          this._tearPlate(r, boss, rec, spec, { attachment, cause: 'tether' });
+        }
+      }
+    },
+    _tearPlate(r, boss, rec, spec, { attachment = null, cause = 'tether' } = {}) {
+      if(!rec || !rec.attached) return null;
+      rec.attached = false; rec.strainTicks = 0;
+      const spawn = ctx.helpers && ctx.helpers.spawnEntity;
+      const world = this._plateAnchorWorld(spec, boss);
+      const player = ctx.state.entities && ctx.state.entities.get(attachment && attachment.ownerId);
+      // Separation runs down the line for a rope tear, radially off the boss for an act shed.
+      let dx = world.x - boss.pos.x, dz = world.z - boss.pos.z;
+      if(attachment && player && player.pos) { dx = world.x - player.pos.x; dz = world.z - player.pos.z; }
+      const d = Math.hypot(dx, dz) || 1;
+      const plate = spawn && spawn({
+        type: 'wreck',
+        pos: { x: world.x, z: world.z },
+        vel: { x: Number(boss.vel && boss.vel.x) || 0, z: Number(boss.vel && boss.vel.z) || 0 },
+        radius: spec.radius, mass: spec.mass,
+        hull: 1, hullMax: 1, collides: true,
+        physicsBody: { radius: spec.radius, dynamic: true },
+        data: {
+          kind: 'wreck', label: spec.label, scanLabel: spec.label, name: spec.label,
+          masslineTetherable: true,
+          capitalPlate: { fightId: r.fightId, bossId: r.bossId, plateId: spec.id, covers: spec.covers },
+          // The aftermath armor-slab package keeps a torn plate reading as boss armor,
+          // not generic debris — the same render path fracture pieces use.
+          fractureVisual: { partId: 'place_aftermath_aft_armor_slab', label: spec.label },
+          fractureVictimRadius: Number(boss.radius) || null,
+          loot: [], salvagePool: { cmdty_scrap_metal: 2 }, salvageTimeLeft: 8,
+        },
+      });
+      if(plate) {
+        queuePhysicsImpulse(plate, { x: (dx / d) * spec.mass * 12, z: (dz / d) * spec.mass * 12 },
+          { tag: 'capital_plate_tear', tick: ctx.state.tick, externalEffect: true });
+      }
+      // The player's line moves onto the freed slab through the sanctioned cut+create path —
+      // never a silent rebind of a live joint.
+      if(plate && attachment && cause === 'tether') {
+        const svc = this._attachmentService();
+        if(svc) {
+          svc.cut(attachment.id, attachment.ownerId, 'capital_plate_tear');
+          svc.create({ defId: 'tether_standard', ownerId: attachment.ownerId, targetId: plate.id });
+        }
+      }
+      this._stampPlateCover(r, boss);
+      ctx.bus.emit('capitalBoss:plateTorn', {
+        fightId: r.fightId, bossId: r.bossId, plateId: spec.id, label: spec.label,
+        covers: spec.covers, cause, entityId: plate && plate.id != null ? plate.id : null,
+      });
+      return plate;
+    },
+    _shedPlatesForAct(r, newActIndex) {
+      if(!this._platesLive(r)) return;
+      const boss = ctx.state.entities && ctx.state.entities.get(r.bossId);
+      if(!boss || boss.alive === false || !boss.pos) return;
+      const shedAfter = newActIndex - 1; // shedOnAct N holds through act N and tears as it ends
+      for (const rec of r.plates) {
+        if(!rec || !rec.attached) continue;
+        const spec = this._plateSpec(r, rec.id);
+        if(!spec || spec.shedOnAct !== shedAfter) continue;
+        const torn = this._tearPlate(r, boss, rec, spec, { cause: 'actShed' });
+        if(torn) {
+          const name = (requireCapitalBossEncounter(r.encounterId).score || {}).name || 'The boss';
+          ctx.bus.emit('toast', {
+            text: `${name} sheds its ${spec.label}.`,
+            kind: 'info', ttl: 4, channel: 'capitalBoss',
+          });
+        }
+      }
+    },
+    _attachmentService() {
+      const registry = ctx.registry || (ctx.helpers && ctx.helpers.registry);
+      const actions = registry && registry.get && registry.get('actions');
+      if(actions && actions.kernel) return actions.kernel.attachments || null;
+      const combat = registry && registry.get && registry.get('combat');
+      return combat && combat.kernel ? combat.kernel.attachments || null : null;
     },
     /**
      * Row 463: rewind a defeat-terminated fight back into its current act. Only a 'defeat'

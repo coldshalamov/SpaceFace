@@ -17,6 +17,12 @@ export const TENDRIL = freezeDeep({
   actors: [hullActor({ label: 'THE TENDRIL', archetype: 'brood_tendril', hull: 640,
     mass: 300, radius: 26, speed: 95, doctrine: 'brawler_commit' }),
     ballast('FIELD WRECKAGE', 140)],
+  plates: [
+    { id: 'head_plate', label: 'head plate', anchor: { x: 0.5, z: 0 }, radius: 8, mass: 70,
+      holdTension: 0.75, covers: 'subsystem_weapon', shedOnAct: 0 },
+    { id: 'coil_plate', label: 'coil plate', anchor: { x: -0.05, z: 0.35 }, radius: 9, mass: 80,
+      holdTension: 0.8, covers: 'subsystem_power', shedOnAct: 1 },
+  ],
   score: score({
     name: 'THE TENDRIL', missionDefinitionId: 'capital_boss', identity: 'commitment',
     rangeResponse: { minRange: 380, beatId: 'weave_lane' },

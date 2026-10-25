@@ -498,8 +498,19 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     return false;
   };
   const copyInto = (to, from) => { to.length = 0; for (let i = 0; i < from.length; i += 1) to.push(from[i]); };
+  // GOLD-COLOSSI: the overlay's plate anchors ride the same readout pass — the feed is a
+  // flat scratch list plus the one live PLATE/HOLD record, never a per-frame allocation.
+  const plateFeed = [];
   const syncReadouts = (st) => {
     const readouts = capitalBossReadouts(st && st.mode === 'flight' ? st : null, readoutPool);
+    plateFeed.length = 0;
+    plateFeed.hold = null;
+    for (const rd of readouts) {
+      if (!rd) continue;
+      if (rd.plates) for (const p of rd.plates) plateFeed.push(p);
+      if (rd.plateHold) plateFeed.hold = rd.plateHold;
+    }
+    if (overlay && typeof overlay.plateAnchors === 'function') overlay.plateAnchors(plateFeed);
     // The ordinary frame: no fight on the player, nothing on screen. Nothing to place,
     // nothing to write — return before any layout work.
     if (readouts.length === 0 && !anyShown() && !stackHost._rect) {
