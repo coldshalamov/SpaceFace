@@ -22,6 +22,9 @@ import { concealedFromPlayer } from './targetIdentity.js';
 import { compileAttackSpec, mergeWeaponView } from './attackSpec.js';
 import { collectAttackModifiers } from '../systems/adventureMigration.js';
 import { WEAPONS } from '../data/weapons.js';
+import { witnessLineOfSight } from './lineOfSight.js';
+import { hasBlockingPanels, interceptSegment } from './pylonShieldQuery.js';
+import { PYLON_CONTACT } from './pylonShieldPolicy.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 
@@ -236,5 +239,27 @@ export function intentDenial(state, entity, facts = null) {
   if (f.requiresLock === true && f.hasLock !== true) return DENIAL.NO_LOCK;
   if (f.protectedCargo === true) return DENIAL.PROTECTED_CARGO;
   if (f.tooLarge === true) return DENIAL.TOO_LARGE;
+  return null;
+}
+
+/**
+ * Is the straight shot from `shooter` to `target` blocked right now — by a body on the line (the
+ * shared line-of-sight witness every observer uses) or by a shield panel that is hostile to the
+ * shooter (the same intercept the projectile sweep, the beam ray and the blast occluder read)?
+ * The shooter's OWN panel never blocks its shots, and a panel never occludes its own endpoints.
+ * Returns { reason: DENIAL.BLOCKED, by: 'body' | 'shield-panel' } or null. Prediction, not
+ * confirmation: a hit, a block or a shield break is only ever announced from accepted sim events.
+ */
+export function gunLineDenial(state, shooter, target) {
+  if (!state || !shooter || !shooter.pos || !target || !target.pos) return null;
+  if (hasBlockingPanels(state)) {
+    const hit = interceptSegment(state, PYLON_CONTACT.PROJECTILE, shooter.id,
+      shooter.pos.x, shooter.pos.z, target.pos.x, target.pos.z, 0,
+      { fallbackTeam: shooter.team, exemptId: target.id });
+    if (hit) return { reason: DENIAL.BLOCKED, by: 'shield-panel' };
+  }
+  if (!witnessLineOfSight(state, shooter, target.pos, [target.id])) {
+    return { reason: DENIAL.BLOCKED, by: 'body' };
+  }
   return null;
 }

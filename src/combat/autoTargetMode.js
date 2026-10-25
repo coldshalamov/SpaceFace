@@ -125,7 +125,7 @@ export function resolvePlayerGunTarget(state) {
 // gun the player reads as "mine". This is NOT the whole battery's solution: a mixed battery
 // (pulse 320 / autocannon 420 / railgun 700) re-solves per mount inside
 // weapons._serviceProjectileWeapon, which is why tickAutoTarget publishes `input.autoAim` below.
-function playerLeadSpeed(state) {
+export function playerLeadSpeed(state) {
   const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
   if (!player) return 360;
   const weapons = player.data && player.data.weapons;

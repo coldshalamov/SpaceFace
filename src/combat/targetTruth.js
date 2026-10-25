@@ -26,6 +26,7 @@
 // manualAimAuthoritative is the player-facing promise "moving the mouse still matters": false only
 // when something is genuinely overriding the cursor (a hostile on the line, or aim correction > 0).
 import {
+  playerLeadSpeed,
   resolvePlayerGunTarget,
   tetheredGunTarget,
   targetAssistScale,
@@ -190,4 +191,14 @@ export function tetherLeadSolution(shooter, target, projSpeed) {
   const dist = Math.hypot(dx, dz);
   if (!(dist > 1e-3)) return { valid: false, angle, x: target.pos.x, z: target.pos.z, dist: 0 };
   return { valid: true, angle, x: shooter.pos.x + Math.cos(angle) * dist, z: shooter.pos.z + Math.sin(angle) * dist, dist };
+}
+
+/**
+ * The pip's solution for the hull the Massline addresses, at the speed the FIRE PATH solves it with
+ * (autoTargetMode.playerLeadSpeed — the first mount carrying a projectile speed, the same rule as
+ * weapons._playerProjectileSpeed). In a mixed battery that speed is not the pip's gun-only speed,
+ * and the pip must describe the angle the guns actually take for the line.
+ */
+export function lineLeadSolution(state, shooter, target) {
+  return tetherLeadSolution(shooter, target, playerLeadSpeed(state));
 }

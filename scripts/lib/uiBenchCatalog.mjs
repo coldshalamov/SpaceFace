@@ -54,6 +54,9 @@ export const UI_BENCH_SHOTS = Object.freeze([
   // Packet 02 target truth: a hostile SELECTED while another hangs on the Massline and owns the guns
   // — the lead pip and the LINE TARGET tag ride the line's hull, not the selection.
   { id: 'flight-line-target', screen: 'flight', backdrop: 'world' },
+  // ...and the same line with its shot BLOCKED (a rock or a hostile shield panel on the line): the pip is
+  // struck through and the tag says so. Composition only; the query is tested in gun-line-denial.
+  { id: 'flight-line-blocked', screen: 'flight', backdrop: 'world' },
   // Packet 02 contact marks: living hulls too small to read by silhouette wear one mark in the
   // radar's IFF shapes (triangle hostile, diamond friendly, square neutral worker); debris none.
   { id: 'flight-contacts', screen: 'flight', backdrop: 'world' },

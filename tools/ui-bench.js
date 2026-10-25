@@ -1037,7 +1037,7 @@ async function goto(rawId) {
       document.body.classList.add('k-screen-top');
       document.body.dataset.kScreen = id;
       if (id === 'crucibleHud') await mountCrucibleHud();
-      else await mountFlightHud({ lineTarget: rawId === 'flight-line-target', contactMarks: rawId === 'flight-contacts' });
+      else await mountFlightHud({ lineTarget: rawId === 'flight-line-target' || rawId === 'flight-line-blocked', blockedLine: rawId === 'flight-line-blocked', contactMarks: rawId === 'flight-contacts' });
       if (id === 'mobileFlight') await mountMobileDeck(shot);
       current = id;
       currentScreen = null;
@@ -1393,6 +1393,15 @@ async function mountFlightHud(opts = {}) {
     note(`HUD frame: ${error && error.message ? error.message : String(error)}`);
   }
   window.__benchHud = hud;
+  if (opts.blockedLine) {
+    // Composition proof for the BLOCKED denial. The live query (line-of-sight witness / shield
+    // intercept) needs native physics bodies a still does not have, so this writes the same two
+    // attributes the HUD writes when gunLineDenial answers (tested in test/gun-line-denial.test.mjs).
+    const pip = hudRoot.querySelector('.sf-leadpip');
+    if (pip) pip.setAttribute('data-denial', 'blocked');
+    const tagText = hudRoot.querySelector('.sf-aimtag__text');
+    if (tagText) tagText.textContent = 'LINE TARGET · BLOCKED';
+  }
     // A single frame renders the "now"; the instruments' reactive writes (lamina fill, bar
     // segments, gauge fraction) settle on the driven frames the live route runs. A bench still
     // proves composition, type, material and light; ui-look proves the reactions on the live route.

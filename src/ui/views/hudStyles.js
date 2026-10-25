@@ -541,6 +541,11 @@ export function injectHudCss() {
   .sf-leadpip:not(.on-solution) .sf-leadpip__full { opacity:0; }
   .sf-leadpip:not(.on-solution) .sf-leadpip__arc { opacity:1; }
   .sf-leadpip__tick { stroke:var(--hud-cyan); stroke-width:1.5; stroke-linecap:round; }
+  /* Blocked (packet 02): the pip is struck through and quiet — the slash is the shape cue. */
+  .sf-leadpip__deny { display:none; stroke:var(--sf-hostile); stroke-width:1.8; stroke-linecap:round; }
+  .sf-leadpip[data-denial="blocked"] .sf-leadpip__deny { display:inline; }
+  .sf-leadpip[data-denial="blocked"] .sf-leadpip__full,
+  .sf-leadpip[data-denial="blocked"] .sf-leadpip__arc { opacity:.5; }
 
   /* LINE TARGET tag (packet 02, src/combat/targetTruth.js) — a word with a mark, anchored under the
      hull the Massline has claimed the guns for when that hull is NOT the selection. The mark is a
@@ -702,6 +707,7 @@ export function injectHudCss() {
     .sf-leadpip__svg { filter:none; }
     .sf-leadpip__full, .sf-leadpip__arc, .sf-leadpip__tick { stroke:CanvasText; }
     .sf-aimtag { color:CanvasText; text-shadow:none; forced-color-adjust:none; }
+    .sf-leadpip__deny { stroke:CanvasText; }
     .sf-cmark { color:CanvasText; forced-color-adjust:none; }
     .sf-threat-halo__slot--arc .sf-threat-halo__arc {
       border-color:CanvasText; forced-color-adjust:none;

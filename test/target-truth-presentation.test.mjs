@@ -120,3 +120,32 @@ test('a neutral selected is still an information subject for the mark and the pa
   assert.equal(resolveTargetContourEntity(state).id, 3);
   assert.equal(engagedContactReadout(state).subjectId, 3);
 });
+
+test('mixed battery: the line\'s pip uses the speed the fire path solves with, not the pip\'s gun-only speed', async () => {
+  const { lineLeadSolution } = await import('../src/combat/targetTruth.js');
+  const { primaryProjSpeed } = await import('../src/ai/gunnery.js');
+  const { tickAutoTarget, createAutoTargetRuntime, playerLeadSpeed } = await import('../src/combat/autoTargetMode.js');
+  const { state, add } = boot();
+  const player = state.entities.get(1);
+  // slot order: a homing launcher first, then the guns (pulse 320, railgun 700)
+  player.data.weapons = [
+    { defId: 'wpn_swarm_missile_s', id: 'wpn_swarm_missile_s', projSpeed: 200, tracking: 'homing' },
+    { defId: 'wpn_pulse_laser_s', projSpeed: 320 },
+    { defId: 'wpn_railgun_m', projSpeed: 700 },
+  ];
+  add(ship(5, 1, 0, 160, { x: 90, z: 0 }));
+  state.player.targetId = 5; bindSelection(state);
+  state.player.tether = { active: true, targetId: 5, phase: 'slack', restLength: 0, strain: 0, attachmentId: null };
+  assert.equal(playerLeadSpeed(state), 200, 'the assist and the fire path lead at the first mount that carries a speed');
+  assert.notEqual(primaryProjSpeed(player), playerLeadSpeed(state), 'the pip\'s gun-only speed differs in this battery');
+  const hull = state.entities.get(5);
+  const viaPip = lineLeadSolution(state, player, hull);
+  const aim = computeLockedLeadPoint(state);
+  const a1 = Math.atan2(viaPip.z - player.pos.z, viaPip.x - player.pos.x);
+  const a2 = Math.atan2(aim.z - player.pos.z, aim.x - player.pos.x);
+  assert.ok(Math.abs(a1 - a2) < 1e-9, 'one solution for the pip, the assist and the fire path');
+  const wrong = tetherLeadSolution(player, hull, primaryProjSpeed(player));
+  assert.ok(Math.abs(Math.atan2(wrong.z - player.pos.z, wrong.x - player.pos.x) - a2) > 1e-4, 'the gun-only speed would lie');
+  tickAutoTarget(state, 1 / 60, null, createAutoTargetRuntime());
+  assert.equal(state.input.autoAim.leadSpeed, 200, 'the published provenance names the same speed');
+});

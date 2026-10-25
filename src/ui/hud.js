@@ -77,9 +77,9 @@ import {
 import { mountRadarKit } from './views/flightInstruments.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 import {
-  createTargetTruth, projectTargetTruth, tetherLeadSolution, SELECTION_STATUS, TARGET_REASON,
+  createTargetTruth, projectTargetTruth, lineLeadSolution, SELECTION_STATUS, TARGET_REASON,
 } from '../combat/targetTruth.js';
-import { classifyContact, contactMark } from '../combat/contactClassifier.js';
+import { classifyContact, contactMark, gunLineDenial } from '../combat/contactClassifier.js';
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
@@ -2563,6 +2563,8 @@ export function createHud(ctx, alerts) {
         `stroke-dasharray="${LEAD_PIP_ARC_LENGTH.toFixed(2)} ${LEAD_PIP_CIRCUMFERENCE.toFixed(2)}"/>` +
       `<line class="sf-leadpip__tick" x1="11" y1="2.2" x2="11" y2="5.4"/>` +
       `<line class="sf-leadpip__tick" x1="2.2" y1="11" x2="5.4" y2="11"/>` +
+      // Packet 02: drawn only while the shot line is BLOCKED (shape, not colour: a struck-through pip)
+      `<line class="sf-leadpip__deny" x1="3.6" y1="18.4" x2="18.4" y2="3.6"/>` +
     `</svg>`;
   root.appendChild(leadPip);
   const leadPipArc = leadPip.querySelector('.sf-leadpip__arc');
@@ -2580,6 +2582,8 @@ export function createHud(ctx, alerts) {
     '<path d="M0 5H9.5"/><path d="M9.5 5 12.5 2 15.5 5 12.5 8Z"/></svg>' +
     '<span class="sf-aimtag__text">LINE TARGET</span>';
   root.appendChild(lineTargetTag);
+  const lineTargetText = lineTargetTag.querySelector('.sf-aimtag__text');
+  let gunLineBlocked = false; // refreshed on the overlay cadence (a line-of-sight query per 30 Hz tick)
   // Minimal contact marks (packet 02): a living contact whose hull is too small on screen to read as
   // a ship by silhouette gets one restrained mark in the radar's own IFF shapes — triangle
   // (hostile), diamond (friendly), square (neutral worker); dashed when it is down, a filled core
@@ -2616,9 +2620,12 @@ export function createHud(ctx, alerts) {
   const contactMarkEdgeScreen = { x: 0, y: 0, onScreen: false };
   // The pip's solver: the line's own constrained solve for the hull on the line, the free-flight
   // lead for everything else. Created once; no per-frame allocation.
+  // The line's solve uses the speed the FIRE PATH uses for it (targetTruth.lineLeadSolution), not
+  // the pip's gun-only speed: in a mixed battery the two differ, and the pip must describe the
+  // angle the guns actually take.
   const truthLeadSolution = (shooter, target, speed) => (
     targetTruth.tetherTargetId != null && target && target.id === targetTruth.tetherTargetId
-      ? tetherLeadSolution(shooter, target, speed)
+      ? lineLeadSolution(state, shooter, target)
       : leadSolution(shooter, target, speed));
   // Shared hidden verdict: computeLeadPipOverlay is only called with a live target; the
   // no-target path below runs every frame and never mutates the verdict (visible/x/y reads).
@@ -4185,7 +4192,7 @@ export function createHud(ctx, alerts) {
     for (let j = from; j < contactMarkEls.length; j++) setClass(contactMarkEls[j], 'visible', false);
   }
 
-  function updateContactMarks(p, selectedId) {
+  function updateContactMarks(p, selectedId, effectiveId) {
     if (!p || !p.pos || !helpers.worldToScreen) { hideContactMarks(0); return; }
     let n = 0;
     for (const e of indexedShipLikeScan(state)) {
@@ -4209,6 +4216,8 @@ export function createHud(ctx, alerts) {
     let used = 0;
     for (let i = 0; i < n && used < CONTACT_MARK_POOL; i++) {
       const e = contactMarkNear[i].e;
+      // the hull the guns address already wears the lead pip / LINE TARGET tag: no second mark
+      if (effectiveId != null && e.id === effectiveId) continue;
       const anchor = presentedEntityAnchor(e);
       if (!anchor) continue;
       classifyContact(state, e, contactMarkClass, { selectedId });
@@ -4420,6 +4429,12 @@ export function createHud(ctx, alerts) {
     } else {
       setClass(leadPip, 'visible', markStillLive(leadPip));
     }
+    // Blocked at the point of intent: the straight shot to the hull the pip rides, judged by the same
+    // line-of-sight witness and shield-panel intercept the shot obeys (combat/contactClassifier.js).
+    if (overlayTick) gunLineBlocked = !!(leadEnt && leadEnt.alive && gunLineDenial(state, p, leadEnt));
+    if (!leadEnt) gunLineBlocked = false;
+    setAttr(leadPip, 'data-denial', gunLineBlocked ? 'blocked' : 'none');
+    setText(lineTargetText, gunLineBlocked ? 'LINE TARGET · BLOCKED' : 'LINE TARGET');
     // LINE TARGET: shown only when the guns address a hull that is NOT the selection, so the
     // player is never left reading a confident mark on the wrong ship.
     let tagShown = false;
@@ -4444,7 +4459,7 @@ export function createHud(ctx, alerts) {
     // projected edge placement) are refreshed at 30 Hz alongside the other world-anchored DOM.
     if (overlayTick) {
       threatHalo.update(p, state, helpers.worldToScreen);
-      updateContactMarks(p, truth.selectedId);
+      updateContactMarks(p, truth.selectedId, truth.effectiveGunTargetId);
     }
   }
 
