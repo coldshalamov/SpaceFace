@@ -68,6 +68,37 @@ export function validateCapitalBossEncounter(e, vocabulary={}) {
     if(vocabulary.enemyIds) for(const m of w.members||[]) check(vocabulary.enemyIds.has(m.archetype),`${w.id}: unknown enemy`);
   }
   check((s.wings||[]).reduce((n,w)=>n+w.members.length,0)<=s.maxWingMembers,'finite total wing population');
+  // GOLD-COLOSSI — rope-detachable plates. A subsystem named in any act's enter.anyDisabled may
+  // only be covered by a plate whose shedOnAct is below that act's index: the act shed opens the
+  // disabled-route no later than the act that asks for it, so progression never depends on the rope.
+  const plates = Array.isArray(e.plates) ? e.plates : [];
+  check(plates.length === 2, `${e.id}: exactly two authored plates`);
+  const plateIds = new Set();
+  let shedCount = 0;
+  for (const p of plates) {
+    check(p && IDS.test(p.id) && !plateIds.has(p.id), `${e.id}: unique plate id`);
+    plateIds.add(p && p.id);
+    check(typeof p.label === 'string' && p.label.length >= 3 && p.label.length <= 24, `${e.id}/${p && p.id}: plain-words label`);
+    const a = p && p.anchor;
+    check(a && Number.isFinite(a.x) && Number.isFinite(a.z), `${e.id}/${p && p.id}: local anchor`);
+    check(finite(p && p.radius, 1) && finite(p && p.mass, 1) && finite(p && p.holdTension, 0),
+      `${e.id}/${p && p.id}: radius/mass/holdTension`);
+    check(SUBSYSTEMS.has(p && p.covers), `${e.id}/${p && p.id}: covered subsystem vocabulary`);
+    check(p && (p.shedOnAct == null || (integer(p.shedOnAct, 0) && p.shedOnAct < 3)),
+      `${e.id}/${p && p.id}: shedOnAct`);
+    if (p && p.shedOnAct != null) shedCount++;
+  }
+  check(shedCount >= 1, `${e.id}: at least one act-shed plate`);
+  (s.acts || []).forEach((act, actIndex) => {
+    for (const sub of (act.enter && act.enter.anyDisabled) || []) {
+      for (const p of plates) {
+        if (p && p.covers === sub) {
+          check(p.shedOnAct != null && p.shedOnAct <= actIndex - 1,
+            `${e.id}/${p.id}: covering ${sub} (disabled at act ${actIndex}) needs shedOnAct <= ${actIndex - 1}`);
+        }
+      }
+    }
+  });
   check(!JSON.stringify(e).match(/"(?:ignoreInvulnerability|ignoreFriendlyFire|invuln)":true/),'no immunity/authority bypass');
   return {ok:errors.length===0,errors};
 }

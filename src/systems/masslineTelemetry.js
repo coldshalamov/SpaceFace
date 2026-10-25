@@ -1,4 +1,5 @@
 import { writePayloadReleaseGhost } from '../presentation/releaseGhost.js';
+import { massDeclarationForTarget, massDiscrepancy, physicalMassT } from './cargoCustody.js';
 
 // Massline kinematics telemetry — read-only observer.
 // Prompt 01: this system only reads state (player, target, tether) and writes its own runtime
@@ -51,6 +52,14 @@ const ARC_VIABLE_TANGENT_QUALITY = 0.5;              // |tangential| / (|tangent
 const ARC_VIABLE_MIN_EXIT_SPEED = SNAP_CATCH_MIN_SPEED; // wu/s — the "genuinely moving" bar
 const ARC_WHIP_HORIZON_S = 8;                        // s — beyond this the whip read is "never"
 
+// AL-STORY-1 (row 423): the rope is a scale. Holding a loaded line on a body carrying an
+// authored manifest declaration for MASS_WEIGH_DWELL_S of genuinely moving loaded ticks is
+// the physical act of weighing it. The observer only measures — the economy-contract owner
+// revalidates and keeps the durable slip.
+const MASS_WEIGH_DWELL_S = 0.5;    // s of qualifying loaded motion the weigh needs
+const MASS_WEIGH_DWELL_TICKS = 30; // 30 ticks at the fixed 1/60 step (IEEE: 30/60 < 0.5)
+const MASS_WEIGH_MIN_TARGET_SPEED = 2; // wu/s — a parked line is not a scale
+
 const FALLBACK = Object.freeze({
   active: false,
   targetId: null,
@@ -95,6 +104,24 @@ export const masslineTelemetry = {
     this._snap = null;
     // Per-latch reel-pump state (rung 06). Same privacy discipline.
     this._pump = null;
+    // Per-latch mass-weigh dwell (AL-STORY-1). Private runtime — never serialized, and it
+    // does not survive a save/load because partial dwell is not a measurement.
+    this._weigh = null;
+    // A reload or a fresh game severs every latch: the weigh dwell, the latch identity, and
+    // the projected measurement all reset so partial dwell can never straddle a boundary.
+    this._onStateReset = () => {
+      this._latchedTargetId = null;
+      this._snap = null;
+      this._pump = null;
+      this._weigh = null;
+      const tele = this.state && this.state.player && this.state.player.masslineTelemetry;
+      if (tele) delete tele.massWeighing;
+    };
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('save:loaded', this._onStateReset);
+      this.bus.on('save:restoring', this._onStateReset);
+      this.bus.on('game:new', this._onStateReset);
+    }
   },
 
   update(dt, state) {
@@ -110,6 +137,7 @@ export const masslineTelemetry = {
       this._latchedTargetId = null;
       this._snap = null;
       this._pump = null;
+      this._weigh = null;
       return;
     }
 
@@ -119,6 +147,7 @@ export const masslineTelemetry = {
       this._latchedTargetId = null;
       this._snap = null;
       this._pump = null;
+      this._weigh = null;
       return;
     }
 
@@ -126,6 +155,7 @@ export const masslineTelemetry = {
     if (!target || !target.pos || !target.vel) {
       // Missing target must not throw; treat as inactive without keeping stale kinematics.
       writeInactive(telemetry);
+      this._weigh = null;
       // We do not clear _latchedTargetId here: the tether still nominally points at this id, so
       // if the target returns next tick we keep treating it as the same latch.
       return;
@@ -148,6 +178,9 @@ export const masslineTelemetry = {
       // Rung 06: new latch re-arms reel-pump (idle stroke, ready to detect the first pump).
       this._pump = freshPump();
       telemetry.reelPump = null;
+      // AL-STORY-1: a weigh belongs to the latch that earned it; a new target starts fresh.
+      this._weigh = null;
+      delete telemetry.massWeighing;
     }
 
     const kinematics = computeLineKinematics(player, target);
@@ -204,6 +237,71 @@ export const masslineTelemetry = {
     // Rung 06: reel-pump detection. Same discipline — observer-only except exactly one event
     // (tether:reelPump), emitted at most once per pump stroke and mirrored at telemetry.reelPump.
     this._stepReelPump(telemetry, dt, state, strain, phase);
+
+    // AL-STORY-1: mass-weigh dwell. Reads the already-populated strain/phase/target speed —
+    // it never touches physics, the attachment, or the existing instrument fields.
+    this._stepMassWeighing(telemetry, dt, state, target, strain, phase, targetSpeed);
+  },
+
+  /**
+   * The rope is a scale. While the mirrored tether is under real load (phase loaded/overload,
+   * strain > 0, the declared body genuinely moving) on a target whose ACTIVE mission carries
+   * params.massDeclaration, qualifying simulation time accrues. After MASS_WEIGH_DWELL_S,
+   * telemetry.massWeighing mirrors the measurement and exactly one tether:massWeighed event fires
+   * for this latch. The key stays ABSENT until emission — sim snapshots hash state.player and
+   * must not see a placeholder. Slack, release, a swapped or lost target, or leaving flight
+   * spends unfinished dwell; a completed weigh's projection lives until the latch ends.
+   */
+  _stepMassWeighing(telemetry, dt, state, target, strain, phase, targetSpeed) {
+    const tether = state.player && state.player.tether;
+    const decl = massDeclarationForTarget(state, target);
+    const qualifying = !!(decl
+      && state.mode === 'flight'
+      && dt > 0
+      && tether && tether.targetId === target.id
+      && (phase === 'loaded' || phase === 'overload')
+      && strain > 0
+      && targetSpeed >= MASS_WEIGH_MIN_TARGET_SPEED);
+    if (!qualifying) {
+      if (this._weigh && !this._weigh.emitted) this._weigh = null; // unfinished dwell is spent
+      if (!(this._weigh && this._weigh.emitted)) delete telemetry.massWeighing;
+      return;
+    }
+    const slipId = `mass-slip:${decl.sourceOfferId}:${decl.targetSlot}`;
+    let weigh = this._weigh;
+    if (!weigh || weigh.slipId !== slipId) {
+      weigh = this._weigh = { slipId, ticks: 0, dwellS: 0, emitted: false };
+    }
+    weigh.ticks += 1;
+    weigh.dwellS += dt;
+    if (weigh.emitted) return; // one event per target latch; the receiver also dedupes by slipId
+    // Simulation time only — a tick count would make the measurement frame-rate dependent.
+    if (weigh.dwellS < MASS_WEIGH_DWELL_S - 1e-9) return;
+    const measuredMassT = physicalMassT(target);
+    if (measuredMassT == null) { this._weigh = null; delete telemetry.massWeighing; return; }
+    const disc = massDiscrepancy(decl.declaredMassT, measuredMassT);
+    if (!disc) { this._weigh = null; delete telemetry.massWeighing; return; }
+    const result = {
+      slipId,
+      sourceOfferId: decl.sourceOfferId,
+      missionId: decl.missionId,
+      targetSlot: decl.targetSlot,
+      targetId: target.id,
+      kind: decl.kind,
+      declaredMassT: disc.declaredMassT,
+      measuredMassT: disc.measuredMassT,
+      deltaMassT: disc.deltaMassT,
+      ratio: disc.ratio,
+      strain,
+      load: finite(tether.load, 0),
+      tick: Number.isFinite(state.tick) ? state.tick | 0 : 0,
+      simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
+    };
+    weigh.emitted = true;
+    telemetry.massWeighing = result;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('tether:massWeighed', { ...result });
+    }
   },
 
   // Reel-pump state machine. A stroke is idle -> pumping -> spent. We arm a stroke when reelStrength
@@ -346,6 +444,15 @@ export const masslineTelemetry = {
       }
     }
   },
+
+  destroy() {
+    if (this.bus && typeof this.bus.off === 'function' && this._onStateReset) {
+      this.bus.off('save:loaded', this._onStateReset);
+      this.bus.off('save:restoring', this._onStateReset);
+      this.bus.off('game:new', this._onStateReset);
+    }
+    this._onStateReset = null;
+  },
 };
 
 function playerRelVel(state, axis) {
@@ -423,6 +530,8 @@ function freshRuntime() {
 function writeInactive(telemetry) {
   telemetry.active = false;
   telemetry.targetId = null;
+  // A weigh belongs to the latch that earned it — absent the moment the latch is gone.
+  delete telemetry.massWeighing;
   // Preserve phase bookkeeping as-is (no stale target kinematics below), but do not invent a phase.
   telemetry.distance = 0;
   telemetry.restLength = 0;

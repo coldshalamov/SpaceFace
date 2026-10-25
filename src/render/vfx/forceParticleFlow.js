@@ -94,8 +94,11 @@ class TransportBehavior {
     m[0] = event.kind; m[1] = event.x; m[2] = event.y; m[3] = event.z;
     m[4] = event.dx; m[5] = event.dz; m[6] = event.radius; m[7] = phase; m[8] = variety;
     m[9] = event.strength; m[10] = event.age;
-    m[11] = clamp(event.radius * (0.065 + variety * 0.055), 0.65, 24.0);
-    m[12] = clamp(m[11] * (0.085 + unit(event.seed, ordinal * 3 + 2) * 0.015), 0.055, 2.30);
+    // Parcel body is a readable mote, not a screen-wide cloth strip. Large registered
+    // fields (170-600 WU) stop growing their individual parcels past hull scale.
+    const parcelRadius = Math.min(event.radius, 55);
+    m[11] = clamp(parcelRadius * (0.065 + variety * 0.055), 0.65, 6.5);
+    m[12] = clamp(m[11] * (0.085 + unit(event.seed, ordinal * 3 + 2) * 0.015), 0.055, 1.20);
     if (event.kind === 9) m[12] = m[11] * (0.16 + variety * 0.045);
     m[13] = event.halfAngle; m[14] = event.halfWidth;
     p.life = event.life * (0.74 + variety * 0.26);
@@ -303,7 +306,9 @@ export class ForceParticleFlow {
       data[j + 1] = this.reducedFlash ? 0 : k[8];
       data[j + 2] = k[6]; data[j + 3] = p.forceFlow[0];
       const m = p.forceFlow, tail = Math.max(18, 18 + (k[50] - 1) * 3), mid = Math.min(30, tail);
-      const q = i * 3, R = m[6], c = m[4], sn = m[5];
+      // Displayed history is a mote-length read, not a spoke from the field edge to its
+      // centre. The parcel's transported position and collision response stay truthful.
+      const q = i * 3, R = Math.min(m[6], 6), c = m[4], sn = m[5];
       let dx = (k[tail] - k[0]) * R, dz = (k[tail + 2] - k[2]) * R;
       this.flowTail[q] = c * dx - sn * dz; this.flowTail[q + 1] = (k[tail + 1] - k[1]) * R;
       this.flowTail[q + 2] = sn * dx + c * dz;

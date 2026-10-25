@@ -19,7 +19,7 @@ What was rejected:
 - The Drifter's "Berth Four/Six". Those berths are vapor; no such places exist.
 - The Skeptic's second selection site, the pass-by path. One link in the chain is enough.
 
-All place names below were verified against `sectors.js` POI `name` fields and `kettleLine.js:26`.
+All place names below were verified against `sectors.js` POI and station `name` fields (Ceres Refinery and Belt Outpost are `stations[]`, `sectors.js:294,303`) and `kettleLine.js:26`.
 
 ## Design
 
@@ -47,7 +47,7 @@ History and trophy still win. The ambient gap clock (`:3267-3286`, 12 s base, +1
 - Procession's walking past Smear Marker 7. Give it room.
 - The Pit Line bearing isn't for sightseers. Hold your lane.
 
-**`sector_helios_prime` · `faction_mts`**
+**`sector_helios_prime` · `faction_scn`** (continued — v3 re-key: the two `faction_mts` cells were dead because passing traffic takes the sector's own faction (`traffic.js:1837` etc.) and convoys the station's (`trafficConvoyOps.js:80,345`); Helios stations are SCN-only (`sectors.js:63,68`), Ceres DMC-only (`sectors.js:294,303`), so every line now sits under the faction that actually hails there — six lines per cell)
 - Helios Weigh-Point counted the raid twice. Nobody pays for the second.
 - Helios Bay 7 runs cold. Don't ask what's in the lockers.
 - Shift Bell 3 rang early. Somebody's getting docked pay.
@@ -57,15 +57,15 @@ History and trophy still win. The ambient gap clock (`:3267-3286`, 12 s base, +1
 - The Kettle Line's shedding off the gate approach. Mind your drift.
 - Second Measure Shipbreak's paying by the plate. Bring a cutter.
 
-**`sector_ceres_belt` · `faction_mts`**
+**`sector_ceres_belt` · `faction_dmc`** (continued — v3 re-key, see above)
 - Follow the Refinery Flare Rack in. The scale pays honest.
-- Belt Outpost buys ore. Refinery buys better. Fly the extra.
+- Belt Outpost buys ore. Ceres Refinery buys better. Fly the extra.
 - Wreck Cathedral's lit again. Insurers want nobody near it.
 
 ## Numbers
 
 - **About half of eligible greetings come from the bank.** Selection is a 1-in-2 hash split per entity, so the faction corpus keeps half the airtime and a hull's line is stable for the seed.
-- **Three lines per cell.** That covers a first-hour sector visit before repeats under the 12→60 s gap.
+- **Six lines per cell.** That covers a first-hour sector visit before repeats under the 12→60 s gap.
 
 ## Save / determinism
 
@@ -74,7 +74,7 @@ History and trophy still win. The ambient gap clock (`:3267-3286`, 12 s base, +1
 ## Tests to add — `test/x06-sector-barks.test.mjs`
 
 1. **Promise test.**
-   - Every entry's `place` is a POI `name` in that sector's `sectors.js` row. For Ceres, `KETTLE_LINE.title` also counts.
+   - Every entry's `place` is a `pois[].name` or `stations[].name` in that sector's `sectors.js` row. For Ceres, `KETTLE_LINE.title` also counts.
    - Every `text` includes its `place`.
 2. Every `text` is at most 12 words.
 3. `sectorBarkFor` returns `null` for an unknown sector or faction. In `_speak`, a null result falls through to `barkFor`.
@@ -93,6 +93,42 @@ History and trophy still win. The ambient gap clock (`:3267-3286`, 12 s base, +1
 - No banks for sectors beyond Helios and Ceres.
 - No duplication of Maera's Helios `sector:enter` line.
 
+
+## v6 amendment — compose with the shipped joint row ATT-V01 (2026-10-24)
+
+While X-06 waited for its gate, the joint attention row V-01 (build_map row 554) landed the same mechanism: commit
+0b535398f3 adds `SECTOR_GREETING_BARKS[sectorId]` (25 sectors, 4 lines each, faction-less) + `sectorGreetingBarkFor(sectorId,
+index)` in `src/data/barks.js` and the `patrol-greeting` link in `barkDirector._speak` (tested by
+`test/sector-greeting-barks.test.mjs`). Building a second, faction-keyed bank in the same slot would be redundant (rubric:
+non-redundancy) and would fight the shipped link. V-01's lines are sector flavour; none names a place. X-06's distinct
+contribution is **comms that name where you are**.
+
+So X-06 now lands as data only, through V-01's schema:
+- Append the twelve place-naming lines above (six Helios, six Ceres — the text only; the `place` field moves to a
+  test-side table) to `SECTOR_GREETING_BARKS.sector_helios_prime` and `.sector_ceres_belt`. No new export, no
+  `SECTOR_PATROL_GREETINGS`, no `sectorBarkFor`, no second `_speak` link, no hash split (V-01's link already substitutes every
+  patrol-greeting in a banked sector).
+- Promise test (new, in a new file `test/x06-sector-place-greetings.test.mjs`): each of the twelve lines is present in its
+  sector's bank, contains its place verbatim, and that place is a `pois[].name`/`stations[].name` in that sector's
+  `sectors.js` row (or `KETTLE_LINE.title`); every line ≤12 words. `test/sector-greeting-barks.test.mjs` must stay green
+  (if it pins a per-sector line COUNT, update that single count deliberately and say so).
+- Localization: `node scripts/extract-localization.mjs --write` if the V-01 lines are catalogued.
+- Stage only the X-06 hunk of `barks.js` (the attention lane may still have uncommitted hunks there).
+
 ## Approvals
 
-- (pending)
+- v1 APPROVE-with-nit 4964e62b; v2 fixes the place name (Ceres Refinery) — gate restarted
+- v2: abc98e75 APPROVE, 390312bc APPROVE, cd65c632 REJECT (faction_mts cells unreachable in Helios/Ceres)
+- v3: re-keyed to the sector-owner factions (scn Helios, dmc Ceres) — gate restarted
+- v3: 8c3dfd2c APPROVE, 04b9da1c APPROVE, 544bd39a REJECT (promise test rejected station names; footer named a different export shape)
+- v4 reviews: bbebe969 APPROVE, 25791716 APPROVE, c9d9b5c8 REJECT (stale 'Three lines per cell' in Numbers)
+- v5: Numbers bullet corrected to six lines per cell — gate restarted
+- v4 change: promise test admits `stations[].name`; the export is the body's `SECTOR_PATROL_GREETINGS[sectorId][factionId]` (no situation level — patrol-greeting only) with `sectorBarkFor(sectorId, factionId, index)`; a later sector can key other factions in the same shape — gate restarted
+- v5: plan-gate reviewer d8881e46 — APPROVE (2026-10-24)
+- v5: plan-gate reviewer f96ba626 — APPROVE (2026-10-24)
+- v5: plan-gate reviewer 3e41e8fa — APPROVE (2026-10-24) — plan✓3
+- v6: composed with shipped V-01 (0b535398f3) — gate restarted
+- v6: plan-gate reviewer cd4a5e75 — APPROVE
+- v6: plan-gate reviewer f6a502f4 — APPROVE
+- v6: plan-gate reviewer 0ee7d530 — APPROVE — plan✓3 (nit: V-01's link substitutes the even-index half of greetings, not every one)
+- (v5 implementer notes, superseded by v6): add `import { sectorBarkFor }` in barkDirector.js; traffic.js:1837 is a decode stub — live spawns at :2882/:3086/:3429

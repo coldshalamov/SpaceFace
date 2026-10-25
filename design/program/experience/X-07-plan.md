@@ -84,4 +84,6 @@ No draws. `_beamPegged` and `_pulsePeggedS` are system-local and unsaved. Pegged
 
 ## Approvals
 
-- (pending)
+- plan-gate reviewer 4964e62b — APPROVE (2026-10-24)
+- plan-gate reviewer fb54441e — APPROVE (2026-10-24)
+- plan-gate reviewer 53f3e19e — APPROVE (2026-10-24) — plan✓3

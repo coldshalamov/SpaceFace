@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { DENSITY_FILM, decodeDensityFilm } from './densityVolumeData.js';
+import { EVENT_COMMON_GLSL, EVENT_VOLUME_GLSL } from '../vfx/runtime/eventMaterial.glsl.js';
 
 let decodedFilm;
 /** A texture per pool owner, shared by its two volume materials; CPU decode is reusable. */
@@ -109,6 +110,52 @@ const SURFACE_FRAGMENT = /* glsl */`
     vec3 heat = mix(vSpriteColor*0.32, vSpriteColor, body);
     heat += mix(vSpriteColor,vec3(max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b))),0.55)*1.06*ridge*transport;
     gl_FragColor = vec4(heat*uRadiance*(body+0.32*grazing)*(0.65+0.35*transport), alpha);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+const EVENT_BUCKET_VERTEX = /* glsl */`
+  ${EVENT_COMMON_GLSL}
+  ${INSTANCE_DECLARATIONS}
+  attribute vec2 aEventSection;
+  uniform float uEventKind;
+  varying vec2 vUv;
+  varying vec3 vWorld;
+  varying float vSection;
+  varying float vKind;
+  void main() {
+    vec3 scale = instanceScale();
+    vec3 local = uEventKind > 3.5
+      ? sfEventPressureLocal(uv, aEventSection, aSpritePhase.y, aSpritePhase.x, vec3(1.0))
+      : sfEventLocal(uEventKind, uv, aEventSection, aSpritePhase.y, aSpritePhase.x, vec3(1.0));
+    vec3 p = rotateHeading(local * scale, aSpriteAxis);
+    vec4 world = modelMatrix * vec4(aSpritePosition + p, 1.0);
+    vWorld = world.xyz;
+    vUv = uv;
+    vSection = aEventSection.x;
+    vKind = uEventKind;
+    vPhase = aSpritePhase;
+    vSpriteColor = aSpriteColor;
+    vSpriteOpacity = aSpriteOpacity;
+    gl_Position = projectionMatrix * viewMatrix * world;
+  }
+`;
+
+const EVENT_BUCKET_FRAGMENT = /* glsl */`
+  ${EVENT_VOLUME_GLSL}
+  varying vec2 vUv;
+  varying vec3 vWorld;
+  varying float vSection;
+  varying float vKind;
+  varying vec2 vPhase;
+  varying vec3 vSpriteColor;
+  varying float vSpriteOpacity;
+  void main() {
+    vec4 event = sfEventSurface(vKind, vUv, vec2(vSection, vSection), vPhase.y, vPhase.x,
+      vWorld, vSpriteColor, vSpriteOpacity, 1.0);
+    if (event.a < 0.003) discard;
+    gl_FragColor = event;
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
@@ -243,8 +290,9 @@ const VOLUME_FRAGMENT = /* glsl */`
 export function createTransientVfxMaterial(kind, radiance, densityTexture = null) {
   const volume = kind === 'smoke' || kind === 'combustion';
   const smoke = kind === 'smoke';
+  const eventKind = kind === 'ring' ? 4 : 2;
   const material = new THREE.ShaderMaterial({
-    name: `SF_Transient_${kind}_${volume ? 'density-film' : 'folded-surface'}`,
+    name: `SF_Transient_${kind}_${volume ? 'density-film' : 'closed-event-volumes'}`,
     uniforms: {
       uRadiance: { value: radiance },
       ...(volume ? {
@@ -252,17 +300,21 @@ export function createTransientVfxMaterial(kind, radiance, densityTexture = null
         uCombustion: { value: smoke ? 0 : 1 },
         uWorldToClip: { value: new THREE.Matrix4() },
         uObjectToWorld: { value: new THREE.Matrix4() },
-      } : {}),
+      } : {
+        uEventKind: { value: eventKind },
+      }),
     },
-    vertexShader: volume ? VOLUME_VERTEX : SURFACE_VERTEX,
-    fragmentShader: volume ? VOLUME_FRAGMENT : SURFACE_FRAGMENT,
+    vertexShader: volume ? VOLUME_VERTEX : EVENT_BUCKET_VERTEX,
+    fragmentShader: volume ? VOLUME_FRAGMENT : EVENT_BUCKET_FRAGMENT,
     transparent: true, depthWrite: false, depthTest: true,
-    blending: volume ? THREE.NormalBlending : THREE.AdditiveBlending,
+    // The old additive folded sheets could not hold a dark internal channel; closed
+    // volumes are shaded and composited normally so their cavities read as matter.
+    blending: THREE.NormalBlending,
     side: volume ? THREE.BackSide : THREE.DoubleSide,
     forceSinglePass: true,
     toneMapped: smoke,
   });
-  material.userData.spacefaceTransientTechnique = volume ? 'baked-density-film' : 'swept-folded-surface';
+  material.userData.spacefaceTransientTechnique = volume ? 'baked-density-film' : 'closed-folded-event-volumes';
   return material;
 }
 

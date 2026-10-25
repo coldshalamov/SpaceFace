@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { LIVING_NOISE_GLSL } from '../vfx/livingMaterial.glsl.js';
+import { EVENT_COMMON_GLSL, EVENT_VOLUME_GLSL } from '../vfx/runtime/eventMaterial.glsl.js';
+import { createVfxEventGeometry } from '../vfx/runtime/eventGeometry.js';
 import { explosionPattern01 } from './phasedExplosions.js';
 import { resolveVfxAccessibilityProfile } from '../vfxAccessibility.js';
 import { volatileClassOf } from '../../data/commodityVolatileClasses.js';
@@ -56,256 +57,58 @@ function ruptureAxis(entry) {
   return Math.atan2(finite(entry.dirZ), finite(entry.dirX, 1));
 }
 
-// One continuous parameterized surface per instance. Curvature is true geometry in three axes:
-// fractured mineral rafts, longitudinal tears, buckled plasma parcels, and rolling flame scrolls.
-// There is no sphere, camera-facing carrier, noise texture, or radial puff in this owner.
-function createRuptureGeometry() {
-  const positions = [], uvs = [], indices = [];
-  const rows = 32, columns = 12;
-  for (let i = 0; i <= rows; i++) for (let j = 0; j <= columns; j++) {
-    positions.push(i / rows, 0, j / columns * 2 - 1);
-    uvs.push(i / rows, j / columns);
-  }
-  for (let i = 0; i < rows; i++) for (let j = 0; j < columns; j++) {
-    const a = i * (columns + 1) + j, b = a + columns + 1;
-    indices.push(a, b, a + 1, a + 1, b, b + 1);
-  }
-  const geometry = new THREE.InstancedBufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geometry.setIndex(indices);
-  geometry.instanceCount = 0;
-  geometry.name = 'SF_ExplosionRupture_continuous-material-sheet';
-  return geometry;
-}
-
-// Geometry, density and heat share the same transported coordinates. A drifting
-// sheet with unrelated scrolling color looked like paper even with a porous alpha.
-const REACTOR_TRANSPORT = /* glsl */`
-  ${LIVING_NOISE_GLSL}
-  vec3 reactorTransport(vec2 uv, float clock, float seed) {
-    float carry=uv.x-clock*(0.88+0.21*sin(seed));
-    vec2 eddy=sfLivingCurl(vec2(carry*3.7,uv.y*1.4+seed));
-    float shear=uv.y+eddy.y*.34;
-    float curl=sfLivingPotential(vec2(carry*6.1+eddy.x*.42,shear*2.3-seed)).x*2.0-1.0;
-    return vec3(carry+eddy.x*.11,shear,curl);
-  }
-`;
-
 const VERTEX = /* glsl */`
-  ${REACTOR_TRANSPORT}
+  ${EVENT_COMMON_GLSL}
   attribute vec3 aOrigin;
   attribute vec4 aShape; // family, length, width, height
   attribute vec4 aPhase; // age, lifetime, seed, motion scale
   attribute vec4 aMotion; // angle, speed, inherited x, inherited z
   attribute vec2 aAppearance; // alpha, heat multiplier
+  attribute vec2 aEventSection;
   varying vec2 vUv;
   varying vec3 vWorld;
   varying vec4 vPhase;
   varying vec2 vAppearance;
+  varying vec2 vSection;
   varying float vKind;
   void main() {
     float age = aPhase.x;
-    float t = clamp(age/aPhase.y,0.0,1.0);
-    float seed = aPhase.z*6.283185;
+    float t = clamp(age / max(aPhase.y, 0.0001), 0.0, 1.0);
+    float seed = aPhase.z;
     float motion = aPhase.w;
-    float u = uv.x, v = uv.y*2.0-1.0;
-    float opening = 0.12 + 0.88*(1.0-exp(-age*11.0));
-    float advection = age*motion;
-    float taper = pow(max(0.0,1.0-u),0.45);
-    vec3 p;
-    if(aShape.x < 0.5) {
-      // Cleavage carries broad, broken mineral rafts. Neither end converges to the old
-      // pointed flower tip. Adjacent strata shear apart while dust is lost at the fissures.
-      float ridge = abs(u-0.27-0.11*sin(seed));
-      float shoulder = 0.66+0.20*abs(sin(u*8.0+seed))+0.10*sin(u*17.0-seed);
-      float shear = (1.0-exp(-advection*4.5));
-      p.x = (u+abs(v)*0.12)*aShape.y;
-      p.z = v*aShape.z*shoulder + (u-0.4)*shear*aShape.z*sin(seed)*0.46;
-      p.y = (0.18+abs(v+ridge*0.6)*0.45+ridge*0.6)*aShape.w;
-      p.y += (u-0.32)*shear*aShape.w*(0.5+0.35*sin(seed));
-    } else if(aShape.x < 1.5) {
-      // A breach is a long throat with two ragged lips, never a round orange flare.
-      float bow = sin(u*3.141593);
-      p.x = u*aShape.y*opening;
-      p.z = v*aShape.z*taper*(0.38+0.62*bow);
-      p.z += sin(u*2.7+seed)*aShape.z*u*0.32;
-      p.y = (v*v*0.72 + bow*0.30)*aShape.w;
-      p.y += sin(u*8.0-seed-advection*8.0)*aShape.w*bow*0.14;
-      p.y += sin(u*19.0+v*4.0-seed-advection*12.0)*aShape.w*bow*0.10;
-      p.z += sin(u*13.0-v*3.0+seed-advection*7.0)*aShape.z*bow*0.13;
-    } else if(aShape.x < 2.5) {
-      // Each pressure exit carries a SHORT, deep parcel, not a partial ring or a long
-      // flame outline. Unequal folds overtake one another across its broad cross-section.
-      vec3 flow=reactorTransport(vec2(u,v),advection,seed);
-      float fold=flow.z;
-      float buckle=sin(flow.x*31.7-flow.y*9.3+seed*0.7);
-      float arch=cos(v*1.75+0.38*fold);
-      p.x=u*aShape.y+(v*v*0.08+fold*0.12+buckle*0.045)*aShape.y;
-      p.z=(v*(0.67+0.22*fold)+buckle*0.21)*aShape.z;
-      p.z += (u-0.35)*aShape.z*sin(seed)*advection*0.65;
-      p.y=(0.25+0.34*arch+0.28*fold+0.16*buckle)*aShape.w;
-      p.y += advection*aShape.w*(0.25+u*0.30);
-    } else {
-      // Flame is a rolling scroll: the hot edge curls OVER the dark folded body while
-      // longitudinal fuel tongues separate. The cross-section changes through the lifetime.
-      float roll = (v+1.0)*(1.08+advection*1.1) + u*0.8 + sin(seed)*0.3;
-      float breadth = aShape.z*(0.36+0.64*sin(u*2.6))*taper;
-      p.x = u*aShape.y*opening;
-      p.z = sin(roll)*breadth + sin(u*3.1+seed-advection*2.0)*aShape.z*u*0.24;
-      p.y = (1.0-cos(roll))*breadth*0.64 + u*aShape.w*opening;
-      p.y += sin(u*7.0-v*2.0+seed-advection*5.5)*aShape.w*0.12;
-      p.y += sin(u*18.0+v*6.0-seed-advection*9.0)*aShape.w*taper*0.17;
-      p.z += sin(u*14.0-v*5.0+seed-advection*8.0)*breadth*0.17;
-    }
-    // Pressure loses acceleration before it loses matter. Drift uses an analytic drag
-    // integral, so frame cadence and pause never change a parcel's trajectory.
-    float drift = (1.0-exp(-age*2.6))/2.6*motion;
-    p.x += aMotion.y*drift;
-    float c=cos(aMotion.x), s=sin(aMotion.x);
-    vec3 posed=vec3(c*p.x-s*p.z,p.y,s*p.x+c*p.z);
-    posed.xz += aMotion.zw*age*0.12*motion;
-    vec4 world=modelMatrix*vec4(aOrigin+posed,1.0);
-    vWorld=world.xyz; vUv=uv; vPhase=aPhase; vKind=aShape.x; vAppearance=aAppearance;
-    gl_Position=projectionMatrix*viewMatrix*world;
+    vec3 local = sfEventLocal(aShape.x, uv, aEventSection, seed, t, aShape.yzw);
+    // Pressure loses acceleration before it loses matter. Analytic drag keeps pause,
+    // cadence and rebases from changing a parcel's trajectory.
+    float drift = (1.0 - exp(-age * 2.6)) / 2.6 * motion;
+    local.x += aMotion.y * drift;
+    local = sfEventRotate(local, aMotion.x);
+    local.xz += aMotion.zw * age * 0.12 * motion;
+    vec4 world = modelMatrix * vec4(aOrigin + local, 1.0);
+    vWorld = world.xyz;
+    vUv = uv;
+    vPhase = aPhase;
+    vAppearance = aAppearance;
+    vSection = aEventSection;
+    vKind = aShape.x;
+    gl_Position = projectionMatrix * viewMatrix * world;
   }
 `;
 
 const FRAGMENT = /* glsl */`
-  ${REACTOR_TRANSPORT}
+  ${EVENT_VOLUME_GLSL}
   varying vec2 vUv;
   varying vec3 vWorld;
   varying vec4 vPhase;
   varying vec2 vAppearance;
+  varying vec2 vSection;
   varying float vKind;
   void main() {
-    float age=vPhase.x, t=clamp(age/vPhase.y,0.0,1.0), seed=vPhase.z*6.283185;
-    float u=vUv.x, v=vUv.y*2.0-1.0;
-    float motionTime=age*vPhase.w;
-    // Unequal macroscopic tears are contours, not a tiled noise mask. Both edges are
-    // analytically filtered; zooming out preserves their energy without pixel glitter.
-    float edge=0.84+0.09*sin(u*16.0+seed)+0.05*sin(u*29.0-seed*1.7);
-    if(vKind<0.5) edge=0.65+0.19*abs(sin(u*10.0+seed))+0.10*sin(u*21.0-seed);
-    float crossEdge=edge-abs(v);
-    float aa=max(0.012,fwidth(crossEdge)*1.25);
-    float coverage=smoothstep(-aa,aa,crossEdge);
-    // Advected folds split the carrier into three unequal fuel channels. The two travelling
-    // scales roll together, open holes, and pinch apart into detached reaches; no intact silk
-    // leaf survives underneath. All contours are continuous and filtered in screen space.
-    float q=u-motionTime*(vKind>2.5?0.61:0.86);
-    float spine=0.31*sin(q*11.0+seed)+0.10*sin(q*27.0-seed*1.3);
-    float breadth=0.20+0.065*sin(q*17.0+seed);
-    float mainCell=exp(-pow((v-spine)/breadth,2.0))*(0.71+0.29*sin(q*24.0+seed));
-    float sideA=exp(-pow((v+0.52-0.19*sin(q*15.0-seed))/0.17,2.0))
-      *(0.48+0.46*sin(q*19.0+1.2+seed));
-    float sideB=exp(-pow((v-0.48-0.16*sin(q*18.0+seed))/0.20,2.0))
-      *(0.45+0.42*sin(q*23.0-0.6-seed));
-    float density=max(mainCell,max(sideA,sideB));
-    if(vKind>1.5 && vKind<2.5) {
-      // Sheared thermal channels pinch apart while passing through the carrier.
-      // The domain also displaces the vertices: hot lobes move and fold rather
-      // than leaving a fixed leaf with a moving texture across its face.
-      vec3 flow=reactorTransport(vec2(u,v),motionTime,seed);
-      vec3 hotMatter=sfLivingPotential(vec2(flow.x*6.2,flow.y*2.4+seed));
-      float pockets=sfLivingPotential(vec2(flow.x*11.3+3.1,flow.y*3.7-seed)).x;
-      density=.05+.64*hotMatter.x+.22*pockets;
-    } else if(vKind>2.5) {
-      // Fuel keeps its longer rolling folds, with connected combustible body between the
-      // channels. Uneven depletion opens gaps; a permanent centre cut is not combustion.
-      density=max(density,0.42+0.23*sin(q*12.0+v*5.0+seed)+0.12*sin(q*25.0-v*8.0));
-    }
-    float dissolution=vKind>0.5 && vKind<1.5
-      ? 0.12+0.31*smoothstep(0.30,0.94,t)
-      : 0.12+0.58*smoothstep(0.25,0.97,t);
-    float densityAA=max(0.045,fwidth(density)*1.3);
-    float cells=smoothstep(dissolution-densityAA,dissolution+densityAA,density);
-    float depth=1.0-exp(-max(0.0,density)*1.9);
-    if(vKind>0.5) coverage*=cells*depth;
-    float root=smoothstep(0.0,0.055,u);
-    float tip=1.0-smoothstep(0.89,1.0,u);
-    float tear=(0.27+0.13*sin(u*8.0+seed-motionTime*1.1));
-    float slit=abs(v-0.34*sin(u*7.0+seed));
-    // Preserve the armor throat's two torn lips. Other substances erode through their
-    // own body instead of inheriting its permanent centre slit.
-    float tearAge=smoothstep(vKind<0.5?0.08:0.3,0.95,t);
-    float tearCut=smoothstep(tear-0.035,tear+0.035,slit);
-    if(vKind>0.5 && vKind<1.5) coverage*=mix(1.0,tearCut,tearAge*0.88);
-    if(vKind<0.5) {
-      // Two unequal intersecting faults replace periodic cuts, which left a row of
-      // identical pale scallops. Each face sheds a different thin cloud of mineral matter.
-      float crackA=abs(u-0.27-0.13*v-0.06*abs(sin(v*7.0+seed)));
-      float crackB=abs(u-0.71+0.22*v-0.08*sin(v*3.0-seed));
-      float fracture=min(crackA,crackB);
-      float fractureAA=max(0.008,fwidth(fracture)*1.2);
-      float loss=0.008+0.13*smoothstep(0.10,0.98,t);
-      coverage*=smoothstep(loss-fractureAA,loss+fractureAA,fracture);
-      float mineralDensity=0.51+0.23*sin(u*8.0+v*5.0+seed)
-        +0.15*sin(u*17.0-v*9.0-seed);
-      float depletion=0.08+0.65*smoothstep(0.22,0.96,t);
-      float mineralAA=max(0.025,fwidth(mineralDensity)*1.3);
-      coverage*=smoothstep(depletion-mineralAA,depletion+mineralAA,mineralDensity)
-        *(1.0-exp(-mineralDensity*1.5));
-    }
-    if(vKind<0.5 || vKind>1.5) {
-      float arrival=age/(vKind<0.5?0.075:0.16);
-      coverage*=1.0-smoothstep(arrival-0.15,arrival+0.10,u);
-    }
-    float erosion=1.0-smoothstep(0.58+0.16*sin(u*6.0+seed),1.0,t);
-    float onset=smoothstep(0.0,0.045,age);
-    float end=1.0-smoothstep(0.78,1.0,t);
-    float alpha=coverage*root*tip*erosion*onset*end*vAppearance.x;
-    if(alpha<0.003) discard;
-    vec3 normal=normalize(cross(dFdx(vWorld),dFdy(vWorld)));
-    float facing=abs(dot(normal,normalize(cameraPosition-vWorld)));
-    float light=0.28+0.72*abs(dot(normal,normalize(vec3(-0.5,0.82,0.31))));
-    float rimWidth=max(0.05,fwidth(crossEdge)*1.5);
-    float rim=exp(-pow(crossEdge/rimWidth,2.0))*min(1.0,0.05/rimWidth);
-    float cellRim=exp(-pow((density-dissolution-0.08)/max(0.10,densityAA),2.0));
-    float fold=v-0.30*sin(u*6.0+seed-motionTime*5.0);
-    float foldWidth=max(0.16,fwidth(fold)*1.3);
-    float foldFire=exp(-pow(fold/foldWidth,2.0));
-    float heat=(1.0-smoothstep(0.12,0.86,t))*vAppearance.y;
-    float carriedHeat=0.40+0.60*pow(max(0.0,sin(q*12.0+seed+v*2.3)),2.0);
-    float front=exp(-pow((u-(0.12+0.77*(1.0-exp(-age*7.0))))/0.17,2.0));
-    vec3 cold, hot;
-    float surfaceHeat;
-    if(vKind<0.5) {
-      cold=vec3(0.36,0.31,0.22)*light;
-      hot=vec3(1.45,0.91,0.40);
-      surfaceHeat=heat*(rim*0.24+front*0.20);
-    } else if(vKind<1.5) {
-      cold=vec3(0.055,0.070,0.083)*light;
-      hot=vec3(5.6,2.2,0.48);
-      surfaceHeat=heat*carriedHeat*(rim*0.50+cellRim*0.80+foldFire*0.18+front*0.30);
-    } else if(vKind<2.5) {
-      cold=vec3(0.028,0.050,0.068)*light;
-      // GRAPHICS BAR: a ship reactor tears open hot white-gold, with only a minority of parcels
-      // running cool. The old ramp sent ~62% of parcels saturated ice-blue at 4.1, which read as
-      // crystal shards (palette clash with the warm combustion family) and clipped under bloom.
-      hot=mix(vec3(1.55,1.85,2.35),vec3(3.9,1.75,0.42),smoothstep(0.18,0.42,vPhase.z));
-      vec3 flow=reactorTransport(vec2(u,v),motionTime,seed);
-      float thermalWave=0.25+0.75*pow(max(0.0,sin(flow.x*13.7-flow.y*4.8+seed)),2.0);
-      float opticalBody=1.0-exp(-max(0.0,density-dissolution)*3.2);
-      float shoulder=exp(-pow((density-dissolution-0.18)/max(0.14,densityAA),2.0));
-      // Thermal emission follows moving shoulders inside the material. Normal-lit
-      // gold faces made the whole parcel a solid folded leaf; colder gaps and depth
-      // now separate successive hot reaches without reducing this to rim-only wire.
-      surfaceHeat=heat*(opticalBody*(0.05+thermalWave*0.22)
-        +shoulder*thermalWave*0.52+front*0.045);
-    } else {
-      cold=vec3(0.065,0.018,0.009)*light;
-      hot=vec3(4.1,1.5,0.20);
-      // Combustion radiates through the fuel inside each folded tongue. Rim-only light
-      // reads as electrical wire; optical thickness gives flame a hot, uneven interior
-      // that cools toward its tips while the surrounding cavities stay transparent.
-      float opticalBody=1.0-exp(-max(0.0,density-dissolution)*3.8);
-      float fuelHeat=opticalBody*(0.35+0.65*carriedHeat)*(1.0-u*0.58);
-      surfaceHeat=heat*(fuelHeat*0.92+carriedHeat*(rim*0.30+cellRim*0.38+front*0.24));
-    }
-    vec3 radiance=cold+hot*surfaceHeat;
-    radiance+=vec3(2.1,1.65,1.15)*pow(max(0.0,surfaceHeat-0.55),2.0);
-    alpha*=0.74+0.26*(1.0-facing);
-    gl_FragColor=vec4(radiance,alpha);
+    float t = clamp(vPhase.x / max(vPhase.y, 0.0001), 0.0, 1.0);
+    vec3 pigment = sfEventFamilyColor(vKind, vPhase.z);
+    vec4 event = sfEventSurface(vKind, vUv, vSection, vPhase.z, t, vWorld,
+      pigment, vAppearance.x, vAppearance.y);
+    if (event.a < 0.003) discard;
+    gl_FragColor = event;
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
@@ -321,17 +124,17 @@ export class ExplosionRupture {
     this.dirty = false;
     this.disposed = false;
     this.records = Array.from({ length: this.capacity }, () => ({ alive: false }));
-    const geometry = createRuptureGeometry();
+    const geometry = createVfxEventGeometry({ instanced: true });
     this.attributes = [3, 4, 4, 4, 2].map(size =>
       new THREE.InstancedBufferAttribute(new Float32Array(this.capacity * size), size).setUsage(THREE.DynamicDrawUsage));
     const names = ['aOrigin', 'aShape', 'aPhase', 'aMotion', 'aAppearance'];
     for (let i = 0; i < names.length; i++) geometry.setAttribute(names[i], this.attributes[i]);
     const material = new THREE.ShaderMaterial({
-      name: 'SF_ExplosionRupture_material-transport', vertexShader: VERTEX, fragmentShader: FRAGMENT,
+      name: 'SF_ExplosionRupture_closed-event-volumes', vertexShader: VERTEX, fragmentShader: FRAGMENT,
       transparent: true, depthWrite: false, depthTest: true, side: THREE.DoubleSide,
       forceSinglePass: true, blending: THREE.NormalBlending, toneMapped: false,
     });
-    material.userData.spacefaceTransientTechnique = 'causal-rupture-sheets';
+    material.userData.spacefaceTransientTechnique = 'closed-folded-event-volumes';
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.name = 'SF_VFX_explosion_rupture';
     // The native explosion scheduler publishes immediately, so loading owns the first draw.
@@ -371,7 +174,7 @@ export class ExplosionRupture {
       const pick = explosionPattern01(entry.serial, phase, i, 45);
       const side = i % 2 ? 1 : -1;
       const primary = phase === 'rupture' || phase === 'kinetic-tear';
-      // Fracture and pressure carry separate short parcels. Their source seats, arrival and
+      // Fracture and pressure carry separate short volumes. Their source seats, arrival and
       // velocity differ, leaving an irregular cavity rather than tracing its entire rim.
       const compact = kind === 0 || kind === 2;
       const phaseReach = compact
@@ -385,7 +188,7 @@ export class ExplosionRupture {
       const seatSide = compact ? (pick - 0.5) * 2 : side;
       const seatAlong = compact ? (seed - 0.5) * seat * 0.70 : 0;
       let rec = this.records.find(row => !row.alive);
-      if (!rec) break; // preserves admitted choreography rather than recycling live sheets
+      if (!rec) break; // preserves admitted choreography rather than recycling live volumes
       Object.assign(rec, {
         alive: true, family, phase, serial: entry.serial,
         born: this.time + i * (compact ? 0.023 + pick * 0.012 : residual ? 0.028 : 0.008),
@@ -401,7 +204,7 @@ export class ExplosionRupture {
           * (compact ? 0.55 + pick * 1.05 : 0.7 + pick * 0.6),
         vx: finite(entry.targetVelocityX), vz: finite(entry.targetVelocityZ),
         seed, motion: 1, alpha: residual ? 0.38 : 0.80,
-        heat: residual ? 0.09 : phase === 'ignition' ? 1.2 : 0.85,
+        heat: residual ? 0.10 : phase === 'ignition' ? 1.20 : 0.92,
       });
       this.activeCount++;
     }

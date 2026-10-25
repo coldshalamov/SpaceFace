@@ -407,8 +407,15 @@ export const survivalRun = {
     if (!circuit) return;
     const wave = Number.isInteger(run.wave) ? run.wave : 0;
     const stageBoundary = wave > 0 && wave % CIRCUIT_ROUNDS_PER_STAGE === 0;
-    if (!stageBoundary) return;
-    const clearedStage = wave / CIRCUIT_ROUNDS_PER_STAGE;
+    // RC-CRUCIBLE-DOOR (row 481) — a champion-call stage ends the moment its door-round boss
+    // falls: the cleared wave settles the whole stage, and the wave index jumps to where the
+    // stage would have ended so the next planned round opens the following stage.
+    const clearedRound = stageBoundary ? null : circuitRoundFor(run, wave);
+    const championClear = !!clearedRound
+      && clearedRound.fight === 'champion'
+      && clearedRound.kind === 'boss';
+    if (!stageBoundary && !championClear) return;
+    const clearedStage = stageBoundary ? wave / CIRCUIT_ROUNDS_PER_STAGE : clearedRound.stage;
     if (clearedStage > CIRCUIT_STAGE_COUNT) return;
     if (circuit.clearedStages >= clearedStage) return;
     circuit.clearedStages = clearedStage;
@@ -419,6 +426,7 @@ export const survivalRun = {
     } else {
       circuit.status = 'route';
     }
+    if (championClear) run.wave = clearedStage * CIRCUIT_ROUNDS_PER_STAGE;
     run.telemetry.circuit = circuit;
   },
 
@@ -477,7 +485,9 @@ export const survivalRun = {
         return;
       }
       const routeEntry = { stage: choice.stage, arenaId: choice.arenaId, nodeId: choice.nodeId || choice.arenaId };
-      if (choice.fight === 'elite' || choice.fight === 'challenge') routeEntry.fight = choice.fight;
+      if (choice.fight === 'elite' || choice.fight === 'challenge' || choice.fight === 'champion') {
+        routeEntry.fight = choice.fight;
+      }
       circuit.route = circuit.route
         .filter((entry) => entry.stage !== choice.stage)
         .concat([routeEntry])

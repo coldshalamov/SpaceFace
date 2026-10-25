@@ -13,6 +13,12 @@ export const FOREMAN = freezeDeep({
   subsystemRoles: SUBSYSTEM_ROLES,
   actors: [hullActor({ label: 'MIRRORJAW FOREMAN', archetype: 'mirrorjaw_foreman', hull: 720,
     mass: 420, radius: 32, speed: 84, doctrine: 'capital_broadside' }), ballast('LANE WRECKAGE', 180)],
+  plates: [
+    { id: 'stern_plate', label: 'stern plate', anchor: { x: -0.58, z: 0 }, radius: 9, mass: 85,
+      holdTension: 0.75, covers: 'subsystem_drive', shedOnAct: 0 },
+    { id: 'prow_plate', label: 'prow plate', anchor: { x: 0.5, z: 0 }, radius: 10, mass: 95,
+      holdTension: 0.85, covers: 'subsystem_weapon', shedOnAct: 1 },
+  ],
   score: score({
     name: 'MIRRORJAW FOREMAN', missionDefinitionId: 'capital_boss', identity: 'commitment',
     rangeResponse: { minRange: 320, beatId: 'prow_check' },

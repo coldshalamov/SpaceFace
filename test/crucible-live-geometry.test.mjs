@@ -32,7 +32,10 @@ test('pending roots drain nearest-deadline-first when priorityOf grades them', a
   let release;
   const gate = new Promise(resolve => { release = resolve; });
   const queue = createLiveGeometryAdmissionQueue({
-    yieldToMain: async () => {}, isActive: () => true,
+    // The compile-wait poll assumes a macrotask yield (scheduler.yield /
+    // setTimeout(0) in the renderer); a microtask stub spins the poll forever
+    // and starves this test's setImmediate release.
+    yieldToMain: () => new Promise(resolve => setImmediate(resolve)), isActive: () => true,
     compile: async root => { calls.push(`compile:${root.id}`); if (root.id === 'far') await gate; },
     prepare: async root => { calls.push(`upload:${root.id}`); return { skipped: false }; },
     onReady: entity => ready.push(entity.id), onError: error => { throw error; },
@@ -104,8 +107,8 @@ test('priorityContext is derived once per pick and shared by every graded entry'
   assert.ok(graded[4][1] === graded[5][1], 'the two-entry pick shares its context');
   const distinctContexts = new Set(graded.map(([, context]) => context));
   assert.equal(distinctContexts.size, 4, 'one context object per grading pick');
-  assert.ok(contextCalls >= distinctContexts.size,
-    'context is derived once per pick — the urgent lane\'s empty scans count too');
+  assert.equal(contextCalls, distinctContexts.size,
+    'only scans that grade a live candidate derive priority context');
   assert.equal(queue.stats().admitted, 4);
 });
 
@@ -137,7 +140,7 @@ test('an entry that went inactive while queued is dropped at the pick, not at ru
   assert.equal(await revived, true);
 });
 
-test('failed uploads resolve false without a retry loop; interrupted roots re-enqueue', async () => {
+test('failed uploads resolve false, retry per re-offer up to the budget, then dedupe until the cooldown reopens; interrupted roots re-enqueue', async () => {
   let attempts = 0;
   const queue = createLiveGeometryAdmissionQueue({
     yieldToMain: async () => {}, isActive: () => true,
@@ -147,12 +150,18 @@ test('failed uploads resolve false without a retry loop; interrupted roots re-en
   });
   const entity = { id: 'broken', alive: true };
   const root = { id: 'broken' };
-  const first = queue.enqueue(entity, root);
-  assert.equal(await first, false);
-  assert.equal(attempts, 1);
-  assert.equal(queue.enqueue(entity, root), first, 'a settled failure is not silently retried');
+  // Each re-offer buys one drain attempt until the retry budget (4) is spent.
+  let last;
+  for (let i = 1; i <= 4; i++) {
+    last = queue.enqueue(entity, root);
+    assert.equal(await last, false);
+    assert.equal(attempts, i);
+  }
+  // Past the budget the latch dedupes: a re-offer returns the settled promise
+  // and pays no upload attempt until the cooldown window reopens it.
+  assert.equal(queue.enqueue(entity, root), last, 'a spent failure dedupes inside the cooldown');
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(attempts, 1);
+  assert.equal(attempts, 4);
 
   // Inactive-at-drain roots leave the map so the next live frame can re-admit them.
   const sleepy = { id: 'sleepy', alive: false };

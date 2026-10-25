@@ -674,6 +674,12 @@ test('the live geometry admission queue drains nearest-deadline-first', () => {
     'the queue itself must accept a grading function');
   assert.match(queueSource, /pending\.splice\(pending\.indexOf\(best\), 1\)/,
     'each drain round must pick the best pending entry, not the oldest');
+  // D231 / F-LOAD-05: priorityOf keeps a default env arg, so dropping the renderer's
+  // priorityContext wiring would silently fall back to one renderAdmissionEnv per entry per pick.
+  assert.match(queueBlock, /priorityContext:\s*\(\)\s*=>\s*renderAdmissionEnv\(state\)/,
+    'the renderer must hand the queue its pick-stable admission env once per pick');
+  assert.match(queueBlock, /priorityOf:\s*\(entity, root, env\b/,
+    'priorityOf must take the per-pick env the queue passes as its third argument');
 });
 
 // Within each build tier the drain used to be FIFO, so collection order — not the deadline —

@@ -35,6 +35,7 @@ import {
 // consumes (state.massline2.throw.solution) — one authority, two surfaces: the world diamond
 // below names WHERE the intercept sits, the panel names WHEN/status. No second model exists.
 import { createMasslineCadenceReadout } from './masslineCadenceReadout.js';
+import { createLineStrainReadout } from './lineStrainReadout.js';
 // INF-078: the throw preview names protected bodies inside the predicted corridor using
 // the law's own protected definition and the release geometry's advisory corridor. Read
 // only on both sides — the cue never touches release authority.
@@ -1184,6 +1185,8 @@ export const masslineHud = {
   },
 
   destroy() {
+    this._lineStrainReadout?.destroy();
+    this._lineStrainReadout = null;
     if (this._cadenceReadout) {
       this._cadenceReadout.destroy();
       this._cadenceReadout = null;
@@ -1211,6 +1214,8 @@ export const masslineHud = {
     if (typeof w2s !== 'function' || !player || !player.alive) { this._hideAll(); return; }
 
     const ml2 = state.massline2 || EMPTY_HUD_OBJECT;
+    // Winch heat can change while the other HUD mirrors remain byte-for-byte quiet.
+    this._lineStrainReadout?.update(state, player, w2s);
     if (masslineHudInputsUnchanged(state, player)) return;
     const reducedMotion = !!(state.settings && state.settings.video && state.settings.video.motionReduce)
       || !!(state.settings && state.settings.accessibility
@@ -2079,6 +2084,7 @@ export const masslineHud = {
   },
 
   _hideAll() {
+    this._lineStrainReadout?.hide();
     const dom = this._dom;
     if (!dom) return;
     // Visibility gates are outside the normal signature (there is no player/projection payload to
@@ -2316,6 +2322,8 @@ export const masslineHud = {
     }
 
     host.appendChild(root);
+    this._lineStrainReadout?.destroy();
+    this._lineStrainReadout = createLineStrainReadout(root);
     this._dom = {
       root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine,
       ghostSvg, ghostPath, ghostD: null,

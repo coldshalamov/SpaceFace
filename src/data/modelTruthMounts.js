@@ -204,6 +204,47 @@ function normalizedCenter(row, entity, position) {
   return [local.x / radius, local.z / radius];
 }
 
+function pointSegmentDistance(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const len2 = dx * dx + dz * dz;
+  if (len2 <= 1e-12) return Math.hypot(px - ax, pz - az);
+  let t = ((px - ax) * dx + (pz - az) * dz) / len2;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+}
+
+// Where a normal bolt, flying dead aft up the centerline, first touches the
+// measured skin. On the hauler tug that is a spoke inboard of the outline, not
+// the gameplay radius and not the outline's aft bin.
+function centerlineBoltContact(row) {
+  const prims = row && row.proposedSkin && row.proposedSkin.primitives;
+  const reference = finite(row && row.gameplay && row.gameplay.entityRadius, 0)
+    || finite(row && row.gameplay && row.gameplay.dockRadius, 0);
+  if (!Array.isArray(prims) || !prims.length || !(reference > 0)) return null;
+  const bolt = boltRadiusFromPlanar(reference) / reference;
+  let start = -1.25;
+  const outline = row.collider && row.collider.outline;
+  if (Array.isArray(outline)) {
+    for (let i = 0; i < outline.length; i += 1) {
+      const radial = finite(outline[i], 0) / reference;
+      if (radial > 0) start = Math.min(start, -radial - bolt);
+    }
+  }
+  const steps = 240;
+  for (let i = 0; i <= steps; i += 1) {
+    const x = start + (0 - start) * (i / steps);
+    for (const prim of prims) {
+      if (!prim || prim.kind !== 'capsule') continue;
+      const reach = finite(prim.r, 0) + bolt;
+      if (pointSegmentDistance(x, 0, finite(prim.ax), finite(prim.az), finite(prim.bx), finite(prim.bz)) <= reach) {
+        return x;
+      }
+    }
+  }
+  return null;
+}
+
 export function hitVolumeFromRow(row, entity, subsystemId) {
   if (!row) return null;
   const radius = Math.max(1e-6, finite(entity && entity.radius, finite(row.gameplay && row.gameplay.entityRadius, 1)));
@@ -255,7 +296,27 @@ export function hitVolumeFromRow(row, entity, subsystemId) {
       measured: true,
     };
   }
-  if (subsystemId === 'subsystem_transport_clamp') return null;
+  // The carrier bolt is where a dead-aft shot actually stops. On the tug that
+  // is a spoke inboard of the outline; the drive box owns the outline itself,
+  // so a shot there used to kill the engine or hit nothing and the cage stayed
+  // locked. The circle stays off the nozzle. No skin, or no gap ahead of the
+  // nozzle: keep the generic box.
+  if (subsystemId === 'subsystem_transport_clamp') {
+    const engines = socketsNamed(row, 'SOCKET_Engine_')
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const contact = centerlineBoltContact(row);
+    if (!engines.length || contact == null) return null;
+    const engineNx = normalizedCenter(row, entity, engines[0].position)[0];
+    const reach = 0.12;
+    if (!(Math.abs(contact - engineNx) > reach + 0.02)) return null;
+    return {
+      shape: 'circle',
+      space: 'normalized',
+      center: [contact, 0],
+      radius: reach,
+      measured: true,
+    };
+  }
   return null;
 }
 

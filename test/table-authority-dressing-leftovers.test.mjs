@@ -211,9 +211,11 @@ test('heist facility visuals leave the live list; heads and the capsule stay col
 
 test('an automation outpost visual is a dressing row and rematerializes without scanning only entityList', () => {
   const { state, inst } = bootAutomation();
-  assert.equal(inst.buildOutpost('outpost_refinery'), true);
+  // Row 402 retired outpost_refinery from the shop — the still-buildable fuel synth owns the
+  // same authored place row.
+  assert.equal(inst.buildOutpost('outpost_fuelsynth'), true);
   const outpost = state.automation.outposts[0];
-  const def = OUTPOSTS.find((entry) => entry.id === 'outpost_refinery');
+  const def = OUTPOSTS.find((entry) => entry.id === outpost.defId);
   assert.ok(def);
   const rows = [];
   forEachDressingRow(state, (row) => {

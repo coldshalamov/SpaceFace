@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { claims as claimsBase } from '../src/systems/claims.js';
 import { automation } from '../src/systems/automation.js';
 import { OUTPOSTS } from '../src/data/automation.js';
-import { CLAIM_REFINERY_RECIPES } from '../src/data/sites.js';
+import { CLAIM_REFINERY_RECIPES, MATERIAL_RECIPE_BY_GOOD } from '../src/data/sites.js';
 import { BODY_SPECIALIZATION_BY_ID } from '../src/data/claimableBodies.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { addCargo } from '../src/systems/cargo.js';
@@ -214,9 +214,13 @@ test('the outpost def carries no private inputs table — it reads the shared bo
     CLAIM_REFINERY_RECIPES.some((r) => Object.keys(r.output)[0] === ALLOY),
     'the book still produces alloys',
   );
+  const canonicalRows = new Set(Object.values(MATERIAL_RECIPE_BY_GOOD));
   for (const def of OUTPOSTS) {
     const inputs = def.recipe && def.recipe.inputs;
     if (!inputs) continue;
+    // Row 402: a def that holds the canonical material row IS reading the shared book by
+    // reference; only a private table re-listing book inputs is the regression to catch.
+    if (canonicalRows.has(def.recipe)) continue;
     assert.ok(
       !CLAIM_REFINERY_RECIPES.some((r) => JSON.stringify(r.inputs) === JSON.stringify(inputs)),
       `${def.id} re-tables a book recipe`,

@@ -91,15 +91,16 @@ export async function encodeTheaterVideo(session, pcm, audioContext, {
 }
 
 export async function exportTheaterClip(clip, options = {}) {
-  const state = options.state, recording = options.recording || state?.replay?.recording;
+  const state = options.state, recording = options.recording || clip.recording || state?.replay?.recording;
   if (!recording || !state) return null;
-  const session = createTheaterSession(recording, state, { startTick: clip.startTick, endTick: clip.endTick, moment: clip.moment });
+  const session = createTheaterSession(recording, state, { startTick: clip.startTick, endTick: clip.endTick,
+    moment: clip.moment, setPiece: clip.kind === 'set-piece' ? clip : null });
   if (!session) return null;
   let timeout;
   try {
     const audioTape = options.audioTape || getReplayAudioTape();
     const endTick = session.tape.baseTick + (session.tape.samples - 1) / session.tape.sampleRate * 60;
-    let pcm = audioTape?.window(session.tape.baseTick, endTick);
+    let pcm = clip.pcm || audioTape?.window(session.tape.baseTick, endTick);
     if (!pcm && !audioTape?.context) {
       // The mix tape only exists after a gesture started the audio graph. An export ordered
       // before that still owns a renderable tape: hand the encoder a silent bed of the right

@@ -95,11 +95,10 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
   const pickNextWhere = (predicate) => {
     // The scan re-grades every waiting entry on each pick; the priority context
     // (the renderer's admission env — player, camera, glass extents) is
-    // pick-stable, so it is derived once here rather than per entry.
+    // pick-stable, so derive it once at the first eligible live entry. An empty
+    // scan (including a lane with no matching roots) needs no environment.
     let context;
-    if (typeof priorityContext === 'function') {
-      try { context = priorityContext(); } catch (_) { context = undefined; }
-    }
+    let hasContext = false;
     let best = null;
     let bestPriority = Infinity;
     let bestSequence = Infinity;
@@ -122,6 +121,12 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
         }
       }
       if (predicate(entry)) {
+        if (!hasContext) {
+          hasContext = true;
+          if (typeof priorityContext === 'function') {
+            try { context = priorityContext(); } catch (_) { context = undefined; }
+          }
+        }
         const priority = entryPriority(entry, context);
         if (priority < bestPriority
             || (priority === bestPriority && entry.sequence < bestSequence)) {

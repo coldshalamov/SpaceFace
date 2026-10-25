@@ -71,8 +71,9 @@ export function selectHitSubsystem(entity, combatant, catalog, hit = {}) {
   const penetrations = [];
   for (const subsystemId of Object.keys(combatant.subsystems).sort()) {
     const def = catalog.subsystems.get(subsystemId) || combatant.subsystems[subsystemId].def;
-    const entryT = def ? segmentVolumeEntryT(volumeForHit(entity, def), skin, center, radius) : null;
-    if (entryT != null) penetrations.push({ id: subsystemId, priority: Number(def.hitPriority) || 0, entryT });
+    const volume = def ? volumeForHit(entity, def) : null;
+    const entryT = volume ? segmentVolumeEntryT(volume, skin, center, radius) : null;
+    if (entryT != null) penetrations.push({ id: subsystemId, priority: hitPriority(def, volume), entryT });
   }
   penetrations.sort((a, b) => a.entryT - b.entryT || b.priority - a.priority || compareText(a.id, b.id));
   return penetrations.length ? penetrations[0].id : null;
@@ -106,13 +107,22 @@ function volumeForHit(entity, def) {
   return modelTruthHitVolume(entity, def.id) || def.volume;
 }
 
+// The measured stern cap shares its skin with the drive box. On that overlap the
+// bolt outranks the engine so a dead-aft shot frees the load. Anywhere the cap
+// does not reach, the authored priority is unchanged.
+function hitPriority(def, volume) {
+  const base = Number(def && def.hitPriority) || 0;
+  if (def && def.id === 'subsystem_transport_clamp' && volume && volume.measured) return base + 1;
+  return base;
+}
+
 function subsystemMatchesAtPoint(entity, combatant, catalog, local) {
   const matches = [];
   for (const subsystemId of Object.keys(combatant.subsystems).sort()) {
     const def = catalog.subsystems.get(subsystemId) || combatant.subsystems[subsystemId].def;
     const volume = volumeForHit(entity, def);
     if (def && volumeContainsPoint(volume, local, entity.radius || 1)) {
-      matches.push({ id: subsystemId, priority: Number(def.hitPriority) || 0 });
+      matches.push({ id: subsystemId, priority: hitPriority(def, volume) });
     }
   }
   matches.sort((a, b) => b.priority - a.priority || compareText(a.id, b.id));

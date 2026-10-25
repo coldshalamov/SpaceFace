@@ -8,6 +8,7 @@ import { WEAPONS } from '../src/data/weapons.js';
 import { SWARM_DRAFT_OFFERS } from '../src/data/swarmDraft.js';
 import { createLineage, resetLineageIds } from '../src/combat/attackLineage.js';
 import { weapons } from '../src/systems/weapons.js';
+import { consumeProjectileContinuation } from '../src/core/physicsAuthority.js';
 
 const SEED = 4242;
 const DEF = WEAPONS.find((d) => d.id === 'wpn_disc_launcher_m');
@@ -83,6 +84,12 @@ test('the disc ricochets off hostile bodies — at least two real contacts befor
   assert.equal(runtime.remaining.bounces, spec.trajectory.bounces - 1, 'one bounce spent');
   assert.ok(host._attackLive.has(projectile.id), 'disc still live after first hull');
   assert.ok(projectile.vel.x < 0, `reflected flight, got vx=${projectile.vel.x}`);
+  // The disc is a Rapier-owned bullet: the ricochet must reach the real body through the
+  // projectile continuation membrane — a bare vel mirror would die in the readback and the
+  // second hull contact could never happen.
+  const continuation = consumeProjectileContinuation(projectile);
+  assert.ok(continuation, 'hull ricochet queued through the continuation membrane');
+  assert.ok(continuation.velocity.x < 0, 'continuation carries the reflected leg');
 
   // Contact 2 at h2 (-x flight): second hull spends the second bounce.
   hit(host, projectile, 'h2', -58);

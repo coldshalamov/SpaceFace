@@ -75,7 +75,7 @@ export const NEW_GAME_STARTERS = Object.freeze([
     name: 'Hitch',
     tag: 'Skater',
     blurb: 'Light on the line. Quick to bank. Responsive tether agility.',
-    line: 'Light and nimble chassis with versatile starter outfitting. Balanced for salvage, mining, or dogfighting.',
+    line: 'Light and nimble chassis with versatile starter outfitting. Balanced for salvage, mining, or dogfighting. The deck plate under the pilot seat is replacement stock — the first one went out with the crew before yours.',
     fittedModules: Object.freeze(NEW_GAME.fittedModules.slice()),
   }),
   Object.freeze({
@@ -84,7 +84,7 @@ export const NEW_GAME_STARTERS = Object.freeze([
     name: 'Pelican',
     tag: 'Tug',
     blurb: 'Industrial hauler. Heavy-duty winch and dual mining lasers.',
-    line: 'Reinforced frame with dual mining lasers, heavy winch, and expanded cargo holds. Built for deep salvage and bulk hauling.',
+    line: 'Reinforced frame with dual mining lasers, heavy winch, and expanded cargo holds. Built for deep salvage and bulk hauling. The winch drum still carries the score marks from the tow that bought her.',
     fittedModules: Object.freeze([
       'wpn_pulse_laser_s',    // weapon slot S
       'mod_shield_booster_s', // shield slot S
@@ -101,7 +101,7 @@ export const NEW_GAME_STARTERS = Object.freeze([
     name: 'Wasp',
     tag: 'Brawler',
     blurb: 'Fast strike interceptor. High acceleration and dual offensive mounts.',
-    line: 'Dual ballistic weapons and a reinforced ram plate with rapid acceleration. Built for aggressive bounties and fast skirmishes.',
+    line: 'Dual ballistic weapons and a reinforced ram plate with rapid acceleration. Built for aggressive bounties and fast skirmishes. The ram plate is second-hand — the original is still on someone else\'s hull.',
     fittedModules: Object.freeze([
       'wpn_pulse_laser_s',    // weapon slot S (front)
       'wpn_autocannon_s',     // weapon slot S (front) — the shove gun

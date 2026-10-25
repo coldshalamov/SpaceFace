@@ -4,6 +4,7 @@ import { vfx } from '../../src/render/vfx.js';
 import { QuarksVfxSystem } from '../../src/render/vfx/quarksSystem.js';
 import { PlasmaStreamSystem } from '../../src/render/thruster/systems/plasmaStream.js';
 import { resolveVfxAccessibilityProfile } from '../../src/render/vfxAccessibility.js';
+import { resetGameplayVfxWhenReady } from './vfxGameplayReadiness.mjs';
 
 export const GAMEPLAY_TOOL_SCENARIOS = Object.freeze({
   'tool-extract': 4.2, 'tool-cut': 4.2, 'tool-repair': 4.2, 'tool-transfer': 4.2,
@@ -445,6 +446,6 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
     if (disposed) return;
     reset(); propulsion.dispose(); owner.destroy(); root.removeFromParent(); disposed = true;
   }
-  reset();
-  return { root, reset, update, inspect, dispose, scenarios: GAMEPLAY_TOOL_SCENARIOS };
+  const ready = resetGameplayVfxWhenReady(owner, reset);
+  return { root, ready, reset, update, inspect, dispose, scenarios: GAMEPLAY_TOOL_SCENARIOS };
 }

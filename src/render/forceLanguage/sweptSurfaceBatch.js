@@ -4,6 +4,10 @@ import {
   registerDynamicBufferOwner, unregisterDynamicBufferOwner,
   assertDynamicBufferOwnerWritable, markDynamicBufferItems, commitDynamicBufferOwner,
 } from '../dynamicBufferRanges.js';
+import {
+  advancesFieldBodyOrdinal,
+  rewriteFieldDescriptor,
+} from '../vfx/runtime/forceRecipe.js';
 
 // One real folded mesh strip, not a billboard/point cloud. Shared by all instances. The author
 // supplies an analytic path; the shader supplies the cross-section, continuous body and hot fold.
@@ -353,7 +357,7 @@ vec4 fieldVolume(){
   float facing=abs(dot(normal,normalize(cameraPosition-vSurfaceWorld)));
   float sideLight=.30+.70*abs(dot(normal,normalize(vec3(-.45,.8,.35))));
   vec3 pigment=mix(vTint.rgb*vec3(.12,.20,.32),vTint.rgb,.25+.75*mass);
-  vec3 body=pigment*sideLight*(1.0-.70*cavity);
+  vec3 body=pigment*sideLight*(1.0-.80*cavity);
   float contact=vResponse.y*(.50+.50*crest);
   hot+=contact*(.8+shoulder)+vResponse.x*fine.y*crest*.16;
   float fracture=1.0;
@@ -367,11 +371,11 @@ vec4 fieldVolume(){
     }
     hot*=1.0-.87*vCycle.y;body*=1.0-.40*vCycle.y;
   }
-  float density=1.0-exp(-thickness*(.85+.35*(1.0-facing)));
-  density=min(.90,density+min(.70,hot*.42));
+  float density=1.0-exp(-thickness*(.80+.30*(1.0-facing)));
+  density=min(.82,density+min(.56,hot*.34));
   // Saturated transported material with white restricted to tiny hot junctions. A large white
   // mix clips to grey aluminium in the non-bloom path and bleaches every family in HDR.
-  vec3 emission=vTint.rgb*min(3.0,hot*3.2)*heat*uFlash;
+  vec3 emission=vTint.rgb*min(2.6,hot*2.35)*heat*uFlash;
   emission+=vec3(1.0,.95,.86)*(pow(crest,5.0)*pow(clamp(shoulder*.6,0.0,1.0),3.0)*.85+contact*.65)*heat*uFlash;
   vec3 color=body*.35+emission;
   float alpha=edge*tips*reveal*vTint.a*vFront*fracture*density;
@@ -448,6 +452,12 @@ function stripGeometry(across= SURFACE_ACROSS){
 export class SweptSurfaceBatch {
   constructor(scene,{capacity=224,name='SF_ForceSurfaces',fieldVolume=false}={}){
     this.capacity=capacity;this.count=0;this.disposed=false;this.dropped=0;
+    this.name=name;
+    // Only the deployed-field owner receives the picture compiler. Action matter, status
+    // matter and weapon discharges keep their own authored descriptors unchanged.
+    this._compilesFieldPicture=fieldVolume&&name==='SF_FieldForceLanguage';
+    this._fieldBodyOrdinal=0;
+    this._fieldRewrite=new Float32Array(SURFACE_FLOATS);
     this.geometry=stripGeometry(fieldVolume?FIELD_SURFACE_ACROSS:SURFACE_ACROSS);this.attributes=[];this.dirty=new Uint8Array(NAMES.length);
     for(const name of NAMES){
       const attr=new THREE.InstancedBufferAttribute(new Float32Array(capacity*4),4).setUsage(THREE.DynamicDrawUsage);
@@ -472,7 +482,7 @@ export class SweptSurfaceBatch {
   begin(time=0,reducedMotion=false,reducedFlash=false){
     if(this.disposed)return false;
     assertDynamicBufferOwnerWritable(this.owner);
-    this.count=0;this.dropped=0;this.dirty.fill(0);
+    this.count=0;this.dropped=0;this.dirty.fill(0);this._fieldBodyOrdinal=0;
     const u=this.material.uniforms;
     u.uTime.value=Number.isFinite(time)?time:0;u.uMotion.value=reducedMotion?0:1;u.uFlash.value=reducedFlash?0.56:1;
     return true;
@@ -481,12 +491,17 @@ export class SweptSurfaceBatch {
   add(values){
     if(this.disposed)return false;
     if(this.count>=this.capacity){this.dropped++;return false;}
+    let source=values;
+    if(this._compilesFieldPicture){
+      source=rewriteFieldDescriptor(values,this._fieldBodyOrdinal,this._fieldRewrite);
+      if(advancesFieldBodyOrdinal(source))this._fieldBodyOrdinal++;
+    }
     const item=this.count++,off=item*4;
     for(let b=0;b<NAMES.length;b++){
       const arr=this.attributes[b].array;let changed=false;
       for(let c=0;c<4;c++){
         const index=b*4+c;
-        const value=Math.fround(index<values.length ? values[index] : LEGACY_DEFAULTS[index-24]);
+        const value=Math.fround(index<source.length ? source[index] : LEGACY_DEFAULTS[index-24]);
         if(arr[off+c]!==value){arr[off+c]=value;changed=true;}
       }
       if(changed){this.dirty[b]=1;if(this.owner)markDynamicBufferItems(this.owner,b,item);}

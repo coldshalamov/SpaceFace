@@ -20,15 +20,19 @@ export function validFightId(id) {return typeof id==='string' && /^[A-Za-z0-9][A
 export function createCapitalBossFight({ encounterId, fightId, bossId, targetId, tick=0, mirror=1 }) {
   requireCapitalBossEncounter(encounterId);requireTick(tick);
   if(!validFightId(fightId) || bossId==null || targetId==null || bossId===targetId) throw new TypeError('Distinct boss/target and a fight id are required');
-  return { version:1,encounterId,fightId:String(fightId),bossId,targetId,mirror:mirror<0?-1:1,
+  return { version:2,encounterId,fightId:String(fightId),bossId,targetId,mirror:mirror<0?-1:1,
     lastTick:tick-1,clock:0,started:false,suspended:false,terminal:null,actIndex:-1,
     phase:'intro',actStartedAt:0,nextAt:0,sequence:0,castOrdinal:0,cast:null,
     disarmedSpoken:false,
+    // GOLD-COLOSSI: the plates are fight data until they tear — never per-tick pose state.
+    // A saved record keeps each plate's attached flag; a plate that tore stays torn.
+    plates:(requireCapitalBossEncounter(encounterId).plates||[]).map(p=>({id:p.id,attached:true,strainTicks:0})),
     wings:{},lastVoiceAt:-1000000,lastOrderSignature:null,lastWingGate:null,
     telemetry:{casts:0,cancelled:0,hits:0,actsSeen:[],actsSkipped:[],suspensions:0} };
 }
 export function restoreCapitalBossFight(saved) {
-  if(!saved || saved.version!==1) throw new TypeError('Unsupported capital fight save version');
+  if(!saved || (saved.version!==1 && saved.version!==2)) throw new TypeError('Unsupported capital fight save version');
+  // v1 records predate GOLD-COLOSSI: every authored plate reads attached on restore.
   requireCapitalBossEncounter(saved.encounterId);
   requireTick(saved.clock);
   if(!Number.isSafeInteger(saved.lastTick)||saved.lastTick < -1||saved.actIndex < -1||saved.actIndex>2)
@@ -38,7 +42,12 @@ export function restoreCapitalBossFight(saved) {
     !Number.isSafeInteger(saved.nextAt)||saved.nextAt<0||
     (saved.cast && (!getBeat(requireCapitalBossEncounter(saved.encounterId).score,saved.cast.beatId)||
       !Array.isArray(saved.cast.hitKeys)||!Array.isArray(saved.cast.shapes)))) throw new TypeError('Malformed capital fight save');
-  return copy(saved);
+  const restored = copy(saved);
+  if(!Array.isArray(restored.plates)) {
+    restored.plates = (requireCapitalBossEncounter(saved.encounterId).plates||[])
+      .map(p=>({id:p.id,attached:true,strainTicks:0}));
+  }
+  return restored;
 }
 /** Rebind only after the mission owner has rematerialized durable roles. No numeric id survives by assumption. */
 export function rebindCapitalBossFight(r, { bossId,targetId,wingIds={} }) {

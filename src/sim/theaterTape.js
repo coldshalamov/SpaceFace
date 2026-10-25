@@ -13,7 +13,7 @@ export function sealTheaterTape(recording, { startTick, endTick } = {}) {
   const rate = Number(recording.tickRate) || 60;
   const base = Number(recording.absoluteBaseTick ?? recording.base) || 0;
   const first = Math.max(base, Number.isFinite(startTick) ? startTick : base,
-    base + Math.max(0, (recording.ticks || 0) - MAX_SECONDS * rate));
+    base + Math.max(0, (recording.ticks || 0) - 1 - MAX_SECONDS * rate));
   const last = Math.min(base + (recording.ticks || 0) - 1, Number.isFinite(endTick) ? endTick : Infinity);
   const frames = source.filter((f) => f?.tick >= first && f.tick <= last).slice(-301);
   if (frames.length < 2) return null;
@@ -23,7 +23,8 @@ export function sealTheaterTape(recording, { startTick, endTick } = {}) {
   const actors = new Map();
   for (let s = 0; s < frames.length; s++) {
     for (const pose of frames[s].poses || []) {
-      if (!['ship', 'projectile', 'asteroid', 'wreck'].includes(pose.type)
+      if ((!['ship', 'projectile', 'asteroid', 'wreck'].includes(pose.type)
+        && !pose.visualData?.placeId && !pose.visualData?.archetypeGlb && !pose.visualData?.storyPropKind)
         || !Number.isFinite(pose.x) || !Number.isFinite(pose.z)) continue;
       const key = JSON.stringify([typeof pose.id, pose.id, pose.generation || 0]);
       let track = actors.get(key);
@@ -58,7 +59,7 @@ export function sealTheaterTape(recording, { startTick, endTick } = {}) {
     ships.push({ id: track.id, generation: track.generation, team: m.team || 0, type: m.type,
       player: m.player === true || String(m.id) === String(recording.playerId),
       visual: m.visual || m.defId || null, silhouette: m.silhouette || null, factionId: m.factionId || null,
-      radius: m.radius || 6, b, d: -1,
+      radius: m.radius || 6, visualData: m.visualData ? { ...m.visualData } : null, b, d: -1,
       n, x, z, r, end: b + n - 1, vx: 0, vz: 0, wz: 0 });
   }
   if (!ships.length) return null;
@@ -68,5 +69,8 @@ export function sealTheaterTape(recording, { startTick, endTick } = {}) {
   }));
   return { schema: KILLCAM_TAPE_SCHEMA, seed: recording.seed || 0, tickRate: rate, sampleRate,
     baseTick: fromTick, samples, endSample: samples - 1, windowS: samples / sampleRate,
-    ships, rounds, flashes: [], forces, source: 'adventure-poses' };
+    ships, rounds, flashes: [], forces,
+    scenes: frames.filter((f) => f.scene).map((f) => ({ sample: (f.tick - fromTick) / stride,
+      ...f.scene, ...(f.scene.bolusFlags ? { bolusFlags: { ...f.scene.bolusFlags } } : {}) })),
+    source: 'adventure-poses' };
 }

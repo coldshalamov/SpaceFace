@@ -100,6 +100,13 @@ ${R} .race-board-contract:not(.race-board-contract ~ .race-board-contract) > but
   color:#17120a !important; background:var(--dp-lamp, #f2b950) !important; border-color:var(--dp-lamp, #f2b950) !important; }
 ${R} .race-board-contract:not(.race-board-contract ~ .race-board-contract) > button.race-board-launch:hover:not(:disabled) { background:var(--dp-lamp-hot, #ffd98c) !important; }
 ${R} .race-board-contract > button.k-word:disabled { opacity:.42 !important; cursor:not-allowed; }
+/* The selected event answers its pick on the card itself, not only in the START panel: the
+   card's select word (aria-pressed) stays lit like a hovered word of light and its card edge
+   takes the lamp. */
+${R} .race-board-course .dp-lit__item[aria-pressed="true"] { color:var(--dp-lamp-hot, #ffd98c) !important;
+  font-variation-settings:"wght" 780, "wdth" 100 !important;
+  text-shadow:0 0 22px rgb(255 226 178 / .34), 0 0 6px rgb(255 226 178 / .22), 0 1px 0 rgb(0 0 0 / .6) !important; }
+${R} .race-board-course:has(.dp-lit__item[aria-pressed="true"]) { border-color:rgb(242 185 80 / .55) !important; }
 
 /* ---------- physics-venue board: lone Back rail, launch rows straight in the card ---------- */
 ${R} > .race-board-tools:has(> button:only-child) { background:none !important; border-color:transparent !important; padding:0 !important; margin:0 0 12px !important; }
@@ -114,6 +121,19 @@ ${R} .race-board-result > p.k-sentence { ${READ} font-size:13.5px !important; li
   color:rgb(${BONE} / .78) !important; margin:6px 0 0 !important; max-width:none !important; }
 ${R} .race-board-result > h2 + p.k-sentence { color:rgb(${BONE} / .66) !important; }
 ${R} .race-board-result > button.k-word { margin-top:12px !important; }
+/* The selected-event panel holds START. It rides the top of the scrolling board so a pick on a
+   card far down the list still shows its START and status line; START sits to the right of the
+   title so the pinned band stays short. Chrome pins a sticky child inside the board's padding, so
+   top cancels the board's top padding (divided by the band zoom below) to sit flush. */
+${R} > .race-board-start { position:sticky !important; top:calc(-1 * clamp(26px, 6vh, 72px)) !important; z-index:2 !important;
+  display:grid !important; grid-template-columns:minmax(0, 1fr) auto !important; column-gap:20px !important; align-items:center !important;
+  padding:14px 18px !important; background:rgb(14 17 22) !important; border-color:rgb(242 185 80 / .28) !important; }
+${R} > .race-board-start > :not(button) { grid-column:1 !important; }
+${R} > .race-board-start > button.race-board-launch { grid-column:2 !important; grid-row:1 / span 3 !important; margin:0 !important; }
+${R} > .race-board-start > p.k-sentence { margin:4px 0 0 !important; }
+/* Keyboard and gamepad focus scrolls a card's select word into view; reserve the pinned panel's
+   height so a word reached going back up the list lands below START instead of under it. */
+${R}:has(> .race-board-start) { scroll-padding-top:128px; }
 
 @media (max-height: 620px) {
   ${R} .race-board-course > .race-map { max-height:110px !important; margin:6px 0 !important; }
@@ -127,10 +147,12 @@ ${R} .race-board-result > button.k-word { margin-top:12px !important; }
   ${R} .race-board-tools > label.k-sentence { flex:1 1 calc(50% - 7px) !important; max-width:none !important; min-width:0 !important; }
   ${R} .race-board-tools > button.k-word { flex:1 1 auto; justify-content:center; }
   ${R} .race-board-tools > button.k-word:last-child { flex:0 0 auto; }
+  ${R} > .race-board-start { top:-22px !important; }
+  ${R}:has(> .race-board-start) { scroll-padding-top:168px; }
 }
 /* 1080p band: lift the whole flow (no getBoundingClientRect positioning on this board). */
-@media (min-width: 1800px) and (max-width: 2199px) and (min-height: 900px) { ${R} > * { zoom:1.14; } }
-@media (min-width: 2200px) and (min-height: 1200px) { ${R} > * { zoom:1.4; } }
+@media (min-width: 1800px) and (max-width: 2199px) and (min-height: 900px) { ${R} > * { zoom:1.14; } ${R} > .race-board-start { top:calc(-1 * clamp(26px, 6vh, 72px) / 1.14) !important; } ${R}:has(> .race-board-start) { scroll-padding-top:148px; } }
+@media (min-width: 2200px) and (min-height: 1200px) { ${R} > * { zoom:1.4; } ${R} > .race-board-start { top:calc(-1 * clamp(26px, 6vh, 72px) / 1.4) !important; } ${R}:has(> .race-board-start) { scroll-padding-top:180px; } }
 `;
 
 export function injectRaceBoardLayouts() {

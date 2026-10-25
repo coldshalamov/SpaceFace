@@ -267,7 +267,7 @@ function stationIsLawful(station) {
   return !faction || !NON_LAWFUL_PERSONALITIES.has(faction.personality);
 }
 
-function liveStationPosition(state, stationId) {
+export function liveStationPosition(state, stationId) {
   const active = state.world && state.world.activeSector;
   const record = active && Array.isArray(active.stations)
     ? active.stations.find((station) => (station.stationId || station.id) === stationId)
@@ -293,6 +293,17 @@ export function chooseLawfulStation(state) {
   const helios = STATION_BY_ID.get('station_helios');
   if (helios) return helios;
   return [...STATION_BY_ID.values()].find(stationIsLawful) || null;
+}
+
+// Row 463 "Retry act": the boss-staging berth aims the player's re-entry bearing at the sector's
+// lawful recovery station, so the chooser needs the same lawful test scoped to a named sector
+// rather than the player's remembered/current dock.
+export function lawfulStationInSector(sectorId) {
+  const sector = SECTORS.find((s) => s.id === sectorId);
+  const station = sector && Array.isArray(sector.stations)
+    ? sector.stations.find(stationIsLawful)
+    : null;
+  return station ? { ...station, sectorId: sector.id, security: sector.security } : null;
 }
 
 // Recovery pricing as a pure quote so the docked service row can price the player's actual
@@ -417,10 +428,22 @@ const MASSLINE_SNAP_KINDS = new Set([
   'massline_tumble_impact',
 ]);
 const SWING_RUNG_ID = 'swing_do_not_pull';
+// X-09 (plan-approved rows): the only causes a real Range rung actually teaches. A weapon kill,
+// a contact-caused ram or throw, a hazard, or an unreadable cause stays silent — no rung teaches
+// surviving gunfire and an offer with no drill behind it is a lie.
+// X-09: the v1 physicalLabel rows are correct mappings but DORMANT — the player takes no
+// impact damage yet (a separate gameplay contract). Rows keying `origin`/`context` are live:
+// the berth's dock-collar scrape is already a player-caused failure to stop.
+const DEFEAT_RUNG_ROWS = Object.freeze([
+  { label: 'arena impact', sources: Object.freeze(['self', 'environment']), rungId: 'stopping_takes_room', lead: 'Came in hot.' },
+  { label: 'hull ram', sources: Object.freeze(['self', 'environment']), rungId: 'slip_a_gap', lead: 'Clipped a hull.' },
+  { origin: 'dock_collar', sources: Object.freeze(['environment']), rungId: 'stopping_takes_room', lead: 'Came in hot.' },
+]);
 
-function swingRangeRow() {
+// Exported for the X-09 miss-robustness seam: a rung id with no rail row returns null, never throws.
+export function rangeRow(id) {
   const rows = Array.isArray(RANGE_RAIL_ROWS) ? RANGE_RAIL_ROWS : [];
-  const row = rows.find((entry) => entry && entry.id === SWING_RUNG_ID);
+  const row = rows.find((entry) => entry && entry.id === id);
   if (!row || rangeRungIndex(row.id) < 0) return null;
   return row;
 }
@@ -448,17 +471,54 @@ export function isSlackLineSnapDeath(lethal) {
   return false;
 }
 
-export function defeatRangeOffer(state, lethal) {
-  if (!isSlackLineSnapDeath(lethal)) return null;
+// Per-rung gate: the session string marks the lesson offered this run; the profile hint
+// (player.hints is save-durable) keeps a second run of the same cause silent across saves.
+function rungOfferedBefore(state, rungId) {
   const ui = state && state.ui;
-  if (ui && ui.deathRangeOfferedRung) return null;
-  const row = swingRangeRow();
+  if (ui && ui.deathRangeOfferedRung === rungId) return true;
+  const hints = state && state.player && state.player.hints;
+  return !!(hints && hints['deathRung:' + rungId] === true);
+}
+
+function rangeOfferFor(rungId, lead) {
+  const row = rangeRow(rungId);
   if (!row) return null;
   return {
     rungId: row.id,
     once: true,
-    line: `The Range can teach ${sentenceCase(row.rule)}.`,
+    line: `${lead ? lead + ' ' : ''}The Range can teach ${sentenceCase(row.rule)}.`,
   };
+}
+
+export function defeatRangeOffer(state, lethal, read = {}) {
+  if (isSlackLineSnapDeath(lethal)) {
+    if (rungOfferedBefore(state, SWING_RUNG_ID)) return null;
+    return rangeOfferFor(SWING_RUNG_ID);
+  }
+  const cause = read && typeof read === 'object' ? read : {};
+  const sourceKind = cause.sourceKind;
+  // v3 live row — ran the cap dry into a contact death. No last-fire stamp exists, so the
+  // read is cap-only; 'unknown' (despawned attacker) stays silent by the kind gate.
+  // typeof gate, not Number(): Number(null) is 0, which would read a missing cap as dry.
+  const capMax = typeof cause.capMax === 'number' ? cause.capMax : NaN;
+  const cap = typeof cause.cap === 'number' ? cause.cap : NaN;
+  if (sourceKind === 'contact' && !cause.physicalLabel
+    && Number.isFinite(capMax) && capMax > 0 && Number.isFinite(cap) && cap <= 0.05 * capMax) {
+    if (!rungOfferedBefore(state, 'you_can_run_dry')) {
+      return rangeOfferFor('you_can_run_dry', 'Ran the cap dry.');
+    }
+  }
+  for (const rule of DEFEAT_RUNG_ROWS) {
+    if (rule.origin) {
+      if (cause.origin !== rule.origin && cause.context !== rule.origin) continue;
+    } else if (cause.physicalLabel !== rule.label) {
+      continue;
+    }
+    if (!rule.sources.includes(sourceKind)) continue;
+    if (rungOfferedBefore(state, rule.rungId)) continue;
+    return rangeOfferFor(rule.rungId, rule.lead);
+  }
+  return null;
 }
 
 export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
@@ -517,11 +577,21 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     pos: playerEntity && playerEntity.pos ? { x: playerEntity.pos.x, z: playerEntity.pos.z } : null,
     recovery,
   };
-  const offer = defeatRangeOffer(state, lethal);
+  const offer = defeatRangeOffer(state, lethal, {
+    physicalLabel,
+    sourceKind: source.kind,
+    cap: playerEntity && Number.isFinite(playerEntity.cap) ? playerEntity.cap : null,
+    capMax: playerEntity && Number.isFinite(playerEntity.capMax) ? playerEntity.capMax : null,
+    origin: lethal.origin && typeof lethal.origin === 'object' ? lethal.origin.kind : null,
+    context,
+  });
   if (offer) {
     receipt.rangeOffer = offer;
     if (!state.ui || typeof state.ui !== 'object') state.ui = {};
     state.ui.deathRangeOfferedRung = offer.rungId;
+    const player = state.player || (state.player = {});
+    const hints = player.hints || (player.hints = {});
+    hints['deathRung:' + offer.rungId] = true;
   }
   return receipt;
 }

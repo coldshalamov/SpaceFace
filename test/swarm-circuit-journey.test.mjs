@@ -634,7 +634,7 @@ test('sixteen real rounds: survive boundaries, stage routes, champions, and one 
       const choices = circuitChoicesFor(h.state.run);
       const rooms = choices.filter((entry) => entry.kind === 'route' && !entry.fight && !entry.node);
       assert.equal(rooms.length, 2, 'each stage offers two ordinary destinations');
-      assert.equal(choices.filter((entry) => entry.kind === 'route').length, 7, 'elite, challenge and the box sit beside them and can be refused');
+      assert.equal(choices.filter((entry) => entry.kind === 'route').length, 9, 'elite, challenge, champion and the box sit beside them and can be refused');
       assert.equal(choices.filter((entry) => entry.kind === 'event').length, 1, 'one event card sits beside the rooms');
       assert.equal(choices.filter((entry) => entry.kind === 'service').length, 3, 'armory, repair and treasure sit beside the rooms');
       const choice = rooms[0];
@@ -1147,11 +1147,13 @@ test('both destinations at every boundary are authored arenas with their own law
       assert.deepEqual(first, second, 'identical state yields identical descriptors');
       const rooms = first.filter((entry) => entry.kind === 'route' && !entry.fight && !entry.node);
       assert.equal(rooms.length, 2);
-      assert.equal(first.filter((entry) => entry.kind === 'route').length, 7);
+      assert.equal(first.filter((entry) => entry.kind === 'route').length, 9);
       assert.equal(first.filter((entry) => entry.kind === 'route' && entry.node === 'mystery').length, 1);
+      assert.equal(first.filter((entry) => entry.kind === 'route' && entry.fight === 'champion').length, 2,
+        'each destination also offers its champion call');
       assert.equal(first.filter((entry) => entry.kind === 'event').length, 1);
       assert.equal(first.filter((entry) => entry.kind === 'service').length, 3);
-      assert.equal(first.length, 11);
+      assert.equal(first.length, 13);
       const choice = first.find((entry) => entry.kind === 'route' && entry.arenaId === dest.arenaId && !entry.fight && !entry.node);
       assert.ok(choice, `${dest.arenaId} is offered at stage ${stage}`);
       assert.equal(choice.line, dest.line);

@@ -1339,7 +1339,11 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     && (directive.formation.breakReason === 'security_response_target'
       || directive.formation.breakReason === 'ambush_snare_prey'
       || directive.formation.breakReason === 'wanted_warrant_target'
-      || directive.formation.breakReason === 'heist_pressure_target'));
+      || directive.formation.breakReason === 'heist_pressure_target'
+      // X-02: the onboarding raid wing's 'onboarding_raid:' ATTACK_RUN is the same class of
+      // authoritative singleton assignment — it must close on the player it is staged for, not
+      // hold a formation anchor parked on the crippled crew leader ~370 WU short of the fire gate.
+      || directive.formation.breakReason === 'onboarding_raid_target'));
   // A committed firing corridor owns the nose as well as the guns: while the cue/window holds a
   // corridor bearing, facing rides it instead of tracking the live contact, so a lateral dodge
   // leaves both the hull line and the volley stale.

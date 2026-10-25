@@ -16,7 +16,7 @@ export function tickDiscoverySound(world, cast, kind, player, now) {
     const machine = entity.data?.machine;
     const role = faunaSpeciesById(entity.data?.ecology?.speciesId)?.role;
     const id = kind === 'machine' ? (MACHINE_SOUND_IDS.includes(machine?.kind) ? `ambient_machine_${machine.kind}` : null)
-      : FAUNA_ROLE_SOUND[role] || (role === 'migrant' ? FAUNA_ROLE_SOUND.drifter : null);
+      : FAUNA_ROLE_SOUND[role] || null;
     if (!id) continue;
     nearest = distance; pick = { entity, id };
   }

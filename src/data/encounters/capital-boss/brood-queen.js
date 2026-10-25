@@ -18,6 +18,12 @@ export const BROOD_QUEEN = freezeDeep({
   actors: [hullActor({ label: 'BROOD QUEEN', archetype: 'brood_queen', hull: 900,
     mass: 520, radius: 34, speed: 46, doctrine: 'pack_pursuit' }),
     ballast('BROOD EGG', 150)],
+  plates: [
+    { id: 'sac_plate', label: 'sac plate', anchor: { x: -0.4, z: 0.35 }, radius: 9, mass: 85,
+      holdTension: 0.75, covers: 'subsystem_weapon', shedOnAct: 0 },
+    { id: 'belly_plate', label: 'belly plate', anchor: { x: -0.05, z: 0.42 }, radius: 10, mass: 95,
+      holdTension: 0.8, covers: 'subsystem_power', shedOnAct: 1 },
+  ],
   score: score({
     name: 'BROOD QUEEN', missionDefinitionId: 'capital_boss', identity: 'swarm_mother',
     rangeResponse: { minRange: 340, beatId: 'sac_spray' },

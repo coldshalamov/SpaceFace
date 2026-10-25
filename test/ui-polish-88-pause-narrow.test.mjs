@@ -283,7 +283,7 @@ const DIAL_1280 = {
   'Resume': [299, 263, 154, 32],
   'Settings': [414, 304, 67, 16], 'Save': [503, 304, 35, 16], 'Load': [560, 304, 36, 16],
   'Mission Log (J)': [411, 338, 94, 16], 'My Ship': [527, 338, 59, 16], 'Operations (Automation)': [608, 338, 198, 16],
-  'Help / Controls': [515, 371, 125, 16], 'Codex': [662, 371, 48, 16], 'Achievements': [732, 371, 110, 16], 'Statistics': [864, 371, 81, 16],
+  'Help / Controls': [515, 371, 125, 16], 'Codex': [662, 371, 48, 16], 'Achievements': [732, 371, 110, 16], 'Records Wall': [864, 371, 81, 16],
   'Photo': [437, 405, 48, 16], 'Replay': [507, 405, 54, 16], 'Clips': [583, 405, 42, 16],
   'Physics challenges': [414, 438, 151, 16], 'Sandbox': [392, 472, 67, 16], 'Main Menu': [385, 505, 76, 16],
 };

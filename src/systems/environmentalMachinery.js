@@ -64,6 +64,8 @@ import {
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { updateWeatherMeteors, retireWeatherMeteor } from './weatherMeteors.js';
 import { writePickupRemainder } from '../core/pickupAcceptance.js';
+import { SECTOR_PHYSICAL_LAW_BY_ID } from '../data/sectorPhysicalLaws.js';
+import { SECTOR_WONDER_BY_ID } from '../data/sectorWonders.js';
 import { NEAR_EXIT_PAD_WU } from '../world/activityClassification.js';
 import {
   choosePowerPriority,
@@ -253,6 +255,15 @@ export const environmentalMachinery = {
     if (this.bus && typeof this.bus.on === 'function') {
       const clear = (why) => this._clear(why);
       this._unsubs = [
+        this.bus.on('sectorWonder:secured', (receipt) => {
+          const manifest = SECTOR_WONDER_BY_ID[receipt?.siteId];
+          const record = manifest && this.state.sites?.worldById?.[manifest.id];
+          const final = manifest?.operations.find(op => op.consequenceIds.includes('wonder_secured'));
+          if (record?.completedOperations?.[final?.id]
+            && manifest.consequences[0].intents[0].payload.machineId === receipt.machineId) {
+            this.shutdownKillMachine(receipt.machineId, 'player_shutdown');
+          }
+        }),
         this.bus.on('entity:destroyed', (receipt) => this._onOrchardPodDestroyed(receipt)),
         this.bus.on('entity:killed', (receipt) => this._onKillMachineDeath(receipt)),
         this.bus.on('asteroid:destroyed', (receipt) => this._onKillMachineDeath(receipt)),
@@ -737,6 +748,12 @@ export const environmentalMachinery = {
   },
 
   _updateKillMachines(state, machines) {
+    const rule = SECTOR_PHYSICAL_LAW_BY_ID[state.world?.currentSectorId];
+    if (rule && this._announcedSectorLaw !== rule.id) {
+      this._announcedSectorLaw = rule.id;
+      this.bus.emit('toast', { text: `${rule.mouth.name} · ${rule.rule}`, kind: 'info', ttl: 5 });
+      this.bus.emit('sector:physicalLaw', { sectorId: rule.sectorId, machineId: rule.id, rule: rule.rule });
+    }
     const player = state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
       : null;
@@ -1707,6 +1724,7 @@ export const environmentalMachinery = {
   },
 
   _clear(why) {
+    this._announcedSectorLaw = null;
     if(['new_game','destroy','save_restoring','save_loaded','sector_exit'].includes(why))this._orchardEpoch=(this._orchardEpoch||0)+1;
     this._removeOrchardField();
     this._orchardLastPhase = null;

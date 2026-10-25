@@ -41,7 +41,14 @@ import {
   migrateSwarmLadder,
   swarmLadderStarTotal,
 } from '../data/swarmLadder.js';
-import { CIRCUIT_STAGE_COUNT, CIRCUIT_TOTAL_ROUNDS, circuitRecordIdentity, normalizeCircuitState } from './survivalCircuit.js';
+import {
+  CIRCUIT_BOSS_SEQUENCE,
+  CIRCUIT_STAGE_COUNT,
+  CIRCUIT_TOTAL_ROUNDS,
+  circuitBossFor,
+  circuitRecordIdentity,
+  normalizeCircuitState,
+} from './survivalCircuit.js';
 import {
   applyCrossoverResult,
   crossoverFactsFor,
@@ -726,6 +733,9 @@ export function emptyCrucibleProfile() {
     crossover: emptyCrossover(),
     perks: emptyPerks(),
     challenges: emptyChallenges(),
+    // RC-CRUCIBLE-DOOR (row 481): the last death suffered OUTSIDE the door, kept so the
+    // Crucible can offer a seeded drill of the thing that killed you. Null until the first one.
+    lastAdventureDeath: null,
   };
 }
 
@@ -778,6 +788,7 @@ function migrateProfile(raw) {
     crossover: migrateCrossover(src.crossover),
     perks: migratePerks(src.perks),
     challenges: migrateChallenges(src.challenges),
+    lastAdventureDeath: normalizeAdventureDeath(src.lastAdventureDeath),
   };
   if (version > CRUCIBLE_META_SCHEMA_VERSION) {
     for (const key of Object.keys(src)) {
@@ -795,6 +806,7 @@ function migrateProfile(raw) {
         || key === 'crossover'
         || key === 'perks'
         || key === 'challenges'
+        || key === 'lastAdventureDeath'
       ) continue;
       profile[key] = cloneJson(src[key]);
     }
@@ -1620,6 +1632,10 @@ export function compactRunResult(result, run, newly) {
   const circuitSrc = result?.circuit ?? run?.telemetry?.circuit;
   const circuit = normalizeCircuitState(circuitSrc);
   if (circuit) compact.circuit = circuit;
+  // RC-CRUCIBLE-DOOR (row 481) — the Grudge Ledger's raw material: what ended the run, filed
+  // on the defeat row itself so later reads never re-derive it from a replay.
+  const deathBy = normalizeDeathBy(result && result.deathBy);
+  if (deathBy && (compact.outcome === 'defeat' || compact.outcome === 'death')) compact.deathBy = deathBy;
   compact.recordRules = recordRulesFor(result || {}, run || {});
   Object.assign(compact, roundProgress({ ...run, ...result }));
   compact.bestLine = normalizeBestLine({ ...result?.bestLine, seed: compact.seed, recordRules: compact.recordRules });
@@ -1939,4 +1955,148 @@ export function formatKitBalanceBoard(board, { seeds = [] } = {}) {
   lines.push(`Pulse tops board: ${board && board.pulseTopsBoard ? 'YES' : 'no'}`);
   lines.push(`physics ≥ 2× gun: ${board && board.physicsWins2x ? 'YES' : 'NO'}`);
   return lines.join('\n');
+}
+
+// ─── RC-CRUCIBLE-DOOR (row 481): the door opens both ways ─────────────────────
+// An Adventure death files a small note here; the door then offers a seeded drill of the
+// thing that killed you, and the records surface prints the ledger of what keeps ending runs.
+
+const ADVENTURE_DEATH_FIELD_MAX = 96;
+
+function shortField(value) {
+  return typeof value === 'string' && value ? value.slice(0, ADVENTURE_DEATH_FIELD_MAX) : null;
+}
+
+/**
+ * Normalize a stored/note-shaped Adventure defeat to the bounded schema, or null when it
+ * carries nothing a drill could seed from.
+ */
+export function normalizeAdventureDeath(raw) {
+  const src = asObject(raw);
+  if (!src) return null;
+  const out = {
+    attacker: shortField(src.attacker),
+    weaponId: shortField(src.weaponId),
+    weapon: shortField(src.weapon),
+    factionId: shortField(src.factionId),
+    context: shortField(src.context),
+    sectorId: shortField(src.sectorId),
+    recordedAt: shortField(src.recordedAt),
+  };
+  return out.attacker || out.weapon || out.context ? out : null;
+}
+
+/**
+ * The {attacker, weapon} tag a defeat row files under. `normalizeDeathBy` accepts the live
+ * receipt or a stored row; the stored row keeps only what the ledger prints.
+ */
+export function normalizeDeathBy(raw) {
+  const src = asObject(raw);
+  if (!src) return null;
+  const attacker = shortField(src.attacker || (src.source && src.source.label));
+  const weapon = shortField(src.weapon);
+  if (!attacker && !weapon) return null;
+  return { attacker, weapon };
+}
+
+/**
+ * Row 481 — file the death the door will drill. survivalResults calls this when a
+ * `player:death` lands outside any live survival run; the newest note replaces the older.
+ * Returns the stored note, or null when the receipt carried nothing nameable.
+ */
+export function noteAdventureDeath(receipt, { sectorId = null, storage = liveStorage() } = {}) {
+  const src = asObject(receipt);
+  const note = normalizeAdventureDeath({
+    attacker: src && (src.attacker || (src.source && src.source.label)),
+    weaponId: src && src.weaponId,
+    weapon: src && src.weapon,
+    factionId: src && src.factionId,
+    context: src && src.context,
+    sectorId: sectorId || (src && src.sectorId),
+    recordedAt: nowIso(),
+  });
+  if (!note) return null;
+  const profile = loadCrucibleMeta(storage);
+  profile.lastAdventureDeath = note;
+  saveCrucibleMeta(profile, storage);
+  return note;
+}
+
+/**
+ * Row 481 — Run What Killed You: the drill offer derived from the filed Adventure death.
+ * The seed is folded deterministically from the receipt — same death, same drill — so the
+ * room the player practices in is the receipt made playable, never a fresh roll. Practice
+ * law (queued by the door) keeps every reward off it.
+ */
+export function runWhatKilledYouOffer(profile) {
+  const death = normalizeAdventureDeath(profile && profile.lastAdventureDeath);
+  if (!death) return null;
+  const identity = [death.attacker, death.weaponId, death.context, death.sectorId]
+    .filter(Boolean).join('|') || 'unidentified';
+  return {
+    seed: hash32('rc481-run-what-killed-you', identity) || 1,
+    attacker: death.attacker,
+    weapon: death.weapon,
+    sectorId: death.sectorId,
+  };
+}
+
+export const GRUDGE_LEDGER_ROWS = 4;
+
+/**
+ * Row 481 — the Grudge Ledger: the top causes of filed Crucible defeats, most frequent
+ * first. Rows without a filed cause count under "unidentified", which is honest — the row
+ * names the gap rather than hiding it.
+ */
+export function grudgeLedgerFor(profile, limit = GRUDGE_LEDGER_ROWS) {
+  const tally = new Map();
+  for (const row of (profile && Array.isArray(profile.history) ? profile.history : [])) {
+    if (!row || (row.outcome !== 'defeat' && row.outcome !== 'death')) continue;
+    const deathBy = normalizeDeathBy(row.deathBy);
+    const attacker = (deathBy && deathBy.attacker) || 'unidentified';
+    const weapon = (deathBy && deathBy.weapon) || null;
+    const key = `${attacker}|${weapon || ''}`;
+    const prev = tally.get(key);
+    if (prev) prev.count += 1;
+    else tally.set(key, { attacker, weapon, count: 1 });
+  }
+  return [...tally.values()]
+    .sort((a, b) => b.count - a.count || a.attacker.localeCompare(b.attacker))
+    .slice(0, Math.max(1, Number.isInteger(limit) ? limit : GRUDGE_LEDGER_ROWS));
+}
+
+/**
+ * Row 481 — the Case Files: the champions filed Circuit journeys actually beat. A stage
+ * counts only when it was cleared AND its route entry was a real room — a service stop
+ * never fought a champion. Ordered by the journey's boss sequence, then by name.
+ */
+export function caseFilesFor(profile) {
+  const tally = new Map();
+  for (const row of (profile && Array.isArray(profile.history) ? profile.history : [])) {
+    const circuit = row && asObject(row.circuit);
+    if (!circuit || !Array.isArray(circuit.route)) continue;
+    const cleared = Number.isInteger(circuit.clearedStages) ? circuit.clearedStages : 0;
+    if (cleared <= 0) continue;
+    for (const entry of circuit.route) {
+      if (!entry || !Number.isInteger(entry.stage) || entry.stage > cleared) continue;
+      if (entry.nodeKind === 'service') continue;
+      const bossId = CIRCUIT_BOSS_SEQUENCE[entry.stage - 1] || null;
+      const boss = circuitBossFor(bossId);
+      if (!boss) continue;
+      const prev = tally.get(boss.id);
+      if (prev) {
+        prev.count += 1;
+        prev.lastSeed = Number.isInteger(row.seed) ? row.seed : prev.lastSeed;
+      } else {
+        tally.set(boss.id, {
+          championId: boss.id,
+          label: boss.label || boss.id,
+          stage: entry.stage,
+          count: 1,
+          lastSeed: Number.isInteger(row.seed) ? row.seed : null,
+        });
+      }
+    }
+  }
+  return [...tally.values()].sort((a, b) => a.stage - b.stage || a.label.localeCompare(b.label));
 }

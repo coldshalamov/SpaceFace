@@ -13,14 +13,32 @@ const partsLibrarySrc = fs.readFileSync(new URL('../src/render/partsLibrary.js',
 test('encounter pending squads warm through the roster decode lane inside the decode runway', () => {
   const start = rendererSrc.indexOf('function warmEncounterPendingDecode');
   assert.notEqual(start, -1, 'warmEncounterPendingDecode must exist');
-  const body = rendererSrc.slice(start, start + 3000);
+  // Body ends at the next top-level declaration, not a fixed window — the function grew and
+  // a character budget silently read past its closing brace.
+  let end = rendererSrc.length;
+  for (const marker of ['\nfunction ', '\nexport function ', '\nexport async function ', '\nasync function ']) {
+    const next = rendererSrc.indexOf(marker, start + 40);
+    if (next !== -1 && next < end) end = next;
+  }
+  const body = rendererSrc.slice(start, end);
+  // The roster collection lives in collectEncounterWarmChannels — slice its body the same way.
+  const helperStart = rendererSrc.indexOf('function collectEncounterWarmChannels');
+  assert.notEqual(helperStart, -1, 'collectEncounterWarmChannels must exist');
+  let helperEnd = rendererSrc.length;
+  for (const marker of ['\nfunction ', '\nexport function ', '\nexport async function ', '\nasync function ']) {
+    const next = rendererSrc.indexOf(marker, helperStart + 40);
+    if (next !== -1 && next < helperEnd) helperEnd = next;
+  }
+  const helperBody = rendererSrc.slice(helperStart, helperEnd);
   assert.match(body, /state\.encounterDirector\s*&&\s*state\.encounterDirector\.pending/,
     'the poll reads the director pending list');
   assert.match(body, /item\.dueAt\s*-\s*now\s*>\s*TABLE_DECODE_RUNWAY_SECONDS/,
     'items warm only once inside the decode-runway lead window');
-  assert.match(body, /ship\.archetype/,
+  assert.match(body, /collectEncounterWarmChannels\(item, archetypes, files\)/,
+    'the poll delegates roster collection to the warm-channels helper');
+  assert.match(helperBody, /ship\.archetype/,
     'the roster comes from item.ships[].archetype');
-  assert.match(body, /ship\.entitySpec/,
+  assert.match(helperBody, /ship\.entitySpec/,
     'entitySpec escape-hatch records are collected alongside archetype rows');
   assert.match(body, /'encounter-pending-decode-runway'/,
     'the warm posts a deadline-class runway role, not the visible class');
@@ -60,4 +78,22 @@ test('place and cargo commit paths refuse stale admission runs like the ship com
     'place commit must drop a run whose epoch the boundary superseded');
   assert.match(placeGuard, /installedPreparedDisposer\s*\?\s*installedPreparedDisposer\(\)\s*:\s*disposePreparedPlace\(\)\s*\)\s*\|\|\s*disposeOwnedPreparedBoundary\(boundary/,
     'place commit must dispose only its own prepared tree');
+});
+
+// D231 / F-LOAD-04: the claim-defense roster map is per-run bookkeeping on a renderer that
+// outlives the run. run:ended fires only for non-adventure runs (runSession._onExitToMenu), so
+// the campaign's title → New Game / Continue cycle must clear it on game:new and save:restoring
+// too — otherwise every defense live at exit leaves a permanent entry.
+test('claim-defense warm rosters clear on every run boundary', () => {
+  const handlerBody = (event) => {
+    const marker = `onBus('${event}', `;
+    const start = rendererSrc.indexOf(marker);
+    assert.notEqual(start, -1, `renderer must subscribe ${event}`);
+    const next = rendererSrc.indexOf('\n    onBus(', start + marker.length);
+    return rendererSrc.slice(start, next === -1 ? start + 4000 : next);
+  };
+  for (const event of ['run:ended', 'game:new', 'save:restoring']) {
+    assert.match(handlerBody(event), /this\._claimDefenseRosters\)\s*this\._claimDefenseRosters\.clear\(\)/,
+      `${event} must clear _claimDefenseRosters`);
+  }
 });

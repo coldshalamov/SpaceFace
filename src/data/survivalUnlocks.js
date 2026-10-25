@@ -230,6 +230,16 @@ export const SURVIVAL_UNLOCK_CATALOG = freezeDeep([
     grants: { mutators: ['physics_only'] },
   }),
   entry({
+    // RC-CRUCIBLE-DOOR (row 481) — Wreck Ballast: the door's dead-hull debris field, earned
+    // on the same climb the other mutators are.
+    id: 'unlock_mutator_wreck_ballast',
+    kind: 'mutator',
+    label: 'Wreck Ballast',
+    blurb: 'The room comes littered with dead hulls. They throw like everything else.',
+    earn: { kind: 'waves_cleared', min: 10 },
+    grants: { mutators: ['wreck_ballast'] },
+  }),
+  entry({
     id: 'unlock_trial_one_hull',
     kind: 'trial',
     label: 'One Hull',

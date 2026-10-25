@@ -76,6 +76,32 @@ const COMMODITY_OVERLAYS = Object.freeze({
   cmdty_cyst_resin: {
     maker: 'Cut from lantern cysts and spindle broods by people who wash their hands twice.',
   },
+  cmdty_ice_water: {
+    maker: 'Belt ice is harvested by crews who never see it liquid. The Quiet mark theirs.',
+    casualty: 'A water war at Ceres predates the Concord charter. The water won.',
+  },
+  cmdty_volatiles: {
+    maker: 'Ice volatiles — skimmed, bottled, priced by the breath they could have been.',
+  },
+  cmdty_gas_hydrogen: {
+    maker: 'Hydrogen feedstock, compression-graded. The tank is worth more than the gas until it isn\'t.',
+  },
+  cmdty_fuel_cells: {
+    maker: 'Stacked in Vesta Forge halls; the cell stamp is the only honest part of the deal.',
+  },
+  cmdty_medical: {
+    maker: 'Relief cargo. Every sector\'s shortage is someone else\'s price.',
+    casualty: 'The Aesop run lost a hull to spoilage once. The Consortium renamed the route.',
+  },
+  cmdty_food: {
+    maker: 'Provisions, packed to regulation shelf-life. Eating fresh is a berth-class privilege.',
+  },
+  cmdty_silicate: {
+    maker: 'Silicate rock: the commodity that pays for the trucks that haul it.',
+  },
+  cmdty_ore_platinium: {
+    maker: 'Platinum ore moves quiet and insured. The manifest never says the word twice.',
+  },
   cmdty_ore_iron: {
     maker: 'Drift Miners Collective claims pull it out by the claim-load.',
     casualty: 'Voss can recite the crews the exhausted veins kept.',
@@ -90,9 +116,9 @@ const COMMODITY_OVERLAYS = Object.freeze({
 });
 
 const HULL_OVERLAYS = Object.freeze({
-  ship_kestrel: { maker: 'Built to a Concord courier pattern the yards stopped stamping. Every pilot\'s first argument.' },
-  ship_pelican: { maker: 'Drift Miners yard-stock; the cargo frame eats what the rock gives up.' },
-  ship_wasp: { maker: 'Reach-adjacent fighter shops turn these out fast and do not ask what for.' },
+  ship_kestrel: { maker: 'Built to a Concord courier pattern the yards stopped stamping. Every pilot\'s first argument.', casualty: 'Maera Vols flew one into the Quiessence story. The pattern outlives the paperwork on it.' },
+  ship_pelican: { maker: 'Drift Miners yard-stock; the cargo frame eats what the rock gives up.', casualty: 'The first production run cracked a gantry at Ceres and took the shop foreman with it. The collective still counts the frame lucky.' },
+  ship_wasp: { maker: 'Reach-adjacent fighter shops turn these out fast and do not ask what for.', casualty: 'Two of the pattern\'s test pilots filed complaints before the third stopped filing anything. The shops sell it anyway.' },
   ship_mule: { maker: 'Meridian Trade Syndicate contract freight; boring on purpose, alive because of it.' },
   ship_drifter: { maker: 'A free-market frame assembled from whoever bid lowest that quarter.' },
   ship_hornet: { maker: 'Interceptor shops sell it to people who intend to be somewhere else already.' },
@@ -169,12 +195,85 @@ const MODULE_OVERLAYS = Object.freeze({
   mod_thruster_stock_l: { maker: 'Stock thruster, heavy frame. The bolt pattern is older than most pilots.' },
   mod_claw_anchor_s: { maker: 'Custody-hardware; bounty crews fit it when the mark\'s hull is worth more intact.' },
   mod_signature_reader_s: { maker: 'Reads a drive plume the way a clerk reads a forged seal — for the lie of it.' },
+  mod_shield_booster_s: { maker: 'First shield most hulls ever buy. The yard sells it with the invoice half-typed.', casualty: 'More pilots have died trusting this panel than any other line item in the shop.' },
+  mod_shield_capacitor_m: { maker: 'Capacitor bank with a waiting list; the deep-charge cells are stamped Meridian surplus.' },
+  mod_shield_aegis_l: { maker: 'The L-frame aegis. It costs more than the hull it protects, which is the entire pitch.' },
+  mod_engine_ion_m: { maker: 'Ion drive, baseline M. Quiet thrust for pilots who still pay the toll on noise.' },
+  mod_engine_fusion_m: { maker: 'Fusion bottle with a Meridian warranty sticker over a Drift serial. Both halves work.' },
+  mod_engine_sprint_m: { maker: 'Sprint profile: burns hot, cools slow. Smugglers buy two and call it redundancy.' },
+  mod_engine_endurance_m: { maker: 'Long-haul tune. The manual\'s first page is a picture of a man who is not in a hurry.' },
+  mod_engine_warp_l: { maker: 'L-frame coil. Customs asks about the drain signature; everyone says "refrigeration."' },
+  mod_thruster_stripped_s: { maker: 'Verniers with the safeties filed off by hand. You can see the file marks.' },
+  mod_thruster_vernier_m: { maker: 'Proper vernier cluster. The kind of part that makes a cheap hull fly expensive.' },
+  mod_thruster_gimbal_l: { maker: 'Full gimbal array. Turns a freight box like it owes the pilot money.' },
+  mod_cargo_pod_m: { maker: 'Bolt-on pod. The welds outlive whatever you put inside it.' },
+  mod_cargo_expander_l: { maker: 'Hold expansion, L-rated. Legal in nine sectors, tolerated in the rest.' },
+  mod_cargo_compactor_l: { maker: 'Compression rig for cargo that should not compress. Manifest says "assorted."' },
+  mod_mining_laser_s: { maker: 'The starter beam. Every Drift crew began with one of these and a grudge.' },
+  mod_mining_beam_m: { maker: 'Mid-beam, steady draw. It sings at a pitch the old hands call "payday."' },
+  mod_mining_pulverizer_l: { maker: 'Pulverizes the vein and the schedule. The rock never gets a vote.' },
+  mod_mining_industrial_l: { maker: 'Industrial-grade extractor. Belt crews call the mount "the mortgage."' },
+  mod_repulsion_trap_s: { maker: 'Repulsion field in a box. Pirates hate it; insurers pretend to.' },
+  mod_cargo_scanner_s: { maker: 'Sees through a hold wall the way a customs clerk sees through a smile.', casualty: 'Bought at a discount after the last owner saw too much.' },
+  mod_filter_stack_s: { maker: 'Biofilm scrubber. The smell it removes has its own union.' },
+  mod_field_coherence_meter: { maker: 'Measures how honest a jump field is being. Rarely good news.' },
+  mod_quarantine_locker_s: { maker: 'A locker that locks from the inside out, which is the point.', casualty: 'The first crew to need one did not have one.' },
 });
 
 const WEAPON_OVERLAYS = Object.freeze({
   wpn_saucer_death_ray: {
     maker: 'Integral to the Saucer frame — if the Saucer exists, so does this. Neither is on a receipt.',
     casualty: 'Ask the ghost convoys. The ledger calls it "unattributed energy event."',
+  },
+  wpn_snarl_s: {
+    maker: 'Webcaster filament spun from repulsion-trap stock. The Reach sells it as "negotiation aid."',
+  },
+  wpn_pulse_laser_s: {
+    maker: 'First gun on most hulls. The capacitor hum is the sound of being taken seriously.',
+  },
+  wpn_autocannon_s: {
+    maker: 'Belt-fed, drum-cooled, honest. The recoil writes its name in your shoulder.',
+  },
+  wpn_flak_turret_s: {
+    maker: 'Point-defense drum. It does not aim so much as argue a volume.',
+  },
+  wpn_concussion_cannon_s: {
+    maker: 'Hits like a dropped berth. Mining crews buy it for rocks and keep it for arguments.',
+  },
+  wpn_pulse_laser_m: {
+    maker: 'Twin-lens M frame. The upgrade that makes a hauler write "armed" on the manifest and mean it.',
+  },
+  wpn_bank_stream_m: {
+    maker: 'Kinetic stream, bank-fed. Sounds like a rivet gun arguing with a door.',
+  },
+  wpn_autocannon_m: {
+    maker: 'The heavy workhorse. Every weigh-slip in the Reach has a column for what it did.',
+  },
+  wpn_beam_laser_m: {
+    maker: 'Continuous M beam. It costs the price of a small crew and hires itself anyway.',
+  },
+  wpn_railgun_m: {
+    maker: 'Slugs at speed. The firing report is the loudest silence on the ship.',
+  },
+  wpn_plasma_cannon_m: {
+    maker: 'Bottled star, poured slowly. The coolant bill is a second weapon.',
+  },
+  wpn_missile_rack_m: {
+    maker: 'Rack of six, dumb until told otherwise. The tell is the lock-tone, not the launch.',
+  },
+  wpn_heavy_beam_l: {
+    maker: 'L-frame lance. Ships this size stop being vehicles and start being weather.',
+    casualty: 'The first capital duel in Charon Expanse used two of these. The Expanse kept the glass.',
+  },
+  wpn_torpedo_l: {
+    maker: 'A missile with patience. The target hears it before the alarm does.',
+  },
+  wpn_siege_lance_l: {
+    maker: 'Flagship ordnance. Mounting it is a statement; firing it is a legal proceeding.',
+    casualty: 'Station Kessel\'s last report was twelve words long and mostly static.',
+  },
+  wpn_emp_disruptor_m: {
+    maker: 'Kills the lights, keeps the hull. Bounty crews call it "the polite option."',
   },
 });
 

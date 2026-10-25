@@ -12,6 +12,12 @@ export const BARK_SITUATION_FILL = {
       'Your prior operator left an open citation. This hail is that citation waking up.',
       'Verification window is open. Speak only if the manifest and the mass disagree.',
       'Concord net confirms the ping. Any fine is calculated after you clear the lane.',
+      // S-01: the harbour's third shift on the net — the desk that already knows.
+      'Marker Twelve-K logged your mass at forty-one again. Correct your manifest or your marker.',
+      'Sweep reads clean and the manifest reads creative — the sweep is the one we file.',
+      'Third-shift desk — your dock request beat your docking by six minutes. Noted.',
+      // M-09: the desk that knows you personally — citation flavor with a memory.
+      'The sweep roster knows your hull by first name. The file prefers a number.',
     ],
     warn: [
       'Reduce speed. The corridor citation writes itself if you keep this heading.',
@@ -32,6 +38,7 @@ export const BARK_SITUATION_FILL = {
       'Seal the magazines and prepare the hold lights. Inspectors are already on the plot.',
       'Contraband listed on your registry is forfeit. The rest can be argued later.',
       'Compliance is the cheaper line item. The boarding party is the other line item.',
+      'This hold was audited once. The discrepancy was filed, not resolved.',
     ],
     attack: [
       'Ordnance released under the open enforcement header. Stay on the record.',
@@ -80,16 +87,21 @@ export const BARK_SITUATION_FILL = {
       'You are painted and cleared. Do not become interesting.',
       'Routine sweep complete on your hull. The next hull is already more work.',
       'Keep the lane. The patrol is counting seals, not stories.',
+      // S-01: third shift admits the corridor is theirs after the bell.
+      'Bell three just rang — the lane is ours until first shift, so fly it like you work here.',
+      'Pass — the manifest on your hull was already wrong before you left, and it can stay wrong home.',
+      // M-09: the desk that already filed your wake.
+      'Marker Twelve-K desk. Your wake is already on the board — behave for it.',
     ],
     distress: [
-      'Ref 77-A. Hull bleeding air. Any station that can hear this, log the time.',
+      'Ref 77-A: hull bleeding air, any station that hears this logs the time.',
       'Casualty report opens now. We are not going to finish it ourselves.',
       'Power failing on the patrol cutter. Witnesses, hold your recorders up.',
       'Mayday under the emergency header. The fine for ignoring it is famous.',
       'Drive dark, lights failing. File this as a ship, not as a rumor.',
       'Concord hull in distress. Render aid and keep the paperwork honest.',
       'We are leaving the lane the hard way. Note the coordinate before we do.',
-      'Emergency seal on the citation. Help first. The invoice can wait one hour.',
+      'Emergency seal on the citation — help first, the invoice can wait one hour.',
     ],
   },
   faction_mts: {
@@ -102,6 +114,9 @@ export const BARK_SITUATION_FILL = {
       'Smile for the sensor. Insurance reads the picture later.',
       'Your transponder spends like a signature. We are just witnessing it.',
       'Market research, armed. Nothing personal, everything itemized.',
+      // S-03: the junction's working convoy voice.
+      'Marshal Nine has your slot. Scan is complimentary; missing the window is not.',
+      'Interval check — you are the third hull in a three-hull window; do not become fourth.',
     ],
     warn: [
       'This lane is a toll road that forgot to look like one. Pay, or look like a loss.',
@@ -170,14 +185,18 @@ export const BARK_SITUATION_FILL = {
       'Pass. We are watching a richer target further up the lane.',
       'Welcome to a priced road. The price is on the board, not in our mood.',
       'Convoy lane is open. Pirates are a market inefficiency we bill for.',
+      // S-03: marshal voice on the form-up.
+      'Form on the lamps, threes — the Tally owed you a window and this is it.',
+      'Outbound marshal. Count your hulls before the Reach counts them for you.',
+      'Passing the marshal means your papers survived two desks. Congratulations on the third.',
     ],
     distress: [
       'Meridian hull in the red. Aid will be invoiced at the rescue rate.',
-      'Drive failed. The cargo is still collateral. Please arrive before it is not.',
+      'Drive failed and the cargo is still collateral — please arrive before it is not.',
       'We are taking air and water in the wrong order. Send a buyer or a tug.',
       'Mayday, commercially. Anyone who saves the manifest gets first look.',
       'Collections cannot collect from a cloud of scrap. We would like to avoid that.',
-      'Syndicate boat dark on the lane. The account is open. So is the hull.',
+      'Syndicate boat dark on the lane — the account is open, so is the hull.',
       'Help, and we will remember the number. Ignore us, and so will the board.',
       'Distress with a receipt attached. Come earn it.',
     ],
@@ -192,6 +211,13 @@ export const BARK_SITUATION_FILL = {
       'Transponder is fuzzy. So is my left eye. Broadcast the clean code.',
       'Yard watch. You are in the dust cloud we told people not to nap in.',
       'Checking you are a truck and not a thief. The difference pays my rent.',
+      // S-02: claim-town etiquette on the net — paper first, charges second.
+      'Reading Forty-Tag behind you — two pins, one claim, so fly like you know which one is yours.',
+      'Sensor says your hold is heavy and your papers are light. Around here that is a confession.',
+      'You are over a lapsed stake — the lapse is in the crew, not the claim; keep moving.',
+      // S-04: the Forge's watch-roster voice.
+      'Yard scan — if your plate is stamped you are welcome, and if not you are cargo.',
+      'Hold the burn to twenty. The watch clock does not grade on a curve.',
     ],
     warn: [
       'That heading eats claims. Turn, or the next shift argues with your wreck.',
@@ -261,15 +287,20 @@ export const BARK_SITUATION_FILL = {
       'Neighbor lane. Act like you have met a neighbor before.',
       'Collective watch. Nothing to prove. Plenty to lose if you get clever.',
       'Pass. We are watching a cutter, not your life story.',
+      // S-02: quiet-dread shift talk.
+      'Pass slow by the pin on the Pallas leg — the ID still pings and the crew does not.',
+      'Lane is clear. The weigh is wet again, but the lane is clear.',
+      // S-04: forge pride.
+      'Your watch, your stamp. Fly it like you poured it.',
     ],
     distress: [
-      'Drift mayday. Hull split on a cut we knew was bad. Anybody sober, come.',
+      'Drift mayday — hull split on a cut we knew was bad; anybody sober, come.',
       'We are losing air and the drill is still spinning. Shut us down or tow us.',
       'Mayday from the face. Two in the bay, one not answering.',
-      'Collective boat in trouble. The claim can wait. We cannot.',
+      'Collective boat in trouble — the claim can wait, we cannot.',
       'Drive cooked. If you have a tug, we have a story and a debt.',
-      'Help. The rock shifted. So did our day.',
-      'Distress, plain. No code, no choir. Just come get the living ones.',
+      'Help — the rock shifted, and so did our day.',
+      'Distress, plain — no code, no choir, just come get the living ones.',
       'Yard, we are done flying. Mark the coordinate and bring lights.',
     ],
   },
@@ -355,8 +386,8 @@ export const BARK_SITUATION_FILL = {
     ],
     distress: [
       'Mayday, and make it sound better than this. We are coming apart.',
-      'Reach boat hit. Pride is fine. The hull is not. Come anyway.',
-      'Help. We picked a fight that had a budget. We did not.',
+      'Reach boat hit — pride is fine, the hull is not; come anyway.',
+      'Help — we picked a fight that had a budget, and we did not.',
       'Distress from the loud ship. The loud is now a hiss.',
       'Anybody with a patch kit and no lecture, this is your hour.',
       'We are ballistic and embarrassed. Tow first, joke second.',
@@ -375,6 +406,8 @@ export const BARK_SITUATION_FILL = {
       'Count holds.',
       'We watched the arrival.',
       'Your light is old news.',
+      // S-05: the den's etiquette, kept terse.
+      'You rang once. Noted.',
     ],
     warn: [
       'Leave the lane.',
@@ -445,6 +478,9 @@ export const BARK_SITUATION_FILL = {
       'We see you. That is all.',
       'Hello is too many words.',
       'Pass clean. Pass now.',
+      // S-05: the bell is the only roll call.
+      'One ring. That was the roll call.',
+      'The berth stays open. Do not ask whose.',
     ],
     distress: [
       'Hit. Need a hull.',
@@ -540,14 +576,14 @@ export const BARK_SITUATION_FILL = {
       'The Pattern permits this. Remain unremarkable.',
     ],
     distress: [
-      'The hymn breaks. Lift the verse. Come.',
+      'The hymn breaks — lift the verse, come.',
       'Mayday. Our ascent has turned to a fall.',
       'Brothers, the hull splits. Sing us home alive.',
       'Distress. The Pattern still wants this ship.',
       'We are holed. The canto is a whisper.',
       'Help the singers. The guns are already quiet.',
       'A choir boat bleeds. Tow before the interval ends.',
-      'Mayday. Save the voice. The voice remembers.',
+      'Mayday — save the voice; the voice remembers.',
     ],
   },
 
@@ -639,8 +675,8 @@ export const BARK_SITUATION_FILL = {
       'Distress. I will owe you a drink and mean it.',
       'Anybody with a tow, the relay is down to this whisper.',
       'We are breaking up on the cheap side of the lane. Come if you can.',
-      'Mayday. No flag to hide behind. Just a hole and a hope.',
-      'Free ship in trouble. The philosophy can wait. The air cannot.',
+      'Mayday — no flag to hide behind, just a hole and a hope.',
+      'Free ship in trouble — the philosophy can wait, the air cannot.',
     ],
   },
 
@@ -728,12 +764,12 @@ export const BARK_SITUATION_FILL = {
     distress: [
       'Clause distress: the hull is failing and lawful aid is requested.',
       'Vael boat in breach of its own integrity. Assist under the rescue annex.',
-      'Mayday. The compact still binds the living. We would prefer to remain in that set.',
-      'Clause 21: a signatory is adrift. Recovery is compensated. Come.',
-      'Our batteries are dark. The file is not. Help us keep both.',
+      'Mayday — the compact still binds the living, and we would prefer to remain in that set.',
+      'Clause 21: a signatory is adrift — recovery is compensated, come.',
+      'Our batteries are dark and the file is not — help us keep both.',
       'Distress from the Consensus. The clause for dying is one we prefer not to execute.',
       'Hull open. Any contracted boat may answer and be paid.',
-      'Mayday. Precise location follows. This sentence is the plea.',
+      'Mayday — precise location follows; this sentence is the plea.',
     ],
   },
 
@@ -820,8 +856,8 @@ export const BARK_SITUATION_FILL = {
     ],
     distress: [
       'The reading room is on fire in the small, hull-shaped way. Help.',
-      'Mayday. An archivist is becoming a lost volume. Retrieve us.',
-      'Distress. The index cannot shelve a corpse usefully. Come sooner.',
+      'Mayday — an archivist is becoming a lost volume; retrieve us.',
+      'Distress — the index cannot shelve a corpse usefully; come sooner.',
       'We are holed between chapters. Any boat with a patch is a colleague.',
       'The stacks call for aid. Our own lamps are going out.',
       'Mayday from the Archive. The silence after this will be the wrong kind.',
@@ -913,11 +949,11 @@ export const BARK_SITUATION_FILL = {
     ],
     distress: [
       'Distress ticket opened by this hull. Response requested from any available unit.',
-      'Mayday. Status: venting. Status is not a metaphor.',
+      'Mayday — status: venting, and status is not a metaphor.',
       'This boat is failing its own routing. Assistance will be logged as a credit.',
       'Automated distress. The voice is flat because the hull is not.',
       'Help requested. Request priority: hull integrity.',
-      'We are adrift. The queue cannot pilot a wreck. A pilot can.',
+      'We are adrift — the queue cannot pilot a wreck, a pilot can.',
       'Damage exceeds the continue threshold. Retrieve us.',
       'Mayday from fulfillment. The system wants this asset returned intact.',
     ],
@@ -1005,14 +1041,14 @@ export const BARK_SITUATION_FILL = {
       'Pass, kin-or-not. Leave the pile alone.',
     ],
     distress: [
-      'Mayday from the pit. The boat is opening. Come before the price hits zero.',
+      'Mayday from the pit — the boat is opening; come before the price hits zero.',
       'Kin, we are lit up. Tow first, haggle second.',
-      'Distress. A yard boat should not be the scrap. Help us stay the scrapper.',
+      'Distress — a yard boat should not be the scrap; help us stay the scrapper.',
       'Hull split. If a uniform answers, take the tow and spit later.',
-      'We are ballistic and angry about it. Angry can wait. Air cannot.',
+      'We are ballistic and angry about it — angry can wait, air cannot.',
       'Help. The cutters are in us now, and they are not ours.',
       'Pitborn down to a hiss. Do not let the hiss be the inventory.',
-      'Mayday. Save the crew. The metal can be renegotiated.',
+      'Mayday — save the crew; the metal can be renegotiated.',
     ],
   },
 
@@ -1099,7 +1135,7 @@ export const BARK_SITUATION_FILL = {
     ],
     distress: [
       'Mayday, spoken gently because the hull is not. Please come.',
-      'The keeper boat is splitting. The garden cannot tow. You can.',
+      'The keeper boat is splitting — the garden cannot tow, you can.',
       'Distress from the understory. We are becoming the compost too soon.',
       'Help. Our lamps are fruiting and the air is leaving.',
       'We are holed among our own beds. Pull us out before the beds agree.',
@@ -1194,7 +1230,7 @@ export const BARK_SITUATION_FILL = {
       'Query, urgent: will any hull answer a failing auditor.',
       'Mayday across the layer. Our gate-light is a leak.',
       'The question of our survival is now yours. Please answer with a tow.',
-      'Distress. Ancient ships die in ordinary ways. This is one.',
+      'Distress — ancient ships die in ordinary ways, and this is one.',
       'We are holed between doors. Come through the nearer one.',
       'Help. The patience has run out of air.',
       'Verge boat dark. The inquiry continues only if the crew does.',

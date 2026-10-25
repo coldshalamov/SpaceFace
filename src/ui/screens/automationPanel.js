@@ -61,9 +61,9 @@ export function automationRecordRefAttr(value, fallback = '') {
 }
 
 const PROGRAM_OPTIONS = Object.freeze([
-  { value: '', label: 'Manual (mine → bank)', meta: 'Banks ore in the drone buffer; recall to cash out.' },
-  { value: 'mine_to_depot', label: 'Mine → Haul → Sell', meta: 'Loops field mining into depot sales. The board names the stage that is actually stopping work.' },
-  { value: 'patrol_guard', label: 'Guard Player', meta: 'Keeps the drone close as a defensive escort.' },
+  { value: '', label: 'Manual (mine → bank)', meta: 'Banks ore in the drone buffer; recall to cash out. The buffer ledger calls this "dead rock."' },
+  { value: 'mine_to_depot', label: 'Mine → Haul → Sell', meta: 'Loops field mining into depot sales. The board names the stage that is actually stopping work — margin lives on whichever leg stalls.' },
+  { value: 'patrol_guard', label: 'Guard Player', meta: 'Keeps the drone close as a defensive escort. It files every interdiction in the shift log, whether or not you read it.' },
   { value: 'scout_report', label: 'Scout → Report', meta: 'Tests beacon movement and a short overwatch loop.' },
 ]);
 

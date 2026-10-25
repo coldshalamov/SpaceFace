@@ -65,4 +65,6 @@ No prices change. The candidates are Veil Step 4,200 (`modules.js:521`) and Swin
 
 ## Approvals
 
-- (pending)
+- plan-gate reviewer 4964e62b — APPROVE (2026-10-24)
+- plan-gate reviewer fb54441e — APPROVE (2026-10-24)
+- plan-gate reviewer 53f3e19e — APPROVE (2026-10-24) — plan✓3

@@ -1223,7 +1223,7 @@ export const cargo = {
     const restricted = remaining.reduce((sum, [id, qty]) => sum + (defOf(this.state, id)?.legality && defOf(this.state, id).legality !== 'legal' ? Math.max(0, Number(qty) || 0) : 0), 0);
     const retained = remaining.reduce((sum, [, qty]) => sum + Math.max(0, Number(qty) || 0), 0);
     if (restricted && this.bus?.emit) this.bus.emit('toast', {
-      text: `Restricted salvage remains in your bay: ${restricted} units. Find a black market to sell it.`,
+      text: `Restricted salvage stays in your bay: ${restricted} units. Lawful docks won't buy it.`,
       kind: 'warn', ttl: 7,
     });
     if (retained > restricted && this.bus?.emit) this.bus.emit('toast', {
@@ -1239,7 +1239,9 @@ export const cargo = {
       });
     }
     this.bus.emit('salvage:bayCashedIn', { units: sale.units, credits: sale.credits, lots: sale.lots });
-    this.bus.emit('salvage:changed', { used: Math.round(this.state.player.salvageBay?.usedVolume || 0), cap: Math.round(salvageBayCap(this.state)) });
+    // cashIn marks the leftover volume so the first-fill hint never fires AT the berth saying
+    // "Dock to cash it" right after the dock just paid out.
+    this.bus.emit('salvage:changed', { used: Math.round(this.state.player.salvageBay?.usedVolume || 0), cap: Math.round(salvageBayCap(this.state)), cashIn: true });
     this.bus.emit('toast', {
       text: `Salvage bay cashed in: ${sale.units} units for ${sale.credits} cr.`,
       kind: 'good',

@@ -34,6 +34,8 @@ import * as THREE from 'three';
 import { publishMaterialFields } from './vfx/materialEnvironment.js';
 import { createMaterialContactRead, readMaterialContact } from './vfx/materialDirector.js';
 import { bolusCableStyle, applyBolusCableProfile } from './bolusCable.js';
+import { createLineHardware } from './lineHardware.js';
+import { readLineVisualProfile, applyLineClassCableProfile } from './lineVisualProfile.js';
 import { modelTruthPlumeSocketName, modelTruthTrailSocketName } from '../data/modelTruth.js';
 import { isCeresWorkfleetPropulsion, ceresWorkfleetPropulsionAwake, createCeresWorkfleetPlumeBatch } from './ceresWorkfleetVisuals.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
@@ -1860,6 +1862,8 @@ export const vfx = {
     for (const slot of this._lights || []) disposeVfxRoot(slot && slot.obj, disposeState);
     disposeVfxRoot(this._miningBeam && this._miningBeam.mesh, disposeState);
     disposeVfxRoot(this._miningBeam && this._miningBeam.glow, disposeState);
+    this._lineHardware?.dispose();
+    this._lineHardware = null;
     for (const key of ['mesh', 'glow', 'band', 'anchorCore']) {
       disposeVfxRoot(this._tetherCable && this._tetherCable[key], disposeState);
     }
@@ -8921,6 +8925,7 @@ export const vfx = {
     this._tetherColorCool = new THREE.Color('#39d0ff');
     this._tetherColorWarm = new THREE.Color('#ffb35c');
     this._tetherColorHot = new THREE.Color('#ff5c5c');
+    this._tetherColorOverheat = new THREE.Color('#ff2808');
     this._tetherColorWhite = new THREE.Color('#eaffff');
   },
 
@@ -10283,6 +10288,7 @@ export const vfx = {
     // reads loaded even at low strain. Winch-active reel ramps a separate HDR glow read.
     // `l` is the working read: presentation load, with physical strain able to overtake it.
     const l = Math.min(1, Math.max(cable.loadSmooth, cable.strainSmooth));
+    const lineVisual = readLineVisualProfile(this.state, this._lineVisualScratch ||= {});
     const reelTarget = tether && tether.reeling ? Math.max(0, Math.min(1, tether.reelStrength || 0)) : 0;
     cable.reelGlow += (reelTarget - cable.reelGlow) * (1 - Math.exp(-(reelTarget > cable.reelGlow ? 11 : 6) * Math.max(0, dt || 0)));
     if (l < 0.55) this._ctmp.lerpColors(this._tetherColorCool, this._tetherColorWarm, l / 0.55);
@@ -10292,6 +10298,8 @@ export const vfx = {
     // own reel term this used to triple-count and a fully-winched cable read as a plain white
     // noodle, losing the one channel that tells you how hard it is pulling.
     if (cable.reelGlow > 0.01) this._ctmp.lerp(this._tetherColorWhite, cable.reelGlow * 0.20);
+    // Sustained over-class heat is a steady physical warning, including reduced flash mode.
+    if (lineVisual.heat > 0) this._ctmp.lerp(this._tetherColorOverheat, Math.min(1, lineVisual.heat * 1.8));
     // A parting line is white-hot regardless of what load it was carrying a frame ago: the physical
     // load telemetry is already gone by the time the break event lands.
     if (visualSnap > 0) this._ctmp.lerp(this._tetherColorWhite, Math.min(1, visualSnap * 0.95));
@@ -10357,7 +10365,7 @@ export const vfx = {
       // across its whole width and the cable stops being a cable and becomes a plume.
       intensity: (1.5 + l * 1.5 + cable.reelGlow * 1.2 + visualWhip * 1.7)
         * radiance * neonMul * masslineA11y.radianceScale,
-      opacity: (0.24 + 0.20 * l + cable.reelGlow * 0.20 + visualWhip * 0.16)
+      opacity: (0.24 + 0.20 * l + cable.reelGlow * 0.20 + visualWhip * 0.16 + lineVisual.heat * .20)
         * cable.fade * masslineA11y.opacityScale,
     });
     // Ferrules run on the same shader as the rope, so the load colour, the travelling pulse and the
@@ -10405,6 +10413,7 @@ export const vfx = {
     profileInput.parting = snapping;
     const profile = resolveMasslineCableProfile(profileInput, cable.profile);
     applyBolusCableProfile(profile, bolusStyle);
+    applyLineClassCableProfile(profile, lineVisual);
 
     const curve = cable.curveFrame;
     curve.ax = ax; curve.az = az;
@@ -12790,6 +12799,8 @@ export const vfx = {
       this._weaponPresenter.update(dt, context);
     }
     this._updateDamageVenting(dt);
+    if (!this._lineHardware) this._lineHardware = createLineHardware(this.state);
+    this._lineHardware.update(this.helpers?.player?.() || this._ent(this.state.playerId));
     const trailScroll = (this._t * 0.35) % 1;
     if (this._particleMat) {
       if (this._particleMat.uniforms.uTrailScroll) this._particleMat.uniforms.uTrailScroll.value = trailScroll;

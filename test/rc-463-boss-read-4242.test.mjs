@@ -28,7 +28,8 @@ function stubCtx(canvas) {
     canvas, beginPath: rec('beginPath'), moveTo: rec('moveTo'), lineTo: rec('lineTo'),
     closePath: rec('closePath'), fill: rec('fill'),
     stroke: rec('stroke'), clip: rec('clip'), save: rec('save'), restore: rec('restore'),
-    clearRect: rec('clearRect'), setTransform: rec('setTransform'),
+    clearRect: rec('clearRect'),
+    setTransform(...values) { calls.push('setTransform'); canvas._transform = values; },
     setLineDash: rec('setLineDash'), fillRect: rec('fillRect'),
     set fillStyle(_) {}, set strokeStyle(_) {}, set globalAlpha(_) {}, set lineWidth(_) {},
   };
@@ -142,6 +143,42 @@ function tick(h, n = 1, mount = null) {
 
 const castEvents = (h, event) =>
   h.emitted.filter((e) => e.event === `capitalBoss:${event}`).map((e) => e.payload);
+
+test('warning projection stays in CSS pixels on high-DPI screens and after menu return', () => {
+  const env = installDom();
+  globalThis.window.devicePixelRatio = 2;
+  const h = bootScoreFight(TOLLMAN);
+  const mount = mountCapitalBossOverlay({ root: env.root, ...h,
+    helpers: { worldToScreen: (p) => ({ x: 320 + p.x, y: 180 + p.z }) } });
+  const canvas = findAll(env.root, (n) => n.tagName === 'canvas')[0];
+  try {
+    h.bus.emit('capitalBoss:telegraph', {
+      fightId: h.fightId, castId: 'dpi-cast', startedAt: 0, fireAt: 60, endAt: 120,
+      shapes: [{ kind: 'lane', a: { x: 0, z: 0 }, b: { x: 100, z: 0 }, radius: 10 }],
+    });
+    mount.draw(h.state);
+    assert.equal(canvas.width, 2560);
+    assert.equal(canvas.height, 1440);
+    assert.ok(canvas._drawCalls.includes('stroke'), 'a live warning is painted');
+    assert.deepEqual(canvas._transform, [2, 0, 0, 2, 0, 0],
+      'CSS-pixel warning coordinates scale into the backing buffer');
+
+    h.state.mode = 'menu';
+    mount.draw(h.state);
+    assert.deepEqual(canvas._transform, [1, 0, 0, 1, 0, 0], 'menu clears the full backing buffer');
+    h.state.mode = 'flight';
+    mount.draw(h.state);
+    assert.deepEqual(canvas._transform, [2, 0, 0, 2, 0, 0], 'return restores the projection scale');
+
+    env.root.clientWidth = 900;
+    env.root.clientHeight = 600;
+    for (const resize of env.listeners.resize || []) resize();
+    mount.draw(h.state);
+    assert.equal(canvas.width, 1800);
+    assert.equal(canvas.height, 1200);
+    assert.deepEqual(canvas._transform, [2, 0, 0, 2, 0, 0], 'resize restores the canvas transform');
+  } finally { mount.destroy(); env.restore(); }
+});
 
 // ── 1 · all seven authored beats read out before they fire ────────────────────────────
 test('all seven Tollman beats show authored title+counter at least 60 ticks before firing', () => {
@@ -922,6 +959,62 @@ test('game:new alone clears warnings, readouts, and the announcement ledger', ()
     const after = announceLog.filter((e) => e.text.startsWith(`${castTitle}.`)).length;
     assert.equal(after, before + 1,
       'the same cast key is announced again in the new session, not swallowed by the old ledger');
+    mount.destroy();
+    h.capSys.destroy();
+  } finally { env.restore(); }
+});
+
+// ── review · one live-region write per frame, pooled readouts ─────────────────────────
+test('identities opened in one frame share one announcement, cast first; readouts are pooled', () => {
+  const env = installDom(1280, 720);
+  try {
+    const h = bootScoreFight(TOLLMAN);
+    const score = requireCapitalBossEncounter(TOLLMAN).score;
+    const project = (w, out) => { out.x = 640 + w.x; out.y = 360 + w.z; out.onScreen = true; return out; };
+    tick(h, score.introTicks + score.transitionTicks + 30);
+    const fight = h.state.capitalBossEncounters.fights[h.fightId];
+    assert.ok(fight.cast, 'a cast is live before the mount exists');
+    const beat = score.beats.find((b) => b.id === fight.cast.beatId);
+    const act = score.acts[fight.actIndex];
+    const mount = mountCapitalBossOverlay({ root: env.root, bus: h.bus, state: h.state, helpers: { worldToScreen: project } });
+    const writes = [];
+    const liveRegion = findAll(env.root, (n) => n.attributes && n.attributes['aria-live'] === 'polite')[0];
+    Object.defineProperty(liveRegion, 'textContent', {
+      get() { return liveRegion._live || ''; },
+      set(v) { liveRegion._live = v; writes.push(v); },
+    });
+    const expectOneJoined = (label) => {
+      assert.equal(writes.length, 1, `${label}: one live-region write for the frame, got ${writes.length}`);
+      const text = writes[0];
+      assert.ok(text.startsWith(`${beat.title}. ${beat.counter}`), `${label}: the cast instruction leads (${text})`);
+      assert.ok(text.includes(`${score.name} is on you.`), `${label}: the boss intro is not overwritten (${text})`);
+      assert.ok(text.includes(`${score.name}: ${act.title}`), `${label}: the act is not overwritten (${text})`);
+    };
+    mount.draw(h.state);
+    expectOneJoined('late mount');
+    writes.length = 0;
+    mount.draw(h.state);
+    assert.equal(writes.length, 0, 'a steady frame speaks nothing');
+    h.bus.emit('save:loaded', { reason: 'test' });
+    mount.draw(h.state);
+    expectOneJoined('save:loaded');
+
+    // The pooled projection reuses its array and readout objects frame to frame.
+    const pool = [];
+    const first = capitalBossReadouts(h.state, pool);
+    const r0 = first[0];
+    const m0 = r0.move;
+    const second = capitalBossReadouts(h.state, pool);
+    assert.equal(second, pool, 'the caller array is the result');
+    assert.equal(second[0], r0, 'the readout object is reused');
+    assert.equal(second[0].move, m0, 'the move record is reused');
+    assert.deepEqual(Object.keys(r0).sort(), Object.keys(capitalBossReadouts(h.state)[0]).sort(),
+      'a pooled readout carries the same public fields as a fresh one');
+    h.state.mode = 'docked';
+    assert.equal(capitalBossReadouts(null, pool).length, 0, 'no state, no readouts');
+    mount.draw(h.state);
+    const shown = groupNodes(env.root).filter((g) => g.style.display === 'block');
+    assert.equal(shown.length, 0, 'leaving flight hides every readout');
     mount.destroy();
     h.capSys.destroy();
   } finally { env.restore(); }

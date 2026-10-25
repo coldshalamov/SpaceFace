@@ -181,6 +181,23 @@ const SLOT_LABEL = { weapon: 'Weapon', shield: 'Shield', engine: 'Drive', cargo:
 
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
+
+// X-03 — the named module wears its chip. The onboarding voice stamps hints.fitOfferDefId when it
+// speaks "Your credits cover the yard's X"; the yard row for that id carries one chip in the
+// metrics line (the one sub-line a collapsed row shows; appended so the lead metric stays the hero) until the purchase clears the key.
+export function fitOfferChipHtml(d, hints, purchase, equipped, credits) {
+  if (!d || !hints || hints.fitOfferDefId !== d.id) return '';
+  if (equipped) return '';
+  const state = purchase && purchase.state;
+  if (state === 'funding') {
+    const shortfall = Math.max(0, (purchase.price | 0) - (Number(credits) || 0));
+    return `<span class="sx-modrow__chip">Named at the berth · short ${fmt(shortfall)} cr</span>`;
+  }
+  if (state === 'fit' || state === 'inventory') {
+    return `<span class="sx-modrow__chip is-up">Named at the berth</span>`;
+  }
+  return '';
+}
 const shipName = (id) => { const s = SHIP_BY_ID.get(id); return s ? s.name : id; };
 const GAUGE_DEFS = SHIP_ENGINEERING_GAUGE_DEFS.slice();
 const UI_SWITCH_DETENT_CUE = 'sfx_ui_switch_detent';
@@ -4317,7 +4334,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${arsenalIcon(d.id, 24)} ${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
-            `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
+            `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}${fitOfferChipHtml(d, ctx.state.player && ctx.state.player.hints, purchase, equipped, ctx.state.player && ctx.state.player.credits)}</span>` +
             `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : (arsenalSentence(d) ? `<span class="sx-modrow__sentence">${escapeHtml(arsenalSentence(d))}</span> ` : '')}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetailFull)}</span>` +

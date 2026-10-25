@@ -278,6 +278,30 @@ export function resetRunState(state, opts = {}) {
     focus: cameraFocus || fresh.camera.focus,
     shakeOffset: cameraShake || fresh.camera.shakeOffset,
   });
+  // The lane's displayed-camera transport (worker realm) describes the world
+  // that just died — a reset run has no displayed envelope until the next
+  // camera frame lands, so the projector must fall back to its derivation
+  // rather than read a stale zoom/focus. Harmless on the main lane: follow()
+  // restamps displayedZoom/speedZoomFactor on its next frame regardless.
+  delete state.camera.displayedZoom;
+  delete state.camera.speedZoomFactor;
+  delete state.camera.focusX;
+  delete state.camera.focusZ;
+  delete state.camera.aspect;
+  delete state.camera.frameOriginX;
+  delete state.camera.frameOriginZ;
+  delete state.camera.viewKind;
+  delete state.camera.viewMix;
+  delete state.camera.eyeX;
+  delete state.camera.eyeY;
+  delete state.camera.eyeZ;
+  delete state.camera.quatX;
+  delete state.camera.quatY;
+  delete state.camera.quatZ;
+  delete state.camera.quatW;
+  delete state.camera.displayFov;
+  delete state.camera.displayNear;
+  delete state.camera.displayFar;
   if (state.camera.focus && typeof state.camera.focus.set === 'function') state.camera.focus.set(0, 0, 0);
   if (state.camera.shakeOffset && typeof state.camera.shakeOffset.set === 'function') state.camera.shakeOffset.set(0, 0, 0);
   state.bounds = fresh.bounds;
@@ -291,6 +315,8 @@ export function resetRunState(state, opts = {}) {
   state.missions = fresh.missions;
   state.scenario = fresh.scenario;
   state.story = fresh.story;
+  // GOLD-LEDGER: the case board is run-scoped and lazy — a new run starts with no board key.
+  delete state.shipLedger;
   state.world = fresh.world;
   state.jump = fresh.jump;
   state.fuel = fresh.fuel;

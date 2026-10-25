@@ -383,5 +383,18 @@ export default defineFlavorPack({
     { id: 'tag_exp_free_04', set: 'exp_free', sectorId: 'sector_veil_nebula', factionId: 'faction_free', text: 'NO FLAG ON THE HOMESTEAD. THE AIR TANK IS THE ONLY TITLE.' },
     { id: 'tag_exp_free_05', set: 'exp_free', sectorId: 'sector_veil_nebula', factionId: 'faction_free', text: 'THE BOARD SAYS EQUAL SHARES. THE QUIET ALREADY PRICED THE DEFAULT.' },
     { id: 'tag_exp_free_06', set: 'exp_free', sectorId: 'sector_io_reach', factionId: 'faction_free', text: 'SEVENTEEN YEARS AT REACH STATION. THE BOARD HAS NOT SAID PERMANENT.' },
+    // ── T-01 station screens — dockside hand-tags (ATTENTION ledger) ──────────────────
+    { id: 'tag_t01_dock_01', sectorId: 'sector_helios_prime', factionId: 'faction_free', text: 'Paid the toll. The toll paid nobody I met.' },
+    { id: 'tag_t01_dock_02', sectorId: 'sector_ceres_belt', factionId: 'faction_dmc', text: 'MY RIG DIED IN BERTH 12. THE BERTH STILL RENTS IT OUT.' },
+    { id: 'tag_t01_dock_03', sectorId: 'sector_sker_haven', factionId: 'faction_reach', text: 'The scale lies less than the men around it.' },
+    { id: 'tag_t01_dock_04', sectorId: 'sector_tethys_junction', factionId: 'faction_scn', text: 'FORM 88-C GOT ME HERE. NOTHING GETS ME BACK.' },
+    { id: 'tag_t01_dock_05', sectorId: 'sector_nyx_march', factionId: 'faction_free', text: 'Last patrol was a rumor with a hull number.' },
+    { id: 'tag_t01_dock_06', sectorId: 'sector_pallas_drift', factionId: 'faction_quiet', text: 'Somebody was here before the wall. The wall remembers anyway.' },
+    { id: 'tag_t01_dock_07', sectorId: 'sector_eunomia_gulf', factionId: 'faction_mts', text: 'MY TAB IS OLDER THAN THE PAINT. THE PAINT IS WINNING.' },
+    { id: 'tag_t01_dock_08', sectorId: 'sector_io_reach', factionId: 'faction_free', text: 'Bought air, sold time. The margin on both is someone else\'s.' },
+    { id: 'tag_t01_dock_09', sectorId: 'sector_vesta_forge', factionId: 'faction_dmc', text: 'THE FOUNDRY COOLED THE DAY THE NAMES STOPPED BEING READ.' },
+    { id: 'tag_t01_dock_10', sectorId: 'sector_helios_prime', factionId: 'faction_scn', text: 'Every desk in this station is one person. That person is tired.' },
+    { id: 'tag_t01_dock_11', sectorId: 'sector_charon_expanse', factionId: 'faction_free', text: 'The long dark has a reading room. Check the fine print first.' },
+    { id: 'tag_t01_dock_12', sectorId: 'sector_sker_haven', factionId: 'faction_reach', text: 'Weighed my cargo, weighed my word. The word came up short.' },
   ],
 });

@@ -961,6 +961,14 @@ export const trafficRoleOps = {
       const source = candidate.data.npcMiningSource;
       if (source.minerWorldRecordId && candidate.data.ownerId == null && !candidate.data.cargoIdentity) {
         candidate.data.ownerId = source.minerWorldRecordId;
+        // X-05: title carries the owner's name too, so the target panel's `Owner:` fact can
+        // print it. The freighters list holds {id} records — resolve through state.entities.
+        const freighters = state.traffic && Array.isArray(state.traffic.freighters)
+          ? state.traffic.freighters : [];
+        const cutter = freighters
+          .map((row) => row && state.entities && state.entities.get(row.id))
+          .find((e) => e && e.data && e.data.worldRecordId === source.minerWorldRecordId);
+        candidate.data.ownerName = (cutter && (cutter.name || (cutter.data && cutter.data.name))) || 'Claim crew';
       }
       const d2 = (candidate.pos.x - entity.pos.x) ** 2 + (candidate.pos.z - entity.pos.z) ** 2;
       if (d2 < nearest) { pickup = candidate; nearest = d2; }

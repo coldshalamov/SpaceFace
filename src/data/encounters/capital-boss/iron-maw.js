@@ -10,6 +10,12 @@ export const IRON_MAW = freezeDeep({
   subsystemRoles: SUBSYSTEM_ROLES,
   actors: [hullActor({ label: 'IRON MAW', archetype: 'bruiser_brawler', hull: 680,
     mass: 420, radius: 28, speed: 54, doctrine: 'capital_broadside' }), ballast('KEEL BALLAST', 180)],
+  plates: [
+    { id: 'rudder_plate', label: 'rudder plate', anchor: { x: -0.58, z: 0 }, radius: 8, mass: 80,
+      holdTension: 0.75, covers: 'subsystem_drive', shedOnAct: 0 },
+    { id: 'bow_plate', label: 'bow plate', anchor: { x: 0.5, z: 0 }, radius: 9, mass: 90,
+      holdTension: 0.85, covers: 'subsystem_weapon', shedOnAct: 1 },
+  ],
   score: score({
     name: 'IRON MAW', missionDefinitionId: 'capital_boss', identity: 'commitment',
     rangeResponse: { minRange: 340, beatId: 'keelbreaker' },

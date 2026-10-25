@@ -16,7 +16,8 @@
 // A stage built over a skip flag holds a quiet tableau; the plate is back on top anyway.
 
 import * as THREE from 'three';
-import { wholeShipVisualForEntity } from './partsLibrary.js';
+import { wholeShipVisualForEntity, resolvePlaceFileForEntity } from './partsLibrary.js';
+import { createVisualFactory } from './visualFactory.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import {
   decodeKillcamTape, isKillcamTape, takeKillcamTape, killcamPlaybackSkipped, killcamPlaybackTime,
@@ -26,6 +27,7 @@ import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.j
 import { FORCE_TAPE_MAX_LINES, FORCE_TAPE_MAX_FIELDS } from '../sim/forceTape.js';
 import { resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import { createReplayWeaponStage } from './replayWeaponStage.js';
+import { createReplayEnvironment } from './replayEnvironment.js';
 
 /** Sim wu → stage units. Same convention as the title attract so camera math translates. */
 const SCALE = 0.35;
@@ -104,10 +106,12 @@ export async function buildKillcamStage(built, io, options = {}) {
   const originX = subject?.x[subject.n - 1] || 0, originZ = subject?.z[subject.n - 1] || 0;
   stageRoot.position.set(-originX * SCALE, 0, -originZ * SCALE);
   const forceStage = createForceStage(stageRoot, film.forces);
+  const environmentStage = createReplayEnvironment(stageRoot, tape, film);
 
   // -- Ship visuals: one GLB blueprint per hull identity the tape actually carries.
   const visualKeys = new Map(); // key -> { proto, unitScale }
   const picks = [];
+  let visualFactory = null;
   for (const slotDef of film.ships) {
     const ship = slotDef.ship;
     // Faction kits swap the whole-ship file — the blueprint key must carry the faction so
@@ -117,10 +121,26 @@ export async function buildKillcamStage(built, io, options = {}) {
     visualKeys.set(key, null);
     let selection = null;
     try {
-      selection = ship.type === 'asteroid' ? { file: 'places/place_asteroid_rock_a.glb' } : wholeShipVisualForEntity({
-        type: 'ship', team: ship.team, factionId: ship.factionId || null,
-        data: { lootTableId: ship.visual, defId: ship.visual, silhouette: ship.silhouette },
-      }, { requiredWholeShip: true });
+      const entity = { type: ship.type || 'ship', radius: ship.radius, team: ship.team,
+        factionId: ship.factionId || null, data: { ...ship.visualData,
+          lootTableId: ship.visual, defId: ship.visual, silhouette: ship.silhouette } };
+      const place = resolvePlaceFileForEntity(entity);
+      selection = place ? { file: place } : ship.type === 'asteroid'
+        ? { file: 'places/place_asteroid_rock_a.glb' }
+        : wholeShipVisualForEntity(entity, { requiredWholeShip: ship.type === 'ship' });
+      if (!selection?.file && ship.type === 'beacon') {
+        // Some encounter props are production-built geometry. Reuse that exact
+        // builder against a private recorded facade, never a substitute hull.
+        visualFactory ||= createVisualFactory();
+        const proto = visualFactory.build(entity);
+        if (proto) {
+          proto.updateWorldMatrix(true, true);
+          const box = new THREE.Box3().setFromObject(proto), size = new THREE.Vector3();
+          box.getSize(size);
+          const span = Math.max(size.x, size.y, size.z);
+          if (span > 0) { prototypes.add(proto); visualKeys.set(key, { proto, unitScale: 1 / span }); }
+        }
+      }
     } catch (error) {
       dedupWarn('killcam.visual-lookup', '[killcam] visual lookup failed for', key, error);
     }
@@ -206,8 +226,9 @@ export async function buildKillcamStage(built, io, options = {}) {
     const proto = visual && visual.proto;
     if (!proto) return null;
     const obj = proto.clone(true);
-    const diameter = Math.max(4, slot.ship.radius * 2 * SHIP_VISUAL_BOOST);
-    obj.scale.setScalar((visual.unitScale || 0) * diameter);
+    const diameter = Math.max(4, slot.ship.radius * 2 * (slot.ship.type === 'ship' || !slot.ship.type ? SHIP_VISUAL_BOOST : 1));
+    // Production-built props already carry their authored root scale.
+    obj.scale.multiplyScalar((visual.unitScale || 0) * diameter);
     obj.visible = true;
     fleet.add(obj);
     return obj;
@@ -256,6 +277,7 @@ export async function buildKillcamStage(built, io, options = {}) {
   function poseAt(seconds, dt) {
     const rate = film.tape.sampleRate;
     const t = seconds * rate;
+    environmentStage?.update(t);
     forceStage.update(t, seconds, dt);
 
     // -- Recorded kill flashes this window passed.
@@ -393,6 +415,11 @@ export async function buildKillcamStage(built, io, options = {}) {
         const horizontal = distance * Math.cos(photo.pitch);
         built2.camera.position.set(x + Math.cos(photo.yaw) * horizontal,
           distance * Math.sin(photo.pitch), z + Math.sin(photo.yaw) * horizontal);
+      } else if (Number.isFinite(plan?.pitch)) {
+        const pitch = Math.max(0.2, Math.min(Math.PI / 2, plan.pitch));
+        const yaw = Number.isFinite(plan.yaw) ? plan.yaw : -Math.PI / 2;
+        const horizontal = height / Math.tan(pitch);
+        built2.camera.position.set(x + Math.cos(yaw) * horizontal, Math.max(12, height), z + Math.sin(yaw) * horizontal);
       } else built2.camera.position.set(x, Math.max(12, height), z + 0.01);
       built2.camera.lookAt(x, 0, z);
       return;
@@ -418,6 +445,7 @@ export async function buildKillcamStage(built, io, options = {}) {
     update,
     controlsCamera: true,
     dispose() {
+      environmentStage?.dispose();
       weaponStage.dispose();
       forceStage.dispose();
       for (const slot of slots) if (slot.obj) { fleet.remove(slot.obj); slot.obj = null; }
@@ -500,7 +528,8 @@ function createForceStage(root, frames) {
 }
 
 function visualKey(ship) {
-  return `${ship.type || 'ship'}|${ship.visual || ''}|${ship.silhouette || ''}|${ship.factionId || ''}`;
+  const data = ship.visualData;
+  return `${ship.type || 'ship'}|${ship.visual || ''}|${ship.silhouette || ''}|${ship.factionId || ''}|${data?.placeId || data?.archetypeGlb || data?.storyPropKind || ''}`;
 }
 
 function matchingForce(rows, id) {

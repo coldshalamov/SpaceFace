@@ -215,10 +215,10 @@ export const collisionConsequences = {
     // rock at speed dies whether or not a rope put it there, and a whip-thrown light meeting an
     // Atlas must mean the same thing. Suppressing here is what made the packet's own headline verb
     // — "the player can throw lights into it" — the one route where a heavy stayed soft: the whip's
-    // recoil packet on the thrown hull is `momentum x 0.65 / 250`, about 2.5 points on a 260-point
-    // Wasp. The two authored whip packets are untouched; the heavy's own side of this contact still
-    // computes zero because its Δv sits under the damage threshold, so the only thing this admits is
-    // the thrown light's crumple.
+    // recoil packet on the thrown hull is `momentum x 0.65 / 100` (row-482 guns-nudge retune; was
+    // /250), about 6 points on a 260-point Wasp. The two authored whip packets are untouched; the
+    // heavy's own side of this contact still computes zero because its Δv sits under the damage
+    // threshold, so the only thing this admits is the thrown light's crumple.
     const heavyInvolved = positiveMass(pending.a) >= HEAVY_AS_TERRAIN_MASS
       || positiveMass(pending.b) >= HEAVY_AS_TERRAIN_MASS;
     this._resolveDeferredCraftContact(pending, !heavyInvolved);
@@ -917,6 +917,9 @@ export function buildCollisionPresentationProvenance(target, other, receipt) {
     normal: freezeTransientDirection(receipt && receipt.normal),
     surface: collisionPresentationSurface(receipt && receipt.surface),
     targetVelocity: freezeTransientPoint(target && target.vel),
+    // The contacted body — the body the target struck. Law reads it as the impactor it must
+    // never let occlude the kill it caused.
+    otherId: other && other.id != null ? other.id : null,
     impact: Object.freeze({
       deltaV: nonNegativeFinite(receipt && receipt.deltaV),
       exchangedMomentum: nonNegativeFinite(receipt && receipt.exchangedMomentum),

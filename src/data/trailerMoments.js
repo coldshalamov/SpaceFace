@@ -12,7 +12,9 @@ const oneoff = (id, zoom, cue) => {
   });
 };
 const moment = (id, title, sectorId, source, zoom, cue, approachWu = 200) => Object.freeze({
-  id, title, sectorId, source: Object.freeze(source), camera: Object.freeze({ zoom, seconds: 3.2 }),
+  id, title, sectorId, source: Object.freeze(source), camera: Object.freeze({ zoom, seconds: 3.2,
+    ...(id === 'bolus_throat' ? { worldHeight: 650, pitch: 0.55, yaw: -Math.PI / 2 }
+      : id === 'eighth_bell' ? { worldHeight: 110, pitch: 0.7, yaw: 0 } : {}) }),
   music: Object.freeze({ cue, gain: 0.42 }), clip: Object.freeze({ seconds: 30, hideUI: true }), approachWu,
 });
 
@@ -36,7 +38,10 @@ export function trailerMomentMatches(moment, entity) {
   return source.siteId ? d.worldSiteId === source.siteId
     : source.storyPropKind ? d.storyPropKind === source.storyPropKind
       : source.bolusRole ? d.bolus?.role === source.bolusRole
-        : d.oneOffId === source.oneOffId || (d.worldOneOff && d.name === source.name);
+        // Collectable offerings share their parent's oneOffId. Stage the authored
+        // structure, rather than following a loose tally plate or keepsake.
+        : d.kind !== 'cargo' && entity.type !== 'payload'
+          && (d.oneOffId === source.oneOffId || (d.worldOneOff && d.name === source.name));
 }
 
 export const EARLY_TRAILER_ENCOUNTERS = Object.freeze(['the_eighth_bell', 'the_runaway_kiln']);

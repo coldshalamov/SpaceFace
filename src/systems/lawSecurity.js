@@ -9,9 +9,11 @@
 
 import { hash32 } from '../core/rng.js';
 import { shouldSkipFullTickSystems } from '../core/presentationFreeze.js';
+import { isRunSealed } from '../core/runSeal.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
+import { attachmentBindsOccupant } from '../combat/attachments.js';
 import { proxyWorldPrimitives, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { takeNearWorkSlice } from '../core/activityScheduler.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -219,6 +221,19 @@ const LAWFUL_INSPECTION_SETTLED_PATROL_CAP = 12;
 // the same stable reportId the witnessed path would have used.
 const UNREPORTED_KILL_CAP = 24;
 
+// RC-CHASE (row 462) — the physical chase. A kill seen ONLY by protected civilians is not yet a
+// conviction: the witnesses are couriers, and the testimony files when a surviving carrier
+// physically reaches a lawful berth. A bounty-tier search additionally posts two visible lawful
+// sweep ships; once the player has been seen by both, breaking their observation is the escape.
+const WITNESS_REPORT_BERTH_WU = 60;         // ordinary traffic's docking range (traffic.js `dist < 60`)
+const WITNESS_REPORT_CAP = 16;                  // mirror the reported-incident retention bound
+// Absence is not proof of death — but an eternally pending report is free laundry. A carrier
+// unresolved this many ticks while its report's sector is live is counted conclusively lost.
+const WITNESS_REPORT_REBIND_TICKS = 90;
+const WANTED_SWEEP_SHIPS = 2;
+const WANTED_SWEEP_LOST_CONTACT_S = 2;
+const WANTED_SWEEP_RETRY_TICKS = 30;
+
 // PB-CONS-A / SF-159 verdict escalation window. A kill's cause says HOW the victim died; the
 // recent-harm window says WHETHER the scene was an accident. An isolated contact — a bump, a
 // single thrown hull — stays an accident (the reckless tier). Sustained player-caused harm to
@@ -246,6 +261,13 @@ export const lawSecurity = {
 
   init(ctx) {
     this.state = ctx.state;
+    // RC-CHASE is an atomic extension: partial call-site landings must not stop the existing
+    // law tick or defer a conviction without a functioning courier owner to finish it.
+    this._rcChaseEnabled = typeof normalizeWitnessReports === 'function'
+      && ['_syncWantedSweep', '_updateWantedSweep', '_resetWantedSweep',
+        '_wantedSweepSectorExit', '_noteWitnessCarrierKilled', '_adoptWitnessReports',
+        '_updateWitnessReports', '_queueWitnessReport']
+        .every((method) => typeof this[method] === 'function');
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
     this.registry = ctx.registry || null;
@@ -261,6 +283,10 @@ export const lawSecurity = {
     this._inspectionRebindPasses = 0;
     this._grudgeVictims = new Set();
     this._grudgeIndexDirty = true;
+    // RC-CHASE: live carrier bindings for queued civilian testimony. Session-only — the
+    // durable record carries stableId/worldRecordId; this map only proves which live body a
+    // stable id currently names (id + occupant generation, never durable by itself).
+    this._witnessCarrierBindings = new Map();
     ensureState(this.state);
     this._onDamage = (payload) => {
       this._sanctuaryWakeSeq = (this._sanctuaryWakeSeq | 0) + 1;
@@ -285,15 +311,25 @@ export const lawSecurity = {
       this._observeInspectionPatrolGone(payload);
       this._noteMemorialDestroyed(payload);
     };
+    // A carrier's death receipt is the conclusive proof a testimony can never arrive — entity:killed
+    // ONLY (entity:destroyed also fires on culls/despawns/teardown, which are not death). The
+    // payload has no generation field; the generation stamped at queue time proves the id still
+    // named the same body in this synchronous dispatch.
+    this._onWitnessCarrierKilled = (payload) => {
+      if (this._rcChaseEnabled) this._noteWitnessCarrierKilled(payload);
+    };
     this._onSectorExit = (payload) => {
       this._releaseJobResponsesForSector(payload && payload.sectorId, 'sector_exit');
       this._observeInspectionSectorExit(payload);
+      if (this._rcChaseEnabled) this._wantedSweepSectorExit(payload);
       this._clearHarmWindows(); // victim ids recycle across sectors — history cannot cross the jump
       this._resetScanDumpWatch();
       this._sanctuaryQuiet = null;
     };
     this._onSaveRestoring = () => {
       this._releaseAllJobResponses('save_restoring');
+      if (this._rcChaseEnabled) this._resetWantedSweep('save_restoring');
+      if (this._witnessCarrierBindings) this._witnessCarrierBindings.clear();
       this._resetInspectionTransient();
       this._resetWeirTransient();
       this._clearHarmWindows();
@@ -337,6 +373,7 @@ export const lawSecurity = {
       this._syncHighSecWarrant(this.state, 0);
       this._syncWantedCheckpoint(this.state);
       this._syncWantedImpound(this.state);
+      if (this._rcChaseEnabled) this._syncWantedSweep(this.state);
     };
     this._onImpoundPay = (payload) => this._payWantedImpound(this.state, payload || {});
     this._onCustomsSubmit = (payload) => this._handleCustomsSubmit(payload);
@@ -368,6 +405,7 @@ export const lawSecurity = {
       this.bus.on('pickup:collected', this._onStolenCargoPodCollect);
       this.bus.on('tether:latched', this._onStolenCargoPodLatch);
       this.bus.on('entity:killed', this._onKilledAdjudication);
+      this.bus.on('entity:killed', this._onWitnessCarrierKilled);
       // The discovered-crime door: a targeted wreck resolve (scanner) or a finished salvage
       // (mining) keys on stable wreck provenance — never the sector-wide scan summary.
       this.bus.on('scan:wreckResolved', this._onWreckScanResolved);
@@ -394,6 +432,8 @@ export const lawSecurity = {
   newGame() {
     if (this._customsWaivedPatrols) this._customsWaivedPatrols.clear();
     this._releaseAllJobResponses('new_game');
+    if (this._rcChaseEnabled) this._resetWantedSweep('new_game');
+    if (this._witnessCarrierBindings) this._witnessCarrierBindings.clear();
     if (this.state) this.state.lawSecurity = freshState();
     if (this._warrantWaves) this._warrantWaves.deserialize(null);
     if (this.state && this.state.player) delete this.state.player.lawfulInspection;
@@ -437,6 +477,11 @@ export const lawSecurity = {
     // the live state of a run that never stored a receipt (the sim:compare laziness contract).
     if (own.reportedIncidents != null) {
       out.reportedIncidents = cloneLawPlain(own.reportedIncidents) || {};
+    }
+    // Lazy, same as reportedIncidents: pending civilian testimony is durable (a save boundary
+    // must not launder a witnessed kill), but a run that never queued one emits no key.
+    if (own.witnessReports != null) {
+      out.witnessReports = cloneLawPlain(own.witnessReports) || {};
     }
     // Lazy, same as reportedIncidents: a run that never destroyed a memorial, opened a
     // composed bill, or settled a fine emits no key.
@@ -498,6 +543,15 @@ export const lawSecurity = {
     else delete own.fineSettled;
     if (src.customsTrust != null) own.customsTrust = normalizeCustomsTrust(src.customsTrust);
     else delete own.customsTrust;
+    if (src.witnessReports != null) {
+      // Without the extension, retain optional plain save facts inertly rather than inventing
+      // a normalizer, filing testimony, or dropping another version's pending case.
+      own.witnessReports = this._rcChaseEnabled ? normalizeWitnessReports(src.witnessReports)
+        : (typeof src.witnessReports === 'object' && !Array.isArray(src.witnessReports)
+          ? cloneLawPlain(src.witnessReports) || {} : {});
+    }
+    else delete own.witnessReports;
+    if (this._rcChaseEnabled) this._adoptWitnessReports(own);
     if (this._customsWaivedPatrols) this._customsWaivedPatrols.clear();
     if (src.fineOffer && typeof src.fineOffer === 'object' && !Array.isArray(src.fineOffer)) {
       own.fineOffer = cloneLawPlain(src.fineOffer);
@@ -526,6 +580,14 @@ export const lawSecurity = {
     this._syncHighSecWarrant(state, _dt);
     this._syncWantedCheckpoint(state);
     this._syncWantedImpound(state);
+    if (this._rcChaseEnabled) {
+      this._syncWantedSweep(state);
+      this._updateWantedSweep(_dt, state);
+    }
+    // Witness couriers are ordinary traffic; their filing check runs on the flight tick, never
+    // inside the 15-tick incident poll — a carrier crossing the 60-WU berth chord inside a poll
+    // gap would silently miss its arrival.
+    if (this._rcChaseEnabled) this._updateWitnessReports(state);
     this._updateWantedCheckpoint(_dt, state);
     this._updateWantedImpound(_dt, state);
     const own = ensureState(state);
@@ -877,6 +939,15 @@ export const lawSecurity = {
       const target = entityById(state, targetId);
       if (!target) continue;
       if (is47aScavengerCounterplayAuthorized(state, entity, target)) continue;
+      // X-02: the scripted Claim Jumper wing is outside the withdrawal regime while its beat
+      // is live — the same identity gate as the damage ward below and pirateDisengage's
+      // wingBeat. Its armed window opens only through the authorizeAIEngagement bridge; every
+      // exit (the onboarding script's own DISENGAGE, or an honest morale scatter on its crew's
+      // death) is already honest. Restamping it 'station_jurisdiction:*:withdraw' + passive
+      // falsifies the record and strands the scripted actor mid-lesson.
+      if (entity.data?.onboardingRaidWing === true
+        && state.onboarding?.raid?.active && !state.onboarding?.raid?.wingDone
+        && entity.id === state.onboarding?.raid?.ids?.wing) continue;
       const jurisdiction = protectedStationAt(state, target) || protectedStationAt(state, entity);
       if (!jurisdiction) continue;
       this._withdrawFromSanctuary(entity, target, jurisdiction);
@@ -1009,6 +1080,10 @@ export const lawSecurity = {
 
     const targetProtected = target.id === state.playerId || isLawful(target) || isProtectedCivilian(target);
     if (!targetProtected || isLawful(attacker)) return;
+    // X-02 v4: the onboarding wing's lesson rounds on the player are not a law case while the
+    // raid beat is current — no hostile_fire incident, no dispatch. Normal law resumes after it.
+    if (attacker.data?.onboardingRaidWing === true && target.id === state.playerId
+      && state.onboarding?.raid?.active && !state.onboarding?.raid?.wingDone) return;
     const jurisdiction = protectedStationAt(state, target) || ceresDistressJurisdiction(state, target);
     if (jurisdiction) this._openIncident(attacker, target, jurisdiction,
       target.id === state.playerId || isLawful(target) ? 'hostile_fire' : 'npc_piracy');
@@ -2732,17 +2807,7 @@ export const lawSecurity = {
     // jeopardy. A lawful or unwitnessed kill leaves the pod an honest salvage claim instead.
     // The ledger scan (not just the reportId probe) keeps the match alive when the victim
     // entity has already been culled from state.entities.
-    if (isManifest) {
-      const victim = entityById(state, ownerId);
-      const killReportId = cleanLawId(`kill:${victimStableIdOf(victim, { id: ownerId })}`);
-      const killReceipt = killReportId && readReportedIncident(state, killReportId);
-      const ledger = state.lawSecurity && state.lawSecurity.reportedIncidents;
-      const priced = (killReceipt && killReceipt.accepted === true && killReceipt.validatedCrime === true)
-        || (ledger && typeof ledger === 'object' && Object.values(ledger).some((r) => r
-          && r.accepted === true && r.validatedCrime === true
-          && (sameLawEntityId(r.victimEntityId, ownerId) || r.victimStableId === `entity:${ownerId}`)));
-      if (priced) return null;
-    }
+    if (isManifest && manifestKillAlreadyPriced(state, ownerId)) return null;
     const pos = finiteLawPoint(entity.pos);
     if (!pos) return null;
     const payloadStableId = cleanLawId(`${isManifest ? 'manifest' : 'jettisoned'}-${entity.id}`);
@@ -2833,9 +2898,11 @@ export const lawSecurity = {
       || null;
     const witnesses = lawWitnessesNear(state, {
       pos, offenderEntityId: state.playerId, radius: LAW_KILL_WITNESS_RADIUS,
-      ignoreEntityIds: [payload.id], // the victim's own hull is never its own cover
+      // the victim's own hull is never its own cover, and the body it struck (a thrown rock)
+      // never occludes the kill it caused — a witness behind the impactor still saw it happen.
+      ignoreEntityIds: [payload.id, payload.impactorId],
     }).filter((w) => w.entityId !== payload.id); // the dead cannot testify
-    const civilians = civilianKillWitnessesNear(state, pos, state.playerId, witnesses, payload.id);
+    const civilians = civilianKillWitnessesNear(state, pos, state.playerId, witnesses, payload.id, payload.impactorId);
     const witnessStableIds = directWitnessIds(state, [witnesses, civilians]);
     const eyes = witnessStableIds.length > 0;
     const victimStableId = victimStableIdOf(victim, payload);
@@ -2987,6 +3054,63 @@ export const lawSecurity = {
         tick: state.tick | 0,
       });
       this._emit('law:reportIncidentReceipt', existing);
+      return;
+    }
+
+    // RC-CHASE (row 462) — civilian couriers, not convictions. When the only eyes on the kill
+    // are protected civilian ships, nobody radios the law: their testimony is a physical run to
+    // a lawful berth. Lawful units, lawful stations, and marked witnesses keep the immediate
+    // path below; a sealed run keeps it too (the arena never grows a courier ledger).
+    if (this._rcChaseEnabled && !isRunSealed(state) && witnesses.length === 0 && civilians.length > 0) {
+      const queued = this._queueWitnessReport(state, {
+        reportId,
+        kind: chargeKind,
+        victim,
+        victimStableId,
+        victimFactionId,
+        jurisdiction,
+        civilians,
+        witnessStableIds,
+        causality,
+        impactLink,
+        collisionKill,
+        sustainedAssault,
+        harmEvents,
+        factionLawful,
+        clearlyHostile,
+        pos,
+        causalTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
+        payloadVictimClass: payload.victimClass || null,
+        payloadVictimEntityId: payload.id,
+      });
+      if (queued === 'queued' || queued === 'duplicate') {
+        publishTruth('pending_delivery', reportId);
+      } else {
+        // Queue full (16 pending reports) or a same-reportId pending collision: the kill stays
+        // witnessed truth, but its conviction rides the wreck-evidence path — a courier ledger
+        // must never silently evict live testimony to make room.
+        const pendingPerson = restitutionPerson(victim && victim.data);
+        const pendingCr = pricedCargoCr(victim && victim.data);
+        this._recordUnreportedKill({
+          victimEntityId: payload.id,
+          victimStableId,
+          victimClass: payload.victimClass || null,
+          victimFactionId,
+          kind: chargeKind,
+          killCause: causality.cause,
+          surface: causality.surface,
+          sustainedAssault: sustainedAssault === true,
+          harmEvents: collisionKill ? harmEvents : null,
+          pos: { x: pos.x, z: pos.z },
+          causalTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
+          reportId,
+          ...(pendingPerson && pendingCr > 0 ? {
+            forPerson: pendingPerson, restitutionCr: pendingCr,
+            recovery: restitutionRecovery(victim, state),
+          } : {}),
+        });
+        publishTruth('unwitnessed');
+      }
       return;
     }
 
@@ -3296,6 +3420,10 @@ export const lawSecurity = {
     if (!state || !payload || state.playerId == null) return;
     this._noteOwnedHullPapers();
     if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    // AL-STORY-1 — a clean-hold pilot who physically weighed a manifest files the slip on
+    // docking itself: this must run ahead of the clean-sheet early return below or the
+    // whole honest route is unreachable for exactly the pilot it was built for.
+    this._fileMassSlipsAt(payload.stationId);
     const player = state.player;
     const heatValue = player && Number(player.heat) || 0;
     if (heatValue <= 0) {
@@ -3462,6 +3590,59 @@ export const lawSecurity = {
       patrolId: (payload && payload.patrolId) || null,
       stationId: (payload && payload.stationId) || null,
       text: 'Compliance recorded — the scan proceeds on your submission.',
+    });
+    // AL-STORY-1 — an ordinary submission at the issuing station can also file a physically
+    // earned weight slip (the bonus path; clean-hold docking files it earlier on dock:docked).
+    this._fileMassSlipsAt(payload && payload.stationId);
+  },
+
+  /**
+   * AL-STORY-1 (row 423) — file a physically earned weight slip. Slips live under
+   * state.economyContracts.massScale (the economy-contract owner revalidates and keeps
+   * them); the law only FILES: one receipt on the law card plus a customs:massSlipFiled
+   * acknowledgment the owner validates against its own records. Selection is the oldest
+   * unfiled slip with an authored outcome at this station — the sealed-recovery slip has
+   * no customs outcome and is never picked. Excess weight alone never proves a commodity
+   * or a crime: no cargo seizure, no charge, no waived scan, no cleared heat.
+   */
+  _fileMassSlipsAt(stationId) {
+    const state = this.state;
+    const ms = state && state.economyContracts && state.economyContracts.massScale;
+    if (!ms || !ms.slips || typeof ms.slips !== 'object' || !stationId) return;
+    const outcomes = {
+      weight_audit: { outcome: 'mass_discrepancy_filed', statusText: 'WEIGHT SLIP FILED', stationId: 'station_helios' },
+      carrier_frame: { outcome: 'mass_frame_disputed', statusText: 'ISSUER DISPUTED', stationId: 'station_ceres' },
+    };
+    const slip = Object.keys(ms.slips).map((k) => ms.slips[k])
+      .filter((s) => s && outcomes[s.kind]
+        && String(outcomes[s.kind].stationId) === String(stationId)
+        && String(s.issuingStationId) === String(stationId)
+        && !(s.filedAtStations && s.filedAtStations[stationId]))
+      .sort((a, b) => {
+        const ta = Number.isFinite(Number(a.weighedTick)) ? Number(a.weighedTick) : Infinity;
+        const tb = Number.isFinite(Number(b.weighedTick)) ? Number(b.weighedTick) : Infinity;
+        return ta - tb || String(a.slipId).localeCompare(String(b.slipId));
+      })[0];
+    if (!slip) return;
+    const spec = outcomes[slip.kind];
+    const text = slip.kind === 'carrier_frame'
+      ? `WEIGHT SLIP — ${slip.issuer || 'the issuer'} declared ${slip.declaredMassT} t; the tether scale read ${slip.measuredMassT} t. The issuer's declaration is disputed, not the carrier's papers.`
+      : `WEIGHT SLIP — ${slip.issuer || 'the issuer'} declared ${slip.declaredMassT} t; the tether scale read ${slip.measuredMassT} t. Manifest discrepancy filed with customs.`;
+    this._recordReceipt({
+      cause: 'mass_manifest',
+      outcome: spec.outcome,
+      attackerId: null, targetId: state.playerId,
+      stationId,
+      statusText: spec.statusText,
+      text,
+    });
+    // The toast feed is invisible while docked (hud is transparent under ui-modal-open and
+    // the card expires unseen) — the filing instead rides the acknowledgment payload so the
+    // mass-scale owner can re-present it on the first flight frame after undocking. The law
+    // receipt above stays the dock-side record.
+    this._emit('customs:massSlipFiled', {
+      slipId: slip.slipId, stationId, outcome: spec.outcome,
+      text, statusText: spec.statusText,
     });
   },
 
@@ -5624,6 +5805,7 @@ export const lawSecurity = {
       if (this._onStolenCargoPodCollect) this.bus.off('pickup:collected', this._onStolenCargoPodCollect);
       if (this._onStolenCargoPodLatch) this.bus.off('tether:latched', this._onStolenCargoPodLatch);
       if (this._onKilledAdjudication) this.bus.off('entity:killed', this._onKilledAdjudication);
+      if (this._onWitnessCarrierKilled) this.bus.off('entity:killed', this._onWitnessCarrierKilled);
       if (this._onWreckScanResolved) this.bus.off('scan:wreckResolved', this._onWreckScanResolved);
       if (this._onSalvageCompleted) this.bus.off('salvage:completed', this._onSalvageCompleted);
       if (this._onDockedLawfulClearance) this.bus.off('dock:docked', this._onDockedLawfulClearance);
@@ -5653,6 +5835,7 @@ export const lawSecurity = {
     this._onStolenCargoPodCollect = null;
     this._onStolenCargoPodLatch = null;
     this._onKilledAdjudication = null;
+    this._onWitnessCarrierKilled = null;
     this._onWreckScanResolved = null;
     this._onSalvageCompleted = null;
     this._onDockedLawfulClearance = null;
@@ -6194,6 +6377,7 @@ function isArmedNpc(entity, state) {
 }
 
 function isPirateLike(entity) {
+  if (!entity) return false;
   const data = entity && entity.data || {};
   const ai = data.ai || {};
   const words = `${ai.archetype || ''} ${ai.doctrine || ''} ${ai.role || ''} ${data.role || ''} ${entity.factionId || ''}`.toLowerCase();
@@ -6322,7 +6506,7 @@ function findCivilianHauler(state) {
   return preferred || fallback;
 }
 
-function cargoPodOwnerId(entity) {
+export function cargoPodOwnerId(entity) {
   if (!entity) return null;
   const data = entity.data || {};
   const identity = data.cargoIdentity && typeof data.cargoIdentity === 'object' ? data.cargoIdentity : null;
@@ -6332,6 +6516,48 @@ function cargoPodOwnerId(entity) {
     ?? (ownership && ownership.ownerId)
     ?? (identity && identity.ownerId);
   return ownerId == null || ownerId === '' ? null : ownerId;
+}
+
+// A manifest pod's victim already priced by an accepted crime receipt (the kill) is not a second
+// theft. Shared by the theft door and the advisory owner read so they cannot drift apart.
+function manifestKillAlreadyPriced(state, ownerId) {
+  const victim = entityById(state, ownerId);
+  const killReportId = cleanLawId(`kill:${victimStableIdOf(victim, { id: ownerId })}`);
+  const killReceipt = killReportId && readReportedIncident(state, killReportId);
+  const ledger = state.lawSecurity && state.lawSecurity.reportedIncidents;
+  return !!((killReceipt && killReceipt.accepted === true && killReceipt.validatedCrime === true)
+    || (ledger && typeof ledger === 'object' && Object.values(ledger).some((r) => r
+      && r.accepted === true && r.validatedCrime === true
+      && (sameLawEntityId(r.victimEntityId, ownerId) || r.victimStableId === `entity:${ownerId}`))));
+}
+
+// X-05 advisory read (onboarding's owner read): the owner a payload_theft charge would name if a
+// lawful eye saw the player lift this lot, else null. Mirrors `_reportStolenCargoPod` /
+// `_reportTitledClaimChip` plus reportIncident's jurisdiction gate, so "you're wanted" is never
+// spoken over free loot, a custody pod, the player's own lot, a manifest pod whose kill already
+// carries the crime receipt, or a lot outside every jurisdiction. The witness stays the line's
+// own "in sight" condition. Pure read: never adjudicates, never writes.
+export function chargeableLotOwnerId(state, entity) {
+  if (!state || !entity || entity.alive === false || !entity.pos || !entity.data) return null;
+  const data = entity.data;
+  const isManifest = isCivilianManifestPayload(entity);
+  const isPod = isManifest || isJettisonedCargoPod(entity);
+  let ownerId = null;
+  if (isPod) {
+    if (data.freightCustodyPod) return null;
+    ownerId = cargoPodOwnerId(entity);
+  } else if (entity.type === 'pickup' && data.ownerId != null && data.npcMiningSource
+    && data.npcMiningSource.minerWorldRecordId != null
+    && String(data.ownerId) === String(data.npcMiningSource.minerWorldRecordId)) {
+    ownerId = data.ownerId;
+  }
+  if (ownerId == null || sameLawEntityId(ownerId, state.playerId)) return null;
+  if (isManifest && manifestKillAlreadyPriced(state, ownerId)) return null;
+  const victim = isPod ? entity : entityById(state, ownerId);
+  const jurisdiction = protectedStationAt(state, { pos: entity.pos })
+    || ceresDistressJurisdiction(state, victim)
+    || ceresDistressJurisdiction(state, findCivilianHauler(state));
+  return jurisdiction ? ownerId : null;
 }
 
 function sameLawEntityId(a, b) {
@@ -7112,7 +7338,7 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
  * Entities already collected as lawful witnesses are skipped by id, so the combined list is
  * still deterministic, sorted, and capped by the caller.
  */
-function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollected, victimEntityId = null) {
+function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollected, victimEntityId = null, impactorEntityId = null) {
   const anchor = finiteLawPoint(pos);
   if (!state || !anchor) return [];
   const limitSq = LAW_KILL_WITNESS_RADIUS ** 2;
@@ -7121,6 +7347,8 @@ function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollecte
   if (offenderEntityId != null) ignoredOccluders.add(offenderEntityId);
   if (state.playerId != null) ignoredOccluders.add(state.playerId);
   if (victimEntityId != null) ignoredOccluders.add(victimEntityId);
+  // The body the victim struck never counts as an occluder of its own kill.
+  if (impactorEntityId != null) ignoredOccluders.add(impactorEntityId);
   const out = [];
   let occluders = null;
   const occluderPlan = () => occluders || (occluders = lawWitnessOccluderPlan(state));

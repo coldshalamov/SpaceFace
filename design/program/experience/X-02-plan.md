@@ -22,7 +22,7 @@ As things stand the wing could never fire. `authorizeAIEngagement` denies `stati
    - It spawns only when the stage is not a clinic, `!raid.wingDone`, and the slot is empty.
    - Spawn call: `makeEnemySpawnSpec('wasp_swarmer', 1, at(480, -0.6), { startedTick: st.tick })`, named `Claim Jumper's Wing`.
    - Body: hull 60, shield 0, no regen.
-   - Weapon: `data.weapons = [{ id:'wpn_pulse_laser_s', dmgOverride:2, rofOverride:2 }]`, with the resolved entry's `impulsePerHit = 0` so it never shoves the tow.
+   - Weapon (amended after plan-gate REJECT 4964e62b — `data.weapons` holds only *resolved* mounts, `combat.js:344-356`, read at fire time by `defId`/`dmg`/`rof`, `weapons.js:1250`): keep the resolved `wpn_pulse_laser_s` entry `makeEnemySpawnSpec` already produced for `wasp_swarmer` (drop every other resolved mount), then set that entry's `dmg = 2`, `rof = 2` and `impulsePerHit = 0` in place, so it never shoves the tow. If the wasp's resolved kit carries no pulse laser, resolve one through the same exported path the spec builder uses (export the resolver rather than hand-building an entry). Test: the wing actually emits `combat:fire` and lands `combat:damage` on the player after the first latch.
    - Tags: `data.onboardingRaidWing = true`, `ai.roe = 'hold_fire'`.
 2. **Arm.** `_onRaidLatched` (`:3315`) sets `roe = 'weapons_free'` on the first latch of `raid.ids.raider`.
    - Wing comms: *"Hands off his boat."*
@@ -76,6 +76,50 @@ As things stand the wing could never fire. `authorizeAIEngagement` denies `stati
 - No retune of archetypes, the player, or global weapons. No change to the 1400 wu radius.
 - No new encounter.
 
+
+## v3 amendment (after plan-gate REJECT 390312bc)
+
+- **No wing→Claim Jumper kill loop.** The damage gate already rejects same-team NPC hits unless `npcCrossfireAdmits` finds a `'reckless'` shooter (`src/combat/damage.js:33-45,187-188`; `src/ai/temperament.js:79-98` — reckless pilots fire through same-team hulls *that are not their own wingmates*). (a) Stamp the wing and the Claim Jumper as wingmates using whatever wingmate key that crossfire rule honours (find it where the "own wingmates" exclusion is evaluated; reuse it, do not invent one), so a wing round into the towed raider is rejected as `friendly_fire`. (b) Belt and braces in `_onRaidKilled` (`onboarding.js:3359-3366`): when `payload.killerId`/`ownerId === raid.ids.wing`, do not say "the raider broke off"; restage silently and count `raid.strayKills += 1`; a second stray resolves the beat exactly like the second gun kill (`_beatDone` + `momentumKill {cause:'stray'}`) so the beat always converges. Test: force a reckless wing temperament with the wingmate stamp removed → the stray path converges in ≤2 restages; with the stamp → zero `combat:damage` packets from wing to raider over a 60 s tow.
+- **Restage fork named.** `_respawnRaidRaider(line, opts = {})` gains `opts.wing`: `'keep'` (default for gun-kill retry and drift restage — the wing stays and stays armed if it was armed; pressure during the retry is intended), `'disarm'` (player-death path `_onRaidPlayerDeath` — the wing, if alive, is set back to `roe:'hold_fire'` and re-arms on the next first latch), and the wing is never respawned once `raid.wingDone` (fled or killed). `_spawnRaidCast` keeps `_removeRaidActors` from deleting a kept wing (skip the `wing` slot when `opts.wing !== 'respawn'`).
+- Cite fixes: `_resolveRaidDone` is `:3403`; `protectedStationAt` `:599-617`; station-protection deny `:181`.
+
+
+## v4 amendment — live-fire integration (after impl review b86debfd booted the real game)
+
+Finding: in a full seed-4242 boot the wing spawns and arms on latch, but every shot is refused `target_not_hostile` (its
+`spawnContext:'onboarding_raid'` is not in `PLAYER_DANGER_CONTEXTS`, `scanner.js:160`); once forced hostile,
+`pirateDisengage` (`lawful-patrol-nearby`) and the Helios sanctuary withdrawal turn it passive, and a stray round into Helios
+traffic opens an `npc_piracy` incident and three patrols kill it in ~1 s. The v3 tests called the bridge directly, so none of
+this showed. All four fixes below are gated on the wing's own stamp `data.onboardingRaidWing === true` AND the live raid beat
+(`state.onboarding.raid.active`), so no other ship's behaviour changes:
+1. **Hostile to the player:** the wing counts as a player-danger contact — add the stamp check beside `PLAYER_DANGER_CONTEXTS`
+   (`scanner.js:~160`) rather than adding the context string globally.
+2. **Holds its nerve while the beat runs:** `pirateDisengage`'s lawful-patrol-nearby check and the sanctuary withdrawal skip a
+   stamped wing during the live beat (it still flees at ≤30 % hull or when the beat completes — that is the designed exit).
+   The withdrawal-skip hunk already swept onto master inside 83b433bee1 must be reconciled to exactly this gate (or removed and
+   re-added here) — one gate, one place.
+3. **Its rounds only touch the player:** in the damage admission (`src/combat/damage.js`, beside the `friendly_fire` reject at
+   ~187), a packet whose attacker carries the stamp and whose target is not the player is rejected (`'onboarding_wing_ward'`).
+   No stray piracy, no traffic damage, no `npc_piracy` incident.
+4. **Patrols don't swat it mid-lesson:** security dispatch (`lawSecurity.js` / traffic patrol response) does not open a pursuit
+   on a stamped wing during the live beat; after the beat (wing fleeing) normal law applies.
+Then: the stranger pilot must survive (`onboarding-stranger-replay-stability`, `rc-458-round1-budget` green), and a NEW
+live-fire test boots the real runtime (pattern: the stranger/replay harness) and asserts, after the first latch, ≥1
+`combat:fire` from the wing and ≥1 `combat:damage` on the player, zero damage packets from the wing to any non-player, no
+`npc_piracy` incident, and the wing flees (forceFlee) at ≤30 % hull or beat completion. If the stranger still dies, report the
+killer's attribution before changing any number.
+
 ## Approvals
 
-- (pending)
+- v1 REJECT 4964e62b (dead weapon mount); v2 amended — gate restarted
+- v2: abc98e75 APPROVE, cd65c632 APPROVE, 390312bc REJECT (wing-credited raider kill loop; restage fork unnamed)
+- v3: amendment section above — gate restarted
+- v3: plan-gate reviewer 8c3dfd2c — APPROVE (2026-10-24)
+- v3: plan-gate reviewer 04b9da1c — APPROVE (2026-10-24)
+- v3: plan-gate reviewer 544bd39a — APPROVE (2026-10-24) — plan✓3
+- v3 impl landed acc83ababd (+18064e3df8 id-reuse guard); impl review b86debfd: wing never fires live → v4 amendment above — gate restarted
+- v4: plan-gate reviewer f16c07d1 — APPROVE
+- v4: plan-gate reviewer dea1e845 — APPROVE
+- v4: plan-gate reviewer 3de80dfa — APPROVE — plan✓3
+- v4 implementer notes: gate 1 goes at the use-site in isHostileToPlayer (scanner.js ~2186); gate 4 must cover the wing→PLAYER hostile_fire incident (lawSecurity.js _handleDamage ~1076-1080 / _openIncident), not just stray rounds; the sanctuary skip already on master (lawSecurity.js ~943-945 via isOnboardingRaidWingAuthorized) is the gate-2 withdrawal half — keep it; ward at damage.js ~187 runs after applyImpulse (impulsePerHit 0 covers it); gate the live-beat condition on the raid beat being current and the wing not done (raid.active stays true through the claimed beat), so patrols resume after the raid beat
+- implementer notes from v3 reviewers: the wingmate exclusion is `data.ai.squadId` in `src/ai/fireDiscipline.js:44-48` (lane hold, not a damage-gate reject) so clause (b) stray convergence is load-bearing; `entity:killed` carries `killerId` only; hook `_stepRaidWing` on the raid `_beatDone`

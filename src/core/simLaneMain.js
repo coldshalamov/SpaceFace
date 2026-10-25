@@ -65,6 +65,7 @@ import {
   laneUiFold,
   laneViewport,
   laneBusEmit,
+  laneCameraFramePayload,
 } from './simLaneCommands.js';
 import {
   modalInputActive,
@@ -1225,6 +1226,28 @@ export function createSimLaneRuntime({
     commands.push(...envelopeRing.drain());
   }
 
+  // The worker's visibility projector (tableChaseFraming → helpers.worldToScreen)
+  // must answer the DISPLAYED camera, not the stale commanded record: a scrolled
+  // zoom never crosses the lane otherwise (camera:zoom is presentation-only), and
+  // mid-acceleration the eased distance lags the instantaneous speed-zoom. Ship
+  // the live envelope camera.js stamps onto state.camera each follow() — every
+  // field degrades independently, so a pre-camera state still transports
+  // harmlessly (the projector falls back to its settled derivation). Round 4:
+  // the envelope now also carries the displayed pose (eye, orientation, view
+  // kind, displayed fov/near/far) and the frame origin those locals belong to,
+  // so a floating-origin hop and the racing stern rig both project honestly.
+  function appendCameraFrame(commands) {
+    const cam = state && state.camera;
+    if (!cam) return;
+    const size = viewportSize();
+    const aspect = size.w > 0 && size.h > 0 ? size.w / size.h : null;
+    pushLaneCommand(envelopeRing, {
+      kind: 'camera',
+      p: laneCameraFramePayload(cam, aspect),
+    });
+    commands.push(...envelopeRing.drain());
+  }
+
   function appendCursorProjection(commands) {
     // Camera/galactic-origin geometry belongs to presentation. The worker has
     // no renderer raycast helper: project on main for every batch, even when
@@ -1278,6 +1301,9 @@ export function createSimLaneRuntime({
       return;
     }
 
+    // Same displayed-camera transport as the main-clock flush: only real
+    // command batches carry it — a bare clock ack never forces one into being.
+    appendCameraFrame(commands);
     const ack = workerClockAckPending;
     // A worker reply can have advanced its retained journal beyond the last
     // presentation ACK by the time a queued command is ready. Keep the larger
@@ -1335,6 +1361,9 @@ export function createSimLaneRuntime({
     if (pendingSteps <= 0 && commands.length === 0 && pendingAckEnd === 0) return;
     appendGamepadFrame(commands);
     appendCursorProjection(commands);
+    // The displayed-camera envelope rides last so it lands after every
+    // other command in the batch, immediately before this directive's steps.
+    appendCameraFrame(commands);
     capPendingSteps(MAX_CATCHUP_STEPS);
 
     const seq = nextToken();

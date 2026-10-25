@@ -35,7 +35,7 @@ test('refusal lines name the cause and the fix with the world numbers', () => {
   );
   assert.equal(
     jumpAbortText({ reason: 'credits', creditsNeeded: 230, creditsHeld: 45 }),
-    'Gate toll 230 cr — purse holds 45 cr',
+    'Gate toll 230 cr — purse holds 45 cr. Earn it at a dock.',
   );
   assert.equal(jumpAbortText({ reason: 'cooldown', cooldownS: 8.4 }), 'Drive cooling — 9s');
 });
@@ -264,6 +264,6 @@ test('end to end: refusing a broke purser voices one toll line and no chart succ
     coursePayload: { type: 'sector', sectorId: 'sector_test_b', path: null, label: 'Test Toll Gate' },
   });
   assert.equal(ok, true);
-  assert.deepEqual(toasts.map((t) => t.text), ['Gate toll 230 cr — purse holds 5 cr'],
+  assert.deepEqual(toasts.map((t) => t.text), ['Gate toll 230 cr — purse holds 5 cr. Earn it at a dock.'],
     'exactly one player-visible line: the refusal, with the fix');
 });

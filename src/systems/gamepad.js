@@ -8,6 +8,9 @@ import {
   worldFeelTick,
 } from '../audio/worldFeelSeams.js';
 import { POWER_VERBS, POWER_VERB_ALIASES, savedCodesForPower } from './powerVerbs.js';
+// RC-FELT: the ONE data import this layer carries — the shared weapon-family classifier —
+// so accepted damage pulses read the same family vocabulary as the VFX they accompany.
+import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 
 // Gamepad polling layer (goal P1-12).
 //
@@ -511,6 +514,44 @@ export const HAPTIC_RELEASE_PULSES = Object.freeze({
   good:  { strong: 0.30, weak: 0.50, ms: 100 },
   messy: { strong: 0.20, weak: 0.25, ms: 60 },
 });
+// RC-FELT: the player's OWN accepted attacks read by weapon family — a plasma bolt taps the
+// weak actuator, a kinetic slug thuds on the strong, a missile impact rolls longest. Fed by
+// `combat:damage` (settled damage only — firing requests are never felt). Admission is
+// deferred to _stepHaptics so a same-tick kill keeps the heavier kill pulse, and the
+// candidate lives at most one tick: a bullet stream must not build a rumble backlog.
+export const HAPTIC_WEAPON_FAMILY_PULSES = Object.freeze({
+  plasma:  { strong: 0.15, weak: 0.55, ms: 65 },
+  kinetic: { strong: 0.65, weak: 0.20, ms: 95 },
+  missile: { strong: 0.80, weak: 0.45, ms: 160 },
+});
+// The authoritative holy-shit moment — bulletTime's detector already owns consequence,
+// visibility, cooldown and suppression; the pad only answers its verdict. The biggest beat
+// in the vocabulary (above the base kill's 0.95/0.80) with the longest tail.
+export const HAPTIC_MOMENT_PULSE = Object.freeze({ strong: 0.95, weak: 0.90, ms: 220 });
+const MOMENT_PENDING_MAX_TICKS = 12;   // bounded queue while another pulse owns the gap
+const MOMENT_ROOT_MAX_AGE_TICKS = 480; // dedupe window for one trick episode
+const MOMENT_ROOT_CAP = 32;
+
+/**
+ * RC-FELT gate + classifier for one `combat:damage` record. Only the player's own ACCEPTED
+ * attack on a hostile target is felt — NPC-on-NPC fire, self-damage, friendly hits,
+ * zero/whiffed packets and unclassifiable mounts all stay silent. Returns a fresh
+ * {family, strong, weak, ms} so callers never retain the pooled damage payload.
+ */
+export function weaponImpactHaptic(payload, playerId) {
+  if (playerId == null || !payload) return null;
+  if (payload.attackerId !== playerId) return null;
+  if (payload.targetId === playerId) return null;
+  if (payload.targetHostileToPlayer !== true) return null;
+  const applied = Number(payload.applied);
+  if (!Number.isFinite(applied) || applied <= 0) return null;
+  if (typeof payload.weaponId !== 'string' || payload.weaponId.length === 0) return null;
+  const classified = classifyWeaponFamily(payload.weaponId);
+  const family = classified && classified.family;
+  const spec = family ? HAPTIC_WEAPON_FAMILY_PULSES[family] : null;
+  if (!spec) return null;
+  return { family, strong: spec.strong, weak: spec.weak, ms: spec.ms };
+}
 
 export function normalizeHapticLevel(v) {
   return v === 'off' || v === 'low' ? v : 'full';
@@ -889,12 +930,58 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
   let pulseTicks = 0;
   let pulseGapTicks = 0;
   let pulseSpec = null;
+  // RC-FELT deferred candidates: combat:damage callbacks only QUEUE (payload records are
+  // pooled — scalars copied at emit), and _stepHaptics admits or drops them so a same-tick
+  // kill keeps the heavier kill pulse. The family candidate lives one tick; the moment
+  // queues behind a busy gap for up to MOMENT_PENDING_MAX_TICKS. A live moment pulse owns
+  // the channel for its whole tail — family candidates wait it out (and so usually drop).
+  let pendingFamily = null;
+  let pendingMoment = null;
+  let momentLiveTicks = 0;
+  const momentRoots = new Map(); // rootId -> tick; dedupes one trick episode, capped 32
+  let lastHapticTick = -1;       // backward-tick detector: a restore crosses this boundary
+  // Ownership of the LIVE pulse: an admitted weaponImpact:*/moment:holyShit is still this
+  // slice's feedback even after it leaves the queue, so transition boundaries must cancel
+  // it — a 0.95/0.90 moment rumbling through a restore describes a world that no longer
+  // exists. Other owners' live pulses (a kill crossing the boundary) keep their shipped
+  // behavior: clearPendingFeedback touches ONLY felt-owned live pulses.
+  let feltPulseLive = false;
+  const clearPendingFeedback = () => {
+    pendingFamily = null;
+    pendingMoment = null;
+    momentLiveTicks = 0;
+    momentRoots.clear();
+    if (feltPulseLive) {
+      pulseTicks = 0;
+      pulseSpec = null;
+      feltPulseLive = false;
+    }
+  };
+  const currentTick = () => (state && Number.isFinite(state.tick) ? state.tick | 0 : -1);
+  // Settings gates evaluated at emit time AND at admission: haptics 'off', the legacy
+  // gamepad haptics switch, or a disabled gamepad all refuse new candidates.
+  const hapticsAcceptingFeedback = () => {
+    const s = state && state.settings;
+    if (!s) return true;
+    const g = s.controls && s.controls.gamepad;
+    if (g && (g.enabled === false || g.haptics === false)) return false;
+    return normalizeHapticLevel(s.accessibility && s.accessibility.haptics) !== 'off';
+  };
+  const pruneMomentRoots = (t) => {
+    for (const [k, seen] of momentRoots) {
+      if (!Number.isFinite(seen) || t - seen > MOMENT_ROOT_MAX_AGE_TICKS) momentRoots.delete(k);
+    }
+  };
   // `gp` is declared below; listeners can only fire after createGamepad returns it.
   const startPulse = (spec, event, force) => {
     if (!spec || (!force && pulseGapTicks > 0)) return false; // ≤ one pulse per ~80 ms, by sim ticks
     pulseSpec = { strong: spec.strong, weak: spec.weak };
     pulseTicks = Math.max(1, Math.round((Number(spec.ms) || 60) * 60 / 1000));
     pulseGapTicks = HAPTIC_PULSE_MIN_GAP_TICKS;
+    // Ownership travels with the admission: a replacing non-felt pulse clears the tag,
+    // so reset boundaries only ever cancel feedback this slice admitted.
+    feltPulseLive = event === 'moment:holyShit'
+      || (typeof event === 'string' && event.startsWith('weaponImpact:'));
     gp._lastVerbPulse = event;
     return true;
   };
@@ -925,7 +1012,7 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       // pebble snaps light, a 200 t wreck lands heavy. /200 matches the snag
       // shake's realistic-mass band (2400 is for katamaris, not cores).
       // Pinned constant: /200 mirrors the gyreSnare.js snag-shake denominator —
-      // retune both together (this layer intentionally carries no data imports).
+      // retune both together (only the shared weapon-family classifier is imported — retune stays manual).
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
       const base = HAPTIC_VERB_PULSES['gyre:snagged'];
       startPulse({ strong: base.strong + 0.2 * t, weak: base.weak + 0.15 * t, ms: base.ms + 60 * t }, 'gyre:snagged');
@@ -935,7 +1022,7 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       // maxClumpMass is the launch cue's own frac) — a capped moon's draw rumbles
       // heavier, matching the bigger pull-back the sim applies.
       // Pinned constant: /2400 IS GYRE_SNARE.maxClumpMass — retune with the data
-      // file (this layer intentionally carries no data imports).
+      // file (only the shared weapon-family classifier is imported — retune stays manual).
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
       // Emitted per coil tick: windW01 (0→1 over the draw) mirrors the audio
       // twin's per-tick crescendo — a flat pulse left the arc ear-only.
@@ -948,7 +1035,7 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       // speed (a capped moon throws slower; speed-lerping would invert intent).
       // Pebble -> 0.55 crack, capped moon -> the full 0.90 + a longer tail.
       // Pinned constant: /2400 IS GYRE_SNARE.maxClumpMass — retune with the data
-      // file (this layer intentionally carries no data imports).
+      // file (only the shared weapon-family classifier is imported — retune stays manual).
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
       const base = HAPTIC_VERB_PULSES['gyre:thrown'];
       // Priority beat: the per-tick windup emits re-arm the 5-tick min-gap on
@@ -1022,6 +1109,44 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
     bus.on('combat:baseDestroyed', (p) => {
       if (state && state.playerId != null && p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['combat:baseDestroyed'], 'combat:baseDestroyed');
     });
+    // RC-FELT: the player's own ACCEPTED attacks pulse by weapon family. `combat:damage`
+    // fires per settled packet (never combat:fire — a trigger pull is not a hit felt).
+    // The callback only queues; admission happens in _stepHaptics so a same-tick kill
+    // keeps the heavier kill pulse. First qualifying impact per tick wins — a bullet
+    // stream stays one tap, not a backlog.
+    bus.on('combat:damage', (p) => {
+      if (!hapticsAcceptingFeedback()) return;
+      const spec = weaponImpactHaptic(p, state && state.playerId);
+      if (!spec) return;
+      const t = currentTick();
+      if (pendingFamily && pendingFamily.queuedTick === t) return;
+      pendingFamily = { ...spec, queuedTick: t };
+    });
+    // The authoritative big-moment edge — bulletTime's detector already owns consequence,
+    // visibility, cooldown and per-minute suppression; the pad consumes its verdict and
+    // never re-detects. `moment:amended` (a rating upgrade inside a live episode) must not
+    // replay the pulse, and one rootId queues at most once.
+    bus.on('moment:holyShit', (p) => {
+      if (!hapticsAcceptingFeedback()) return;
+      const pid = state && state.playerId;
+      if (pid == null || !p || p.actorId !== pid) return;
+      const rootId = typeof p.rootId === 'string' && p.rootId.length ? p.rootId : null;
+      if (rootId == null) return;
+      const t = currentTick();
+      if (t < 0) return;
+      pruneMomentRoots(t);
+      if (momentRoots.has(rootId)) return;
+      if (momentRoots.size >= MOMENT_ROOT_CAP) {
+        momentRoots.delete(momentRoots.keys().next().value);
+      }
+      momentRoots.set(rootId, t);
+      pendingMoment = { rootId, queuedTick: t };
+    });
+    // Queued feedback never crosses a restore/run boundary — a pulse queued before the
+    // load describes a world that no longer exists.
+    for (const resetEvent of ['save:restoring', 'game:newGame', 'run:started']) {
+      bus.on(resetEvent, clearPendingFeedback);
+    }
   }
 
   const gp = {
@@ -1437,10 +1562,60 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       const slam = slamTicks > 0 ? slamPeak * (slamTicks / HAPTIC_SLAM_DECAY_TICKS) : 0;
       if (slamTicks > 0) slamTicks -= 1;
       if (pulseGapTicks > 0) pulseGapTicks -= 1;
+      // RC-FELT pending admission — after the gap decrement, before the pulse snapshot, so
+      // an admitted candidate is live this same tick. Moment wins over family (the big beat
+      // outranks an ordinary hit); a live moment pulse holds the channel for its whole
+      // tail, so a family candidate arriving mid-moment waits it out and drops. Both are
+      // bounded: family ages out in one tick, a queued moment in twelve — never a backlog,
+      // never a stale pulse firing seconds after its cause. All clocks are sim ticks.
+      const hapticTick = live && Number.isFinite(live.tick) ? live.tick | 0 : -1;
+      if (hapticTick >= 0 && lastHapticTick >= 0 && hapticTick < lastHapticTick) {
+        clearPendingFeedback(); // backward sim tick — a restore or replay crossed
+      }
+      if (hapticTick >= 0) lastHapticTick = hapticTick;
+      if (momentLiveTicks > 0) momentLiveTicks -= 1;
+      if (level === 'off') {
+        // Switching haptics off discards queued feedback; re-enabling replays nothing.
+        pendingFamily = null;
+        pendingMoment = null;
+        // An ADMITTED felt pulse is still this slice's feedback — leaving it
+        // ticking through 'off' lets the moment resume the instant the level
+        // returns to full, replaying a beat the player already chose to mute.
+        // Cut only the felt-owned latch: another owner's live pulse (a kill
+        // crossing the same window) keeps its shipped tail.
+        if (feltPulseLive) {
+          pulseTicks = 0;
+          pulseSpec = null;
+          feltPulseLive = false;
+        }
+      } else {
+        if (pendingMoment) {
+          const momentAge = hapticTick >= 0 && pendingMoment.queuedTick >= 0
+            ? hapticTick - pendingMoment.queuedTick : 0;
+          if (momentAge > MOMENT_PENDING_MAX_TICKS) {
+            pendingMoment = null;
+          } else if (pulseGapTicks === 0) {
+            if (startPulse(HAPTIC_MOMENT_PULSE, 'moment:holyShit')) {
+              momentLiveTicks = Math.max(1, Math.round(HAPTIC_MOMENT_PULSE.ms * 60 / 1000));
+            }
+            pendingMoment = null;
+          }
+        }
+        if (pendingFamily) {
+          const famAge = hapticTick >= 0 && pendingFamily.queuedTick >= 0
+            ? hapticTick - pendingFamily.queuedTick : 0;
+          if (famAge > 1 || pulseGapTicks > 0 || momentLiveTicks > 0) {
+            pendingFamily = null;
+          } else {
+            startPulse(pendingFamily, `weaponImpact:${pendingFamily.family}`);
+            pendingFamily = null;
+          }
+        }
+      }
       const pulse = pulseTicks > 0 ? pulseSpec : null;
       if (pulseTicks > 0) {
         pulseTicks -= 1;
-        if (pulseTicks <= 0) pulseSpec = null;
+        if (pulseTicks <= 0) { pulseSpec = null; feltPulseLive = false; }
       }
 
       const player = live && live.entities && typeof live.entities.get === 'function'
@@ -1538,6 +1713,8 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       pulseTicks = 0;
       pulseGapTicks = 0;
       pulseSpec = null;
+      clearPendingFeedback();
+      lastHapticTick = -1;
       this.lastButton = null;
       this._wasActive = false;
     },

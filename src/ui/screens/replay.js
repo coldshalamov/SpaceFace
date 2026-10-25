@@ -588,7 +588,7 @@ function pollTapeGamepad(view) {
   view.padRB = rb;
 }
 
-function buildContent(container, recording, ctx) {
+function buildContent(container, recording, ctx, options = {}) {
   injectDeckplate();
   // This screen's own placement lives in styles/ui.css (migrated screens own no CSS);
   // the orrery tokens below are library material, owned by src/ui/orrery/tokens.js.
@@ -613,7 +613,7 @@ function buildContent(container, recording, ctx) {
     counter: null, codes: null, readout: null, lamp: null, lampWord: null,
     speedButton: null, keyHandler: null,
   };
-  view.theater = summary.available ? createTheaterSession(recording, ctx?.state) : null;
+  view.theater = summary.available ? createTheaterSession(recording, ctx?.state, { setPiece: options.setPiece }) : null;
 
   const veilTop = el('div', 'orr-replay__veil-top');
   const addFootageFallback = () => {
@@ -950,16 +950,16 @@ function buildContent(container, recording, ctx) {
  * Open the replay surface over the current pause sheet (the pause "Replay" action).
  * The pause root is hidden and the photo-mode presentation is applied; Esc or Exit returns.
  */
-export function openReplay(rootEl, ctx) {
+export function openReplay(rootEl, ctx, options = {}) {
   if (openState) { closeReplay(); return; }
-  const recording = resolveReplayRecording(ctx);
+  const recording = options.recording || resolveReplayRecording(ctx);
   const container = el('section', 'k-screen k-screen--stage');
   container.dataset.role = REPLAY_SCREEN_ID;
   container.setAttribute('aria-label', REPLAY_LABEL);
   container.style.position = 'fixed';
   container.style.inset = '0';
   container.style.zIndex = '120';
-  const view = buildContent(container, recording, ctx);
+  const view = buildContent(container, recording, ctx, options);
 
   const parent = (rootEl && rootEl.parentElement) || document.body;
   parent.appendChild(container);

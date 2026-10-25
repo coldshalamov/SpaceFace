@@ -193,6 +193,20 @@ export const SURVIVAL_MUTATOR_CATALOG = freezeDeep([
     planner: true,
     reefLayoutId: 'crucible_reef',
   },
+  {
+    // RC-CRUCIBLE-DOOR (row 481) — Wreck Ballast: the debris field comes in as dead hulls
+    // instead of virgin rock. Same seeds, same counts, same physics verbs; what the room
+    // hands you to throw is wreckage. swarmArena owns the material swap.
+    id: 'wreck_ballast',
+    label: 'Wreck Ballast',
+    blurb: 'The room carries ballast — dead hulls where the rocks should be. Throw what is already broken.',
+    skipDraft: false,
+    skipReroll: false,
+    hullLocked: false,
+    weaponLock: null,
+    physicsOnly: false,
+    planner: false,
+  },
 ]);
 
 export const SURVIVAL_MUTATOR_BY_ID = Object.freeze(Object.fromEntries(

@@ -84,6 +84,52 @@ No draws. Up to three new `player.hints` booleans go into the free-key bag (`sav
 - No death-screen layout change.
 - No new save field outside `player.hints`.
 
+
+## v2 amendment (after impl review aa34888a found the v1 rows dormant)
+
+The v1 rows (arena impact → `stopping_takes_room`, hull ram → `slip_a_gap`) landed in 94909073cd and stay: they are correct
+mappings but dormant until the player can take impact damage (a separate gameplay contract, not this row) — the code comment
+on `DEFEAT_RUNG_ROWS` must say so plainly, and the impl note must not claim they fire today.
+
+**Live lesson added — the dry-cap death.** In `defeatRangeOffer` (after the snap check, before the v1 rows):
+- Condition: the lethal source is an NPC weapon (`source.kind` contact/weapon, `physicalLabel` empty), AND the player entity
+  passed to `buildDefeatReceipt` has finite `capMax > 0` and `cap <= 0.05 * capMax` at death, AND the player fired a weapon
+  within the last 10 s of sim time (read the existing last-fire stamp if one exists on the player/weapons state — find it;
+  if none exists, use only the cap condition). Missing or non-finite cap → no offer (keeps the TEACH-08 weapon pin silent:
+  its fixture carries no cap).
+- Rung `you_can_run_dry`; line `Ran the cap dry. The Range can teach You can run dry.` (lead + the existing
+  `sentenceCase(rule)` pattern, 10 words).
+- Same once-per-rung gating (`ui.deathRangeOfferedRung` mirror + `player.hints['deathRung:you_can_run_dry']`).
+- Tests: dry-cap weapon death offers it once; full-cap weapon death stays silent; missing cap stays silent; second dry-cap
+  death silent; snap still wins over dry-cap; save round-trip of the hint. Keep TEACH-08 pins green.
+- Non-goals: no player impact damage; no lesson for hazard deaths (no rung teaches them); no UI change.
+
+
+## v3 amendment (after v2 gate REJECT 43750cd9)
+
+- **Second live row — the dock-collar scrape.** `world.js:6269-6313` damages a hull in the pocket above a berth gate with
+  `origin.kind 'dock_collar'` and no attacker (`source.kind 'environment'`, `physicalLabel` null). That is a player-caused
+  failure to stop, and `stopping_takes_room` ("From flat out, stop before the wall line", `rangeRails.js:43`) teaches exactly
+  it. Add the row `{ origin/context 'dock_collar', sources ['environment'] } → stopping_takes_room`, lead `Came in hot.`
+  (same line as the dormant arena-impact row, which shares the rung — the once-per-rung gate means whichever fires first
+  spends it). This row fires today.
+- **Dry-cap condition named exactly:** `source.kind === 'contact'` (there is no `'weapon'` kind — `playerDefeat.js:165-192`);
+  `'unknown'` (despawned attacker) stays silent — accepted under-coverage. No sim last-fire stamp exists, so the condition
+  is cap-only (`cap <= 0.05 * capMax`, finite `capMax > 0`); a module-drain dry cap also offers it, and "Ran the cap dry"
+  is still true then. Pass `cap`/`capMax` through the existing `read` bag that `buildDefeatReceipt` hands `defeatRangeOffer`.
+- **Not taught (no honest rung):** gas, reactor burst, debris disc, radiation, acid, mines, bombs, charges, status DoT.
+- Tests add: a dock-collar death offers `stopping_takes_room` once; a dock-collar death after an arena-impact offer of the same
+  rung is silent; `unknown`-source dry-cap death is silent.
+
 ## Approvals
 
-- (pending)
+- plan-gate reviewer 4964e62b — APPROVE (2026-10-24)
+- plan-gate reviewer fb54441e — APPROVE (2026-10-24)
+- plan-gate reviewer 53f3e19e — APPROVE (2026-10-24) — plan✓3 (v1)
+- v1 impl landed 94909073cd; impl review aa34888a: v1 rows dormant (player takes no collision damage)
+- v2: amendment above — gate restarted
+- v2: 8c48fec7 APPROVE, 7a171a19 APPROVE, 43750cd9 REJECT (missed the live dock-collar cause; contact vs weapon kind)
+- v3: amendment above — gate restarted
+- v3: plan-gate reviewer cd4a5e75 — APPROVE
+- v3: plan-gate reviewer f6a502f4 — APPROVE
+- v3: plan-gate reviewer 0ee7d530 — APPROVE — plan✓3 (note: pass origin/context and cap/capMax through the read bag at playerDefeat.js:560)

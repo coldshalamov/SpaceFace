@@ -111,6 +111,9 @@ import {
   setCruciblePerkLoadout,
   kitBalanceBoard,
   overconfidenceStreak,
+  runWhatKilledYouOffer,
+  grudgeLedgerFor,
+  caseFilesFor,
 } from '../../systems/survivalRecords.js';
 import {
   applyRunShareCode,
@@ -2126,6 +2129,37 @@ export const crucibleScreen = {
     conveyorRow.appendChild(el('p', 'k-t-fine k-38', `${conveyorTrial.label}. ${conveyorTrial.blurb}`));
     settings.appendChild(conveyorRow);
 
+    // RC-CRUCIBLE-DOOR (row 481): the door opens both ways — the last Adventure death files a
+    // note in the Crucible meta, and this row turns it into a seeded drill. It launches as a
+    // practice run: no records, no rewards, nothing carried back. Same receipt, same seed.
+    {
+      const drill = doorProfile ? runWhatKilledYouOffer(doorProfile) : null;
+      if (drill) {
+        const drillRow = el('div', 'k-row sf-crd-practice');
+        const drillWord = word('Run what killed you', 'k-word--emph');
+        const who = drill.attacker || 'unidentified fire';
+        drillWord.setAttribute('aria-label', `Run what killed you: a seeded drill of your last Adventure death (${who}). Practice — no records, no rewards.`);
+        paintKey(drillWord, 'small');
+        drillWord.addEventListener('click', () => {
+          daily = false; weekly = false; pendingShare = null;
+          ruleset = SWARM_RULESET;
+          seedInput.value = String(drill.seed);
+          freeSeed = seedInput.value;
+          seedCustom = true;
+          raceGhost = false;
+          practiceQueued = true;
+          syncMode();
+          syncGhost();
+          cue('confirm');
+          launchCurrent();
+        });
+        drillRow.appendChild(drillWord);
+        drillRow.appendChild(el('p', 'k-t-fine k-38',
+          `${who}${drill.weapon ? ` · ${drill.weapon}` : ''} ended the last Adventure. Its seed waits in the room — a drill, so nothing carries back.`));
+        settings.appendChild(drillRow);
+      }
+    }
+
     // The record goes last, below the three settings: the door's job is to start a run, and the
     // reason to start another one is context for that, not a competitor for it. Reading the
     // profile must never be able to stop the door opening, so a broken or absent profile just
@@ -2142,6 +2176,30 @@ export const crucibleScreen = {
         records.appendChild(renderRecordRows(doorProfile, { onPractice: practiceFromLine }));
         let localBoard = renderCabinetBoard(rootEl.ownerDocument || document, doorProfile);
         records.appendChild(localBoard);
+        // RC-CRUCIBLE-DOOR (row 481): Case Files of beaten champions and the Grudge Ledger of
+        // top causes of death — both read the same filed history the board above does.
+        {
+          const cases = caseFilesFor(doorProfile);
+          if (cases.length) {
+            const caseBlock = el('div', 'sf-crd-casefiles');
+            caseBlock.appendChild(el('p', 'k-t-fine fh-legend', 'Case Files'));
+            for (const row of cases) {
+              caseBlock.appendChild(el('p', 'k-t-fine k-38',
+                `${row.label} — beaten ${row.count === 1 ? 'once' : `${row.count} times`}.`));
+            }
+            records.appendChild(caseBlock);
+          }
+          const grudges = grudgeLedgerFor(doorProfile);
+          if (grudges.length) {
+            const grudgeBlock = el('div', 'sf-crd-grudges');
+            grudgeBlock.appendChild(el('p', 'k-t-fine fh-legend', 'Grudge Ledger'));
+            for (const row of grudges) {
+              grudgeBlock.appendChild(el('p', 'k-t-fine k-38',
+                `${row.attacker}${row.weapon ? ` · ${row.weapon}` : ''} ×${row.count}`));
+            }
+            records.appendChild(grudgeBlock);
+          }
+        }
         this._refreshCabinetBoard = () => {
           const profile = loadCrucibleMeta();
           const nextToday = renderTodayBoard(profile, dailySnapshot.dateKey);

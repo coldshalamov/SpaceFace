@@ -75,8 +75,8 @@ test('w-498: a record heaviest hold stamps once and tonnage never double-credits
   bus.emit('tether:released', { targetId: 'heavy1' });
   assert.equal(state.lineProgression.highestHeldMassT, 500);
   const holdStamps = state.lineProgression.recordStamps.filter((s) => s.kind === 'heaviest_hold');
-  assert.equal(holdStamps.length, 1, 'one CORRECT. stamp for the record hold');
-  assert.ok(/500 T\. CORRECT\./.test(holdStamps[0].text));
+  assert.deepEqual(holdStamps.map(s => s.text), ['30 T. CORRECT.', '500 T. CORRECT.'],
+    'the first hold and the later record each stamp once');
   // A duplicate end receipt must not double-credit the same hold.
   bus.emit('tether:released', { targetId: 'heavy1' });
   assert.equal(state.lineProgression.tonnageLoggedT, 530);

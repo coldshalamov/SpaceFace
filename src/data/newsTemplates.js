@@ -118,6 +118,9 @@ export const HEADLINE_TEMPLATES = Object.freeze({
     'Broker desks at {station} stop printing {noun} quotes at all',
     'Two manifests claim the last {noun} at {station}; neither lifts cargo',
     'Dock crews at {station} turn away {noun} buyers at the gate line',
+    'The {noun} queue at {station} outlasts the shift; the desk calls it patience',
+    'A broker at {station} quotes {name} in whispers — the number survives anyway',
+    '{station} posts a waiting list for the {noun} waiting list',
   ],
   boom: [
     '{station} floods the lanes with {noun} — prices crater',
@@ -187,6 +190,8 @@ export const HEADLINE_TEMPLATES = Object.freeze({
     'A {noun} spill drifts the {station} lane; cleanup billed to the estate',
     'The wreck off {station} still squawks {name} under a dead crew code',
     '{station} cargo desk marks the lost {noun} run "weather-related"',
+    'Salvage rights on the {name} wreck outside {station} sold before the beacon cooled',
+    'Next of kin at {station} get the {noun} freighter\'s landing slot as settlement',
   ],
   freight_arrival: [
     '{station} takes delivery of {noun}',
@@ -243,6 +248,8 @@ export const HEADLINE_TEMPLATES = Object.freeze({
     'The {noun} spread at {station} moved before anyone admitted moving it',
     '{station} filing: {name} volume "unusual, within tolerance"',
     '{noun} quotes stall at {station} while the desk checks the last three',
+    'The {name} board at {station} displays yesterday\'s number with today\'s confidence',
+    '{station} market brief: {noun} did nothing, loudly, in both directions',
   ],
 });
 

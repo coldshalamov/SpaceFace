@@ -748,13 +748,13 @@ try {
     if (!(await visible(page, selector))) throw new Error(`Missing visible touch control: ${selector}`);
   }
   actorStage = 'new-game-powers';
-  await page.locator('.mf-edge').tap();
+  await tapControl('.mf-edge');
   await page.locator('.mf-wheel').waitFor({ state: 'visible' });
   await page.screenshot({ path: join(out, '04-powers.png') }).catch(error => report.finalDiagnosticErrors.push({ kind: 'stage-screenshot', name: '04-powers.png', at: new Date().toISOString(), error: String(error?.message || error) }));
   await page.touchscreen.tap(100, 320);
   await page.locator('.mf-wheel').waitFor({ state: 'hidden' });
   actorStage = 'new-game-pause';
-  await page.locator('.mf-pause').tap();
+  await tapControl('.mf-pause');
   await page.locator('[data-screen="pause"]').waitFor({ state: 'visible' });
   report.stages.push({ stage: 'pause', ...await snapshot(page) });
   await page.screenshot({ path: join(out, '05-pause.png') }).catch(error => report.finalDiagnosticErrors.push({ kind: 'stage-screenshot', name: '05-pause.png', at: new Date().toISOString(), error: String(error?.message || error) }));

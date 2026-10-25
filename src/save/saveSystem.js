@@ -36,6 +36,7 @@ import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
 import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { stationLifeSaveProjection } from '../systems/stationContactLoadBoundary.js';
+import { serializeShipLedgerBoard, deserializeShipLedgerBoard, revalidateShipLedgerBoard } from '../systems/shipLedger.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import { laneCommandSink, laneBusEmit } from '../core/simLaneCommands.js';
@@ -981,6 +982,9 @@ export const save = {
       ['fieldDepletion', () => this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {})],
       ['livingPoiBehaviors', () => this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {})],
       ['signalInvestigation', () => this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {})],
+      // GOLD-LEDGER (row 444): the player-authored evidence board — absent key keeps an
+      // untouched run lazy; evidence re-validation happens on restore, not here.
+      ['shipLedger', () => serializeShipLedgerBoard(state) || {}],
       ['recoveryEncounters', () => this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {})],
       // Genie 01: world memory + inbox (inbox is part of the save; serialize() does not drain it).
       ['chronicler', () => this._serializeBoundedMemory('chronicler')],
@@ -1183,6 +1187,9 @@ export const save = {
     yield 'serialize:livingPoiBehaviors';
     data.signalInvestigation = this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {});
     yield 'serialize:signalInvestigation';
+    // GOLD-LEDGER: owner-serialized board (pins/links); absent-board writes the absent bag.
+    data.shipLedger = serializeShipLedgerBoard(state) || {};
+    yield 'serialize:shipLedger';
     data.recoveryEncounters = this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {});
     yield 'serialize:recoveryEncounters';
     data.chronicler = this._serializeBoundedMemory('chronicler');
@@ -7151,6 +7158,12 @@ export const save = {
         this.bus.emit('mode:changed', { mode: state.mode, previousMode });
       }
 
+      // GOLD-LEDGER (row 444): the evidence board restores AFTER its evidence sources (story in
+      // the missions bag, scanner clues, site records) so the re-validation reads what the
+      // restored state actually earned — an unfound page drops, and its links go with it.
+      deserializeShipLedgerBoard(data.shipLedger, state);
+      revalidateShipLedgerBoard(state);
+      yield 'ship-ledger-restored';
       this._reportRestoreProgress(0.24, 'Priming the flight deck');
       yield 'pre-loaded';
       // A mature save's save:loaded reconcile (economy reseed, traffic relink, navigation

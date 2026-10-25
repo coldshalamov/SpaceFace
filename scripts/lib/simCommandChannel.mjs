@@ -36,6 +36,11 @@
 //             Worker applies via ctx.applyUiFold.
 // - viewport: stage-8 viewport size {w, h} — overrides innerWidth/innerHeight
 //             reads (viewportSize/stickViewport) inside the sim realm.
+// - camera  : the main lane's displayed chase envelope {zoom, displayedZoom,
+//             speedZoomFactor, focusX, focusZ, tilt, aspect} — applied onto
+//             state.camera via applyLaneCameraFrame so the worker's visibility
+//             projector answers the presented picture (eased distance, damped
+//             speed-zoom, settled focus), not the stale commanded record.
 //
 // inputCommandSeq on a completed tick names the newest input envelope that tick
 // consumed — the P7 input-latency attribution completedTick.inputCommandSeq/
@@ -46,6 +51,7 @@
 import { applyInput, applyTapeCommands } from './simScenarioDriver.mjs';
 import { applyRemoteTimeEffectsSnapshot } from '../../src/core/timeEffects.js';
 import {
+  applyLaneCameraFrame,
   applyLaneInputWrites,
   applyLaneMode,
   applyLaneNav,
@@ -67,6 +73,7 @@ export const SIM_COMMAND_TYPES = Object.freeze({
   VIEWPORT: 'viewport',
   KEEPALIVE: 'keepalive',
   TIME_EFFECTS: 'timeEffects',
+  CAMERA: 'camera',
 });
 
 export function createSimCommandRing() {
@@ -145,6 +152,7 @@ export function pushLaneCommand(ring, d) {
     case 'busEmit': return ring.push(SIM_COMMAND_TYPES.BUS, { emit: d.emit, payload: d.payload });
     case 'uiFold': return ring.push(SIM_COMMAND_TYPES.UI, d.p || null);
     case 'viewport': return ring.push(SIM_COMMAND_TYPES.VIEWPORT, { w: d.w, h: d.h });
+    case 'camera': return ring.push(SIM_COMMAND_TYPES.CAMERA, d.p || null);
     default: return null;
   }
 }
@@ -214,6 +222,10 @@ export function applySimCommandEnvelope(env, ctx) {
     case SIM_COMMAND_TYPES.VIEWPORT:
       if (typeof ctx.setViewport === 'function') ctx.setViewport(p && p.w, p && p.h);
       return { type: SIM_COMMAND_TYPES.VIEWPORT };
+    case SIM_COMMAND_TYPES.CAMERA:
+      // Direct shared-applier lane (NAV/SETTINGS class): the displayed camera
+      // envelope lands on state.camera before the directive's steps run.
+      return { type: SIM_COMMAND_TYPES.CAMERA, ack: { ok: applyLaneCameraFrame(state, p) } };
     case SIM_COMMAND_TYPES.SPAWN: {
       const token = p && p.token;
       try {

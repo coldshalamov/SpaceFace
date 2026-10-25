@@ -21,6 +21,14 @@ export const LAST_ARGUMENT_SCORE = freezeDeep({
     spine: 'subsystem_last_argument_spine', sensor: 'subsystem_last_argument_sensor' },
   actors: [hullActor({ label: 'THE LAST ARGUMENT', archetype: C.enemyId, hull: C.hull,
     mass: C.mass, radius: C.radius, speed: C.maxSpeed, doctrine: 'capital_broadside' })],
+  // GOLD-COLOSSI data only — the Last Argument keeps its own lifecycle and
+  // never spawns plate bodies (the fight owner skips non-score fights).
+  plates: [
+    { id: 'battery_plate', label: 'battery housing', anchor: { x: 0.5, z: 0.25 }, radius: 9, mass: 90,
+      holdTension: 0.8, covers: 'subsystem_weapon', shedOnAct: 0 },
+    { id: 'spine_plate', label: 'spine plate', anchor: { x: -0.05, z: 0 }, radius: 10, mass: 100,
+      holdTension: 0.8, covers: 'subsystem_power', shedOnAct: 1 },
+  ],
   score: score({
     name: 'THE LAST ARGUMENT', identity: 'siege_ark',
     introTicks: 480, transitionTicks: 180, resumeTicks: 180,

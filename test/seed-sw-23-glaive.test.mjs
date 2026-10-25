@@ -7,6 +7,7 @@ import test from 'node:test';
 import { WEAPONS } from '../src/data/weapons.js';
 import { SWARM_DRAFT_OFFERS } from '../src/data/swarmDraft.js';
 import { weapons } from '../src/systems/weapons.js';
+import { consumeProjectileContinuation } from '../src/core/physicsAuthority.js';
 
 const SEED = 4242;
 const DEF = WEAPONS.find((d) => d.id === 'wpn_glaive_s');
@@ -57,6 +58,13 @@ test('the blade flies out, turns once through the thrower, then is spent', () =>
   assert.ok(blade.vel.x < 0, `returning toward the thrower, vx=${blade.vel.x}`);
   const speed = Math.hypot(blade.vel.x, blade.vel.z);
   assert.ok(Math.abs(speed - 320) < 1e-6, 'redirect keeps the thrown speed');
+  // The bolt is a Rapier-owned bullet: the redirect must reach the real body through the
+  // projectile continuation membrane — a bare vel mirror would die in the post-step readback
+  // and the return leg would never fly.
+  const continuation = consumeProjectileContinuation(blade);
+  assert.ok(continuation, 'redirect queued through the projectile continuation membrane');
+  assert.ok(continuation.velocity.x < 0, 'continuation carries the return velocity');
+  assert.equal(consumeProjectileContinuation(blade), null, 'the membrane consumes once');
   // Fly the return leg back across the thrower's position.
   for (let i = 0; i < 120; i++) {
     blade.pos.x += blade.vel.x / 60;

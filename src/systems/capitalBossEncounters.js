@@ -1,4 +1,8 @@
 import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
+import { LAST_ARGUMENT } from '../data/lastArgument.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { entityLocalPointToWorld } from '../combat/geometry.js';
+import { capitalPlatePull, capitalPlateUnderLine } from '../combat/capitalPlates.js';
 import { spawnSwarmCapitalBallast } from '../missions/capitalBossSpawn.js';
 import { createCapitalBossFight,restoreCapitalBossFight,rebindCapitalBossFight,
   bindCapitalBossWing,stepCapitalBossFight,validFightId } from '../combat/capitalBossScore.js';
@@ -153,6 +157,9 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(say) say.call(ctx.helpers.voice,{channel:c.priority,text:c.text,kind:'info',ttl:4,id:`capital:${r.fightId}`});
       else ctx.bus.emit('toast',{text:c.text,kind:'info',ttl:4});
     }
+    // GOLD-COLOSSI: entering an act tears the plates whose shedOnAct is the act that just
+    // ended — the rope is the faster route; the act shed guarantees the ladder.
+    if(c.type==='actChanged') system._shedPlatesForAct(r,c.index);
     // Presentation/telemetry are facts; they are not a second executor for damage or spawns.
     ctx.bus.emit(`capitalBoss:${c.type}`,c);
   };
@@ -180,6 +187,22 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       // fights are not swarm: ids, so missions.js remains their only router.
       listen('tether:whipImpact',p=>onSwarmMass('whip',p));
       listen('massline:throw',p=>onSwarmMass('throw',p));
+      // Row 463 retry act: a player defeat ends the score in 'defeat' and the terminal record is
+      // never stepped again — a returning player used to find a permanently silent, braked boss
+      // that still completed the mission when shot. Player respawn rewinds every such fight whose
+      // mission is still active; a save:loaded heal covers older saves written mid-defeat.
+      // Recovery also rewinds a fight the death INTERRUPTED before the score stepped to 'defeat':
+      // when the boss's own authored hit lands the kill inside the score's step, the after-action
+      // screen pauses the sim before the next tick, so the record is still live at the berth.
+      listen('player:respawn',()=>system._rewindDefeatedFights('recovery',{interrupted:true}));
+      listen('save:loaded',()=>{
+        const player=ctx.state.entities&&typeof ctx.state.entities.get==='function'
+          ?ctx.state.entities.get(ctx.state.playerId):null;
+        // Heal only over a live hull: a missing player or an open wreck (recovery pending) waits
+        // for player:respawn instead of re-arming a fight against a dead target.
+        if(!player||player.alive===false||(player.flags&&player.flags.defeated)) return;
+        system._rewindDefeatedFights('save_loaded');
+      });
     },
     start({encounterId,fightId,bossId,targetId,mirror=1}) {
       if(!validFightId(fightId)) throw new TypeError('Invalid fight id');
@@ -217,13 +240,217 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(!ctx||state!==ctx.state) throw new TypeError('Capital system GameState mismatch');
       for(const id of Object.keys(root().fights).sort(sort)) {
         const r=root().fights[id];
-        if(r.terminal) continue;
+        // A finished fight pays for no plate: the cover drops with the score (a rewind re-stamps it).
+        if(r.terminal) { system._clearPlateCover(r,state); continue; }
         const o=observe(r,state,ctx.helpers);
         if(!o||typeof o.active!=='boolean') throw new TypeError('observe must explicitly decide lifecycle activity');
         for(const c of stepCapitalBossFight(r,{...o,
           boss:r.bossKilled?{id:r.bossId,alive:false,hull:0}:o.boss,
           target:r.targetKilled?{id:r.targetId,alive:false,hull:0}:o.target,
           tick:state.tick,simTime:state.simTime})) runCommand(c,r);
+        system._stepPlates(r,state);
+      }
+    },
+    // GOLD-COLOSSI: a plate is fight data until it tears — no per-tick pose, no new joint.
+    // Swarm champions and the Last Argument keep their own lifecycles: their authored
+    // plates are data-only and never spawn bodies here.
+    _platesLive(r) {
+      return !!(r && !r.terminal && Array.isArray(r.plates) && r.plates.length
+        && typeof r.fightId === 'string' && !r.fightId.startsWith('swarm:')
+        && r.encounterId !== LAST_ARGUMENT.scoreId);
+    },
+    _plateSpec(r, plateId) {
+      let specs = null;
+      try { specs = requireCapitalBossEncounter(r.encounterId).plates; } catch (_) { specs = null; }
+      return Array.isArray(specs) ? specs.find((p) => p && p.id === plateId) || null : null;
+    },
+    // A capital is roped at its centre of mass, so the latch contact point names no plate; the
+    // plate under the line is the one facing the pilot (src/combat/capitalPlates.js).
+    _plateLatchNear(plateSpec, boss, attachment) {
+      if(!plateSpec || !boss || !attachment) return false;
+      const owner = ctx.state.entities && ctx.state.entities.get(attachment.ownerId);
+      return capitalPlateUnderLine(plateSpec, boss, owner);
+    },
+    _plateAnchorWorld(plateSpec, boss) {
+      const br = Math.max(1, Number(boss && boss.radius) || 20);
+      return entityLocalPointToWorld(boss,
+        { x: plateSpec.anchor.x * br, z: plateSpec.anchor.z * br });
+    },
+    _playerAttachmentOn(bossId, state) {
+      const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+      if(!byId) return null;
+      for (const id in byId) {
+        const a = byId[id];
+        if(a && a.state === 'active' && a.ownerId === state.playerId && a.targetId === bossId) return a;
+      }
+      return null;
+    },
+    _stampPlateCover(r, boss) {
+      if(!boss || !boss.data) return;
+      const cover = {};
+      for (const rec of (r.plates || [])) {
+        if(!rec || !rec.attached) continue;
+        const spec = this._plateSpec(r, rec.id);
+        if(spec && spec.covers) cover[spec.covers] = true;
+      }
+      boss.data.capitalPlateCover = Object.keys(cover).length ? cover : null;
+    },
+    _clearPlateCover(r, state = ctx.state) {
+      const boss = r && state && state.entities && state.entities.get && state.entities.get(r.bossId);
+      if(boss && boss.data && boss.data.capitalPlateCover) boss.data.capitalPlateCover = null;
+    },
+    _stepPlates(r, state) {
+      if(!this._platesLive(r)) { if(r && r.terminal) this._clearPlateCover(r, state); return; }
+      const boss = state.entities && state.entities.get(r.bossId);
+      if(!boss || boss.alive === false || !boss.pos) { this._stampPlateCover(r, boss); return; }
+      this._stampPlateCover(r, boss);
+      const attachment = this._playerAttachmentOn(boss.id, state);
+      // Raw line force as a fraction of a starter hull's full-burn pull — never tensionEstimate,
+      // which is load against the near-unbreakable break rating and never leaves ~1e-3.
+      const tension = capitalPlatePull(attachment);
+      for (const rec of r.plates) {
+        if(!rec || !rec.attached) continue;
+        const spec = this._plateSpec(r, rec.id);
+        if(!spec) { rec.attached = false; continue; }
+        const strained = !!(attachment && tension >= spec.holdTension
+          && this._plateLatchNear(spec, boss, attachment));
+        rec.strainTicks = strained ? (rec.strainTicks | 0) + 1 : 0;
+        if(rec.strainTicks >= 30) {
+          this._tearPlate(r, boss, rec, spec, { attachment, cause: 'tether' });
+        }
+      }
+    },
+    _tearPlate(r, boss, rec, spec, { attachment = null, cause = 'tether' } = {}) {
+      if(!rec || !rec.attached) return null;
+      rec.attached = false; rec.strainTicks = 0;
+      const spawn = ctx.helpers && ctx.helpers.spawnEntity;
+      const world = this._plateAnchorWorld(spec, boss);
+      const player = ctx.state.entities && ctx.state.entities.get(attachment && attachment.ownerId);
+      // Separation runs down the line for a rope tear, radially off the boss for an act shed.
+      let dx = world.x - boss.pos.x, dz = world.z - boss.pos.z;
+      if(attachment && player && player.pos) { dx = world.x - player.pos.x; dz = world.z - player.pos.z; }
+      const d = Math.hypot(dx, dz) || 1;
+      const plate = spawn && spawn({
+        type: 'wreck',
+        pos: { x: world.x, z: world.z },
+        vel: { x: Number(boss.vel && boss.vel.x) || 0, z: Number(boss.vel && boss.vel.z) || 0 },
+        radius: spec.radius, mass: spec.mass,
+        hull: 1, hullMax: 1, collides: true,
+        physicsBody: { radius: spec.radius, dynamic: true },
+        data: {
+          kind: 'wreck', label: spec.label, scanLabel: spec.label, name: spec.label,
+          masslineTetherable: true,
+          capitalPlate: { fightId: r.fightId, bossId: r.bossId, plateId: spec.id, covers: spec.covers },
+          // The aftermath armor-slab package keeps a torn plate reading as boss armor,
+          // not generic debris — the same render path fracture pieces use.
+          fractureVisual: { partId: 'place_aftermath_aft_armor_slab', label: spec.label },
+          fractureVictimRadius: Number(boss.radius) || null,
+          loot: [], salvagePool: { cmdty_scrap_metal: 2 }, salvageTimeLeft: 8,
+        },
+      });
+      if(plate) {
+        queuePhysicsImpulse(plate, { x: (dx / d) * spec.mass * 12, z: (dz / d) * spec.mass * 12 },
+          { tag: 'capital_plate_tear', tick: ctx.state.tick, externalEffect: true });
+      }
+      // The player's line moves onto the freed slab through the sanctioned cut+create path —
+      // never a silent rebind of a live joint.
+      if(plate && attachment && cause === 'tether') {
+        const svc = this._attachmentService();
+        if(svc) {
+          svc.cut(attachment.id, attachment.ownerId, 'capital_plate_tear');
+          // The player's OWN line moves to the slab: keep its def (a specialist massline is a
+          // different contract than tether_standard — its own break rating, spring, and the
+          // readers that key on defId) plus its controller and control mode. Both ends at
+          // centre of mass — the same anchors a player latch on a dynamic wreck uses.
+          svc.create({ defId: attachment.defId || 'tether_standard', ownerId: attachment.ownerId,
+            targetId: plate.id,
+            ...(attachment.controllerId != null ? { controllerId: attachment.controllerId } : {}),
+            ...(typeof attachment.controlMode === 'string' ? { controlMode: attachment.controlMode } : {}),
+            sourceWorld: player && player.pos ? { x: player.pos.x, y: 0, z: player.pos.z } : undefined,
+            targetWorld: { x: plate.pos.x, y: 0, z: plate.pos.z } });
+        }
+        // The rope tear names itself in the boss toast lane, the same receipt the act shed gets.
+        const name = (requireCapitalBossEncounter(r.encounterId).score || {}).name || 'the boss';
+        ctx.bus.emit('toast', {
+          text: `You tear ${name}'s ${spec.label} free.`,
+          kind: 'info', ttl: 4, channel: 'capitalBoss',
+        });
+      }
+      this._stampPlateCover(r, boss);
+      ctx.bus.emit('capitalBoss:plateTorn', {
+        fightId: r.fightId, bossId: r.bossId, plateId: spec.id, label: spec.label,
+        covers: spec.covers, cause, entityId: plate && plate.id != null ? plate.id : null,
+      });
+      return plate;
+    },
+    _shedPlatesForAct(r, newActIndex) {
+      if(!this._platesLive(r)) return;
+      const boss = ctx.state.entities && ctx.state.entities.get(r.bossId);
+      if(!boss || boss.alive === false || !boss.pos) return;
+      // shedOnAct N holds through act N and tears as it ends. A score that skips an act (one
+      // heavy hit past two hull gates) still sheds every plate whose act it passed — `<=`, not
+      // `===`, or the skipped act's plate would cover its subsystem for the rest of the fight.
+      const shedAfter = newActIndex - 1;
+      for (const rec of r.plates) {
+        if(!rec || !rec.attached) continue;
+        const spec = this._plateSpec(r, rec.id);
+        if(!spec || spec.shedOnAct == null || spec.shedOnAct > shedAfter) continue;
+        const torn = this._tearPlate(r, boss, rec, spec, { cause: 'actShed' });
+        if(torn) {
+          const name = (requireCapitalBossEncounter(r.encounterId).score || {}).name || 'The boss';
+          ctx.bus.emit('toast', {
+            text: `${name} sheds its ${spec.label}.`,
+            kind: 'info', ttl: 4, channel: 'capitalBoss',
+          });
+        }
+      }
+    },
+    _attachmentService() {
+      const registry = ctx.registry || (ctx.helpers && ctx.helpers.registry);
+      const actions = registry && registry.get && registry.get('actions');
+      if(actions && actions.kernel) return actions.kernel.attachments || null;
+      const combat = registry && registry.get && registry.get('combat');
+      return combat && combat.kernel ? combat.kernel.attachments || null : null;
+    },
+    /**
+     * Row 463: rewind a defeat-terminated fight back into its current act. Only a 'defeat'
+     * terminal qualifies — the score reaches it solely from the target's death
+     * (capitalBossScore.js finish('defeat')); victory/mutual terminals (a boss kill) never rewind.
+     * The act replays from its opening (sequence cursor reset), hull damage the player dealt
+     * stays dealt, and the fight re-arms suspended so the ordinary observe→resumed path restarts
+     * it only when the player is back in range. Swarm champions and the Last Argument are
+     * excluded: they have their own lifecycle owners.
+     */
+    rewindAct(fightId,reason='retry',{interrupted=false}={}) {
+      const store=root(),r=store.fights[String(fightId)];
+      if(!r||r.bossKilled===true) return false;
+      // `interrupted` (recovery only): a started, still non-terminal fight against the player
+      // whose death the score never observed — the paused after-action screen froze it first.
+      const live=interrupted&&r.terminal==null&&r.started===true&&r.targetId===ctx.state.playerId;
+      if(r.terminal!=='defeat'&&!live) return false;
+      if(typeof r.fightId==='string'&&r.fightId.startsWith('swarm:')) return false;
+      if(r.encounterId===LAST_ARGUMENT.scoreId) return false;
+      if(r.cast) ctx.bus.emit('capitalBoss:telegraphEnd',{fightId:r.fightId,castId:r.cast.id,reason:'rewind'});
+      r.cast=null;r.terminal=null;r.targetKilled=false;
+      r.sequence=0;r.actStartedAt=r.clock;r.phase='suspended';r.suspended=true;
+      r.nextAt=r.clock;r.lastOrderSignature=null;r.lastWingGate=null;
+      // The terminal order row must not stick: write the same suspended row step() would.
+      store.orders[capitalOrderKey(r.bossId)]={fightId:r.fightId,scoreOwnsAttacks:true,
+        suppressStockFire:true,forward:0,brake:true,phase:'suspended'};
+      ctx.bus.emit('capitalBoss:actRetried',{fightId:r.fightId,actIndex:r.actIndex,reason});
+      return true;
+    },
+    // Every defeat-terminal fight whose mission row is still live gets its act rewound. The
+    // mission owner settles the contract; a settled or absent row leaves the hulk terminal.
+    _rewindDefeatedFights(reason,{interrupted=false}={}) {
+      const fights=root().fights;
+      const active=(ctx.state.missions&&Array.isArray(ctx.state.missions.active)&&ctx.state.missions.active)||[];
+      for(const [id,r] of Object.entries(fights)) {
+        if(!r||r.bossKilled===true) continue;
+        if(r.terminal!=='defeat'&&!(interrupted&&r.terminal==null)) continue;
+        const m=active.find(row=>row&&String(row.id)===String(r.fightId));
+        if(!m||m.status!=='active') continue;
+        system.rewindAct(id,reason,{interrupted});
       }
     },
     detach(fightId) {
@@ -232,6 +459,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       // Removal/cleanup of entities is the mission owner’s decision, not ours.
       for(const [k,order] of Object.entries(store.orders)) if(order.fightId===r.fightId) delete store.orders[k];
       thrownMassHits.delete(r.fightId);
+      system._clearPlateCover(r);
       delete store.fights[String(fightId)];return true;
     },
     // Uninitialized owner (headless fixtures) serializes nothing — absent-owner semantics.

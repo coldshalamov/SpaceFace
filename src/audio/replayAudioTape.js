@@ -1,8 +1,9 @@
-// Thirty seconds of the actual master mix, indexed by presented sim ticks. Audio
+// Thirty-two seconds of the actual master mix, indexed by presented sim ticks. The
+// extra two seconds preserve a full thirty-second clip across the render handoff. Audio
 // graph ownership stays with audioSystem: never create/unlock/close an AudioContext.
 import { getReplayAudioSource } from './audioSystem.js';
 
-const WINDOW_SECONDS = 30;
+const WINDOW_SECONDS = 32;
 const MARKER_CAPACITY = 4096;
 const SEGMENT_CAPACITY = 16384;
 

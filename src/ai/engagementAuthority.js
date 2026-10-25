@@ -177,7 +177,8 @@ export function authorizeAIEngagement({
       || ((wanted || recentlyDamaged)
         && (ai.engagementTrigger === 'wanted_status' || ai.engagementTrigger === 'player_attack'))
     );
-    const scenarioCounterplay = is47aScavengerCounterplayAuthorized(state, self, target);
+    const scenarioCounterplay = is47aScavengerCounterplayAuthorized(state, self, target)
+      || isOnboardingRaidWingAuthorized(state, self, target);
     if (!lawfulEnforcement && !scenarioCounterplay) return denied('station_protection');
   }
 
@@ -201,6 +202,21 @@ export function authorizeAIEngagement({
  * cross that outer 200-WU seam, and only after the player's explicit refusal plus the exact
  * authored no-fire deadline. Moving back into the inner sanctuary restores ordinary protection.
  */
+/**
+ * X-02 — the Claim Jumper's wing is a staged hostile inside the starter protection radius.
+ * As narrow as the 47-A bridge: the ONE authored raid actor, only while its beat is live,
+ * only against the player it is staged for, and never once it has been told to run.
+ */
+export function isOnboardingRaidWingAuthorized(state, self, target) {
+  if (!state || !self || !target || target.id !== state.playerId) return false;
+  const raid = state.onboarding && state.onboarding.raid;
+  if (!raid || !raid.active || !raid.ids) return false;
+  if (self.id !== raid.ids.wing) return false;
+  const ai = self.data && self.data.ai;
+  if (!ai || ai.forceFlee === true) return false;
+  return !!(self.data && self.data.onboardingRaidWing);
+}
+
 export function is47aScavengerCounterplayAuthorized(state, self, target) {
   if (!state || !self || !target || target.id !== state.playerId || !target.pos
     || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) return false;
@@ -405,6 +421,12 @@ export function isHostileForAI(state, self, other) {
   const otherData = other.data;
   const selfAi = selfData ? selfData.ai : null;
   const otherAi = otherData ? otherData.ai : null;
+
+  // X-02 v4: the Claim Jumper's wing is authorized against the player while its raid beat is
+  // live — without this, engagementAuthority refuses every shot 'target_not_hostile'.
+  if (selfData && selfData.onboardingRaidWing === true
+    && state?.onboarding?.raid?.active && !state?.onboarding?.raid?.wingDone
+    && other.id === state.playerId) return true;
 
   // An authored predation role owns this actor's complete automatic hostility set while it is
   // standing by, telegraphing, or active. Existing retaliation/security flags must not let the

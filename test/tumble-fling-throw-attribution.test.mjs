@@ -181,7 +181,7 @@ test('flag off (the frozen 47-A profile): nothing is written, so the old blame-t
   });
 });
 
-test('only a live non-player ship or drone carries the credit: a dead hull, the player, a cargo pod and a missing player get no record', () => {
+test('only a live non-player slingable body carries the credit: a dead hull, the player and a missing player get no record — a cargo pod now carries it', () => {
   withFlags({}, () => {
     const h = harness();
     h.thrown.alive = false;
@@ -195,7 +195,11 @@ test('only a live non-player ship or drone carries the credit: a dead hull, the 
     const pod = harness();
     pod.thrown.type = 'payload';
     throwHull(pod);
-    assert.equal(readRecentImpulseProvenance(pod.thrown, pod.state.tick), null, 'a cargo pod is not a hull: its credit is the stunt path\'s business');
+    // X-08 deliberate re-pin: the gate widened to asteroid/wreck/payload — a thrown cargo pod
+    // now carries the thrower's credit, held for the flight like a rock or a wreck.
+    const podRecord = readRecentImpulseProvenance(pod.thrown, pod.state.tick);
+    assert.ok(podRecord, 'X-08: a thrown pod carries the thrower\'s credit now');
+    assert.equal(podRecord.actorId, pod.player.id);
 
     const nobody = harness();
     nobody.state.playerId = null;
