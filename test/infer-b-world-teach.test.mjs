@@ -21,6 +21,7 @@ import {
 import { formatOfflineReceiptLine } from '../src/ui/automationPayoff.js';
 import {
   buildDefeatReceipt,
+  defeatRangeOffer,
   isSlackLineSnapDeath,
   rangeRow,
 } from '../src/combat/playerDefeat.js';
@@ -447,6 +448,10 @@ test('X-09 the profile hint survives a session wipe', () => {
 test('X-09 a missing rung row returns null without throwing', () => {
   assert.equal(rangeRow('not_a_real_rung'), null);
   assert.equal(rangeRow(undefined), null);
+  const state = defeatState();
+  const terrain = { origin: { kind: 'terrain_collision' }, result: VITALS };
+  assert.equal(defeatRangeOffer(state, terrain, null), null, 'a null cause read is silence, not a throw');
+  assert.equal(defeatRangeOffer(state, terrain), null, 'no cause read keeps the pre-X-09 behaviour');
 });
 
 test('X-09 the death screen renders the terrain line without opening the Range', () => {

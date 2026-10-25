@@ -491,9 +491,10 @@ export function defeatRangeOffer(state, lethal, read = {}) {
     if (rungOfferedBefore(state, SWING_RUNG_ID)) return null;
     return rangeOfferFor(SWING_RUNG_ID);
   }
-  const sourceKind = read && read.sourceKind;
+  const cause = read && typeof read === 'object' ? read : {};
+  const sourceKind = cause.sourceKind;
   for (const rule of DEFEAT_RUNG_ROWS) {
-    if (read.physicalLabel !== rule.label || !rule.sources.includes(sourceKind)) continue;
+    if (cause.physicalLabel !== rule.label || !rule.sources.includes(sourceKind)) continue;
     if (rungOfferedBefore(state, rule.rungId)) continue;
     return rangeOfferFor(rule.rungId, rule.lead);
   }
