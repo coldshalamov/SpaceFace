@@ -371,8 +371,10 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
    left column under the next step while the right column under the dials stood empty, so the tab body
    kept ~150-250px and the Market's BUY fell below the destination rail. The next step tucks under the
    mechanic's note beside the dials (title, count and DISMISS on one line, its sentence under), and the
-   signs share one full-width band under the head, label and notice run on as one paragraph. */
-@media (min-width:901px) and (min-height:461px) and (max-height:800px) {
+   signs share one full-width band under the head, label and notice run on as one paragraph.
+   The same head serves 1101+ wide at 801–1140 tall (1920×1080, 1600×900): stacked, the signs took four
+   lines of the left column and the Missions dossier ran under its ACCEPT band. */
+@media (min-width:901px) and (min-height:461px) and (max-height:800px), (min-width:1101px) and (min-height:801px) and (max-height:1140px) {
   ${D} .sxb-berth.dp-frame__head { grid-template-areas:"title trigger" "title crown" "tape crown" "handoff crown" "signs signs" !important;
     grid-template-rows:auto auto auto 1fr auto !important; row-gap:6px !important; }
   ${D} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; grid-column:auto !important; align-self:start !important; }

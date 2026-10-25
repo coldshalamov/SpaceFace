@@ -2038,6 +2038,22 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${T} .sx-ct__hang > .sx-ct__active { flex:none !important; }
   ${T} .sx-ct__hang > .sx-ct__board { min-height:0 !important; }
 }
+/* Missions on 801-1140px-tall desktops (1920x1080, 1600x900): the dossier scrolls under its sticky ACCEPT band, and
+   a four-term offer ran ~120px past it, so COLLATERAL / FOLLOW-UP / READINESS sat under the key. With the
+   station signs on one band (stationLayouts.js) the reading also closes up (a smaller reward, tighter term rows). */
+@media (min-width:1101px) and (min-height:801px) and (max-height:1140px) {
+  ${T} .sx-ct__dossier { padding-top:10px !important; }
+  ${T} .sx-dossier__title { margin-top:4px !important; }
+  ${T} .sx-dossier__client { margin-top:8px !important; }
+  ${T} .sx-dossier__reward { margin-top:12px !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:clamp(56px, 7vh, 80px) !important; }
+  ${T} .sx-dossier > .orr-ct-scales { margin-top:6px !important; }
+  ${T} .sx-dossier__terms > li { padding:6px 0 !important; }
+}
+/* …and under 1500 wide the 32px title wrapped to two lines in the dossier's column (1440x900) */
+@media (min-width:1101px) and (max-width:1499px) and (min-height:801px) and (max-height:1140px) {
+  ${T} .sx-dossier__title { font-size:26px !important; line-height:1.15 !important; }
+}
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {
