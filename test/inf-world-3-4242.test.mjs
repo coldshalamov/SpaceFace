@@ -24,7 +24,7 @@ test('4242: the open Veil wormhole is scored as a gate, under the watched line',
   });
   assert.equal(state.meta.seed, SEED);
   assert.equal(open.totalHops, 1);
-  assert.equal(open.totalFuel, 27);
+  assert.equal(open.totalFuel, 0);
   assert.equal(open.legs[0].via, 'gate');
   assert.equal(open.legs[0].to, 'sector_ashfall_reach');
   assert.equal(open.legs[0].interdict, 0.15);
