@@ -390,6 +390,19 @@ export const SWARM_PASSIVE_CATALOG = Object.freeze([
     perCopyHull: 14,
     blurb: '+14 hull per plate, stacked to five. Scrap welded straight onto the frame.',
   }),
+  Object.freeze({
+    // SWARM-08 — the second rack on the passive shelf: a faster gun cycle per copy. The
+    // weapons system reads the count through swarmPassiveFireRateScale the same way the
+    // elite weld reads plated_hull — one reader, one ledger, no second truth.
+    id: 'gun_cycler',
+    offerId: 'passive_gun_cycler',
+    name: 'Gun Cycler',
+    verb: 'Cycle',
+    price: 54,
+    fromWave: 2,
+    perCopyRofPct: 0.06,
+    blurb: '+6% gun cycle per coil, stacked to five. A hotter hammer on the same trigger.',
+  }),
 ]);
 
 const PASSIVE_BY_ID = new Map(SWARM_PASSIVE_CATALOG.map((entry) => [entry.id, entry]));
@@ -419,6 +432,18 @@ export function swarmPassiveCount(run, passiveId) {
 export function swarmPassiveHullBonus(run) {
   const entry = PASSIVE_BY_ID.get('plated_hull');
   return entry ? swarmPassiveCount(run, 'plated_hull') * entry.perCopyHull : 0;
+}
+
+/**
+ * The rate-of-fire factor the run's gun-cycler stack grants, once per copy: ×1.06 per coil,
+ * ×1.3 at the rack cap. The weapons cooldown path multiplies this over the overdrive rate —
+ * heat and capacitor still charge in full, so the gift is cadence only, never a free magazine.
+ */
+export function swarmPassiveFireRateScale(run) {
+  const entry = PASSIVE_BY_ID.get('gun_cycler');
+  if (!entry) return 1;
+  const coils = Math.min(SWARM_PASSIVE_STACK_MAX, swarmPassiveCount(run, 'gun_cycler'));
+  return 1 + coils * entry.perCopyRofPct;
 }
 
 

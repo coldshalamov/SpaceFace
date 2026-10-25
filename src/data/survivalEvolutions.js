@@ -107,15 +107,6 @@ export const SURVIVAL_EVOLUTIONS = freezeDeep([
     blurb: 'The extra bolt and the wide fan become one split on the first hit. The loose volley is gone.',
   },
   {
-    id: 'multi_latch',
-    defId: 'mod_line_head_multi_latch',
-    name: 'Multi-Latch Head',
-    verb: 'Evolve',
-    consumes: ['mod_line_head_coupler', 'mod_line_head_magnet'],
-    price: 28,
-    blurb: 'The coupler and the magnet become one head that holds more than one line. The two heads are spent.',
-  },
-  {
     id: 'twin_bridle',
     defId: 'mod_twin_bridle_m',
     name: 'Twin Bridle M',
@@ -152,6 +143,19 @@ export const SURVIVAL_EVOLUTIONS = freezeDeep([
     requiresWeaponLevel: { defId: 'wpn_pulse_laser_s', level: 5 },
     price: 54,
     blurb: 'A maxed pulse laser, the twin mount, and the piercing core become one herald fan. The gun stays bolted. The two rigs are spent.',
+  },
+  {
+    // SWARM-08 — a second gun-gated path, after the pulse cadence: the maxed barrage rack
+    // turns the fire-control computer and the seeking bank into a third barrel on every
+    // shot. The rack is not spent. The product is medium, so the parts it spends are too.
+    id: 'triad_volley',
+    defId: 'mod_triad_mount',
+    name: 'Triad Mount',
+    verb: 'Evolve',
+    consumes: ['mod_targeting_computer_m', 'mod_smart_bank'],
+    requiresWeaponLevel: { defId: 'wpn_micro_barrage_m', level: 5 },
+    price: 58,
+    blurb: 'A maxed barrage, the targeting computer, and the seeking bank become one triad mount. The rack stays bolted. The two rigs are spent.',
   },
 ]);
 
