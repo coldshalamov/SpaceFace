@@ -189,3 +189,52 @@ test('prototype-keyed ids take the documented fallback at every selector — nev
   assert.ok(SECTOR_GREETING_BARKS.sector_helios_prime.includes(sectorGreetingBarkFor('sector_helios_prime', -2)),
     'sectorGreetingBarkFor(-2) must wrap into the sector cell');
 });
+
+test('restored runtime state bags re-home to null-prototype — record-derived keys write own keys', async () => {
+  const { witnessState, observeStuntWitnesses, sampledStuntWitnesses } = await import('../src/combat/stuntWitnesses.js');
+  const { barkDirector } = await import('../src/systems/barkDirector.js');
+
+  // A restored save adopts titles.stuntWitnessing wholesale — every field the loop
+  // dereferences normalizes instead of crashing the 60 Hz tick.
+  const state = { mode: 'flight', tick: 1, entities: new Map(), playerId: 'p1',
+    story: { titles: { stuntWitnessing: { episodes: null, reports: 'corrupt', sequence: 'NaN', lastTick: 'x' } } } };
+  const own = witnessState(state);
+  assert.equal(Object.getPrototypeOf(own.episodes), null, 'episodes bag must be null-prototype');
+  assert.deepEqual(own.reports, []);
+  assert.equal(own.sequence, 0);
+  assert.doesNotThrow(() => observeStuntWitnesses(state), 'a malformed restored bag must not crash the tick');
+
+  // An own '__proto__' episode key (JSON round-trip) resolves the row, not Object.prototype.
+  const restored = { mode: 'flight', tick: 1, entities: new Map(), playerId: 'p1',
+    story: { titles: { stuntWitnessing: { episodes: JSON.parse('{"__proto__":{"rootId":"__proto__","rootTick":0}}') } } } };
+  witnessState(restored);
+  const ep = restored.story.titles.stuntWitnessing.episodes;
+  assert.equal(Object.getPrototypeOf(ep), null);
+  assert.equal(ep['__proto__'].rootId, '__proto__', 'the restored row survives as an own key');
+  assert.doesNotThrow(() => sampledStuntWitnesses(restored, { rootId: '__proto__', tick: 0 }),
+    'a restored episode row must not crash the witness sampler');
+
+  // barkDirector.update re-homes restored plain-prototype bags through the public seam.
+  const dir = Object.create(barkDirector);
+  const dstate = { mode: 'flight', tick: 0, simTime: 0, playerId: 'p1', entities: new Map(), story: {}, settings: {}, combat: {},
+    barkDirector: {
+      entities: { toString: { entityId: 'e', said: {} } },
+      ambientBySector: { toString: { quietSince: 0 } },
+      stuntRecognition: { speakers: { toString: { titleEncounter: null, lines: [] } } },
+    } };
+  assert.doesNotThrow(() => dir.update(1 / 60, dstate));
+  assert.equal(Object.getPrototypeOf(dstate.barkDirector.entities), null);
+  assert.equal(Object.getPrototypeOf(dstate.barkDirector.ambientBySector), null);
+  assert.equal(Object.getPrototypeOf(dstate.barkDirector.stuntRecognition.speakers), null);
+  assert.equal(dstate.barkDirector.entities['toString'].entityId, 'e', 'restored rows survive the re-home');
+
+  // raiderEscapesSaid: a 'toString' custody id speaks once then dedupes — a plain-proto bag
+  // would read the inherited member and stay silent forever.
+  const dir2 = Object.create(barkDirector);
+  const estate = { mode: 'flight', tick: 0, simTime: 0, playerId: 'p1', entities: new Map(), story: {},
+    barkDirector: { raiderEscapesSaid: {} } };
+  dir2.state = estate;
+  assert.equal(dir2._speakRaiderEscape({ custodyId: 'toString', qty: 2 }), true, 'the first escape report must speak');
+  assert.equal(dir2._speakRaiderEscape({ custodyId: 'toString', qty: 2 }), false, 'the second must dedupe');
+  assert.equal(Object.getPrototypeOf(estate.barkDirector.raiderEscapesSaid), null);
+});

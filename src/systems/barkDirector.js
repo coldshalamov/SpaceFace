@@ -2567,7 +2567,9 @@ export const barkDirector = {
     if (!custodyId || qty <= 0) return false;
     const own = ensureState(state);
     if (!own.raiderEscapesSaid || typeof own.raiderEscapesSaid !== 'object' || Array.isArray(own.raiderEscapesSaid)) {
-      own.raiderEscapesSaid = {};
+      own.raiderEscapesSaid = Object.create(null);
+    } else if (Object.getPrototypeOf(own.raiderEscapesSaid) !== null) {
+      own.raiderEscapesSaid = Object.assign(Object.create(null), own.raiderEscapesSaid);
     }
     if (own.raiderEscapesSaid[custodyId]) return false;
 
@@ -2794,9 +2796,9 @@ export function classifyBarkSituation(entity, state) {
 
 function freshState() {
   return {
-    entities: {},
+    entities: Object.create(null),
     postCombatSilenceUntil: 0,
-    ambientBySector: {},
+    ambientBySector: Object.create(null),
     suppressed: [],
     hullRecognition: freshHullRecognition(),
     stuntRecognition: freshStuntRecognition(),
@@ -3002,7 +3004,7 @@ function hullRecognitionRecord(own) {
 }
 
 function freshStuntRecognition() {
-  return { lastAt: 0, nextAt: 0, lastEntityId: null, count: 0, pending: [], recentTicks: [], deliveredIds: [], speakers: {}, safeSince: null };
+  return { lastAt: 0, nextAt: 0, lastEntityId: null, count: 0, pending: [], recentTicks: [], deliveredIds: [], speakers: Object.create(null), safeSince: null };
 }
 
 function findStuntIncident(state, episodeId) {
@@ -3016,14 +3018,31 @@ function stuntRecognitionRecord(own) {
     own.stuntRecognition = freshStuntRecognition();
   }
   const record = own.stuntRecognition;
-  record.pending ||= []; record.recentTicks ||= []; record.deliveredIds ||= []; record.speakers ||= {};
+  if (!Array.isArray(record.pending)) record.pending = [];
+  if (!Array.isArray(record.recentTicks)) record.recentTicks = [];
+  if (!Array.isArray(record.deliveredIds)) record.deliveredIds = [];
+  // speakers keys on record-derived observer identities — a restored plain-proto bag re-opens
+  // the '__proto__'/'toString' read seam, so re-home it as null-prototype.
+  if (!record.speakers || typeof record.speakers !== 'object' || Object.getPrototypeOf(record.speakers) !== null) {
+    record.speakers = Object.assign(Object.create(null), record.speakers);
+  }
   return record;
 }
 
 function ensureState(state) {
   if (!state.barkDirector || typeof state.barkDirector !== 'object') state.barkDirector = freshState();
-  if (!state.barkDirector.entities || typeof state.barkDirector.entities !== 'object') state.barkDirector.entities = {};
-  if (!state.barkDirector.ambientBySector || typeof state.barkDirector.ambientBySector !== 'object') state.barkDirector.ambientBySector = {};
+  // entities/ambientBySector key on record-derived ids (entity.id, sectorId) — re-home restored
+  // plain-prototype bags so a '__proto__'-class id reads/writes an own key, not the prototype.
+  if (!state.barkDirector.entities || typeof state.barkDirector.entities !== 'object') {
+    state.barkDirector.entities = Object.create(null);
+  } else if (Object.getPrototypeOf(state.barkDirector.entities) !== null) {
+    state.barkDirector.entities = Object.assign(Object.create(null), state.barkDirector.entities);
+  }
+  if (!state.barkDirector.ambientBySector || typeof state.barkDirector.ambientBySector !== 'object') {
+    state.barkDirector.ambientBySector = Object.create(null);
+  } else if (Object.getPrototypeOf(state.barkDirector.ambientBySector) !== null) {
+    state.barkDirector.ambientBySector = Object.assign(Object.create(null), state.barkDirector.ambientBySector);
+  }
   if (!Array.isArray(state.barkDirector.suppressed)) state.barkDirector.suppressed = [];
   hullRecognitionRecord(state.barkDirector);
   stuntRecognitionRecord(state.barkDirector);

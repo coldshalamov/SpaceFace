@@ -14,7 +14,17 @@ const copy = value => JSON.parse(JSON.stringify(value));
 export function adventureStunts(state) { return !state.run || state.run.phase === 'inactive' || state.run.kind === 'adventure'; }
 export function witnessState(state) {
   state.story ||= {}; state.story.titles ||= {}; const titles = state.story.titles;
-  return titles.stuntWitnessing ||= { version: 1, episodes: Object.create(null), reports: [], lastTick: -1, sequence: 0 };
+  const own = titles.stuntWitnessing ||= { version: 1, episodes: Object.create(null), reports: [], lastTick: -1, sequence: 0 };
+  // A restored save adopts this bag wholesale — normalize every field the tick loop
+  // dereferences (a plain-proto episodes bag re-opens the '__proto__' read seam; a missing
+  // reports/sequence crashes or mints NaN ids).
+  if (!own.episodes || typeof own.episodes !== 'object' || Object.getPrototypeOf(own.episodes) !== null) {
+    own.episodes = Object.assign(Object.create(null), own.episodes);
+  }
+  if (!Array.isArray(own.reports)) own.reports = [];
+  if (!Number.isFinite(own.sequence)) own.sequence = 0;
+  if (!Number.isFinite(own.lastTick)) own.lastTick = -1;
+  return own;
 }
 export function observerIdentity(entity) {
   return entity?.data?.worldRecordId ?? entity?.data?.identityKey ?? entity?.data?.transponderId ?? (entity?.id != null ? `entity:${entity.id}` : null);
@@ -111,12 +121,17 @@ export function observeStuntWitnesses(state) {
       episode={rootId:root.id,rootTick:root.tick,observers:Object.create(null)};
       Object.defineProperty(own.episodes,root.id,{value:episode,writable:true,enumerable:true,configurable:true});
     }
-    if(!episode.observers||typeof episode.observers!=='object')episode.observers=Object.create(null);
+    if(!episode.observers||typeof episode.observers!=='object'||Object.getPrototypeOf(episode.observers)!==null) {
+      episode.observers=Object.assign(Object.create(null),episode.observers);
+    }
     const source=state.entities.get(root.sourceId);
     if(!source?.alive||bodyLife(source,state)?.id!==root.sourceLife)continue;
     for(const {entity:observer,profile} of observers) {
       const row=episode.observers[profile.identity] ||= {...profile,sourceTicks:0,transferTicks:0,payoffTicks:0,targets:Object.create(null),firstSeen:tick};
       if(row.lifeId!==profile.lifeId)continue;
+      if(!row.targets||typeof row.targets!=='object'||Object.getPrototypeOf(row.targets)!==null) {
+        row.targets=Object.assign(Object.create(null),row.targets);
+      }
       const seesSource=canSee(state,observer,profile,source,[player.id]);
       const seesActor=canSee(state,observer,profile,player,[source.id]);
       const loaded=root.constraint?.attached&&root.constraint.loadedTicks>0;
@@ -153,6 +168,9 @@ export function observeStuntWitnesses(state) {
 }
 export function sampledStuntWitnesses(state,trick,{partial=false}={}) {
   const own=witnessState(state),episode=Object.hasOwn(own.episodes,trick.rootId)?own.episodes[trick.rootId]:null; if(!episode)return [];
+  if(!episode.observers||typeof episode.observers!=='object'||Object.getPrototypeOf(episode.observers)!==null) {
+    episode.observers=Object.assign(Object.create(null),episode.observers);
+  }
   const tick=trick.tick,root=journalFor(state)?.roots.get(trick.rootId);
   const lives=trick.victimLives||[];
   const result=[];
@@ -363,13 +381,13 @@ export function qualifyStuntTitles(state,incident,bus) {
         evidence:citationEvidence(incident)};
       progress.push(citation);if(progress.length>8)progress.shift();
     }
-    const victims=new Set(progress.flatMap(p=>p.victimLives));
+    const victims=new Set(progress.flatMap(p=>p.victimLives).filter(v=>v!=null));
     if(progress.length<(rule.trickId==='rock_discovery'?2:rule.count))continue;
     if(rule.trickId==='wrecking_ball'&&victims.size<2)continue;
     if(rule.trickId==='rock_discovery'&&(victims.size<3||progress.length<2))continue;
     if(rule.trickId==='near_miss'&&(new Set(progress.map(p=>p.threatEpisodeId).filter(Boolean)).size<3||new Set(progress.map(p=>p.encounterId).filter(Boolean)).size<2))continue;
     if(rule.trickId==='razor_release'&&!progress.some(p=>p.materialCombat))continue;
-    if(rule.trickId==='bank_job'&&new Set(progress.map(p=>p.bankCorridorId)).size<2)continue;
+    if(rule.trickId==='bank_job'&&new Set(progress.map(p=>p.bankCorridorId).filter(v=>v!=null)).size<2)continue;
     titles.byId[rule.id]={titleId:rule.id,title:rule.title,trickId:rule.trickId,status:'held',scope:rule.scope,
       holderKey:incident.pilotId,pilotId:incident.pilotId,shipIds:rule.scope==='pilot_ship'?[incident.shipId]:[],earnedTick:incident.tick,
       citations:copy(progress.slice(-rule.count)),knownWitnesses:witnesses.map(w=>w.identity),knownNetworks:[...(incident.reportedNetworks||[])]};
