@@ -130,3 +130,23 @@ test('an untouched run still serializes no board', () => {
   assert.equal(Object.keys(data.shipLedger || {}).includes('board'), false,
     'a lazy board writes the absent bag');
 });
+
+test('review: loading a boardless save in the same session clears the outgoing run\'s board', () => {
+  const state = bootState();
+  state.story.verge.evidence[VERGE_A_KEY] = true;
+  // The incoming run never pinned anything, but has earned the same page.
+  const envelope = save.serialize('roundtrip');
+  assert.equal(Object.keys(envelope.data.shipLedger || {}).includes('board'), false);
+  // The outgoing run pinned it in memory — that board must not leak into the loaded run.
+  assert.equal(pinEvidence(state, VERGE_A).ok, true);
+  assert.equal(save.loadEnvelope(envelope, 'roundtrip'), true);
+  assert.equal(shipLedgerBoard(state), null, 'no board survives into a run that never built one');
+  assert.equal(state.shipLedger, undefined, 'the restored run stays keyless');
+  // An old save with no shipLedger key at all behaves the same way.
+  pinEvidence(state, VERGE_A);
+  const legacy = JSON.parse(JSON.stringify(envelope));
+  delete legacy.data.shipLedger;
+  legacy.checksum = fnv1a(JSON.stringify(legacy.data));
+  assert.equal(save.loadEnvelope(legacy, 'roundtrip'), true);
+  assert.equal(state.shipLedger, undefined, 'a pre-444 save loads clean');
+});

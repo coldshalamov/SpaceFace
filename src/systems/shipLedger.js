@@ -1565,16 +1565,24 @@ export function serializeShipLedgerBoard(state) {
 }
 
 /**
- * Restore the board from serialized input. Missing/absent `board` leaves `state.shipLedger`
- * untouched (old saves stay lazy). Present input is validated: pins are nonempty string ids
- * (deduped, capped), links are canonical string pairs whose endpoints are pinned, with
- * self-links, duplicates, and malformed rows dropped rather than trusted. Surviving pins are
- * then re-checked against `admissibleLedgerEvidence` — a pin whose evidence never landed in the
- * restored state drops, and every link that needed it drops with it.
+ * Restore the board from serialized input. Missing/absent `board` (old saves, untouched runs)
+ * restores no board and clears any outgoing run's board; a keyless state stays keyless. Present
+ * input is validated: pins are nonempty string ids (deduped, capped), links are canonical string
+ * pairs whose endpoints are pinned, with self-links, duplicates, and malformed rows dropped
+ * rather than trusted. Evidence admissibility is re-checked separately by
+ * `revalidateShipLedgerBoard` once the restored evidence sources are live.
  */
 export function deserializeShipLedgerBoard(data, state) {
-  if (!isRecord(data) || !Object.hasOwn(data, 'board')) return false;
   if (!isRecord(state)) return false;
+  if (!isRecord(data) || !Object.hasOwn(data, 'board')) {
+    // An envelope without a board is a run that never pinned — the outgoing run's in-memory
+    // board must not survive a same-session load into it. A never-touched state stays keyless.
+    if (isRecord(state.shipLedger) && Object.hasOwn(state.shipLedger, 'board')) {
+      delete state.shipLedger.board;
+      if (Object.keys(state.shipLedger).length === 0) delete state.shipLedger;
+    }
+    return false;
+  }
   const raw = isRecord(data.board) ? data.board : {};
   const pins = [];
   for (const candidate of sourceArray(raw.pins)) {

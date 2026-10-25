@@ -315,6 +315,8 @@ export function resetRunState(state, opts = {}) {
   state.missions = fresh.missions;
   state.scenario = fresh.scenario;
   state.story = fresh.story;
+  // GOLD-LEDGER: the case board is run-scoped and lazy — a new run starts with no board key.
+  delete state.shipLedger;
   state.world = fresh.world;
   state.jump = fresh.jump;
   state.fuel = fresh.fuel;
