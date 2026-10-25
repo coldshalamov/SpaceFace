@@ -149,10 +149,12 @@ export function createReceipt() {
       if (!this._adventure()) return;
       const drone = this._drone();
       if (drone) {
-        const player = this.state?.player || (this.state?.entities?.get?.(this.state?.playerId));
+        // state.player is the credit record. It has no place in space, so the
+        // printer must read the ship the world is actually flying.
+        const ship = this.state?.entities?.get?.(this.state?.playerId) || null;
         // The printer is a live dynamic body — steer it through the impulse membrane,
         // never a direct vel write (physics readback owns linvel; see bouncer).
-        const dv = receiptFollowDeltaV(drone, player?.pos, player?.vel);
+        const dv = receiptFollowDeltaV(drone, ship?.pos, ship?.vel);
         if (dv && drone.mass > 0) {
           queuePhysicsImpulse(drone, { x: dv.x * drone.mass, z: dv.z * drone.mass }, { tick: this.state?.tick });
         }
