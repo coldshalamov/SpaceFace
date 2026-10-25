@@ -48,11 +48,17 @@ function closestOnSegment(pos, a, b) {
 export function racingCorridorPlan(sectorId) {
   const level = levels.get(sectorId);
   const layout = level && (level.layout || RACING_CIRCUIT_LAYOUTS[sectorId]);
-  if (!level || !layout) return null;
-  const course = level.course, origin = sectorGlobalOrigin(sectorId);
-  const gates = course.gates.map(p => ({ x: p.x + origin.x, z: p.z + origin.z }));
+  const course = level && level.course;
+  // No plan for an unusable course: fewer than two gates leaves no first leg and
+  // no grid line, and a non-finite authored gate would poison every keepout and
+  // the skirt reach. The sector falls back to its normal field arranger instead.
+  if (!level || !layout || !course || !Array.isArray(course.gates)) return null;
+  const origin = sectorGlobalOrigin(sectorId);
+  const gates = course.gates.filter(finitePoint)
+    .map(p => ({ x: p.x + origin.x, z: p.z + origin.z }));
+  if (gates.length < 2) return null;
   const segments = gates.slice(1).map((b, i) => ({ a: gates[i], b }));
-  const first = segments[0], length = Math.hypot(first.b.x - first.a.x, first.b.z - first.a.z);
+  const first = segments[0], length = Math.hypot(first.b.x - first.a.x, first.b.z - first.a.z) || 1;
   const grid = {
     x: first.a.x - (first.b.x - first.a.x) / length * 240,
     z: first.a.z - (first.b.z - first.a.z) / length * 240,
@@ -60,7 +66,7 @@ export function racingCorridorPlan(sectorId) {
   return {
     sectorId, courseId: course.courseId, layout, origin, gates, segments,
     keepouts: [...segments, { a: grid, b: gates[0] }],
-    halfWidthWU: course.gateRadiusWU + layout.hullRadiusWU,
+    halfWidthWU: (Number(course.gateRadiusWU) || 90) + (Number(layout.hullRadiusWU) || 32),
     grid,
   };
 }
@@ -176,7 +182,12 @@ export function createRacingCorridorArranger(sector, options = {}) {
     profile: plan.layout,
     keepouts: plan.keepouts,
     createField(fdef) {
-      const legs = plan.layout.fields[fdef.id] || plan.segments.map((_, i) => i);
+      // A layout may skip a field id, carry an empty leg list, or lack the fields
+      // map entirely — every one of those banks all legs rather than indexing
+      // nothing or a missing entry.
+      const authoredLegs = plan.layout.fields ? plan.layout.fields[fdef.id] : null;
+      const legs = Array.isArray(authoredLegs) && authoredLegs.length
+        ? authoredLegs : plan.segments.map((_, i) => i);
       return {
         place(original, bodyRadius, slotIndex) {
           const radius = asteroidColliderRadius(fdef.type, bodyRadius);
@@ -184,7 +195,7 @@ export function createRacingCorridorArranger(sector, options = {}) {
           for (let attempt = 0; attempt < 96; attempt++) {
             const leg = legs[(slotIndex + Math.floor(attempt / 8)) % legs.length] % plan.segments.length;
             const { a, b } = plan.segments[leg];
-            const length = Math.hypot(b.x - a.x, b.z - a.z);
+            const length = Math.hypot(b.x - a.x, b.z - a.z) || 1;
             const t = 0.12 + (((seed % 65521) / 65521 + attempt * 0.381966) % 1) * 0.76;
             const side = ((slotIndex + attempt) & 1) ? -1 : 1;
             const depth = plan.layout.shoulderWU + ((seed >>> 16) % 97) / 97 * plan.layout.edgeDepthWU

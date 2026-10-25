@@ -7,10 +7,13 @@
 //
 // Cue record shape (same contract as the authored set-piece cues):
 //   { id, kind: 'sectorHazard', name, gateIndex, phase, countdownS, label, hint,
-//     pos: {x,z}, waitPos: {x,z}, waitRadiusWU: 42, entityIds: [] }
-// pos/waitPos are galactic-global. Native `surge` projects to `active`, native
-// `warning` to `warning`, and calm/shutdown/quiet to `clear`. A missing native
-// record produces `unavailable`, never a fabricated active hazard.
+//     pos: {x,z}, waitPos: {x,z}|null, waitRadiusWU: 42, entityIds: [] }
+// pos/waitPos are galactic-global. waitPos stays null when neither the served
+// leg nor the hazard position resolves — the course view reads a missing hold
+// point as "no refuge marker", never as a marker at the world origin. Native
+// `surge` projects to `active`, native `warning` to `warning`, and
+// calm/shutdown/quiet to `clear`. A missing native record produces
+// `unavailable`, never a fabricated active hazard.
 
 import {
   PALLAS_REEF_GLOBAL_POS,
@@ -58,14 +61,18 @@ function cueFor(previous, def) {
   return {
     id: def.id,
     kind: 'sectorHazard',
-    name: def.name,
+    // The HUD uppercases this verbatim — a def without a name falls back to its
+    // id rather than shipping a non-string into a player-facing text path.
+    name: typeof def.name === 'string' && def.name ? def.name : def.id,
     label: def.label || 'SECTOR HAZARD',
     hint: def.hint || '',
     gateIndex: def.gateIndex,
     phase: 'unavailable',
     countdownS: null,
     pos: { x: 0, z: 0 },
-    waitPos: { x: 0, z: 0 },
+    // Null until a finite hold point or hazard position resolves; the renderer
+    // skips a null hold point instead of drawing a refuge ring at the origin.
+    waitPos: null,
     waitRadiusWU: 42,
     entityIds: [],
     announceWarning: false,
@@ -154,6 +161,7 @@ export function projectRacingSectorHazards(state, params, definitions, previousC
     // An uncomputable hold point inherits the hazard position, never the world origin.
     const waitPos = waitPosFor(gates, def.gateIndex, def.waitBackWU) || finitePos;
     if (waitPos && Number.isFinite(waitPos.x) && Number.isFinite(waitPos.z)) {
+      if (!cue.waitPos) cue.waitPos = { x: 0, z: 0 };
       cue.waitPos.x = waitPos.x; cue.waitPos.z = waitPos.z;
     }
     // Transition bookkeeping: the owner announces each entry into `warning` once.

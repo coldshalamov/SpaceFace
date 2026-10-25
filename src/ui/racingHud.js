@@ -172,11 +172,12 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const cue=sectorCue
         ||cueRows.find(c=>['warning','active','closing','closed','opening'].includes(c.phase))
         ||cueRows.find(c=>c.kind==='anchor'&&Math.abs(c.gateIndex-nextGate)<=1);
+      const cueName=cue?String(cue.name||cue.id||''):'';
       if(cue)courseCue.textContent=cue.kind==='sectorHazard'
-        ?`${cue.name.toUpperCase()} · ${cue.label}${cue.phase==='warning'&&Number.isFinite(cue.countdownS)?` · ${Math.ceil(cue.countdownS)}S`:cue.phase==='unavailable'?' · OFFLINE':''} · ${cue.hint||''}`
-        :cue.kind==='anchor'?`${cue.name} · optional Massline swing`
-        :cue.kind==='shutter'?`${cue.name.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} wu`
-        :`${cue.name.toUpperCase()} · ${cue.phase==='warning'?`${Math.ceil(cue.countdownS)}s`: 'CROSSING NOW'} · refuge ring before crossing`;
+        ?`${cueName.toUpperCase()} · ${cue.label||'SECTOR HAZARD'}${cue.phase==='warning'&&Number.isFinite(cue.countdownS)?` · ${Math.ceil(cue.countdownS)}S`:cue.phase==='unavailable'?' · OFFLINE':''} · ${cue.hint||''}`
+        :cue.kind==='anchor'?`${cueName} · optional Massline swing`
+        :cue.kind==='shutter'?`${cueName.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} wu`
+        :`${cueName.toUpperCase()} · ${cue.phase==='warning'?`${Math.ceil(cue.countdownS)}s`: 'CROSSING NOW'} · refuge ring before crossing`;
       const anchor=cue?.kind==='anchor'?st.entities?.get(cue.entityIds[0]):null;
       selection=pod?.alive!==false&&pod?pod:anchor?.alive!==false&&anchor?anchor:null;
       if(selection&&player?.pos&&Math.hypot(selection.pos.x-player.pos.x,selection.pos.z-player.pos.z)<900){

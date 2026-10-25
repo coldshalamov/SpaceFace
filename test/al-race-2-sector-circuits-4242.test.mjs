@@ -509,6 +509,18 @@ test('hazard projection holds its contract on malformed defs', async () => {
       assert.ok(Number.isFinite(nanCue.waitPos.x) && Number.isFinite(nanCue.waitPos.z),
         'the hold point stays finite');
     } finally { sector.hazards[0] = authored; }
+    // A def that resolves neither its served leg nor any hazard position emits
+    // no hold point at all — the course view skips a null waitPos rather than
+    // drawing a refuge marker at the world origin.
+    const orphan = projectRacingSectorHazards(f.state, mission.params,
+      [{ id: 'orphan_volume', kind: 'weatherVolume', volumeId: 'not_a_volume', gateIndex: 99 }], [])[0];
+    assert.equal(orphan.phase, 'unavailable');
+    assert.equal(orphan.waitPos, null, 'no leg and no hazard position means no refuge marker');
+    // A def without a name still ships a string — the HUD uppercases it verbatim.
+    const nameless = projectRacingSectorHazards(f.state, mission.params,
+      [{ id: 'nameless_zone', kind: 'weatherVolume', volumeId: 'not_a_volume', gateIndex: 3 }], [])[0];
+    assert.equal(nameless.name, 'nameless_zone', 'an unnamed def falls back to its id');
+    assert.ok(Number.isFinite(nameless.waitPos.x), 'the named-less def still holds on its leg');
     // A courseSectorId the player is not in still projects in the course's own
     // frame — the hazard's true global position, not a fabricated local one.
     const elsewhere = await sectorFixture('sector_helios_prime');
