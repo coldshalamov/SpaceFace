@@ -110,7 +110,8 @@ export function capitalBossReadouts(state,out) {
     for(let pi=0;pi<plateSpecs.length;pi+=1){
      const pspec=plateSpecs[pi];
      if(!pspec)continue;
-     const rec=plateRecs.find((q)=>q&&q.id===pspec.id);
+     let rec=null; // plain scan: no per-frame closure
+     for(let ri=0;ri<plateRecs.length;ri+=1){const q=plateRecs[ri];if(q&&q.id===pspec.id){rec=q;break;}}
      if(!rec||rec.attached!==true)continue;
      const lx=pspec.anchor.x*br,lz=pspec.anchor.z*br;
      const px=boss.pos.x+lx*cosR-lz*sinR,pz=boss.pos.z+lx*sinR+lz*cosR;
@@ -167,6 +168,7 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
  listen('capitalBoss:telegraph',remember);listen('capitalBoss:attack',remember);
  listen('capitalBoss:telegraphEnd',c=>warnings.delete(c.castId));
  const _platePt={x:0,z:0};
+ let _holdText='',_holdT10=NaN,_holdH10=NaN;
  const drawPlateAnchor=(p)=>{
   // A short arc segment, not a ring — the plate is an edge, not an outline. Painted as a
   // projected polyline so it rides the same beginPath/moveTo/lineTo/stroke call set the
@@ -202,7 +204,11 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
    if(screen){
     ctx.font='11px system-ui, sans-serif';
     ctx.fillStyle='rgba(255,220,140,0.92)';
-    ctx.fillText(`PLATE ${hold.tension.toFixed(1)} t / HOLD ${hold.holdTension.toFixed(1)} t`,screen.x+10,screen.y-10);
+    // The label string is rebuilt only when a shown tenth changes — not every frame.
+    const t10=Math.round(hold.tension*10),h10=Math.round(hold.holdTension*10);
+    if(t10!==_holdT10||h10!==_holdH10){_holdT10=t10;_holdH10=h10;
+     _holdText=`PLATE ${hold.tension.toFixed(1)} t / HOLD ${hold.holdTension.toFixed(1)} t`;}
+    ctx.fillText(_holdText,screen.x+10,screen.y-10);
    }
   }
  },

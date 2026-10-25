@@ -1816,6 +1816,9 @@ export const TETHER_BREAK_QUIET_REASONS = Object.freeze(new Set([
   'tether_cut', 'accepted', 'pilot', 'controller_attachment_limit',
   'controller_unavailable', 'flight_exit',
   'sector_exit', 'sector_enter', 'sector_changed',
+  // Row 448: a capital plate tear hands the line to the freed slab (cut + re-latch) — the
+  // tether:attached latch voices it; it is not a failed cable.
+  'capital_plate_tear',
 ]));
 export function tetherBreakCueForReason(reason) {
   if (TETHER_BREAK_QUIET_REASONS.has(reason)) return null;

@@ -15,6 +15,8 @@ import { createDamageRouter } from '../src/combat/damage.js';
 import { createCombatCatalog } from '../src/combat/runtime.js';
 import { CAPITAL_PLATE_FULL_PULL, capitalPlateUnderLine } from '../src/combat/capitalPlates.js';
 import { capitalBossReadouts, createCapitalBossOverlay } from '../src/presentation/capitalBossPresentation.js';
+import { wreckPackagedFile } from '../src/render/visualFactory.js';
+import { tetherBreakCueForReason } from '../src/systems/presentationOrchestrator.js';
 
 const DT = 1 / 60;
 const SEED = 4242;
@@ -298,4 +300,34 @@ test('two runs on the same seed tear on the same tick', () => {
     return -1;
   };
   assert.equal(tearTick(), tearTick(), 'the tear tick is deterministic');
+});
+
+test('review 2: the torn slab draws as the armor slab part it names', () => {
+  const h = bootScoreFight(TOLLMAN);
+  const anchor = plateAnchorLocal(h, 'battery_housing');
+  latchAt(h, anchor, 0.9);
+  tick(h, 40);
+  const slab = plateSpawns(h);
+  assert.equal(slab.length, 1);
+  assert.equal(wreckPackagedFile(slab[0]), 'places/place_aftermath_aft_armor_slab.glb',
+    'fractureVisual.partId selects the authored slab, never a hash-picked aftermath piece');
+});
+
+test('review 2: the rope tear hand-off is not a failed-cable crack', () => {
+  assert.equal(tetherBreakCueForReason('capital_plate_tear'), null,
+    'the cut+re-latch is quiet on tether:broken / tether:broke; the latch voices it');
+});
+
+test('review 2: plate cover drops when the fight ends or detaches', () => {
+  const h = bootScoreFight(TOLLMAN);
+  tick(h, 3);
+  assert.ok(h.boss.data.capitalPlateCover, 'live fight stamps the cover');
+  fightRec(h).terminal = 'victory';
+  tick(h, 1);
+  assert.equal(h.boss.data.capitalPlateCover, null, 'a finished fight pays for no plate');
+  const h2 = bootScoreFight(TOLLMAN);
+  tick(h2, 3);
+  assert.ok(h2.boss.data.capitalPlateCover);
+  h2.bus.emit('capitalBoss:detach', { fightId: h2.fightId });
+  assert.equal(h2.boss.data.capitalPlateCover, null, 'a detached fight leaves no cover behind');
 });

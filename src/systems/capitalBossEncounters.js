@@ -240,7 +240,8 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(!ctx||state!==ctx.state) throw new TypeError('Capital system GameState mismatch');
       for(const id of Object.keys(root().fights).sort(sort)) {
         const r=root().fights[id];
-        if(r.terminal) continue;
+        // A finished fight pays for no plate: the cover drops with the score (a rewind re-stamps it).
+        if(r.terminal) { system._clearPlateCover(r,state); continue; }
         const o=observe(r,state,ctx.helpers);
         if(!o||typeof o.active!=='boolean') throw new TypeError('observe must explicitly decide lifecycle activity');
         for(const c of stepCapitalBossFight(r,{...o,
@@ -294,8 +295,12 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       }
       boss.data.capitalPlateCover = Object.keys(cover).length ? cover : null;
     },
+    _clearPlateCover(r, state = ctx.state) {
+      const boss = r && state && state.entities && state.entities.get && state.entities.get(r.bossId);
+      if(boss && boss.data && boss.data.capitalPlateCover) boss.data.capitalPlateCover = null;
+    },
     _stepPlates(r, state) {
-      if(!this._platesLive(r)) return;
+      if(!this._platesLive(r)) { if(r && r.terminal) this._clearPlateCover(r, state); return; }
       const boss = state.entities && state.entities.get(r.bossId);
       if(!boss || boss.alive === false || !boss.pos) { this._stampPlateCover(r, boss); return; }
       this._stampPlateCover(r, boss);
@@ -445,6 +450,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       // Removal/cleanup of entities is the mission owner’s decision, not ours.
       for(const [k,order] of Object.entries(store.orders)) if(order.fightId===r.fightId) delete store.orders[k];
       thrownMassHits.delete(r.fightId);
+      system._clearPlateCover(r);
       delete store.fights[String(fightId)];return true;
     },
     // Uninitialized owner (headless fixtures) serializes nothing — absent-owner semantics.
