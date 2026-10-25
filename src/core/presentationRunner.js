@@ -185,6 +185,10 @@ export function createPresentationRuntimeCloser({
  * Start presentation scheduling around one explicit SimulationRunner.
  * Dependencies are injectable so lifecycle policy can be verified without real timers or DOM work.
  */
+// oc1v4 first-flight warm-up behind the flight veil (see advanceSimulation).
+export const VEIL_WARM_STEPS = 2;
+export const VEIL_WARM_AFTER_FRAMES = 2;
+
 export function createPresentationRunner(state, registry, simulationRunner, deps = {}) {
   if (!simulationRunner || typeof simulationRunner.advance !== 'function') {
     throw new TypeError('PresentationRunner requires a SimulationRunner');
@@ -464,6 +468,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   let veilClockHeld = false;
   let veilWasHeld = false;
   let veilLiftedAt = null;
+  let veilWarmFrames = 0;
+  let veilWarmSteps = 0;
   let workerClockWanted = false;
   function syncFlightVeilClock() {
     if (!workerPumpOwnsClock || typeof simulationRunner.setClockActive !== 'function') return;
@@ -1163,6 +1169,23 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     return presentationMs;
   }
 
+  function veilWarmReady() {
+    const r = state.render;
+    if (!r || !Number.isFinite(r.firstPlayableFrameAt)) { veilWarmFrames = 0; return false; }
+    veilWarmFrames++;
+    return veilWarmFrames > VEIL_WARM_AFTER_FRAMES;
+  }
+  function fixedDtOf() {
+    const d = Number(simulationRunner.fixedDt);
+    return d > 0 ? d : LOOP_FIXED_DT;
+  }
+  function warmVeilStep(dt) {
+    veilWarmSteps++;
+    const result = simulationRunner.advance(dt / Number(state.timeScale), state.timeScale, 1);
+    if (state.render) state.render.veilWarmSteps = veilWarmSteps;
+    return result;
+  }
+
   function advanceSimulation(frameDt, restoring, stepCap, perf) {
     const simFrameStart = measureNow();
     // The worker lane owns a monotonic timer so a busy renderer cannot stop authoritative
@@ -1174,9 +1197,19 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     const veilHeld = flightVeilHeld();
     bindFlightVeilHook();
     syncFlightVeilClock();
-    const stepResult = restoring || workerPumpOwnsClock || veilHeld
-      ? simulationRunner.prepareWithoutAdvance()
-      : simulationRunner.advance(frameDt, state.timeScale, stepCap);
+    // First-flight warm-up behind the veil (oc1v4): after the first picture, while the veil still
+    // holds the sim, take VEIL_WARM_STEPS ordinary fixed ticks (one per frame) so the first full
+    // sim step's one-time cost (lazy compile / IC warm-up in step@registry.js, ~400 ms) and the
+    // first-flight renderUpdate paths are paid under the veil instead of at +0.7 s after lift.
+    // A zero-dt step is not side-effect free (core.preStep ticks, Rapier steps its own fixed dt),
+    // so these are real ticks of the normal fixed step from spawn: a valid sim state, 2 ticks.
+    const warmNow = veilHeld && !restoring && !workerPumpOwnsClock
+      && Number(state.timeScale) > 0 && veilWarmSteps < VEIL_WARM_STEPS && veilWarmReady();
+    const stepResult = warmNow
+      ? warmVeilStep(fixedDtOf())
+      : restoring || workerPumpOwnsClock || veilHeld
+        ? simulationRunner.prepareWithoutAdvance()
+        : simulationRunner.advance(frameDt, state.timeScale, stepCap);
     if (!restoring && !workerPumpOwnsClock && stepCap === HITCH_CATCHUP_STEPS) {
       diagnostics.hitchCappedFrameCount++;
     }

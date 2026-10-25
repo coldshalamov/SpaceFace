@@ -324,7 +324,10 @@ test('the flight veil holds the sim: presentationRunner advances nothing while f
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/core/presentationRunner.js', import.meta.url), 'utf8');
   assert.match(src, /const flightVeilHeld = \(\) => !!\(state\.render && state\.render\.flightVeilHoldsSim === true\);/);
-  assert.match(src, /const veilHeld = flightVeilHeld\(\);[\s\S]{0,200}const stepResult = restoring \|\| workerPumpOwnsClock \|\| veilHeld\s*\? simulationRunner\.prepareWithoutAdvance\(\)/);
+  assert.match(src, /const veilHeld = flightVeilHeld\(\);[\s\S]{0,1500}: restoring \|\| workerPumpOwnsClock \|\| veilHeld\s*\? simulationRunner\.prepareWithoutAdvance\(\)/);
+  // The only advance under the veil is the bounded first-flight warm-up (VEIL_WARM_STEPS single ticks).
+  assert.match(src, /const warmNow = veilHeld && !restoring && !workerPumpOwnsClock[\s\S]{0,120}veilWarmSteps < VEIL_WARM_STEPS/);
+  assert.match(src, /simulationRunner\.advance\(dt \/ Number\(state\.timeScale\), state\.timeScale, 1\)/);
 });
 
 test('Continue yields its destructive restore until the loading shell can paint', () => {
