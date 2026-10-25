@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-fauna-exhale",
-      "date": "2026-10-22",
-      "wf": "WF-01",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "When a stone lung exhales, nearby grazers break off and feed on the plume.",
-      "fingerprint": "verb=exhale,subject=stone-lung,sector=veil,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-fauna-fog",
       "date": "2026-10-22",
       "wf": "WF-14",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "1af8e31616be8da51e3c1937adaa619a5a7ecb46",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-clamp-stern-bolt",
+      "date": "2026-10-25",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A dead-center shot into the tug's stern hits the clamp and the load lets go.",
+      "fingerprint": "verb=shoot,subject=clamp,sector=breakaway,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "cb51917ef47cdd2d8ded1378c9e5d12d070197ff",
       "verification": "focused_green"
     }
   ],
