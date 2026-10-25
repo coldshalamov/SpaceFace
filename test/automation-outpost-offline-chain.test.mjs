@@ -5,11 +5,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { automation, AUTOMATION_PASSIVE_TUNING } from '../src/systems/automation.js';
+import { OUTPOSTS } from '../src/data/automation.js';
 
 const LOCAL_SECTOR = 'sector_helios_prime';
 const REMOTE_SECTOR = 'sector_frontier_remote';
 const WINDOW_START_MS = 9_000_000_000_000;
 const ELAPSED_SEC = 10;
+
+// Row 402 retired the authored refinery outpost (re-chartered as a claim on save:loaded). The
+// offline contract under test is the coarse production math, not the shop — so the fixtures run
+// the canonical claim book through a non-retired owner def, the same shape
+// automation-outpost-production.test.mjs uses.
+const { retiredInto: _retiredRefinery, ...CANONICAL_BOOK_FIXTURE } =
+  OUTPOSTS.find((o) => o.id === 'outpost_refinery');
 
 // AL-LG-13: the outpost refinery runs the shared claim book, so an iron-only feed banks
 // refined metals at their real base-price ratio (iron 14 -> refined 91, stub scale 10/14).
@@ -92,11 +100,14 @@ function addDrone(state, {
 
 function addOutpost(state, {
   id,
-  defId = 'outpost_refinery',
+  defId = 'fixture_canonical_book',
   sectorId = LOCAL_SECTOR,
   autoSell = true,
 } = {}) {
   const outpost = {
+    // An unregistered defId makes the record its own def; the fixture carries the retired
+    // refinery's authored cadence and the canonical claim book.
+    ...(defId === 'fixture_canonical_book' ? CANONICAL_BOOK_FIXTURE : {}),
     id,
     defId,
     level: 1,

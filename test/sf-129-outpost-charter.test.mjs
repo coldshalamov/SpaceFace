@@ -21,7 +21,7 @@ import test from 'node:test';
 
 import { claims as claimsBase } from '../src/systems/claims.js';
 import { automation } from '../src/systems/automation.js';
-import { OUTPOSTS, TRADERS } from '../src/data/automation.js';
+import { OUTPOSTS, BUILDABLE_OUTPOSTS, TRADERS } from '../src/data/automation.js';
 import { BODY_MODULES } from '../src/data/claimableBodies.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { classifyTechNode } from '../src/data/techVerbLadder.js';
@@ -115,7 +115,7 @@ test('the node is the strict leftover whose unlock opens construction in the wor
   assert.equal(depot.effect, 'depot');
   assert.equal(battery.techReq, NODE);
   assert.equal(battery.effect, 'defense');
-  assert.ok(OUTPOSTS.length > 0, 'automation outposts exist for the same charter');
+  assert.ok(BUILDABLE_OUTPOSTS.length > 0, 'a buildable automation outpost exists for the same charter');
 });
 
 test('without the research every construction path refuses transactionally — no charge, no deploy', () => {
@@ -130,7 +130,9 @@ test('without the research every construction path refuses transactionally — n
   assert.equal(body.modules.length, 0, 'refusal leaves no half-built slot');
 
   // automation path — the packet's added gate at the order owner (was UI-only before).
-  assert.equal(h.auto.buildOutpost(OUTPOSTS[0].id), false, 'outpost refuses unresearched');
+  // BUILDABLE_OUTPOSTS[0]: the retired refinery would refuse for the wrong reason (re-charter),
+  // hiding a regression in the research gate this test exists to pin.
+  assert.equal(h.auto.buildOutpost(BUILDABLE_OUTPOSTS[0].id), false, 'outpost refuses unresearched');
   assert.equal(h.state.automation.outposts.length, 0, 'no outpost record materializes');
   assert.equal(h.auto.hireTrader(TRADERS[0].id), false, 'hiring refuses its own gate too');
   assert.equal(h.state.automation.traders.length, 0);
@@ -153,7 +155,7 @@ test('a fresh unlock answers two distinct uses in the live world', () => {
 
   // USE 2 — an automation outpost deployed into the current sector: a real position in the
   // live world, not a promise of later content.
-  assert.equal(h.auto.buildOutpost(OUTPOSTS[0].id), true, 'the charter deploys the outpost');
+  assert.equal(h.auto.buildOutpost(BUILDABLE_OUTPOSTS[0].id), true, 'the charter deploys the outpost');
   const outpost = h.state.automation.outposts.at(-1);
   assert.equal(outpost.sectorId, FRONTIER, 'the outpost lands in the live sector');
   assert.ok(Number.isFinite(outpost.pos.x) && Number.isFinite(outpost.pos.z),
@@ -168,7 +170,7 @@ test('an already-earned save keeps the entitlement and the built work through a 
   const h = boot({ researched: [PREREQ, NODE] });
   const body = claimBody(h);
   h.sys.buildModule(body.id, 'mod_depot');
-  h.auto.buildOutpost(OUTPOSTS[0].id);
+  h.auto.buildOutpost(BUILDABLE_OUTPOSTS[0].id);
 
   const claimsSnap = JSON.parse(JSON.stringify(h.sys.serialize()));
   const autoSnap = JSON.parse(JSON.stringify(h.auto.serialize()));
