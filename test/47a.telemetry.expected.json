@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "9fa0743e0ed3bf03f1f41485b08fe76a2e6570a228e8db34206aadfe12bd0daf",
+    "authoritativeHash": "c054ad52f063348a0d8b4bfde348bb0d5802f85f072b098e5d3522a209cc9448",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -238,6 +238,9 @@
     "The prior authoritativeHash was fdb01c20285e067941fc8064569fee2e06c1728a22644143c7866661855ea6c1.",
     "2026-10-23 state-shape-only drift: RC-MARKET-PLAY core (1a89fcd20e) added five empty economy containers (auditorPenn, coldChain, convoyShares, forwardSlips, podIntakeReceipts). Bisect pins it there; parent c25ee0770d reproduces the prior hash.",
     "Paired snapshots (inspect --tick 720) differ only in those five empty leaves; metrics, trace counts and event families are identical for both controllers. HEAD 087a1dc2f2 reproduces the new hash at repeat 5 with reload parity.",
-    "The prior authoritativeHash was ad18c68bb6c24f0fbd9d76f9ec607737b21e6daca3dd2d3bcfe82d5c733afaa5."
+    "The prior authoritativeHash was ad18c68bb6c24f0fbd9d76f9ec607737b21e6daca3dd2d3bcfe82d5c733afaa5.",
+    "2026-10-25 deliberate re-record over 86656026fe..HEAD (709 commits). D241 bisect (f1ec8767f5) pinned 5a3c1298f0 (missions giverId/clientId null leaves) + save bumps 5f5dc3387e..v21; rest is dda2c2cc96 row-482 retune (NPC pulse dmg 8->5).",
+    "Paired final snapshots differ in 45 leaves: meta.version 18->21, giverId/clientId nulls, 34 pulse dmg/packet leaves (8->5, packet x5/8), warden shield 99.492->110 (regen). ZERO pos/vel/rot diffs; traces identical.",
+    "The prior authoritativeHash was 9fa0743e0ed3bf03f1f41485b08fe76a2e6570a228e8db34206aadfe12bd0daf."
   ]
 }
