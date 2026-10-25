@@ -71,7 +71,8 @@ const PLANET_BAND_FIRST_LINES = Object.freeze({
 import { fieldEscapeOf, FIELD_KINDS } from '../data/fields.js';
 import { fieldAffectsBody, fieldContainsPoint } from '../core/fields/fieldKernel.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
-import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { indexedTypeScan, forEachJobInteractable } from '../world/livingWorldViews.js';
+import { cargoPodOwnerId } from './lawSecurity.js';
 import {
   FIRST_TRADE_CONTRACT,
   FIRST_TRADE_CONTRACT_DEST_STATION_ID,
@@ -1931,6 +1932,34 @@ export const onboarding = {
     return SECTORS.find((s) => s && s.id === id) || null;
   },
 
+  // X-05 — read the owner before the act. The first lot the player gets inside reach of
+  // (220 wu — inside the 450 wu witness radius, outside contact range) that belongs to
+  // somebody else speaks its consequence once, anchored to the lot itself.
+  _scanOwnedGoods(state) {
+    const hints = state.player && state.player.hints;
+    if (!hints || hints.firstOwnedGoods) return;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const playerWr = state.player && state.player.worldRecordId;
+    let found = null;
+    forEachJobInteractable(state, (e) => {
+      if (found || !e || e.alive === false || !e.pos || e.id === state.playerId) return;
+      const d = e.data || {};
+      const ownerId = cargoPodOwnerId(e) ?? (d.ownerId != null ? d.ownerId : null);
+      const ownedPod = ownerId != null && !d.freightCustodyPod;
+      const titledChip = d.ownerId != null && d.npcMiningSource
+        && d.ownerId === d.npcMiningSource.minerWorldRecordId;
+      if (!ownedPod && !titledChip) return;
+      if (ownerId === state.playerId || (playerWr && ownerId === playerWr)) return; // the player's own lot
+      const d2 = (e.pos.x - player.pos.x) ** 2 + (e.pos.z - player.pos.z) ** 2;
+      if (d2 > 220 * 220) return;
+      found = e;
+    });
+    if (found) {
+      this._showHint('firstOwnedGoods', firstUseLine('firstOwnedGoods'), { entityId: found.id });
+    }
+  },
+
   // The board station's sector is where the run started — the "gate home" toll is priced there.
   // At mission:completed the run is already off the active list (missions.js removes before
   // emitting), so a null run falls back to the contract's own board station before the
@@ -2153,7 +2182,17 @@ export const onboarding = {
       this._teachReleaseWindow();
       this._tickShelfVerbs(intervalS, state);
       this._tickFitFelt(state);
-      if (!ob.active || ob.finished) return;
+      if (!ob.active || ob.finished) {
+        // X-05: past the rail, one read before the act — the first owned lot the player gets
+        // close enough to reach for names its consequence once. 15-tick cadence; the scan
+        // retires for good once the hint has spoken.
+        if (ob.finished && !this._ownedScanAt) this._ownedScanAt = state.tick | 0;
+        if (ob.finished && (state.tick | 0) - (this._ownedScanAt | 0) >= 15) {
+          this._ownedScanAt = state.tick | 0;
+          this._scanOwnedGoods(state);
+        }
+        return;
+      }
       this._notePaceFlight();
       this._tryAdvanceBeat();
       this._resolveProximityDone();

@@ -6322,7 +6322,7 @@ function findCivilianHauler(state) {
   return preferred || fallback;
 }
 
-function cargoPodOwnerId(entity) {
+export function cargoPodOwnerId(entity) {
   if (!entity) return null;
   const data = entity.data || {};
   const identity = data.cargoIdentity && typeof data.cargoIdentity === 'object' ? data.cargoIdentity : null;
