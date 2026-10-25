@@ -171,6 +171,60 @@ test('seed 4242: a watched ending-cast mint wears the arrival burn and holds its
   }
 });
 
+test('seed 4242: a roster rebuild cannot drop a live ending-cast watch from the sweep', () => {
+  // _pruneDead and the activity-cast rematerializes rebuild _active from the freighter
+  // roster. The ending cast owns no freighter row, so a rebuild in a pocket sector
+  // (Sker's authored cast fires on every enter, right after the ending materializes)
+  // would orphan the hold — the arrival burn would never let go.
+  const state = {
+    mode: 'flight',
+    simTime: 40,
+    meta: { seed: SEED },
+    playerId: 1,
+    entities: new Map(),
+    entityList: [],
+    story: { endgameChoice: 'A', endgameResolved: true },
+    world: { currentSectorId: 'sector_ashfall_reach' },
+    traffic: { freighters: [] },
+  };
+  const player = { id: 1, alive: true, pos: { x: 2150, z: -950 }, data: {} };
+  const station = { id: 100, type: 'station', alive: true, pos: { x: 2000, z: -1000 }, data: { stationId: 'station_ashcache' } };
+  state.entities.set(1, player); state.entities.set(100, station);
+  state.entityList.push(player, station);
+  let nextId = 200;
+  const helpers = { spawnEntity(spec) {
+    const entity = { ...spec, id: nextId++, alive: true };
+    state.entities.set(entity.id, entity); state.entityList.push(entity); return entity;
+  } };
+  const sys = Object.create(trafficBase);
+  sys.state = state; sys.helpers = helpers; sys._active = [];
+
+  const bodies = sys._materializeEndingWorldPresence();
+  const castIds = bodies.map(e => e.id);
+
+  // The continuous-exit prune rebuilds _active from freighters only — the live cast survives.
+  sys._pruneDead();
+  for (const id of castIds) assert.ok(sys._active.includes(id), `rebuild dropped ending-cast id ${id}`);
+
+  // A dead cast hull does not get retained — only live owned bodies fold back in.
+  // The materializer's dedupe re-adopts it on the next pass, restoring sweep coverage.
+  bodies[0].alive = false;
+  sys._pruneDead();
+  assert.ok(!sys._active.includes(castIds[0]), 'dead hull retained in _active');
+  assert.ok(sys._active.includes(castIds[1]));
+  bodies[0].alive = true;
+  sys._materializeEndingWorldPresence();
+  assert.ok(sys._active.includes(castIds[0]), 'dedupe did not re-adopt the restored hull');
+
+  // The sweep still reaches them after the rebuild: the burn lets go on time.
+  state.simTime = 40 + TRAFFIC_ARRIVAL_CUE_HOLD_S;
+  sys._releaseTrafficWatches(state);
+  for (const ent of bodies) {
+    assert.equal(ent.data.ceresCausalCue, undefined);
+    assert.equal(ent.data.trafficWatchUntil, undefined);
+  }
+});
+
 test('seed 4242: quiet-route beacons mint under the same rule', () => {
   const state = {
     mode: 'flight',
