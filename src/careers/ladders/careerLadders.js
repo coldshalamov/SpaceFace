@@ -21,6 +21,7 @@ import {
   transitionResolveChoice,
   validateLadderDefinition,
 } from './ladderShared.js';
+import { HUNTER_LADDER_CAREER_ID } from './hunterLadderDefs.js';
 import {
   CAREER_LADDERS_SCHEMA_ID,
   CAREER_LADDERS_SCHEMA_VERSION,
@@ -51,6 +52,17 @@ export {
 
 /** Process-local definition registry (data-driven; empty until branch packs register). */
 const definitions = createDefinitionRegistry();
+
+function choiceHasBranchRequires(careerId, choiceId) {
+  const def = definitions.get(careerId);
+  if (!def || !Array.isArray(def.steps)) return false;
+  for (const step of def.steps) {
+    if (!step || !Array.isArray(step.choices)) continue;
+    const choice = step.choices.find((row) => row && row.id === choiceId);
+    if (choice && Array.isArray(choice.requires) && choice.requires.length > 0) return true;
+  }
+  return false;
+}
 
 export function registerLadderDefinition(def) {
   return definitions.register(def);
@@ -164,6 +176,12 @@ export function createCareerLaddersSystem() {
       });
       this._listen(CAREER_LADDER_EVENTS.CHOOSE, (payload) => {
         if (payload && payload.careerId && payload.choiceId) {
+          // Hunter choices (capture, execute, file, sell) are owned by the hunter
+          // branch. Resolving them here pays the desk and stamps the receipt
+          // before that branch can record the step or check the dock.
+          // Any other choice that declares requires stays with its branch too.
+          if (payload.careerId === HUNTER_LADDER_CAREER_ID
+            || choiceHasBranchRequires(payload.careerId, payload.choiceId)) return;
           this.choose(payload.careerId, payload.choiceId, payload);
         }
       });

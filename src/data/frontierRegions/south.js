@@ -287,6 +287,26 @@ export const SOUTH_SECTORS = Object.freeze([
           body: 'A colossal arc segment of an ancient orbital megastructure orbiting the frozen dark. Dry river basins and dormant metropolis grids curve across the interior circumference, powered by deep geothermal reserves that have outlived the system\'s dead primary.',
         }),
       }),
+      // ATTENTION S-14 (13/14) — the dark's bookkeeping: the buoy ledger on the
+      // dead lane's drift, and survey etch on rock nobody is coming to cut.
+      Object.freeze({
+        id: 'poi_sedna_buoy_ledger',
+        type: 'beacon',
+        name: 'Buoy Ledger',
+        discoveryPlate: Object.freeze({
+          title: 'Buoy Ledger',
+          body: 'A tally post on the dead-buoy drift\u2019s rim where the survey post logs the unlit lane\u2019s casualties: buoy numbers, dark dates, recovery notes that all read the same — left in place. The count grows at a rate the post files as seasonal.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_sedna_survey_etch',
+        type: 'beacon',
+        name: 'Survey Etch',
+        discoveryPlate: Object.freeze({
+          title: 'Survey Etch',
+          body: 'Survey etch-marks on the exotic seam\u2019s dark face — grid lines, sample flags, a scheduled return date three seasons old. The post keeps etching rock for a crew it has stopped expecting, because the alternative is admitting nobody is coming.',
+        }),
+      }),
     ]),
   }),
 
@@ -515,6 +535,20 @@ export const SOUTH_ANCHORS = Object.freeze({
         placeTargetRadius: 420,
         visualRadius: 420,
         landmark: true,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_sedna_2 rim (center -150,-1150, r450).
+        id: 'poi_sedna_buoy_ledger',
+        pos: Object.freeze({ x: -86, z: -1086 }),
+        landmarkGlb: 'place_tally_post',
+        visualRadius: 9,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_sedna_1 rim (center 720,-280, r420).
+        id: 'poi_sedna_survey_etch',
+        pos: Object.freeze({ x: 656, z: -216 }),
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
       }),
     ]),
   }),

@@ -28,7 +28,6 @@ import { MANEUVER_SPEED_CAPS } from '../ai/maneuver.js';
 import { deriveEnemyMotionScale, hullIdFromEntity } from '../data/flightFeelEnvelopes.js';
 import {
   is47aScavengerCounterplayAuthorized,
-  isOnboardingRaidWingAuthorized,
   protectedStationAt,
 } from '../ai/engagementAuthority.js';
 import { hotUntilActive } from '../economy/customsRisk.js';
@@ -940,9 +939,15 @@ export const lawSecurity = {
       const target = entityById(state, targetId);
       if (!target) continue;
       if (is47aScavengerCounterplayAuthorized(state, entity, target)) continue;
-      // X-02: the Claim Jumper's wing is the same kind of authored exception — the bridge that
-      // lets it fire inside Helios must not be undone by the sanctuary withdrawal one tick later.
-      if (isOnboardingRaidWingAuthorized(state, entity, target)) continue;
+      // X-02: the scripted Claim Jumper wing is outside the withdrawal regime while its beat
+      // is live — the same identity gate as the damage ward below and pirateDisengage's
+      // wingBeat. Its armed window opens only through the authorizeAIEngagement bridge; every
+      // exit (the onboarding script's own DISENGAGE, or an honest morale scatter on its crew's
+      // death) is already honest. Restamping it 'station_jurisdiction:*:withdraw' + passive
+      // falsifies the record and strands the scripted actor mid-lesson.
+      if (entity.data?.onboardingRaidWing === true
+        && state.onboarding?.raid?.active && !state.onboarding?.raid?.wingDone
+        && entity.id === state.onboarding?.raid?.ids?.wing) continue;
       const jurisdiction = protectedStationAt(state, target) || protectedStationAt(state, entity);
       if (!jurisdiction) continue;
       this._withdrawFromSanctuary(entity, target, jurisdiction);

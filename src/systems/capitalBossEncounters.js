@@ -358,8 +358,14 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
         const svc = this._attachmentService();
         if(svc) {
           svc.cut(attachment.id, attachment.ownerId, 'capital_plate_tear');
-          // Both ends at centre of mass — the same anchors a player latch on a dynamic wreck uses.
-          svc.create({ defId: 'tether_standard', ownerId: attachment.ownerId, targetId: plate.id,
+          // The player's OWN line moves to the slab: keep its def (a specialist massline is a
+          // different contract than tether_standard — its own break rating, spring, and the
+          // readers that key on defId) plus its controller and control mode. Both ends at
+          // centre of mass — the same anchors a player latch on a dynamic wreck uses.
+          svc.create({ defId: attachment.defId || 'tether_standard', ownerId: attachment.ownerId,
+            targetId: plate.id,
+            ...(attachment.controllerId != null ? { controllerId: attachment.controllerId } : {}),
+            ...(typeof attachment.controlMode === 'string' ? { controlMode: attachment.controlMode } : {}),
             sourceWorld: player && player.pos ? { x: player.pos.x, y: 0, z: player.pos.z } : undefined,
             targetWorld: { x: plate.pos.x, y: 0, z: plate.pos.z } });
         }

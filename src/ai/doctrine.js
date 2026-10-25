@@ -123,13 +123,15 @@ export function effectiveActivityForAI(ai) {
 /**
  * An ATTACK_RUN whose reason carries one of these prefixes is an AUTHORITATIVE ASSIGNMENT: a
  * named target handed down by an owner that outranks the squad's advisory vote — an ambush's
- * marked prey, CONTROL's dispatched incident offender, a WANTED warrant, or the PQ-195 heist
- * pressure element's run on the tug (D93). Every layer that must honor such an order beyond the
+ * marked prey, CONTROL's dispatched incident offender, a WANTED warrant, the PQ-195 heist
+ * pressure element's run on the tug (D93), or the X-02 raid wing's lesson run on the pilot
+ * holding its crew's tow. Every layer that must honor such an order beyond the
  * pilot's own sensor picture keys on this one predicate: the reported track (aiPorts), declared
  * hostility (scanner), the FOCUS override + formation break, and the doctrine's target tag.
  */
 const AUTHORITATIVE_ASSIGNMENT_PREFIXES = Object.freeze([
   'ambush_snare:', 'security_response:', 'wanted_warrant:', 'heist:pressure:', 'npc_grudge:',
+  'onboarding_raid:',
 ]);
 
 export function isAuthoritativeAssignmentReason(reason) {
@@ -256,7 +258,9 @@ export function overrideDirectiveForWingOrder(directive, perception, freeze = Ob
               ? 'heist_pressure_target'
               : reason.startsWith('npc_grudge:')
                 ? 'npc_grudge_target'
-                : 'security_response_target',
+                : reason.startsWith('onboarding_raid:')
+                  ? 'onboarding_raid_target'
+                  : 'security_response_target',
       }),
     });
   }

@@ -154,6 +154,12 @@ import {
 import { isHostileToPlayer } from './scanner.js';
 import { fittedCloakModule } from './cloak.js';
 import { lawfulPatrolOnGlass } from './lawSecurity.js';
+import {
+  ActivityKind,
+  RulesOfEngagement,
+  normalizeActivity,
+  setEntityDoctrine,
+} from '../ai/doctrine.js';
 
 const FIT_FEEL_DEFS = new Map();
 for (const def of [...MODULES, ...WEAPONS]) {
@@ -3494,7 +3500,37 @@ export const onboarding = {
       if (slot === 'wing' && (opts.wing === 'keep' || opts.wing === 'disarm')) {
         if (opts.wing === 'disarm' && id != null && this.state.entities) {
           const wing = this.state.entities.get(id);
-          if (wing && wing.data && wing.data.ai) wing.data.ai.roe = 'hold_fire';
+          // The same stamp gate _raidActor, _onRaidKilled, and the bare removal path below
+          // enforce: entity ids recycle through freeIds, so a kept slot can name a foreign
+          // hull wearing the routed wing's old id — it keeps its own orders and never takes
+          // a stand-down the beat never authored.
+          if (wing && wing.data && wing.data.onboardingRaidWing === true && wing.data.ai) {
+            // A wing that already left honestly keeps its exit record through the restage —
+            // restamping its FLEE/DISENGAGE as a LOITER would park a routed hull mid-field
+            // instead of letting it finish running. wingDone is the same retirement: the
+            // scripted 'onboarding_raid:withdrawn' DISENGAGE is no _raidWingExited shape, but
+            // a wing the beat already released must finish running all the same. A merely
+            // disengaged wing stands down.
+            if (!raid.wingDone && !this._raidWingExited(wing)) {
+              wing.data.ai.roe = 'hold_fire';
+              // Stand the wing down with its record, not just its guns: a live 'onboarding_raid:'
+              // ATTACK_RUN would keep overriding the squad's FOCUS and the silent hull would keep
+              // stalking the player it can no longer shoot.
+              wing.data.ai.activity = normalizeActivity({
+                kind: ActivityKind.LOITER,
+                reason: 'onboarding_raid:standdown',
+                anchor: wing.pos,
+                leashRadius: 0,
+                startedTick: this.state.tick | 0,
+                targetId: null,
+              });
+            }
+            wing.data.ai.forcePlayerTarget = false;
+            wing.data.ai.huntPlayer = false;
+            const combat = wing.data.combat || (wing.data.combat = {});
+            combat.targetId = null;
+            if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
+          }
         }
         continue;
       }
@@ -3515,6 +3551,42 @@ export const onboarding = {
     }
   },
 
+  // X-02: what "the wing honestly left" means. markFleeing/markSurrendered — and the custody,
+  // surrender-recovery, sanctuary-withdrawal, and parley break-off paths built on the same
+  // shape — stamp a durable denial every authority gate keeps honoring for the hull's life:
+  // pirateDisengaged, motiveSatisfied, or the pirateDisengage record itself. A bare
+  // forceFlee/fsm:'flee' is NOT that record: wingMorale's leader-killed scatter
+  // (_wingMoraleUntil) and difficultyDirector's pin-release hold (_pacingFleeUntil) stamp
+  // exactly those and are built to expire so the hull re-presses when the shock lapses.
+  _raidWingExited(wing) {
+    const data = wing && wing.data;
+    const ai = data && data.ai;
+    if (!ai) return false;
+    if (ai.pirateDisengaged === true || ai.motiveSatisfied === true) return true;
+    const rec = data.pirateDisengage;
+    return !!(rec && (rec.phase === 'flee' || rec.phase === 'surrender'));
+  },
+
+  // Adopt that honest rout as the wing's done state: fled is done. Otherwise a later latch
+  // would restamp a dead-letter ATTACK_RUN + weapons_free on a hull that can never fire, and
+  // the sanctuary identity gate would keep exempting a wing that already left the lesson. A
+  // wing merely scattered or paced off is not adopted — its hold lapses and it re-arms.
+  _adoptRaidWingExit(raid, wing) {
+    const ai = wing && wing.data && wing.data.ai;
+    if (!raid || !ai || !this._raidWingExited(wing)) return false;
+    raid.wingDone = true;
+    // Drop the pins an earlier arming left (markFleeing shape) so the routed hull stops
+    // resolving the player as its target anywhere downstream.
+    ai.forcePlayerTarget = false;
+    ai.huntPlayer = false;
+    const combat = wing.data.combat;
+    if (combat) {
+      if (combat.targetId === this.state.playerId) combat.targetId = null;
+      if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
+    }
+    return true;
+  },
+
   _onRaidLatched(payload) {
     const raid = this._raid();
     const ob = this.state.onboarding;
@@ -3524,13 +3596,29 @@ export const onboarding = {
     // X-02: the wing holds its fire until the tow actually starts — the first latch on the
     // raider is the trigger it answers for. Re-latching an armed wing stays quiet.
     const wing = this._raidActor('wing');
+    if (wing && this._adoptRaidWingExit(raid, wing)) return this._onBeatEvent('raid:latched', payload);
     if (wing && wing.data && wing.data.ai && !raid.wingDone
       && wing.data.ai.roe !== 'weapons_free') {
-      wing.data.ai.roe = 'weapons_free';
       // The wing's lesson target is the pilot holding the tow — pin it through the sanctioned
-      // flag and seed the live activity/combat targets so the decide pass engages the player.
+      // flag and hand it an AUTHORITATIVE ASSIGNMENT: the 'onboarding_raid:' ATTACK_RUN outranks
+      // the squad's advisory vote, so the shared squadId with the passive raider can no longer
+      // vote the offender non-hostile and starve the FOCUS objective (X-02 acquisition fix).
       wing.data.ai.forcePlayerTarget = true;
-      if (wing.data.ai.activity && typeof wing.data.ai.activity === 'object') wing.data.ai.activity.targetId = this.state.playerId;
+      const player = this.state.entities && typeof this.state.entities.get === 'function'
+        ? this.state.entities.get(this.state.playerId)
+        : null;
+      const raider = this._raidActor('raider');
+      setEntityDoctrine(wing, {
+        activity: {
+          kind: ActivityKind.ATTACK_RUN,
+          reason: 'onboarding_raid:claim_jumper',
+          anchor: (player && player.pos) || (raider && raider.pos) || wing.pos,
+          leashRadius: 2200,
+          startedTick: this.state.tick | 0,
+          targetId: this.state.playerId,
+        },
+        roe: RulesOfEngagement.WEAPONS_FREE,
+      });
       wing.data.combat = { ...(wing.data.combat || {}), targetId: this.state.playerId };
       this.bus.emit('comms:popup', {
         sender: "Claim Jumper's Wing",
@@ -3583,12 +3671,29 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !ob || !beat || beat.key !== 'raid' || !payload) return;
+    // X-02 review round 9: entity ids recycle through freeIds, and the wing keeps its slot
+    // after it leaves (wingDone guards the respawn), so a bare raid.ids.wing match is not
+    // proof. A live occupant of that id without the stamp is a foreign hull — its death is
+    // not the wing's receipt and its kills are not wing strays. An EMPTY slot still honors
+    // the match: a same-tick-swept wing body and a despawned killer leave no occupant, and
+    // those receipts are the only honest close the slot gets.
+    const wingId = raid.ids.wing;
+    const occupant = wingId != null && this.state.entities
+      ? this.state.entities.get(wingId) : null;
+    const wingIdIsForeign = !!(occupant && (!occupant.data
+      || occupant.data.onboardingRaidWing !== true));
+    // X-02 review round 10: an UNSET slot is no wing either. ids.wing stays undefined on the
+    // clinic stage (and if the wing spawn ever fails), so a shapeless receipt — no dead id, or
+    // an uncredited raider kill — would equal it by absence: undefined === undefined latching
+    // wingDone or silently counting a "wing stray" the beat never staged. A null slot is the
+    // same non-wing. Only a recorded id may close or credit the wing.
+    const wingRecorded = wingId != null;
     // X-02: the wing's own death ends its part — never a restage, never a beat result.
-    if (payload.id === raid.ids.wing) { raid.wingDone = true; return; }
+    if (wingRecorded && payload.id === wingId && !wingIdIsForeign) { raid.wingDone = true; return; }
     if (payload.id !== raid.ids.raider) return;
     // X-02 v3: a stray wing round into the towed raider converges like a gun kill — silently,
     // because "the raider broke off" is not what the player did.
-    if (payload.killerId === raid.ids.wing || payload.ownerId === raid.ids.wing) {
+    if (wingRecorded && !wingIdIsForeign && (payload.killerId === wingId || payload.ownerId === wingId)) {
       raid.strayKills = (raid.strayKills | 0) + 1;
       if (raid.strayKills >= 2) {
         this._beatDone(beat);
@@ -3646,6 +3751,10 @@ export const onboarding = {
     if (!raid || raid.wingDone) return;
     const wing = this._raidActor('wing');
     if (!wing) return;
+    // A morale scatter exits honestly through pirateDisengage without touching wingDone —
+    // adopt it before the scripted checks so the slot closes within a tick and no later
+    // latch can restamp a dead-letter ATTACK_RUN on a routed hull.
+    if (this._adoptRaidWingExit(raid, wing)) return;
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     const beatDone = !!(ob && ob.beatDoneAt && ob.beatDoneAt.raid != null)
@@ -3655,7 +3764,28 @@ export const onboarding = {
     raid.wingDone = true;
     if (wing.data && wing.data.ai) {
       wing.data.ai.forceFlee = true;
+      wing.data.ai.fsm = 'flee';
       wing.data.ai.roe = 'hold_fire';
+      // Retire the authoritative assignment honestly (pirateDisengage markFleeing pattern):
+      // a DISENGAGE record kills the FOCUS override and the fire bridge with it — forceFlee is
+      // the transient survival order, this is the durable one. The player-target flags go with
+      // it: once the wing is running it is no longer hunting the pilot.
+      wing.data.ai.forcePlayerTarget = false;
+      wing.data.ai.huntPlayer = false;
+      wing.data.ai.activity = normalizeActivity({
+        kind: ActivityKind.DISENGAGE,
+        reason: 'onboarding_raid:withdrawn',
+        anchor: wing.pos,
+        leashRadius: 0,
+        startedTick: this.state.tick | 0,
+        targetId: null,
+      });
+      const combat = wing.data.combat || (wing.data.combat = {});
+      combat.targetId = null;
+      if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
+      const intent = wing.data.intent || (wing.data.intent = {});
+      intent.fire = false;
+      intent.fireGroup = null;
     }
     this.bus.emit('comms:popup', {
       sender: "Claim Jumper's Wing",

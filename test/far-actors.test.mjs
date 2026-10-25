@@ -189,6 +189,27 @@ test('survival/swarm holds every live ship on the table', () => {
   assert.ok(state.entities.get(far.id));
 });
 
+test('an onboarding-stamped body never shelves — the lean row drops the owner keys', () => {
+  // X-02 round-5: the Claim Jumper raid cast stamps data.onboarding (+ onboardingRaidWing on
+  // the wing). leanIdentityData does not carry either, so a shelved/promoted wing returned an
+  // anonymous inert husk _raidActor could never rebind — an open raid slot pointing at a hull
+  // the latch could no longer arm. Owner-keyed tutorial bodies stay resident like authored
+  // characters; an ordinary ship beside them still shelves.
+  const { state, helpers, bus } = boot();
+  const wing = spawnShip(helpers, {
+    pos: { x: 15000, z: 0 },
+    data: { onboarding: true, onboardingRaidWing: true, homeSectorId: 'sector_helios_prime' },
+  });
+  const ordinary = spawnShip(helpers, { pos: { x: 15100, z: 0 } });
+  assert.equal(shouldVirtualizeFarActor(wing, state), false);
+  assert.equal(shouldVirtualizeFarActor(ordinary, state), true);
+  tickFarActors(state, helpers, bus);
+  assert.ok(state.entities.get(wing.id), 'the stamped body stays live past the exit radius');
+  assert.equal(getFarActor(state, wing.id), null);
+  assert.equal(state.entities.has(ordinary.id), false);
+  assert.ok(getFarActor(state, ordinary.id));
+});
+
 test('pinned and nearby wrecks stay; dormant far wrecks shelve', () => {
   const { state, helpers, bus } = boot();
   const farWreck = helpers.spawnEntity({

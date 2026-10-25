@@ -1130,6 +1130,13 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${T} .sx-dossier__title { font-size:18px !important; line-height:1.15 !important; margin:2px 0 4px !important; }
   ${T} .sx-ct-commit.orr-lampkey { min-height:34px !important; font-size:13px !important; }
 }
+/* …but a wide, short desktop (1101+ × ≤720) has a dossier too short to carry the key under the reward
+   (ACCEPT at y≈610 in a 600px window at 1366×600, y≈721 at 1101×480): ACCEPT takes the top of the route
+   column, beside the title, and the route ring follows beneath it — nothing rides over the terms */
+@media (min-width:1101px) and (max-height:720px) {
+  ${T} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 4 !important; align-self:start !important; margin:0 !important; padding:0 !important; }
+  ${T} .sx-dossier > .orr-ct-route { grid-row:4 / span 18 !important; }
+}
 /* even tighter (960×540, dossier ~192px): the terms stay on the board — a second column beside the
    title, reward and ACCEPT — and the dossier scrolls for the route; a player never accepts blind */
 @media (max-width:1100px) and (max-height:800px) {
@@ -2037,6 +2044,33 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
 @media (min-width:1101px) and (max-height:800px) {
   ${T} .sx-ct__hang > .sx-ct__active { flex:none !important; }
   ${T} .sx-ct__hang > .sx-ct__board { min-height:0 !important; }
+}
+/* Missions on 801-1140px-tall desktops (1920x1080, 1600x900): the dossier scrolls under its sticky ACCEPT band, and
+   a four-term offer ran ~120px past it, so COLLATERAL / FOLLOW-UP / READINESS sat under the key. With the
+   station signs on one band (stationLayouts.js) the reading also closes up (a smaller reward, tighter term rows). */
+@media (min-width:1101px) and (min-height:801px) and (max-height:1140px) {
+  ${T} .sx-ct__dossier { padding-top:10px !important; }
+  ${T} .sx-dossier__title { margin-top:4px !important; }
+  ${T} .sx-dossier__client { margin-top:8px !important; }
+  ${T} .sx-dossier__reward { margin-top:12px !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:clamp(56px, 7vh, 80px) !important; }
+  ${T} .sx-dossier > .orr-ct-scales { margin-top:6px !important; }
+  ${T} .sx-dossier__terms > li { padding:6px 0 !important; }
+}
+/* …and under 1500 wide the 32px title wrapped to two lines in the dossier's column (1440x900) */
+@media (min-width:1101px) and (max-width:1499px) and (min-height:801px) and (max-height:1140px) {
+  ${T} .sx-dossier__title { font-size:26px !important; line-height:1.15 !important; }
+}
+/* …and at 801-1000 tall (1440x900, 1600x900) a live berth's head carries the arrival notice too, so a
+   five-term offer still ran two rows (FOLLOW-UP, READINESS) under ACCEPT: the reward, its margins and the
+   term rows close up again (the scales keep their height: shorter, their SVG
+   words shrank under 12px), and the five terms stand above the key. */
+@media (min-width:1101px) and (min-height:801px) and (max-height:1000px) {
+  ${T} .sx-dossier__client { margin-top:4px !important; }
+  ${T} .sx-dossier__reward { margin-top:6px !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:48px !important; }
+  ${T} .sx-dossier > .orr-ct-scales { margin-top:0 !important; }
+  ${T} .sx-dossier__terms > li { padding:2px 0 !important; }
 }
 `;
 

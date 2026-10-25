@@ -197,7 +197,8 @@ export const SWARM_HITSTOP_MASS_REF = 2200;
  */
 export function swarmHitStopSeconds(chain, victimMass = 0) {
   const index = swarmChainTierIndex(swarmChainTier(chain));
-  const s = SWARM_HITSTOP_MIN_S + Math.max(0, index + 1) * 0.01;
+  // The chain base still honours its own ≤80 ms bound; only the mass term reaches past it.
+  const s = Math.min(SWARM_HITSTOP_MAX_S, SWARM_HITSTOP_MIN_S + Math.max(0, index + 1) * 0.01);
   const massFrac = Math.max(0, Math.min(1, (Number(victimMass) || 0) / SWARM_HITSTOP_MASS_REF));
   const massTerm = massFrac * (SWARM_HITSTOP_MASS_MAX_S - SWARM_HITSTOP_MAX_S);
   return Math.min(SWARM_HITSTOP_MASS_MAX_S, Math.max(SWARM_HITSTOP_MIN_S, s + massTerm));

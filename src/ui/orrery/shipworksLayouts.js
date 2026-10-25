@@ -1214,9 +1214,15 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
   ${W}.orr-sw--jig > .sx-sw__side { max-width:130px !important; }
   ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:wrap !important; white-space:normal !important; }
 }
-/* 1024×768–1366×768 desktop: the hull caption belongs above the jig's shade pool. */
-@media (min-width:901px) and (max-width:1366px) and (max-height:800px) {
+/* Desktop: the hull caption belongs above the jig's shade pool (1024×768–1366×768, and at 801+ tall too:
+   1101×801 and 1440×900 buried HITCH · 27.5 M under it). */
+@media (min-width:901px) {
   ${D} .sx-sw__stage > .sx-sw__fleetcap { z-index:4; }
+}
+/* 1100–1280 wide × 801–1000 tall: the stage is too narrow for the hull's blurb beside the ring, so its lines
+   ran under the left callouts (Weapon / Thrusters / Utility, EMPTY · S). It folds as it does under 801 tall. */
+@media (min-width:901px) and (max-width:1280px) and (min-height:801px) and (max-height:1000px) {
+  ${D}.orr-sw--jig .sx-sw__nameplate .sx-sw__blurb { display:none !important; }
 }
 /* 1024×768 desktop: keep the stage in its first grid row. Absolutely filling both
    rows put Starter / systems fitted and the operation dial underneath the hull pool. */

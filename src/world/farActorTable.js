@@ -319,6 +319,14 @@ export function shouldVirtualizeFarActor(entity, state) {
   // within two ticks. Each is one small cohort in one sector, so it stays resident (the activity
   // tiers still put it to sleep while the pilot is far).
   if (data.authoredCharacter) return false;
+  // Onboarding's staged bodies (the rescue cast, the Claim Jumper raid wing/raider/hauler,
+  // missingThree, the claimed beat) are owner-keyed the same way: the lean far row drops
+  // data.onboarding/onboardingRaidWing/raidRole/rescueRole — and weapons/maxSpeed never ride
+  // the row — so a shelved-and-promoted shell returns anonymous, inert, and invisible to
+  // _raidActor/_rescueActor while raid.ids still points at it. X-02 round-5: a wing that
+  // walked out past the exit radius promoted as a flagless husk the latch could never
+  // re-arm. The tutorial cast is a handful of short-lived bodies; it stays resident.
+  if (data.onboarding === true) return false;
   // A marker-bound wreck's body belongs to the aftermath marker (state.aftermathWrecks), which
   // respawns the full hulk on sector entry. The lean far row drops markerId, so a shelved wreck
   // would promote as an unbindable shell duplicating the marker's own respawn (D89).

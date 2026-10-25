@@ -158,6 +158,26 @@ export const NORTH_SECTORS = Object.freeze([
         hidden: true,
         contents: Object.freeze({ commodityId: 'cmdty_ore_goldium', amount: 2 }),
       }),
+      // ATTENTION S-14 (12/14) — scorched-rock bookkeeping: the assay board the
+      // crews pin at the metallic seam, and the escort tally the haulers keep.
+      Object.freeze({
+        id: 'poi_rhea_assay_board',
+        type: 'beacon',
+        name: 'Scorch Assay Board',
+        discoveryPlate: Object.freeze({
+          title: 'Scorch Assay Board',
+          body: 'A standing board at the metallic seam\u2019s rim where the claim crews pin scorched assays in sale order — you buy the read, then the rock. The top pin has been re-hung so often the board reads as a price history.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_rhea_escort_tally',
+        type: 'beacon',
+        name: 'Escort Tally',
+        discoveryPlate: Object.freeze({
+          title: 'Escort Tally',
+          body: 'A tally scratched into the exotic seam\u2019s largest face: hauler marks in one column, escort marks in a shorter one. The Cinder desk files it under weather. The haulers file it under reasons to carry guns.',
+        }),
+      }),
     ]),
   }),
 
@@ -428,6 +448,26 @@ export const NORTH_SECTORS = Object.freeze([
         hidden: true,
         contents: Object.freeze({ commodityId: 'cmdty_exotic_xenium', amount: 1 }),
       }),
+      // ATTENTION S-14 (10/14) — the song's work order: the struck face where crews
+      // cull off-key crystal, and the post that tallies who came to listen.
+      Object.freeze({
+        id: 'poi_phoebe_struck_face',
+        type: 'beacon',
+        name: 'Struck Face',
+        discoveryPlate: Object.freeze({
+          title: 'Struck Face',
+          body: 'A face of the singing seam where the shrine crews test-strike crystal and listen for the note the Sphere keeps. Stones that answer wrong get culled from the song; the face is scarred in a pattern that is almost a scale.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_phoebe_listener_post',
+        type: 'beacon',
+        name: 'Listener\u2019s Post',
+        discoveryPlate: Object.freeze({
+          title: 'Listener\u2019s Post',
+          body: 'A keeper\u2019s post at the gas field\u2019s edge where the shrine tallies visitors in two columns — those who came to listen and those who came to take. The second column is longer. Both columns get visited.',
+        }),
+      }),
     ]),
   }),
 ]);
@@ -475,6 +515,20 @@ export const NORTH_ANCHORS = Object.freeze({
         id: 'poi_rhea_claim',
         pos: Object.freeze({ x: -1380, z: -280 }),
         landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_rhea_1 rim (center 480,-320, r440).
+        id: 'poi_rhea_assay_board',
+        pos: Object.freeze({ x: 544, z: -256 }),
+        landmarkGlb: 'place_tally_post',
+        visualRadius: 9,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_rhea_2 rim (center -920,-640, r380).
+        id: 'poi_rhea_escort_tally',
+        pos: Object.freeze({ x: -856, z: -576 }),
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
       }),
     ]),
   }),
@@ -638,6 +692,20 @@ export const NORTH_ANCHORS = Object.freeze({
         id: 'poi_phoebe_vault',
         pos: Object.freeze({ x: -1480, z: 520 }),
         landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_phoebe_3 rim (center 900,-820, r380).
+        id: 'poi_phoebe_struck_face',
+        pos: Object.freeze({ x: 836, z: -756 }),
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_phoebe_2 rim (center -880,-240, r520).
+        id: 'poi_phoebe_listener_post',
+        pos: Object.freeze({ x: -816, z: -176 }),
+        landmarkGlb: 'place_nav_buoy',
+        visualRadius: 10,
       }),
     ]),
   }),

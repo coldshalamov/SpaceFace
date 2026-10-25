@@ -23,7 +23,8 @@ const DT = 1 / 60;
 
 function levelById(id) { return RACE_LEVELS.find((l) => l.course.courseId === id); }
 
-async function raceFixture(levelId, { laps = 2, difficulty = 'expert', stripAnchorCues = false } = {}) {
+async function raceFixture(levelId, { laps = 2, difficulty = 'expert', stripAnchorCues = false,
+  earlyPhysics = false } = {}) {
   const level = levelById(levelId);
   const contract = RACE_CONTRACTS.find((r) => r.levelId === level.id);
   const state = createGameState(racingSeedFor(contract.id));
@@ -49,11 +50,16 @@ async function raceFixture(levelId, { laps = 2, difficulty = 'expert', stripAnch
   const flight = Object.create(flightV3); flight.init(ctx);
   const ports = Object.create(aiPorts); ports.init(ctx);
   const tactical = createTacticalAISystem(); tactical.init(ctx);
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
+  // Production order: the physics port exists before the heat starts, so start() subscribes
+  // the physics:impact queue (rival↔set-piece contacts open real contact recoveries and, on
+  // an armed player shove, takedown receipts). Opt-in flag keeps the older fixtures' behavior
+  // unchanged — their assertions predate the live impact path.
+  if (earlyPhysics) helpers.combatPhysics = createSg02CombatPhysicsPort(owner);
   pack.update(mission); pieces.update(mission);
   const rivalIds = pack.inspect().rivals.map((r) => r.entityId);
   const rivalIdSet = new Set(rivalIds);
-  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
-  helpers.combatPhysics = createSg02CombatPhysicsPort(owner);
+  if (!earlyPhysics) helpers.combatPhysics = createSg02CombatPhysicsPort(owner);
   // The kernel the opponents owner resolves through kernelFor() — driven each tick so live
   // tension telemetry reaches the loaded-tick counter, exactly as combat's postPhysics does.
   const kernel = getCombatKernel({ state, bus, helpers });
@@ -75,39 +81,49 @@ async function raceFixture(levelId, { laps = 2, difficulty = 'expert', stripAnch
     owner.syncFromEntities(actors);
   }
 
+  // One production-order tick — the body stepRace loops. The shove test drives it directly
+  // so the shove arm can interleave its synthetic player impact between ticks.
+  function tickOnce(tick, lapTimes) {
+    state.tick = tick; state.simTime = tick * DT;
+    syncActors();
+    tactical.update(DT, state);
+    flight.update(DT, state);
+    ports.update(DT, state);
+    owner.step(DT, tick);
+    const hits = owner.drainContactImpacts().filter((h) =>
+      rivalIdSet.has(h.aId) || rivalIdSet.has(h.bId) || h.aId === state.playerId || h.bId === state.playerId);
+    for (const hit of hits) {
+      // Forward the receipt's real fields — impulse and the generation pins are what the
+      // takedown arbiter's physical budget and occupant-identity checks read.
+      bus.emit('physics:impact', { aId: hit.aId, bId: hit.bId, aGeneration: hit.aGeneration,
+        bGeneration: hit.bGeneration, causalActorId: hit.causalActorId, impulse: hit.impulse,
+        tick, pos: hit.pos, normal: hit.normal,
+        preSolveClosingSpeed: hit.preSolveClosingSpeed, consequenceKernelVersion: 1 });
+    }
+    pack.update(mission);
+    pieces.update(mission);
+    kernel.attachments.updateTelemetryAndBreak();
+    const rows = pack.inspect().rivals;
+    const liveAnchors = rows.filter((row) => row.anchor);
+    assert.equal(new Set(liveAnchors.map((row) => row.anchor.anchorId)).size, liveAnchors.length,
+      'two rivals cannot hold the same anchor');
+    for (const row of rows) {
+      const ropes = Object.values(state.combat.attachments.byId)
+        .filter((a) => a.state === 'active' && a.ownerId === row.entityId);
+      assert.ok(ropes.length <= 1, `${row.id} carries at most one live rope`);
+      if (row.anchor) {
+        assert.equal(ropes.length, 1, `${row.id} anchor has a live canonical attachment`);
+        assert.equal(ropes[0].id, row.anchor.attachmentId);
+      }
+      const t = lapTimes && lapTimes[row.id];
+      if (t && row.lap > t.lap) { t.crossedAt.push({ lap: t.lap, simS: state.simTime }); t.lap = row.lap; }
+    }
+  }
+
   function stepRace(maxTicks, stopWhen) {
     const lapTimes = Object.fromEntries(pack.inspect().rivals.map((r) => [r.id, { lap: 0, crossedAt: [] }]));
     for (let tick = 0; tick < maxTicks; tick++) {
-      state.tick = tick; state.simTime = tick * DT;
-      syncActors();
-      tactical.update(DT, state);
-      flight.update(DT, state);
-      ports.update(DT, state);
-      owner.step(DT, tick);
-      const hits = owner.drainContactImpacts().filter((h) =>
-        rivalIdSet.has(h.aId) || rivalIdSet.has(h.bId) || h.aId === state.playerId || h.bId === state.playerId);
-      for (const hit of hits) {
-        bus.emit('physics:impact', { aId: hit.aId, bId: hit.bId, tick, pos: hit.pos, normal: hit.normal,
-          preSolveClosingSpeed: hit.closingSpeed, consequenceKernelVersion: 1 });
-      }
-      pack.update(mission);
-      pieces.update(mission);
-      kernel.attachments.updateTelemetryAndBreak();
-      const rows = pack.inspect().rivals;
-      const liveAnchors = rows.filter((row) => row.anchor);
-      assert.equal(new Set(liveAnchors.map((row) => row.anchor.anchorId)).size, liveAnchors.length,
-        'two rivals cannot hold the same anchor');
-      for (const row of rows) {
-        const ropes = Object.values(state.combat.attachments.byId)
-          .filter((a) => a.state === 'active' && a.ownerId === row.entityId);
-        assert.ok(ropes.length <= 1, `${row.id} carries at most one live rope`);
-        if (row.anchor) {
-          assert.equal(ropes.length, 1, `${row.id} anchor has a live canonical attachment`);
-          assert.equal(ropes[0].id, row.anchor.attachmentId);
-        }
-        const t = lapTimes[row.id];
-        if (t && row.lap > t.lap) { t.crossedAt.push({ lap: t.lap, simS: state.simTime }); t.lap = row.lap; }
-      }
+      tickOnce(tick, lapTimes);
       if (stopWhen && stopWhen()) break;
     }
     return lapTimes;
@@ -115,7 +131,7 @@ async function raceFixture(levelId, { laps = 2, difficulty = 'expert', stripAnch
 
   function dispose() { try { owner.dispose?.(); } catch {} }
 
-  return { state, bus, mission, pack, pieces, owner, takedowns, anchorUsed, stepRace, dispose, rivalIds };
+  return { state, bus, mission, pack, pieces, owner, takedowns, anchorUsed, stepRace, tickOnce, dispose, rivalIds };
 }
 
 // Done-when leg 1: on every Hard course every rival ropes at least one anchor per lap,
@@ -177,4 +193,66 @@ test('the anchor path is causal — control fixture takes none, anchored fixture
       assert.ok(a.crossedAt.length >= 1, `${row.id} completed a lap in the anchored run`);
     }
   } finally { anchored.dispose(); control.dispose(); }
+});
+
+function lapDurations(crossedAt, startS = 0.5) {
+  const out = [];
+  let prev = startS;
+  for (const c of crossedAt) { out.push(c.simS - prev); prev = c.simS; }
+  return out;
+}
+
+// Done-when leg 2: an anchored rival lap is ≥0.8 s faster than an unanchored one. Matched
+// fixtures — same course, seed, hazards; the control simply never sees the anchor cues.
+// Measured per rival across the pack's first two completed laps, mean delta.
+for (const courseId of ['circuit_helios_belt', 'circuit_tethys_tally', 'circuit_veil_wash']) {
+  test(`anchored laps beat unanchored by ≥0.8 s on ${courseId} (Hard)`, async () => {
+    const anchored = await raceFixture(courseId, { laps: 2 });
+    const control = await raceFixture(courseId, { laps: 2, stripAnchorCues: true });
+    try {
+      const tA = anchored.stepRace(60 * 200, () => anchored.pack.inspect().rivals.every((r) => r.lap >= 2 || r.status === 'finished'));
+      const tC = control.stepRace(60 * 200, () => control.pack.inspect().rivals.every((r) => r.lap >= 2 || r.status === 'finished'));
+      const deltas = [];
+      for (const row of anchored.pack.inspect().rivals) {
+        const aLaps = lapDurations(tA[row.id]?.crossedAt || []);
+        const cLaps = lapDurations(tC[row.id]?.crossedAt || []);
+        assert.ok(aLaps.length >= 1 && cLaps.length >= 1, `${row.id} completed a lap in both runs`);
+        const pairs = Math.min(aLaps.length, cLaps.length);
+        for (let i = 0; i < pairs; i++) deltas.push(cLaps[i] - aLaps[i]);
+      }
+      const mean = deltas.reduce((s, x) => s + x, 0) / deltas.length;
+      assert.ok(mean >= 0.8,
+        `anchored laps average ${mean.toFixed(2)}s faster than unanchored (deltas ${deltas.map((d) => d.toFixed(2)).join(',')})`);
+    } finally { anchored.dispose(); control.dispose(); }
+  });
+}
+
+// Done-when leg 3: a player shove into a set piece costs the rival ≥2 s and the rival is
+// back on its line within 6 s. Production-order fixture (impact queue live); the shove arm
+// rides a synthetic player impact while the rival's set-piece contact is the real physics
+// collision — the receipt and the rejoin are the production path.
+test('a shoved rival pays ≥2 s for the piece hit and rejoins within 6 s', async () => {
+  const f = await raceFixture('circuit_tethys_tally', { laps: 1, earlyPhysics: true });
+  try {
+    const miraId = f.pack.inspect().rivals.find((r) => r.id === 'mira')?.entityId;
+    assert.ok(miraId != null, 'mira on the grid');
+    let recovered = null, takedown = null;
+    f.bus.on('race:takedown', (p) => { takedown = p; });
+    for (let t = 0; t < 60 * 90 && !recovered; t++) {
+      // Keep the shove window armed across the deterministic shutter contact so the real
+      // collision attributes — the arm is a wire-shaped player impact, the hit is real.
+      if (t >= 60 * 24 && t <= 60 * 32 && t % 45 === 0) {
+        f.bus.emit('physics:impact', { aId: f.state.playerId, bId: miraId, impulse: 1e6,
+          tick: t, preSolveClosingSpeed: 60, consequenceKernelVersion: 1 });
+      }
+      f.tickOnce(t);
+      const row = f.pack.inspect().rivals.find((r) => r.id === 'mira');
+      if (row.lastContactRecovery?.recoveredAtS != null) recovered = row.lastContactRecovery;
+    }
+    assert.ok(takedown, 'a takedown receipt posted on the real shutter contact');
+    assert.ok(recovered, 'the contact recovery completed');
+    const dur = recovered.recoveredAtS - recovered.enteredAtS;
+    assert.ok(dur >= 2, `the crash cost at least 2 s (rejoin ${dur.toFixed(2)}s)`);
+    assert.ok(dur <= 6, `the rival was back on its line within 6 s (rejoin ${dur.toFixed(2)}s)`);
+  } finally { f.dispose(); }
 });
