@@ -192,6 +192,7 @@ export const FACTION_STINGS = Object.freeze({
   faction_pitborn: sting('faction_pitborn', 'pirate_roast', 131, 'sawtooth', 'Pitborn'),
   faction_understory: sting('faction_understory', 'harmonic_drone', 98, 'sine', 'Understory'),
   faction_verge_layers: sting('faction_verge_layers', 'numbers_station', 494, 'sine', 'Verge-Layer'),
+  faction_helix: sting('faction_helix', 'numbers_station', 523, 'sine', 'Helix'),
 });
 
 function clamp01(v) {

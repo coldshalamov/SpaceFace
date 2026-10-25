@@ -1,7 +1,7 @@
 // src/data/barks.js — per-faction radio VOICE corpus + deterministic selector.
 import { topUpBarkSituationCells } from './barkSituationFill.js';
 //
-// "The story is in the paperwork." Each of the 8 code factions speaks in a DISTINCT
+// "The story is in the paperwork." Each of the fourteen code factions speaks in a DISTINCT
 // register so a scan/warn/attack line instantly reads as who is talking, without an
 // IFF tag. Pure data: no DOM, no Math.random. One data import appends house lines onto
 // the cells below so index 0 of every cell stays the line that already shipped. The

@@ -3,8 +3,8 @@
 //
 // Agents run this. No recorded actors, no network. Speech is the shipped renderer in
 // src/audio/barkVoice.js (glottal identity + formants + radio). Default: one representative
-// WAV per faction register and the mechanic, plus unlabeled blind callsigns. --all writes
-// every corpus line. --check verifies bytes against the shipped renderer.
+// WAV per faction register plus the mechanic and instructor, plus unlabeled blind callsigns.
+// --all writes every corpus line. --check verifies bytes against the shipped renderer.
 //
 //   node scripts/generate-bark-voice.mjs
 //   node scripts/generate-bark-voice.mjs --check

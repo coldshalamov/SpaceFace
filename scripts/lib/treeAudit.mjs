@@ -7,6 +7,9 @@ import path from 'node:path';
  *  (Thumbs.db, .gitkeep) isn't counted as corpus drift.
  *  Returns the flagged relative paths — pruned files are still reported. */
 export function auditExpectedTree(dir, expectedRels, opts = {}) {
+  if (opts.extensions && /[gy]/.test(opts.extensions.flags)) {
+    throw new Error('auditExpectedTree extensions must be a stateless RegExp — a /g or /y flag carries lastIndex and would flag alternately');
+  }
   const flagged = [];
   if (!existsSync(dir)) return flagged;
   const walk = (d, prefix) => {
