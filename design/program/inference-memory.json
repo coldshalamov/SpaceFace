@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "exp-09",
-      "date": "2026-10-22",
-      "wf": "WF-10",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "Entering Charon Expanse, Sker Haven or Tethys Junction has the dock speak the garden hull, ballast barge or Re-router rumor and chart its bearing — and the unique-wreck census now stays green over all 22 authored hulls.",
-      "fingerprint": "verb=rumor,subject=wreck,sector=expansion,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "049c643249",
-      "verification": "focused_green"
-    },
-    {
       "id": "exp-11",
       "date": "2026-10-22",
       "wf": "WF-09",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "160f5fc1008ea6e5f4d58e5a0e159c7daf7b047c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-bounty-standing",
+      "date": "2026-10-25",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Helping a bounty hunter kill the quarry pays the guild standing with the collector cut.",
+      "fingerprint": "verb=pay,subject=guild-standing,sector=flight,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "a68d2a27a4523f5c7edbb6e60aff73e17e9ad44f",
       "verification": "focused_green"
     }
   ],
