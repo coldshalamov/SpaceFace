@@ -154,6 +154,12 @@ import {
 import { isHostileToPlayer } from './scanner.js';
 import { fittedCloakModule } from './cloak.js';
 import { lawfulPatrolOnGlass } from './lawSecurity.js';
+import {
+  ActivityKind,
+  RulesOfEngagement,
+  normalizeActivity,
+  setEntityDoctrine,
+} from '../ai/doctrine.js';
 
 const FIT_FEEL_DEFS = new Map();
 for (const def of [...MODULES, ...WEAPONS]) {
@@ -3494,7 +3500,23 @@ export const onboarding = {
       if (slot === 'wing' && (opts.wing === 'keep' || opts.wing === 'disarm')) {
         if (opts.wing === 'disarm' && id != null && this.state.entities) {
           const wing = this.state.entities.get(id);
-          if (wing && wing.data && wing.data.ai) wing.data.ai.roe = 'hold_fire';
+          if (wing && wing.data && wing.data.ai) {
+            wing.data.ai.roe = 'hold_fire';
+            // Stand the wing down with its record, not just its guns: a live 'onboarding_raid:'
+            // ATTACK_RUN would keep overriding the squad's FOCUS and the silent hull would keep
+            // stalking the player it can no longer shoot.
+            wing.data.ai.activity = normalizeActivity({
+              kind: ActivityKind.LOITER,
+              reason: 'onboarding_raid:standdown',
+              anchor: wing.pos,
+              leashRadius: 0,
+              startedTick: this.state.tick | 0,
+              targetId: null,
+            });
+            const combat = wing.data.combat || (wing.data.combat = {});
+            combat.targetId = null;
+            wing.data.ai.forcePlayerTarget = false;
+          }
         }
         continue;
       }
@@ -3526,11 +3548,26 @@ export const onboarding = {
     const wing = this._raidActor('wing');
     if (wing && wing.data && wing.data.ai && !raid.wingDone
       && wing.data.ai.roe !== 'weapons_free') {
-      wing.data.ai.roe = 'weapons_free';
       // The wing's lesson target is the pilot holding the tow — pin it through the sanctioned
-      // flag and seed the live activity/combat targets so the decide pass engages the player.
+      // flag and hand it an AUTHORITATIVE ASSIGNMENT: the 'onboarding_raid:' ATTACK_RUN outranks
+      // the squad's advisory vote, so the shared squadId with the passive raider can no longer
+      // vote the offender non-hostile and starve the FOCUS objective (X-02 acquisition fix).
       wing.data.ai.forcePlayerTarget = true;
-      if (wing.data.ai.activity && typeof wing.data.ai.activity === 'object') wing.data.ai.activity.targetId = this.state.playerId;
+      const player = this.state.entities && typeof this.state.entities.get === 'function'
+        ? this.state.entities.get(this.state.playerId)
+        : null;
+      const raider = this._raidActor('raider');
+      setEntityDoctrine(wing, {
+        activity: {
+          kind: ActivityKind.ATTACK_RUN,
+          reason: 'onboarding_raid:claim_jumper',
+          anchor: (player && player.pos) || (raider && raider.pos) || wing.pos,
+          leashRadius: 2200,
+          startedTick: this.state.tick | 0,
+          targetId: this.state.playerId,
+        },
+        roe: RulesOfEngagement.WEAPONS_FREE,
+      });
       wing.data.combat = { ...(wing.data.combat || {}), targetId: this.state.playerId };
       this.bus.emit('comms:popup', {
         sender: "Claim Jumper's Wing",
@@ -3655,7 +3692,28 @@ export const onboarding = {
     raid.wingDone = true;
     if (wing.data && wing.data.ai) {
       wing.data.ai.forceFlee = true;
+      wing.data.ai.fsm = 'flee';
       wing.data.ai.roe = 'hold_fire';
+      // Retire the authoritative assignment honestly (pirateDisengage markFleeing pattern):
+      // a DISENGAGE record kills the FOCUS override and the fire bridge with it — forceFlee is
+      // the transient survival order, this is the durable one. The player-target flags go with
+      // it: once the wing is running it is no longer hunting the pilot.
+      wing.data.ai.forcePlayerTarget = false;
+      wing.data.ai.huntPlayer = false;
+      wing.data.ai.activity = normalizeActivity({
+        kind: ActivityKind.DISENGAGE,
+        reason: 'onboarding_raid:withdrawn',
+        anchor: wing.pos,
+        leashRadius: 0,
+        startedTick: this.state.tick | 0,
+        targetId: null,
+      });
+      const combat = wing.data.combat || (wing.data.combat = {});
+      combat.targetId = null;
+      if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
+      const intent = wing.data.intent || (wing.data.intent = {});
+      intent.fire = false;
+      intent.fireGroup = null;
     }
     this.bus.emit('comms:popup', {
       sender: "Claim Jumper's Wing",

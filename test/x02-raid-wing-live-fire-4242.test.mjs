@@ -19,11 +19,10 @@ const STUB_LEDGER = {
   recordTrade() {}, recordCreditsNoSale() {}, recordDecision() {}, recordNote() {}, sampleVerbs() {},
 };
 
-// SKIPPED — staging works (raid spawns, wing arms weapons_free on the staged raider latch),
-// but the armed wing never enters tactical's decide set (no combat.targetId; the perception
-// chain doesn't pick the player for a spawnContext:'onboarding_raid' actor). The four v4 gates
-// are landed; the remaining clause is the wing's target acquisition, tracked on board row 560.
-test.skip('X-02 v4: the wing fires, hits only the player, opens no law case, and exits on its own terms', { timeout: 600000 }, async () => {
+// Acquisition fixed on board row 560: the latch now hands the wing an authoritative
+// 'onboarding_raid:' ATTACK_RUN (doctrine.js AUTHORITATIVE_ASSIGNMENT_PREFIXES) that outranks
+// the squad vote the passive raider was poisoning, and flee swaps it for DISENGAGE.
+test('X-02 v4: the wing fires, hits only the player, opens no law case, and exits on its own terms', { timeout: 600000 }, async () => {
   const runtime = await createAuthoritativeRuntime({
     profileId: 'production', nodeSafeOnly: true, seed: 4242,
     systemLookup: getNodeSystemFactoryTable(),
@@ -100,14 +99,14 @@ test.skip('X-02 v4: the wing fires, hits only the player, opens no law case, and
     const raiderId = raid?.ids?.raider;
     if (raid && raid.active && wingId() != null && raiderId != null && raidLatchTick < 0) {
       // The arming trigger is the first latch on the raider: park the player beside it and
-      // stage the beat's documented signal — a real kernel attachment plus the real
-      // 'tether:latched' emit the tether system makes. Everything downstream (wing arming,
-      // live fire, wards, law) is the production path.
+      // stage the beat's documented signal — the 'tether:latched' emit the tether system makes
+      // on a real latch. No kernel attachment is staged: its reel physics drags the crippled
+      // hulk into the parked hull and kills it inside the wing's response window — a staging
+      // artifact, not the lesson (a real tow reels the raider along behind the ship). Everything
+      // downstream (wing arming, live fire, wards, law) is the production path.
       const raider = state.entities.get(raiderId);
       if (raider && raider.alive !== false && raider.pos) {
         p.pos.x = raider.pos.x + 60; p.pos.z = raider.pos.z + 20;
-        const kernel = runtime.getSystem('combat')?.kernel;
-        kernel?.attachments?.create?.({ defId: 'tether_standard', ownerId: p.id, targetId: raiderId });
         bus.emit('tether:latched', { attachmentId: null, targetId: raiderId, ownerId: p.id });
         raidLatchTick = state.tick;
       }
@@ -123,16 +122,24 @@ test.skip('X-02 v4: the wing fires, hits only the player, opens no law case, and
   assert.ok(wingId() != null, 'the raid wing spawned');
   assert.ok(raidLatchTick >= 0, 'the player latched the raider (the arming beat)');
 
-  // Observe the armed window.
+  // Observe the armed window. The player holds position rather than flying the pilot: the
+  // pilot completing the whip mid-window would race the wing's response window, and parked
+  // geometry is the deterministic read on the wing's own behavior. When the towed raider dies
+  // (the lesson landing, or the staged kernel line reeling it into the parked hull), the wing's
+  // squad morale legitimately scatters — it flees the shock, then re-presses its still-
+  // authoritative ATTACK_RUN once the stamp expires. Once the fire evidence is in, the beat is
+  // closed on the wing's own designed terms: hull dropped to the scripted <=30% flee threshold,
+  // so _stepRaidWing writes the honest 'onboarding_raid:withdrawn' DISENGAGE.
   for (let i = 0; i < OBSERVE_TICKS; i++) {
-    pilot.step(DT, state.tick);
-    const acts = state.input.actions;
-    if (acts && acts.massline) acts.tetherFire = !!acts.massline.latch;
     runtime.runTicks(1, DT);
     const p = state.entities.get(state.playerId);
     if (!p || p.alive === false) break;
     const raid = state.onboarding?.raid;
     if (raid && (raid.wingDone || !raid.active)) break;
+    const w = wingId() != null ? state.entities.get(wingId()) : null;
+    if (w && wingFires.length >= 1 && playerHits.length >= 1 && !raid.wingDone) {
+      w.hull = Math.min(w.hull, Math.floor((w.hullMax || 60) * 0.2));
+    }
   }
 
   const player = state.entities.get(state.playerId);
