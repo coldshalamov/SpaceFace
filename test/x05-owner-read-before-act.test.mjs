@@ -11,6 +11,7 @@ import { world } from '../src/systems/world.js';
 import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
 import { mining } from '../src/systems/mining.js';
 import { onboarding } from '../src/systems/onboarding.js';
+import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { FIRST_USE_LINE, firstUseAttachKind } from '../src/ui/hudAttention.js';
 
 function bargeBoot(seed = 4242) {
@@ -170,4 +171,79 @@ test('X-05 the read attaches as rock; the line is the approved copy', () => {
   assert.equal(firstUseAttachKind('firstOwnedGoods'), 'rock');
   assert.equal(FIRST_USE_LINE.firstOwnedGoods,
     'Someone owns that lot. Lift it in sight, you\'re wanted.');
+});
+
+// Plan tests #5/#6 — pins that the read changed no behaviour: the magnet still leaves a titled
+// chip alone, a witnessed contact scoop of it is still one payload_theft, and a defender
+// auto-collecting ordinary kill shards (free loot, even when stamped by the dead raider) files
+// nothing — and the owner read stays silent over those shards.
+function lawBoot() {
+  const sim = createSimulation({ seed: 4242, systems: [lawSecurity] });
+  const { state, bus } = sim;
+  state.mode = 'flight';
+  state.tick = 40;
+  state.world.currentSectorId = 'sector_helios_prime';
+  const player = sim.spawn({ type: 'ship', team: 0, pos: { x: 210, z: 50 }, vel: { x: 0, z: 0 },
+    hull: 200, hullMax: 200, radius: 6 });
+  state.playerId = player.id;
+  sim.spawn({ type: 'station', team: 2, factionId: 'faction_scn', pos: { x: 1280, z: -420 }, radius: 80,
+    data: { stationId: 'station_helios', factionId: 'faction_scn' } });
+  sim.spawn({ type: 'ship', team: 2, factionId: 'faction_scn', pos: { x: 220, z: 40 }, radius: 8,
+    hull: 80, hullMax: 80,
+    data: { worldRecordId: 'wr_helios_patrol', ai: { lawful: true, archetype: 'patrol_lawman' } } });
+  const reports = [];
+  bus.on('law:reportIncidentReceipt', (p) => reports.push(p));
+  return { sim, state, bus, player, reports };
+}
+
+function scoopBody(bus, body, collectorId) {
+  bus.emit('pickup:collected', { collectorId, pickupId: body.id, acceptedAmount: 2,
+    pos: { x: body.pos.x, z: body.pos.z } });
+}
+
+test('X-05 pin #5: the magnet leaves a titled chip; a witnessed contact scoop is still one payload_theft', () => {
+  const h = bargeBoot();
+  const chip = cutChip(h, h.barge.data.worldRecordId);
+  chip.data.ownerId = h.barge.data.worldRecordId; // titled, as the barge pass stamps it
+  chip.data.ownerName = 'Claim crew';
+  const player = h.sim.state.entities.get(h.sim.state.playerId);
+  chip.pos = { x: player.pos.x + 120, z: player.pos.z };
+  chip.vel = { x: 0, z: 0 };
+  const plain = h.sim.spawn({ type: 'pickup', pos: { x: player.pos.x + 120, z: player.pos.z + 40 },
+    vel: { x: 0, z: 0 }, radius: 2.2,
+    data: { kind: 'ore', commodityId: 'cmdty_silicate', amount: 1, despawnAt: 9999 } });
+  h.sim.registry.get('mining')._updatePickups(1 / 60, h.sim.state);
+  assert.ok(Math.hypot(chip.vel.x || 0, chip.vel.z || 0) < 1, 'the vacuum does not take a titled cut');
+  assert.ok(Math.hypot(plain.vel.x || 0, plain.vel.z || 0) > 1, 'control: loose ore at the same range is vacuumed');
+  assert.equal(chip.alive, true);
+  h.sim.dispose();
+
+  const law = lawBoot();
+  const titled = law.sim.spawn({ type: 'pickup', team: 0, pos: { x: 200, z: 40 }, alive: true, radius: 1,
+    data: { amount: 2, commodityId: 'cmdty_ore_iron', ownerId: 'wr_cutter', ownerName: 'Claim crew',
+      npcMiningSource: { fieldId: 'f_helios_starter', minerWorldRecordId: 'wr_cutter' } } });
+  scoopBody(law.bus, titled, law.player.id);
+  assert.equal(law.reports.length, 1);
+  assert.equal(law.reports[0].kind, 'payload_theft');
+  assert.equal(law.reports[0].accepted, true, 'witnessed: the read told the truth');
+  law.sim.dispose();
+});
+
+test('X-05 pin #6: a defender auto-collecting ordinary kill shards files no incident and hears no read', () => {
+  const law = lawBoot();
+  const plain = law.sim.spawn({ type: 'pickup', team: 0, pos: { x: 200, z: 40 }, alive: true, radius: 1,
+    data: { amount: 2, commodityId: 'cmdty_scrap' } });
+  const stamped = law.sim.spawn({ type: 'pickup', team: 0, pos: { x: 205, z: 45 }, alive: true, radius: 1,
+    data: { amount: 2, commodityId: 'cmdty_scrap', ownerId: 'wr_dead_raider', ownerName: 'Raider' } });
+  scoopBody(law.bus, plain, law.player.id);
+  scoopBody(law.bus, stamped, law.player.id);
+  assert.equal(law.reports.length, 0, 'the honest defender is never charged');
+  assert.equal(law.state.lawSecurity && law.state.lawSecurity.reportedIncidents, undefined);
+  law.sim.dispose();
+
+  const shard = { id: 95, type: 'pickup', alive: true, pos: { x: 90, z: 0 }, vel: { x: 0, z: 0 },
+    data: { amount: 2, commodityId: 'cmdty_scrap', ownerId: 'wr_dead_raider' } };
+  const ob = onboardingRig([shard]);
+  tickScan(ob, 40);
+  assert.equal(ob.hints.filter((e) => e.verbId === 'firstOwnedGoods').length, 0);
 });
