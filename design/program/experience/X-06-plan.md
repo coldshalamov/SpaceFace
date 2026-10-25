@@ -19,7 +19,7 @@ What was rejected:
 - The Drifter's "Berth Four/Six". Those berths are vapor; no such places exist.
 - The Skeptic's second selection site, the pass-by path. One link in the chain is enough.
 
-All place names below were verified against `sectors.js` POI `name` fields and `kettleLine.js:26`.
+All place names below were verified against `sectors.js` POI and station `name` fields (Ceres Refinery and Belt Outpost are `stations[]`, `sectors.js:294,303`) and `kettleLine.js:26`.
 
 ## Design
 
@@ -65,7 +65,7 @@ History and trophy still win. The ambient gap clock (`:3267-3286`, 12 s base, +1
 ## Numbers
 
 - **About half of eligible greetings come from the bank.** Selection is a 1-in-2 hash split per entity, so the faction corpus keeps half the airtime and a hull's line is stable for the seed.
-- **Three lines per cell.** That covers a first-hour sector visit before repeats under the 12→60 s gap.
+- **Six lines per cell.** That covers a first-hour sector visit before repeats under the 12→60 s gap.
 
 ## Save / determinism
 
@@ -74,7 +74,7 @@ History and trophy still win. The ambient gap clock (`:3267-3286`, 12 s base, +1
 ## Tests to add — `test/x06-sector-barks.test.mjs`
 
 1. **Promise test.**
-   - Every entry's `place` is a POI `name` in that sector's `sectors.js` row. For Ceres, `KETTLE_LINE.title` also counts.
+   - Every entry's `place` is a `pois[].name` or `stations[].name` in that sector's `sectors.js` row. For Ceres, `KETTLE_LINE.title` also counts.
    - Every `text` includes its `place`.
 2. Every `text` is at most 12 words.
 3. `sectorBarkFor` returns `null` for an unknown sector or faction. In `_speak`, a null result falls through to `barkFor`.
@@ -97,5 +97,12 @@ History and trophy still win. The ambient gap clock (`:3267-3286`, 12 s base, +1
 
 - v1 APPROVE-with-nit 4964e62b; v2 fixes the place name (Ceres Refinery) — gate restarted
 - v2: abc98e75 APPROVE, 390312bc APPROVE, cd65c632 REJECT (faction_mts cells unreachable in Helios/Ceres)
-- v3: re-keyed to the sector-owner factions (scn Helios, dmc Ceres); the data shape is still `SECTOR_BARKS[sector][faction][situation]` so a later sector can key other factions — gate restarted
-- (pending)
+- v3: re-keyed to the sector-owner factions (scn Helios, dmc Ceres) — gate restarted
+- v3: 8c3dfd2c APPROVE, 04b9da1c APPROVE, 544bd39a REJECT (promise test rejected station names; footer named a different export shape)
+- v4 reviews: bbebe969 APPROVE, 25791716 APPROVE, c9d9b5c8 REJECT (stale 'Three lines per cell' in Numbers)
+- v5: Numbers bullet corrected to six lines per cell — gate restarted
+- v4 change: promise test admits `stations[].name`; the export is the body's `SECTOR_PATROL_GREETINGS[sectorId][factionId]` (no situation level — patrol-greeting only) with `sectorBarkFor(sectorId, factionId, index)`; a later sector can key other factions in the same shape — gate restarted
+- v5: plan-gate reviewer d8881e46 — APPROVE (2026-10-24)
+- v5: plan-gate reviewer f96ba626 — APPROVE (2026-10-24)
+- v5: plan-gate reviewer 3e41e8fa — APPROVE (2026-10-24) — plan✓3
+- implementer notes: add `import { sectorBarkFor }` in barkDirector.js; traffic.js:1837 is a decode stub — live spawns at :2882/:3086/:3429

@@ -88,4 +88,7 @@ As things stand the wing could never fire. `authorizeAIEngagement` denies `stati
 - v1 REJECT 4964e62b (dead weapon mount); v2 amended — gate restarted
 - v2: abc98e75 APPROVE, cd65c632 APPROVE, 390312bc REJECT (wing-credited raider kill loop; restage fork unnamed)
 - v3: amendment section above — gate restarted
-- (pending)
+- v3: plan-gate reviewer 8c3dfd2c — APPROVE (2026-10-24)
+- v3: plan-gate reviewer 04b9da1c — APPROVE (2026-10-24)
+- v3: plan-gate reviewer 544bd39a — APPROVE (2026-10-24) — plan✓3
+- implementer notes from v3 reviewers: the wingmate exclusion is `data.ai.squadId` in `src/ai/fireDiscipline.js:44-48` (lane hold, not a damage-gate reject) so clause (b) stray convergence is load-bearing; `entity:killed` carries `killerId` only; hook `_stepRaidWing` on the raid `_beatDone`
