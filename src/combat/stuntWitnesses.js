@@ -14,7 +14,7 @@ const copy = value => JSON.parse(JSON.stringify(value));
 export function adventureStunts(state) { return !state.run || state.run.phase === 'inactive' || state.run.kind === 'adventure'; }
 export function witnessState(state) {
   state.story ||= {}; state.story.titles ||= {}; const titles = state.story.titles;
-  return titles.stuntWitnessing ||= { version: 1, episodes: {}, reports: [], networks: {}, lastTick: -1, sequence: 0 };
+  return titles.stuntWitnessing ||= { version: 1, episodes: Object.create(null), reports: [], lastTick: -1, sequence: 0 };
 }
 export function observerIdentity(entity) {
   return entity?.data?.worldRecordId ?? entity?.data?.identityKey ?? entity?.data?.transponderId ?? (entity?.id != null ? `entity:${entity.id}` : null);
@@ -102,10 +102,16 @@ export function observeStuntWitnesses(state) {
   const witnessTargets=witnessTargetsFor(state);
   for(const root of j.roots.values()) {
     if(root.actorId!==state.playerId||tick<root.tick||tick>root.tick+480||root.truncated)continue;
-    let episode=own.episodes[root.id];
-    // observers/targets bags are keyed by record-derived identities (worldRecordId/life ids) —
-    // null-prototype so a corrupted '__proto__'-class id writes an own key instead of polluting.
-    if(!episode) { if(Object.keys(own.episodes).length>=LIMITS.episodes)continue;episode=own.episodes[root.id]={rootId:root.id,rootTick:root.tick,observers:Object.create(null)}; }
+    // episodes/observers/targets bags are keyed by record-derived identities (restored root ids,
+    // worldRecordId/life ids) — hasOwn-guarded reads, defineProperty writes, null-prototype bags:
+    // a corrupted '__proto__'-class id becomes an own key instead of Object.prototype or a throw.
+    let episode=Object.hasOwn(own.episodes,root.id)?own.episodes[root.id]:null;
+    if(!episode) {
+      if(Object.keys(own.episodes).length>=LIMITS.episodes)continue;
+      episode={rootId:root.id,rootTick:root.tick,observers:Object.create(null)};
+      Object.defineProperty(own.episodes,root.id,{value:episode,writable:true,enumerable:true,configurable:true});
+    }
+    if(!episode.observers||typeof episode.observers!=='object')episode.observers=Object.create(null);
     const source=state.entities.get(root.sourceId);
     if(!source?.alive||bodyLife(source,state)?.id!==root.sourceLife)continue;
     for(const {entity:observer,profile} of observers) {
@@ -146,7 +152,7 @@ export function observeStuntWitnesses(state) {
   }
 }
 export function sampledStuntWitnesses(state,trick,{partial=false}={}) {
-  const own=witnessState(state),episode=own.episodes[trick.rootId]; if(!episode)return [];
+  const own=witnessState(state),episode=Object.hasOwn(own.episodes,trick.rootId)?own.episodes[trick.rootId]:null; if(!episode)return [];
   const tick=trick.tick,root=journalFor(state)?.roots.get(trick.rootId);
   const lives=trick.victimLives||[];
   const result=[];
