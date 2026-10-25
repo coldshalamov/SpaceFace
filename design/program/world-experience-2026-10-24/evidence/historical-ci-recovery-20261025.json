@@ -1,0 +1,28 @@
+{
+  "schema": "spaceface-historical-ci-recovery-receipt-v1",
+  "verifiedAt": "2026-10-25T00:08:17Z",
+  "scope": "Historical CI diagnostic archives, not current-head qualification or source/model assets.",
+  "archives": [
+    {
+      "name": "static2.zip",
+      "bytes": 123902,
+      "sha256": "4b51a8aeaa6fee0c1b2614b9c6d71f56f91c288f70abe1b6db104ce4c89d65ea",
+      "reportStartedAt": "2026-10-23T15:31:19.858Z",
+      "commands": 78,
+      "failures": 14,
+      "members": 80
+    },
+    {
+      "name": "static3.zip",
+      "bytes": 123745,
+      "sha256": "c397a4dbe609dd995698ffa22d5802d170d33644918bf6d4449280ec6c06616f",
+      "reportStartedAt": "2026-10-23T15:31:11.387Z",
+      "commands": 77,
+      "failures": 7,
+      "members": 79
+    }
+  ],
+  "provenance": "Run, head and artifact IDs remain unknown; filenames and report dates do not establish them.",
+  "recovery": "Complete archive bytes independently preserved and verified by full-byte hash and immutable-version readback. Authorized redundant working copies intentionally released only after verification and confirmation that the active publisher no longer needed them. Exact private restoration identities are retained separately; no source, models or other archives removed.",
+  "acceptance": "No current CI success, failure attribution, runtime integration or game acceptance is inferred."
+}
