@@ -2882,7 +2882,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const stats = el.querySelector('.sx-sw__stats');
     if (!stats) return;
     const props = ['position', 'left', 'top', 'right', 'bottom', 'width', 'max-width', 'transform', 'z-index'];
-    if (!g || !el.classList.contains('sx-sw--buying')) { stats.classList.remove('sx-sw__stats--unseated'); for (const k of props) stats.style.removeProperty(k); return; }
+    if (!g || !el.classList.contains('sx-sw--buying')) { stats.classList.remove('sx-sw__stats--unseated'); for (const k of props) stats.style.removeProperty(k); clearStatsOfRoster(); return; }
     // a short stage gives the readouts the whole gutter left of the dial (the pair row needs 170px of it)
     const tight = ringShort();
     // a stage too narrow for the pinned column has no gutter left of the dial at all — let the
@@ -3173,6 +3173,42 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     scheduleSpatialProjection();
   }
 
+  // The hull's readings stand under the fleet roster at a fixed top in the left column, but a roster
+  // row's role and ACTIVE flag wrap to three lines in that column (STARTER SCOUT · / T0 / ACTIVE), so
+  // the 439 TOP SPEED reading printed over ACTIVE at every desktop size. The readings drop just under
+  // the roster's last row whenever it reaches them. For Sale seats its own readings (seatSaleStats).
+  function clearStatsOfRoster() {
+    if (!statsEl || !railListEl || !statsEl.isConnected || !railListEl.isConnected) return;
+    if (el.classList.contains('sx-sw--buying') || statsEl.classList.contains('sx-sw__stats--unseated')) return;
+    statsEl.style.removeProperty('top');
+    statsEl.style.removeProperty('bottom');
+    const cs = getComputedStyle(statsEl);
+    if (cs.position !== 'absolute' || cs.display === 'none') return;
+    const sr = statsEl.getBoundingClientRect();
+    const rows = railListEl.querySelectorAll('.sx-sw-row');
+    const last = rows.length ? rows[rows.length - 1].getBoundingClientRect() : null;
+    if (!last || sr.height <= 0 || last.height <= 0) return;
+    const listBox = railListEl.getBoundingClientRect();
+    // the row's box carries padding below its words, so measure where its last line of type ends
+    let inkBottom = 0;
+    const walker = document.createTreeWalker(rows[rows.length - 1], NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.textContent.trim()) continue;
+      range.selectNodeContents(n);
+      const b = range.getBoundingClientRect();
+      if (b.height > 0) inkBottom = Math.max(inkBottom, b.bottom);
+    }
+    const rosterBottom = Math.min(inkBottom || last.bottom, listBox.bottom);
+    // only when the two share the column and the roster actually prints into the readings; a near miss
+    // stays put, because the column has no spare room under the readings (1280×720 lost BUILD, and
+    // 1440×900 lost its Top speed bar, when they dropped for a gap alone)
+    if (last.right <= sr.left || last.left >= sr.right || rosterBottom <= sr.top) return;
+    const top = Math.round((parseFloat(cs.top) || 0) + rosterBottom + 8 - sr.top);
+    statsEl.style.setProperty('top', `${top}px`, 'important');
+    statsEl.style.setProperty('bottom', 'auto', 'important');
+  }
+
   function scheduleSpatialProjection() {
     if (projectionFrame) cancelAnimationFrame(projectionFrame);
     projectionFrame = requestAnimationFrame(() => {
@@ -3350,6 +3386,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         sideEl.style.top = `${top}px`;
       }
     }
+    clearStatsOfRoster();
     if (!livePath && !posterOn) return;
     const stageRect = stageEl.getBoundingClientRect();
     if (stageRect.width <= 0 || stageRect.height <= 0) return;
@@ -5261,8 +5298,28 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
   // The verb rack is seated position:fixed in viewport px. A window resize that moves the stage without
   // resizing it (the station head changes height across a breakpoint) leaves the observer silent and the
-  // rack at its old seat, floating mid-dossier, so the window's own resize re-seats it too.
-  const onWindowResize = () => { if (stageShown) scheduleSpatialProjection(); };
+  // rack at its old seat, floating mid-dossier. The head settles a few frames after the resize event
+  // (its note and signs reflow), so for a short while the stage's own position is watched and the rack
+  // re-seated whenever it moves, until it has held still for a few frames.
+  let seatWatchFrame = 0;
+  function watchStageSeat(frames = 90) {
+    if (seatWatchFrame) cancelAnimationFrame(seatWatchFrame);
+    let left = frames;
+    let still = 0;
+    let last = null;
+    const tick = () => {
+      seatWatchFrame = 0;
+      if (!stageShown || !stageEl.isConnected) return;
+      const r = stageEl.getBoundingClientRect();
+      const at = `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(r.height)}`;
+      if (last !== null && at !== last) { still = 0; scheduleSpatialProjection(); } else still += 1;
+      last = at;
+      left -= 1;
+      if (left > 0 && still < 12) seatWatchFrame = requestAnimationFrame(tick);
+    };
+    seatWatchFrame = requestAnimationFrame(tick);
+  }
+  const onWindowResize = () => { if (stageShown) { scheduleSpatialProjection(); watchStageSeat(); } };
   if (typeof window !== 'undefined') window.addEventListener('resize', onWindowResize);
 
   let buyConfirmBusy = false;
@@ -5535,6 +5592,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       refresh();
       if (mount) mount.setActive(true);
       powerBeam.setActive(true);
+      watchStageSeat();
     },
     onHide() {
       stageShown = false;
@@ -5558,6 +5616,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (presetAppliedUnsub) { try { presetAppliedUnsub(); } catch (_) {} presetAppliedUnsub = null; }
       if (stageResizeObserver) stageResizeObserver.disconnect();
       if (typeof window !== 'undefined') window.removeEventListener('resize', onWindowResize);
+      if (seatWatchFrame) { cancelAnimationFrame(seatWatchFrame); seatWatchFrame = 0; }
       if (typeof rangeIntentUnsub === 'function') { try { rangeIntentUnsub(); } catch (_) {} }
       rangeIntentUnsub = null;
       try { powerBeam.dispose(); } catch (_) {}
