@@ -13,6 +13,7 @@ export function createTrailerStaging(state, bus) {
     bus?.emit('audio:cue', { id: moment.music.cue, gain: moment.music.gain, importance: 0.55 });
     bus?.emit('setPiece:staged', {
       id: moment.id, title: moment.title, sectorId, entityId: e.id, tick: state.tick,
+      position: { x: e.pos.x, z: e.pos.z },
       simTime: now, camera: moment.camera, music: moment.music, clip: moment.clip,
     });
     return true;
@@ -27,17 +28,22 @@ export function createTrailerStaging(state, bus) {
       const sectorId = state.world?.currentSectorId;
       const player = state.entities?.get(state.playerId);
       if (state.mode !== 'flight' || !player?.pos || player.alive === false || player.flags?.docked
-        || state.render?.photoMode?.active || state.ui?.paused || state.run?.kind === 'survival') return;
+        || state.render?.photoMode?.active || state.ui?.paused
+        || (state.run?.kind === 'survival' && state.run.phase !== 'inactive')) return;
       if (now - lastAt < 12) return;
       for (const moment of TRAILER_MOMENTS) {
         if (moment.sectorId === sectorId && !seen.has(moment.id) && moment.source.position
           && admit(moment, { pos: moment.source.position, id: moment.id }, camera, now, sectorId)) return;
       }
-      for (const e of state.entityList || []) {
-        if (!e?.pos || e.alive === false || e.id === player.id) continue;
-        for (const moment of TRAILER_MOMENTS) {
-          if (moment.sectorId !== sectorId || seen.has(moment.id) || !trailerMomentMatches(moment, e)) continue;
-          if (admit(moment, e, camera, now, sectorId)) return;
+      // Static authored places live in the dressing table, outside the combat list.
+      for (let pass = 0; pass < 2; pass++) {
+        const list = pass ? state.world?.dressing?.rows : state.entityList;
+        for (const e of list || []) {
+          if (!e?.pos || e.alive === false || e.id === player.id) continue;
+          for (const moment of TRAILER_MOMENTS) {
+            if (moment.sectorId !== sectorId || seen.has(moment.id) || !trailerMomentMatches(moment, e)) continue;
+            if (admit(moment, e, camera, now, sectorId)) return;
+          }
         }
       }
     },

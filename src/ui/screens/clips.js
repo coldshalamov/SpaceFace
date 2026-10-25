@@ -27,6 +27,7 @@ import { analyzeMomentStream } from '../../presentation/momentMachine/index.js';
 import { installFlightFootage, getFlightFootage, createFootageViewer, resolveFlightClipFrames, encodeFlightVideo } from './flightFootage.js';
 import { installReplayAudioTape, getReplayAudioTape } from '../../audio/replayAudioTape.js';
 import { exportTheaterClip } from './theaterExport.js';
+import { createTrailerClipCollector } from '../../sim/trailerClipTape.js';
 import {
   CLIP_EXPORT_FORMATS,
   CLIP_EXPORT_UNAVAILABLE,
@@ -53,6 +54,9 @@ let amendUnsub = null;
 let resetUnsub = null;
 let openState = null;
 let clipStateOf = () => null;
+let trailerCollector = null, trailerOff = null, trailerRaf = null;
+/** Read-only retained set-piece windows, also used by the clip review tool. */
+export function recordedSetPieceClips() { return trailerCollector?.list() || []; }
 // Amended grades keyed by the original moment tick and trick. Delete rebuilds clip ids,
 // and an amendment's own tick is later than the clip, so the reel must not key on either.
 const amendedGradeByKey = new Map();
@@ -79,6 +83,24 @@ export function installLiveClipDirector(bus, options = {}) {
   installFlightFootage(bus, options);
   clipStateOf = options.stateOf || (() => null);
   installReplayAudioTape(bus, options);
+  trailerOff?.();
+  if (trailerRaf != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(trailerRaf);
+  trailerCollector = createTrailerClipCollector({ audioWaitTicks: 12,
+    audioWindow: (from, to) => getReplayAudioTape()?.window(from, to) || null });
+  const poseRecording = () => clipStateOf()?.replay?.recording || getFlightFootage()?.recording();
+  trailerOff = bus?.on?.('setPiece:staged', (marker) => trailerCollector.mark(marker, poseRecording()));
+  let trailerPoseTick = -1;
+  const noteTrailer = () => {
+    if (trailerCollector?.pendingCount) {
+      const replay = clipStateOf()?.replay;
+      const tick = replay?.recording?.poseFrames?.at(-1)?.tick ?? replay?.latestPoseSample?.tick;
+      // The worker publishes one pose sample at 10 Hz. Do not clone/scan its
+      // thirty-second mirror again on every presentation frame.
+      if (tick !== trailerPoseTick) { trailerPoseTick = tick; trailerCollector.note(poseRecording()); }
+    }
+    if (typeof requestAnimationFrame === 'function') trailerRaf = requestAnimationFrame(noteTrailer);
+  };
+  if (typeof requestAnimationFrame === 'function') trailerRaf = requestAnimationFrame(noteTrailer);
   if (!clipDirector) clipDirector = createClipDirector();
   if (clipUnsub) {
     try { clipUnsub(); } catch { /* best-effort */ }
@@ -95,6 +117,7 @@ export function installLiveClipDirector(bus, options = {}) {
     if (typeof bus.on === 'function') amendUnsub = bus.on('moment:amended', noteMomentAmendment);
     const off = ['game:new', 'game:load', 'game:exitToMenu'].map((event) => bus.on(event, () => {
       clipDirector.clear(); amendedGradeByKey.clear(); exportedKeys.clear();
+      trailerCollector?.clear();
       releaseClipDownloadURLs();
     }));
     resetUnsub = () => off.forEach((fn) => fn?.());
@@ -104,6 +127,9 @@ export function installLiveClipDirector(bus, options = {}) {
 
 /** Drop the live subscription. Does not clear recorded clips. */
 export function uninstallLiveClipDirector() {
+  trailerOff?.(); trailerOff = null;
+  if (trailerRaf != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(trailerRaf);
+  trailerRaf = null;
   getReplayAudioTape()?.dispose();
   clipStateOf = () => null;
   releaseClipDownloadURLs();
@@ -158,7 +184,7 @@ export function clipKeptBesideMoments(clip, moments) {
 
 function listedClips(director) {
   const list = director && typeof director.list === 'function' ? director.list() : [];
-  const raw = Array.isArray(list) ? list.map(withAmendedGrade) : [];
+  const raw = (Array.isArray(list) ? list.map(withAmendedGrade) : []).concat(trailerCollector?.list() || []);
   const state = clipStateOf();
   const recording = state?.replay?.recording || getFlightFootage()?.recording();
   if (!recording) return raw;
@@ -981,13 +1007,16 @@ function doDelete(view) {
     if (view.readout) view.readout.textContent = 'NOTHING TO DELETE';
     return;
   }
-  const survivors = view.clips.filter((c) => c.id !== clip.id).slice().reverse();
-  director.clear();
-  for (const kept of survivors) {
-    director.mark({
-      tick: kept.momentTick, kind: kept.kind, trickId: kept.trickId, label: kept.label,
-      rarity: kept.rarity, actorId: kept.actorId, targetId: kept.targetId, seed: kept.seed,
-    });
+  if (clip.kind === 'set-piece') trailerCollector?.remove(clip.id);
+  else {
+    const survivors = view.clips.filter((c) => c.id !== clip.id && c.kind !== 'set-piece').slice().reverse();
+    director.clear();
+    for (const kept of survivors) {
+      director.mark({
+        tick: kept.momentTick, kind: kept.kind, trickId: kept.trickId, label: kept.label,
+        rarity: kept.rarity, actorId: kept.actorId, targetId: kept.targetId, seed: kept.seed,
+      });
+    }
   }
   view.clips = listedClips(director);
   view.chosenIdx = Math.max(0, Math.min(view.clips.length - 1, view.chosenIdx));
@@ -1007,7 +1036,7 @@ function doPlayInReplay(view) {
   if (!view || view.disposed) return;
   const clip = chosenClip(view);
   if (!clip) return;
-  const recording = resolveReplayRecording(view.ctx) || null;
+  const recording = clip.recording || resolveReplayRecording(view.ctx) || null;
   const ticks = recording ? Math.max(0, recording.ticks | 0) : 0;
   if (!recording || !(ticks > 0)) {
     cue('deny');
@@ -1015,11 +1044,11 @@ function doPlayInReplay(view) {
     return;
   }
   const win = trimmedWindow(clip, view.trims);
-  requestReplaySeek(Math.max(0, Math.min(ticks - 1, win.startTick)));
+  requestReplaySeek(win.startTick);
   if (openState && openState.view === view) {
     const { rootEl, ctx } = openState;
     closeClips();
-    openReplay(rootEl, ctx);
+    openReplay(rootEl, ctx, { recording, setPiece: clip.kind === 'set-piece' ? clip : null });
   } else {
     cue('confirm');
     if (view.readout) view.readout.textContent = 'TAPE CUED AT TICK ' + win.startTick + ' — PAUSE › REPLAY OPENS THIS WINDOW';
