@@ -70,6 +70,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        id: install-dependencies
         run: npm ci
 
       # Keep the VFX contract independently observable even when an unrelated program-control
@@ -120,6 +121,7 @@ jobs:
       # place — `strategy.matrix.shard` above — and `strategy.job-total` reads it back, so adding a
       # runner is a one-line edit.
       - name: Run static check group (shard ${{ matrix.shard }} of ${{ strategy.job-total }})
+        if: ${{ !cancelled() && steps.install-dependencies.outcome == 'success' }}
         run: node scripts/check-ci-report.mjs --group=static --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
       - name: Upload check report
@@ -300,3 +302,4 @@ jobs:
             exit 1
           fi
           echo "all four check groups passed"
+

@@ -612,7 +612,7 @@
     "check:career-ladder-ui": "node scripts/check-career-ladder-ui.mjs",
     "check:career-ladder-ui:browser": "node scripts/check-career-ladder-ui-browser.mjs",
     "check:atlas": "npm run check:atlas-integrity && npm run check:atlas-place-path && npm run check:atlas-spatial-truth && npm run check:navigation-stale-route && npm run check:deep-space-address && npm run check:map-camera && npm run check:map-frames && npm run check:map-nav-context && npm run check:map-never-lost && npm run check:map-information-depth && npm run check:actuator-telemetry && npm run check:travel-drive && npm run check:travel-lanes && npm run check:route-engage && npm run check:route-follower && npm run check:speed-lines && npm run check:shader-compile && npm run check:propulsion && npm run check:journey:textile:contract",
-    "check:gate-reachability": "node --test test/gate-reachability-contract.test.mjs && node scripts/check-gate-reachability.mjs",
+    "check:gate-reachability": "node --test test/gate-reachability-contract.test.mjs && node scripts/check-gate-reachability.mjs && node --test test/check-static-ci-coverage.test.mjs",
     "check:lab-chromium-parity": "node --test test/lab-chromium-parity.test.mjs test/lab-browser-input-grammar.test.mjs",
     "check:atlas:perf:strict": "node --expose-gc scripts/probe-atlas-perf-baseline.mjs --check",
     "probe:atlas:perf": "node --expose-gc scripts/probe-atlas-perf-baseline.mjs",
