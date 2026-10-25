@@ -140,3 +140,5 @@ The oldest OPEN row is the next second look.
 
 
 
+| R-acfa6c4 | acfa6c43cc | Row 462 RC-CHASE: Witness Run + Sweep + Sponsor | Re-check that a sector jump by an unobserved suspect cannot mint an escape (only all-observed sweeps grant it), that _fileWitnessReport dedupes by reportId against a receipt the direct path already priced, and that the wantedSweepUnit exemption in rankLawfulResponders keeps sweep hulls lawful for witnesses/lawful_kill while staying off incident responderIds | OPEN |
+| R-461verify | d7af4322e8 | Row 461 RC-DOCKET status flip to DONE | Re-check the docket is genuinely complete at HEAD: caseForLoss covers all five authored loss shapes, settlement range and hull-scaled restitution price through the catalog, partial bills survive save/load, and the promoted communicator really carries the case (11/11 focused suite was green at flip) | OPEN |
