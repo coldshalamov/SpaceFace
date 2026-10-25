@@ -9,6 +9,7 @@ import {
   surfaceResponseFor,
 } from '../core/surfaceContact.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { hasBlockingPanels, chainBlocked } from './pylonShieldQuery.js';
 import { entityKey } from './runtime.js';
 import { canAct } from './attackLineage.js';
 import { tryPierce, tryChain, trySplit } from './attackPropagation.js';
@@ -92,6 +93,9 @@ export function collectAttackCandidates(state, origin, range, scratch, ownerId, 
     : null;
   const out = [];
   const list = Array.isArray(nearby) ? nearby : [];
+  // Linked shield pylons (packet 06): a chain hop / steer candidate behind a panel that blocks this
+  // source cannot be reached. Same shared geometry read as the projectile, beam and blast paths.
+  const panels = hasBlockingPanels(state);
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
     if (!entity || entity.alive === false) continue;
@@ -100,6 +104,7 @@ export function collectAttackCandidates(state, origin, range, scratch, ownerId, 
     if (owner) {
       if (!isHostileForAI(state, owner, entity)) continue;
     } else if (ownerTeam != null && entity.team != null && entity.team === ownerTeam) continue;
+    if (panels && chainBlocked(state, origin, entity.pos, ownerId, entity.id, ownerTeam)) continue;
     out.push({
       id: entity.id,
       pos: entity.pos,

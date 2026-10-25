@@ -478,6 +478,10 @@ export const weapons = {
       }
       this._onAttackHit(payload);
     });
+    // Linked shield pylons (packet 06): physics stopped a hostile round at a wall. An explosive round
+    // detonates at the accepted intercept point, on the attacker's side; the blast is then occluded
+    // by the same wall for anything behind it.
+    on('shieldPylon:intercepted', (payload) => detonateInterceptedSplash(this, payload));
     on('physics:impact', (payload) => {
       const applied = applyInertialShuntFromImpact(
         this.state,
@@ -2907,6 +2911,39 @@ export function applyProjectilePhysicalContact(host, payload) {
       deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
         { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick });
       host.helpers?.routeCombatDamage?.({ attackerId: payload.ownerId ?? projectile.ownerId, targetId: body.id,
+        packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
+        origin: { kind: 'weapon', id: data.weaponId } });
+    },
+  });
+}
+
+/**
+ * A projectile with splash that a shield pylon wall stopped (packet 06). Mirrors the splash half of
+ * applyProjectilePhysicalContact, centred just off the wall on the attacker's side; there is no
+ * struck target to exclude. Stopped plain slugs have no splash and do nothing here.
+ */
+function detonateInterceptedSplash(host, payload) {
+  const state = host && host.state;
+  if (!state || !payload) return;
+  const projectile = state.entities?.get(payload.projectileId);
+  const data = projectile && projectile.data;
+  const radius = Number(data && data.splashRadius) || 0;
+  if (!(radius > 0)) return;
+  const center = { x: payload.x + (payload.nx || 0) * 0.75, z: payload.z + (payload.nz || 0) * 0.75 };
+  const packet = data.damagePacket || data.packet;
+  const baseImpulse = Number(packet?.impulse?.magnitude) || 0;
+  const damage = Number(data.splashDmg) || (Number(data.damage) || 0) * 0.5;
+  const ownerId = payload.ownerId ?? projectile.ownerId;
+  schedulePhysicalBlast(state, { center, radius, helpers: host.helpers,
+    payload: { kind: 'weapon_splash', sourceId: ownerId, weaponId: data.weaponId, baseImpulse, damage, damageType: data.damageType || 'explosive' },
+    onBody: body => {
+      const dx = body.pos.x - center.x, dz = body.pos.z - center.z;
+      const dist = Math.hypot(dx, dz);
+      const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
+      const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
+      deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
+        { actorId: ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick });
+      host.helpers?.routeCombatDamage?.({ attackerId: ownerId, targetId: body.id,
         packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
         origin: { kind: 'weapon', id: data.weaponId } });
     },

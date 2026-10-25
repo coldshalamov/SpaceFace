@@ -27,6 +27,15 @@ import { swarmPilotHasActed } from '../systems/swarmSafety.js';
 import { crossfireDisciplineFor } from '../ai/temperament.js';
 
 /**
+ * Linked shield pylons (packet 06): a pylon endpoint is a destructible body, so hostile fire reaches
+ * its hull through the ordinary damage route. Deployed field emitters (wells, repulsors) keep their
+ * existing damage rules; only an endpoint the shieldPylons system spawned opts in.
+ */
+function isShieldPylonEndpoint(target) {
+  return !!(target && target.type === 'fieldEmitter' && target.data && target.data.shieldPylonEndpoint === true);
+}
+
+/**
  * AL-FIGHT-1 / AL-HF-02: a reckless NPC's weapon round (direct bolt or splash) on a same-team
  * non-lawful NPC ship is real damage. Everything else keeps the friendly-fire law.
  */
@@ -156,7 +165,7 @@ export function createDamageRouter(context, statusService, options = {}) {
       return { ...rejected('swarm_waiting_for_input', input, packet), impulseApplied: impulseResult.applied };
     }
     if (isEnvironmentalBody(target)) addEnvironmentHeat(state, target, packet.heat + (packet.channels.thermal || 0) + (packet.channels.plasma || 0), { actorId: input && input.attackerId, ...origin });
-    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target)) {
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target)) {
       const marks = packet.statuses.filter(status => status.id === GRAVITY_MARK_STATUS_ID);
       if (marks.length) {
         const runtime = ensureCombatant(state, target, catalog);
@@ -172,7 +181,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     // PQ-015: damageable type-membership from the shared catalog (identical to the former
     // ship|station|drone|mine|massSeed literal). The allowAnyTarget bypass, dock/invuln/friendly-fire
     // layers below, and the 'target_not_damageable' reason string are ALL UNCHANGED.
-    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target)) return rejected('target_not_damageable', input, packet);
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target)) return rejected('target_not_damageable', input, packet);
     if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
     if (target.flags && target.flags.invuln && !packet.flags.ignoreInvulnerability) return rejected('target_invulnerable', input, packet);
     // Player malice is adjudicated by law (player_assault/player_piracy incidents) and NPC

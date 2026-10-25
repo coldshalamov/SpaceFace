@@ -251,4 +251,21 @@ export function chainBlocked(state, from, to, sourceId, exemptId = null, fallbac
     { exemptId, ignoreStartInside: true, fallbackTeam }) !== null;
 }
 
+/** Total damage a projectile carries (its packet channels, else the legacy scalar), for the energy debit. */
+export function projectileDamageOf(proj) {
+  const d = proj && proj.data;
+  if (!d) return 0;
+  const packet = d.damagePacket || d.packet;
+  if (packet && packet.channels && typeof packet.channels === 'object') {
+    let sum = 0;
+    for (const key of Object.keys(packet.channels)) {
+      const v = Number(packet.channels[key]);
+      if (Number.isFinite(v) && v > 0) sum += v;
+    }
+    if (sum > 0) return sum;
+  }
+  const scalar = Number(d.damage);
+  return Number.isFinite(scalar) && scalar > 0 ? scalar : 0;
+}
+
 export { PYLON_CONTACT, PYLON_RELATION };

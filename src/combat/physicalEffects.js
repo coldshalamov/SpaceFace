@@ -5,6 +5,7 @@ import { resolvePhysicsBodySpec, queuePhysicsImpulse, prepareExternalPhysicsImpu
 import { environmentResponse, isEnvironmentalBody, isAnchoredPhysicalBody, isPhysicalMissionBody, PHYSICAL_REFERENCE_MASS } from '../core/physicalResponse.js';
 import { queryAsteroidField, getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { routeRecoilThroughWinchBrace } from './attachments.js';
+import { hasBlockingPanels, blastOccluded } from './pylonShieldQuery.js';
 
 // Recoil provenances whose along-line component a taut winch brace (build_map §30.1 RW-01)
 // converts into line load instead of hull velocity. Every other impulse kind is untouched.
@@ -233,6 +234,12 @@ export function schedulePhysicalBlast(state, request) {
     releaseGather(scratch);
   }
   const job = { ...request, center, pending: ids, delivered: new Set() };
+  // Linked shield pylons (packet 06): remember the source's side now - a delayed drain may outlive it.
+  const pylonSourceId = request.payload ? request.payload.sourceId : null;
+  if (pylonSourceId != null && hasBlockingPanels(state)) {
+    const src = state.entities && state.entities.get(pylonSourceId);
+    job.sourceTeam = src && src.team != null ? src.team : null;
+  }
   const rt = runtime(state);
   rt.blasts.push(job);
   drainBlast(state, rt, job, request.helpers);
@@ -263,8 +270,16 @@ function drainBlast(state, rt, job, helpers) {
     // alsoEligible: caller-admitted bodies that fail the physics eligibility (kinematic
     // fauna are blast-damage targets even though no impulse may move them).
     if (!eligible(body, job.includeAnchored !== false)
-      && !(typeof job.alsoEligible === 'function' && job.alsoEligible(body))) continue;
+      && !(typeof job.alsoEligible === 'function' && job.alsoEligible(body))
+      // A shield pylon endpoint is a fixed, destructible body (packet 06): a blast can hurt it.
+      && !(body.alive !== false && body.data && body.data.shieldPylonEndpoint === true)) continue;
     job.delivered.add(id);
+    // Linked shield pylons (packet 06): a blast whose straight path to this body crosses a panel that
+    // blocks its (attributed) source never reaches it. An explosion centred ON a wall, a pair's own
+    // endpoints, and a blast with no attributed source are not occluded (see pylonShieldQuery).
+    if (hasBlockingPanels(state) && job.payload && job.payload.sourceId != null
+      && blastOccluded(state, job, job.center, body, job.payload.sourceId,
+        Number(job.payload.damage) || 0, Number(job.payload.baseImpulse) || 0)) continue;
     job.onBody(body);
   }
   job.pending = remaining;

@@ -1,4 +1,5 @@
 import { tickPhysicalEffects, clearPhysicalEffects } from '../combat/physicalEffects.js';
+import { hasBlockingPanels, interceptSegment, acceptIntercept, projectileDamageOf, PYLON_CONTACT } from '../combat/pylonShieldQuery.js';
 import {orchardRestoreInputsRequired,captureOrchardRestoreInputs,orchardRestoreInputsCurrent,orchardRestoreContextCurrent} from './anvilOrchardNative.js';
 import { sweepCollisionProxyInto } from './collisionProxySweep.js';
 import { dedupWarn } from './warnDedup.js';
@@ -1342,6 +1343,25 @@ export const physics = {
       this._admitProjectileSweepBodies(state, proj, start, end, extra);
       let bestTarget = this._bestProjectileTarget(proj, start, end, candidates, null, honorAuthored);
       bestTarget = this._bestProjectileTarget(proj, start, end, extra, bestTarget, honorAuthored);
+      // Linked shield pylons (packet 06): a hostile round stops at the first panel crossing on this
+      // SAME path. The shared geometry read decides (relation-selective: the owner's and allies'
+      // rounds pass), the round ends at the intercept and never also hits the target behind it, and
+      // the accepted contact is only RECORDED here - the shieldPylons system debits it once.
+      if (hasBlockingPanels(state)) {
+        const wall = interceptSegment(state, PYLON_CONTACT.PROJECTILE, proj.ownerId,
+          start.x, start.z, end.x, end.z, proj.radius || 0, { fallbackTeam: proj.team });
+        if (wall && (!bestTarget || wall.t < this._bestSegmentHitScratch.t)) {
+          proj.pos.x = wall.cx;
+          proj.pos.z = wall.cz;
+          acceptIntercept(state, wall, PYLON_CONTACT.PROJECTILE, { damage: projectileDamageOf(proj) }, proj.ownerId);
+          this.bus.emit('shieldPylon:intercepted', {
+            projectileId: proj.id, ownerId: proj.ownerId, team: proj.team, pairId: wall.pairId,
+            x: wall.x, z: wall.z, nx: wall.nx, nz: wall.nz, tick: state && Number.isInteger(state.tick) ? state.tick : 0,
+          });
+          proj.alive = false;
+          continue;
+        }
+      }
       if (!bestTarget) {
         this._considerProjectileNearMiss(proj, start, end, state);
         if (limit.expired) {
