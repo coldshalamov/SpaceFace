@@ -3501,21 +3501,28 @@ export const onboarding = {
         if (opts.wing === 'disarm' && id != null && this.state.entities) {
           const wing = this.state.entities.get(id);
           if (wing && wing.data && wing.data.ai) {
-            wing.data.ai.roe = 'hold_fire';
-            // Stand the wing down with its record, not just its guns: a live 'onboarding_raid:'
-            // ATTACK_RUN would keep overriding the squad's FOCUS and the silent hull would keep
-            // stalking the player it can no longer shoot.
-            wing.data.ai.activity = normalizeActivity({
-              kind: ActivityKind.LOITER,
-              reason: 'onboarding_raid:standdown',
-              anchor: wing.pos,
-              leashRadius: 0,
-              startedTick: this.state.tick | 0,
-              targetId: null,
-            });
+            // A wing that already left honestly keeps its exit record through the restage —
+            // restamping its FLEE/DISENGAGE as a LOITER would park a routed hull mid-field
+            // instead of letting it finish running. A merely disengaged wing stands down.
+            if (!this._raidWingExited(wing)) {
+              wing.data.ai.roe = 'hold_fire';
+              // Stand the wing down with its record, not just its guns: a live 'onboarding_raid:'
+              // ATTACK_RUN would keep overriding the squad's FOCUS and the silent hull would keep
+              // stalking the player it can no longer shoot.
+              wing.data.ai.activity = normalizeActivity({
+                kind: ActivityKind.LOITER,
+                reason: 'onboarding_raid:standdown',
+                anchor: wing.pos,
+                leashRadius: 0,
+                startedTick: this.state.tick | 0,
+                targetId: null,
+              });
+            }
+            wing.data.ai.forcePlayerTarget = false;
+            wing.data.ai.huntPlayer = false;
             const combat = wing.data.combat || (wing.data.combat = {});
             combat.targetId = null;
-            wing.data.ai.forcePlayerTarget = false;
+            if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
           }
         }
         continue;
@@ -3537,17 +3544,29 @@ export const onboarding = {
     }
   },
 
-  // X-02: a morale scatter exits the wing through pirateDisengage — markFleeing /
-  // markSurrendered stamp fsm/passive/pirateDisengaged over a FLEE or DISENGAGE record that
-  // every authority gate keeps honoring as denied — without touching raid.wingDone. Adopt
-  // that honest rout as the wing's done state: fled is done. Otherwise a later latch would
-  // restamp a dead-letter ATTACK_RUN + weapons_free on a hull that can never fire, and the
-  // sanctuary identity gate would keep exempting a wing that already left the lesson.
+  // X-02: what "the wing honestly left" means. markFleeing/markSurrendered — and the custody,
+  // surrender-recovery, sanctuary-withdrawal, and parley break-off paths built on the same
+  // shape — stamp a durable denial every authority gate keeps honoring for the hull's life:
+  // pirateDisengaged, motiveSatisfied, or the pirateDisengage record itself. A bare
+  // forceFlee/fsm:'flee' is NOT that record: wingMorale's leader-killed scatter
+  // (_wingMoraleUntil) and difficultyDirector's pin-release hold (_pacingFleeUntil) stamp
+  // exactly those and are built to expire so the hull re-presses when the shock lapses.
+  _raidWingExited(wing) {
+    const data = wing && wing.data;
+    const ai = data && data.ai;
+    if (!ai) return false;
+    if (ai.pirateDisengaged === true || ai.motiveSatisfied === true) return true;
+    const rec = data.pirateDisengage;
+    return !!(rec && (rec.phase === 'flee' || rec.phase === 'surrender'));
+  },
+
+  // Adopt that honest rout as the wing's done state: fled is done. Otherwise a later latch
+  // would restamp a dead-letter ATTACK_RUN + weapons_free on a hull that can never fire, and
+  // the sanctuary identity gate would keep exempting a wing that already left the lesson. A
+  // wing merely scattered or paced off is not adopted — its hold lapses and it re-arms.
   _adoptRaidWingExit(raid, wing) {
     const ai = wing && wing.data && wing.data.ai;
-    if (!raid || !ai) return false;
-    if (ai.pirateDisengaged !== true && ai.forceFlee !== true
-      && ai.fsm !== 'flee' && ai.fsm !== 'surrender') return false;
+    if (!raid || !ai || !this._raidWingExited(wing)) return false;
     raid.wingDone = true;
     // Drop the pins an earlier arming left (markFleeing shape) so the routed hull stops
     // resolving the player as its target anywhere downstream.

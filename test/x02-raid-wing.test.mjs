@@ -222,6 +222,93 @@ test('X-02 a morale-scattered wing is adopted as done and never re-arms', () => 
   assert.equal(wing2.data.ai.fsm, 'surrender', 'the honest record is not restamped');
 });
 
+// X-02 review round 3: the adoption must not fire on a TEMPORARY hold. wingMorale's
+// leader-killed scatter and difficultyDirector's pin-release stamp bare forceFlee/fsm:'flee'
+// with no durable marker and are built to expire so the hull re-presses — the raider is the
+// squad's fallback leader, so a gun kill on it scatters the wing for a few seconds mid-lesson.
+test('X-02 a temporary scatter or pacing hold is not adopted — the wing still re-arms', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wing = h.entities.get(raid.ids.wing);
+  // wingMorale._scatter's shape: forceFlee + fsm:'flee' + a private until — no
+  // pirateDisengaged, no motiveSatisfied, no pirateDisengage record.
+  wing.data.ai.forceFlee = true;
+  wing.data.ai.fsm = 'flee';
+  wing.data.ai._wingMoraleUntil = 12;
+  wing.data.ai._moraleUntil = 12;
+  wing.data.morale = 'scattered';
+  h.ob._stepRaidWing();
+  assert.equal(raid.wingDone == null || raid.wingDone === false, true,
+    'a leader-killed shock is not an exit');
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  assert.equal(raid.wingDone == null || raid.wingDone === false, true,
+    'the latch does not adopt a scattered wing');
+  assert.equal(wing.data.ai.roe, 'weapons_free', 'the scatter still arms for the lesson');
+  // The shock lapses (wingMorale deletes its own stamps) and the wing re-presses.
+  delete wing.data.ai.forceFlee;
+  delete wing.data.ai.fsm;
+  delete wing.data.ai._wingMoraleUntil;
+  delete wing.data.ai._moraleUntil;
+  delete wing.data.morale;
+  h.ob._stepRaidWing();
+  assert.equal(raid.wingDone == null || raid.wingDone === false, true,
+    'an expired hold leaves the slot open');
+  assert.equal(wing.data.ai.roe, 'weapons_free', 'the re-pressed wing keeps its armament');
+  // ...and its own authored exit still lands afterwards.
+  wing.hull = 18;
+  h.ob._stepRaidWing();
+  assert.equal(raid.wingDone, true, 'the scripted hull exit still works');
+  assert.equal(wing.data.ai.roe, 'hold_fire');
+  // The pacing hold shape (difficultyDirector) — forceFlee alone — is likewise transient.
+  const h2 = rig();
+  const raid2 = stage(h2);
+  const wing2 = h2.entities.get(raid2.ids.wing);
+  wing2.data.ai.forceFlee = true;
+  wing2.data.ai._pacingFleeUntil = 9;
+  h2.ob._stepRaidWing();
+  assert.equal(raid2.wingDone == null || raid2.wingDone === false, true,
+    'a bounded pacing hold is not an exit');
+});
+
+// X-02 review round 3 seam: the player dies to the wing mid-raid. The death restage stands
+// the wing down for replay — every player pin it could carry clears — and a wing that already
+// left honestly keeps its rout instead of being parked mid-field as a LOITER.
+test('X-02 a player-death restage disarms cleanly and respects an honest exit', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wing = h.entities.get(raid.ids.wing);
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  assert.equal(wing.data.ai.roe, 'weapons_free');
+  // Stale pins a live fire loop could leave on the hull — the restage must drop all of them.
+  wing.data.ai.huntPlayer = true;
+  wing.data.combat.lockTarget = 1;
+  h.bus.emit('player:death');
+  assert.equal(wing.data.ai.roe, 'hold_fire', 'the wing stands down for the restage');
+  assert.equal(wing.data.ai.activity && wing.data.ai.activity.reason, 'onboarding_raid:standdown');
+  assert.equal(wing.data.ai.forcePlayerTarget, false);
+  assert.equal(wing.data.ai.huntPlayer, false, 'the hunt pin clears with the disarm');
+  assert.equal(wing.data.combat.targetId, null);
+  assert.equal(wing.data.combat.lockTarget, null, 'a stale lock does not follow the respawn');
+  assert.equal(raid.ids.wing, wing.id, 'the slot survives for the replay');
+  assert.equal(raid.wingDone == null || raid.wingDone === false, true, 'a live wing is not done');
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  assert.equal(wing.data.ai.roe, 'weapons_free', 'the replayed lesson re-arms on the latch');
+  // A wing that already routed keeps its honest record through the restage.
+  const h2 = rig();
+  const raid2 = stage(h2);
+  const wing2 = h2.entities.get(raid2.ids.wing);
+  wing2.data.ai.fsm = 'flee';
+  wing2.data.ai.passive = true;
+  wing2.data.ai.pirateDisengaged = true;
+  wing2.data.ai.roe = 'hold_fire';
+  wing2.data.ai.activity = { kind: 'flee', reason: 'pirate_disengage:test', targetId: null };
+  h2.bus.emit('player:death');
+  assert.equal(wing2.data.ai.activity.reason, 'pirate_disengage:test',
+    'a routed hull keeps fleeing instead of parking');
+  h2.ob._stepRaidWing();
+  assert.equal(raid2.wingDone, true, 'the routed record still closes the slot');
+});
+
 // X-02 review: entity ids recycle. A wing that egressed or died keeps its slot (wingDone guards
 // the respawn), so the slot must never arm or delete whatever hull wears that id next.
 test('X-02 review: a recycled wing id is never armed or removed', () => {
