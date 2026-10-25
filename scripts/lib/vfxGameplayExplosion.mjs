@@ -5,6 +5,7 @@ import { vfx } from '../../src/render/vfx.js';
 import { QuarksVfxSystem } from '../../src/render/vfx/quarksSystem.js';
 import { installGameplayWorldPresentation } from './vfxGameplayWorldEvents.mjs';
 import { resolveVfxAccessibilityProfile } from '../../src/render/vfxAccessibility.js';
+import { resetGameplayVfxWhenReady } from './vfxGameplayReadiness.mjs';
 
 const NOOP = () => {};
 // These constructors are unrelated to destruction. Their absence does not replace a destruction
@@ -283,6 +284,6 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     root.removeFromParent();
     disposed = true;
   }
-  reset({ seed, time: lastTime });
-  return { root, fire, fireEvent, update, reset, inspect, dispose };
+  const ready = resetGameplayVfxWhenReady(owner, () => reset({ seed, time: lastTime }));
+  return { root, ready, fire, fireEvent, update, reset, inspect, dispose };
 }

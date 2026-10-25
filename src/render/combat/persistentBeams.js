@@ -463,11 +463,11 @@ export class PersistentCombatBeamPool {
         ? 0.84 + 0.16 * (1 - Math.min(1, Math.max(0, (now - entry.stopAt) / BEAM_COOLING_S)))
         : 1;
       const width = Math.max(
-        (reducedFlash ? 0.36 : 0.52) * entry.widthMul * birthWidth * coolWidth,
+        (reducedFlash ? 0.55 : 0.85) * entry.widthMul * birthWidth * coolWidth,
         cameraFloor || 0,
       );
       this._writeSlotQuad(this._coreBatch, entry.slot, ax, az, bx, bz, entry.y, width, length);
-      this._writeSlotQuad(this._haloBatch, entry.slot, ax, az, bx, bz, entry.y - 0.01, width * 2.8, length);
+      this._writeSlotQuad(this._haloBatch, entry.slot, ax, az, bx, bz, entry.y - 0.01, width * 3.4, length);
       matricesChanged = true;
     }
     if (matricesChanged) {
