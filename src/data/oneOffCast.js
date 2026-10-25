@@ -328,8 +328,8 @@ export const ONE_OFF_CAST = Object.freeze([
     id: 'bellhop', name: 'BELLHOP / CB-9 — the bell-tuning drone',
     sectorIds: ['sector_phoebe_echo'],
     books: { from: 4, to: 7 },
-    chart: { kind: 'planned', ref: null },
-    implemented: false,
+    chart: { kind: 'contact', ref: 'bellhop', presentVia: 'bellhop' },
+    implemented: true,
   }),
   entry({
     id: 'gravedigger', name: 'GRAVEDIGGER / UG-4 — the machine that buries wrecks into gardens',
