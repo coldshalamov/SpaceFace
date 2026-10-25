@@ -22,8 +22,13 @@ export function rankLawfulResponders(candidates, anchor, {
   const limitSq = Number.isFinite(radius) ? Math.max(0, radius) ** 2 : Infinity;
   const unique = new Map();
   for (const entity of Array.isArray(candidates) ? candidates : []) {
+    // RC-CHASE (row 462): a wanted-sweep hull is lawful — it witnesses, it charges lawful_kill
+    // when destroyed — but it is already committed to the bounty search. Letting the responder
+    // pool retask it would pull the search party off the hunt and pollute every wreck frame it
+    // flies through, so it marks itself off the dispatch list by its own tag.
     if (!entity || entity.alive === false || entity.type !== 'ship'
       || entity.id === aggressorId || !entity.data || !entity.data.ai || entity.data.ai.lawful !== true
+      || entity.data.wantedSweepUnit === true
       || distanceSq(entity.pos, anchor) > limitSq) continue;
     unique.set(stableId(entity.id), entity);
   }
