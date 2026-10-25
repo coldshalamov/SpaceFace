@@ -238,6 +238,7 @@ export function swarmRoundTally({ flawless = false, durationS = null, kills = 0,
  * example ("It explodes. Throw it.") sets the register: body part, then verb.
  */
 export const SWARM_NEWCOMER_COUNTERS = Object.freeze({
+  wasp_swarmer: 'It packs the room first. Thin it early.',
   reaver_pirate: 'It rushes. Shred it mid-pass.',
   choir_zealot: 'It packs. Keep the room moving.',
   detonator_dart: 'It explodes. Throw it.',

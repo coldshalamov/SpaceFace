@@ -181,8 +181,8 @@ test('the mark roll is a pure function of (seed, offer id, sector, tier) — a f
     riskTier: 1, sectorDef: byId.get('sector_charon_expanse'),
   }), {
     id: 'mark:mo_probe_1',
-    name: 'Pike Sorrow',
-    label: 'PIKE SORROW — WARRANT',
+    name: 'Hollis Merk',
+    label: 'HOLLIS MERK — WARRANT',
     role: 'board_writ',
     archetype: 'wasp_swarmer',
     // RC-MISSION-VOICE: the flag FITS the sector — the Charon Expanse's only presence is the

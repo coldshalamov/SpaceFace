@@ -321,6 +321,20 @@ const CONTRACTS = Object.freeze([
     summary: 'The tally circuit again. Follow the pace light through the turns. Stern camera required.',
     gridLine: 'Hold. The pace light leaves with you. Read the line ahead.',
   }),
+  Object.freeze({
+    id: 'contract_textile_rematch',
+    levelId: 'level_textile_outbound',
+    practice: false,
+    laps: 2,
+    steerLock: 'racing',
+    racingKind: 'laps',
+    reward_cr: 1500,
+    duration_s: 1200,
+    title: 'The tallyman’s rematch',
+    brief: 'The dispatch clerk who graded Vesper’s mark disputes the lap. Two circuits of the belt, posted purse, stern camera — he is watching the same rocks you are.',
+    summary: 'Two laps of the Helios belt. Stern camera required. The clerk is grading this one personally.',
+    gridLine: 'Hold. Two laps. The tallyman already wrote your time down once.',
+  }),
 ]);
 
 const PRACTICE = RACE_LEVELS.map((level) => Object.freeze({

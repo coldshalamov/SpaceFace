@@ -25,12 +25,16 @@ Joint with board row ATT-S13. Surface files: `src/data/sectors.js`,
   "named dead" lands where plates can carry the names.
 
 ## What is thin
-- The ten unplated wrecks are silent at the discovery moment — no casualty, no salvage
-  note, no mark of who fired. The aftermath register (named dead, salvage notes,
-  kill-marks) exists in the world's voice (Senna, testimony graffiti) but not at the
-  sites themselves.
-- No memorial marker sits beside any wreck field — nothing the player can find that says
-  "somebody counted these."
+- Two wreck finds in the core are silent at the discovery moment — `poi_charon_tether_wreck`
+  and `poi_bounty` (Sker) name a site and file nothing: no casualty, no salvage note, no
+  mark of who fired. The aftermath register exists in the world's voice (Senna, testimony
+  graffiti) but not at these two sites.
+- The eight frontier counterparts are NOT thin: a prior dressing pass already planted
+  plated memorial markers beside every frontier wreck (`poi_nyx_runner_memorial`,
+  `poi_rhea_slag_memorial`, `poi_haumea_probe_memorial`, `poi_eris_toll_memorial`,
+  `poi_nereid_shoal_memorial`, `poi_triton_wake_memorial`, `poi_eunomia_row_marker` +
+  `poi_eunomia_bed_marker`) — each naming dead crew, what was stripped, and how the
+  scoring reads. That pass is the precedent this row completes at the core.
 
 ## Constraints discovered
 - `discoveryPlate` on a POI removes it from the bounty-writ pool
