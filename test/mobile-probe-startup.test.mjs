@@ -26,7 +26,7 @@ test('a pending all-menu restore keeps the original five-minute bound', async ()
   const pending = { ...state('menu'), flight: '0' };
   pending.runtime.frame = { mode: 'menu', tick: 0, playerId: null };
   const result = await replay([pending]);
-  assert.match(result.error.message, /within five minutes/);
+  assert.match(result.error.message, /did not observe an advancing simulation tick/);
   assert.equal(result.now, 300000);
   assert.equal(result.report.observations.length, 150);
 });
@@ -41,10 +41,15 @@ test('a visible title beneath loading is pending; a witnessed return to menu fai
 });
 
 test('playable flight and explicit startup failures retain their existing verdicts', async () => {
-  const flight = state('flight');
-  flight.flight = '1'; flight.runtime.post = { firstPlayableFrameAt: 123 };
-  const passed = await replay([state('menu'), flight]);
-  assert.equal(passed.result, 4000);
+  const flight = (tick) => {
+    const next = state('flight');
+    next.flight = '1'; next.runtime.post = { firstPlayableFrameAt: 123 };
+    next.runtime.frame.tick = tick;
+    return next;
+  };
+  // The Continue route only counts playable flight once the tick itself has advanced.
+  const passed = await replay([state('menu'), flight(6), flight(8)]);
+  assert.equal(passed.result, 6000);
   assert.equal(passed.error, undefined);
   const failed = await replay([state('menu')], { errors: [
     { route: 'continue', text: '[SpaceFace] save restore failed' },
@@ -77,7 +82,7 @@ test('requested iPhone touch profile is reported against effective runtime capab
     'the probe observes capabilities without manufacturing browser identity');
 
   const start = source.indexOf('function recordMobileCapabilities(');
-  const end = source.indexOf('\n// Concrete GL failures', start);
+  const end = source.indexOf('\nconst MAX_RENDERER_ERROR_SAMPLES', start);
   const report = { mobileProfile: { requested: { hasTouch: true, isMobile: true }, effective: null, mismatches: [] },
     acceptance: { mobileCapabilities: 'pending' } };
   runInNewContext(`${source.slice(start, end)}\nrecordMobileCapabilities`, { report })({
@@ -113,7 +118,7 @@ test('historical save errors and unaccepted clicks cannot become a new Continue 
     startupObserver: { events: [{ type: 'save:error', reason: 'load_failed', at: 50 }] } };
   const pending = await replay([historical], { click, baseline });
   assert.equal(pending.now, 300000);
-  assert.match(pending.error.message, /within five minutes/);
+  assert.match(pending.error.message, /did not observe an advancing simulation tick/);
   assert.equal(pending.report.continueRejection, undefined);
   const unaccepted = await replay([{ ...state('menu'), simLaneEvents: [...baseline, 'save:error'] }],
     { click: { ...click, isTrusted: false }, baseline });
@@ -228,7 +233,7 @@ function menuWaitFixture(stateOrError) {
   const end = source.indexOf('\n  const waitForFlight = ', start);
   const fragment = source.slice(start, end);
   const scope = { Date: DateFixture, report, activeRoute: 'continue', actorStage: 'continue-reload',
-    engine: 'webkit', out: 'out', page: {
+    engine: 'webkit', out: 'out', throttle: null, page: {
       async evaluate() {
         if (stateOrError instanceof Error) throw stateOrError;
         return stateOrError;
@@ -295,6 +300,7 @@ test('menu diagnostic reader captures document, visibility, and witness-frame st
   const state = await run({ evaluate: async callback => callback() });
   assert.deepEqual(JSON.parse(JSON.stringify(state)), { available: true, timeOrigin: 123, readyState: 'interactive', newGameButtonCount: 1,
     newGameButtonVisible: true, mainMenuVisible: true, motionAskVisible: false, motionFullVisible: false,
+    firstLightPlayVisible: false,
     cinematicVisible: false, cinematicBeginVisible: false,
     witnessReadError: null,
     witnessFrame: { mode: 'menu', tick: 42, playerId: null, loading: false } });
@@ -312,7 +318,7 @@ test('a visible reload menu remains playable when the optional witness throws', 
   const DateFixture = class extends Date { static now() { return now; } };
   const report = { menuWaitObservations: [] };
   const scope = { Date: DateFixture, report, activeRoute: 'continue', actorStage: 'continue-reload',
-    engine: 'webkit', out: 'out', boundedBrowserRead: read => read(),
+    engine: 'webkit', out: 'out', throttle: null, boundedBrowserRead: read => read(),
     page: { evaluate: async callback => callback(), waitForTimeout: async ms => { now += ms; },
       locator() { throw new Error('visible menu should return before acting'); } },
     document: { readyState: 'complete',
@@ -348,13 +354,13 @@ test('Continue requires a delivered enabled public click before waiting for flig
   const end = source.indexOf('    report.continueLaunchMs = ', start);
   const check = source.slice(start, end);
   for (const receipt of [null, { action: 'newGame' }, { action: 'continue', disabled: true },
-    { action: 'continue', ariaDisabled: 'true' }]) {
+    { action: 'continue', ariaDisabled: 'true' }, { action: 'continue', isTrusted: false }]) {
     const run = runInNewContext(`(async () => { ${check} })`, {
       report: {}, page: { evaluate: async () => receipt }, boundedBrowserRead: read => read(),
     });
     await assert.rejects(run(), /tap was not delivered to an enabled Continue control/);
   }
-  const receipt = { action: 'continue', disabled: false, ariaDisabled: null };
+  const receipt = { action: 'continue', isTrusted: true, disabled: false, ariaDisabled: null };
   const report = {};
   const run = runInNewContext(`(async () => { ${check} })`, {
     report, page: { evaluate: async () => receipt }, boundedBrowserRead: read => read(),
@@ -362,6 +368,12 @@ test('Continue requires a delivered enabled public click before waiting for flig
   await run();
   assert.equal(report.continueClick, receipt);
 });
+
+// The finally-block health fragment calls finalizeRendererHealth; hand it the real one.
+const finalizeRendererHealth = runInNewContext(
+  `${source.slice(source.indexOf('function finalizeRendererHealth('),
+    source.indexOf('\nlet browser;', source.indexOf('function finalizeRendererHealth(')))}\nfinalizeRendererHealth`,
+  {});
 
 test('observed invalid draws fail renderer health independently of console emission', () => {
   const start = source.indexOf('  const contextFailures = new Set();');
@@ -371,11 +383,122 @@ test('observed invalid draws fail renderer health independently of console emiss
     const report = { stages: [{ drawErrors }], observations: [], passed: true,
       rendererErrorCount: 0, acceptance: { startupAndControls: 'passed' } };
     const notes = [], process = {};
-    runInNewContext(health, { report, process, drawErrorProbe: true,
-      noteRendererError(text, source) { report.rendererErrorCount++; notes.push({ text, source }); } });
+    runInNewContext(health, { report, process, drawErrorProbe: true, finalizeRendererHealth,
+      activeRoute: 'new-game', actorStage: 'fixture',
+      noteRendererError(target, text, route, stage, source) {
+        target.rendererErrorCount++; notes.push({ text, source });
+      } });
     assert.equal(report.acceptance.rendererHealth, 'failed');
     assert.equal(report.passed, false);
     assert.equal(process.exitCode, 1);
     assert.equal(notes[0].source, 'draw-observer');
   }
+});
+
+test('handset throttle profiles parse and stay Chromium-gated', () => {
+  const start = source.indexOf('const HANDSET_NETWORK_PROFILES');
+  const end = source.indexOf('\nconst throttle = parseMobileThrottle', start);
+  const parse = runInNewContext(`${source.slice(start, end)}\nparseMobileThrottle`, {});
+  assert.equal(parse('off', 'chromium'), null);
+  assert.equal(parse('', 'chromium'), null);
+  assert.equal(parse(undefined, 'chromium'), null);
+  const handset = parse('handset', 'chromium');
+  assert.equal(handset.cpuRate, 4);
+  // vm-realm objects fail deepStrictEqual on prototype identity; compare fields.
+  assert.equal(handset.network.latency, 100);
+  assert.equal(handset.network.downloadThroughput, 500000);
+  assert.equal(handset.network.uploadThroughput, 375000);
+  assert.equal(parse('cpu:6', 'chromium').cpuRate, 6);
+  const fast = parse('net:fast3g', 'chromium').network;
+  assert.deepEqual([fast.latency, fast.downloadThroughput, fast.uploadThroughput], [150, 200000, 93750]);
+  const slow = parse('net:slow3g', 'chromium').network;
+  assert.deepEqual([slow.latency, slow.downloadThroughput, slow.uploadThroughput], [400, 50000, 50000]);
+  const netOff = parse('handset,net:off', 'chromium');
+  assert.equal(netOff.cpuRate, 4);
+  assert.equal(netOff.network, null);
+  assert.throws(() => parse('handset', 'webkit'), /MOBILE_PROBE_ENGINE=chromium/);
+  assert.throws(() => parse('cpu:1', 'chromium'), /Invalid CPU throttle rate/);
+  assert.throws(() => parse('net:5g', 'chromium'), /Unknown MOBILE_PROBE_THROTTLE/);
+});
+
+test('context-loss exercise runs after pause-resume and before rotation on the public canvas', () => {
+  const resume = source.indexOf("await page.locator('[data-screen=\"pause\"]').waitFor({ state: 'hidden' });");
+  const exerciseCall = source.indexOf('await exerciseRendererRecovery(page, { report });');
+  const rotation = source.indexOf("actorStage = 'new-game-rotation';");
+  assert.ok(resume >= 0 && resume < exerciseCall && exerciseCall < rotation,
+    'the injected loss sits between resume-from-pause and the rotation check');
+  assert.match(source, /WEBGL_lose_context/, 'loss injection uses the standard extension');
+  assert.match(source, /getElementById\('gl-canvas'\)/, 'injection targets the public main canvas');
+  assert.match(source, /rendererRecovery: contextLossExercise \? 'pending' : 'not-requested'/,
+    'recovery gets its own acceptance verdict');
+  assert.match(source, /05b-context-recovered\.png/, 'recovery leaves picture evidence');
+});
+
+async function replayRecovery(states, { loss = { available: true }, restore = { restored: true }, tickMs = 1500 } = {}) {
+  let now = 0, snapshotIndex = 0, evaluateIndex = 0;
+  const evaluates = [loss, restore];
+  const report = { acceptance: {}, contextLossExercise: { requested: false } };
+  const DateFixture = class extends Date { static now() { return now; } };
+  const scope = { Date: DateFixture, report, join: (...parts) => parts.join('/'), out: 'out',
+    boundedBrowserRead: read => read(),
+    snapshot: async () => states[Math.min(snapshotIndex++, states.length - 1)],
+    visible: async () => true,
+    page: { evaluate: async () => evaluates[Math.min(evaluateIndex++, evaluates.length - 1)],
+      waitForTimeout: async ms => { now += ms; },
+      screenshot: async () => {} } };
+  const start = source.indexOf('const injectContextLoss = ');
+  const end = source.indexOf('\nconst visible = ', start);
+  const run = runInNewContext(`${source.slice(start, end)}\nexerciseRendererRecovery`, scope);
+  try { return { result: await run(scope.page, { report, timeoutMs: tickMs * 8 }), report, now }; }
+  catch (error) { return { error, report, now }; }
+}
+
+test('exerciseRendererRecovery passes only after loss and restore receipts plus sim resume', async () => {
+  const before = { runtime: { frame: { tick: 100 },
+    context: { lost: false, recovery: { losses: 0, restores: 0, pending: false, generation: 0 } } } };
+  const duringLoss = { runtime: { frame: { tick: 100 },
+    context: { lost: true, recovery: { losses: 1, restores: 0, pending: true, generation: 0 } } } };
+  const recovered = { runtime: { frame: { tick: 104 },
+    context: { lost: false, recovery: { losses: 1, restores: 1, pending: false, generation: 1 } } } };
+  const passed = await replayRecovery([before, duringLoss, duringLoss, recovered]);
+  assert.equal(passed.error, undefined);
+  assert.equal(passed.report.acceptance.rendererRecovery, 'passed');
+  assert.equal(passed.report.contextLossExercise.recovered, true);
+  assert.equal(passed.report.contextLossExercise.before.tick, 100);
+  assert.equal(passed.report.contextLossExercise.recoveredTick, 104);
+  assert.ok(passed.report.contextLossExercise.recoveryElapsedMs >= 2 * 1500,
+    'recovery time covers the observed loss window');
+
+  const stalled = await replayRecovery([before, duringLoss, duringLoss, duringLoss]);
+  assert.match(stalled.error.message, /did not fully recover within/);
+  assert.equal(stalled.report.acceptance.rendererRecovery, undefined);
+  assert.equal(stalled.report.contextLossExercise.recovered, false);
+  // The fixture clock runs the full 12 s deadline at 1.5 s polls: eight bounded observations.
+  assert.equal(stalled.report.contextLossExercise.observations.length, 8);
+
+  const unavailable = await replayRecovery([before], { loss: { available: false } });
+  assert.match(unavailable.error.message, /WEBGL_lose_context is unavailable/);
+});
+
+test('a recovered injected loss is renderer-recovery evidence, not a health failure', () => {
+  const start = source.indexOf('  const contextFailures = new Set();');
+  const end = source.indexOf('  // Persist diagnostics', start);
+  const health = source.slice(start, end);
+  const stage = { runtime: { context: { lost: true, recovery: { losses: 1, restores: 1, pending: false } } },
+    startupObserver: { events: [{ type: 'webglcontextlost', canvasId: 'gl-canvas', statusMessage: 'injected' }] } };
+  const report = { stages: [stage], observations: [], final: null, passed: true, rendererErrorCount: 0,
+    acceptance: { startupAndControls: 'passed' }, contextLossExercise: { recovered: true } };
+  runInNewContext(health, { report, process: {}, drawErrorProbe: false, finalizeRendererHealth,
+    activeRoute: 'new-game', actorStage: 'fixture',
+    noteRendererError() { throw new Error('a recovered loss must not note a renderer error'); } });
+  assert.equal(report.acceptance.rendererHealth, 'passed');
+  assert.equal(report.passed, true);
+
+  const unrecovered = { stages: [stage], observations: [], final: null, passed: true, rendererErrorCount: 0,
+    acceptance: { startupAndControls: 'passed' }, contextLossExercise: { recovered: false } };
+  runInNewContext(health, { report: unrecovered, process: {}, drawErrorProbe: false, finalizeRendererHealth,
+    activeRoute: 'new-game', actorStage: 'fixture',
+    noteRendererError() { unrecovered.rendererErrorCount++; } });
+  assert.equal(unrecovered.acceptance.rendererHealth, 'failed');
+  assert.equal(unrecovered.passed, false);
 });

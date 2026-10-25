@@ -175,11 +175,17 @@ export function recordMobileRequestFailure(ledger, failure) {
     timestamp: typeof failure?.timestamp === 'string' ? failure.timestamp : null,
   };
   ledger.requestFailureCount += 1;
-  const critical = isCriticalRuntimeAssetUrl(entry.url);
+  // A first-flight freeze may land while non-critical package downloads are still streaming on
+  // a slow host: the loader cancels its own superseded generations (net::ERR_ABORTED on
+  // immutable render.glb), and the boot completes — those cancels are lifecycle, not load
+  // failures. Real failures (404/5xx, DNS, refused) stay critical for the same URLs.
+  const lifecycleCancel = entry.error === 'net::ERR_ABORTED' && /render-packages\/[^/]+\/render\.glb/.test(entry.url);
+  const critical = !lifecycleCancel && isCriticalRuntimeAssetUrl(entry.url);
   if (critical) {
     ledger.criticalRequestFailureCount += 1;
     capPush(ledger.criticalRequestFailures, entry, ledger.criticalLimit);
   }
+  if (lifecycleCancel) ledger.packageCancelCount = (ledger.packageCancelCount || 0) + 1;
   capPush(ledger.requestFailures, entry, ledger.failureLimit);
   return { entry, critical };
 }
