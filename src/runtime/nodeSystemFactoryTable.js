@@ -203,6 +203,7 @@ import { tallyho } from '../systems/tallyho.js';
 import { tare } from '../systems/tare.js';
 import { lamplighter } from '../systems/lamplighter.js';
 import { shepherd12 } from '../systems/shepherd12.js';
+import { quill } from '../systems/quill.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -451,6 +452,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['tare', tare],
     ['lamplighter', lamplighter],
     ['shepherd12', shepherd12],
+    ['quill', quill],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],
