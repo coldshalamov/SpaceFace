@@ -308,9 +308,9 @@ test('PULSE-01 dock notices and PULSE-02 / EXP-06 walls cover the live map', () 
   console.log(`PULSE-01 notices: ${notices.length}`);
   console.log(`PULSE-02 tags: ${tags.length}; keyed by sector and faction: ${keyedTags.length}`);
 
-  assert.equal(notices.length, 353);
-  assert.equal(tags.length, 365);
-  assert.equal(keyedTags.length, 311);
+  assert.equal(notices.length, 369);
+  assert.equal(tags.length, 377);
+  assert.equal(keyedTags.length, 323);
   assert.equal(new Set(notices.map((entry) => entry.id)).size, notices.length);
   assert.equal(new Set(tags.map((entry) => entry.id)).size, tags.length);
   assert.equal(new Set(notices.map((entry) => entry.text)).size, notices.length);

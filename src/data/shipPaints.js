@@ -21,6 +21,11 @@ export const SHIP_HULL_PAINTS = Object.freeze([
   { id: 'reactor_teal', name: 'Reactor teal', hex: '#1e6e68', sentence: 'Coolant teal. Vesta fabricators run it year-round.' },
   { id: 'deep_plum', name: 'Deep plum', hex: '#5a3a78', sentence: 'Charon night-freight livery. For hulls that move at odd hours.' },
   { id: 'dune_sand', name: 'Dune sand', hex: '#a89060', sentence: 'Ashfall dust baked into a permanent coat.' },
+  // ATT-H-01 — more work coats: colors a hull earns a living in, not showroom inventory.
+  { id: 'liner_white', name: 'Liner white', hex: '#c8c2b4', sentence: 'Passenger-line cream, gone grey at the seals. Dignity with dock rash.' },
+  { id: 'toll_grey', name: 'Toll grey', hex: '#5c6066', sentence: 'The color of every booth on the lane. Blends into the queue it refuses to join.' },
+  { id: 'ore_ochre', name: 'Ore ochre', hex: '#8a5f2a', sentence: 'Drift-claim ochre. The dust never fully washes out of this one.' },
+  { id: 'impound_red', name: 'Impound red', hex: '#7e3226', sentence: 'Seizure-yard red. The last owner\'s livery, kept as a warning or a boast.' },
 ]);
 
 export const SHIP_ACCENT_PAINTS = Object.freeze([
@@ -32,6 +37,10 @@ export const SHIP_ACCENT_PAINTS = Object.freeze([
   { id: 'trim_cyan', name: 'Cyan trim', hex: '#3ec8d8', sentence: 'Instrument cyan, like a fresh sensor sweep.' },
   { id: 'trim_lime', name: 'Lime trim', hex: '#98c838', sentence: 'Quarry-marking lime for hulls that work the rock.' },
   { id: 'trim_ice', name: 'Ice trim', hex: '#a8d8f0', sentence: 'Eunomia ice-blue, cold under running lights.' },
+  // ATT-H-01 — working accents: the stripe colors crews actually paint on.
+  { id: 'trim_claim_gold', name: 'Claim gold', hex: '#c8963c', sentence: 'Belt claim-marker gold. The seam number usually rides beside it.' },
+  { id: 'trim_loom_blue', name: 'Loom blue', hex: '#3a6ea0', sentence: 'Cable-loom blue, the yard electrician\'s mark. Means the harness was redone right.' },
+  { id: 'trim_deadlight', name: 'Dead-light amber', hex: '#a87c28', sentence: 'The amber of a berth lamp left burning. Old crews paint it where the plate thins.' },
 ]);
 
 export const SHIP_FINISH_STOCK = Object.freeze([
