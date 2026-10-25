@@ -174,3 +174,98 @@ test('X-07 the two vent lessons each speak once and stay silent on the rail', ()
   rail.bus.emit('mining:ventBonus', { clean: true, peggedS: 0 });
   assert.equal(rail.hints.length, 0, 'the rail owns the voice');
 });
+
+// X-07 review: the vent cashes on the RELEASE edge — the sim emits ventBonus then mining:stop in
+// the same tick — so the word must keep the instrument up by itself or nobody ever sees it.
+function x07FakeDocument() {
+  const makeNode = (tagName) => {
+    const node = {
+      tagName, id: '', className: '', children: [], parentNode: null, isConnected: true,
+      textContent: '', attributes: {}, style: { display: '' },
+      appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
+      removeChild(child) { this.children = this.children.filter((c) => c !== child); child.parentNode = null; },
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+        if (name === 'class') this.className = String(value);
+        if (name === 'id') this.id = String(value);
+      },
+    };
+    node.classList = {
+      contains(n) { return node.className.split(/\s+/).includes(n); },
+      add(n) { if (!this.contains(n)) node.className = `${node.className} ${n}`.trim(); },
+      remove(n) { node.className = node.className.split(/\s+/).filter((c) => c && c !== n).join(' '); },
+      toggle(n, force) { const on = force === undefined ? !this.contains(n) : !!force; if (on) this.add(n); else this.remove(n); return on; },
+    };
+    return node;
+  };
+  const head = makeNode('head');
+  const body = makeNode('body');
+  const hud = makeNode('div'); hud.id = 'hud'; body.appendChild(hud);
+  const find = (node, id) => {
+    if (node.id === id) return node;
+    for (const c of node.children) { const f = find(c, id); if (f) return f; }
+    return null;
+  };
+  return {
+    head, body, documentElement: { clientWidth: 1440, clientHeight: 900 },
+    createElement: makeNode, createElementNS: (ns, tag) => makeNode(`svg:${tag}`),
+    getElementById: (id) => find(head, id) || find(body, id),
+  };
+}
+
+test('X-07 the CLEAN CUT word is visible across the release edge, then retires cleanly', () => {
+  const prevDoc = globalThis.document;
+  const prevWin = globalThis.window;
+  globalThis.document = x07FakeDocument();
+  globalThis.window = { innerWidth: 1440, innerHeight: 900 };
+  const bus = createBus();
+  const state = {
+    mode: 'flight', ui: { docked: false }, simTime: 50, playerId: 'player',
+    settings: { video: { motionReduce: false }, accessibility: {} }, entities: new Map(),
+  };
+  const hud = Object.create(miningHud);
+  hud.init({ state, bus, helpers: { worldToScreen: (v) => ({ x: 700 + (v.x || 0), y: 300, onScreen: true }) } });
+  try {
+    hud.update(1 / 60, state);
+    const { mark, word } = hud._dom;
+    const classes = () => mark.className.split(/\s+/).filter(Boolean);
+    bus.emit('mining:start', { minerId: 'player', targetId: 'ast', verb: 'mine', position: { x: 40, z: 0 } });
+    bus.emit('mining:heatChanged', { minerId: 'player', heat: 96, heatMax: 100, pct: 0.96, band: 'vent' });
+    bus.emit('mining:tick', { contactPos: { x: 40, z: 0 }, seamHit: false, yieldMult: 0.35, sourceEntityId: 'player' });
+    hud.update(1 / 60, state);
+    assert.equal(word.textContent, 'OFF SEAM');
+
+    // Release edge, sim order: ventBonus, then stop.
+    state.simTime += 1 / 60;
+    bus.emit('mining:ventBonus', { minerId: 'player', clean: true, peggedS: 0, depth: 0.9, qty: 3 });
+    bus.emit('mining:stop', { minerId: 'player', targetId: 'ast', position: null });
+    hud.update(1 / 60, state);
+    assert.equal(mark.style.display, 'block', 'the beam is off but the word keeps the mark up');
+    assert.equal(word.textContent, 'CLEAN CUT');
+    assert.ok(classes().includes('mining-seam-on'), 'the word slot is lit (existing seam class)');
+    assert.ok(!classes().includes('mining-vent'), 'the heat arc retired with the beam');
+
+    state.simTime += 1.0;
+    hud.update(1 / 60, state);
+    assert.equal(word.textContent, 'CLEAN CUT', 'still within its 1.2 s');
+
+    state.simTime += 0.25;
+    hud.update(1 / 60, state);
+    assert.equal(mark.style.display, 'none', 'the beat ends — instrument gone, beam still off');
+    assert.equal(hud._cleanWordUntil, 0);
+    assert.ok(!classes().includes('mining-seam-on') && !classes().includes('mining-seam-off'),
+      'no seam class survives the hide');
+
+    // A fresh heat-only engagement shows no stale word.
+    bus.emit('mining:start', { minerId: 'player', targetId: 'ast2', verb: 'mine', position: { x: 20, z: 0 } });
+    bus.emit('mining:heatChanged', { minerId: 'player', heat: 30, heatMax: 100, pct: 0.3, band: 'warm' });
+    hud.update(1 / 60, state);
+    assert.equal(mark.style.display, 'block');
+    assert.ok(!classes().includes('mining-seam-on') && !classes().includes('mining-seam-off'),
+      'no stale CLEAN CUT on the next beam');
+  } finally {
+    hud.destroy();
+    if (prevDoc === undefined) delete globalThis.document; else globalThis.document = prevDoc;
+    if (prevWin === undefined) delete globalThis.window; else globalThis.window = prevWin;
+  }
+});

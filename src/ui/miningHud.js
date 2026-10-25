@@ -340,21 +340,25 @@ export const miningHud = {
       : { visible: false, pct: 0, band: 'cold', ventBand: false };
     const coreCue = resolveRichCoreCue(this._core, now);
     const seamFresh = this._beaming && this._seam && (now - this._seam.at) < SEAM_STALE_S;
-    const anyVisible = heat.visible || !!seamFresh || coreCue.visible;
+    // X-07: the CLEAN CUT word owns the slot until its 1.2 s is spent, then the seam word
+    // returns for whatever the beam is doing now. The vent cashes on the RELEASE edge (the sim
+    // emits ventBonus just before mining:stop), so the word keeps the mark up on its own —
+    // otherwise the beam-off frame would hide the instrument before the word was ever seen.
+    const cleanWord = this._cleanWordUntil > 0 && now < this._cleanWordUntil;
+    if (this._cleanWordUntil > 0 && !cleanWord) {
+      this._cleanWordUntil = 0;
+      dom.word.textContent = seamWordFor(this._seam ? this._seam.seamHit : false);
+    }
+    const anyVisible = heat.visible || !!seamFresh || coreCue.visible || cleanWord;
     if (!anyVisible) { this._hideAll(dom); return; }
 
     if (!this._placeMark(dom, state)) return;
 
-    // X-07: the CLEAN CUT word owns the slot until its 1.2 s is spent, then the seam word
-    // returns for whatever the beam is doing now.
-    if (this._cleanWordUntil && now >= this._cleanWordUntil) {
-      this._cleanWordUntil = 0;
-      dom.word.textContent = seamWordFor(this._seam ? this._seam.seamHit : false);
-    }
     this._renderHeat(dom, heat);
     this._renderCore(dom, coreCue, now);
-    this._renderSeam(dom, seamFresh ? this._seam.seamHit : null);
-    this._renderAria(dom, heat, coreCue, seamFresh ? this._seam.seamHit : null);
+    // The clean word borrows the lit seam slot (existing class, no new token or layout).
+    this._renderSeam(dom, cleanWord ? true : (seamFresh ? this._seam.seamHit : null), cleanWord);
+    this._renderAria(dom, heat, coreCue, seamFresh ? this._seam.seamHit : null, cleanWord);
     this._visible = true;
   },
 
@@ -417,18 +421,19 @@ export const miningHud = {
     this._cleanWordUntil = this._now() + 1.2;
   },
 
-  _renderSeam(dom, seamHit) {
+  _renderSeam(dom, seamHit, holdWord = false) {
     const cls = seamHit === null ? null : (seamHit ? 'mining-seam-on' : 'mining-seam-off');
     if (cls !== this._lastSeamCls) {
       this._lastSeamCls = cls;
       dom.mark.classList.toggle('mining-seam-on', cls === 'mining-seam-on');
       dom.mark.classList.toggle('mining-seam-off', cls === 'mining-seam-off');
-      if (cls) dom.word.textContent = seamWordFor(seamHit);
+      if (cls && !holdWord) dom.word.textContent = seamWordFor(seamHit);
     }
   },
 
-  _renderAria(dom, heat, coreCue, seamHit) {
+  _renderAria(dom, heat, coreCue, seamHit, cleanWord = false) {
     const parts = [];
+    if (cleanWord) parts.push('clean cut');
     if (heat.visible) {
       parts.push(`beam heat ${Math.round(heat.pct * 100)} percent`
         + (heat.ventBand ? ', vent band open, release to vent' : ''));
@@ -509,6 +514,11 @@ export const miningHud = {
     }
     this._lastVent = null;
     this._lastCoreState = '';
+    // Drop the seam class with its cache so a later heat-only frame cannot resurrect a stale word.
+    if (this._lastSeamCls) {
+      dom.mark.classList.toggle('mining-seam-on', false);
+      dom.mark.classList.toggle('mining-seam-off', false);
+    }
     this._lastSeamCls = null;
     this._lastCoreDash = '';
     this._lastHeatDash = '';
