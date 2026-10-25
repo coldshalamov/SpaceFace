@@ -110,6 +110,13 @@ test('finish ties and unfinished/DNF rows rank only actual evidence', () => {
   ]);
   assert.deepEqual(ranked.map(row => row.id), ['player', 'rook', 'mira', 'sable']);
   assert.equal(ranked[2].elapsedS, null);
+  // A DNF never outranks a live entrant, whatever its progress or input order.
+  const dnfFirst = rankRacingEntrants([
+    { id: 'sable', status: 'dnf', elapsedS: null, progress: 0.9 },
+    { id: 'mira', status: 'racing', elapsedS: null, progress: 0.3 },
+    { id: 'player', status: 'racing', elapsedS: null, progress: 0.5 },
+  ]);
+  assert.deepEqual(dnfFirst.map(row => row.id), ['player', 'mira', 'sable']);
 });
 
 test('a physically displaced rival flies back behind its missed gate; dead craft are DNF', async () => {

@@ -49,7 +49,7 @@ export function rankRacingEntrants(rows) {
       return a.elapsedS - b.elapsedS || compareId(a.id, b.id);
     }
     if (a.status === 'dnf' || b.status === 'dnf') {
-      if (a.status === 'dnf') return a.status === 'dnf' ? 1 : -1;
+      if (a.status !== b.status) return a.status === 'dnf' ? 1 : -1;
     }
     return b.progress - a.progress || compareId(a.id, b.id);
   }).map((row, index) => ({ ...row, position: index + 1 }));
