@@ -64,6 +64,8 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   // Omitting it silently degrades the retail build to synth-only voices.
   // Excluded: voice/line_* (the byte-pinned delivered corpus — acceptance artifacts verified on
   // disk by pq-158 tests, never fetched; ~120 MiB) and voice/blind/ (unlabeled check fixtures).
+  // 'voice/line_' is deliberately a RAW prefix (no trailing slash): delivered names are
+  // line_NNNN_<register>.wav at the top level, so the prefix matches the filename stem itself.
   Object.freeze({
     source: 'assets/audio',
     destination: 'assets/audio',

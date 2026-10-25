@@ -327,7 +327,7 @@ export function resolveThemeMatrix(input = {}) {
     working: !!input.working,
     workPresence: clamp01(input.workPresence),
   });
-  const stem = MUSIC_STEMS.find((row) => row && (row.id === `stem_${motif.stem.toLowerCase()}` || row.label))
+  const stem = MUSIC_STEMS.find((row) => row && row.id === `stem_${motif.stem.toLowerCase()}`)
     || MUSIC_STEMS[0];
   return Object.freeze({
     schema: 'spaceface.themeMatrix.v1',

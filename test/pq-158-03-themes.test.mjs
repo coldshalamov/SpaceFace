@@ -84,6 +84,12 @@ test('a stranger can hum the travel theme: rising A-minor arpeggio to the octave
   assert.equal(travel.state, 'travel');
   assert.equal(travel.hummable, 'A C E A');
   assert.equal(travel.seed, MEASURE_SEED);
+  // stemDef must resolve the state's own stem row — a loose match predicate once returned
+  // stem_a for every state (latent wrong-data: stemId right, stemDef wrong).
+  for (const s of THEME_STATES) {
+    const r = resolveThemeMatrix({ state: s });
+    assert.equal(r.stemDef.id, `stem_${r.stemId.toLowerCase()}`, `${s} stemDef must match stemId`);
+  }
 });
 
 test('per-sector beds are identifiable blind: unique hz/wave/noise per named sector', () => {
