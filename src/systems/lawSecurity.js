@@ -3556,6 +3556,10 @@ export const lawSecurity = {
       cause: 'wanted_clearance',
     });
     this._emit('heat:clear', { reason: 'station_fine' });
+    // The sheet is clean once the heat owner accepts the clear. The next warrant
+    // at this desk is a new fine. A warm sheet keeps the mark so the same
+    // warrant cannot be charged twice.
+    if (!(Number(player.heat) > 0)) own.fineSettled = {};
     this._emit('law:fineAssessed', {
       stationId, amount: fine, paid: true, choice: 'pay',
       heatLevel: level, wantedTier: tier,
@@ -6225,6 +6229,7 @@ export const lawSecurity = {
     offer.status = 'paid';
     this._markObligationSettled('warrant', offer.causeId);
     this._emit('heat:clear', { reason: 'station_fine_work' });
+    if (!(Number(state.player && state.player.heat) > 0)) own.fineSettled = {};
     this._emit('law:fineAssessed', {
       stationId: offer.stationId,
       amount: offer.amount,
