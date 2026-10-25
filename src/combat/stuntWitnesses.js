@@ -167,7 +167,7 @@ export function observeStuntWitnesses(state) {
   }
 }
 export function sampledStuntWitnesses(state,trick,{partial=false}={}) {
-  const own=witnessState(state),episode=Object.hasOwn(own.episodes,trick.rootId)?own.episodes[trick.rootId]:null; if(!episode)return [];
+  const own=witnessState(state),episode=Object.hasOwn(own.episodes,trick.rootId)?own.episodes[trick.rootId]:null; if(!episode||typeof episode!=='object')return [];
   if(!episode.observers||typeof episode.observers!=='object'||Object.getPrototypeOf(episode.observers)!==null) {
     episode.observers=Object.assign(Object.create(null),episode.observers);
   }
@@ -175,6 +175,10 @@ export function sampledStuntWitnesses(state,trick,{partial=false}={}) {
   const lives=trick.victimLives||[];
   const result=[];
   for(const row of Object.values(episode.observers)) {
+    if(!row||typeof row!=='object')continue;
+    if(!row.targets||typeof row.targets!=='object'||Object.getPrototypeOf(row.targets)!==null) {
+      row.targets=Object.assign(Object.create(null),row.targets);
+    }
     const entity=state.entities?.get?.(row.id),profile=observerProfile(state,entity);if(!profile||profile.lifeId!==row.lifeId)continue;
     if(lives.some(life=>life.dead===true&&life.lifeId===profile.lifeId))continue;
     if(!partial&&((row.sourceTicksMax||0)<6||(row.transferTicksMax||0)<6))continue;

@@ -214,6 +214,18 @@ test('restored runtime state bags re-home to null-prototype — record-derived k
   assert.doesNotThrow(() => sampledStuntWitnesses(restored, { rootId: '__proto__', tick: 0 }),
     'a restored episode row must not crash the witness sampler');
 
+  // Primitive episode values and null observer rows skip — they must not throw mid-tick.
+  const prim = { mode: 'flight', tick: 1, entities: new Map(), playerId: 'p1',
+    story: { titles: { stuntWitnessing: { episodes: { root7: 7 } } } } };
+  witnessState(prim);
+  assert.doesNotThrow(() => sampledStuntWitnesses(prim, { rootId: 'root7', tick: 0 }),
+    'a primitive episode value must skip, not throw');
+  const nullRow = { mode: 'flight', tick: 1, entities: new Map(), playerId: 'p1',
+    story: { titles: { stuntWitnessing: { episodes: { r1: { observers: { w: null } } } } } } };
+  witnessState(nullRow);
+  assert.doesNotThrow(() => sampledStuntWitnesses(nullRow, { rootId: 'r1', tick: 0 }),
+    'a null observer row must skip, not throw');
+
   // barkDirector.update re-homes restored plain-prototype bags through the public seam.
   const dir = Object.create(barkDirector);
   const dstate = { mode: 'flight', tick: 0, simTime: 0, playerId: 'p1', entities: new Map(), story: {}, settings: {}, combat: {},
