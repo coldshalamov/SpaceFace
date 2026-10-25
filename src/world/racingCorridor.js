@@ -1,6 +1,6 @@
 // Spawn-time scenery for explicitly temporary circuit flights. Campaign sector objects
 // are never registered, and no actor is deleted or moved after it enters the world.
-import { RACE_LEVELS } from '../data/raceLevels.js';
+import { RACING_CIRCUITS } from '../data/raceLevels.js';
 import { RACING_CIRCUIT_LAYOUTS } from '../data/racingCircuitLayouts.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -8,7 +8,9 @@ import { hash32 } from '../core/rng.js';
 
 const sessions = new WeakMap();
 const registeredSectors = new WeakMap();
-const levels = new Map(RACE_LEVELS.map(level => [level.sectorId, level]));
+// AL-RACE-2: the corridor serves the whole nine-course catalog, not only the
+// original three. One circuit lives in each sector, so sectorId still keys the map.
+const levels = new Map(RACING_CIRCUITS.map(level => [level.sectorId, level]));
 const finitePoint = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
@@ -44,7 +46,8 @@ function closestOnSegment(pos, a, b) {
 
 /** Includes the approach behind the grid as well as every closing/lap segment. */
 export function racingCorridorPlan(sectorId) {
-  const level = levels.get(sectorId), layout = RACING_CIRCUIT_LAYOUTS[sectorId];
+  const level = levels.get(sectorId);
+  const layout = level && (level.layout || RACING_CIRCUIT_LAYOUTS[sectorId]);
   if (!level || !layout) return null;
   const course = level.course, origin = sectorGlobalOrigin(sectorId);
   const gates = course.gates.map(p => ({ x: p.x + origin.x, z: p.z + origin.z }));
@@ -92,6 +95,22 @@ function outsidePoint(plan, original, radius, salt) {
     + plan.halfWidthWU + radius + 160;
   const angle = (hash32(String(salt)) >>> 0) / 4294967296 * Math.PI * 2;
   return { x: plan.origin.x + Math.cos(angle) * reach, z: plan.origin.z + Math.sin(angle) * reach };
+}
+
+/** AL-RACE-2 — a rigid nudge for seeded solid scenery. Seeded POI markers and attached
+ * fleets (e.g. the Quiessence ring) translate as one body so their formation survives;
+ * authored positions and runtime-owned native sites never pass through here. Returns
+ * the {x,z} offset that takes the point clear of the corridor, or null when no session
+ * covers this sector object or the point already clears. */
+export function racingCorridorSceneryShift(state, sectorId, pos, radius = 0) {
+  if (!finitePoint(pos) || !Number.isFinite(radius) || radius < 0) return null;
+  const session = sessions.get(state);
+  const sector = state.world?.sectors?.[sectorId];
+  if (!session || registeredSectors.get(sector) !== session) return null;
+  const plan = session.plans.get(sectorId);
+  if (!plan || clearsRacingCorridor(plan, pos, radius)) return null;
+  const moved = outsidePoint(plan, pos, radius, `${sectorId}:scenery`);
+  return { x: moved.x - pos.x, z: moved.z - pos.z };
 }
 
 /** Solid table props also use this membrane; kit/aftermath rows bypass the field arranger. */

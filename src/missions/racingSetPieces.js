@@ -1,5 +1,6 @@
 import { racingSetPieceDefinitions } from '../data/racingSetPieces.js';
-import { raceGateGlobals } from '../data/raceLevels.js';
+import { raceGateGlobals, raceLevelById } from '../data/raceLevels.js';
+import { projectRacingSectorHazards } from './racingSectorHazards.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { asteroidMass } from '../data/sectorPhysical.js';
 import { ASTEROIDS, deriveAsteroidSeams } from '../data/mining.js';
@@ -114,7 +115,11 @@ export function createRacingSetPieces({ state, bus, helpers }) {
     const p = mission.params, defs = racingSetPieceDefinitions(p.courseId), gates = raceGateGlobals(p);
     if (!defs || gates.length < 2) return false;
     run = { missionId: mission.id, sectorId: p.courseSectorId, entities: new Set(), cues: [],
-      gates, lastTime: Number(state.simTime) || 0, dynamics: [] };
+      gates, lastTime: Number(state.simTime) || 0, dynamics: [],
+      // AL-RACE-2: the level's static hazard references, projected live against the
+      // sector's own machinery each tick — never a duplicate native field or body.
+      hazardDefs: raceLevelById(p.levelId)?.sectorHazards || [],
+      hazardCues: [] };
     const anchors = [];
     for (const row of defs.anchors) {
       const pos = anchorPosition(state, gates, row, Number(p.gateRadiusWU) || 90, anchors);
@@ -140,6 +145,8 @@ export function createRacingSetPieces({ state, bus, helpers }) {
         serviceWidthWU: def.serviceWidthWU, serviceHint: 'LEFT SERVICE CUT · ALWAYS OPEN' });
       run.cues.push(cue); run.dynamics.push({ kind, def, frame, cue, launched: false, spawned: false, announced: false });
     }
+    run.hazardCues = projectRacingSectorHazards(state, p, run.hazardDefs, run.hazardCues);
+    for (const cue of run.hazardCues) run.cues.push(cue);
     return true;
   }
   function update(mission) {
@@ -217,6 +224,17 @@ export function createRacingSetPieces({ state, bus, helpers }) {
         // the heat closes. Never pop a visible or currently tethered body away.
         cue.phase = 'clear';
       }
+    }
+    // AL-RACE-2: native sector hazard cues project off the machinery's own clock.
+    // A warning announces once per transition, only while its leg is upcoming.
+    run.hazardCues = projectRacingSectorHazards(state, p, run.hazardDefs, run.hazardCues);
+    for (const cue of run.hazardCues) {
+      if (!cue.announceWarning) continue;
+      cue.announceWarning = false;
+      const nextGate = Number(p.nextGate) || 0;
+      if (Math.abs(nextGate - cue.gateIndex) > 2) continue;
+      bus?.emit?.('race:setPieceWarning', { missionId: mission.id, ...cue, warningS: cue.countdownS });
+      bus?.emit?.('toast', { text: `${cue.name} · ${cue.label}. ${cue.hint}`, kind: 'warn', ttl: 5 });
     }
     // This owner alone updates the small serializable cue records. Share their stable array
     // instead of allocating every cue and ID list on every simulation tick.

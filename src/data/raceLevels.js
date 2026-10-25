@@ -48,7 +48,10 @@ function freezeCourse(spec) {
   route.push({ ...a });
   const gates = route.map(Object.freeze);
   const lengthWU = courseLengthWU(gates);
-  const recordS = Math.max(12, Math.round(lengthWU / AUTHORED_RECORD_WU_S));
+  // Sector circuits run hazard work, not flat pace: their board record uses the slower
+  // reference while the three originals keep the authored 520 WU/s standard untouched.
+  const pace = Number.isFinite(spec.recordPaceWU) && spec.recordPaceWU > 0 ? spec.recordPaceWU : AUTHORED_RECORD_WU_S;
+  const recordS = Math.max(12, Math.round(lengthWU / pace));
   return Object.freeze({
     courseId: spec.courseId,
     courseName: spec.courseName,
@@ -63,6 +66,7 @@ function freezeCourse(spec) {
       Math.round(recordS * RAZOR_CAP_MULT),
       Math.round(recordS * STANDARD_CAP_MULT),
     ]),
+    ...(Number.isInteger(spec.courseRevision) ? { courseRevision: spec.courseRevision } : {}),
   });
 }
 
@@ -137,6 +141,170 @@ const VEIL_COURSE = freezeCourse({
   ],
 });
 
+// ── AL-RACE-2 sector-signature circuits ──────────────────────────────────────
+// Every way of life is a course: each of these laps is drawn so the sector's own
+// physics — its machinery cycle, its timed weather, its standing rocks — is the
+// racing problem. They are temporary time trials only (raceModes ['time-trial'],
+// temporaryOnly), revision 1, gate radius 90, and a 120 WU/s board record: the
+// pilot pays in hazard work, not flat pace.
+const SECTOR_RECORD_WU_S = 120;
+
+// Pallas Drift, sector-local. The reef cone (-320,-620 r420) sits on gates 3-5: the
+// five-mine string rides the current along rot 0.38. f_pallas_2 (980,420) is the
+// eastern ice bank; f_pallas_3 (-840,1180) closes the return.
+const PALLAS_COURSE = freezeCourse({
+  courseId: 'circuit_pallas_reef',
+  courseName: 'Pallas Reef',
+  sectorId: 'sector_pallas_drift',
+  gateRadiusWU: 90,
+  recordPaceWU: SECTOR_RECORD_WU_S,
+  courseRevision: 1,
+  gates: [
+    { x: -1800, z: -1400 },
+    { x: -950, z: -1100 },
+    { x: -470, z: -820 },
+    { x: -250, z: -710 },
+    { x: -80, z: -600 },
+    { x: 200, z: -350 },
+    { x: 700, z: 0 },
+    { x: 1100, z: 600 },
+    { x: 300, z: 1150 },
+    { x: -700, z: 1300 },
+    { x: -1450, z: 700 },
+    { x: -1800, z: -600 },
+  ],
+});
+
+// Vesta Forge, sector-local. The radiation belt (-540,-480 r260) is gate 6's
+// approach; the storm lane (680,320, a 460x78 sheet on rot -0.55) crosses the leg
+// into gate 8. Gate 6 is nudged south-west and gate 8 south-east of the authored
+// marks so the course physically rides both foundry windows instead of passing
+// beside them.
+const VESTA_COURSE = freezeCourse({
+  courseId: 'circuit_vesta_furnace',
+  courseName: 'Vesta Furnace',
+  sectorId: 'sector_vesta_forge',
+  gateRadiusWU: 90,
+  recordPaceWU: SECTOR_RECORD_WU_S,
+  courseRevision: 1,
+  gates: [
+    { x: 1700, z: -1300 },
+    { x: 900, z: -1500 },
+    { x: 200, z: -1400 },
+    { x: -500, z: -1100 },
+    { x: -1000, z: -600 },
+    { x: -850, z: -200 },
+    { x: -450, z: -250 },
+    { x: 200, z: 0 },
+    { x: 980, z: 210 },
+    { x: 900, z: 1100 },
+    { x: 1600, z: 1000 },
+    { x: 1900, z: 0 },
+  ],
+});
+
+// Ceres Belt, sector-local. The Cinder Sluice cone (1950,-1250 r620, dir
+// (0.984,-0.179)) covers legs 4-6 between the jaw fields: the pilot crosses the
+// current three times while it cycles warning/surge/calm off the durable site
+// record. The gate-8 hairpin is the sluice mouth reversal.
+const CERES_COURSE = freezeCourse({
+  courseId: 'circuit_ceres_sluice',
+  courseName: 'Ceres Sluice',
+  sectorId: 'sector_ceres_belt',
+  gateRadiusWU: 90,
+  recordPaceWU: SECTOR_RECORD_WU_S,
+  courseRevision: 1,
+  gates: [
+    { x: 2800, z: -2200 },
+    { x: 2200, z: -2300 },
+    { x: 1600, z: -2000 },
+    { x: 1500, z: -1400 },
+    { x: 1900, z: -900 },
+    { x: 2300, z: -1050 },
+    { x: 2300, z: -1350 },
+    { x: 2800, z: -1500 },
+    { x: 3200, z: -1000 },
+    { x: 3400, z: -1800 },
+  ],
+});
+
+// Haumea Rift, sector-local. The dense_asteroid disc (-540,380 r780) covers gates
+// 2-5; the fissure cracker (180,380) stands off gate 5's shoulder as native
+// machinery scenery. f_haumea_1 ice banks the north loop, f_haumea_2 crystals the
+// east drop.
+const HAUMEA_COURSE = freezeCourse({
+  courseId: 'circuit_haumea_fissure',
+  courseName: 'Haumea Fissure',
+  sectorId: 'sector_haumea_rift',
+  gateRadiusWU: 90,
+  recordPaceWU: SECTOR_RECORD_WU_S,
+  courseRevision: 1,
+  gates: [
+    { x: -1500, z: -800 },
+    { x: -1400, z: 0 },
+    { x: -1000, z: 500 },
+    { x: -450, z: 650 },
+    { x: 0, z: 700 },
+    { x: 400, z: 450 },
+    { x: 900, z: 700 },
+    { x: 1400, z: 200 },
+    { x: 1500, z: -600 },
+    { x: 800, z: -1200 },
+    { x: -300, z: -1400 },
+  ],
+});
+
+// Kepler Scar, sector-local. The radiation scar (200,-300 r900) covers the east
+// descent through gates 6-8; the debris field (-700,500 r700) takes the north
+// arc through gates 2-3. f_kepler_1 rare-exotic banks the south drop, f_kepler_2
+// metallic the north.
+const KEPLER_COURSE = freezeCourse({
+  courseId: 'circuit_kepler_scar',
+  courseName: 'Kepler Scar',
+  sectorId: 'sector_kepler_scar',
+  gateRadiusWU: 90,
+  recordPaceWU: SECTOR_RECORD_WU_S,
+  courseRevision: 1,
+  gates: [
+    { x: -1800, z: -900 },
+    { x: -1700, z: 0 },
+    { x: -1350, z: 500 },
+    { x: -1000, z: 900 },
+    { x: -200, z: 1300 },
+    { x: 700, z: 1000 },
+    { x: 1100, z: 200 },
+    { x: 700, z: -500 },
+    { x: 100, z: -850 },
+    { x: -600, z: -1300 },
+  ],
+});
+
+// Sker Haven, sector-local. Both dense-asteroid approach banks are on the lap:
+// the east disc (500,300 r800) covers gates 4-6 between the Throne pass and the
+// Bazaar cut; the west disc (-500,-400 r700) takes gates 2-3 and the long return.
+// f_sker_1 rare-exotic sits off the south sweep.
+const SKER_COURSE = freezeCourse({
+  courseId: 'circuit_sker_wreckrun',
+  courseName: 'Sker Wreckrun',
+  sectorId: 'sector_sker_haven',
+  gateRadiusWU: 90,
+  recordPaceWU: SECTOR_RECORD_WU_S,
+  courseRevision: 1,
+  gates: [
+    { x: -1700, z: -1500 },
+    { x: -1500, z: -500 },
+    { x: -1100, z: -100 },
+    { x: -800, z: 100 },
+    { x: -100, z: 250 },
+    { x: 600, z: 550 },
+    { x: 1100, z: 300 },
+    { x: 1000, z: -300 },
+    { x: 500, z: -850 },
+    { x: -150, z: -1100 },
+    { x: -1000, z: -1600 },
+  ],
+});
+
 export const RACE_LEVELS = Object.freeze([
   Object.freeze({
     id: 'level_textile_outbound',
@@ -167,10 +335,130 @@ export const RACE_LEVELS = Object.freeze([
   }),
 ]);
 
-const LEVEL_BY_ID = new Map(RACE_LEVELS.map((level) => [level.id, level]));
+// AL-RACE-2 — the six sector-signature circuits. `sectorHazards` stores only
+// references (native IDs, zone indices, a leg's served gate) — the projection in
+// missions/racingSectorHazards.js reads the live phase off the sector's own
+// machinery and site records; nothing here duplicates force, cycle, or damage.
+const SECTOR_LEVEL = (spec) => Object.freeze({ temporaryOnly: true, raceModes: Object.freeze(['time-trial']), ...spec });
+
+export const SECTOR_RACE_LEVELS = Object.freeze([
+  SECTOR_LEVEL({
+    id: 'level_pallas_reef',
+    name: 'Pallas Reef',
+    sectorId: 'sector_pallas_drift',
+    stationId: 'station_drift',
+    courseRevision: 1,
+    terrain: 'Pallas debris reef cone and the metallic, icy banks around it',
+    blurb: 'The reef shoves on surge and goes quiet on calm. Cross the mine string on the window, not on nerve.',
+    course: PALLAS_COURSE,
+    sectorHazards: Object.freeze([
+      Object.freeze({ id: 'pallas_reef', kind: 'pallasReef', name: 'Debris reef current',
+        gateIndex: 4, label: 'TIMED CURRENT', waitBackWU: 300,
+        hint: 'The reef pushes on surge; the calm window is the crossing.' }),
+    ]),
+  }),
+  SECTOR_LEVEL({
+    id: 'level_vesta_furnace',
+    name: 'Vesta Furnace',
+    sectorId: 'sector_vesta_forge',
+    stationId: 'station_forge',
+    courseRevision: 1,
+    terrain: 'Vesta radiation belt, storm lane, and the metallic foundry fields',
+    blurb: 'Two foundry windows on the same clock. The belt gathers you; the storm sheet carries you.',
+    course: VESTA_COURSE,
+    sectorHazards: Object.freeze([
+      Object.freeze({ id: 'vesta_radiation_belt', kind: 'weatherVolume', volumeId: 'vesta_radiation_belt',
+        name: 'Radiation belt', gateIndex: 6, label: 'WELL WINDOW', waitBackWU: 240,
+        hint: 'The belt gathers on surge. Wait the calm or spend the crossing fast.' }),
+      Object.freeze({ id: 'vesta_storm_lane', kind: 'weatherVolume', volumeId: 'vesta_storm_lane',
+        name: 'Storm lane', gateIndex: 8, label: 'STORM SHEET', waitBackWU: 240,
+        hint: 'The sheet carries everything inside it. Enter on the calm or ride it straight.' }),
+    ]),
+  }),
+  SECTOR_LEVEL({
+    id: 'level_ceres_sluice',
+    name: 'Ceres Sluice',
+    sectorId: 'sector_ceres_belt',
+    stationId: 'station_ceres',
+    courseRevision: 1,
+    terrain: 'Cinder Sluice current between the Ceres jaw fields',
+    blurb: 'The sluice exhausts downstream on surge and goes quiet on calm. Three crossings, one clock.',
+    course: CERES_COURSE,
+    sectorHazards: Object.freeze([
+      Object.freeze({ id: 'ceres_sluice', kind: 'cinderSluice', name: 'Cinder Sluice current',
+        gateIndex: 5, label: 'SLUICE WINDOW', waitBackWU: 280,
+        hint: 'The cone shoves downstream on surge. Time the calm; the site keeps its own clock.' }),
+    ]),
+  }),
+  SECTOR_LEVEL({
+    id: 'level_haumea_fissure',
+    name: 'Haumea Fissure',
+    sectorId: 'sector_haumea_rift',
+    stationId: 'station_haumea_rift',
+    courseRevision: 1,
+    terrain: 'Haumea dense-ice asteroid disc and the fissure cracker',
+    blurb: 'Dense ice all through the north arc, and the drill works the fissure on its own cycle.',
+    course: HAUMEA_COURSE,
+    sectorHazards: Object.freeze([
+      Object.freeze({ id: 'haumea_ice_disc', kind: 'staticZone', zoneIndex: 0,
+        name: 'Dense ice field', gateIndex: 4, label: 'DENSE ICE', waitBackWU: 200,
+        hint: 'The disc is rock all the way through. Stay on the cleared line.' }),
+      Object.freeze({ id: 'fissure_cracker', kind: 'killMachine', machineId: 'fissure_cracker',
+        name: 'Fissure cracker', gateIndex: 5, label: 'CRACK CYCLE', waitBackWU: 220,
+        hint: 'The drill throws on surge. Pass the shoulder on calm.' }),
+    ]),
+  }),
+  SECTOR_LEVEL({
+    id: 'level_kepler_scar',
+    name: 'Kepler Scar',
+    sectorId: 'sector_kepler_scar',
+    stationId: 'station_kepler_scar',
+    courseRevision: 1,
+    terrain: 'Kepler radiation scar and the debris field under the capsized hull',
+    blurb: 'The glow eats the east descent. The debris field takes the north arc. Neither one moves for you.',
+    course: KEPLER_COURSE,
+    sectorHazards: Object.freeze([
+      Object.freeze({ id: 'kepler_debris', kind: 'staticZone', zoneIndex: 1,
+        name: 'Scar debris field', gateIndex: 3, label: 'DEBRIS FIELD', waitBackWU: 200,
+        hint: 'Old-war mass fills the north arc. The banks mark the only line through.' }),
+      Object.freeze({ id: 'kepler_glow', kind: 'staticZone', zoneIndex: 0,
+        name: 'Radiation scar', gateIndex: 7, label: 'RADIATION', waitBackWU: 220,
+        hint: 'The glow covers the descent. Short exposure, clean line, no sightseeing.' }),
+    ]),
+  }),
+  SECTOR_LEVEL({
+    id: 'level_sker_wreckrun',
+    name: 'Sker Wreckrun',
+    sectorId: 'sector_sker_haven',
+    stationId: 'station_sker',
+    courseRevision: 1,
+    terrain: 'Both Sker dense-asteroid approach banks and the exotic seam',
+    blurb: 'Gate-camp rock on both approaches. The banks are the checkpoints and the hazard at once.',
+    course: SKER_COURSE,
+    sectorHazards: Object.freeze([
+      Object.freeze({ id: 'sker_west_bank', kind: 'staticZone', zoneIndex: 1,
+        name: 'West approach bank', gateIndex: 3, label: 'DENSE BANK', waitBackWU: 200,
+        hint: 'The west disc is crowded with scrap rock. Hold the cleared lane.' }),
+      Object.freeze({ id: 'sker_east_bank', kind: 'staticZone', zoneIndex: 0,
+        name: 'East approach bank', gateIndex: 5, label: 'DENSE BANK', waitBackWU: 220,
+        hint: 'The east disc takes the Throne pass. Do not improvise inside it.' }),
+    ]),
+  }),
+]);
+
+export const RACING_CIRCUITS = Object.freeze([...RACE_LEVELS, ...SECTOR_RACE_LEVELS]);
+
+const LEVEL_BY_ID = new Map(RACING_CIRCUITS.map((level) => [level.id, level]));
 
 export function raceLevelById(id) {
   return LEVEL_BY_ID.get(id) || null;
+}
+
+const LEVEL_BY_SECTOR = new Map(RACING_CIRCUITS.map((level) => [level.sectorId, level]));
+
+/** The circuit living in a sector, across the full nine-course catalog. */
+export function raceLevelForSector(sectorId) {
+  return LEVEL_BY_SECTOR.get(sectorId) || null;
 }
 
 /** The authored circuit for a level, or null. Never the derived lane chord. */
@@ -226,7 +514,8 @@ function courseParams(course, extra) {
     courseName: course.courseName,
     courseKind: course.kind,
     closedCircuit: true,
-    courseRevision: Number.isInteger(extra && extra.courseRevision) ? extra.courseRevision : 3,
+    courseRevision: Number.isInteger(extra && extra.courseRevision) ? extra.courseRevision
+      : (Number.isInteger(course.courseRevision) ? course.courseRevision : 3),
     courseSectorId: course.sectorId,
     gates: course.gates.map((g) => ({ x: g.x, z: g.z })),
     gateRadiusWU: course.gateRadiusWU,
@@ -337,7 +626,58 @@ const CONTRACTS = Object.freeze([
   }),
 ]);
 
-const PRACTICE = RACE_LEVELS.map((level) => Object.freeze({
+// AL-RACE-2 — three non-practice contracts on three of the six sector circuits.
+// Same offer shape as the story originals: pace kind, racing steer lock, 900 s window.
+// The other three new courses stay fully selectable through practice.
+const SECTOR_CONTRACTS = Object.freeze([
+  Object.freeze({
+    id: 'contract_pallas_reef',
+    levelId: 'level_pallas_reef',
+    courseRevision: 1,
+    practice: false,
+    laps: 1,
+    steerLock: 'racing',
+    racingKind: 'pace',
+    reward_cr: 1100,
+    duration_s: 900,
+    title: 'Reef window',
+    brief: 'One lap of the Pallas reef. The current shoves on surge and goes quiet on calm — the pilot who reads the window keeps the line.',
+    summary: 'One lap of the Pallas reef. Stern camera required. The surge is the course.',
+    gridLine: 'Hold. The reef keeps its own clock.',
+  }),
+  Object.freeze({
+    id: 'contract_vesta_furnace',
+    levelId: 'level_vesta_furnace',
+    courseRevision: 1,
+    practice: false,
+    laps: 1,
+    steerLock: 'racing',
+    racingKind: 'pace',
+    reward_cr: 1200,
+    duration_s: 900,
+    title: 'Foundry windows',
+    brief: 'One lap of the Vesta furnace circuit. The belt gathers and the storm sheet carries, both on the same shift clock.',
+    summary: 'One lap of the Vesta furnace. Stern camera required. Two hazard windows.',
+    gridLine: 'Hold. The foundry does not wait for your read.',
+  }),
+  Object.freeze({
+    id: 'contract_sker_wreckrun',
+    levelId: 'level_sker_wreckrun',
+    courseRevision: 1,
+    practice: false,
+    laps: 1,
+    steerLock: 'racing',
+    racingKind: 'pace',
+    reward_cr: 1400,
+    duration_s: 900,
+    title: 'Wreckrun',
+    brief: 'One lap of the Sker approaches. Both banks are the checkpoints and the hazard; the posted purse says the Reach approves.',
+    summary: 'One lap of the Sker wreckrun. Stern camera required. Dense rock on both approaches.',
+    gridLine: 'Hold. The bank does not move for a poster time.',
+  }),
+]);
+
+const PRACTICE = RACING_CIRCUITS.map((level) => Object.freeze({
   id: `practice_${level.id}`,
   levelId: level.id,
   practice: true,
@@ -345,6 +685,8 @@ const PRACTICE = RACE_LEVELS.map((level) => Object.freeze({
   steerLock: null,
   racingKind: 'practice',
   boostGateIndex: level.id === 'level_veil_ribbon' ? 2 : undefined,
+  // Sector circuits carry their own course revision; the originals keep the default.
+  ...(Number.isInteger(level.courseRevision) ? { courseRevision: level.courseRevision } : {}),
   reward_cr: 250,
   duration_s: level.id === 'level_veil_ribbon' ? 1400 : 900,
   title: `Practice — ${level.name}`,
@@ -353,14 +695,20 @@ const PRACTICE = RACE_LEVELS.map((level) => Object.freeze({
   gridLine: 'Hold the grid. Practice does not lock the camera.',
 }));
 
-export const RACE_CONTRACTS = Object.freeze([...PRACTICE, ...CONTRACTS]);
+export const RACE_CONTRACTS = Object.freeze([...PRACTICE, ...CONTRACTS, ...SECTOR_CONTRACTS]);
 const CONTRACT_BY_ID = new Map(RACE_CONTRACTS.map((row) => [row.id, row]));
 
 export function raceContractById(id) {
   return CONTRACT_BY_ID.get(id) || null;
 }
 
+/** The authored story contracts — exactly the legacy roster, no sector rows. */
 export function storyContracts() {
+  return CONTRACTS.filter((row) => row.practice !== true);
+}
+
+/** All non-practice circuit contracts: the story roster plus the three sector rows. */
+export function circuitContracts() {
   return RACE_CONTRACTS.filter((row) => row.practice !== true);
 }
 
@@ -379,11 +727,14 @@ export function racingOfferFor(contractId) {
     levelId: level.id,
     racingContractId: row.id,
     racingKind: row.racingKind,
-    courseRevision: Number.isInteger(row.courseRevision) ? row.courseRevision : 3,
+    courseRevision: Number.isInteger(row.courseRevision) ? row.courseRevision
+      : (Number.isInteger(course.courseRevision) ? course.courseRevision : 3),
     laps: row.laps,
     terrain: level.terrain,
     gridLine: row.gridLine || '',
   });
+  if (level.temporaryOnly) params.temporaryOnly = true;
+  if (level.raceModes) params.raceModes = level.raceModes.slice();
   if (row.sectionMission) {
     params.sectionMission = true;
     params.phase = 'approach';

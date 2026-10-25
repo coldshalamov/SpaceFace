@@ -6,11 +6,59 @@ import { activeRaceMission } from '../systems/racingSteer.js';
 import { raceLevelById, racingOfferFor, racingSeedFor, startLineFor } from '../data/raceLevels.js';
 import { normalizeRaceOptions, stageRacingMeeting } from '../systems/racingCareer.js';
 import { laneCommandSink, laneRpc } from '../core/simLaneCommands.js';
+import { validateRacingCircuit } from '../data/raceCourses.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { SECTORS } from '../data/sectors.js';
+import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
+import { killMachinesForSector } from '../data/environmentalMachinery.js';
 
 let pending = null;
 
+const LAUNCH_SECTOR_BY_ID = new Map((SECTORS || []).map((sector) => [sector && sector.id, sector]));
+
+/** A temporaryOnly level refuses everything but Time trial — before any side effect. */
+function sectorModeRejection(level, options = {}) {
+  if (level?.temporaryOnly !== true) return null;
+  const mode = typeof options.raceMode === 'string' ? options.raceMode : 'time-trial';
+  const modes = Array.isArray(level.raceModes) && level.raceModes.length ? level.raceModes : ['time-trial'];
+  if (!modes.includes(mode) || Number.isInteger(options.raceCupId)) return 'time_trial_only';
+  return null;
+}
+
+/**
+ * Authored, immovable solids for the RF-02 envelope check at accept time: stations,
+ * POI marks, and native machinery mouths — everything a course author can see from
+ * data. Field rocks the corridor arranger owns are not authoring constraints.
+ */
+function authoredStaticSolids(level) {
+  const sector = LAUNCH_SECTOR_BY_ID.get(level && level.sectorId);
+  if (!sector) return [];
+  const solids = [];
+  for (const st of sector.stations || []) {
+    if (!st?.pos || !Number.isFinite(st.pos.x)) continue;
+    const r = st.size === 'L' ? 42 : st.size === 'S' ? 26 : 34;
+    solids.push({ id: st.id || 'station', x: st.pos.x, z: st.pos.z, radius: r + 40 });
+  }
+  for (const poi of sector.pois || []) {
+    if (!poi?.pos || !Number.isFinite(poi.pos.x)) continue;
+    solids.push({ id: poi.id || 'poi', x: poi.pos.x, z: poi.pos.z,
+      radius: Math.max(24, Number(poi.placeTargetRadius) || Number(poi.visualRadius) || 0) });
+  }
+  for (const machine of killMachinesForSector(sector.id) || []) {
+    if (!machine?.globalPos || !machine?.mouth) continue;
+    const local = globalToSectorLocalForSector(machine.globalPos, sector.id, { x: 0, z: 0 });
+    solids.push({ id: machine.id, x: local.x, z: local.z, radius: Number(machine.mouth.radius) || 18 });
+  }
+  return solids;
+}
+
 export function stageRacingLaunch(contractId, options = {}) {
-  if (!racingOfferFor(contractId)) { pending = null; return null; }
+  const stagedOffer = racingOfferFor(contractId);
+  if (!stagedOffer) { pending = null; return null; }
+  const stagedLevel = raceLevelById(stagedOffer.params && stagedOffer.params.levelId);
+  const rejected = sectorModeRejection(stagedLevel, options);
+  if (rejected) { pending = null; return { ok: false, reason: rejected }; }
   pending = {
     contractId,
     seed: racingSeedFor(contractId),
@@ -68,6 +116,13 @@ export function armRacingContract(ctx, contractId, options = {}) {
     toast('That circuit is not on the board.');
     return { ok: false, reason: 'unknown' };
   }
+  // AL-RACE-2: reject unsupported formats before params mutation, meeting
+  // allocation, relocation or world change — never after.
+  const modeRejected = sectorModeRejection(level, options);
+  if (modeRejected) {
+    toast('This circuit runs as a Time trial only.');
+    return { ok: false, reason: modeRejected };
+  }
   Object.assign(offer.params, normalizeRaceOptions(options));
   if (Number.isInteger(options.raceCupId)) Object.assign(offer.params, {
     raceCupId: options.raceCupId, raceCupHeat: options.raceCupHeat, raceCupTicket: options.raceCupTicket,
@@ -79,6 +134,12 @@ export function armRacingContract(ctx, contractId, options = {}) {
   if (!missions || typeof missions.postAndAcceptAuthoredOffer !== 'function') {
     toast('Contracts are not ready.');
     return { ok: false, reason: 'no_missions' };
+  }
+  // AL-RACE-2: the six sector circuits exist only inside their staged temporary
+  // session. A live campaign flight may never arm one — no matter the sector.
+  if (level.temporaryOnly === true && !isRacingCorridorSession(state)) {
+    toast('This circuit only runs as a temporary flight from the board.');
+    return { ok: false, reason: 'temporary_circuit_required' };
   }
   const player = state?.entities?.get?.(state.playerId);
   if (state?.mode !== 'flight' || state?.ui?.docked || !player?.pos || player.alive === false) {
@@ -92,6 +153,22 @@ export function armRacingContract(ctx, contractId, options = {}) {
   if (state.player?.tether?.active) {
     toast('Release the Massline before joining the starting grid.');
     return { ok: false, reason: 'tether_active' };
+  }
+  // AL-RACE-2: RF-02 — the sector circuit's structure and the fitted hull's
+  // propulsion envelope are proven before the offer is accepted or the meeting
+  // ticket is spent.
+  if (level.temporaryOnly === true) {
+    const verdict = validateRacingCircuit(level.course, {
+      hullRadiusWU: Number(player?.physicsBody?.radius ?? player?.radius) || 32,
+      profile: resolvePropulsionProfile(player, state),
+      referenceSpeedsWU: { turn: 60, straight: 120 },
+      solids: authoredStaticSolids(level),
+      boostGateIndex: offer.params.boostGateIndex,
+    });
+    if (!verdict.ok) {
+      toast('This circuit failed its course check.');
+      return { ok: false, reason: 'invalid_course', diagnostics: verdict.errors };
+    }
   }
   const relocate = !offer.params.sectionMission || allowEnterSector;
   if (relocate && (!world || typeof world.relocatePlayerInSector !== 'function')) {
