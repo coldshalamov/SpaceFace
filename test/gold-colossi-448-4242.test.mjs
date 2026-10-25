@@ -12,11 +12,15 @@ import { createProductionCapitalBossEncounters } from '../src/systems/capitalBos
 import { requireCapitalBossEncounter } from '../src/data/encounters/capital-boss.js';
 import { validateCapitalBossEncounter } from '../src/data/encounters/capital-boss/validate.js';
 import { createDamageRouter } from '../src/combat/damage.js';
+import { createCombatKernel } from '../src/combat/kernel.js';
 import { createCombatCatalog, ensureCombatant } from '../src/combat/runtime.js';
 import { CAPITAL_PLATE_FULL_PULL, capitalPlateUnderLine } from '../src/combat/capitalPlates.js';
 import { capitalBossReadouts, createCapitalBossOverlay } from '../src/presentation/capitalBossPresentation.js';
 import { wreckPackagedFile } from '../src/render/visualFactory.js';
 import { tetherBreakCueForReason } from '../src/systems/presentationOrchestrator.js';
+import { masslineImpacts } from '../src/systems/masslineImpacts.js';
+import { missionObjectiveOps } from '../src/systems/missionObjectiveOps.js';
+import { PHYSICAL_ROLE } from '../src/systems/missions.js';
 
 const DT = 1 / 60;
 const SEED = 4242;
@@ -395,4 +399,150 @@ test('review 9: the re-latch keeps the line the player was holding — def, cont
     'the slab gets the line the player was holding, never a silent tether_standard');
   assert.equal(created[0].controllerId, h.player.id, 'the controller rides the move');
   assert.equal(created[0].controlMode, 'twin_bridle', 'the control mode rides the move');
+});
+
+// Round 11: the whole return path on the REAL kernel — no stub attachment service. The boss is
+// latched through attachments.create (the same call a player latch runs), the plate tears, the
+// line re-lands on the slab as a live byId record on the wreck's own tether_anchor socket, and
+// the REAL masslineImpacts observer turns the slung slab into a tether:whipImpact that the REAL
+// mission thrown-mass listener converts into rotating subsystem damage — including the battery
+// housing battering the weapon subsystem it used to cover.
+function bootLiveKernelFight(encounterId) {
+  const state = createGameState(SEED);
+  const raw = createBus();
+  const emitted = [];
+  const bus = {
+    on: raw.on.bind(raw), off: raw.off.bind(raw), once: raw.once.bind(raw),
+    emit(event, payload) { emitted.push({ event, payload }); raw.emit(event, payload); },
+  };
+  const spawned = [];
+  const helpers = {
+    spawnBudget: makeBudgetApi(state),
+    spawnEntity(spec) {
+      const id = state.nextEntityId++;
+      const entity = { ...spec, id, alive: true,
+        pos: spec.pos ? { x: spec.pos.x, z: spec.pos.z } : { x: 0, z: 0 },
+        vel: spec.vel ? { x: spec.vel.x, z: spec.vel.z } : { x: 0, z: 0 } };
+      state.entities.set(id, entity); state.entityList.push(entity); spawned.push(entity);
+      bus.emit('entity:spawned', { id, type: entity.type, entity });
+      return entity;
+    },
+    getCombatCapabilities() { return null; },
+    // Minimal physics port — the attachment service's create/cut/telemetry calls only.
+    combatPhysics: {
+      createAttachment: (spec) => ({ id: `ph_${spec.attachmentId}` }),
+      cutAttachment: () => {},
+      getAttachmentTelemetry: () => null,
+      setAttachmentReel: () => true,
+    },
+  };
+  const kernel = createCombatKernel({ state, bus, helpers, registry: null });
+  const registry = { get: (name) => (name === 'actions' || name === 'combat' ? { kernel } : null) };
+  const player = { id: state.nextEntityId++, alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    type: 'ship', team: 0, radius: 4 };
+  state.entities.set(player.id, player); state.entityList.push(player); state.playerId = player.id;
+  state.mode = 'flight';
+  const boss = { id: state.nextEntityId++, alive: true, pos: { x: 300, z: 0 }, vel: { x: 0, z: 0 },
+    rot: 0, hull: 840, hullMax: 840, radius: 30, type: 'ship', team: 1,
+    data: { physicalRole: PHYSICAL_ROLE.CAPITAL,
+      capitalSubsystemRoles: { thrusters: 'subsystem_drive', turrets: 'subsystem_weapon',
+        bays: 'subsystem_tether_spool' } } };
+  state.entities.set(boss.id, boss); state.entityList.push(boss);
+  ensureCombatant(state, boss, kernel.catalog);
+  const fightId = `contract:${encounterId}`;
+  const mission = { id: fightId, type: 'capital_boss', status: 'active',
+    destSectorId: 'contract_room', targetEntityIds: [boss.id], params: {} };
+  state.missions.active.push(mission);
+  state.world.currentSectorId = 'contract_room';
+  // The two physical listeners the production missions system registers on the bus.
+  const facade = { state, bus,
+    _physicalTargetOf: missionObjectiveOps._physicalTargetOf,
+    _noteCapitalBossPhysics: missionObjectiveOps._noteCapitalBossPhysics,
+    _routeCapitalBossThrownMass: missionObjectiveOps._routeCapitalBossThrownMass };
+  bus.on('tether:whipImpact', (p) => missionObjectiveOps._onPhysicalWhipImpact.call(facade, p));
+  bus.on('massline:throw', (p) => missionObjectiveOps._onPhysicalThrow.call(facade, p));
+  const capSys = createProductionCapitalBossEncounters();
+  capSys.init({ state, bus, helpers, registry });
+  bus.emit('capitalBoss:start', { encounterId, fightId, bossId: boss.id, targetId: player.id });
+  masslineImpacts.init({ state, bus });
+  return { state, bus, emitted, spawned, capSys, kernel, fightId, boss, player, mission,
+    helpers: { ...helpers, routeCombatDamage: kernel.routeDamage } };
+}
+
+test('review 11: the torn slab slung back into the boss lands thrown-mass subsystem damage', () => {
+  const h = bootLiveKernelFight(TOLLMAN);
+  const tickAll = (n = 1) => { for (let i = 0; i < n; i++) {
+    h.state.tick += 1; h.state.simTime += DT; h.capSys.update(DT); masslineImpacts.update(DT, h.state); } };
+  const subHp = (id) => {
+    const row = ensureCombatant(h.state, h.boss, h.kernel.catalog).subsystems[id];
+    return row ? row.health : NaN;
+  };
+  // A real kernel latch on the boss, hauled out along the battery-housing bearing.
+  const spec = requireCapitalBossEncounter(TOLLMAN).plates.find((p) => p.id === 'battery_housing');
+  const latched = h.kernel.attachments.create({ defId: 'tether_standard',
+    ownerId: h.player.id, targetId: h.boss.id,
+    sourceWorld: { x: h.player.pos.x, y: 0, z: h.player.pos.z },
+    targetWorld: { x: h.boss.pos.x, y: 0, z: h.boss.pos.z } });
+  assert.equal(latched.ok, true, 'the kernel latches the boss');
+  latched.attachment.lastTension = 0.9 * CAPITAL_PLATE_FULL_PULL;
+  h.player.pos.x = h.boss.pos.x + spec.anchor.x * 400;
+  h.player.pos.z = h.boss.pos.z + spec.anchor.z * 400;
+  h.state.player.tether = { active: true, targetId: h.boss.id, attachmentId: latched.attachment.id, phase: 'loaded' };
+  tickAll(40);
+  assert.equal(plateRec(h, 'battery_housing').attached, false, 'the held line tears the plate');
+  const slab = plateSpawns(h)[0];
+  assert.ok(slab, 'the slab spawned');
+  // The re-latch is a real byId record: boss line broken with the tear reason, slab line live
+  // on the wreck profile's tether socket — not a silent rebind, not a stub.
+  const bossAtt = h.state.combat.attachments.byId[latched.attachment.id];
+  assert.equal(bossAtt.state, 'broken', 'the old line was cut');
+  assert.equal(bossAtt.breakReason, 'capital_plate_tear');
+  const slabAtt = Object.values(h.state.combat.attachments.byId)
+    .find((a) => a.state === 'active' && a.targetId === slab.id && a.ownerId === h.player.id);
+  assert.ok(slabAtt, 'a live attachment record binds the slab');
+  assert.equal(slabAtt.targetSocketId, 'socket_tether_anchor', 'the wreck socket was picked');
+  // Sling it back: the observer sees the latched slab cross the boss hull at crushing speed.
+  h.state.player.tether = { active: true, targetId: slab.id, attachmentId: slabAtt.id, phase: 'loaded' };
+  slab.pos.x = h.boss.pos.x - h.boss.radius - slab.radius - 1;
+  slab.pos.z = h.boss.pos.z;
+  slab.vel = { x: 100, z: 0 };
+  tickAll(1);
+  const whips = h.emitted.filter((e) => e.event === 'tether:whipImpact');
+  assert.equal(whips.length, 1, 'the contact emits tether:whipImpact');
+  assert.equal(whips[0].payload.victimId, h.boss.id, 'the boss is the struck victim');
+  assert.equal(whips[0].payload.targetId, slab.id, 'the mass is the torn slab');
+  assert.equal(whips[0].payload.rating, 'crushing');
+  // The mission's thrown-mass router answered on the same bus the kernel listens to.
+  assert.equal(h.mission.params.physicsHits, 1, 'the mission counts the sling');
+  assert.ok(h.emitted.some((e) => e.event === 'combat:routeDamage'
+    && e.payload.targetId === h.boss.id && e.payload.origin
+    && e.payload.origin.kind === 'thrown_mass'), 'thrown-mass damage was routed');
+  assert.ok(subHp('subsystem_drive') < 1e6 && subHp('subsystem_drive') < 300,
+    'order[0] — the drive — takes the rotating part hit');
+  assert.notEqual(slab.alive, false, 'the slab is not spent by one hit (no wreck recoil)');
+  // Fight state untouched: the untorn plate still covers, nothing terminal, nothing re-spawned.
+  assert.equal(fightRec(h).terminal, null);
+  assert.equal(plateRec(h, 'ledger_plate').attached, true);
+  assert.deepEqual(h.boss.data.capitalPlateCover, { subsystem_power: true });
+  // A fresh latch run re-arms the observer; the second sling lands on order[1] — the weapon
+  // the battery housing used to cover. The torn plate batters its own subsystem.
+  h.kernel.attachments.cut(slabAtt.id, h.player.id, 'cut');
+  const relatch = h.kernel.attachments.create({ defId: 'tether_standard',
+    ownerId: h.player.id, targetId: slab.id,
+    sourceWorld: { x: h.player.pos.x, y: 0, z: h.player.pos.z },
+    targetWorld: { x: slab.pos.x, y: 0, z: slab.pos.z } });
+  assert.equal(relatch.ok, true, 'the loose slab re-latches through the same sanctioned create');
+  const weaponHp0 = subHp('subsystem_weapon');
+  h.state.player.tether = { active: false, targetId: null };
+  slab.vel = { x: 0, z: 0 };
+  tickAll(1);
+  h.state.player.tether = { active: true, targetId: slab.id, attachmentId: relatch.attachment.id, phase: 'loaded' };
+  slab.pos.x = h.boss.pos.x - h.boss.radius - slab.radius - 1;
+  slab.pos.z = h.boss.pos.z;
+  slab.vel = { x: 100, z: 0 };
+  tickAll(1);
+  assert.equal(h.mission.params.physicsHits, 2, 'the return sling counts a second physics hit');
+  assert.ok(subHp('subsystem_weapon') < weaponHp0,
+    'the torn battery housing lands on the weapon it covered');
+  assert.equal(fightRec(h).terminal, null, 'the fight record stays coherent through the exchange');
 });
