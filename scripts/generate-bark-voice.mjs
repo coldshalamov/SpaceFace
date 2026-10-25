@@ -17,7 +17,7 @@
 // audits the whole voice tree for stray files the pipeline no longer owns (npm run
 // check:bark-voice-corpus); --all --prune deletes strays instead of only failing on them.
 
-import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, unlinkSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -42,6 +42,7 @@ import {
 } from '../src/audio/barkVoice.js';
 import { encodeWavPcm16, THEME_SAMPLE_RATE } from '../src/audio/themeCompose.js';
 import { BARKS, BARK_FACTIONS } from '../src/data/barks.js';
+import { auditExpectedTree } from './lib/treeAudit.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = path.join(ROOT, 'assets', 'audio', 'voice');
@@ -52,8 +53,9 @@ const checkOnly = argv.includes('--check');
 const catalogOnly = argv.includes('--catalog');
 const writeAll = argv.includes('--all');
 // --prune deletes flagged strays instead of failing on them; only meaningful with --all,
-// and only ever deletes files the pipeline provably does not own under voice/.
-const pruneStrays = argv.includes('--prune');
+// and only ever deletes files the pipeline provably does not own under voice/. It is
+// disabled under --check so the verify-only mode never mutates the tree.
+const pruneStrays = argv.includes('--prune') && !checkOnly;
 
 function wavFromPcm(pcm) {
   return encodeWavPcm16(pcm, SR);
@@ -150,27 +152,18 @@ for (const clip of BLIND_REGISTER_CLIPS) {
   }
 }
 
-// Stray audit: --all fails on ANY voice-tree file the pipeline no longer owns — stale line_*
-// names, a renamed register's old bark_* clip, or an orphan under voice/blind/. It runs in
-// write mode too: a renumber leaves orphans at the point of cause, not at the next --check.
-// --prune deletes stray FILES in place (directories are recursed, never removed). Expected
-// paths are OUT_DIR-relative so a future nested delivered layout audits correctly instead of
-// self-flagging its own subdirectory.
+// Stray audit: --all fails on any stray WAV in the voice tree — stale line_* names, a renamed
+// register's old bark_* clip, or an orphan under voice/blind/. It runs in write mode too: a
+// renumber leaves orphans at the point of cause, not at the next --check. Scoped to .wav so
+// OS debris (Thumbs.db, .gitkeep) isn't counted as corpus drift; expected paths are
+// OUT_DIR-relative so a future nested delivered layout audits correctly.
 if (writeAll) {
   const expected = new Set(jobs.map((j) => path.relative(OUT_DIR, j.file).replace(/\\/g, '/')));
   for (const c of BLIND_REGISTER_CLIPS) expected.add(`blind/${path.basename(c.file)}`);
-  const stray = (abs, rel) => {
-    if (pruneStrays) { unlinkSync(abs); console.log(`pruned stray ${rel}`); }
-    else mismatches.push(`stray ${rel}`);
-  };
-  const auditDir = (dir, relPrefix) => {
-    for (const e of readdirSync(dir, { withFileTypes: true })) {
-      const rel = relPrefix ? `${relPrefix}/${e.name}` : e.name;
-      if (e.isDirectory()) { auditDir(path.join(dir, e.name), rel); continue; }
-      if (!expected.has(rel)) stray(path.join(dir, e.name), `assets/audio/voice/${rel}`);
-    }
-  };
-  if (existsSync(OUT_DIR)) auditDir(OUT_DIR, '');
+  for (const rel of auditExpectedTree(OUT_DIR, expected, { prune: pruneStrays, extensions: /\.wav$/i })) {
+    if (pruneStrays) console.log(`pruned stray assets/audio/voice/${rel}`);
+    else mismatches.push(`stray assets/audio/voice/${rel}`);
+  }
 }
 
 if (mismatches.length) {

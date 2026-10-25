@@ -76,6 +76,12 @@ test('fourteen faction registers are distinct; mechanic is a fifteenth close-mic
   const rates = new Set(BARK_FACTIONS.map((id) => FACTION_VOICE_REGISTERS[id].rate));
   assert.ok(f0s.size >= 12, 'registers must sit on different fundamentals');
   assert.ok(rates.size >= 11, 'registers must speak at different cadences');
+  // The authored invariant behind the blind-listen contract: every pair of registers sits
+  // ≥5 Hz apart, and identifyRegisterFromPcm's <2.5 Hz tolerance makes cross-naming
+  // mathematically impossible. A new register at 4 Hz off would silently degrade the guesser.
+  const sorted = [...f0s].sort((a, b) => a - b);
+  const minGap = Math.min(...sorted.slice(1).map((f, i) => f - sorted[i]));
+  assert.ok(minGap >= 5, `register f0 min pairwise gap ${minGap} Hz under the 5 Hz no-cross-name floor`);
   assert.equal(MECHANIC_VOICE_REGISTER.id, 'mechanic');
   assert.notEqual(MECHANIC_VOICE_REGISTER.f0, FACTION_VOICE_REGISTERS.faction_scn.f0);
   const mechanic = enumerateMechanicPipeline();

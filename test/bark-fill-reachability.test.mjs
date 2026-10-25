@@ -18,6 +18,14 @@ test('the fill table holds no dead keys — every faction id and situation key i
       assert.ok(SITUATION_KEYS.includes(situation), `fill key ${factionId}/${situation} is not a live situation`);
     }
   }
+  // The same dead-space class on the base side: a BARKS pack keyed under a non-live faction
+  // id is iterated by nobody — countBarkCorpus, enumerateBarkPipeline, and the mutator all
+  // key off BARK_FACTIONS.
+  assert.deepEqual(
+    Object.keys(BARKS).filter((k) => !BARK_FACTIONS.includes(k)),
+    [],
+    'BARKS holds a pack under a non-live faction id',
+  );
 });
 
 test('every fill line is reachable in the merged BARKS cell', () => {

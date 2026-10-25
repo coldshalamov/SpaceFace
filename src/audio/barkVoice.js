@@ -88,7 +88,7 @@ export const FACTION_VOICE_REGISTERS = Object.freeze({
     formants: [350, 800, 1900],
   }),
   // Deep factions (K1 route). f0 sits ≥5 Hz from every other register so the blind-listen
-  // identifier (tolerance <3 Hz) can never cross-name two houses.
+  // identifier (tolerance <2.5 Hz) can never cross-name two houses.
   faction_archive: register('faction_archive', 'Archive', {
     // Monastic librarian: low, slow, dry — a voice that files you while it talks.
     sampleId: 'bark_archive', f0: 102, pitch: 0.85, rate: 0.82,
@@ -524,7 +524,7 @@ export function identifyRegisterFromPcm(pcm, sampleRate = 32000) {
       best = factionId;
     }
   }
-  return bestDist < 3 ? best : null;
+  return bestDist < 2.5 ? best : null;
 }
 
 /** Decode a WAV and name the register. Never reads the filename. */
