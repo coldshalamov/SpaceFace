@@ -2087,6 +2087,14 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${T} .sx-dossier > .orr-ct-scales { margin-top:0 !important; }
   ${T} .sx-dossier__terms > li { padding:2px 0 !important; }
 }
+/* A first-hour row's destination tag ("RECOMMENDED → CERES REFINERY · CERES BELT") wrapped inside the
+   one-line badge slot and its last word printed on the job title below (1366x600, 1280x720, 960x540,
+   phones). The badge holds to its one line: the tag's tracking tightens so the whole route fits the
+   ladder's measure, and a longer one ends in an ellipsis rather than spilling (the full route is in the
+   row's label and the dossier). Giving the tag a second line pushed the job itself out of the short
+   board window at 960x540. Rows without a tag are unchanged. */
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge:has(.sx-ct-row__dest) { white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge .sx-ct-row__dest { letter-spacing:.02em; }
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {
