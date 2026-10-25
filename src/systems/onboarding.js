@@ -753,6 +753,16 @@ export const onboarding = {
     bus.on('cargo:full', (p) => this._onCargoFull(p || {}));
     bus.on('pickup:collected', () => { this._holdGrewBeforeFull = false; });
 
+    // X-01: the salvage loop pays but the first-hour player cannot see it — say it once each,
+    // on the fill and on the cash-in. _showHint defers while the rail owns the voice, so a 344
+    // kill inside the rail speaks on the next post-rail fill or dock.
+    bus.on('salvage:changed', (p) => {
+      if ((p && p.used | 0) > 0) this._showHint('firstSalvageBay', firstUseLine('firstSalvageBay'), {});
+    });
+    bus.on('salvage:bayCashedIn', (p) => {
+      if ((p && p.credits | 0) > 0) this._showHint('firstSalvageCashIn', firstUseLine('firstSalvageCashIn'), {});
+    });
+
     // First frontier crossing (2026-09-28 INFERENCE): the first uncharted sector the player
     // enters gets ONE line — the chart ends here, the rim is theirs to name. Fires on
     // world's firstVisit flag so return trips never re-teach; player.hints keeps it once-only.

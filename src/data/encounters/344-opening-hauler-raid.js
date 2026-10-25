@@ -336,7 +336,7 @@ export const runtime = Object.freeze({
       d.rep('faction_mts', 5, 'hauler_rescued');
       d.emit('comms:log', {
         from: 'MTS HAULER',
-        text: 'All raiders down! Thank you for the assist, pilot. Hazard pay transferred.',
+        text: "All raiders down! Thank you for the assist, pilot. Hazard pay transferred. Their plate's in your bay — any dock pays.",
         kind: 'encounter',
       });
       releaseAdoptedCarrier(d, live);
