@@ -371,3 +371,41 @@ test('X-02 a pacing-pinned wing off-field is never egress-despawned mid-beat', (
   stepEgressExits(h.state, [wing], h.bus);
   assert.ok(Number.isFinite(wing.data.despawnAt), 'a wingDone hull still takes the egress bound');
 });
+
+// X-02 review round 9: the kill receipt honored raid.ids.wing by id alone, but entity ids
+// recycle through freeIds — once the wing's exit despawns it, a later spawn can wear the id.
+// A foreign occupant must not close the slot with its own death, and its kills are not wing
+// strays converging the beat. An empty slot (the real wing swept or despawned) still honors
+// the match — those receipts are the only honest close the slot gets.
+test('X-02 a recycled wing id is not honored by the kill receipt', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wingId = raid.ids.wing;
+  // The wing left honestly and a foreign hull inherited its id.
+  raid.wingDone = true;
+  h.entities.set(wingId, { id: wingId, type: 'ship', alive: true, team: 1,
+    pos: { x: 9, z: 9 }, data: { ai: { roe: 'weapons_free' } } });
+  // The foreign hull's kill on the towed raider is uncredited — the ordinary restage bark,
+  // not a silent wing stray.
+  h.bus.emit('entity:killed', { id: raid.ids.raider, killerId: wingId, pos: { x: 0, z: 0 } });
+  assert.equal(raid.strayKills | 0, 0, 'a foreign hull wearing the id is not a wing stray');
+  assert.ok(h.said.some((s) => s.text === 'the raider broke off'), 'the uncredited bark plays');
+  assert.equal(h.state.onboarding.beatDoneAt.raid == null, true, 'no stray beat resolution');
+  // And a stranger dying on the recycled id never passes for the wing's own receipt: a wing
+  // that vanished without its honest exit keeps the slot open for a restage rather than
+  // latching done off a foreign corpse.
+  const h2 = rig();
+  const raid2 = stage(h2);
+  h2.entities.set(raid2.ids.wing, { id: raid2.ids.wing, type: 'ship', alive: true, team: 1,
+    pos: { x: 9, z: 9 }, data: { ai: {} } });
+  h2.bus.emit('entity:killed', { id: raid2.ids.wing, killerId: 1, pos: { x: 0, z: 0 } });
+  assert.equal(raid2.wingDone == null || raid2.wingDone === false, true,
+    'a stranger on the recycled id never closes the wing slot');
+  // The real wing's own receipt still lands: the stamped body — dead or alive — is honored.
+  const h3 = rig();
+  const raid3 = stage(h3);
+  const wing3 = h3.entities.get(raid3.ids.wing);
+  wing3.alive = false;
+  h3.bus.emit('entity:killed', { id: raid3.ids.wing, killerId: 1, pos: { x: 0, z: 0 } });
+  assert.equal(raid3.wingDone, true, 'the stamped wing corpse still closes its own slot');
+});

@@ -3664,12 +3664,23 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !ob || !beat || beat.key !== 'raid' || !payload) return;
+    // X-02 review round 9: entity ids recycle through freeIds, and the wing keeps its slot
+    // after it leaves (wingDone guards the respawn), so a bare raid.ids.wing match is not
+    // proof. A live occupant of that id without the stamp is a foreign hull — its death is
+    // not the wing's receipt and its kills are not wing strays. An EMPTY slot still honors
+    // the match: a same-tick-swept wing body and a despawned killer leave no occupant, and
+    // those receipts are the only honest close the slot gets.
+    const wingId = raid.ids.wing;
+    const occupant = wingId != null && this.state.entities
+      ? this.state.entities.get(wingId) : null;
+    const wingIdIsForeign = !!(occupant && (!occupant.data
+      || occupant.data.onboardingRaidWing !== true));
     // X-02: the wing's own death ends its part — never a restage, never a beat result.
-    if (payload.id === raid.ids.wing) { raid.wingDone = true; return; }
+    if (payload.id === wingId && !wingIdIsForeign) { raid.wingDone = true; return; }
     if (payload.id !== raid.ids.raider) return;
     // X-02 v3: a stray wing round into the towed raider converges like a gun kill — silently,
     // because "the raider broke off" is not what the player did.
-    if (payload.killerId === raid.ids.wing || payload.ownerId === raid.ids.wing) {
+    if (!wingIdIsForeign && (payload.killerId === wingId || payload.ownerId === wingId)) {
       raid.strayKills = (raid.strayKills | 0) + 1;
       if (raid.strayKills >= 2) {
         this._beatDone(beat);
