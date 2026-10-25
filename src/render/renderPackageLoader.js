@@ -85,18 +85,28 @@ export function createRenderPackageLoader(options = {}) {
   async function load(metadataOrUrl, loadOptions = {}) {
     if (disposed) throw new Error('Render package loader has been disposed.');
     const admission = newAdmission('render-package-request', loadOptions.signal || loadOptions.asyncAdmission?.signal);
+    // Byte progress re-arms this request's admission deadline: the wall retires wedged work,
+    // not work that is actively arriving on a slow network (D188).
+    const callerProgress = typeof loadOptions.onFetchProgress === 'function' ? loadOptions.onFetchProgress : null;
+    const decodeOptions = {
+      ...loadOptions,
+      onFetchProgress: () => {
+        admission.touch();
+        if (callerProgress) callerProgress();
+      },
+    };
     const expectedContentHash = loadOptions.expectedContentHash ?? options.expectedContentHash ?? null;
     const expectedRuntimeHash = loadOptions.expectedRuntimeHash ?? options.expectedRuntimeHash ?? null;
     try {
-      const resolved = await admission.wait(resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'no-cache'));
+      const resolved = await admission.wait(resolveMetadata(metadataOrUrl, decodeOptions, fetchImpl, 'no-cache'));
       try {
-        return await admission.wait(loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, admission, metadataOrUrl));
+        return await admission.wait(loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash, decodeOptions, admission, metadataOrUrl));
       } catch (error) {
         // A stale immutable cache may win once at Electron's persistent origin.
         if (!isStalePackageCacheError(error) || typeof metadataOrUrl !== 'string') throw error;
         admission.assertActive();
-        const reloaded = await admission.wait(resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'reload'));
-        return await admission.wait(loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, admission, metadataOrUrl));
+        const reloaded = await admission.wait(resolveMetadata(metadataOrUrl, decodeOptions, fetchImpl, 'reload'));
+        return await admission.wait(loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash, decodeOptions, admission, metadataOrUrl));
       }
     } finally {
       admission.finish();
@@ -292,7 +302,10 @@ export function createRenderPackageLoader(options = {}) {
     const decodeWork = Promise.resolve()
       .then(() => {
         if (counters && counters.isEnabled()) counters.countPackageDecode(metadata.assetId);
-        return decodeGlb(renderUrl, metadata);
+        return decodeGlb(renderUrl, metadata, () => {
+          entry.admission.touch();
+          if (typeof loadOptions.onFetchProgress === 'function') loadOptions.onFetchProgress();
+        });
       })
       // Package decodes resolve in clusters exactly like source-GLB parses, and this path is the
       // dominant decode route — an unpaced tail stacks K plan+bind continuations (traverse,
@@ -1217,18 +1230,89 @@ function isStalePackageCacheError(error) {
 }
 
 // A hung fetch would wedge the package task forever: the cache entry only evicts on settle,
-// so an unsettled corpse pins every later request to the same dead promise. AbortSignal.timeout
-// makes the task reject — a normal failure that self-evicts and retries on re-request.
-const RENDER_PACKAGE_FETCH_TIMEOUT_MS = 90000;
+// so an unsettled corpse pins every later request to the same dead promise. The stall bound
+// below rejects a fetch that stops moving bytes for this long. It is armed per chunk, not as a
+// fixed wall over the whole download: a throttled handset's flowing multi-megabyte render.glb
+// takes longer than one wall yet never stalls, and a fixed bound aborted it mid-download and
+// failed the boot closed (D188: every in-flight package died at its own +90s under Fast 3G).
+const RENDER_PACKAGE_FETCH_STALL_MS = 90000;
 
-async function fetchVerifiedRenderBytes(fetchImpl, url, metadata) {
-  const read = async (cache) => {
-    const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
-      ? AbortSignal.timeout(RENDER_PACKAGE_FETCH_TIMEOUT_MS) : null;
-    const response = await fetchImpl(url, signal ? { cache, signal } : { cache });
-    if (!response.ok) throw new Error(`Render package GLB fetch failed: HTTP ${response.status} ${url}`);
+async function fetchRenderPackageBytes(fetchImpl, url, cacheMode, onProgress) {
+  const response = await fetchImpl(url, { cache: cacheMode });
+  if (!response.ok) throw new Error(`Render package GLB fetch failed: HTTP ${response.status} ${url}`);
+  const body = response.body;
+  if (!body || typeof body.getReader !== 'function') {
+    // No streaming surface (older engines, injected test fetch): whole-read. Progress cannot
+    // be observed here, so callers' stall bounds degrade to their original fixed-wall shape.
     return new Uint8Array(await response.arrayBuffer());
+  }
+  const reader = body.getReader();
+  const chunks = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      chunks.push(value);
+      received += value.byteLength;
+      if (typeof onProgress === 'function') onProgress(value.byteLength);
+    }
+  }
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+async function fetchWithStallBound(fetchImpl, url, cacheMode, onProgress, stallMs = RENDER_PACKAGE_FETCH_STALL_MS) {
+  if (typeof AbortController === 'undefined' || typeof setTimeout !== 'function'
+      || typeof clearTimeout !== 'function') {
+    return fetchRenderPackageBytes(fetchImpl, url, cacheMode, onProgress);
+  }
+  const controller = new AbortController();
+  let stallTimer = null;
+  const armStall = () => {
+    if (stallTimer != null) clearTimeout(stallTimer);
+    stallTimer = setTimeout(() => {
+      stallTimer = null;
+      const error = new Error(
+        `[render-package] render.glb fetch stalled for ${stallMs}ms: ${url}`,
+      );
+      error.name = 'TimeoutError';
+      controller.abort(error);
+    }, stallMs);
+    if (stallTimer && typeof stallTimer.unref === 'function') stallTimer.unref();
   };
+  const disarmStall = () => {
+    if (stallTimer != null) {
+      clearTimeout(stallTimer);
+      stallTimer = null;
+    }
+  };
+  // Headers can stall exactly like the body: arm before the request and re-arm on every chunk.
+  armStall();
+  try {
+    return await fetchRenderPackageBytes(
+      (href, init) => fetchImpl(href, { ...init, signal: controller.signal }),
+      url,
+      cacheMode,
+      (byteLength) => {
+        armStall();
+        if (typeof onProgress === 'function') onProgress(byteLength);
+      },
+    );
+  } finally {
+    disarmStall();
+  }
+}
+
+export async function fetchVerifiedRenderBytes(
+  fetchImpl, url, metadata, onProgress = null, { stallMs = RENDER_PACKAGE_FETCH_STALL_MS } = {},
+) {
+  const read = async (cache) => fetchWithStallBound(fetchImpl, url, cache, onProgress, stallMs);
   // Hash each read ONCE. The first-pass `matches()` helper hashed the bytes to decide whether to
   // re-read, and the verification below then hashed the very same bytes again — two full SHA-256
   // passes over every render package on the happy path, and the packages are ~125 MB of GLB per
@@ -1309,9 +1393,9 @@ export function startMeshoptWorkerPool(MeshoptDecoder, options = {}) {
 }
 
 function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
-  return async (url, metadata) => {
+  return async (url, metadata, onProgress = null) => {
     if (typeof fetchImpl !== 'function') throw new Error('Render package loader requires fetch to load render.glb.');
-    let bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata);
+    let bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata, onProgress);
 
     // Structural pre-pass (glbPrepass.js): the verified GLB goes to a worker by transfer, which
     // batch-decodes every meshopt bufferView and slices embedded image bytes, then transfers it all
@@ -1325,7 +1409,7 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
       const prepared = await sharedGlbPrepasser().prepass(buffer);
       if (prepared === null) {
         // The worker died holding the buffer; re-read (packages are content-hash immutable).
-        bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata);
+        bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata, onProgress);
         buffer = bytes.buffer;
       } else {
         buffer = prepared.glb;

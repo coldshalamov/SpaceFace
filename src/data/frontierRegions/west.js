@@ -173,6 +173,13 @@ const REGION_NYX = freezeRegion({
     pois: [
       { id: 'poi_nyx_cache', type: 'cache', name: 'March Drop Cache', hidden: true },
       { id: 'poi_nyx_wreck', type: 'wreck', name: 'Cut-Runner Wreck' },
+      {
+        id: 'poi_nyx_runner_memorial', type: 'beacon', name: "Runner's Tally Post",
+        discoveryPlate: {
+          title: "Runner's Tally Post",
+          body: "A salvager's tally post hammered into a loose plate beside the wreck. It keeps the names the runner filed nowhere else — Toma Reye, out on a forged cut, and the two hands who crewed unpaid. Holds and drive were gone before the hull cooled; the scoring on the port flank reads in threes.",
+        },
+      },
     ],
   },
   anchors: {
@@ -196,6 +203,7 @@ const REGION_NYX = freezeRegion({
     pois: [
       { id: 'poi_nyx_cache', pos: { x: -1480, z: -280 }, landmarkGlb: 'place_debris_chunk' },
       { id: 'poi_nyx_wreck', pos: { x: 1120, z: 760 }, landmarkGlb: 'place_dead_hulk', landmark: true },
+      { id: 'poi_nyx_runner_memorial', pos: { x: 1000, z: 830 }, landmarkGlb: 'place_nav_buoy' },
     ],
   },
   zones: [

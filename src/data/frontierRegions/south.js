@@ -146,6 +146,15 @@ export const SOUTH_SECTORS = Object.freeze([
         name: 'Gulf Hulk',
       }),
       Object.freeze({
+        id: 'poi_eunomia_row_marker',
+        type: 'beacon',
+        name: "Gardener's Row Marker",
+        discoveryPlate: Object.freeze({
+          title: "Gardener's Row Marker",
+          body: "A compost post in the Understory's hand, newer than the wreck it faces: 'Row 7 — the hulk YARROW, planted whole. Pell Osta, S. Reck, and the ship's cat are returned to the garden.' The scoring on the hull predates the planting; the gardener only counts what falls.",
+        }),
+      }),
+      Object.freeze({
         id: 'poi_eunomia_ledger',
         type: 'beacon',
         name: 'Gulf Ledger Plate',
@@ -155,6 +164,15 @@ export const SOUTH_SECTORS = Object.freeze([
         id: 'poi_eunomia_debris',
         type: 'wreck',
         name: 'Paint-Scar Debris',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_bed_marker',
+        type: 'beacon',
+        name: 'Painted-Bed Marker',
+        discoveryPlate: Object.freeze({
+          title: 'Painted-Bed Marker',
+          body: "A second compost post at the field's edge: 'Bed 12 — loose tonnage, three crews' worth of scrap. What names were left aboard are written on the stake's weather side.' Kill-marks point inward from every bearing; whatever died here was running.",
+        }),
       }),
       Object.freeze({
         id: 'poi_hush',
@@ -360,6 +378,11 @@ export const SOUTH_ANCHORS = Object.freeze({
         landmark: true,
       }),
       Object.freeze({
+        id: 'poi_eunomia_row_marker',
+        pos: Object.freeze({ x: 1040, z: 790 }),
+        landmarkGlb: 'place_nav_buoy',
+      }),
+      Object.freeze({
         id: 'poi_eunomia_ledger',
         pos: Object.freeze({ x: -920, z: 480 }),
         landmarkGlb: 'place_nav_buoy',
@@ -368,6 +391,11 @@ export const SOUTH_ANCHORS = Object.freeze({
         id: 'poi_eunomia_debris',
         pos: Object.freeze({ x: 640, z: -880 }),
         landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_bed_marker',
+        pos: Object.freeze({ x: 740, z: -790 }),
+        landmarkGlb: 'place_nav_buoy',
       }),
       Object.freeze({
         id: 'poi_hush',

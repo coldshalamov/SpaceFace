@@ -12,6 +12,7 @@ import { applyReflectedVelocity, reflectVelocity } from '../core/surfaceContact.
 // not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
 // projectile:hit/combat:damage are owned by physics + combat.
 import { WEAPONS } from '../data/weapons.js';
+import { DEFAULT_COMBAT_PROFILE_BY_TYPE } from '../data/combatDefs.js';
 import { swarmChainFireRateScale, swarmChainDamageScale, swarmRunOwnsLegendary } from './swarmChain.js';
 import { mothlightAllowsFire } from '../data/mothlight.js';
 import {
@@ -2341,6 +2342,14 @@ export const weapons = {
         const dx = rock.pos.x - ship.pos.x, dz = rock.pos.z - ship.pos.z;
         const dist = Math.hypot(dx, dz);
         if (!(dist > 0) || dist > captureR) continue;
+        // Unprofiled loose bodies (debris/rock/cargo_pod) carry no combat profile, so the
+        // kernel finds zero tether sockets and refuses the clamp outright. The ring lends
+        // its own rocks the tether-anchor profile — the same stamp spawners use — before
+        // latching; an explicitly stamped profile is never overwritten.
+        if (rock.data && !rock.data.combatProfileId
+          && !DEFAULT_COMBAT_PROFILE_BY_TYPE[rock.type]) {
+          rock.data.combatProfileId = 'combat_profile_tether_anchor';
+        }
         const created = attachments.create({
           defId: 'attachment_salvage_clamp',
           ownerId: ship.id,

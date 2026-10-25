@@ -8,7 +8,7 @@ import {
   upgradeAdmissionStandIn,
 } from '../src/render/visualOverrides.js';
 import { AUTHORED_ADMISSION_RETRY_MAX, disposeDetachedObject } from '../src/render/partsLibrary.js';
-import { syncResolvingMarker } from '../src/render/renderer.js';
+import { consumeTerminalProceduralFallback, syncResolvingMarker } from '../src/render/renderer.js';
 
 const ENTITY = {
   id: 501,
@@ -261,6 +261,123 @@ test('mission membership in an active target list consumes the mission-only thun
 
   assert.equal(factory.procedural, proceduralBefore + 1);
   assert.equal(entity.presentationFallbackVisible, true);
+});
+
+test('a throwing terminal fallback thunk stays armed behind a bounded backoff', () => {
+  let calls = 0;
+  const parentData = {
+    admissionProceduralFallback: () => { calls += 1; throw new Error('decode broke'); },
+    admissionProceduralFallbackMissionOnly: true,
+  };
+  // First failure: the thunk survives, the failure count and backoff are stamped.
+  assert.equal(consumeTerminalProceduralFallback(parentData, 1000), null);
+  assert.equal(typeof parentData.admissionProceduralFallback, 'function',
+    'a throwing build does not lose the thunk — the softlock hole');
+  assert.equal(parentData.admissionProceduralFallbackFailures, 1);
+  assert.equal(parentData.admissionProceduralFallbackRetryAt, 3000);
+  // Inside the backoff window the thunk is not re-invoked.
+  assert.equal(consumeTerminalProceduralFallback(parentData, 2000), null);
+  assert.equal(calls, 1, 'the retry waits out its backoff');
+  assert.equal(parentData.admissionProceduralFallbackFailures, 1);
+  // Past the window it retries; the third failure consumes the keys (bounded).
+  assert.equal(consumeTerminalProceduralFallback(parentData, 3000), null);
+  assert.equal(parentData.admissionProceduralFallbackFailures, 2);
+  assert.equal(consumeTerminalProceduralFallback(parentData, 6000), null);
+  assert.equal(calls, 3);
+  assert.equal(parentData.admissionProceduralFallback, undefined,
+    'a permanently broken build still settles terminal');
+  assert.equal(parentData.admissionProceduralFallbackMissionOnly, undefined);
+});
+
+test('a successful terminal fallback consumes the thunk once it returns an Object3D', () => {
+  const body = new THREE.Group();
+  const parentData = { admissionProceduralFallback: () => body };
+  assert.equal(consumeTerminalProceduralFallback(parentData, 0), body);
+  assert.equal(parentData.admissionProceduralFallback, undefined, 'the thunk is consumed');
+  // A non-Object3D result also counts as a failure, not a consumption.
+  const bad = { admissionProceduralFallback: () => null };
+  assert.equal(consumeTerminalProceduralFallback(bad, 0), null);
+  assert.equal(typeof bad.admissionProceduralFallback, 'function');
+  assert.equal(bad.admissionProceduralFallbackFailures, 1);
+});
+
+test('a throwing procedural build keeps the terminal marker sync armed', () => {
+  let broken = true;
+  const factory = {
+    procedural: 0,
+    build() { this.procedural += 1; if (broken) throw new Error('decode broke'); return new THREE.Group(); },
+  };
+  installVisualOverrides(factory, {
+    releaseMode: true,
+    directAuthoredMount: true,
+    admissionStandInRecord: () => null,
+  });
+  const entity = { ...REQUIRED_ENTITY, id: 605, data: { defId: 'ship_wasp', missionTag: 'wanted_warrant' } };
+  const boundary = factory.build(entity);
+  const substrate = substrateOf(boundary);
+
+  terminalAdmission(boundary);
+  const proceduralBefore = factory.procedural;
+  const state = { missions: { active: [] }, render: { scene: {} } };
+  syncResolvingMarker(boundary, state);
+
+  assert.equal(factory.procedural, proceduralBefore + 1, 'the thunk fired');
+  assert.equal(typeof substrate.userData.admissionProceduralFallback, 'function',
+    'the throwing thunk stays armed — the entity is not stranded un-lockable');
+  assert.equal(substrate.userData.admissionProceduralFallbackFailures, 1);
+  assert.ok(Number.isFinite(substrate.userData.admissionProceduralFallbackRetryAt));
+  assert.equal(entity.presentationFallbackVisible, false, 'still only the abstract marker');
+
+  // A recovered build on a later sync (backoff elapsed) consumes the thunk.
+  broken = false;
+  substrate.userData.admissionProceduralFallbackRetryAt = 0;
+  syncResolvingMarker(boundary, state);
+  assert.equal(factory.procedural, proceduralBefore + 2, 'the retry rebuilt the body');
+  assert.equal(substrate.userData.admissionProceduralFallback, undefined);
+  assert.equal(entity.presentationFallbackVisible, true);
+});
+
+test('a mounted terminal fallback latches geometryPending and compiles through the subject pipeline', () => {
+  const factory = {
+    procedural: 0,
+    build() {
+      this.procedural += 1;
+      const group = new THREE.Group();
+      group.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial()));
+      return group;
+    },
+  };
+  installVisualOverrides(factory, {
+    releaseMode: true,
+    directAuthoredMount: true,
+    admissionStandInRecord: () => null,
+  });
+  const entity = { ...REQUIRED_ENTITY, id: 606, data: { defId: 'ship_wasp', missionTag: 'wanted_warrant' } };
+  const boundary = factory.build(entity);
+  const substrate = substrateOf(boundary);
+
+  terminalAdmission(boundary);
+  const compiled = [];
+  const state = {
+    mode: 'flight',
+    missions: { active: [] },
+    render: {
+      scene: {},
+      compileObjectPipelines: (subject, options) => {
+        compiled.push({ subject, options });
+        return Promise.resolve();
+      },
+    },
+  };
+  syncResolvingMarker(boundary, state);
+
+  assert.equal(boundary.userData.geometryPending, true,
+    'un-uploaded fallback buffers hold the boundary behind the residency latch');
+  assert.equal(compiled.length, 1, 'the root compiles through the normal subject pipeline');
+  assert.equal(compiled[0].subject, boundary,
+    'the latch subject is the bound root the visibility gate reads');
+  assert.equal(compiled[0].options.debugBy, 'terminal-procedural-fallback');
+  assert.equal(substrate.userData.authoredReadableFallbackRetained, true);
 });
 
 test('a drawn stand-in hull keeps the mission-only thunk unused and stays lockable', () => {

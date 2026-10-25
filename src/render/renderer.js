@@ -424,6 +424,7 @@ import {
   observePipelineAdmission,
   recordOpeningCookStep,
 } from './pipelineReadiness.js';
+import { openingGateBudgetMs } from './startupPacing.js';
 import {
   FIRST_FLIGHT_PIPELINE_HOLD_S,
   CRUCIBLE_POLE_SPECIMEN_CAP,
@@ -5877,6 +5878,81 @@ function cameraClearanceFloorWalk(structural, camX, camZ, camY, pad = 0) {
 
 const MISSION_CRITICAL_MEMO_MS = 1000;
 
+// A terminal-failure procedural thunk can throw mid-build (decode pressure, a partial
+// record). Dropping it on the first fault used to strand the ship on the abstract marker
+// forever — un-lockable. Keep it armed behind a short backoff and bound the retries so a
+// permanently broken build still settles terminal instead of re-running every frame.
+const TERMINAL_FALLBACK_RETRY_MS = 2000;
+const TERMINAL_FALLBACK_MAX_FAILURES = 3;
+
+function terminalFallbackClockNow() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
+/**
+ * Invoke the armed terminal procedural thunk with bounded backoff bookkeeping. Returns the
+ * built Object3D on success — the thunk keys are consumed only then, after the body exists.
+ * On a throw or a non-Object3D result the thunk stays armed behind
+ * `admissionProceduralFallbackRetryAt` (one attempt per backoff window); at the failure cap
+ * the keys clear so a permanently broken build still goes terminal.
+ */
+export function consumeTerminalProceduralFallback(parentData, nowMs) {
+  const thunk = parentData && parentData.admissionProceduralFallback;
+  if (typeof thunk !== 'function') return null;
+  const now = Number.isFinite(nowMs) ? nowMs : terminalFallbackClockNow();
+  const retryAt = parentData.admissionProceduralFallbackRetryAt;
+  if (Number.isFinite(retryAt) && now < retryAt) return null;
+  let fallback = null;
+  try {
+    fallback = thunk();
+  } catch (_) { /* the marker remains the terminal visual */ }
+  if (fallback && fallback.isObject3D) {
+    delete parentData.admissionProceduralFallback;
+    delete parentData.admissionProceduralFallbackMissionOnly;
+    delete parentData.admissionProceduralFallbackFailures;
+    delete parentData.admissionProceduralFallbackRetryAt;
+    return fallback;
+  }
+  const failures = (parentData.admissionProceduralFallbackFailures || 0) + 1;
+  if (failures >= TERMINAL_FALLBACK_MAX_FAILURES) {
+    delete parentData.admissionProceduralFallback;
+    delete parentData.admissionProceduralFallbackMissionOnly;
+    delete parentData.admissionProceduralFallbackFailures;
+    delete parentData.admissionProceduralFallbackRetryAt;
+    return null;
+  }
+  parentData.admissionProceduralFallbackFailures = failures;
+  parentData.admissionProceduralFallbackRetryAt = now + TERMINAL_FALLBACK_RETRY_MS;
+  return null;
+}
+
+/**
+ * Mount a successfully built terminal fallback through the same contract a live-built entity
+ * root gets at mesh-build time: buffers that are not yet resident hold the whole boundary
+ * behind `geometryPending` — the bound-roots scan hands every latched mesh to the live
+ * admission lane on the next frame — and the root compiles through the normal subject
+ * pipeline under a counted pipelinesPending hold. A substrate that never linked stays hidden
+ * behind that hold; one already stamped sfAdmittedOnce keeps drawing its marker/stand-in and
+ * bloom's per-material scan + renderBufferDirect guard skip the fallback's still-unlinked
+ * drawables until the compile lands (entityMeshVisibility / hideUnreadySceneDrawables).
+ */
+function admitTerminalProceduralFallback(mesh, fallback, entity, state) {
+  if (!mesh || !fallback) return;
+  if (state && state.mode === 'flight'
+      && !isFirstFlightProtectedEntity(entity)
+      && hasUnresidentGeometry(fallback)) {
+    const data = mesh.userData || (mesh.userData = {});
+    data.geometryPending = true;
+  }
+  const compileFn = state && state.render && state.render.compileObjectPipelines;
+  if (typeof compileFn !== 'function') return;
+  try {
+    void compileFn(mesh, { debugBy: 'terminal-procedural-fallback' });
+  } catch (_) { /* a scheduling fault must not break the marker sync */ }
+}
+
 /**
  * Mission identity for a mission-only admission fallback. The stamped record fields are read
  * fresh every call — a tag stamped mid-verdict takes effect now — while the mission-list walk is
@@ -5962,16 +6038,15 @@ export function syncResolvingMarker(mesh, state) {
       const missionOnly = parentData.admissionProceduralFallbackMissionOnly === true;
       const markerIsHull = marker.userData && marker.userData.admissionStandInHull === true;
       if (!missionOnly || (!markerIsHull && resolvingMarkerMissionCritical(mesh, liveEntity, state))) {
-        delete parentData.admissionProceduralFallback;
-        delete parentData.admissionProceduralFallbackMissionOnly;
-        try {
-          const fallback = fallbackThunk();
-          if (fallback && fallback.isObject3D) {
-            parentData.authoredReadableFallbackRetained = true;
-            mesh.userData.authoredReadableFallbackRetained = true;
-            parent.add(fallback);
-          }
-        } catch (_) { /* the marker remains the terminal visual */ }
+        // Invoke before consuming: a throwing build keeps the thunk armed behind a
+        // bounded backoff; only an Object3D result retires the keys.
+        const fallback = consumeTerminalProceduralFallback(parentData);
+        if (fallback) {
+          parentData.authoredReadableFallbackRetained = true;
+          mesh.userData.authoredReadableFallbackRetained = true;
+          parent.add(fallback);
+          admitTerminalProceduralFallback(mesh, fallback, liveEntity, state);
+        }
       }
     }
   }
@@ -14561,10 +14636,14 @@ export const render = {
       // is a deadline choice. Explicit focus first, then earliest
       // time-to-glass — a hull crossing the screen edge must not sit behind a
       // background prop that merely enqueued first.
-      priorityOf: (entity) => {
+      // The pick re-grades every waiting entry on each drain turn; the admission
+      // env (player, camera, glass extents) is pick-stable, so the queue derives
+      // it once through priorityContext instead of per entry — the default arg
+      // keeps direct/other callers valid.
+      priorityContext: () => renderAdmissionEnv(state),
+      priorityOf: (entity, root, env = renderAdmissionEnv(state)) => {
         if (!entity || entity.alive === false) return 99;
         if (entityIsExplicitRenderFocus(entity, state)) return 0;
-        const env = renderAdmissionEnv(state);
         const seconds = entityTimeToGlassSeconds(entity, env, state, TABLE_COLLECT_HORIZON_SECONDS);
         return 1 + Math.min(
           Number.isFinite(seconds) ? seconds : TABLE_COLLECT_HORIZON_SECONDS,
@@ -15263,7 +15342,7 @@ export const render = {
         this._discardEarlyCrucibleWarm();
         try {
           const admitted = await prepareMobileOpeningFirstPicture(state.render, {
-            timeoutMs: 20000,
+            timeoutMs: openingGateBudgetMs(),
             yieldToMain: yieldToBrowser,
             isActive: () => mobileActive && !recookStale(),
           });
@@ -16436,7 +16515,7 @@ export const render = {
             if (cookStale()) return cookSuperseded;
             await this.prepareOpeningFirstPicture(survivalRunHoldsArena(state)
               ? Math.max(30000, remainingMs())
-              : 20000, { isActive: () => !cookStale() });
+              : openingGateBudgetMs(), { isActive: () => !cookStale() });
             if (cookStale()) return cookSuperseded;
           } catch (error) {
               if (cookStale()) return cookSuperseded;
@@ -21641,6 +21720,7 @@ export const render = {
       this._earlyCrucibleWarmMenu = false;
       this._swarmWarmCoveredEnemyIds = null;
       this._swarmWarmReKickClaims = null;
+      if (this._claimDefenseRosters) this._claimDefenseRosters.clear();
       if (this.state && this.state.render) this.state.render.swarmDeferredWarm = null;
       clearWaveHullRunwayKeys(this.state);
       if (this._waveHullDecodePending) this._waveHullDecodePending.clear();
@@ -30905,7 +30985,7 @@ export const render = {
    * producer census is frozen. Hidden, offscreen, unmounted, and deferred roots never enter this
    * wait set and remain on the normal streaming runway.
    */
-  async prepareOpeningFirstPicture(timeoutMs = 20000, options = {}) {
+  async prepareOpeningFirstPicture(timeoutMs = openingGateBudgetMs(), options = {}) {
     const ownerState = this.state;
     const ownerRenderState = ownerState && ownerState.render;
     const ownerWorld = ownerState && ownerState.world;
@@ -30949,6 +31029,9 @@ export const render = {
       : false;
     let succeeded = false;
     let preparedHandoffCohort = false;
+    // Keep the failing leg before startup cleanup removes the original mesh graph.
+    // Diagnostic only: this does not change admission, deadlines or authored quality.
+    let preparationStage = 'mesh-staging', preparationPass = -1, pendingCount = null;
     // Freeze the render-owned root set at the same boundary as the exact census. Existing visible
     // roots may finish their authored child swap below; no new residency/build pass can introduce a
     // different root after capture and before the first draw.
@@ -30957,6 +31040,7 @@ export const render = {
       assertOwnerCurrent();
       // Seat maps before capturing program/resource identities. Required work has an outer
       // recoverable deadline; a timed-out map is never silently replaced after flight starts.
+      preparationStage = 'rock-surfaces';
       if (this.rockSurfaceLibraryReady) await this.rockSurfaceLibraryReady;
       assertOwnerCurrent();
       parallaxLayers.seatReadyRockSurfaceTextures();
@@ -30966,6 +31050,7 @@ export const render = {
       // wait to a slice — it only has to land before the freeze below, and burning the whole
       // envelope here left no budget to attempt the publish at all. The census deadline still
       // applies: if growth is still open at the freeze point, that is the real timeout.
+      preparationStage = 'aux-growth';
       let auxGrowthTimeout = null;
       let auxGrowthReady;
       try {
@@ -31042,6 +31127,7 @@ export const render = {
         return false;
       };
       for (let pass = 0; pass < 8; pass++) {
+        preparationPass = pass; preparationStage = 'publish';
         const published = await drivePublishFirstPicture();
         assertOwnerCurrent();
         if (!published) {
@@ -31091,7 +31177,9 @@ export const render = {
           assertOwnerCurrent();
           return [];
         };
+        preparationStage = 'upgrade-walk';
         const pending = await driveUpgradePromises();
+        pendingCount = pending?.length ?? null;
         assertOwnerCurrent();
         if (pending === null) throw new Error('opening first-picture camera unavailable');
         if (pending.length === 0) {
@@ -31102,16 +31190,20 @@ export const render = {
           // the epoch's lifetime.
           assertOwnerCurrent();
           this._openingPublishDegradeVerdict = undefined;
+          preparationStage = 'final-publish';
           const republished = await drivePublishFirstPicture();
           assertOwnerCurrent();
           if (!republished) {
             throw new Error('opening first-picture final publication unavailable');
           }
+          preparationStage = 'final-upgrade-walk';
           const late = await driveUpgradePromises();
+          pendingCount = late?.length ?? null;
           assertOwnerCurrent();
           if (late === null) throw new Error('opening first-picture camera unavailable');
           if (late.length === 0) {
             if (!preparedHandoffCohort) {
+              preparationStage = 'authored-boundary-cohort';
               preparedHandoffCohort = true;
               const cohortNow = typeof performance !== 'undefined' && typeof performance.now === 'function'
                 ? performance.now()
@@ -31173,6 +31265,7 @@ export const render = {
               assertOwnerCurrent();
               if (this.state && this.state.render) this.state.render.openingVfxFrozen = true;
             } else {
+              preparationStage = 'loading-admission-drain';
               await this._openingLoadingAdmission?.drain();
               assertOwnerCurrent();
               freezeOpeningGraphPublication(this);
@@ -31196,6 +31289,7 @@ export const render = {
         const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now()
           : Date.now();
+        preparationStage = 'upgrade-settle';
         const remaining = deadline - now;
         if (!(remaining > 0)) throw new Error('opening first-picture preparation timed out');
         const settled = await Promise.race([
@@ -31206,6 +31300,22 @@ export const render = {
         if (settled === null) throw new Error('opening first-picture preparation timed out');
       }
       throw new Error('opening first-picture boundary did not settle');
+    } catch (error) {
+      if (ownerIsCurrent()) {
+        const detail = {
+          stage: preparationStage, pass: preparationPass, pendingCount,
+          elapsedMs: Math.round((globalThis.performance?.now?.() ?? Date.now()) - started),
+          budgetMs: waitMs,
+          meshes: [...(this._meshes || [])].map(([id, root]) => ({
+            id, status: root?.userData?.authoredAssetState || null,
+            pending: root?.userData?.pipelinesPending === true,
+            lod: !!root?.userData?.wholeShipLodTransitionPromise,
+          })),
+        };
+        renderState.openingFirstPictureFailure = detail;
+        console.warn('[boot] opening first-picture preparation refused', JSON.stringify(detail));
+      }
+      throw error;
     } finally {
       if (!succeeded && ownerIsCurrent()) {
         resumeAuthoredUpgradeQueueAfterOpening(this.scene);

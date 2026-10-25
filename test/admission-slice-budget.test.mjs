@@ -75,7 +75,9 @@ test('live-sector cook drains meshes in yielded slices, not an Infinity block', 
   assert.match(renderer, /console\.info\(\s*`\[render\] opening submission post-submit validation failed/);
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /waitForOpeningFirstPicture\(state, budgetMs, \{ isActive \}\)/);
-  assert.match(main, /budgetMs = state\.run\?\.kind === 'survival' \? INITIAL_AUTHORED_VISUAL_TIMEOUT_MS : 20000/);
+  // startupPacing (2026-10-23) device-scales the adventure leg of this budget; the pin guards
+  // that it stays the bounded fail-closed expression rather than an unbounded wait.
+  assert.match(main, /budgetMs = state\.run\?\.kind === 'survival'\s*\?\s*INITIAL_AUTHORED_VISUAL_TIMEOUT_MS\s*:\s*openingGateBudgetMs\(\)/);
   assert.doesNotMatch(main, /void waitForRenderPipelineWarmup|void cook\.catch/);
   assert.match(renderer, /beginOpeningLoadingAdmission/);
 

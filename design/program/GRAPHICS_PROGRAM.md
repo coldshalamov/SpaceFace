@@ -173,15 +173,17 @@ byte guards hold. Outcome: for each of the 21, either record the explicit `budge
 Forge source/fleet entry, or trim LOD0 to the guideline via `s.detail` drops (never authored
 visual removal). Done when: `check-parts-manifest` shows zero silent over-guideline hulls.
 
-**Audit sitting note (2026-10-24).** Full-fleet live renders re-shot (451 shots, three contact
-sheets, `.devshots/fleet-look/`), VFX lab repaired to boot against the payload-gated pool
-init (`scripts/vfx-gameplay-demo.html` + `scripts/lib/vfxGameplayExplosion.mjs`), and the
-fleet-wide vision pass against the look bar is BLOCKED host-side: the `analyze_image`
-vision service 400s on every URL (including canonical public images), the `glm-flash-vision`
-agent type fails to spawn (`reasoning-level-missing`), and subagent `Read` returns no image
-content. When any one of those recovers, the standing work is: judge `_sheet_chase/close/inspect`
-against §3's bar, and close `vfx-sprite-puffs`'s pending-visual-acceptance against the
-`.devshots/vfx-gameplay-review/` captures.
+**Audit sitting note (2026-10-24, corrected same day).** Full-fleet live renders re-shot
+(451 shots, three contact sheets, `.devshots/fleet-look/`), VFX lab repaired to boot against
+the payload-gated pool init (`scripts/vfx-gameplay-demo.html` + its adapter libs), and the
+vision pass delegation clarified: GLM-5.3-Flash subagents DO see image content natively
+through `Read` (verified: a flash agent read a fleet-look PNG and described it). The
+`analyze_image` MCP 400s seen from the audit session were that session's gift-credit plan
+being unable to call the MCP — not a service outage; the MCP is fine on a normal
+subscription and stays in the agents' tool lists. Separately, `glm-flash-vision` as defined
+fails to spawn with `reasoning-level-missing` until its frontmatter names a thought level
+(owner's call). First real vision finding: several small-hull CHASE crops measure near-black
+(hornet chase stdev 4.3) — pursue whether small hulls read too dark at the gameplay camera.
 
 ## 5. Directions beyond the backlog (where the picture goes next)
 

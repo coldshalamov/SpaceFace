@@ -454,9 +454,10 @@ function livePictureBarrier(owner) {
   const end = source.indexOf('// PQ-210.00 — a roster-prewarm exemplar', start);
   assert.ok(start > 0 && end > start);
   return new Function('state', 'remainingMs', 'cookStale', 'cookSuperseded', 'survivalRunHoldsArena',
+    'openingGateBudgetMs',
     `return (async () => { let firstPictureError = null; const ownsFirstPictureBarrier = true;
       ${source.slice(start, end)} return firstPictureError; })();`)
-    .call(owner, owner.state, () => 400, () => false, {}, () => false);
+    .call(owner, owner.state, () => 400, () => false, {}, () => false, () => 20000);
 }
 
 function pendingPictureOwner() {
