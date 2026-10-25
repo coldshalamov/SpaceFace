@@ -11,6 +11,10 @@ export const RACING_PERSONALITIES = Object.freeze([
 export const RACING_DIFFICULTIES = Object.freeze({ rookie: 0.68, club: 0.86, expert: 1 });
 const QUARRY_HOOK_LATCH_WU = 160;
 const QUARRY_HOOK_SEEK_WU = 340;
+// Row 394 done-when: a set-piece hit costs the rival at least this much off-pace flying,
+// and the rejoin window can never run longer — both on the sim clock the receipt reads.
+const RECOVERY_MIN_COST_S = 2;
+const RECOVERY_MAX_S = 6;
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 function quarryHookBody(nearby) {
   for (const body of nearby) {
@@ -142,13 +146,13 @@ export function racingAnchorReleaseReason(driver, { entity, params, gates, now =
 export function beginRacingContactRecovery(driver, { gateIndex = 0, now = 0, tick = 0, cause = 'contact' } = {}) {
   if (!driver) return null;
   const recovery = { gateIndex: gateIndex | 0, enteredAtS: Number(now) || 0, enteredTick: tick | 0,
-    alignedTicks: 0, recoveredAtS: null, cause: String(cause || 'contact') };
+    alignedTicks: 0, elapsedS: 0, recoveredAtS: null, cause: String(cause || 'contact') };
   driver.contactRecovery = recovery;
   return recovery;
 }
 
 /** `nearby` contains actual bodies, never a scripted leader or a pace beacon. */
-export function racingDriverIntent(driver, { entity, params, gates, nearby = [], dt = 1 / 60, held = false, anchorContext = null }) {
+export function racingDriverIntent(driver, { entity, params, gates, nearby = [], dt = 1 / 60, held = false, anchorContext = null, now = NaN }) {
   if (!entity?.pos || held || !gates?.length || params.nextGate >= gates.length) return idle();
   const next = Math.max(0, params.nextGate | 0), lap = params.lap | 0;
   const gate = gates[next], from = gateApproach(gates, next);
@@ -221,7 +225,16 @@ export function racingDriverIntent(driver, { entity, params, gates, nearby = [],
     const corridorWU = Math.max(30, aperture - 14);
     const legAligned = speed > 8 ? (velocity.x * ux + velocity.z * uz) / speed : 0;
     recovery.alignedTicks = (offLine <= corridorWU && legAligned >= 0.6) ? (recovery.alignedTicks | 0) + 1 : 0;
-    if (recovery.alignedTicks >= 12) {
+    // The cost is bounded both ways on the clock the receipt stamps: the rejoin discipline
+    // holds at capped pace for at least RECOVERY_MIN_COST_S even when the hull re-aligns
+    // early, and a bounce that never settles expires at RECOVERY_MAX_S — the craft races
+    // on under its own power either way. Callers without a sim clock fall back to
+    // accumulated dt, the same measure on the same cadence.
+    recovery.elapsedS = (Number(recovery.elapsedS) || 0) + Math.max(0, Number(dt) || 0);
+    const elapsedS = Number.isFinite(now) ? Math.max(0, now - (Number(recovery.enteredAtS) || 0)) : recovery.elapsedS;
+    if ((recovery.alignedTicks >= 12 && elapsedS >= RECOVERY_MIN_COST_S) || elapsedS >= RECOVERY_MAX_S) {
+      recovery.expired = elapsedS >= RECOVERY_MAX_S && recovery.alignedTicks < 12;
+      if (Number.isFinite(now)) recovery.recoveredAtS = now;
       driver.lastContactRecovery = recovery;
       driver.contactRecovery = null;
       recovery = null;
