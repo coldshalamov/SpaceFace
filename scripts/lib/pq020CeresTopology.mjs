@@ -181,8 +181,15 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // counts, residency tier and presentation admission are all unchanged — verified against the
 // live receipt, which passes with only this digest moved. Prior digest was
 // cd33a6853a0c32d493efaf80d12c8eb4a412596c821811f00c759f0c95793acc.
+// 2026-10-25 (ATT S-01..S-15, 1312cc53bb): ~95 authored POIs shifted the sector spawn stream;
+// the aftermath RNG now selects aft_engine_section (19-prim skin) where it used to pick
+// aft_cargo_module (24-prim) — wreckAftermath colliders 68 → 63 on both fields. The vigil
+// beacon's authored approach placement also encroached the cathedral reservation and was
+// moved 850 wu down-approach (sectors.js). Causality-proved by paired census dumps on
+// golden-vs-HEAD exports: only the two aftermath picks and entity-id renumbering differ.
+// Prior digest was ef111a91e4f2aceb637f368104df3e90f1db8006af77ba6f54ff05f399e6dea7.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'ef111a91e4f2aceb637f368104df3e90f1db8006af77ba6f54ff05f399e6dea7';
+  '285f56f22fd08af58dd1fe9c62700cfff2a864742d285b0fcdb0ada2c042faa8';
 
 // PR221 preserves static site anatomy under its canonical owner: the Cathedral's fourteen
 // wrecks stay live instead of losing fixed/compound geometry on the generic far shelf. Ceres
@@ -207,7 +214,9 @@ const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
     // a different ordinary field (pre-PR221 sectors alone restore the old 58 primitives).
     // ceres-ambush-pack-dart (2026-10-18): enemyDensity is a direct aftermath dressing input,
     // so funding the belt-shadow pack (0.18 → 0.73) authors two more Reach-wreck solids.
-    colliders: 68,
+    // 2026-10-25 (1312cc53bb): the ATT S-row spawn-stream shift picks aft_engine_section
+    // (19-prim skin) over aft_cargo_module (24-prim) — 68 → 63.
+    colliders: 63,
   }),
   // PQ-143.02: the Long Berth yard tug is an authored physical wreck (0c6f0ea1a). It used to
   // leave this census whenever the far-actor shelf took it; D141 (09132834b) deliberately
