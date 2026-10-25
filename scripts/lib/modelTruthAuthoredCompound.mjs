@@ -9,7 +9,7 @@ export function authoredCompoundMeasurement(row) {
   }
   const ids = new Set();
   for (const box of row.compoundBoxesWU) {
-    if (!box.id || ids.has(box.id) || !['x', 'y', 'z'].every(axis => Number.isFinite(box.center?.[axis])
+    if (!box.id || ids.has(box.id) || !Number.isFinite(boxAngleDeg(box)) || !['x', 'y', 'z'].every(axis => Number.isFinite(box.center?.[axis])
       && Number.isFinite(box.size?.[axis]) && box.size[axis] > 0)) {
       throw new Error(`${row.id}: invalid native compound box ${box.id}`);
     }
@@ -23,12 +23,55 @@ export function authoredCompoundMeasurement(row) {
       id: row.colliderId,
       primitives: row.compoundBoxesWU.map(box => ({
         id: box.id, kind: 'obb', x: box.center.x, z: box.center.z,
-        hx: box.size.x / 2, hz: box.size.z / 2, rot: 0,
+        hx: box.size.x / 2, hz: box.size.z / 2, rot: boxAngleDeg(box) * Math.PI / 180,
       })),
     },
     referenceState: row.referenceState,
     compoundBoxesWU: row.compoundBoxesWU,
   };
+}
+
+// The optional angleDeg has the native planar proxy convention: +X turns toward
+// +Z. Rapier's quatFromYaw uses -sin(yaw/2) for quaternion Y; this is not glTF's
+// positive rotation about +Y. Omitted yaw alone means the legacy axis-aligned box.
+function boxAngleDeg(box) {
+  if (['rot', 'yaw', 'rotation', 'rotationY'].some(key => box[key] !== undefined)) return NaN;
+  return box.angleDeg === undefined ? 0 : box.angleDeg;
+}
+
+function sameBoxAngle(a, b) {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  const delta = ((a % 360 - b % 360) + 540) % 360 - 180;
+  return Math.abs(delta) <= 1e-10; // Only degree serialization roundoff; not a clearance.
+}
+
+function boxPointDistance(point, box) {
+  const angle = boxAngleDeg(box) * Math.PI / 180;
+  const c = Math.cos(angle), s = Math.sin(angle);
+  const dx = point.x - box.center.x, dz = point.z - box.center.z;
+  return Math.hypot(
+    Math.max(0, Math.abs(c * dx + s * dz) - box.size.x / 2),
+    Math.max(0, Math.abs(-s * dx + c * dz) - box.size.z / 2),
+  );
+}
+
+function boxEntersClearVolume(box, clear) {
+  const angle = boxAngleDeg(box) * Math.PI / 180;
+  // Retain the exact pre-existing axis-aligned comparisons and boundary margin.
+  if (boxAngleDeg(box) % 360 === 0) return ['x', 'z'].every(axis =>
+    box.center[axis] + box.size[axis] / 2 > clear[axis][0] + 1e-5
+    && box.center[axis] - box.size[axis] / 2 < clear[axis][1] - 1e-5);
+  const c = Math.cos(angle), s = Math.sin(angle);
+  const u = [c, s], v = [-s, c];
+  const dx = (clear.x[0] + clear.x[1]) / 2 - box.center.x;
+  const dz = (clear.z[0] + clear.z[1]) / 2 - box.center.z;
+  const hx = box.size.x / 2, hz = box.size.z / 2;
+  const cx = (clear.x[1] - clear.x[0]) / 2, cz = (clear.z[1] - clear.z[0]) / 2;
+  // Separating-axis theorem for OBB vs certified XZ rectangle. Testing only the
+  // enclosing AABB would reject real empty corners and miss the old-box overhang.
+  return [[1, 0], [0, 1], u, v].every(([x, z]) =>
+    hx * Math.abs(u[0] * x + u[1] * z) + hz * Math.abs(v[0] * x + v[1] * z)
+      + cx * Math.abs(x) + cz * Math.abs(z) - Math.abs(dx * x + dz * z) > 1e-5);
 }
 
 export function isAuthoredNonRenderHelper(node) {
@@ -47,25 +90,22 @@ export function authoredCompoundCoverage(points, measurement, certificate) {
   }
   for (const box of measurement.compoundBoxesWU) {
     const source = sourceBoxes.find(source => source.name === box.id);
-    if (!source || !['x', 'y', 'z'].every((axis, i) => box.center[axis] === source.centerWU[i]
+    if (!source || !sameBoxAngle(boxAngleDeg(box), boxAngleDeg(source))
+      || !['x', 'y', 'z'].every((axis, i) => box.center[axis] === source.centerWU[i]
       && box.size[axis] === source.sizeWU[i])) {
       throw new Error(`Native compound ${box.id} disagrees with the hash-bound authored source`);
     }
     // These apertures are source-certified clear through every Y. Even an
     // inflated proxy that contains all visible vertices must never fill one.
     for (const clear of certificate.strictClearVolumes?.[measurement.referenceState] || []) {
-      if (['x', 'z'].every(axis => box.center[axis] + box.size[axis] / 2 > clear[axis][0] + 1e-5
-        && box.center[axis] - box.size[axis] / 2 < clear[axis][1] - 1e-5)) {
+      if (boxEntersClearVolume(box, clear)) {
         throw new Error(`Native compound ${box.id} fills an authored clear volume`);
       }
     }
   }
   let coverage = 0;
   for (const point of points) {
-    const distance = Math.min(...measurement.compoundBoxesWU.map(box => Math.hypot(
-      Math.max(0, Math.abs(point.x - box.center.x) - box.size.x / 2),
-      Math.max(0, Math.abs(point.z - box.center.z) - box.size.z / 2),
-    )));
+    const distance = Math.min(...measurement.compoundBoxesWU.map(box => boxPointDistance(point, box)));
     coverage = Math.max(coverage, distance);
   }
   return {
