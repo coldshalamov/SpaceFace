@@ -87,17 +87,22 @@ test('sign bank covers all three surfaces plus faction propaganda and the wanted
 
 test('the billboard deck includes the authored ad_board corpus', () => {
   const packEntries = FLAVOR_PACKS.ad_board.entries.filter((e) => e.reactsTo !== 'conflict_flip');
-  const state = dockedState();
   const seen = new Set();
-  // Walk a full deck worth of cycles; the corpus rows must appear among them.
-  for (let cycle = 0; cycle < 80; cycle++) {
+  // Walk the whole session deck: the corpus interleaves with the billboard pool in one seeded
+  // permutation, and the deck never repeats an id, so the walk must cover the full pool before
+  // judging coverage (the corpus has grown past any fixed cycle budget).
+  const billboardPool = signsForSurface('billboard', {
+    factionId: 'faction_scn', stationTypeId: 'trade_hub',
+  }).length;
+  const deckSize = packEntries.length + billboardPool;
+  for (let cycle = 0; cycle < deckSize; cycle++) {
     const s = dockedState({ simTime: 1200 + cycle * 90 + 1 });
     const notice = selectStationSign(s, 'billboard');
     if (notice) seen.add(notice.id);
   }
   const corpusHits = packEntries.filter((e) => seen.has(e.id)).length;
-  assert.ok(corpusHits >= packEntries.length * 0.5,
-    `billboard rotation should carry the ad board corpus (saw ${corpusHits}/${packEntries.length})`);
+  assert.equal(corpusHits, packEntries.length,
+    `a full stay must run every authored ad_board notice (saw ${corpusHits}/${packEntries.length})`);
 });
 
 test('bay and crawl pools answer the surface filters', () => {
