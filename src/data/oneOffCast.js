@@ -335,8 +335,8 @@ export const ONE_OFF_CAST = Object.freeze([
     id: 'gravedigger', name: 'GRAVEDIGGER / UG-4 — the machine that buries wrecks into gardens',
     sectorIds: ['sector_eunomia_gulf'],
     books: { from: 4, to: 7 },
-    chart: { kind: 'planned', ref: null },
-    implemented: false,
+    chart: { kind: 'contact', ref: 'gravedigger', presentVia: 'gravedigger' },
+    implemented: true,
   }),
   entry({
     id: 'tallyho', name: 'TALLYHO / CN-2 — the scoreboard robot looking for a crowd',

@@ -154,8 +154,10 @@ test('production init + update order lengths match the live browser baseline', (
   // meter, clamp seats, and drift-home ride the same clock (member 10).
   // 247 -> 248 init / 193 -> 194 update: W-SHIFT registers bellhop — the floor
   // restock and drift-home ride the clock; judging is event-driven (member 11).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 248);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 194);
+  // 248 -> 249 init / 194 -> 195 update: W-SHIFT registers gravedigger — the
+  // race, the bury, and the pit ride the same clock (member 12 — the roster).
+  assert.equal(PRODUCTION_INIT_ORDER.length, 249);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 195);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

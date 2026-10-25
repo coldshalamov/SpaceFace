@@ -206,6 +206,7 @@ import { shepherd12 } from '../systems/shepherd12.js';
 import { quill } from '../systems/quill.js';
 import { holdfast } from '../systems/holdfast.js';
 import { bellhop } from '../systems/bellhop.js';
+import { gravedigger } from '../systems/gravedigger.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -457,6 +458,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['quill', quill],
     ['holdfast', holdfast],
     ['bellhop', bellhop],
+    ['gravedigger', gravedigger],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

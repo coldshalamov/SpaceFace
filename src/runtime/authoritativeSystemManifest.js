@@ -49,7 +49,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
-  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'wexTicket', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tallyho', 'tare', 'lamplighter', 'shepherd12', 'quill', 'holdfast', 'bellhop',
+  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'wexTicket', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tallyho', 'tare', 'lamplighter', 'shepherd12', 'quill', 'holdfast', 'bellhop', 'gravedigger',
   // (the eight faction-signature owners above already init at line 41 — the earlier
   // duplicate block here was a merge artifact; init ids are unique)
   'recoveryEncounter', 'factions',
@@ -127,7 +127,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'stationServices',
   'difficultyDirector', 'gateControlDirector',
-  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tare', 'lamplighter', 'shepherd12', 'quill', 'holdfast', 'bellhop', 'recoveryEncounter',
+  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tare', 'lamplighter', 'shepherd12', 'quill', 'holdfast', 'bellhop', 'gravedigger', 'recoveryEncounter',
   'factions',
   // §34 rows 513/515/516/526/530: these five tick real per-step work — the sweep-ring
   // sensor model, formation lock, coupler snap, flag-flip/lien dwell, and pylon claims all
@@ -357,6 +357,8 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // row 506 BELLHOP: the floor restock and drift-home are a seconds-scale read
   // (the judging itself is event-driven off physics:impact).
   'bellhop',
+  // row 506 GRAVEDIGGER: the race, the bury, and the pit are a seconds-scale read.
+  'gravedigger',
 ]);
 
 /**
