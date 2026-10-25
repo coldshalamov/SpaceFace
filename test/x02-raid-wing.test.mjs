@@ -7,6 +7,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { mulberry32, hash32 } from '../src/core/rng.js';
 import { onboarding, BEATS } from '../src/systems/onboarding.js';
 import { authorizeAIEngagement, isOnboardingRaidWingAuthorized } from '../src/ai/engagementAuthority.js';
+import { stepEgressExits } from '../src/ai/egressExit.js';
 
 let nextId = 500;
 function rig({ clinic = false } = {}) {
@@ -325,4 +326,48 @@ test('X-02 review: a recycled wing id is never armed or removed', () => {
   h.ob._removeRaidActors();
   assert.equal(h.removed.includes(wingId), false, 'a foreign hull is never removed');
   assert.equal(raid.ids.wing, null);
+});
+
+// X-02 review round 7 (difficultyDirector seam): a pin-release hold is 300 s and built to
+// lapse — but stepEgressExits retires ANY fleeing hull ≥960 WU out after a 12 s fade. On a
+// live-beat wing that despawn is silent (no entity:killed, wingDone never set) and
+// raid.ids.wing keeps blocking every keep/disarm restage: the beat loses its staged
+// antagonist for good on a hold designed to expire. The same identity gate the other seams
+// read exempts the live-beat hull — and releases a stamp already placed — while a wingDone
+// exit still takes the bound.
+test('X-02 a pacing-pinned wing off-field is never egress-despawned mid-beat', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wing = h.entities.get(raid.ids.wing);
+  h.bus.emit('tether:latched', { targetId: raid.ids.raider });
+  h.state.tick = 15;            // EGRESS_SCAN_TICKS boundary
+  h.state.simTime = 100;
+  // The pin-release shape: forceFlee + a far-future private hold, hull already off-field.
+  wing.data.ai.forceFlee = true;
+  wing.data.ai.moraleFleeReason = 'pacing_pin_release';
+  wing.data.ai._pacingFleeUntil = 400;
+  wing.pos.x = 4000;
+  stepEgressExits(h.state, [wing], h.bus);
+  assert.equal(wing.data.despawnAt == null, true, 'no despawn deadline on a live-beat wing');
+  assert.equal(wing.alive, true);
+  // A stamp landed before the exemption (a save recorded mid-hold) releases the same way —
+  // the bound can never retire this hull while the beat still owns it.
+  wing.data.despawnAt = 112;
+  wing.data._egressExitAt = 112;
+  stepEgressExits(h.state, [wing], h.bus);
+  assert.equal(wing.data.despawnAt == null, true, 'a stale stamp releases on the live-beat wing');
+  assert.equal(wing.data._egressExitAt == null, true);
+  // The hold expiring on a still-resident hull is what re-presses the armed run.
+  delete wing.data.ai.forceFlee;
+  delete wing.data.ai._pacingFleeUntil;
+  delete wing.data.ai.moraleFleeReason;
+  assert.equal(isOnboardingRaidWingAuthorized(h.state, wing, h.entities.get(1)), true,
+    'a survived hold re-opens the fire bridge');
+  // Once the beat owns the exit (wingDone) the exemption ends: the same fleeing hull at the
+  // same spot takes the ordinary despawn deadline — the bound still bounds the designed exit.
+  wing.hull = 18;
+  h.ob._stepRaidWing();
+  assert.equal(raid.wingDone, true);
+  stepEgressExits(h.state, [wing], h.bus);
+  assert.ok(Number.isFinite(wing.data.despawnAt), 'a wingDone hull still takes the egress bound');
 });
