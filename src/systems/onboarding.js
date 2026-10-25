@@ -71,8 +71,9 @@ const PLANET_BAND_FIRST_LINES = Object.freeze({
 import { fieldEscapeOf, FIELD_KINDS } from '../data/fields.js';
 import { fieldAffectsBody, fieldContainsPoint } from '../core/fields/fieldKernel.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
-import { indexedTypeScan, forEachJobInteractable } from '../world/livingWorldViews.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { cargoPodOwnerId } from './lawSecurity.js';
+import { isJettisonedCargoPod, isCivilianManifestPayload } from './lootShards.js';
 import {
   FIRST_TRADE_CONTRACT,
   FIRST_TRADE_CONTRACT_DEST_STATION_ID,
@@ -1938,23 +1939,42 @@ export const onboarding = {
   _scanOwnedGoods(state) {
     const hints = state.player && state.player.hints;
     if (!hints || hints.firstOwnedGoods) return;
+    // The line is spent once; never spend it where _showHint would refuse or where the lot is a
+    // venue/arena prop rather than the open world.
+    if (state.physicsVenueSession === true) return;
+    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (state.settings && state.settings.gameplay && state.settings.gameplay.tutorialHints === false) return;
     const player = state.entities && state.entities.get(state.playerId);
     if (!player || !player.pos) return;
     const playerWr = state.player && state.player.worldRecordId;
+    const isPlayers = (id) => String(id) === String(state.playerId) || id === 'player'
+      || (playerWr != null && String(id) === String(playerWr));
     let found = null;
-    forEachJobInteractable(state, (e) => {
+    // "You're wanted" must be true: speak only over exactly what lawSecurity files as
+    // payload_theft — a jettisoned / civilian-manifest pod owned by someone else (custody pods
+    // excluded, `_reportStolenCargoPod`) or a chip titled to its claim miner
+    // (`_reportTitledClaimChip`). Ships, stations, wrecks and free loot never qualify.
+    const visit = (e) => {
       if (found || !e || e.alive === false || !e.pos || e.id === state.playerId) return;
-      const d = e.data || {};
-      const ownerId = cargoPodOwnerId(e) ?? (d.ownerId != null ? d.ownerId : null);
-      const ownedPod = ownerId != null && !d.freightCustodyPod;
-      const titledChip = d.ownerId != null && d.npcMiningSource
-        && d.ownerId === d.npcMiningSource.minerWorldRecordId;
-      if (!ownedPod && !titledChip) return;
-      if (ownerId === state.playerId || (playerWr && ownerId === playerWr)) return; // the player's own lot
+      const d = e.data;
+      if (!d) return;
+      let ownerId = null;
+      if (isJettisonedCargoPod(e) || isCivilianManifestPayload(e)) {
+        if (!d.freightCustodyPod) ownerId = cargoPodOwnerId(e);
+      } else if (e.type === 'pickup' && d.ownerId != null && d.npcMiningSource
+        && d.npcMiningSource.minerWorldRecordId != null
+        && String(d.ownerId) === String(d.npcMiningSource.minerWorldRecordId)) {
+        ownerId = d.ownerId;
+      }
+      if (ownerId == null || isPlayers(ownerId)) return;
       const d2 = (e.pos.x - player.pos.x) ** 2 + (e.pos.z - player.pos.z) ** 2;
       if (d2 > 220 * 220) return;
       found = e;
-    });
+    };
+    const payloads = indexedTypeScan(state, 'payloads');
+    const pickups = indexedTypeScan(state, 'pickups');
+    for (let i = 0; i < payloads.length && !found; i++) visit(payloads[i]);
+    if (pickups !== payloads) for (let i = 0; i < pickups.length && !found; i++) visit(pickups[i]);
     if (found) {
       this._showHint('firstOwnedGoods', firstUseLine('firstOwnedGoods'), { entityId: found.id });
     }
@@ -2188,9 +2208,12 @@ export const onboarding = {
         // X-05: past the rail, one read before the act — the first owned lot the player gets
         // close enough to reach for names its consequence once. 15-tick cadence; the scan
         // retires for good once the hint has spoken.
-        if (ob.finished && !this._ownedScanAt) this._ownedScanAt = state.tick | 0;
-        if (ob.finished && (state.tick | 0) - (this._ownedScanAt | 0) >= 15) {
-          this._ownedScanAt = state.tick | 0;
+        const scanTick = state.tick | 0;
+        // A New Game / load rewinds the tick under this module-lifetime stamp — re-latch so
+        // the scan never stalls until the clock catches back up.
+        if (ob.finished && !(this._ownedScanAt <= scanTick)) this._ownedScanAt = scanTick;
+        if (ob.finished && scanTick - this._ownedScanAt >= 15) {
+          this._ownedScanAt = scanTick;
           this._scanOwnedGoods(state);
         }
         return;

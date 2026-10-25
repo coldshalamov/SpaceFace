@@ -96,9 +96,9 @@ function tickScan(h, ticks = 20) {
 
 test('X-05 an owned lot within 220 wu after the rail speaks once, anchored to the lot', () => {
   const pod = { id: 50, type: 'payload', alive: true, pos: { x: 180, z: 0 }, vel: { x: 0, z: 0 },
-    data: { ownerId: 'wr_miner_ves' } };
+    data: { payloadType: 'jettisoned_cargo', ownerId: 'wr_miner_ves' } };
   const pod2 = { id: 51, type: 'payload', alive: true, pos: { x: 150, z: 0 }, vel: { x: 0, z: 0 },
-    data: { ownerId: 'wr_other' } };
+    data: { payloadType: 'jettisoned_cargo', ownerId: 'wr_other' } };
   const h = onboardingRig([pod, pod2]);
   tickScan(h);
   const lines = h.hints.filter((e) => e.verbId === 'firstOwnedGoods');
@@ -111,9 +111,9 @@ test('X-05 an owned lot within 220 wu after the rail speaks once, anchored to th
 
 test('X-05 the player own lot, a custody pod, and an untitled chip stay silent', () => {
   const own = { id: 60, type: 'payload', alive: true, pos: { x: 100, z: 0 }, vel: { x: 0, z: 0 },
-    data: { ownerId: 1 } }; // the player's own lot
+    data: { payloadType: 'jettisoned_cargo', ownerId: 1 } }; // the player's own lot
   const custody = { id: 61, type: 'payload', alive: true, pos: { x: 110, z: 0 }, vel: { x: 0, z: 0 },
-    data: { ownerId: 'wr_hauler_9', freightCustodyPod: true } };
+    data: { payloadType: 'jettisoned_cargo', ownerId: 'wr_hauler_9', freightCustodyPod: true } };
   const scrap = { id: 62, type: 'pickup', alive: true, pos: { x: 120, z: 0 }, vel: { x: 0, z: 0 },
     data: { amount: 3, commodityId: 'cmdty_silicate' } };
   const h = onboardingRig([own, custody, scrap]);
@@ -121,9 +121,45 @@ test('X-05 the player own lot, a custody pod, and an untitled chip stay silent',
   assert.equal(h.hints.filter((e) => e.verbId === 'firstOwnedGoods').length, 0);
 });
 
+test('X-05 review: only what the law files as theft speaks — never a ship, a station, free loot, a string player id, or a venue', () => {
+  const ship = { id: 80, type: 'ship', alive: true, pos: { x: 60, z: 0 }, vel: { x: 0, z: 0 }, ownerId: 777,
+    data: { ownerId: 777 } }; // a launched fighter / owned hull is not a lot
+  const station = { id: 81, type: 'station', alive: true, pos: { x: 70, z: 0 }, vel: { x: 0, z: 0 },
+    data: { ownerId: 'faction_reach' } };
+  const shard = { id: 82, type: 'pickup', alive: true, pos: { x: 80, z: 0 }, vel: { x: 0, z: 0 },
+    data: { amount: 2, commodityId: 'cmdty_silicate', ownerId: 'wr_dead_raider' } }; // free kill loot
+  const prop = { id: 83, type: 'payload', alive: true, pos: { x: 90, z: 0 }, vel: { x: 0, z: 0 },
+    data: { payloadType: 'cut_panel', ownerId: 'wr_encounter' } }; // not a law-filed pod
+  const ownStr = { id: 84, type: 'payload', alive: true, pos: { x: 95, z: 0 }, vel: { x: 0, z: 0 },
+    data: { payloadType: 'jettisoned_cargo', ownerId: '1' } }; // the player's own, string id
+  const h = onboardingRig([ship, station, shard, prop, ownStr]);
+  tickScan(h, 40);
+  assert.equal(h.hints.filter((e) => e.verbId === 'firstOwnedGoods').length, 0);
+
+  const pod = { id: 85, type: 'payload', alive: true, pos: { x: 100, z: 0 }, vel: { x: 0, z: 0 },
+    data: { payloadType: 'jettisoned_cargo', ownerId: 'wr_miner_ves' } };
+  const venue = onboardingRig([pod]);
+  venue.state.physicsVenueSession = true;
+  tickScan(venue, 40);
+  assert.equal(venue.hints.length, 0, 'a venue never spends the read');
+  assert.equal(venue.state.player.hints.firstOwnedGoods == null, true);
+});
+
+test('X-05 review: a titled claim chip speaks; a New Game tick rewind does not stall the scan', () => {
+  const chip = { id: 90, type: 'pickup', alive: true, pos: { x: 120, z: 0 }, vel: { x: 0, z: 0 },
+    data: { amount: 4, commodityId: 'cmdty_silicate', ownerId: 'wr_cutter',
+      npcMiningSource: { fieldId: 'f_helios_starter', minerWorldRecordId: 'wr_cutter' } } };
+  const h = onboardingRig([chip]);
+  h.ob._ownedScanAt = 500000; // stamp left by a long prior session
+  tickScan(h, 40);
+  const lines = h.hints.filter((e) => e.verbId === 'firstOwnedGoods');
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0].entityId, 90);
+});
+
 test('X-05 the rail owns the voice — no read fires while it runs', () => {
   const pod = { id: 70, type: 'payload', alive: true, pos: { x: 100, z: 0 }, vel: { x: 0, z: 0 },
-    data: { ownerId: 'wr_miner_ves' } };
+    data: { payloadType: 'jettisoned_cargo', ownerId: 'wr_miner_ves' } };
   const h = onboardingRig([pod], { railActive: true });
   tickScan(h, 40);
   assert.equal(h.hints.length, 0, 'nothing speaks during the rail');
