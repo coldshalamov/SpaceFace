@@ -28,7 +28,8 @@ function stubCtx(canvas) {
     canvas, beginPath: rec('beginPath'), moveTo: rec('moveTo'), lineTo: rec('lineTo'),
     closePath: rec('closePath'), fill: rec('fill'),
     stroke: rec('stroke'), clip: rec('clip'), save: rec('save'), restore: rec('restore'),
-    clearRect: rec('clearRect'), setTransform: rec('setTransform'),
+    clearRect: rec('clearRect'),
+    setTransform(...values) { calls.push('setTransform'); canvas._transform = values; },
     setLineDash: rec('setLineDash'), fillRect: rec('fillRect'),
     set fillStyle(_) {}, set strokeStyle(_) {}, set globalAlpha(_) {}, set lineWidth(_) {},
   };
@@ -142,6 +143,42 @@ function tick(h, n = 1, mount = null) {
 
 const castEvents = (h, event) =>
   h.emitted.filter((e) => e.event === `capitalBoss:${event}`).map((e) => e.payload);
+
+test('warning projection stays in CSS pixels on high-DPI screens and after menu return', () => {
+  const env = installDom();
+  globalThis.window.devicePixelRatio = 2;
+  const h = bootScoreFight(TOLLMAN);
+  const mount = mountCapitalBossOverlay({ root: env.root, ...h,
+    helpers: { worldToScreen: (p) => ({ x: 320 + p.x, y: 180 + p.z }) } });
+  const canvas = findAll(env.root, (n) => n.tagName === 'canvas')[0];
+  try {
+    h.bus.emit('capitalBoss:telegraph', {
+      fightId: h.fightId, castId: 'dpi-cast', startedAt: 0, fireAt: 60, endAt: 120,
+      shapes: [{ kind: 'lane', a: { x: 0, z: 0 }, b: { x: 100, z: 0 }, radius: 10 }],
+    });
+    mount.draw(h.state);
+    assert.equal(canvas.width, 2560);
+    assert.equal(canvas.height, 1440);
+    assert.ok(canvas._drawCalls.includes('stroke'), 'a live warning is painted');
+    assert.deepEqual(canvas._transform, [2, 0, 0, 2, 0, 0],
+      'CSS-pixel warning coordinates scale into the backing buffer');
+
+    h.state.mode = 'menu';
+    mount.draw(h.state);
+    assert.deepEqual(canvas._transform, [1, 0, 0, 1, 0, 0], 'menu clears the full backing buffer');
+    h.state.mode = 'flight';
+    mount.draw(h.state);
+    assert.deepEqual(canvas._transform, [2, 0, 0, 2, 0, 0], 'return restores the projection scale');
+
+    env.root.clientWidth = 900;
+    env.root.clientHeight = 600;
+    for (const resize of env.listeners.resize || []) resize();
+    mount.draw(h.state);
+    assert.equal(canvas.width, 1800);
+    assert.equal(canvas.height, 1200);
+    assert.deepEqual(canvas._transform, [2, 0, 0, 2, 0, 0], 'resize restores the canvas transform');
+  } finally { mount.destroy(); env.restore(); }
+});
 
 // ── 1 · all seven authored beats read out before they fire ────────────────────────────
 test('all seven Tollman beats show authored title+counter at least 60 ticks before firing', () => {

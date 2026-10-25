@@ -653,6 +653,8 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
       }
       if (st && st.mode === 'flight') {
         if (sizeDirty) syncSize();
+        // Projection uses CSS pixels; canvas resize and the menu clear reset this transform.
+        canvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
         overlay.draw();
         clearedWhileAway = false;
       } else if (!clearedWhileAway) {
