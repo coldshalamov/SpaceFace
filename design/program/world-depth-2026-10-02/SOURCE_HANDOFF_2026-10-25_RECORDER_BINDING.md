@@ -1,10 +1,10 @@
 <!-- LIFETIME: DURABLE -->
 # Last Shift recorder: source and asset handoff
-Updated: 25 October 2026, 05:03 UTC.
+Updated: 25 October 2026, 05:19 UTC.
 
 This is a source-only checkpoint. All twelve goals in [OPEN_GOALS.md](OPEN_GOALS.md) remain OPEN. It preserves the [implementation roster](IMPLEMENTATION.md), [original twenty concepts](TWENTY_CONCEPT_MAP.json) and existing build-map scope; it is not a new queue or acceptance declaration. Prior [recovery guidance](SOURCE_HANDOFF_2026-10-25_RECOVERY_GUIDANCE.md) and its original attempts remain intact.
 
-Current source checkpoint: [published Ceres filed-report conversation](#ceres-filed-report-conversation-published-follow-on-25-october-2026-0503-utc). The original binding checkpoint below remains historical evidence.
+Current source checkpoint: [published Borrowed Sun current-berth context](#borrowed-sun-current-berth-context-published-follow-on-25-october-2026-0519-utc). The original binding checkpoint below remains historical evidence.
 
 ## Verified recorder-binding publication
 - Open draft [PR602](https://github.com/coldshalamov/SpaceFace/pull/602).
@@ -77,4 +77,13 @@ Existing held operations remain held: the 847KB partsLibrary upload, distinct fa
 
 Sector-register delta: this extends the [existing Ceres sector account](https://github.com/coldshalamov/SpaceFace/blob/ca676244557c11ab2769087f85f0afb077527547/design/program/world-depth-2026-10-02/SECTOR_EXPERIENCE_REGISTER_2026-10-21.md), whose historical register blob `f1f3c139542cf5aa0ddfbeda369aafa503db1264` remains unchanged. This is an evidence append, not an edit to that register or a new plan/queue. Routing remains original SF20-18 / P03 wreck evidence and adjacent P07 station life. Crews want to understand the tow lanes; no new safety guarantee, history, reputation or economy is invented. One/two-source filings retain uncertainty; the authored three-source account supports deliberate cargo release and rejects the unsupported pirate-strike rumor. A stale selection revalidates the current receipt. The account remains until an actual new filing changes it; elapsed time alone creates no consequence. No model or placement changes are included. Full-sector acceptance remains open.
 
-The next Borrowed Sun dynamic station/faction/context mismatch unit is proposed and under reproduction only, not implemented or published. It does not displace ordinary recorder-return or Ceres acceptance work.
+At the Ceres checkpoint, Borrowed Sun's dynamic station/faction/context mismatch was under reproduction only. The published follow-on below supersedes that source status; ordinary recorder-return and Ceres acceptance remain open.
+
+## Borrowed Sun current-berth context: published follow-on (25 October 2026, 05:19 UTC)
+- Current candidate commit: `f563fb7cf943523f3f496b5245e1cbce91dcce98`; tree `37b926c084c77255e5e04fcdeb2e0488643e22d2`; sole parent `b51c850dd51bcedbb0a2ae4dc9cf8a6d2c892634`. Prior recorder and Ceres increments remain preserved.
+- Exactly three changed paths: `src/ui/station/barContacts.js`, blob `b6a0d5fda5576364bbcaac3727b21e4468ab9326`; `test/borrowed-sun-bar-context.test.mjs`, blob `490bf9d7b7b050ab25a13d954bc905a60df40b15`; `package.json`, blob `b99817996e2f9e0a63584182202da04fe239059b`.
+- Actual owner initialization reproduced a Tethys/MTS Borrowed Sun projection generating an SCN host through the static fallback. A read-only, carrier-only resolver now uses the single current owner projection in `state.content.sectors` for faction and local conversation, survey, mining, hazard, repair, festival and route context. Missing or ambiguous projections fail closed.
+- Static catalog stations, generated names/IDs, existing contact memories, Nemi's owner/prompt and service lifecycle remain unchanged. Projection metadata is not market-open or native-custody authority: arrival, fold, lost and close-pending configurations still deny service without a native body.
+- Final separate local checks: 9 new Borrowed Sun cases, 13 Ceres cases and 7 faction regressions passed against the exact b51 source graph plus these changes, with zero pinned module-map mismatches. Configured berth movement, actual-owner deserialize/afterContinue and preserved visit memory were exercised. These are not ordinary flown docking, full-game Save/Continue, live visual or performance acceptance.
+- Sector evidence delta: original SF20-12 / P07 visiting-station life now reads the carrier's actual configured Tethys/Ceres berth rather than fallback Helios/SCN context. Recurring generated contact reads follow that current projection without granting service access. This extends the [unchanged historical sector register](https://github.com/coldshalamov/SpaceFace/blob/ca676244557c11ab2769087f85f0afb077527547/design/program/world-depth-2026-10-02/SECTOR_EXPERIENCE_REGISTER_2026-10-21.md), blob `f1f3c139542cf5aa0ddfbeda369aafa503db1264`; that register is not edited or republished. No new plan/queue, model, placement, economy or service permission is introduced.
+- Implemented and published on the draft candidate: YES. Master integration and acceptance: NO. All twelve goals remain OPEN. Next: qualify ordinary current-berth contact comprehension, access gating and revisit/Continue behavior while preserving Nemi/service ownership; original-recorder physical return and Ceres acceptance remain open. Existing UI, browser and publication holds are unchanged.
