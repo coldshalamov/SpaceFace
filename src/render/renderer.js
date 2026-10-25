@@ -5930,13 +5930,17 @@ export function consumeTerminalProceduralFallback(parentData, nowMs) {
 
 /**
  * Mount a successfully built terminal fallback through the same contract a live-built entity
- * root gets at mesh-build time: buffers that are not yet resident hold the whole boundary
- * behind `geometryPending` — the bound-roots scan hands every latched mesh to the live
- * admission lane on the next frame — and the root compiles through the normal subject
- * pipeline under a counted pipelinesPending hold. A substrate that never linked stays hidden
- * behind that hold; one already stamped sfAdmittedOnce keeps drawing its marker/stand-in and
- * bloom's per-material scan + renderBufferDirect guard skip the fallback's still-unlinked
- * drawables until the compile lands (entityMeshVisibility / hideUnreadySceneDrawables).
+ * root gets at mesh-build time: in flight, buffers that are not yet resident latch the bound
+ * root's `geometryPending` — the bound-roots scan hands every latched mesh to the live
+ * admission lane once the first playable frame exists — and the root compiles through the
+ * normal subject pipeline under a counted pipelinesPending hold. The latch hides a boundary
+ * that is not already drawing; one the camera already shows on the live glass keeps drawing
+ * (retainShownCameraGlass) and the lane's urgent pass uploads it within a couple of presents,
+ * the same no-blank rule the mesh-build path applies on glass. A substrate that never linked
+ * stays hidden behind the pipelinesPending hold; one already stamped sfAdmittedOnce keeps
+ * drawing its marker/stand-in and bloom's per-material scan + renderBufferDirect guard skip
+ * the fallback's still-unlinked drawables until the compile lands (entityMeshVisibility /
+ * hideUnreadySceneDrawables).
  */
 function admitTerminalProceduralFallback(mesh, fallback, entity, state) {
   if (!mesh || !fallback) return;
