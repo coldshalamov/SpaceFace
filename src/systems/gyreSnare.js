@@ -41,7 +41,7 @@ import { environmentMaterialOf } from '../data/environmentMaterials.js';
 import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
 import {
   MATTER_REFUSAL, explainRefusal, createCaptureLedger, memberRef, grownRadius, launchPlan, burstPlan,
-  makeBody, mergeBodies, mergeImpulse, solidInertia, springAccel,
+  makeBody, mergeBodies, mergeImpulse, solidInertia, springAccel, glancingImpulse,
 } from '../matter/aggregateMass.js';
 import {
   matterRefusal, matterMass, matterRadius, matterIsDynamic, hasProtectedContent,
@@ -235,7 +235,45 @@ export const gyreSnare = {
       on('save:loaded', () => this._drop('save_loaded'));
       on('game:newGame', () => this._drop('new_game'));
       on('sector:exit', () => this._drop('sector_exit'));
+      // A thrown aggregate that strikes a loose body OFF-CENTRE spins it (packet 05): the solver's
+      // contact is frictionless, so without this an off-centre hit moves a rock and turns nothing.
+      on('physics:impact', (p) => this._onBallImpact(p));
     }
+  },
+
+  /** Grip of the thrown rubble on what it grazes: equal-and-opposite tangential impulse + torque. */
+  _onBallImpact(p) {
+    const state = this.state;
+    if (!state || !state.entities || !p) return;
+    const a = state.entities.get(p.aId), b = state.entities.get(p.bId);
+    let ball = null, other = null;
+    if (a && a.alive !== false && a.data && a.data.gyreLaunched) { ball = a; other = b; }
+    else if (b && b.alive !== false && b.data && b.data.gyreLaunched) { ball = b; other = a; }
+    if (!ball || !other || other.alive === false || other.id === state.playerId || !other.pos || !ball.pos) return;
+    if (other.data && other.data.gyreLaunched) return; // two thrown balls: not a graze, a collision
+    if (other.type === 'projectile' || other.type === 'fx' || other.physicsBody === false) return;
+    if (isAnchoredPhysicalBody(other) || !isDynamic(other)) return;
+    const J = finite(p.impulse);
+    if (!(J > 0)) return;
+    // One graze is one application: the solver reports a few events while the pair stays in contact.
+    const tick = state.tick | 0;
+    const seen = this._glanceSeen || (this._glanceSeen = new Map());
+    const last = seen.get(other.id);
+    if (last !== undefined && tick - last < D.glanceGapTicks) return;
+    if (seen.size >= 32) seen.clear(); // bounded: forgetting only re-arms a graze
+    seen.set(other.id, tick);
+    const snap = (e) => ({
+      m: entityMass(e), x: e.pos.x, z: e.pos.z, vx: finite(e.vel && e.vel.x), vz: finite(e.vel && e.vel.z),
+      w: finite(e.angVel), r: entityRadius(e),
+      I: finite(e.physicsBody && e.physicsBody.inertiaY) || solidInertia(entityMass(e), entityRadius(e)),
+    });
+    const g = glancingImpulse(snap(ball), snap(other), J, undefined, this._glanceScratch || (this._glanceScratch = {}));
+    if (!(g.jt > 0)) return;
+    const evidence = this._evidence(state.tick);
+    queuePhysicsImpulse(other, { x: g.tx * g.jt, y: 0, z: g.tz * g.jt }, evidence);
+    queuePhysicsImpulse(ball, { x: -g.tx * g.jt, y: 0, z: -g.tz * g.jt }, evidence);
+    if (g.torqueB) queuePhysicsTorqueImpulse(other, { x: 0, y: g.torqueB, z: 0 }, evidence);
+    if (g.torqueA) queuePhysicsTorqueImpulse(ball, { x: 0, y: g.torqueA, z: 0 }, evidence);
   },
 
   destroy() {

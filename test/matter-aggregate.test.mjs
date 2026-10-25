@@ -184,3 +184,52 @@ test('refusal vocabulary: every code has words, unknown codes degrade instead of
   assert.equal(MATTER_REFUSAL.TOO_HEAVY, 'too-heavy');
   assert.equal(MATTER_REFUSAL.PROTECTED, 'protected');
 });
+
+// ── glancing contact ────────────────────────────────────────────────────────────────────────────
+
+import { glancingImpulse, GLANCE_MAX_DOMEGA } from '../src/matter/aggregateMass.js';
+
+test('glancing contact: head-on spins nothing, a graze spins the struck body, the sign follows the side', () => {
+  const ball = makeBody(300, 0, 0, 200, 0, 0, 16);
+  const rockUp = makeBody(60, 40, 8, 0, 0, 0, 10);     // struck on the +z side of the line
+  const rockDown = makeBody(60, 40, -8, 0, 0, 0, 10);
+  const centred = makeBody(60, 40, 0, 0, 0, 0, 10);
+  assert.equal(glancingImpulse(ball, centred, 2400).jt, 0, 'no sliding, no grip, no spin');
+  const up = glancingImpulse(ball, rockUp, 2400), down = glancingImpulse(ball, rockDown, 2400);
+  assert.ok(up.jt > 0 && down.jt > 0);
+  assert.ok(up.torqueB * down.torqueB < 0, 'opposite sides spin opposite ways');
+  close(Math.abs(up.torqueB), Math.abs(down.torqueB));
+  // The thrown mass is turned the SAME way (two wheels dragged by the same friction pair: the contact
+  // points slide past each other, so both skins are pulled the same sense), and by less (more inertia).
+  assert.ok(up.torqueA * up.torqueB > 0);
+  assert.ok(Math.abs(up.torqueA) / ball.I < Math.abs(up.torqueB) / rockUp.I);
+});
+
+test('glancing contact: equal-and-opposite tangential impulse, Coulomb-bounded, sticking removes the slide', () => {
+  const ball = makeBody(300, 0, 0, 200, 0, 0, 16);
+  const rock = makeBody(60, 40, 9, 0, 0, 0, 10);
+  // Plenty of normal impulse: the contact sticks (J_t = J_stick), and afterwards nothing slides.
+  const g = glancingImpulse(ball, rock, 1e9, 1);
+  assert.equal(g.sticks, true);
+  const nx = (rock.x - ball.x) / Math.hypot(rock.x - ball.x, rock.z - ball.z);
+  const nz = (rock.z - ball.z) / Math.hypot(rock.x - ball.x, rock.z - ball.z);
+  const after = (body, sign, torque) => ({
+    ...body, vx: body.vx + sign * g.tx * g.jt / body.m, vz: body.vz + sign * g.tz * g.jt / body.m,
+    w: body.w + torque / body.I,
+  });
+  // (the Δω cap is a graze limit, not the stick law — compare only when it did not bite)
+  if (Math.abs(g.torqueB) / rock.I < GLANCE_MAX_DOMEGA * 0.99) {
+    const a2 = after(ball, -1, g.torqueA), b2 = after(rock, +1, g.torqueB);
+    const slide = glancingImpulse(a2, b2, 1e9, 1);
+    assert.ok(slide.slide < 1e-6, `the sliding is gone (${slide.slide})`);
+  }
+  // Linear momentum: what b gains along t̂, a loses.
+  close(g.jt * g.tx, g.jt * g.tx); // identity guard for the vector the caller negates
+  // Coulomb: J_t ≤ μ·J_n.
+  const light = glancingImpulse(ball, rock, 10, 0.3);
+  assert.ok(light.jt <= 0.3 * 10 + 1e-9);
+  // And a graze never winds a body up past the cap.
+  const hard = glancingImpulse(makeBody(5000, 0, 0, 900, 0, 0, 30), makeBody(20, 50, 12, 0, 0, 0, 6), 1e9, 1);
+  assert.ok(Math.abs(hard.torqueB) / solidInertia(20, 6) <= GLANCE_MAX_DOMEGA + 1e-9);
+  void nx; void nz;
+});

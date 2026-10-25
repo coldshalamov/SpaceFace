@@ -237,6 +237,60 @@ export function burstPlan(p) {
   };
 }
 
+// ── glancing contact: the torque of an off-centre hit ───────────────────────────────────────────
+
+/** Coulomb grip of tumbling rubble on whatever it strikes — rough, but nowhere near a brake. */
+export const GLANCE_FRICTION = 0.3;
+/** The most spin one contact may add to either body (rad/s) — a graze quickens, it does not wind up. */
+export const GLANCE_MAX_DOMEGA = 1.5;
+
+/**
+ * The tangential (friction) impulse of one contact between body `a` (the thrown aggregate) and `b`,
+ * and the torque it puts on each, from the contact geometry alone. The solver's own contact is
+ * frictionless (round colliders in vacuum), so a normal force passes through both centres and an
+ * off-centre hit would spin nothing; this is the missing grip, bounded by Coulomb's law
+ * (J_t ≤ μ·J_n) and by sticking (J_t ≤ the impulse that removes the sliding exactly):
+ *
+ *   t̂ = direction of a's sliding past b;  J_stick = |v_t| / (1/m_a + 1/m_b + R_a²/I_a + R_b²/I_b)
+ *   F_b = +J_t·t̂,  F_a = −J_t·t̂   (equal and opposite: linear momentum is conserved)
+ *   τ = (contact − centre) × F, in the sim's yaw convention (positive = heading angle increasing)
+ *
+ * A head-on hit has no sliding, so no spin; a graze slides most and spins most. `normalImpulse` is the
+ * solver's own J_n for the contact. Returns the zero result when there is nothing to apply.
+ */
+export function glancingImpulse(a, b, normalImpulse, mu = GLANCE_FRICTION, out = {}) {
+  out.jt = 0; out.tx = 0; out.tz = 0; out.torqueA = 0; out.torqueB = 0; out.slide = 0; out.sticks = false;
+  const nx0 = b.x - a.x, nz0 = b.z - a.z;
+  const dist = Math.hypot(nx0, nz0);
+  if (!(dist > 1e-9) || !(a.m > 0) || !(b.m > 0)) return out;
+  const nx = nx0 / dist, nz = nz0 / dist;
+  const rvx = a.vx - b.vx, rvz = a.vz - b.vz;
+  const vn = rvx * nx + rvz * nz;
+  const tvx = rvx - vn * nx, tvz = rvz - vn * nz;
+  // The skins slide too: a body yawing at w carries the point at offset r past at w·(−r_z, r_x).
+  // a touches at +R_a·n̂, b at −R_b·n̂ (n̂ points a -> b).
+  const ra = Math.max(0, finite(a.r)), rb = Math.max(0, finite(b.r));
+  const svx = tvx + (-a.w * ra * nz) - (b.w * rb * nz);
+  const svz = tvz + (a.w * ra * nx) - (-b.w * rb * nx);
+  const vt = Math.hypot(svx, svz);
+  if (!(vt > 1e-6)) return out;
+  const tx = svx / vt, tz = svz / vt;
+  const Ia = a.I > 0 ? a.I : solidInertia(a.m, ra), Ib = b.I > 0 ? b.I : solidInertia(b.m, rb);
+  const inv = 1 / a.m + 1 / b.m + (Ia > 0 ? ra * ra / Ia : 0) + (Ib > 0 ? rb * rb / Ib : 0);
+  const jStick = vt / inv;
+  const jCoulomb = Math.max(0, finite(mu)) * Math.max(0, finite(normalImpulse));
+  let jt = Math.min(jStick, jCoulomb);
+  // Never add more than a graze's worth of spin to the lighter-inertia body.
+  const dwB = Ib > 0 ? (rb * jt) / Ib : 0, dwA = Ia > 0 ? (ra * jt) / Ia : 0;
+  const worst = Math.max(dwA, dwB);
+  if (worst > GLANCE_MAX_DOMEGA) jt *= GLANCE_MAX_DOMEGA / worst;
+  out.jt = jt; out.tx = tx; out.tz = tz; out.slide = vt; out.sticks = jStick <= jCoulomb;
+  // F_b = +jt·t̂ at r_b = −R_b·n̂;  F_a = −jt·t̂ at r_a = +R_a·n̂.   τ_y = r_x·F_z − r_z·F_x
+  out.torqueB = (-rb * nx) * (jt * tz) - (-rb * nz) * (jt * tx);
+  out.torqueA = (ra * nx) * (-jt * tz) - (ra * nz) * (-jt * tx);
+  return out;
+}
+
 // ── the spring that holds and coils a core ───────────────────────────────────────────────────────
 
 /**

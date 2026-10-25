@@ -168,6 +168,8 @@ export const GYRE_SNARE = Object.freeze({
   launchWindupMaxAccel: 2200, // wu/s² — windup clamp is its own ceiling, not holdMaxAccel:
                               // a capped 2400 t clump must still visibly bow ~13 wu aft in
                               // ~100 ms (the slingshot read dies if the coil can't pull it)
+  glanceGapTicks: 8,         // ticks before the same struck body can take another graze of spin (a
+                           // pair in contact reports several solver events; one hit is one graze)
   ballTtlS: 9,               // s — impact cohesion and bowling flight lifetime; heat can still rupture the aggregate
   ballWatchMax: 8,           // live balls the tracker mirrors/watches (overflow keeps marks, sheds watch)
   launchImpactScaleBase: 1.6,// damage scale floor on a launched ball
