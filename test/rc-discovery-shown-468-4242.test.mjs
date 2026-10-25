@@ -75,8 +75,8 @@ test('468: all existing species have a real field family, including seven differ
   }
 });
 
-test('468: all eight role calls and every machine kind are wired to the live ambient recipe resolver', () => {
-  assert.equal(Object.keys(FAUNA_ROLE_SOUND).length, 8);
+test('468: all nine role calls and every machine kind are wired to the live ambient recipe resolver', () => {
+  assert.equal(Object.keys(FAUNA_ROLE_SOUND).length, 9);
   assert.deepEqual([...MACHINE_SOUND_IDS].sort(), Object.keys(MACHINE_KINDS).sort());
   const ids = new Set(DISCOVERY_AUDIO_RECIPES.map(row => row.id));
   for (const recipe of DISCOVERY_AUDIO_RECIPES) {
