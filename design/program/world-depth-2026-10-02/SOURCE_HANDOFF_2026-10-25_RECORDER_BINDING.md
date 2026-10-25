@@ -1,10 +1,10 @@
 <!-- LIFETIME: DURABLE -->
 # Last Shift recorder: source and asset handoff
-Updated: 25 October 2026, 05:19 UTC.
+Updated: 25 October 2026, 08:05 UTC.
 
 This is a source-only checkpoint. All twelve goals in [OPEN_GOALS.md](OPEN_GOALS.md) remain OPEN. It preserves the [implementation roster](IMPLEMENTATION.md), [original twenty concepts](TWENTY_CONCEPT_MAP.json) and existing build-map scope; it is not a new queue or acceptance declaration. Prior [recovery guidance](SOURCE_HANDOFF_2026-10-25_RECOVERY_GUIDANCE.md) and its original attempts remain intact.
 
-Current source checkpoint: [published Borrowed Sun current-berth context](#borrowed-sun-current-berth-context-published-follow-on-25-october-2026-0519-utc). The original binding checkpoint below remains historical evidence.
+Current source checkpoint: the current source and asset boundary below. Earlier binding and conversation checkpoints remain historical evidence.
 
 ## Verified recorder-binding publication
 - Open draft [PR602](https://github.com/coldshalamov/SpaceFace/pull/602).
@@ -87,3 +87,29 @@ At the Ceres checkpoint, Borrowed Sun's dynamic station/faction/context mismatch
 - Final separate local checks: 9 new Borrowed Sun cases, 13 Ceres cases and 7 faction regressions passed against the exact b51 source graph plus these changes, with zero pinned module-map mismatches. Configured berth movement, actual-owner deserialize/afterContinue and preserved visit memory were exercised. These are not ordinary flown docking, full-game Save/Continue, live visual or performance acceptance.
 - Sector evidence delta: original SF20-12 / P07 visiting-station life now reads the carrier's actual configured Tethys/Ceres berth rather than fallback Helios/SCN context. Recurring generated contact reads follow that current projection without granting service access. This extends the [unchanged historical sector register](https://github.com/coldshalamov/SpaceFace/blob/ca676244557c11ab2769087f85f0afb077527547/design/program/world-depth-2026-10-02/SECTOR_EXPERIENCE_REGISTER_2026-10-21.md), blob `f1f3c139542cf5aa0ddfbeda369aafa503db1264`; that register is not edited or republished. No new plan/queue, model, placement, economy or service permission is introduced.
 - Implemented and published on the draft candidate: YES. Master integration and acceptance: NO. All twelve goals remain OPEN. Next: qualify ordinary current-berth contact comprehension, access gating and revisit/Continue behavior while preserving Nemi/service ownership; original-recorder physical return and Ceres acceptance remain open. Existing UI, browser and publication holds are unchanged.
+
+## Current source and asset boundary — 25 October 2026, 08:05 UTC
+
+This checkpoint supersedes earlier next-operation statements, not their source evidence or acceptance limits. All twelve outcomes remain OPEN; the original twenty-concept and build-map scope is unchanged.
+
+### Phoebe fresh-spawn repair: published source
+- Separate open draft [PR604](https://github.com/coldshalamov/SpaceFace/pull/604), branch `fix/phoebe-tender-spawn-20261025`.
+- Verified commit `bd55ec83f545229aec2482f2f1e58e69c7559462`, tree `fd5156471f588594e39ccddcc298e0b2948fac6c`, sole public parent `8491f7ae7462b61bd6cb34c88fd3453c0c382e5e`. All three complete remote file contents and blob identities were read back.
+- `src/data/sectorActivityPockets.js`, blob `1d7268d3810be9da5a6791b681b34aa3104ee992`: only the fresh shrine tender spawn changes from x=38 to x=94 at z=-1.2, with an explanatory comment. Existing route, duration, saved poses and other actors are unchanged.
+- `test/phoebe-tender-spawn-clearance.test.mjs`, blob `c1c64e75221f1f3e5c51421774e76adcb8b6a69c`: configured production native-neighbor clearance and actual-owner Continue regression.
+- `package.json`, blob `cdce3fff4f9f33852ee8ad9a9cbdeafc80b0b0d3`: appends that test to `check:traffic`; the separately owned `check:npc-jobs` is untouched.
+- The qualified a42a control produced native overlap and contact; the candidate removed that configured first-tick overlap while retaining hull, record and job. Old-save pose and route retention were checked separately. The test passed in-process; a later isolated confirmation exited 137 with unknown cause. No subprocess, ordinary-flight, full-route or visual acceptance is claimed.
+- Newer public-master changes and all open-PR heads were checked before publication; reviewed data/package bases were unchanged. Source publication does not complete Phoebe or the game.
+
+### Borrowed Sun: unpublished integration and incomplete old export custody
+- The current published context-only increment remains PR602 at `f563fb7cf943523f3f496b5245e1cbce91dcce98`. It does not activate the new carrier model or service lifecycle.
+- Runtime, native transport and renderer changes remain unpublished. Bounded local qualification has exercised the encoded Save/Continue paid-return path, native RPC and receipt-only service initialization. Final correlated cancellation qualification is still pending; no new test totals are recorded here.
+- These local checks are not an actual worker-thread/browser session, ordinary flight or accepted gameplay. The renderer shipping URL remains absent. Measured fallback/source hierarchy work does not establish compiled-package, GPU, animation or live-camera acceptance.
+- Exact custody of the old RAM archive and old exported GLBs was lost. Only three unreferenced archive-segment Git objects exist; the fourth segment was denied. This is not a complete recoverable archive, published model package or activation. Do not retry or substitute an upload route without resolving the exact denial.
+- A regenerated native Blender artifact is distinct: 699992 bytes, SHA256 `af9687dcfff6b6bebab8748b0226c80db39d7638c3ba772df7e8d6c5e919b99b`. A regenerated LOD0 is 2381304 bytes, SHA256 `ff8b6b30d3d7e3a52f8e529284b79196ce98e22ee81b3254a2e208c1f376a938`. Neither is the old LOD0 identity `6dc1d2d060b81b24e7f4bc8315f9231304012f90e51a375f8ca4ed033b107566`; regeneration is not recovery of the old bytes.
+- Native authoring and export custody, source review, external preservation, Git publication, compiled release, integration and acceptance remain separate states. Regenerated LOD1/LOD2, final identity pinning and shipping qualification are next, not completed here.
+
+### Owners and next executable work
+The model owner preserves and qualifies regenerated exports; native transport and runtime owners finish correlated cancellation and consolidate the paid Continue path; renderer ownership remains scoped to the measured hierarchy and eventual verified shipping package. Publication and preservation owners reconcile exact source graphs before any new draft increment. Do not activate an unqualified URL, replace original bodies, fabricate custody or import another owner's unlanded branch.
+
+Continue the permitted Phoebe focused command `npm run check:traffic` only on an actually materialized qualified graph. Preserve the excluded receiver test and all existing browser/asset/publication holds. The [immutable historical sector experience register](https://github.com/coldshalamov/SpaceFace/blob/ca676244557c11ab2769087f85f0afb077527547/design/program/world-depth-2026-10-02/SECTOR_EXPERIENCE_REGISTER_2026-10-21.md) remains unchanged; this source delta does not replay it. Ordinary recorder return, Ceres report discoverability, Borrowed Sun docking/service comprehension and sector-by-sector acceptance remain open. No merge or deployment.

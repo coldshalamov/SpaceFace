@@ -1,6 +1,6 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace open goals
-Updated: 25 October 2026, 05:19 UTC.
+Updated: 25 October 2026, 08:05 UTC.
 
 All **12 goals remain OPEN**. This current register records source scope only. Historical reviewer/acceptance fields remain in the [immutable prior register](https://github.com/coldshalamov/SpaceFace/blob/5d62a0e86b8d9071d7e03b02b6c965f3ded3bab5/design/program/world-depth-2026-10-02/OPEN_GOALS.md) and its linked archive.
 
@@ -24,7 +24,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets and handoff in verified Git commits and draft PRs.
-- State: OPEN; Recorder source, release/runtime assets and tests are published at 07c609f5643c, followed by narrow return feedback at bb43ba003abd and the Ceres filed-report conversation at b51c850dd51b, then Borrowed Sun current-berth bar context at f563fb7cf943 in draft PR602; separate fairlead/P08 source operations remain held.
+- State: OPEN; PR604 publishes the exact three-file Phoebe fresh-spawn repair at bd55ec83f545, separate from PR602 context-only Sun/recorder work at f563fb7cf943. Sun runtime, native transport, renderer and regenerated models remain unpublished; held operations remain held.
 - Owner: publisher, project lead and exact feature owners.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Preserve reviewed source and handoff without retrying held exports.
@@ -32,7 +32,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-RECOVER
 - Outcome: recoverable source, models, tests and handoff beyond a disposable environment, including GitHub.
-- State: OPEN; The recorder source, compiled release/runtime models, metadata, bindings and tests are preserved by verified Git commit 07c609f5643c. The follow-on feedback source/tests are preserved at bb43ba003abd, Ceres filed-report presenter/conversation/tests at b51c850dd51b and Borrowed Sun context/tests at f563fb7cf943. Historical failed/final work remains separately recoverable.
+- State: OPEN; Verified Git preserves PR602 and the PR604 source/test/package increment. Exact old Sun RAM archive/GLB custody is lost; three unreferenced segments are incomplete. Regenerated native and LOD0 artifacts have new identities, not recovered old hashes; complete model Git persistence remains open.
 - Owner: preserver, exact source owners and project integration.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Preserve exact source/restoration dependencies before interruptions.
@@ -48,7 +48,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-ASSETBANK
 - Outcome: broad reusable small/large pieces addressing real inventory gaps, counting distinct models only.
-- State: OPEN; An existing neutral Thimble recorder is reused for Last Shift. This adds zero distinct model designs; broader asset gaps and integrated acceptance remain open.
+- State: OPEN; Borrowed Sun authoring is a new carrier candidate, but LODs are not distinct models and no new shipping package is activated. The existing Thimble recorder reuse adds zero designs. Wider inventory and integrated acceptance remain open.
 - Owner: project lead and asset owners; receiver holds retained.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Reuse coherent existing pieces and address demonstrated placement gaps.
@@ -56,7 +56,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-ASSET-QUALITY
 - Outcome: cohesive detail/materials with distinctive industrial, civilian, military, salvaged and alien character.
-- State: OPEN; The recorder package and planar fit passed focused runtime checks. Held fairlead preparation remains separate; neither establishes full visual/physical acceptance.
+- State: OPEN; Sun has regenerated editable native authoring and a distinct LOD0 export; shipping compilation, final identity pinning, GPU/animation/live-camera and physical acceptance remain open. Historical recorder and held fairlead scopes stay separate.
 - Owner: recorder visual/package owners; existing fairlead physics/catalog owners retained.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Complete permitted publication, normal census checks and actual visual/physical parity qualification.
@@ -64,7 +64,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-LIVING-WORLD
 - Outcome: inhabited places, work, economy, history, relationships and consequences using actual assets/systems.
-- State: OPEN; Last Shift recovery guidance, stable original-recorder model binding, reason-specific return feedback and an optional Ceres filed-report conversation and Borrowed Sun current-berth contact context are implemented and published on the draft branch; complete player routes remain open.
+- State: OPEN; Published Ceres/recorder/context increments remain, and PR604 corrects fresh Phoebe tender clearance. Sun paid Continue/native-service work is locally qualified in bounded configurations but remains unpublished, with final cancellation qualification pending; no ordinary-play acceptance.
 - Owner: project lead and current Last Shift source/review owners.
 - Evidence: current source handoff and immutable prior register linked above; no acceptance inferred.
 - Next: Connect current activities, readable consequences and recurring visits.
@@ -72,7 +72,7 @@ Scope: [implementation](IMPLEMENTATION.md), [twenty concepts](TWENTY_CONCEPT_MAP
 
 ## SF-SECTOR-COHERENCE
 - Outcome: coherent arrivals, ordinary visits, time/progression, choices, return and Save/Continue across sectors.
-- State: OPEN; Ceres guidance, a recognizable recorder, reason-specific return feedback and an optional filed-report conversation are published. The local account preserves authored certainty and separates evidence filing from physical return. Borrowed Sun contacts now use current owner-projected berth/faction metadata without changing service authority. Original body identity and custody are unchanged; sector arrival, ordinary return and full Save/Continue still need qualification.
+- State: OPEN; PR604 preserves Phoebe's existing route and saved poses while repairing fresh-spawn clearance. Ceres and Sun context deltas remain published on PR602; Sun native paid-return/Continue work is unpublished and its shipping URL absent. Whole-sector ordinary visits and acceptance remain open.
 - Owner: sector-experience coordination and exact gameplay/story owners.
 - Evidence: the [unchanged historical sector register](https://github.com/coldshalamov/SpaceFace/blob/ca676244557c11ab2769087f85f0afb077527547/design/program/world-depth-2026-10-02/SECTOR_EXPERIENCE_REGISTER_2026-10-21.md) plus the [current Ceres and Borrowed Sun evidence deltas](SOURCE_HANDOFF_2026-10-25_RECORDER_BINDING.md#ceres-filed-report-conversation-published-follow-on-25-october-2026-0503-utc); no acceptance inferred.
 - Next: Qualify ordinary original-recorder physical return, optional Ceres report discoverability, Borrowed Sun current-berth comprehension/access gating, and revisit/Save/Continue behavior. Preserve existing bar-screen ownership, Helios acknowledgement and the distinction between filed evidence and physical return; do not replace bodies or seed custody.
