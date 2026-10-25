@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-cradle-name",
-      "date": "2026-10-22",
-      "wf": "WF-12",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "The salvage cradle says Stellarite Ore when that core lands in the bay, instead of the raw ore id.",
-      "fingerprint": "verb=name,subject=cradle-core,sector=ceres,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "431fa30dc1f29da36492ab02275613882603b14b",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-lane-spill",
       "date": "2026-10-22",
       "wf": "WF-14",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "edf9aec1f925124f3a71d17644542e67bc24e5b7",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-yard-starved",
+      "date": "2026-10-25",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A thin hopper at a yard is named when the price jumps.",
+      "fingerprint": "verb=announce,subject=starved-hopper,sector=ceres,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "5ddcbdd39df54432076e4ffe678b2479955e66c0",
       "verification": "focused_green"
     }
   ],
