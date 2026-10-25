@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-24",
+  "updated": "2026-10-25",
   "runs": [
     {
       "date": "2026-08-12",
@@ -113,19 +113,6 @@
     }
   ],
   "units": [
-    {
-      "id": "inf-fauna-lead",
-      "date": "2026-10-22",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "A wake eel's trail pulls a cold furnace maw in, and the maw charges.",
-      "fingerprint": "verb=lead,subject=wake-eel,sector=ashfall,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
-      "verification": "focused_green"
-    },
     {
       "id": "inf-fauna-yank",
       "date": "2026-10-22",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "2d70c692a0",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sc-09",
+      "date": "2026-10-25",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Haumea's fissure is a cracked ice sheet with an open mouth.",
+      "fingerprint": "verb=show,subject=fissure,sector=haumea,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "5c0734cd9b",
       "verification": "focused_green"
     }
   ],
