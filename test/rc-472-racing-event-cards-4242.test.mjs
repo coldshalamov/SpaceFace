@@ -9,6 +9,7 @@ import { RACE_LEVELS, courseForLevel, practiceContractForLevel, raceContractById
   racingOfferFor, racingSeedFor, storyContracts } from '../src/data/raceLevels.js';
 import { raceBoardScreen, runContract } from '../src/ui/screens/raceBoard.js';
 import { takeRacingLaunch } from '../src/ui/racingLaunch.js';
+import { rememberRacingResult } from '../src/ui/racingControls.js';
 import { CUP_HEATS, currentRacingCup, abandonRacingCup, finishRacingCupHeat } from '../src/systems/racingCareer.js';
 import { installSimCommandSink, uninstallSimCommandSink } from '../src/core/simLaneCommands.js';
 import { raceRecordKey } from '../src/systems/racingSteer.js';
@@ -465,4 +466,64 @@ test('seed 4242: unmount drops the board, its selection and every detached refer
     assert.equal(raceBoardScreen._selectControls, null);
     assert.equal(raceBoardScreen._launching, false);
   } finally { b.restore(); restoreScreen(); }
+});
+
+// Focus-return companions: a launch that goes must not steal focus, and Retry returns to Retry.
+function trackFocus(b) {
+  const make = b.doc.createElement;
+  b.doc.createElement = (tag) => { const node = make(tag); node.focus = () => { b.doc.activeElement = node; }; return node; };
+}
+
+test('seed 4242: a launch that goes leaves focus alone (no grab onto the rebuilt START)', async () => {
+  const restoreScreen = saveScreen();
+  const h = harness({ mode: 'flight', sectorId: 'sector_helios_prime' });
+  let deferred = null;
+  installSimCommandSink(() => (deferred ? deferred.promise : null));
+  const b = mountBoard(h.ctx, { storage: memoryStorage() });
+  trackFocus(b);
+  try {
+    const oldStart = startButton(b.root);
+    b.doc.activeElement = oldStart;
+    let resolve; deferred = { promise: new Promise((r) => { resolve = r; }) };
+    oldStart.click();
+    await flush();
+    resolve({ ok: true, result: { ok: true, missionId: 'race_4242', result: { ok: true, missionId: 'race_4242' } } });
+    await flush();
+    assert.equal(h.pops.length, 1, 'the accepted arm popped the board');
+    assert.notEqual(startButton(b.root), oldStart, 'the refresh rebuilt START');
+    assert.equal(b.doc.activeElement, oldStart, 'a launch that went does not move focus');
+  } finally { b.restore(); restoreScreen(); uninstallSimCommandSink(); }
+});
+
+// Last in the file: rememberRacingResult is module state with no clear.
+test('seed 4242: a Retry that does not go puts focus back on the fresh Retry, not START', async () => {
+  const restoreScreen = saveScreen();
+  rememberRacingResult({ racingContractId: 'practice_level_textile_outbound', raceElapsedS: 61.5,
+    raceMode: 'time-trial', status: 'dnf', raceLapTimesS: [30, 31.5] });
+  const h = harness({ mode: 'flight', sectorId: 'sector_helios_prime' });
+  const descriptors = [];
+  let deferred = null;
+  installSimCommandSink((descriptor) => { descriptors.push(descriptor); return deferred ? deferred.promise : null; });
+  const b = mountBoard(h.ctx, { storage: memoryStorage() });
+  trackFocus(b);
+  const retryButton = (root) => findButtons(root).find((btn) => btn.textContent === 'Retry in this flight');
+  try {
+    const oldRetry = retryButton(b.root);
+    assert.ok(oldRetry, 'the last-result receipt offers Retry');
+    assert.equal(oldRetry.disabled, false, 'Retry is live in the course sector');
+    b.doc.activeElement = oldRetry;
+    let resolve; deferred = { promise: new Promise((r) => { resolve = r; }) };
+    oldRetry.click();
+    await flush();
+    assert.equal(descriptors.length, 1);
+    assert.equal(descriptors[0].op, 'racingArm');
+    resolve({ ok: false });
+    await flush();
+    const fresh = retryButton(b.root);
+    assert.ok(fresh);
+    assert.notEqual(fresh, oldRetry, 'the refresh rebuilt Retry');
+    assert.equal(b.doc.activeElement, fresh, 'focus returns to the live Retry');
+    assert.notEqual(b.doc.activeElement, startButton(b.root));
+    assert.equal(h.pops.length, 0);
+  } finally { b.restore(); restoreScreen(); uninstallSimCommandSink(); }
 });
