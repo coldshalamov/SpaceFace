@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "inf-cradle-bay",
-      "date": "2026-10-22",
-      "wf": "WF-16",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "A cradle set into a full salvage bay keeps the core and the units that did not fit, and finishes them once the bay has room.",
-      "fingerprint": "verb=keep,subject=sort-core,sector=ceres,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "970baaf62947620af3987c8ce34a05c3afd6be34",
-      "verification": "focused_green"
-    },
-    {
       "id": "exp-09",
       "date": "2026-10-22",
       "wf": "WF-10",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "d5d2ba8931387d14f0b5cd848d4476145885ee7e",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-forty-tag",
+      "date": "2026-10-25",
+      "wf": "WF-03",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Rocks beside Claim Forty-Tag carry the Drift stake, and flying onto that face says the stamp is live.",
+      "fingerprint": "verb=stake,subject=forty-tag,sector=ceres,domain=wf-03",
+      "references": [],
+      "integration": "live",
+      "commit": "160f5fc1008ea6e5f4d58e5a0e159c7daf7b047c",
       "verification": "focused_green"
     }
   ],
