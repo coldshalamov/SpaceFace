@@ -366,7 +366,11 @@ function digestFileRecords(inputFiles) {
  *  they only match inside the directory; other entries stay raw path prefixes. Shared by the
  *  planner and the asset-reachability audit so both read the same exclusion semantics. */
 export function releaseCopyExcludePrefixes(mapping) {
-  return (mapping?.exclude ?? []).map((entry) => {
+  const exclude = mapping?.exclude ?? [];
+  if (!Array.isArray(exclude)) {
+    throw new Error(`release copy exclude for ${mapping?.source} must be a non-empty array`);
+  }
+  return exclude.map((entry) => {
     if (typeof entry !== 'string' || entry.length === 0) {
       throw new Error(`release copy exclude entries must be non-empty strings, got ${JSON.stringify(entry)}`);
     }

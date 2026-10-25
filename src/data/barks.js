@@ -912,6 +912,15 @@ export const BARKS = {
 
 topUpBarkSituationCells(BARKS, BARK_FACTIONS, BARK_SITUATIONS, BARK_EVENT_SITUATIONS);
 
+// Frozen like the fill table: a runtime push lands in the live selector and silently renumbers the
+// positional delivered WAV corpus (line_NNNN_* is corpus-index-keyed) — now it throws instead.
+// The merge above already ran; every consumer below is read-only.
+for (const pack of Object.values(BARKS)) {
+  for (const cell of Object.values(pack)) Object.freeze(cell);
+  Object.freeze(pack);
+}
+Object.freeze(BARKS);
+
 /**
  * Pick a deterministic index in [0, len) from a seeded rng OR a numeric index.
  * @param {function|number|undefined} rng  mulberry32-style fn returning [0,1), or an integer index.
