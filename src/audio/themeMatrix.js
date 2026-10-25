@@ -202,8 +202,10 @@ function clamp01(v) {
 }
 
 export function resolveSectorBed(sectorId) {
-  if (sectorId && SECTOR_BEDS[sectorId]) return SECTOR_BEDS[sectorId];
-  if (sectorId && COMPOSED_SECTOR_BEDS[sectorId]) return COMPOSED_SECTOR_BEDS[sectorId];
+  // hasOwn: a prototype-keyed id ('toString' &c.) must fall through to the hashed bed, not
+  // resolve an inherited Object member as a bed row.
+  if (sectorId && Object.hasOwn(SECTOR_BEDS, sectorId)) return SECTOR_BEDS[sectorId];
+  if (sectorId && Object.hasOwn(COMPOSED_SECTOR_BEDS, sectorId)) return COMPOSED_SECTOR_BEDS[sectorId];
   const id = String(sectorId || '');
   if (!id) return DEFAULT_SECTOR_BED;
   // Unknown sector: still unique so a blind listen does not collapse to the void bed.
@@ -216,7 +218,8 @@ export function resolveSectorBed(sectorId) {
 }
 
 export function resolveFactionSting(factionId) {
-  if (factionId && FACTION_STINGS[factionId]) return FACTION_STINGS[factionId];
+  // hasOwn: 'toString' would otherwise return an inherited function as a sting row.
+  if (factionId && Object.hasOwn(FACTION_STINGS, factionId)) return FACTION_STINGS[factionId];
   return null;
 }
 

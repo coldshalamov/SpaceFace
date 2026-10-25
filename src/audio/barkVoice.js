@@ -174,7 +174,10 @@ export const MECHANIC_LINES = Object.freeze([
 export function resolveVoiceRegister(factionId, mechanic = false) {
   if (mechanic || factionId === 'mechanic') return MECHANIC_VOICE_REGISTER;
   if (factionId === CONTACT_MAERA_ID) return MAERA_VOICE_REGISTER;
-  return FACTION_VOICE_REGISTERS[factionId] || FACTION_VOICE_REGISTERS.faction_free;
+  // hasOwn, not truthiness: 'toString'/'constructor' would resolve an Object.prototype member.
+  return Object.hasOwn(FACTION_VOICE_REGISTERS, factionId)
+    ? FACTION_VOICE_REGISTERS[factionId]
+    : FACTION_VOICE_REGISTERS.faction_free;
 }
 
 function durationS(line, rate) {
@@ -194,7 +197,7 @@ export function resolveBarkVoice(input = {}) {
   let factionId = 'faction_free';
   if (mechanic) factionId = 'mechanic';
   else if (maera) factionId = CONTACT_MAERA_ID;
-  else if (input.factionId && FACTION_VOICE_REGISTERS[input.factionId]) factionId = input.factionId;
+  else if (input.factionId && Object.hasOwn(FACTION_VOICE_REGISTERS, input.factionId)) factionId = input.factionId;
   const situation = mechanic
     ? 'berth'
     : (BARK_SITUATIONS.includes(input.situation) || BARK_EVENT_SITUATIONS.includes(input.situation)

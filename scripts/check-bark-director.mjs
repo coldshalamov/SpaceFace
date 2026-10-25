@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
 import { createSimulation } from '../src/core/sim.js';
-import { barkFor } from '../src/data/barks.js';
+import { barkFor, BARKS } from '../src/data/barks.js';
 import { contactGrammarFor } from '../src/data/factionContactGrammar.js';
 import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { hash32 } from '../src/core/rng.js';
@@ -102,7 +102,9 @@ function testConcordScanThenAttack() {
   assert.equal(t.log.voices[0].situation, 'scan', 'first Concord line is scan');
   assert.equal(t.log.voices[0].text, expectedLine(1210, patrol.id, 'faction_scn', 'scan'),
     'scan line is deterministic from seed/entity/situation');
-  assert.match(t.log.voices[0].text, /Concord|Vessel|Automated hail/, 'scan line uses Concord register');
+  // Corpus membership, not a vocabulary allowlist: the seeded pick can land on any live cell
+  // line including appended fill — pinning words goes stale every time the corpus grows (D254).
+  assert.ok(BARKS.faction_scn.scan.includes(t.log.voices[0].text), 'scan line comes from the Concord scan cell');
 
   patrol.data.ai.fsm = 'attack';
   patrol.data.intent.fire = true;
@@ -157,8 +159,8 @@ function testEventBarksAndDebounce() {
   t.bus.emit('ai:reinforcementScheduled', { entityId: captain.id, packageId: 'backup' });
   assert.equal(t.log.voices.length, 2, 'reinforcement event emits a second bark receipt');
   assert.equal(t.log.voices[1].situation, 'reinforce', 'reinforcement schedule maps to reinforce situation');
-  assert.match(t.log.voices[1].text, /team|assets|Backup|collections|investment/i,
-    'reinforce line uses the faction corpus');
+  assert.ok(BARKS.faction_mts.reinforce.includes(t.log.voices[1].text),
+    'reinforce line comes from the faction reinforce cell');
   ok('flee and reinforcement event seams route through barkDirector once');
 }
 

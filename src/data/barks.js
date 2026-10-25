@@ -952,7 +952,8 @@ function pickIndex(rng, len) {
  * @returns {string}  a non-empty radio line. Always returns a string (never null/undefined).
  */
 export function barkFor(factionId, situation, rng) {
-  const faction = (factionId && BARKS[factionId]) ? BARKS[factionId] : BARKS.faction_free;
+  // hasOwn: 'toString'/'constructor' would otherwise adopt an Object.prototype member as a pack.
+  const faction = (factionId && Object.hasOwn(BARKS, factionId)) ? BARKS[factionId] : BARKS.faction_free;
   let lines = faction[situation];
   if (!Array.isArray(lines) || lines.length === 0) {
     // Situation not covered for this faction — fall back to 'scan', then to any populated situation.
@@ -1074,7 +1075,8 @@ export const HULL_RECOGNITION = Object.freeze({
  * @returns {string} a non-empty line with every token resolved.
  */
 export function hullRecognitionBarkFor(factionId, rng, tokens = {}) {
-  const lines = (factionId && HULL_RECOGNITION[factionId]) || HULL_RECOGNITION.faction_free;
+  const lines = (factionId && Object.hasOwn(HULL_RECOGNITION, factionId) && HULL_RECOGNITION[factionId])
+    || HULL_RECOGNITION.faction_free;
   const line = lines[pickIndex(rng, lines.length)];
   const ship = typeof tokens.ship === 'string' && tokens.ship.trim() ? tokens.ship.trim() : 'that hull';
   const shipClass = typeof tokens.class === 'string' && tokens.class.trim()
