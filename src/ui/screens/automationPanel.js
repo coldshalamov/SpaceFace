@@ -822,6 +822,18 @@ html body #screens #sf-automation.au-orrery .au-shop--outposts .meta > span:firs
   grid-column: 1 / -1; }
 html body #screens #sf-automation.au-orrery .au-shop--fleet .meta {
   grid-template-columns: 24ch max-content; }
+/* polish133: the drone earnings line ("Up to ~113 cr/min capped · shared ceiling, before upkeep")
+   had a 20ch track, so it ended in an ellipsis jammed against "buffer" on every rung. On desktop
+   the four short stats keep aligned columns and the earnings sentence takes its own line under
+   them, whole; ≤760 keeps its wrapping flex row with the sentence last. */
+@media (min-width: 761px) {
+  html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta {
+    grid-auto-flow: row; grid-template-columns: 11ch 11ch 10ch 14ch; row-gap: 2px; }
+  html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta > span:nth-child(2) {
+    grid-column: 1 / -1; }
+}
+html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta > span:nth-child(2) {
+  order: 1; white-space: normal; overflow: visible; text-overflow: clip; }
 html body #screens #sf-automation.au-orrery .au-shop .au-note {
   display: none; grid-column: 1 / -1; margin-top: 2px; font-size: 12px; }
 html body #screens #sf-automation.au-orrery .au-shop:hover .au-note,
