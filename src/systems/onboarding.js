@@ -3500,11 +3500,18 @@ export const onboarding = {
       if (slot === 'wing' && (opts.wing === 'keep' || opts.wing === 'disarm')) {
         if (opts.wing === 'disarm' && id != null && this.state.entities) {
           const wing = this.state.entities.get(id);
-          if (wing && wing.data && wing.data.ai) {
+          // The same stamp gate _raidActor, _onRaidKilled, and the bare removal path below
+          // enforce: entity ids recycle through freeIds, so a kept slot can name a foreign
+          // hull wearing the routed wing's old id — it keeps its own orders and never takes
+          // a stand-down the beat never authored.
+          if (wing && wing.data && wing.data.onboardingRaidWing === true && wing.data.ai) {
             // A wing that already left honestly keeps its exit record through the restage —
             // restamping its FLEE/DISENGAGE as a LOITER would park a routed hull mid-field
-            // instead of letting it finish running. A merely disengaged wing stands down.
-            if (!this._raidWingExited(wing)) {
+            // instead of letting it finish running. wingDone is the same retirement: the
+            // scripted 'onboarding_raid:withdrawn' DISENGAGE is no _raidWingExited shape, but
+            // a wing the beat already released must finish running all the same. A merely
+            // disengaged wing stands down.
+            if (!raid.wingDone && !this._raidWingExited(wing)) {
               wing.data.ai.roe = 'hold_fire';
               // Stand the wing down with its record, not just its guns: a live 'onboarding_raid:'
               // ATTACK_RUN would keep overriding the squad's FOCUS and the silent hull would keep

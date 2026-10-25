@@ -422,3 +422,38 @@ test('X-02 a recycled wing id is not honored by the kill receipt', () => {
   assert.equal(raid4.wingDone == null || raid4.wingDone === false, true,
     'a receipt with no dead id never closes the wing slot');
 });
+
+// X-02 closing review: the player-death disarm restage read entities.get(raid.ids.wing)
+// without the stamp gate _raidActor, _onRaidKilled, and the bare removal path all enforce —
+// a foreign hull wearing the recycled id took the stand-down it never earned, and a
+// scripted-exit wing had its 'onboarding_raid:withdrawn' DISENGAGE restamped to a parked
+// LOITER. The seam now reads the same occupant proof and the same retirement as every
+// other wing path.
+test('X-02 the disarm restage reads the wing stamp — a foreign hull keeps its orders', () => {
+  const h = rig();
+  const raid = stage(h);
+  const wingId = raid.ids.wing;
+  // The wing routed and its id was recycled before the player-death restage.
+  raid.wingDone = true;
+  const stranger = { id: wingId, type: 'ship', alive: true, team: 1, pos: { x: 9, z: 9 },
+    data: { ai: { roe: 'weapons_free', huntPlayer: true }, combat: { targetId: 42 } } };
+  h.entities.set(wingId, stranger);
+  h.bus.emit('player:death');
+  assert.equal(stranger.data.ai.roe, 'weapons_free', 'a foreign hull is never stood down');
+  assert.equal(stranger.data.ai.activity == null, true, 'no authored LOITER on a stranger');
+  assert.equal(stranger.data.ai.huntPlayer, true, 'a foreign pin is not the beat\'s to clear');
+  assert.equal(stranger.data.combat.targetId, 42, 'a foreign target keeps its lock');
+  // The stamped wing's own scripted exit survives the same restage — no LOITER restamp
+  // parks a hull the beat already released.
+  const h2 = rig();
+  const raid2 = stage(h2);
+  const wing2 = h2.entities.get(raid2.ids.wing);
+  wing2.hull = 18;
+  h2.ob._stepRaidWing();
+  assert.equal(raid2.wingDone, true);
+  assert.equal(wing2.data.ai.activity && wing2.data.ai.activity.reason, 'onboarding_raid:withdrawn');
+  h2.bus.emit('player:death');
+  assert.equal(wing2.data.ai.activity.reason, 'onboarding_raid:withdrawn',
+    'the scripted DISENGAGE keeps its record through the restage');
+  assert.equal(wing2.data.ai.roe, 'hold_fire');
+});
