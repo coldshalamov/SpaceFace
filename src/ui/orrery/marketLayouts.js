@@ -878,6 +878,13 @@ const CSS_TAIL = `
    the name ~0px. Each good reads on two lines there, its name across the whole register and its
    BUY / SELL / STOCK under it, and the families close up so they take four lines, not seven. */
 @media (max-width:480px) and (min-height:801px) {
+  /* the find stood beside the legend at ~70px ("Find a com", legend on two lines): it takes its
+     own full-width line under the legend instead */
+  ${MD} .sx-mkt-browser { grid-template-rows:auto auto auto minmax(0, 1fr) !important; }
+  ${MD} .sx-mkt-browser__mode { padding-right:0 !important; min-height:0 !important; letter-spacing:.12em !important; white-space:nowrap; }
+  ${MD} .orr-mkt-find { position:relative !important; top:auto; right:auto; grid-column:1; grid-row:2; width:100% !important; }
+  ${MD} .sx-mkt-browser__filters { grid-row:3; }
+  ${MD} .sx-mkt-browser__rail, ${MD} .sx-mkt-browser__empty { grid-row:4; }
   ${MD} .sx-mkt-browser__filters { column-gap:10px !important; }
   ${MD} .sx-mkt-filter { letter-spacing:.04em !important; }
   ${MD} .sx-mkt-table, ${MD} .sx-mkt-table > :is(thead, tbody) { display:block !important; width:100% !important; }
