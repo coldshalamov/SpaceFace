@@ -206,9 +206,18 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
   ${NGD} > .k-stage > .orr-ng-hero-box { left:var(--ng-hero-x) !important; width:var(--ng-hero-w) !important; top:45% !important; height:17% !important; }
   ${NGD} > .k-stage::before { left:var(--ng-hero-x); width:var(--ng-hero-w); top:59%; }
-  /* the run keeps its titles only (as in the ≤800-tall band): the hidden beats held ~150–230px above the scale,
-     which pulled the yard (and the hull render on it) up out of the ring and over THRUST at 701–720 */
-  ${NGD} .sf-ng-route .sf-ng-route__step .k-row__sub { display:none !important; }
+  /* the run's beats share one line under the scale: each beat's line wrapped to ~70px under its title (the run
+     stood ~230–340px tall and pulled the yard, and the hull render on it, up out of the ring and over THRUST at
+     701–720), so every line sits in one full-width slot of three lines instead, the first beat's line showing until
+     another beat is hovered. The four steps are equal flex columns 16px apart, so each line steps back by its
+     column's offset. */
+  ${NGD} .sf-ng-route .sf-ng-route__steps { padding-bottom:58px !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step .k-row__sub { position:absolute !important; top:calc(100% + 8px) !important; left:0;
+    width:calc(400% + 48px) !important; margin:0 !important; pointer-events:none; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(2) .k-row__sub { left:calc(-100% - 16px) !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(3) .k-row__sub { left:calc(-200% - 32px) !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(4) .k-row__sub { left:calc(-300% - 48px) !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__steps:not(:hover) .sf-ng-route__step:first-child .k-row__sub { opacity:1 !important; }
   /* the ring's side names at normal width and the LINE gloss condensed (as in the one-column layout) */
   ${NGD} .orr-hullring text.orr-hullring__label { font-variation-settings:"wght" 600, "wdth" 100 !important; letter-spacing:.16em !important; }
   ${NGD} .orr-hullring text.orr-hullring__gloss { font-stretch:75% !important; font-variation-settings:"wght" 500, "wdth" 75 !important; letter-spacing:.02em !important; }
