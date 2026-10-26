@@ -262,6 +262,34 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
     white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; -webkit-line-clamp:unset !important; line-height:1.3 !important; margin:0 !important; transform:none !important; }
   ${D} .sx-ct__jobs .sx-job > .sx-job__track { grid-area:track !important; position:static !important; margin:0 !important; }
 }
+/* BAR in the same narrow, tall desktop window: the 360px rail left the reading a ~190px strip, so the contact's
+   name set one syllable a line ("Capt / ain") and the reply and questions fell out of sight. The rail and the reading
+   share the width, each contact's role stands under the name, and the portrait sits beside the name. */
+@media (max-width:650px) and (min-height:801px) {
+  ${D} .k-panel.sx-bar { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; column-gap:16px !important; }
+  ${D} .sx-bar__rows .sx-bar-row { display:block !important; }
+  ${D} .sx-bar-row__role { display:block !important; margin-top:1px !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; max-width:100% !important; }
+  ${D} .sx-bar__stage .sx-talk { padding-left:0 !important; }
+  ${D} .sx-talk__head { display:grid !important; grid-template-columns:minmax(0, 1fr) 56px !important; column-gap:10px !important; align-items:start !important; }
+  ${D} .sx-talk__head > .sx-talk__id { display:contents !important; }
+  ${D} .sx-talk__head .sx-talk__role { grid-column:1 !important; grid-row:1 !important; margin:0 0 4px !important; }
+  ${D} .sx-talk__name { grid-column:1 !important; grid-row:2 !important; margin:0 !important; font-size:20px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; hyphens:none !important; }
+  ${D} .sx-talk__head .sx-talk__memory { grid-column:1 / -1 !important; grid-row:3 !important; font-size:13.5px !important; line-height:1.4 !important; max-width:none !important; margin-top:8px !important; }
+  ${D} .sx-talk__reply, ${D} .sx-talk__reply.is-said { font-size:14px !important; line-height:1.45 !important; max-width:none !important; margin-top:10px !important; }
+  ${D} .sx-talk__head > .sx-talk__avatar { grid-column:2 !important; grid-row:1 / span 2 !important; align-self:center !important; position:relative !important; inset:auto !important; width:56px !important; height:56px !important; max-height:none !important; }
+  ${D} .sx-talk__avatar::after { display:none !important; }
+}
+/* …and under 481 two halves cut the roles and the questions: the contacts stand over the reading, each scrolling */
+@media (max-width:480px) and (min-height:801px) {
+  ${D} .k-panel.sx-bar { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 2fr) minmax(0, 3fr) !important; row-gap:10px !important; }
+  ${D} .k-panel.sx-bar > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
+  ${D} .sx-bar__hang { overflow-y:auto !important; overscroll-behavior:contain; padding-top:0 !important; }
+  ${D} .sx-bar__rows .sx-bar-row { padding-top:3px !important; padding-bottom:3px !important; }
+  ${D} .sx-bar__stage { padding-top:0 !important; }
+  ${D} .sx-bar__stage .sx-talk > * + * { margin-top:6px !important; }
+  ${D} .sx-talk__head .sx-talk__memory { margin-top:4px !important; }
+  ${D} .sx-talk__head > .sx-talk__avatar { width:44px !important; height:44px !important; }
+}
 /* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
 @media (max-width:480px) and (min-height:801px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
