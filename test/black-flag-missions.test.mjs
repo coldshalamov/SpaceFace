@@ -197,3 +197,17 @@ test('bounded observation records reject malformed arrays and temporary modes pr
   b.action('shutdown');b.bus.emit('shipjack:opportunity',{vesselId:b.vessel.vesselId});
   assert.equal(JSON.stringify(b.state.missions),before);
 });
+
+test('Claim War recognizes compensated title only through its canonical yard receipt and settles once after load',()=>{
+  const b=boot('black_flag_claim_war'),m=b.accept('claim_resolution');b.scan();b.owned();
+  b.vessel.title='clean';b.vessel.recognizedOwner='player';b.vessel.claimResolved=true;
+  b.bus.emit('shipjack:settled',{ok:true,action:'settle_title',vesselId:b.vessel.vesselId,operationId:'unconfirmed:payment'});
+  assert.equal(m.status,'active');
+  const receipt=b.settle('settle_title');
+  assert.equal(m.status,'completed');assert.equal(b.state.player.credits,1400);
+  assert.equal(b.completed[0].completionMethod,'compensated_owner');
+  const saved=JSON.parse(JSON.stringify(b.host.serialize()));b.host.deserialize(saved);b.bus.emit('save:loaded',{});
+  b.bus.emit('shipjack:settled',receipt);
+  assert.equal(b.state.player.credits,1400);
+  assert.ok(!blackFlagOffers(b.state).some(o=>o.params.blackFlagPattern==='claim_resolution'));
+});

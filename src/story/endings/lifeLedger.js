@@ -218,6 +218,7 @@ export function readLifeLedger(input) {
     lifetimeProfit: number(stats.lifetimeProfit), passiveLifetime,
     namedDebts: debts, explicitMercyCount: debts.filter(r => r.explicitMercy).length,
     escapedOpponentCount: debts.filter(r => r.escaped).length, survivorPods,
+    b2SavedPods: Number.isInteger(flags.reckoning_b2_saved_pods) ? Math.max(0, flags.reckoning_b2_saved_pods) : null,
     rescueContractIds, lungOutcome, archiveSources: archives, discoveredSectorIds,
     deepReachComplete, deskVisited, ashfallVisited, independentWitness, careerEvidence,
     readyByHistory: deepReachComplete || independentWitness,

@@ -13,7 +13,7 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { advanceFleetOperations, executeFleetOperation } from '../shipjack/fleetOperations.js';
 import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 
-const YARD_ACTIONS = new Set(['sell','return','extract','repair_module','register','forge_broadcast','repaint','settle_lien']);
+const YARD_ACTIONS = new Set(['sell','return','extract','repair_module','register','settle_title','forge_broadcast','repaint','settle_lien']);
 const TERMINAL = new Set(['aborted','escaped','destroyed','expired']);
 const PROFILE = {civilian_cooperative:'civilian',corporate_locked:'corporate',pirate_improvised:'pirate',derelict_autonomous:'autonomous'};
 const STATIONS = new Map(SECTORS.flatMap(s => (s.stations || []).map(st => [st.id,{...st,sectorId:s.id}])));
@@ -475,7 +475,7 @@ export const shipjack = {
     if(p.action==='repair_module'&&p.subsystemId&&v.parkedBody?.subsystems?.[p.subsystemId]){
       const row=v.parkedBody.subsystems[p.subsystemId];row.health=row.maxHealth;row.destroyed=false;row.effectiveDisabled=false;
     }
-    vesselHistory(this.state,v,p.action,`${p.action==='return'?'Returned to claimant':p.action==='extract'?'Fitted part extracted intact':p.action==='sell'?'Released to buyer':p.action==='register'?'Salvage title adjudicated':'Yard service completed'} at ${v.location.stationId || this.state.ui?.dockedStationId}.`);
+    vesselHistory(this.state,v,p.action,`${p.action==='return'?'Returned to claimant':p.action==='extract'?'Fitted part extracted intact':p.action==='sell'?'Released to buyer':p.action==='register'?'Salvage title adjudicated':p.action==='settle_title'?'Claimant compensated; lawful title issued':'Yard service completed'} at ${v.location.stationId || this.state.ui?.dockedStationId}.`);
     if(p.action==='return')for(const e of Object.values(own.encounters))if(e.vesselId===v.vesselId)e.outcome='returned';
     this.bus.emit('shipjack:settled',{...p,title:v.title,stationId:this.state.ui?.dockedStationId});this.dirty();
   },

@@ -26,7 +26,11 @@ At a receiving berth, keep the prize, return it to its claimant, extract individ
 fitted components, repair components, settle a lien or offer a non-active empty hull for
 sale. Extraction takes time and requires returning to the receiving berth to collect.
 Pulling the drive disables propulsion. Hot property requires an illicit buyer; honest
-yards check title. Forging a broadcast consumes real scanner hardware and fools only
+yards check title. A licensed recovery registry can arrange **Compensate claimant / buy title**
+for an eligible civilian claim. Pay the posted compensation and registry fee to keep the
+damaged hull with lawful title and a reissued broadcast. Crew must be safe; government
+frames withhold private title. This does not erase offenses, liens or removed-part evidence.
+Forging a broadcast consumes real scanner hardware and fools only
 shallow inspections. Paint, broadcast, underlying frame and legal title remain separate.
 
 Open **Spare components / resale** in Registry & recovery to appraise a removed part.

@@ -17,7 +17,7 @@ const HULLS = new Map(SHIPS.map(row => [row.id, row]));
 const SECTOR_NAMES = new Map(SECTORS.map(row => [row.id, row.name]));
 const STATIONS = new Map(SECTORS.flatMap(row => (row.stations || []).map(station => [station.id, station.name])));
 const SERVICE_LABELS = Object.freeze({ sell: 'Offer intact hull', return: 'Return to registered owner',
-  register: 'File salvage title', extract: 'Extract this part', repair_module: 'Restore this part',
+  register: 'File salvage title', settle_title: 'Compensate claimant / buy title', extract: 'Extract this part', repair_module: 'Restore this part',
   forge_broadcast: 'Copy service broadcast', repaint: 'Rework registry marks', settle_lien: 'Settle lender lien',
   recover: 'Send recovery tug', secure_berth: 'Reserve a secure berth', module_sell: 'Spare component offer' });
 const integer = value => Math.max(0, Math.floor(Number(value) || 0)).toLocaleString('en-US');
@@ -55,6 +55,7 @@ export function yardQuotePreview(quote) {
   if (quote.action === 'forge_broadcast') notes.push('Consumes one Cargo Scanner S from inventory. Basic broadcast checks may pass; engine and title checks still expose the mismatch');
   if (quote.action === 'repaint') notes.push('Changes recorded external marks. The frame, engine signature and title remain traceable');
   if (quote.action === 'register') notes.push('Registry adjudicates an eligible abandoned frame; this cannot wash a theft');
+  if (quote.action === 'settle_title') notes.push(`Claimant compensation ${integer(quote.value?.claimantCompensation)} credits plus registry service ${integer(quote.value?.titleServiceFee)} credits. You retain this damaged hull under lawful title and receive a lawful broadcast registration. Recorded offenses, lender liens and the source history of fitted parts remain`);
   return notes.join('. ') + '.';
 }
 
@@ -180,7 +181,7 @@ export function createBlackFlagRegistry(ctx, { dockHost = () => true } = {}) {
       button(body,SERVICE_LABELS.recover,()=>{selectedQuote=offer.quote;stamp='';render(lastViewed);},{disabled:!offer.ok,reason:offer.reason});
       if(!offer.ok)line(offer.reason);
     }
-    for (const action of ['return','sell','register']) service(body,action);
+    for (const action of ['return','sell','register','settle_title']) service(body,action);
     const identity = doc.createElement('details'); identity.appendChild(node('summary','k-word k-word--body','Identity & lender services'));
     for (const action of ['forge_broadcast','repaint','settle_lien']) service(identity,action);
     body.appendChild(identity);

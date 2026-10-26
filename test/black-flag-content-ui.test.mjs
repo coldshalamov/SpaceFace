@@ -188,6 +188,9 @@ test('yard confirmation names consumed material, remaining forensic exposure and
   const preview=yardQuotePreview({action:'extract',slotIndex:3,amount:-280,value:{parts:[{slotIndex:3,defId:'mod_engine_ion_m',family:'engine',condition:.5}]}});
   assert.match(preview,/retaining its identity and 50% condition/); assert.match(preview,/strands this hull/);
   assert.match(yardQuotePreview({action:'return',amount:950}),/not the hull/);
+  const title=yardQuotePreview({action:'settle_title',amount:-3300,value:{claimantCompensation:3000,titleServiceFee:300}});
+  assert.match(title,/Cost 3,300 credits/);assert.match(title,/Claimant compensation 3,000/);
+  assert.match(title,/lawful broadcast registration/);assert.match(title,/offenses, lender liens and the source history/);
 });
 
 test('remote retrieval preview uses the real finite route, fee, deadline and grounded risk quote', () => {
