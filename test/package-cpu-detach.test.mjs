@@ -135,6 +135,52 @@ function freshLoader(loadGlb, residency = createAssetResidencyRegistry()) {
   return createRenderPackageLoader({ residency, loadGlb });
 }
 
+test('an exact-target refill keeps this renderer\'s current live GPU copy without decoding it again', async () => {
+  let decodes = 0, live;
+  const loader = freshLoader(async () => { decodes++; const fresh = decodedFixture(); live ||= fresh; return fresh; });
+  const loaded = await loader.load(packageMetadata('fixture.refill-resident'), { baseUrl: 'https://fixtures.test/' });
+  const subject = loaded.createInstance().root;
+  live.compressed.needsUpdate = true;
+  const records = new Map();
+  const renderer = { properties: { get: texture => records.get(texture) },
+    getContext: () => ({ isContextLost: () => false }),
+    initTexture(texture) { records.set(texture, { __version: texture.version, __webglTexture: {} }); } };
+  try {
+    await prepareStartupGpuResidency(renderer, subject, { includeGeometry: false, yieldToMain: async () => {} });
+    assert.equal(live.compressed.mipmaps.length, 0);
+    await refillPresentedCompressedUploads([live.compressed], renderer);
+    assert.equal(decodes, 1, 'a proven current GPU copy must not queue another GLB/transcode');
+    assert.equal(live.compressed.mipmaps.length, 0, 'already-resident payload stays released');
+  } finally { loader.dispose(); }
+});
+
+test('cold, restored, changed-version, missing-handle and lost-context refills keep real mip data', async () => {
+  for (const scenario of ['other-renderer', 'restored-renderer', 'changed-version', 'missing-handle', 'lost-context']) {
+    let decodes = 0, live;
+    const loader = freshLoader(async () => { decodes++; const fresh = decodedFixture(); live ||= fresh; return fresh; });
+    const loaded = await loader.load(packageMetadata(`fixture.refill-${scenario}`), { baseUrl: 'https://fixtures.test/' });
+    const subject = loaded.createInstance().root;
+    live.compressed.needsUpdate = true;
+    let records = new Map(), lost = false;
+    const renderer = { properties: { get: texture => records.get(texture) },
+      getContext: () => ({ isContextLost: () => lost }),
+      initTexture(texture) { records.set(texture, { __version: texture.version, __webglTexture: {} }); } };
+    try {
+      await prepareStartupGpuResidency(renderer, subject, { includeGeometry: false, yieldToMain: async () => {} });
+      assert.equal(live.compressed.mipmaps.length, 0);
+      let target = renderer;
+      if (scenario === 'other-renderer') target = { properties: { get: () => undefined }, getContext: renderer.getContext };
+      if (scenario === 'restored-renderer') records = new Map(); // Three replaces context-local property records.
+      if (scenario === 'changed-version') live.compressed.needsUpdate = true;
+      if (scenario === 'missing-handle') delete records.get(live.compressed).__webglTexture;
+      if (scenario === 'lost-context') lost = true;
+      await refillPresentedCompressedUploads([live.compressed], target);
+      assert.equal(decodes, 2, `${scenario}: the cold/stale bind still reloads its immutable package`);
+      assert.equal(live.compressed.mipmaps[0]?.width, 4, `${scenario}: real texStorage payload restored`);
+    } finally { loader.dispose(); }
+  }
+});
+
 test('package textures detach their CPU payloads after a proven residency upload', async () => {
   const decoded = decodedFixture();
   const loader = freshLoader(async () => decoded);

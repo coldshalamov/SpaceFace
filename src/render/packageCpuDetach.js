@@ -955,11 +955,27 @@ export function restorePresentedCompressedMips(material) {
  * chain. Covers the manifest texture (rehydrate) and a clone whose copied mark
  * is not that entry (rehydrate, then copy the restored chain).
  */
-export async function refillPresentedCompressedUploads(textures) {
+export async function refillPresentedCompressedUploads(textures, renderer = null) {
+  // Residency just uploaded and released these chains. An exact-target touch binds that same
+  // native texture when Three's current renderer properties still hold its handle and version;
+  // decoding the immutable GLB again here immediately undoes the residency pass. Three replaces
+  // these context-local records on restore/disposal. A lost context or missing handle/stamp keeps
+  // the existing real refill path; do not infer residency from a copied userData detach mark.
+  let currentProperties = null;
+  try {
+    const gl = renderer?.getContext?.();
+    if (gl && typeof gl.isContextLost === 'function' && !gl.isContextLost()
+      && typeof renderer?.properties?.get === 'function') currentProperties = renderer.properties;
+  } catch { /* an unavailable context cannot prove a live resident copy */ }
   const needsManifest = [];
   for (const texture of textures || []) {
     if (!texture || texture.isCompressedTexture !== true) continue;
     if (!(texture.version > 0) || !compressedMipsMissing(texture)) continue;
+    if (currentProperties) {
+      let properties = null;
+      try { properties = currentProperties.get(texture); } catch { /* restore instead */ }
+      if (properties?.__webglTexture && properties.__version === texture.version) continue;
+    }
     if (restoreSharedCompressedMips(texture) || adoptManifestCompressedMips(texture)) continue;
     if (texture.userData && texture.userData.spacefaceCpuDetach) needsManifest.push(texture);
   }
