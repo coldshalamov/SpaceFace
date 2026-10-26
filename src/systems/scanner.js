@@ -1639,10 +1639,10 @@ export const scanner = {
       pos: record.pos,
       at: now,
     });
-    if (!result || !result.revised || !result.hypothesis) return result;
+    if (!result || !result.hypothesis || !result.hypothesis.history?.length) return result;
     record.detail = result.playerLine || record.detail;
-    record.clue = result.hypothesis;
-    if (own.trackedId === record.id && record.trackable !== false && !own.completed[record.id]) {
+    record.clue = { ...result.hypothesis, status: 'current', revised: true };
+    if (result.revised && own.trackedId === record.id && record.trackable !== false && !own.completed[record.id]) {
       this._retargetClue(record);
     }
     return result;

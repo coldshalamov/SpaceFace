@@ -226,7 +226,11 @@ export function applyClueObservation(book, observation) {
     const samePos = sameFix(existing.pos, pos) || (existing.pos == null && pos == null);
     // A repeat of the standing claim at the standing fix is not a revision — a suspect manifest
     // re-scans as 'contradicted' on every pulse, and each repeat must not mint another history row.
-    if (sameClaim && samePos) return { duplicate: true, hypothesis: snapshotSubject(existing) };
+    if (sameClaim && samePos) return {
+      duplicate: true,
+      hypothesis: snapshotSubject(existing),
+      playerLine: playerLineFor(existing.history?.at(-1)?.status),
+    };
     const relation = cleanText(obs.relation)
       || (sameClaim ? 'stale' : 'contradicted');
     const historyStatus = sanitizeHistoryStatus(relation);
