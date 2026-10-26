@@ -859,7 +859,7 @@ export const MAIL_LETTERS = Object.freeze([
   {
     id: 'mail_slate_02', kind: 'cast', from: 'Slate',
     subject: 'The plate, again',
-    body: 'I stamped your hull plate once and word is you fly it like a dare now. The weld holds because I made it hold. Stop testing my signature.',
+    body: 'I stamped your hull plate once and word is you treat it like a dare now. The weld holds because I made it hold. Stop testing my signature.',
     triggers: [DEED('stunt'), DAY(7)],
   },
   {
@@ -872,7 +872,7 @@ export const MAIL_LETTERS = Object.freeze([
     id: 'mail_question_02', kind: 'cast', from: 'The Question',
     subject: 'An answer, partial',
     body: 'You answered the last thing that asked by outlasting it. That was not an answer. It was evidence. The question remains open.',
-    triggers: [DEED('hunter_outran')],
+    triggers: [DEED('hunter_outran'), DAY(9)],
   },
   {
     id: 'mail_job_union_01', kind: 'job', from: 'Salvage Assessors Local',
