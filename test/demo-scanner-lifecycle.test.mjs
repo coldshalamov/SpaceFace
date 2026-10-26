@@ -71,7 +71,8 @@ test('canonical fresh-run reset clears scanner cooldown/state and bark receipt c
 
   assert.deepEqual(state.signalInvestigation.receipts, []);
   assert.deepEqual(state.signalInvestigation.completed, {});
-  assert.deepEqual(state.barkDirector.entities, {});
+  assert.equal(Object.keys(state.barkDirector.entities).length, 0,
+    'New Game must clear per-entity bark records');
   assert.equal(bark._bodyNearMisses.size, 0, 'old near-miss tracks must not survive New Game');
   assert.ok(
     admitNpcCounterplayBark(bark, { actorId: 'npc_1', role: 'specialist' }, state.simTime),

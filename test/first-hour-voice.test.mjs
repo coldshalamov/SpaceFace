@@ -173,7 +173,7 @@ section('§3 bark_instructor sample: manifest row, on disk, byte-pinned to the r
   const head = fs.readFileSync(wav).subarray(0, 4).toString('ascii');
   assert.equal(head, 'RIFF', 'sample must be a WAV file');
   // The shipped bytes must match the shipped renderer exactly (the generator's own law).
-  execFileSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'generate-bark-voice.mjs'), '--check'], { stdio: 'pipe' });
+  execFileSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'generate-bark-voice.mjs'), '--check', '--all'], { stdio: 'pipe' });
 });
 
 // ---------------------------------------------------------------------------

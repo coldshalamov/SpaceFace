@@ -72,7 +72,9 @@ test('_speak mixes a sector line into the patrol-greeting share on the live path
     type: 'ship', team: 2, factionId: 'faction_free', pos: { x: 200, z: 0 },
     hull: 90, hullMax: 90, radius: 8, data: {},
   });
+  state.entities.delete(evenHull.id);
   evenHull.id = evenId;
+  state.entities.set(evenId, evenHull); // the map keys by entity.id — keep the rename consistent
   assert.equal(director._speak(evenHull, 'patrol-greeting', 'pass-by'), true);
   assert.ok(sectorBank.includes(voices[0].text),
     `even-index hull speaks the sector bank, got: ${voices[0].text}`);
@@ -83,7 +85,9 @@ test('_speak mixes a sector line into the patrol-greeting share on the live path
     type: 'ship', team: 2, factionId: 'faction_free', pos: { x: 260, z: 0 },
     hull: 90, hullMax: 90, radius: 8, data: {},
   });
+  state.entities.delete(oddHull.id);
   oddHull.id = oddId;
+  state.entities.set(oddId, oddHull);
   assert.equal(director._speak(oddHull, 'patrol-greeting', 'pass-by'), true);
   assert.ok(BARKS.faction_free['patrol-greeting'].includes(voices[1].text),
     `odd-index hull keeps the faction pool, got: ${voices[1].text}`);

@@ -1573,9 +1573,13 @@ export const BARK_PUNCT = Object.freeze({
   popupTailDelayS: 0.12,
 });
 
-/** One ear, one voice: chatter waits out the open mic; deep pileups drop rather than lag badly. */
+/**
+ * One ear, one voice: chatter waits out the open mic; deep pileups drop rather than lag badly.
+ * deferCapS must cover one max-length utterance (a slow register runs ~6.8 s heard plus pads)
+ * so a single deferred line always airs; only genuinely stacked hails spill off the channel.
+ */
 export const BARK_CHATTER = Object.freeze({
-  deferCapS: 2.5,
+  deferCapS: 8.0,
   gapS: 0.18,
 });
 
@@ -3206,6 +3210,11 @@ export const audio = {
       if (id) this.play(id, { gain: 0.6 });
     });
     bus.on('barkDirector:voice', (p) => this._onBarkVoice(p));
+    // The arbiter is the floor authority: an arbiter-bound bark (payload.voiceId) holds its
+    // resolved voice until the line actually surfaces, so a queued bark never plays early and a
+    // dropped one never plays at all. Receipts without a voiceId (mechanic, direct emits) play
+    // at once, exactly as before.
+    bus.on('voice:surface', (p) => this._onVoiceSurfaceForBarks(p));
     // The first-hour instructor speaks every tutorial line through the same radio treatment the
     // barks get — key click, one distinct register, squelch tail — on a single mic, so a beat
     // that emits two lines in one tick is heard in order. Text surfaces keep their own contracts;
@@ -6951,13 +6960,60 @@ export const audio = {
       line: payload.text || payload.line,
       mechanic: payload.mechanic || payload.kind === 'mechanic',
     });
-    const rt = this.rt, ctx = rt && rt.ctx;
     const rate = barkPlaybackRate(resolved);
     const speechDur = resolved.speech && Number.isFinite(resolved.speech.durationS)
       ? resolved.speech.durationS : 0.9;
     // The PCM buffer plays `rate`× faster than the authored seconds — the tail, duck, holds and
     // captions all schedule on the heard duration (a slow register used to chirp mid-word).
     const heardDur = speechDur / (rate > 0 ? rate : 1);
+    const spec = {
+      payload, resolved, verdict, context, heardDur, rate,
+      enqueuedWallS: typeof performance !== 'undefined' ? performance.now() / 1000 : 0,
+    };
+    // Arbiter-bound receipts wait for the real `voice:surface` — a queued bark must not sound
+    // before its floor, and a dropped one must not sound at all. A same-id in-place resurface can
+    // fire synchronously inside say() before this receipt lands, so a fresh surface marker also
+    // releases the voice. Everything without a voiceId plays now, as it always did.
+    if (payload.voiceId != null) {
+      const rt = this.rt || (this.rt = {});
+      const recent = rt._recentVoiceSurfaces || (rt._recentVoiceSurfaces = new Map());
+      if (recent.has(payload.voiceId)) {
+        recent.delete(payload.voiceId);
+        this._scheduleBarkVoice(spec);
+        return;
+      }
+      const pending = rt._pendingBarkVoices || (rt._pendingBarkVoices = new Map());
+      if (pending.size >= 12) pending.delete(pending.keys().next().value); // FIFO drop, never play stale
+      pending.set(payload.voiceId, spec);
+      return;
+    }
+    this._scheduleBarkVoice(spec);
+  },
+
+  _onVoiceSurfaceForBarks(payload) {
+    if (!payload || payload.id == null) return;
+    const rt = this.rt;
+    if (!rt) return;
+    const pending = rt._pendingBarkVoices;
+    const spec = pending && pending.get(payload.id);
+    if (spec) {
+      pending.delete(payload.id);
+      this._scheduleBarkVoice(spec);
+      return;
+    }
+    // A surface with no pending receipt is remembered briefly: the same-id in-place path inside
+    // say() can surface before the barkDirector:voice receipt lands a few microtasks later.
+    const recent = rt._recentVoiceSurfaces || (rt._recentVoiceSurfaces = new Map());
+    const nowWall = typeof performance !== 'undefined' ? performance.now() / 1000 : 0;
+    if (recent.size >= 16) recent.delete(recent.keys().next().value);
+    recent.set(payload.id, nowWall);
+  },
+
+  _scheduleBarkVoice(spec) {
+    const { payload, resolved, verdict, context, heardDur, rate } = spec;
+    const rt0 = this.rt;
+    const nowS = rt0 && rt0.ctx ? rt0.ctx.currentTime : (Number(this.state && this.state.simTime) || 0);
+    const rt = this.rt, ctx = rt && rt.ctx;
     let t0 = ctx ? ctx.currentTime : 0;
     // One ear, one voice: chatter waits out the open mic instead of overlapping a playing bark.
     // A line that would wait past the cap drops — the text floor still surfaces it.
@@ -7003,11 +7059,23 @@ export const audio = {
       else if (ctx) rt0._commsChatterUntilS = t0 + BARK_PUNCT.keyLeadS + heardDur + BARK_PUNCT.tailPadS + BARK_CHATTER.gapS;
     }
     if (body) {
-      this._emitPresentationCaption(resolved.caption, {
+      const captionOpts = {
         assertive: resolved.assertive,
         shape: 'radio',
         durationMs: Math.ceil((BARK_PUNCT.keyLeadS + heardDur + BARK_PUNCT.tailPadS + 0.3) * 1000),
-      });
+      };
+      // The caption lands when the voice body starts, not when the floor surfaced — but only a
+      // genuinely deferred start waits; a line keying the mic now captions now (the 90 ms key lead
+      // is beneath notice), so queue-free hosts still see the caption at admit time.
+      const captionAt = t0 + BARK_PUNCT.keyLeadS;
+      if (ctx && t0 - ctx.currentTime > 0.05) {
+        const queue = rt._pendingBarkCaptions || (rt._pendingBarkCaptions = []);
+        if (queue.length >= 6) queue.shift(); // drop the oldest, never the newest
+        queue.push({ at: captionAt, text: resolved.caption, opts: captionOpts });
+        queue.sort((a, b) => a.at - b.at);
+      } else {
+        this._emitPresentationCaption(resolved.caption, captionOpts);
+      }
     }
     if (resolved.factionId) {
       this.rt._themeFactionId = resolved.factionId;
@@ -8242,6 +8310,33 @@ export const audio = {
     }
   },
 
+  // Bark voice plumbing: captions release at the voice-body start (they were queued while the
+  // mic was still open), and arbiter-bound receipts that never surfaced are dropped — a bark
+  // the floor refused is never heard. `now` is the audio clock; `nowWall` is wall seconds.
+  _drainBarkPlumbing(now, nowWall) {
+    const rt = this.rt;
+    if (!rt) return;
+    const barkCaptions = rt._pendingBarkCaptions;
+    if (barkCaptions && barkCaptions.length) {
+      while (barkCaptions.length && barkCaptions[0].at <= now) {
+        const cap = barkCaptions.shift();
+        this._emitPresentationCaption(cap.text, cap.opts);
+      }
+    }
+    const pendingVoices = rt._pendingBarkVoices;
+    if (pendingVoices && pendingVoices.size) {
+      for (const [id, spec] of pendingVoices) {
+        if (nowWall - spec.enqueuedWallS > 12) pendingVoices.delete(id); // arbiter dropped it — stay silent
+      }
+    }
+    const recentSurfaces = rt._recentVoiceSurfaces;
+    if (recentSurfaces && recentSurfaces.size) {
+      for (const [id, atWall] of recentSurfaces) {
+        if (nowWall - atWall > 2) recentSurfaces.delete(id);
+      }
+    }
+  },
+
   _frame() {
     const rt = this.rt, ctx = rt && rt.ctx;
     if (!ctx || rt._lifecycleSuspended || ctx.state !== 'running') return;
@@ -8251,6 +8346,8 @@ export const audio = {
 
     const dt = rt._lastWallTime !== undefined ? (nowWall - rt._lastWallTime) : 0.016;
     rt._lastWallTime = nowWall;
+
+    this._drainBarkPlumbing(now, nowWall);
 
     // (re)start any desired loop voices that were requested while suspended — never while
     // paused: _onPause ended them deliberately and a resurrected loop would drone over the menu.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
-import { barkDirector } from '../src/systems/barkDirector.js';
+import { barkDirector, SCAN_AMBIENT_GAP_S } from '../src/systems/barkDirector.js';
 import { pursuitBarkFor } from '../src/data/barks.js';
 
 // A refused voice request must not consume the entity's one line for that situation;
@@ -138,6 +138,9 @@ test('recycled entity id does not inherit the dead occupant\'s said record', () 
     data: { ai: { passive: true, fsm: 'idle' }, factionId: 'faction_mts' },
   });
   assert.equal(system._speak(bystander, 'scan', 'state'), true);
+  // Scans serialize per sector — the second hull waits out the ambient gap instead of
+  // keying the mic on the same tick (and its one line survives the wait).
+  state.simTime += SCAN_AMBIENT_GAP_S + 1;
   assert.equal(system._speak(actor, 'scan', 'state'), true);
   const actorId = actor.id;
   assert.equal(recordFor(state, actor).said.scan, true);
@@ -162,6 +165,7 @@ test('recycled entity id does not inherit the dead occupant\'s said record', () 
   // The new occupant owns the id's voice budget fresh: it may speak 'scan' once,
   // then dedup applies to it as normal.
   assert.equal(recordFor(state, recycled), undefined);
+  state.simTime += SCAN_AMBIENT_GAP_S + 1;
   assert.equal(system._speak(recycled, 'scan', 'state'), true);
   assert.equal(recordFor(state, recycled).said.scan, true);
   const sayCountAfterDelivery = sayCalls.length;
