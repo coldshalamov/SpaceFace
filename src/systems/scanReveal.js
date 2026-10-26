@@ -272,6 +272,16 @@ export const scanReveal = {
     return cache;
   },
 
+  // The scanner's existing save sidecar carries this owner-owned survey history.
+  // The pay-once loss receipts and milestone receipts must survive rematerialized wrecks.
+  serialize() {
+    return cloneSurveyMemory(this.state && this.state.scanReveal);
+  },
+
+  deserialize(data) {
+    if (this.state) this.state.scanReveal = cloneSurveyMemory(data);
+  },
+
   destroy() {
     if (this.bus && this._onScanPulse && typeof this.bus.off === 'function') {
       this.bus.off('scan:pulse', this._onScanPulse);
@@ -309,6 +319,28 @@ function ensureMemory(state) {
   const memory = state.scanReveal;
   if (!memory.investigated || typeof memory.investigated !== 'object') memory.investigated = {};
   if (!memory.milestones || typeof memory.milestones !== 'object') memory.milestones = {};
+  return memory;
+}
+
+function cloneSurveyMemory(source) {
+  const memory = { investigated: {}, milestones: {} };
+  const investigated = source && source.investigated;
+  for (const [id, row] of Object.entries(investigated || {})) {
+    if (!row || typeof row !== 'object') continue;
+    memory.investigated[id] = {
+      at: Number(row.at) || 0,
+      sectorId: row.sectorId || null,
+      entityId: row.entityId ?? null,
+    };
+  }
+  const ids = Object.keys(memory.investigated);
+  if (ids.length > INVESTIGATED_CAP) {
+    ids.sort((a, b) => memory.investigated[a].at - memory.investigated[b].at || a.localeCompare(b));
+    for (const id of ids.slice(0, ids.length - INVESTIGATED_CAP)) delete memory.investigated[id];
+  }
+  for (const [id, row] of Object.entries(source && source.milestones || {})) {
+    if (row && typeof row === 'object') memory.milestones[id] = { at: Number(row.at) || 0, count: Number(row.count) || 0 };
+  }
   return memory;
 }
 

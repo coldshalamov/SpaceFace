@@ -2028,7 +2028,10 @@ export const scanner = {
 
   serialize() {
     const own = ensureSignalState(this.state);
-    return cloneSignalState(own);
+    const snapshot = cloneSignalState(own);
+    const survey = this.registry && this.registry.get && this.registry.get('scanReveal');
+    if (survey && typeof survey.serialize === 'function') snapshot.wreckSurvey = survey.serialize();
+    return snapshot;
   },
 
   deserialize(data) {
@@ -2037,6 +2040,8 @@ export const scanner = {
     // deadline, so carry no lockout across a load.
     this._cooldownUntil = 0;
     this.state.signalInvestigation = normalizeSignalState(data);
+    const survey = this.registry && this.registry.get && this.registry.get('scanReveal');
+    if (survey && typeof survey.deserialize === 'function') survey.deserialize(data && data.wreckSurvey);
   },
 
   destroy() {
