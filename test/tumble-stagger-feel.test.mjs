@@ -440,15 +440,10 @@ test('the live damage queue applies the kick and hold, adds no shake, and never 
       `every live hold respects the contact ceiling: ${seconds}`);
   }
   assert.equal(state.timeScale, 1, 'no simulation pause');
-
-  // Prove the new path itself contributes no trauma (the separate slug-crunch owner still does).
-  traumas.length = 0;
-  const direct = resolveWeaponImpactKick({
-    attackerId: 1, targetId: 2, weaponId: 'wpn_concussion_cannon_m', amount: 12,
-    hullHit: true, approach: { x: 0, z: 1 },
-  }, { mode: 'flight', playerId: 1, state });
-  assert.ok(host._applyWeaponKick(direct));
-  assert.deepEqual(traumas, [], 'the weapon kick adds no screen shake');
+  // The live receipt is the proof: the old kinetic-crunch / shield-break / armor beats must not
+  // also punch the camera behind the player's own shot.
+  assert.deepEqual(traumas, [], 'the live player-caused hit adds no screen shake');
+  assert.equal(host._fovPunch, 0, 'the live player-caused hit adds no FOV punch');
 });
 
 test('the live weapon kick honours motion-reduce and photo mode', () => {

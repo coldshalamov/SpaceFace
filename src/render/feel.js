@@ -1370,17 +1370,13 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (!playerInvolved) return;
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       const mr = !!(this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce);
-      const crunch = resolveKineticCrunch(p, {
-        motionReduce: mr,
-        mode: this.state.mode,
-        photoMode: photoModeFeelPresentation(this.state).silencePunch,
-        playerId: state.playerId,
-        state: this.state,
-      });
-
-      // Player-caused heavy shot: a bounded, directional camera/haptic answer. Independent of the
-      // slug crunch (which owns family FOV/trauma) and never adds shake of its own.
-      if (playerId != null && p.attackerId === playerId && p.targetId !== playerId && !p.isPlayer) {
+      // The player's own shot answers through ONE camera channel: the bounded directional kick
+      // and its short hold. The target-side kinetic crunch / shield-break / armor / hull beats
+      // would stack a zoom punch and trauma onto the player's own aim, so they are suppressed for
+      // a player-caused hit. A hit ON the player (or self-damage) still takes the full response.
+      const playerCaused = playerId != null && p.attackerId === playerId
+        && p.targetId !== playerId && !p.isPlayer;
+      if (playerCaused) {
         const kick = resolveWeaponImpactKick(p, {
           motionReduce: mr,
           mode: this.state.mode,
@@ -1389,7 +1385,15 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
           state: this.state,
         }, this._weaponKickScratch);
         this._applyWeaponKick(kick);
+        return;
       }
+      const crunch = resolveKineticCrunch(p, {
+        motionReduce: mr,
+        mode: this.state.mode,
+        photoMode: photoModeFeelPresentation(this.state).silencePunch,
+        playerId: state.playerId,
+        state: this.state,
+      });
 
       if (p.brokeShield) {
         const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;

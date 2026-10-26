@@ -141,7 +141,8 @@ test('presenter seats heavy hits with harder light and culls off-table skirmish 
   };
   const auto = fire('wpn_autocannon_m', 'foe', { x: 10, z: 0 });
   assert.equal(auto.peaks.length, 1);
-  assert.ok(auto.peaks[0] >= 2.4, `autocannon contact peak ${auto.peaks[0]} clears the old 2.0 floor`);
+  assert.ok(Math.abs(auto.peaks[0] - 2.56) < 1e-9,
+    `autocannon contact peak ${auto.peaks[0]} pins the real 2.0 x 1.28 contact gain`);
   assert.equal(auto.scorchHeat, 0.8);
   const siege = fire('wpn_siege_lance_l', 'foe', { x: 10, z: 0 });
   assert.equal(siege.peaks.length, 1);

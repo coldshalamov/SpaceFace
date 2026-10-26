@@ -84,7 +84,9 @@ catalog also exposes `railgun-stagger` and `shield-contact`.
 - `src/render/assetLoader.js` — `loadAuthoredPart` loads
   `assets/ships/release/parts/wholeships/kestrel.glb` and
   `assets/ships/release/parts/wholeships/wasp_production_v1.glb`, including the authored
-  `SOCKET_Weapon_Front` marker.
+  `SOCKET_Weapon_Front` marker. If a shared tree's release package is mid-regeneration, the same
+  authored hulls are loaded from `assets/ships/parts/wholeships/` and the manifest records the
+  source route.
 
 **Not mounted**
 
@@ -92,21 +94,49 @@ catalog also exposes `railgun-stagger` and `shield-contact`.
 - `src/systems/tumbleStates.js` (the real status writer and physics torque route)
 - `src/combat/*` damage runtime and `src/core/physicsAuthority.js`
 - `src/render/renderer.js` (entity sync, machine-awake scheduling, chase camera)
+- `src/render/vfx.js` (the six-slot event-light pool and the structural contact lane; the weapon
+  presenter's own two-slot pool is mounted)
 
 The bench's `scripts/combat-feel/sequence.js` is a deterministic **input shim**: it owns when a
 shot is born, where the authored socket sits, and when the contact lands. It calls the production
 presenter with the same `handleFire` / `handleHit` shapes the weapons system uses, and it draws
 nothing itself.
 
-The one visual approximation is the target's **root yaw** during a forced tumble. Production
-`tumbleStates` queues a real physics torque impulse; the bench integrates the production
-`entrySpin` with the same token 0.05/s angular drag the production tumble comment names, and writes
-the target root heading. The bank/pitch thrash is the real `resolveTumbleBodyLanguage` output, not a
-bench-only oscillator. The manifest records `tumbleLaw` and `tumbleYaw` so a reviewer can see the
-seam.
+The bench owns these visual inputs beyond the production owners, so a reviewer can separate them
+from the live route:
 
-The bench reduces the displayed shield/hull values and schedules low-hull damage venting so the
-authored aftermath has something to show. Those are fixture writes, not a second damage owner.
+- **Root yaw during a forced tumble.** Production `tumbleStates` queues a real physics torque
+  impulse; the bench integrates the production `entrySpin` with the same token 0.05/s angular drag
+  the production tumble comment names, and writes the target root heading. The bank/pitch thrash is
+  the real `resolveTumbleBodyLanguage` output, not a bench-only oscillator. The manifest records
+  `tumbleLaw` and `tumbleYaw`.
+- **Contact point.** Hull contacts sit on the authored half-extent instead of the conservative
+  collision sphere; shield contacts keep the true bubble radius. Verify the live `projectile:hit`
+  point against the same proxy.
+- **Scene lighting.** A hand-authored key/rim/fill rig frames the two hulls; it is not a sector's
+  lighting and does not prove the live picture at every sky.
+- **Accessibility force.** `motionReduce` and `flashReduce` are forced off so the full beat is
+  visible. The reduced paths are unit-tested, not pictured here; the pooled event-light peak scale
+  is 0.1, not zero.
+- **Target cruise.** The target is stationary and receives a 105 WU/s victim-cruise value; no
+  physics body moves it.
+- **Venting schedule.** The production `spawnDamageVenting` cue is scheduled at the authored breach
+  through the settle; the live low-hull owner (`vfx.js` `_updateDamageVenting`) owns that cadence.
+
+The bench reduces the displayed shield/hull values so the authored aftermath has something to show.
+That is a fixture write, not a second damage owner.
+
+**Which light is shown.** These frames show the `WeaponVfxPresenter`'s two-slot weapon light pool.
+The six-slot event-light pool and its two-slot transient contact reserve are a separate production
+owner (`src/render/vfx.js`); the focused admission suite proves that pool and its saturation law,
+not these stills.
+
+**Evidence provenance.** Every capture records `run.sourceFiles`; `validate-manifest.mjs`
+recomputes the hashes and rejects a folder made from another bench revision. `beatFrames[].seen` is
+frame-local: the `light` beat requires a contact light after a real contact (not the muzzle flash),
+and `cooling`/`aftermath` require visible damage on their own frame rather than an earlier debris
+puff. If the release render package is mid-regeneration in a shared tree, the bench falls back to
+the same authored source GLBs and records `assets.*.route: "source"` in the manifest.
 
 ## Parent integration seams
 
@@ -142,7 +172,8 @@ node --test test/combat-feel-bench.test.mjs
 ```
 
 The test needs no GPU and no browser. It validates the catalog, required scenarios, production
-weapon rows, deterministic shot/beat timing, the tumble law, and the capture-manifest schema
-(including rejection of missing evidence, unknown scenarios, bad beat order and absolute paths).
-After a real capture the Python driver also runs
-`node scripts/combat-feel/validate-manifest.mjs <output>/manifest.json`.
+weapon rows, deterministic shot/beat timing, the tumble law, the capture-manifest schema
+(including rejection of missing evidence, unknown scenarios, bad beat order and absolute paths),
+and source-freshness recomputation. After a real capture the Python driver also runs
+`node scripts/combat-feel/validate-manifest.mjs <output>/manifest.json`, which recomputes every
+recorded source hash and rejects a stale folder.

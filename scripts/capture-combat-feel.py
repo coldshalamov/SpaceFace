@@ -625,7 +625,7 @@ def run_capture(args: argparse.Namespace) -> int:
                                 "atS": at_seconds,
                                 "frame": int(beat.get("frame", round(at_seconds * 60))),
                                 "image": relative_path(image_path, output),
-                                "seen": bool(state.get("evidence", {}).get(beat_name, False)),
+                                "seen": bool((state.get("evidenceNow") or {}).get(beat_name, False)),
                             })
                         entry["frames"]["count"] = len(image_paths)
                         entry["frames"]["pattern"] = "beat-%02d-%s.png"
@@ -654,6 +654,22 @@ def run_capture(args: argparse.Namespace) -> int:
                         required = final.get("requiredEvidence")
                         if not isinstance(required, list):
                             required = []
+                        # A named beat must show its own evidence on ITS frame. The cumulative map
+                        # above is only the "did it ever happen" fallback.
+                        for name in required:
+                            frame_read = next(
+                                (beat for beat in entry["beatFrames"] if beat.get("beat") == name),
+                                None,
+                            )
+                            entry["checks"].append({
+                                "id": f"beat-{name}-visible",
+                                "ok": bool(frame_read and frame_read.get("seen")),
+                                "detail": (
+                                    f"{name} beat frame shows its evidence"
+                                    if frame_read and frame_read.get("seen")
+                                    else f"{name} beat frame does not show {name}"
+                                ),
+                            })
                         missing = [name for name in required if not entry["evidence"].get(name, False)]
                         for name in missing:
                             add_scenario_error("evidence", f"required {name} evidence was not observed")

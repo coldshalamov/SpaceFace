@@ -31,6 +31,14 @@ import { createWeaponSequence } from './sequence.js';
 
 const OWNER_URL = 'assets/ships/release/parts/wholeships/kestrel.glb';
 const TARGET_URL = 'assets/ships/release/parts/wholeships/wasp_production_v1.glb';
+// Same authored hulls, pre-package source. The bench prefers the release package (the shipping
+// route) but must still boot while that package is mid-regeneration in a shared tree; `assetRoute`
+// records which one produced the picture so the evidence never claims the release lane silently.
+const OWNER_SOURCE_URL = 'assets/ships/parts/wholeships/kestrel.glb';
+const TARGET_SOURCE_URL = 'assets/ships/parts/wholeships/wasp_production_v1.glb';
+let assetRoute = 'release';
+let ownerUrl = OWNER_URL;
+let targetUrl = TARGET_URL;
 const OWNER_SHIP_ID = 'ship_kestrel';
 const TARGET_SHIP_ID = 'ship_wasp';
 const TARGET_ID = 2;
@@ -266,6 +274,20 @@ export async function bootCombatFeelBench({ canvas, statusElement, errorElement 
   } catch (error) {
     recordError('asset', error instanceof Error ? error.message : error);
     throw error;
+  }
+  if (!ownerBlueprint || !targetBlueprint) {
+    assetRoute = 'source';
+    ownerUrl = OWNER_SOURCE_URL;
+    targetUrl = TARGET_SOURCE_URL;
+    try {
+      [ownerBlueprint, targetBlueprint] = await Promise.all([
+        loadAuthoredPart(OWNER_SOURCE_URL, { renderer, slot: 'hull' }),
+        loadAuthoredPart(TARGET_SOURCE_URL, { renderer, slot: 'hull' }),
+      ]);
+    } catch (error) {
+      recordError('asset', error instanceof Error ? error.message : error);
+      throw error;
+    }
   }
   if (!ownerBlueprint || !targetBlueprint) {
     const message = `The shipping loader did not return both authored hulls: ${OWNER_URL} / ${TARGET_URL}`;
@@ -748,7 +770,9 @@ export async function bootCombatFeelBench({ canvas, statusElement, errorElement 
     lightPeakMax = Math.max(lightPeakMax, Number(counts.lightPeak) || 0);
     if (counts.muzzle > 0) markEvidence('muzzle', now);
     if (counts.travel > 0) markEvidence('travel', now);
-    if (counts.lights > 0) markEvidence('light', now);
+    // A muzzle flash is not the hit. The contact-light beat only counts after a real contact
+    // (hull OR shield); a shield bubble answers with its own light even without hull damage.
+    if (firstContact != null && counts.lights > 0) markEvidence('light', now);
     const reaction = reactionSnapshot();
     if (reaction.energy > reactionPeak.energy) {
       reactionPeak = { energy: reaction.energy, atS: roundTime(now), tumbleActive: reaction.tumbleActive };
@@ -764,10 +788,39 @@ export async function bootCombatFeelBench({ canvas, statusElement, errorElement 
     }
     if (firstHullContact != null && now >= firstHullContact + 1.35) {
       const stillWorking = counts.travel > 0 || counts.lights > 0;
-      if (!stillWorking && reaction.energy < 0.02 && !reaction.tumbleActive) {
+      // Settled AND visibly damaged: a quiet empty frame is not an aftermath.
+      const visibleDamage = counts.scorches > 0 || counts.damageVenting > 0 || counts.particles > 0;
+      if (!stillWorking && reaction.energy < 0.02 && !reaction.tumbleActive && visibleDamage) {
         markEvidence('aftermath', now);
       }
     }
+  }
+
+  // Frame-local evidence. The cumulative `evidence` map answers "did this ever happen"; a beat
+  // frame must answer "is it on this frame". A muzzle flash does not prove a contact light, and
+  // an earlier debris puff does not prove a cooling beat.
+  function evidenceSnapshot(now) {
+    const counts = weaponSequence ? weaponSequence.inspect().counts : {};
+    const reaction = reactionSnapshot();
+    const visibleDebris = (Number(counts.impactSpall) || 0)
+      + (Number(counts.shieldShards) || 0)
+      + (Number(counts.damageVenting) || 0)
+      + (Number(counts.shrapnel) || 0) > 0;
+    const visibleDamage = (Number(counts.scorches) || 0) > 0
+      || (Number(counts.damageVenting) || 0) > 0
+      || (Number(counts.particles) || 0) > 0;
+    return {
+      muzzle: (Number(counts.muzzle) || 0) > 0,
+      travel: (Number(counts.travel) || 0) > 0,
+      contact: firstContact != null,
+      light: firstContact != null && (Number(counts.lights) || 0) > 0,
+      reaction: reaction.energy > 0.012 || reaction.tumbleActive,
+      tumble: !!reaction.tumbleActive,
+      debris: visibleDebris,
+      cooling: firstHullContact != null && now >= firstHullContact + 0.55 && visibleDamage,
+      aftermath: firstHullContact != null && now >= firstHullContact + 1.35
+        && visibleDamage && !reaction.tumbleActive,
+    };
   }
 
   function advanceOneFrame() {
@@ -854,14 +907,16 @@ export async function bootCombatFeelBench({ canvas, statusElement, errorElement 
       },
     });
     const targetAssetInfo = {
-      url: TARGET_URL,
-      pilot: renderPackagePilotForSourceUrl(TARGET_URL),
+      url: targetUrl,
+      route: assetRoute,
+      pilot: renderPackagePilotForSourceUrl(targetUrl),
       ...targetAsset,
       radius: targetEntity.radius,
     };
     const ownerAssetInfo = {
-      url: OWNER_URL,
-      pilot: renderPackagePilotForSourceUrl(OWNER_URL),
+      url: ownerUrl,
+      route: assetRoute,
+      pilot: renderPackagePilotForSourceUrl(ownerUrl),
       ...ownerAsset,
       radius: ownerEntity.radius,
     };
@@ -903,6 +958,7 @@ export async function bootCombatFeelBench({ canvas, statusElement, errorElement 
       },
       evidence: evidenceBooleans,
       evidenceAt: evidenceTimes,
+      evidenceNow: evidenceSnapshot(time),
       checks,
       requiredEvidence: scenario.requiredEvidence.slice(),
       assets: { owner: ownerAssetInfo, target: targetAssetInfo },
