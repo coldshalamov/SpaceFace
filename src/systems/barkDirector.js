@@ -2574,9 +2574,10 @@ export const barkDirector = {
     } else if (Object.getPrototypeOf(own.raiderEscapesSaid) !== null) {
       own.raiderEscapesSaid = Object.assign(Object.create(null), own.raiderEscapesSaid);
     }
-    // A corrupt truthy-primitive row would mute this custody id forever — only a real record
-    // dedupes; a dead value is overwritten below.
-    if (own.raiderEscapesSaid[custodyId] && typeof own.raiderEscapesSaid[custodyId] === 'object') return false;
+    // A corrupt truthy-primitive or array row would mute this custody id forever — only a real
+    // record dedupes; a dead value is overwritten below.
+    const saidRow = own.raiderEscapesSaid[custodyId];
+    if (saidRow && typeof saidRow === 'object' && !Array.isArray(saidRow)) return false;
 
     const raider = entityFromState(state, payload.raiderId);
     if (raider && raider.alive !== false) {
@@ -2610,7 +2611,8 @@ export const barkDirector = {
         const t = Number(own.raiderEscapesSaid[key] && own.raiderEscapesSaid[key].t);
         if (Number.isFinite(t) && t < oldestT) { oldestT = t; oldest = key; }
       }
-      if (oldest != null) delete own.raiderEscapesSaid[oldest];
+      if (oldest == null) oldest = saidKeys[0]; // every row's .t corrupt → still evict one
+      delete own.raiderEscapesSaid[oldest];
     }
 
     this._emit('comms:log', {
@@ -3031,6 +3033,9 @@ function stuntRecognitionRecord(own) {
   if (!Array.isArray(record.recentTicks)) record.recentTicks = [];
   record.recentTicks = record.recentTicks.filter(Number.isFinite);
   if (!Array.isArray(record.deliveredIds)) record.deliveredIds = [];
+  // A restored non-finite nextTick wedges the queue permanently (tick < NaN/Infinity gates the
+  // advance forever); normalize to 0 — a finite-but-far value is shape-valid corruption.
+  if (!Number.isFinite(record.nextTick)) record.nextTick = 0;
   // speakers keys on record-derived observer identities — a restored plain-proto bag re-opens
   // the '__proto__'/'toString' read seam, so re-home it as null-prototype.
   if (!record.speakers || typeof record.speakers !== 'object' || Object.getPrototypeOf(record.speakers) !== null) {
@@ -3344,7 +3349,7 @@ function currentSectorId(state) {
 function ambientRecord(own, sectorId) {
   const key = sectorId || 'unknown';
   let rec = own.ambientBySector[key];
-  if (!rec || typeof rec !== 'object') {
+  if (!rec || typeof rec !== 'object' || Array.isArray(rec)) {
     rec = {
       quietSince: 0,
       lastAt: -Infinity,

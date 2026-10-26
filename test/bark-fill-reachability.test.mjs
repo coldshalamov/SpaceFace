@@ -264,6 +264,13 @@ test('malformed values inside restored bags are dead data — no tick crash, no 
   assert.doesNotThrow(() => witnessState(corruptOwn), 'a primitive restored bag must be rebuilt, not dereferenced');
   assert.equal(Object.getPrototypeOf(corruptOwn.story.titles.stuntWitnessing.episodes), null);
 
+  // The parent hops are restored-state too — a truthy primitive at story/titles must not
+  // TypeError the leaf write inside the 60 Hz tick.
+  const primParents = { mode: 'flight', tick: 1, entities: new Map(), playerId: 'p1', story: 7 };
+  assert.doesNotThrow(() => witnessState(primParents), 'a primitive story must normalize, not throw');
+  const primTitles = { mode: 'flight', tick: 1, entities: new Map(), playerId: 'p1', story: { titles: 'x' } };
+  assert.doesNotThrow(() => witnessState(primTitles), 'a primitive titles must normalize, not throw');
+
   // A live journal root plus malformed episode rows: the sweep must drop dead rows and the
   // root walk must replace them — not crash on row.rootTick or mint observers onto a number.
   const state = { mode: 'flight', tick: 10, simTime: 0, entities: new Map(), playerId: 'p1',
@@ -325,4 +332,18 @@ test('malformed values inside restored bags are dead data — no tick crash, no 
   assert.doesNotThrow(() => dir._completeStuntBark(record.pending[0], 'voice'), 'a primitive speaker row must be rebuilt, not crash');
   assert.equal(typeof record.speakers.s1, 'object');
   assert.equal(dir._speakRaiderEscape({ custodyId: 'c1', qty: 2 }), true, 'a corrupt said row must not mute the custody id forever');
+
+  // Array custody rows are dead data too — arrays pass typeof==='object' but dedupe nothing.
+  const dir3 = Object.create(barkDirector);
+  const estate3 = { mode: 'flight', tick: 0, simTime: 0, playerId: 'p1', entities: new Map(), story: {},
+    barkDirector: { raiderEscapesSaid: { c2: [] } } };
+  dir3.state = estate3;
+  assert.equal(dir3._speakRaiderEscape({ custodyId: 'c2', qty: 1 }), true, 'an array said row must not mute the custody id');
+
+  // A restored non-finite nextTick must not wedge the stunt-bark queue forever.
+  const dir4 = Object.create(barkDirector);
+  const wstate = { mode: 'flight', tick: 0, simTime: 0, playerId: 'p1', entities: new Map(), story: {}, settings: {}, combat: {},
+    barkDirector: { stuntRecognition: { nextTick: NaN, pending: [], recentTicks: [], deliveredIds: [] } } };
+  assert.doesNotThrow(() => dir4.update(1 / 60, wstate));
+  assert.equal(wstate.barkDirector.stuntRecognition.nextTick, 0, 'a non-finite nextTick normalizes to 0');
 });

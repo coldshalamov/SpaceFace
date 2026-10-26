@@ -13,7 +13,11 @@ const key = id => String(id);
 const copy = value => JSON.parse(JSON.stringify(value));
 export function adventureStunts(state) { return !state.run || state.run.phase === 'inactive' || state.run.kind === 'adventure'; }
 export function witnessState(state) {
-  state.story ||= {}; state.story.titles ||= {}; const titles = state.story.titles;
+  // The hops to the bag are restored-state too: a truthy primitive at story/titles survives
+  // ||= and then throws when the leaf key is written — normalize by shape, not truthiness.
+  if (!state.story || typeof state.story !== 'object') state.story = {};
+  if (!state.story.titles || typeof state.story.titles !== 'object') state.story.titles = {};
+  const titles = state.story.titles;
   // A restored save adopts this bag wholesale — normalize every field the tick loop
   // dereferences (a plain-proto episodes bag re-opens the '__proto__' read seam; a missing
   // reports/sequence crashes or mints NaN ids; a primitive/array bag itself is corrupt too).
@@ -106,7 +110,7 @@ export function observeStuntWitnesses(state) {
   if(own.lastTick===tick)return;own.lastTick=tick;
   // Malformed restored rows (null, primitives) hold no evidence and can never expire — drop
   // them with the stale ones so the bag cannot crash or wedge the sweep.
-  for(const [id,row] of Object.entries(own.episodes))if(!row||typeof row!=='object'||tick>row.rootTick+480)delete own.episodes[id];
+  for(const [id,row] of Object.entries(own.episodes))if(!row||typeof row!=='object'||Array.isArray(row)||tick>row.rootTick+480)delete own.episodes[id];
   const player=state.entities?.get?.(state.playerId);if(!player)return;
   const observers=[];
   for(const entity of witnessCandidatesFor(state)) { const profile=observerProfile(state,entity);if(profile&&distance(entity.pos,player.pos)<=450)observers.push({entity,profile}); }
