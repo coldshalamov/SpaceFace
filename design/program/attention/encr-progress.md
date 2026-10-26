@@ -41,7 +41,28 @@ in the same second (2026-10-25 10:08:26):
 - [x] focused tests green — `rc-vignettes-459-4242`: 13/13 PASS after finishing the
       stranded tail (see below); lived-world/lived-frontier-pockets/vignette-cost-verb/
       encounter-shapes/global-coordinates/save-loaded-replan/loader all green
-- [ ] pathspec commit + push + LANDED_REVIEW row
+- [x] pathspec commit + push + LANDED_REVIEW row — DONE
+
+## Landed
+
+- `9d65866e15` — strand packet, 34 files (30 regenerated modules + generator +
+  interpreter + extended test + this note). Verified `git show --stat` = exactly
+  the intended paths, no sweep.
+- `67cd85266c` — stale ambient-count assertion 16 → 24 (upstream `0749dfe36e`
+  oversight).
+- `85846f22c4` — LANDED_REVIEW row R-9d65866 (re-check: is tow_settle finishable
+  by a human pilot without the scripted snub?).
+- Pushed `origin master` (`a2f6f5c81b..85846f22c4`); strand commit had already
+  ridden a live lane's push. NOW.md row devin-encr → DONE.
+
+## What remains (not mine)
+
+- `src/ai/maneuver.js` foreign dirty hunk (SF-2b orbit closing cap) breaks
+  `test/vignette-navigation.test.mjs` 'moving-point speed allowance' — owner lane
+  must finish or revert; preserved dirty.
+- `test/encounter-barks.test.mjs` foreign cap 5→8 hunk — green, preserved.
+- All other dirty files belong to live lanes (infb/fart/infa/infworld/d256/etc.) —
+  untouched.
 
 ## Tail finished (what the dead lane left red)
 
