@@ -46,3 +46,36 @@ test('a safely towed reactor stays inert until deliberately rearmed', () => {
   assert.equal(h.hits.length, 0);
   h.system.destroy();
 });
+
+test('rejected damage does not light a reactor or detonate an ejected core', () => {
+  const h = fixture();
+  const reactor = h.add(2, 'wreck', 0, { data: { unstableReactor: { dueAt: 110, damage: 20 } } });
+  const core = h.add(3, 'pickup', 10, { data: { ventedCore: true, cooledAt: 125 } });
+  for (const targetId of [2, 3]) {
+    h.bus.emit('combat:damage', { targetId, attackerId: 1, applied: 0, amount: 50 });
+  }
+  assert.equal(reactor.alive, true, 'an explicitly absorbed hit is not a containment crack');
+  assert.equal(reactor.data.unstableReactor.dueAt, 110);
+  assert.equal(core.alive, true, 'a rejected hit leaves the hot core intact');
+  h.bus.emit('combat:damage', { targetId: 2, attackerId: 1, amount: 10 });
+  assert.equal(reactor.data.unstableReactor.dueAt, 108.5, 'legacy damage without applied still works');
+  h.system.destroy();
+});
+
+test('reactor and hot-core damage saturates at full strength inside a hull', () => {
+  for (const kind of ['reactor', 'core']) {
+    const h = fixture();
+    h.add(1, 'ship', 0, { radius: 80 });
+    if (kind === 'reactor') {
+      h.add(2, 'wreck', 0, { data: { unstableReactor: { dueAt: 99, damage: 20 } } });
+      h.system.update(1 / 60, h.state);
+    } else {
+      h.add(2, 'pickup', 0, { data: { ventedCore: true, cooledAt: 125 } });
+      h.bus.emit('combat:damage', { targetId: 2, attackerId: 3, applied: 1 });
+    }
+    const hit = h.hits.find(row => row.targetId === 1);
+    assert.equal(hit?.damage, kind === 'reactor' ? 20 : 8,
+      'overlapping a large hull must not amplify an explosion beyond its authored full damage');
+    h.system.destroy();
+  }
+});
