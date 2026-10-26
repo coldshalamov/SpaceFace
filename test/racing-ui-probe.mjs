@@ -36,8 +36,14 @@ if(!process.argv.includes('--bundle-only')){
     const page=await browser.newPage({viewport:{width:1440,height:1050},reducedMotion:'reduce'});
     const errors=[];page.on('pageerror',error=>errors.push(String(error)));
     await page.goto(pathToFileURL(path.join(out,'racing-ui.html')).href);await page.waitForFunction(()=>window.ready===true);
-    assert.equal(await page.locator('.race-board-course').count(),3);
-    assert.equal(await page.locator('.race-board-launch').count(),8);
+    assert.equal(await page.locator('.race-board-course[data-contract-id]').count(),18,'nine circuits expose their practice and authored event cards');
+    assert.equal(await page.locator('.race-board-launch').count(),1,'one pinned START launches the selected event');
+    const start=page.getByRole('button',{name:'Start the selected event',exact:true});
+    const selectEvent=async id=>page.locator(`.race-board-course[data-contract-id="${id}"]`).getByRole('button',{name:/^Select /}).click();
+    await selectEvent('contract_textile_qual');
+    assert.equal(await page.locator('.race-board-course[data-contract-id="contract_textile_qual"] button[aria-pressed="true"]').count(),1);
+    assert.match(await page.getByRole('region',{name:'Selected event',exact:true}).innerText(),/Ready to start/);
+    assert.equal(await page.evaluate(()=>probe.events.filter(e=>e[0]==='game:new').length),0,'selecting an event does not launch it');
     const selectedOptions={};
     for(const name of ['Circuit ship','Circuit drive','Opponent level']){
       const control=page.getByRole('combobox',{name,exact:true});
@@ -55,12 +61,24 @@ if(!process.argv.includes('--bundle-only')){
     const format=page.getByRole('combobox',{name:'Race format',exact:true});
     await format.selectOption('time-trial');
     assert.ok(await page.getByRole('combobox',{name:'Opponent level',exact:true}).isDisabled());
+    await selectEvent('practice_level_pallas_reef');
+    assert.ok(await start.isEnabled(),'a sector circuit is available as a Time trial');
     await format.selectOption('cup');
-    assert.equal(await page.locator('.race-board-launch').count(),3);
-    assert.equal(await page.locator('.race-board-launch:enabled').count(),1,'only the ordered first cup heat launches');
+    assert.equal(await page.locator('.race-board-course[data-contract-id]').count(),9,'cup lists one practice card per circuit');
+    assert.equal(await page.locator('.race-board-launch').count(),1);
+    await selectEvent('practice_level_junction_return');
+    assert.ok(await start.isDisabled(),'a later cup heat cannot launch before the first');
+    assert.match(await page.getByRole('region',{name:'Selected event',exact:true}).innerText(),/Cup heats run in order/);
+    await selectEvent('practice_level_textile_outbound');
+    assert.ok(await start.isEnabled(),'the ordered first cup heat launches');
     assert.ok(await page.getByRole('region',{name:'Circuit cup',exact:true}).isVisible());
     await format.selectOption('race');
-    assert.equal(await page.locator('.race-board-launch').count(),8);
+    assert.equal(await page.locator('.race-board-course[data-contract-id]').count(),18);
+    assert.equal(await page.locator('.race-board-launch').count(),1);
+    await selectEvent('practice_level_pallas_reef');
+    assert.ok(await start.isDisabled(),'sector circuits cannot launch as pack races');
+    assert.match(await page.getByRole('region',{name:'Selected event',exact:true}).innerText(),/Select Time trial to fly this circuit/);
+    await selectEvent('contract_textile_qual');
     const paint=page.getByRole('combobox',{name:'Circuit paint',exact:true});
     assert.equal(await paint.locator('option:disabled').count(),3);
     await page.evaluate(()=>probe.earnPaint());
@@ -88,7 +106,7 @@ if(!process.argv.includes('--bundle-only')){
     const practiceView=page.getByRole('button',{name:/^Practice: /});
     for(const mode of ['racing','auto','overhead']){
       await practiceView.click();
-      assert.equal(await practiceView.innerText(),`Practice: ${mode}`);
+      assert.equal(await practiceView.textContent(),`Practice: ${mode}`);
     }
     assert.ok(await practiceView.evaluate(button=>{
       const bounds=button.getBoundingClientRect(),container=button.closest('.race-board').getBoundingClientRect();
@@ -152,6 +170,7 @@ if(!process.argv.includes('--bundle-only')){
     const applied=await page.evaluate(()=>probe.events.filter(e=>e[0]==='ui:setShipAppearance').at(-1)?.[1]);
     assert.equal(applied.appearance.hullColor,'#d3c6a0');
     assert.ok(await page.getByRole('button',{name:'Retry in this flight',exact:true}).isEnabled());
+    await format.selectOption('time-trial');
     await page.evaluate(()=>{
       probe.ctx.registry.get=name=>name==='missions'?{postAndAcceptAuthoredOffer:offer=>{probe.events.push(['retry',offer.params.racingContractId]);probe.state.missions.active=[{...offer,status:'active'}];return {ok:true,missionId:offer.id};}}:name==='world'?{relocatePlayerInSector:()=>true}:null;
     });
@@ -166,8 +185,13 @@ if(!process.argv.includes('--bundle-only')){
     // Fresh launch must carry the save guard and double-click protection, through the real confirm.
     await page.evaluate(()=>{probe.state.mode='menu';probe.reopen();});
     assert.ok(await page.getByRole('button',{name:'Retry in this flight',exact:true}).isDisabled());
-    await page.locator('.race-board-launch').first().click();
+    await page.evaluate(()=>{probe.state.mode='flight';probe.reopen();});
+    await format.selectOption('race');
+    await selectEvent('contract_textile_qual');
+    await start.evaluate(button=>{button.click();button.click();});
     assert.ok(await page.getByRole('dialog').isVisible());
+    assert.match(await page.getByRole('dialog').innerText(),/Save it first to keep unsaved progress/);
+    assert.match(await page.getByRole('dialog').innerText(),/Campaign slots cannot be overwritten/);
     await page.getByRole('button',{name:'Launch circuit',exact:true}).click();
     await page.waitForFunction(()=>probe.events.some(e=>e[0]==='game:new'&&e[1]?.racingSession===true));
     const launches=await page.evaluate(()=>probe.events.filter(e=>e[0]==='game:new').map(e=>e[1]));

@@ -111,16 +111,22 @@ test("sensor ranges and actual terrain block visibility", () => {
 });
 test("one incident acquires local title, actual voice delivery and ledger evidence", () => {
   const s = scene(), n = narration(s), trick = evidence(s);
+  const recognitions = () => s.bus.events.filter((e) => e.k === "barkDirector:voice" && e.p.situation === "stunt-recognition");
   s.bus.emit("stunt:trickDetected", trick);
   const incident = s.state.story.titles.stuntIncidents[0];
   assert.equal(incident.barkStatus, "queued");
-  assert.equal(s.bus.events.filter((e) => e.k === "barkDirector:voice").length, 0);
+  assert.equal(recognitions().length, 0);
   advance(s, n.barks, n.arbiter, 90);
+  // Maera's same-incident commentary takes the first bark slot. Recognition is
+  // accepted by then, but only becomes delivery after the shared 1.5s bark gap.
+  assert.equal(incident.barkStatus, "submitted");
+  assert.equal(recognitions().length, 0);
+  advance(s, n.barks, n.arbiter, 120);
   assert.equal(incident.barkStatus, "delivered");
-  assert.equal(s.bus.events.filter((e) => e.k === "barkDirector:voice").length, 1);
+  assert.equal(recognitions().length, 1);
   s.bus.emit("stunt:trickAmended", { ...trick, modifiers: { razorRelease: "razor" } });
   assert.equal(s.state.story.titles.stuntIncidents.length, 1);
-  assert.equal(s.bus.events.filter((e) => e.k === "barkDirector:voice").length, 1);
+  assert.equal(recognitions().length, 1);
   const ledger = buildShipLedger(s.state).entries.find((e) => e.type === "stunt");
   assert.match(ledger.text, /Thrown Hull/);
   assert.match(ledger.text, /locally witnessed/);
@@ -221,7 +227,8 @@ test("all sixteen mastery rules exist; Rock Tutor needs three lives in at least 
 test("title citations and delivered bark settlements survive JSON and visible ledger eviction", () => {
   const s = scene(), n = narration(s), trick = evidence(s);
   s.bus.emit("stunt:trickDetected", trick);
-  advance(s, n.barks, n.arbiter, 90);
+  advance(s, n.barks, n.arbiter, 120);
+  assert.equal(s.state.story.titles.stuntIncidents[0].barkStatus, "delivered");
   s.state.story = JSON.parse(JSON.stringify(s.state.story));
   s.state.barkDirector = JSON.parse(JSON.stringify(s.state.barkDirector));
   s.state.story.titles.stuntIncidents = [];
