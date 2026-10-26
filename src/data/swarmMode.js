@@ -189,6 +189,29 @@ export function swarmPressureIsHolding(state = livePressure) {
 }
 
 /**
+ * May the hold actually suppress arrivals right now? Only while its breath is still running.
+ * A hold whose clock has already run out is owed a SPEND, not more air — it must let work
+ * through so the stream can reach the consult that pays the debt. Dispatch consults this,
+ * never the bare flag: `holding` alone only says debt is still on the books.
+ */
+export function swarmPressureSuppressing(state = livePressure) {
+  return state.holding === true && state.holdTicks < SWARM_BREATH_TICKS;
+}
+
+/**
+ * Expire a hold's clock at a wave boundary without touching its debt. The grip — `holdTicks`
+ * still below the breath — is what starves the next wave's opening: the suppressed schedule
+ * itself keeps the census at target, so the reservoir is never consulted and a carried hold
+ * can never spend. `holding`, `stored` and `killsSinceReinforce` stay standing — the authored
+ * carry — so the owed group still pays out through the ordinary spend on the new wave's first
+ * real deficit, or simply sits if the new wave was owed nothing.
+ */
+export function expireSwarmPressureHold(state = livePressure) {
+  if (state && state.holding === true) state.holdTicks = SWARM_BREATH_TICKS;
+  return state;
+}
+
+/**
  * Pure decision: given a reservoir state and how far under strength the room is, how many
  * bodies this top-up should admit. Side-effect free — the live wrapper fires telegraph hooks.
  *
