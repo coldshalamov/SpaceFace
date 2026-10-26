@@ -29,6 +29,12 @@ export const ROCK_SIZE_CLASSES = Object.freeze({
 });
 const BASE_SUBSTANCES = ['metallic_ore', 'silicate', 'ice', 'slag', 'crystal', 'reef_metal', 'cooked_rock', 'junk'];
 
+// Row 495: the same eight substances carry authored place_rock_<sub>_<pebble|boulder|monolith>
+// bodies — 24 GLBs pinned in the census. vethari_bone and bloom_husk are ROCK_SUBSTANCES with
+// no family body; any caller minting a place_rock_ id must gate on THIS set, not on
+// ROCK_SUBSTANCES membership, or it can emit a body that was never built.
+export const ROCK_PLACE_SUBSTANCES = Object.freeze(BASE_SUBSTANCES);
+
 export const ROCK_BODIES = Object.freeze(BASE_SUBSTANCES.flatMap((subId) =>
   Object.entries(ROCK_SIZE_CLASSES).map(([sizeClass, size]) => {
     const sub = ROCK_SUBSTANCES[subId];
