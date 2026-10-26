@@ -29,6 +29,7 @@ import {
   SWARM_BOSS_ENEMY_ID,
   SWARM_WAVE_DURATION_TICKS,
   pickSwarmArchetype,
+  resetSwarmPressureState,
   swarmCatalogIssues,
   swarmGateFor,
   swarmLevel,
@@ -91,6 +92,10 @@ const OPENING_ARRIVAL_GAP_TICKS = 80;
 const SWARM_SHOOTERS_BY_WAVE = Object.freeze([2, 2, 3, 4, 5, 6, 6, 7, 8]);
 const SWARM_ARRIVAL_HOLD_S = SWARM_ARRIVAL_GRACE_S;
 const SWARM_RETURN_FIRE_S = 2;
+// A breath is SWARM_BREATH_TICKS of held stream; this window is more than two of them. A hold
+// still suppressing owed work after it is not a breath — it is the D195 stall, and the owner
+// lifts it rather than let a finite round starve on a quota nothing can deliver.
+export const SWARM_STALL_RELEASE_TICKS = 9 * 60;
 
 /**
  * SWARM REINFORCEMENT (PQ-135).
@@ -236,6 +241,7 @@ export const survivalWave = {
     this._tickCircuitObjective();
     this._publishWaveProgress();
     this._checkCleared(run);
+    this._watchSwarmStall();
   },
 
   // ---- receipts -------------------------------------------------------------
@@ -952,6 +958,7 @@ export const survivalWave = {
       // A wipe is an earned breath, including when no hull survives. Keep scheduled
       // bodies owed instead of silently dropping them or refilling through the hold.
       if (this._swarm && holding) {
+        this._stallSuppressed = true;
         this._pending[write++] = item;
         continue;
       }
@@ -1302,7 +1309,11 @@ export const survivalWave = {
       : target;
     if (remaining <= 0) return;
     const want = Math.min(remaining, swarmReinforceCount(target - alive));
-    if (want <= 0) return;
+    if (want <= 0) {
+      // A zero under `holding` is the breath refusing a top-up the stream asked for.
+      if (swarmPressureIsHolding()) this._stallSuppressed = true;
+      return;
+    }
 
     this._lastReinforceTick = this._cursor;
     const index = this._reinforceIndex++;
@@ -1695,6 +1706,43 @@ export const survivalWave = {
     });
   },
 
+  /**
+   * D195 — a pressure hold only unwinds while the stream keeps consulting it: every breath tick
+   * is a `swarmReinforceCount` call. A hold that lands while the schedule still owes bodies can
+   * freeze instead — held batches keep the room census at target, so the decision is never
+   * reached again — and the round starves on a quota nothing can deliver. Count consecutive
+   * sim-ticks that still owe kills, where the hold suppressed a dispatch or a top-up, and no
+   * spawn or resolution landed; past a conservative window the owner lifts the hold with the
+   * same reset teardown and a fresh run already use. Any spawn or kill resets the clock.
+   */
+  _watchSwarmStall() {
+    const suppressed = this._stallSuppressed === true;
+    this._stallSuppressed = false;
+    const progressed = this._resolved !== this._stallSeenResolved
+      || this._admittedTotal !== this._stallSeenAdmitted;
+    this._stallSeenResolved = this._resolved;
+    this._stallSeenAdmitted = this._admittedTotal;
+    const quotaOwed = !!this._swarm && this._swarm.killTarget > 0
+      && !this._cleared
+      && this._resolved < this._plannedBodies;
+    if (!suppressed || !quotaOwed || progressed) {
+      this._stallTicks = 0;
+      return;
+    }
+    this._stallTicks += 1;
+    if (this._stallTicks < SWARM_STALL_RELEASE_TICKS) return;
+    const heldTicks = this._stallTicks;
+    this._stallTicks = 0;
+    // The lightest lawful release: drop the hold. Held batches dispatch on the next tick and
+    // the reservoir decision is consultable again — the stream's own law resumes the round.
+    resetSwarmPressureState();
+    this._emit('swarm:stallReleased', {
+      wave: this._wave,
+      heldTicks,
+      cause: 'pressure_hold',
+    });
+  },
+
   // ---- lifecycle ------------------------------------------------------------
 
   _resetWave() {
@@ -1727,6 +1775,10 @@ export const survivalWave = {
     this._lastReinforceTick = -9999;
     this._lessonReleased = false;
     this._lessonOpenedAt = null;
+    this._stallSuppressed = false;
+    this._stallTicks = 0;
+    this._stallSeenResolved = 0;
+    this._stallSeenAdmitted = 0;
     this._bossIds = new Set();
     this._clearCircuitMark();
     this._clearCircuitCores();
