@@ -20,7 +20,9 @@ export const VEIL_SETTLE_IDLE_MS = 16;
 export const VEIL_SETTLE_IDLE_PERIODS = 3;
 // oc1v7: programs created behind the veil but never drawn (a wreck admitted just after the first
 // picture) are first-used here, one per frame, so their driver link is paid veiled. Bounded:
-// draining stops at VEIL_DRAIN_CAP_MS after the first picture, still under the presenter's cap.
+// draining stops at VEIL_DRAIN_CAP_MS (4000 ms) after the first picture, or as soon as the veil
+// releases (held goes false), whichever is first. This is longer than the presenter's
+// ADMISSION_DRAIN_CAP_MS (3000, loadingPresenter.js), so in practice the veil release ends it.
 export const VEIL_DRAIN_CAP_MS = 4000;
 export const VEIL_DRAIN_GAP_MS = 8;
 

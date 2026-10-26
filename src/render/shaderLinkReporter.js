@@ -46,7 +46,7 @@ export function installShaderLinkReporter(renderer, options = {}) {
     // Programs three has created but never used (no first-use introspection yet). A program
     // acquired behind the loading veil but first drawn in flight pays its whole driver link
     // inside a measured frame (oc1v6: a 278 ms Forge_ore_barge_paint link at +9.45 s on a
-    // wreck admitted 0.5 s after the first picture). drainUnusedProgramFirstUse() lets the
+    // wreck admitted 0.5 s after the first picture). drainUnused() lets the
     // veil force those first uses while it still owns the picture.
     unused: new Set(),
     programs: renderer.info.programs,
