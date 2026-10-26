@@ -270,7 +270,7 @@
     "check:pq033:min-spec": "node scripts/check-min-spec-floors.mjs",
     "check:perf:attribution": "node scripts/check-performance-attribution.mjs",
     "check:named-captains": "node scripts/check-named-captains.mjs",
-    "check:traffic": "node scripts/check-helios-living-pocket.mjs",
+    "check:traffic": "node scripts/check-helios-living-pocket.mjs && node --test test/phoebe-tender-spawn-clearance.test.mjs",
     "check:helios-living-pocket": "node scripts/check-helios-living-pocket.mjs",
     "check:sector-postcard": "node scripts/check-sector-postcard.mjs",
     "check:station-bubbles": "node scripts/check-station-bubbles.mjs",
