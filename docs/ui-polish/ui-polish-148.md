@@ -16,5 +16,13 @@ Desktop only (`html:root:not([data-sf-mobile="1"])`); the phone layout is untouc
 - Type floor passes.
 
 ## Leftovers
-- 390×844: the find field's placeholder clips to "Find a com"; the pending decision's first line ellipsizes.
+- 390×844: the find field's placeholder clips to "Find a com" (the accessible label and text entry remain available).
 - IMPACT LOGGED banner at 600×844; Bar questions below the fold under 481; Missions rows masked under 481.
+
+## Integration follow-up — 2026-10-26
+
+The narrow, tall desktop stage already scrolls; its pending decision's situation now wraps in full instead of ellipsizing. The explanation and the price/hull/armor tradeoffs remain readable together when keyboard focus scrolls a choice into view. This change is scoped to the same desktop ≤650×801+ bucket; phones and the existing short-window layout keep their rules.
+
+The combined Bar/Market review opened the real-screen bench at 390×844 and 600×844. Bar contact selection, the captain's questions, the message offer, and the board remained reachable through their scrollers. A targeted Market continuation passed all eight checks: full situation, typed find/clear, typed quantity and Fewer/More/MAX, pointer dial, quote disclosure, buy→sell through the economy owner, and the two repair decisions through native keyboard focus/scroll and resolution. Both candidate modules parsed and their focused type-floor audit found no violations.
+
+The initial whole-station walk exceeded its per-cell wall cap, so it is not an overall UI pass. Shared-shell findings remain separate: narrow desktop trade receipts overlap the footer explanation, and three portrait requests fail in the concurrent portrait work. These findings do not change the Market transaction or decision admission rules.

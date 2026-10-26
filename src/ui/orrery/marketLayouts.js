@@ -868,6 +868,8 @@ const CSS_TAIL = `
   ${MD} .sx-mkt__analysis { grid-column:1 !important; grid-row:3 !important; overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important;
     padding-top:8px !important; border-top:1px solid rgb(${BONE} / .16) !important; }
   ${MD} .sx-mkt__decision:not(:empty) { grid-column:1 !important; grid-row:2 !important; max-height:none !important; overflow:visible !important; }
+  /* This stage scrolls: keep the situation that gives the tradeoff meaning readable in full. */
+  ${MD} .sx-mkt__decision .sx-decision > .k-sentence { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
   ${MD} .sx-trade__go.orr-lampkey { white-space:nowrap !important; }
   /* the family strip's wrapped lines touched (0 lead); 3px between them */
   ${MD} .sx-mkt-browser__filters { row-gap:3px !important; }
