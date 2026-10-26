@@ -855,9 +855,14 @@ export const stationServices = {
 
   deserialize(data) {
     const s = ensureStationServicesState(this.state);
-    if (Number.isFinite(data && data.dockedElapsed)) {
-      s.dockedElapsed = Math.max(0, Number(data.dockedElapsed));
-    }
+    // Continue replaces this yard's clock. A legacy save predates dockedElapsed and
+    // starts at its own sim time; it must not inherit seconds from the later session.
+    s.dockedElapsed = Number.isFinite(data && data.dockedElapsed)
+      ? Math.max(0, Number(data.dockedElapsed)) : 0;
+    // The view cadence belongs to the discarded session too. A future refresh deadline
+    // would hide all seeded client arrivals until an earlier save catches back up.
+    delete s._viewNextT;
+    s._viewStamp = null;
     if (!data || typeof data !== 'object' || !data.player) {
       s.player = null;
       s.stations = {};
