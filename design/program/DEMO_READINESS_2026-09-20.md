@@ -250,3 +250,5 @@ which before closing it.
 
 
 | D259 | encounters | The 9 non-curated lived modules (391/433/448/466/495/511/540/555/566) drift from generator output — an unscoped build-lived-vignettes run would delete their a2x say-phase. Either pin them out of the generator or regen intentionally (surfaced by consensus-e562b1c-r1) | OPEN |
+
+| D260 | encounters | The sponsor-b close-meet bar (meet 60 / under-five / two-count) is probably unreachable on the orbit/ring keepMotion scenes (403/423/429): those casts circulate at ~88-121 WU/s giving <=~1.4 s inside the ring vs the 2 s hold. Honest-failing (~25-30 cr bounded). Fix needs either a sponsor-branch motion change or a per-scene meet bar (surfaced by consensus-e562b1c-r3) | OPEN |
