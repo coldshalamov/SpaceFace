@@ -187,6 +187,63 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
     text-wrap:balance; overflow-wrap:break-word; line-height:1.25 !important; }
 }
 
+/* 701–800 wide desktop, 860+ tall (760×900, 800×900): the stage is ~340–380px wide, so the fittings'
+   two columns ran off the right edge (SHIELD BOOSTER, MINING LASER), the hero render and the ring's THRUST
+   reading sat on top of them, and the ring's right reading (5.5k LINE) ran off the frame. The fittings wrap as
+   one flowing list under the hull's sentence, and the hero box (which the yard and the stats ring both measure)
+   narrows, centres and drops below them, so MASS and LINE stand inside the stage. */
+@media (min-width:701px) and (max-width:800px) and (min-height:860px) {
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] {
+    display:flex !important; flex-direction:row !important; flex-wrap:wrap !important; gap:6px 18px !important;
+    width:auto !important; max-width:100% !important; }
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] > li + li::before { display:none !important; }
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label {
+    display:inline-flex !important; grid-template-columns:none !important; column-gap:6px !important; font-size:12px !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 620 !important; letter-spacing:.06em !important; }
+  /* the hero box keeps 44px left of it for MASS and 90px right of it for LINE and its gloss (which run on
+     past the stage into the window's margin), so at 701–760 it narrows and slides left rather than push them off */
+  ${NGD} > .k-stage { --ng-hero-w:min(52%, 100% - 134px); --ng-hero-x:max(44px, min(21%, 100% - var(--ng-hero-w) - 90px)); }
+  ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
+  ${NGD} > .k-stage > .orr-ng-hero-box { left:var(--ng-hero-x) !important; width:var(--ng-hero-w) !important; top:45% !important; height:17% !important; }
+  ${NGD} > .k-stage::before { left:var(--ng-hero-x); width:var(--ng-hero-w); top:59%; }
+  /* the run's beats: each beat's line wrapped to ~70px under its title (the run stood ~230–340px tall and pulled
+     the yard, and the hull render on it, up out of the ring and over THRUST at 701–720). The titles keep their
+     four columns on the scale, and all four lines stand beneath them as one full-width list in beat order, each
+     led by a small ring like the beads (the step and its wrapper become grid cells so the lines flow at their own
+     height). Every line shows at once, so they read without a mouse (keyboard, touch). */
+  ${NGD} .sf-ng-route .sf-ng-route__steps { display:grid !important; grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+    column-gap:16px !important; row-gap:3px !important; padding-bottom:0 !important; align-items:start; }
+  ${NGD} .sf-ng-route .sf-ng-route__step,
+  ${NGD} .sf-ng-route .sf-ng-route__step > div { display:contents !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step .k-row__name { grid-row:1; margin-bottom:4px; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:first-child .k-row__name { grid-column:1; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(2) .k-row__name { grid-column:2; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(3) .k-row__name { grid-column:3; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(4) .k-row__name { grid-column:4; }
+  /* the beads now sit in the list's box: on the titles' row (so they keep their height on the scale), each
+     stepped over to its column */
+  ${NGD} .sf-ng-route .sf-ng-route__step::before { grid-row:1; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(2)::before { left:calc((100% - 48px) / 4 + 16px - 1px) !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(3)::before { left:calc((100% - 48px) / 2 + 32px - 1px) !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(4)::before { left:calc((100% - 48px) * 3 / 4 + 48px - 1px) !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step .k-row__sub { position:relative !important; grid-column:1 / -1; opacity:1 !important;
+    margin:0 !important; padding-left:10px !important; line-height:1.3 !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(2) .k-row__sub { grid-row:3; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(3) .k-row__sub { grid-row:4; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(4) .k-row__sub { grid-row:5; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:first-child .k-row__sub { grid-row:2; }
+  ${NGD} .sf-ng-route .sf-ng-route__step .k-row__sub::before { content:""; position:absolute; left:0; top:.5em; width:4px; height:4px;
+    border-radius:50%; box-shadow:inset 0 0 0 1px currentColor; }
+  /* the ring's side names at normal width and the LINE gloss condensed (as in the one-column layout) */
+  ${NGD} .orr-hullring text.orr-hullring__label { font-variation-settings:"wght" 600, "wdth" 100 !important; letter-spacing:.16em !important; }
+  ${NGD} .orr-hullring text.orr-hullring__gloss { font-stretch:75% !important; font-variation-settings:"wght" 500, "wdth" 75 !important; letter-spacing:.02em !important; }
+  /* the yard's rear ends sit ~150px apart here, so the rear names (WASP, PELICAN) set tighter */
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word { font-size:12px !important; letter-spacing:.04em !important; }
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { letter-spacing:.08em !important; }
+  /* the narrower ring brings the rear ends beside the front name: the rear hulls go by name only (as at ≤480) */
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { opacity:0 !important; }
+}
+
 /* a narrow desktop window (≤700 wide, no data-sf-mobile; 390×844, 600×844): the two columns kept the
    340px form column, so the stage had 0px (it sat off the right edge) and the yard piled HITCH, PELICAN and
    WASP on the frame's top-left corner, with no way to see or pick a hull. The plate becomes one column that
