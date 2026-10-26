@@ -1457,9 +1457,13 @@ export const scanner = {
         }
       }
       const scanCount = (previous && previous.scanCount || 0) + 1;
+      const bestDistance = Math.min(
+        previous && Number.isFinite(Number(previous.bestDistance)) ? Number(previous.bestDistance) : Infinity,
+        candidate.distance,
+      );
       const stage = candidate.noProximityStage
         ? Math.min(3, Math.max(1, Math.floor(scanCount)))
-        : signalClassificationStage(scanCount, candidate.distance);
+        : signalClassificationStage(scanCount, bestDistance);
       const strength = signalStrengthFor(candidate.distance, candidate.range);
       const confidence = Math.min(0.98, 0.24 + (stage - 1) * 0.27 + strength * 0.2);
       const record = {
@@ -1481,10 +1485,7 @@ export const scanner = {
         scanCount,
         firstSeenAt: previous ? previous.firstSeenAt : now,
         lastScanAt: now,
-        bestDistance: Math.min(
-          previous && Number.isFinite(Number(previous.bestDistance)) ? Number(previous.bestDistance) : Infinity,
-          candidate.distance,
-        ),
+        bestDistance,
         status: previous && previous.status === 'tracked' ? 'tracked' : 'detected',
         manualInvestigation: candidate.manualInvestigation === true,
       };
