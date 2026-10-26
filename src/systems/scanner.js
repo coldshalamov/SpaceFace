@@ -1067,6 +1067,8 @@ export const scanner = {
     this._cooldownUntil = 0;
     ensureSignalState(this.state);
     this._contactHail = null;
+    this._contactHailBinding = null;
+    this._contactHailSequence = 0;
     this._orchardTowGuidance = null;
     this._contactHailAvailability = null;
     this._contactHailAvailabilitySignature = '';
@@ -1708,7 +1710,8 @@ export const scanner = {
       return true;
     }
     const now = Number(state.simTime) || 0;
-    const requestId = `contact-hail:${availability.kind}:${String(availability.targetId)}:${state.tick | 0}:${Math.round(now * 1000)}`;
+    this._contactHailSequence += 1;
+    const requestId = `contact-hail:${availability.kind}:${String(availability.targetId)}:${state.tick | 0}:${Math.round(now * 1000)}:${this._contactHailSequence}`;
     const offer = availability.kind==='tally_three'
       ?this.registry.get('tallyThree')?.offer(availability,requestId,now+CONTACT_HAIL_REQUEST_TTL_S)
       :createContactHailOffer(
@@ -1722,6 +1725,10 @@ export const scanner = {
       return false;
     }
     this._contactHail = offer;
+    this._contactHailBinding = {
+      entity: availability.entity,
+      generation: availability.entity?.occupantGeneration ?? null,
+    };
     this.bus.emit('contactHail:offer', cloneContactHailPayload(offer));
     return true;
   },
@@ -1736,7 +1743,8 @@ export const scanner = {
       && payload.targetId === active.targetId
       && availability.enabled
       && availability.targetId === active.targetId
-      && availability.kind === active.kind;
+      && availability.kind === active.kind
+      && this._sameContactHailBody(availability.entity);
     if (!valid) {
       this._clearContactHail('choice_invalid');
       return false;
@@ -1745,7 +1753,7 @@ export const scanner = {
     if(availability.kind==='tally_three'){
       const response=this.registry.get('tallyThree')?.choose(active,String(payload.choice||'').toLowerCase());
       if(!response)return false;
-      this._contactHail=null;this.bus.emit('contactHail:response',cloneContactHailPayload(response));return true;
+      this._contactHail=null;this._contactHailBinding=null;this.bus.emit('contactHail:response',cloneContactHailPayload(response));return true;
     }
     const ai = target && target.data && target.data.ai || {};
     const wanted = isPlayerWanted(state);
@@ -1765,6 +1773,7 @@ export const scanner = {
     });
     if (!response) return false;
     this._contactHail = null;
+    this._contactHailBinding = null;
     this.bus.emit('contactHail:response', cloneContactHailPayload(response));
     return true;
   },
@@ -1917,7 +1926,8 @@ export const scanner = {
     const current = this._contactHail;
     if (current && (!availability.enabled
       || availability.targetId !== current.targetId
-      || availability.kind !== current.kind)) {
+      || availability.kind !== current.kind
+      || !this._sameContactHailBody(availability.entity))) {
       this._clearContactHail('availability_lost');
     }
   },
@@ -1958,10 +1968,17 @@ export const scanner = {
     }
   },
 
+  _sameContactHailBody(entity) {
+    const binding = this._contactHailBinding;
+    return !!binding && binding.entity === entity
+      && binding.generation === (entity?.occupantGeneration ?? null);
+  },
+
   _clearContactHail(reason) {
     if (!this._contactHail) return false;
     const previous = this._contactHail;
     this._contactHail = null;
+    this._contactHailBinding = null;
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('contactHail:clear', {
         requestId: previous.requestId,
@@ -2067,6 +2084,7 @@ export const scanner = {
       if (this._onSensorGhostSwarm) this.bus.off('sensorGhost:swarm', this._onSensorGhostSwarm);
     }
     this._contactHail = null;
+    this._contactHailBinding = null;
     this._contactHailAvailability = null;
     this._contactHailAvailabilitySignature = '';
     this._onSignalTrack = null;
