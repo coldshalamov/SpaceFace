@@ -616,7 +616,9 @@ export const recoveryEncounter = {
     own.outcomes[record.id] = receipt;
     own.receipts.push(receipt);
     while (own.receipts.length > RECEIPT_CAP) own.receipts.shift();
-    own.activeId = null;
+    // A background wreck can be destroyed or beam-stripped after another signal
+    // became active. Retire this call without hiding the player's current rescue.
+    if (own.activeId === record.id) own.activeId = null;
     const wreck = this._wreck(record);
     if (wreck) this._applyRecordToWreck(record, wreck);
     this._emit('recovery:completed', receiptClone(receipt));

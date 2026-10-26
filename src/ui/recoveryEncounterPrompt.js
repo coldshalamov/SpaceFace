@@ -256,11 +256,13 @@ export function createRecoveryEncounterPrompt(ctx = {}) {
 
   let custodyPayload = null;
   let custodyLastSecond = null;
+  let displayedRecoveryId = null;
 
   function renderEncounter(readout) {
     if (!readout || !readout.recoveryId) return false;
     const deck = getPromptDeck();
     if (!deck) return false;
+    displayedRecoveryId = readout.recoveryId;
     const meta = `${readout.ownership || 'CLAIM UNKNOWN'} · ${readout.legalStatus ? String(readout.legalStatus).replace(/_/g, ' ').toUpperCase() : 'SCAN REQUIRED'}`;
     const base = {
       id: ID_RECOVERY,
@@ -416,7 +418,12 @@ export function createRecoveryEncounterPrompt(ctx = {}) {
 
   const showReceipt = (receipt) => {
     const deck = getPromptDeck();
-    if (deck) deck.resolveDecision(ID_RECOVERY);
+    // Other tracked wrecks can close in the background. Their receipts must not
+    // dismiss the shared card currently showing a different physical recovery.
+    if (deck && receipt && receipt.recoveryId === displayedRecoveryId) {
+      deck.resolveDecision(ID_RECOVERY);
+      displayedRecoveryId = null;
+    }
     if (!receipt || !canSurface()) return false;
     const danger = !!receipt.failure || Number(receipt.repDelta) < 0;
     return emitReceipt(
@@ -502,6 +509,7 @@ export function createRecoveryEncounterPrompt(ctx = {}) {
     hide: () => {
       const deck = getPromptDeck();
       if (!deck) return false;
+      displayedRecoveryId = null;
       for (const id of [ID_RECOVERY, ID_UNIQUE_WRECK, ID_VESTA, ID_PALLAS, ID_CUSTODY]) deck.resolveDecision(id);
       return true;
     },
