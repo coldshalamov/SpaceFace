@@ -158,6 +158,41 @@ test('the Compost Run (E-26): player-fed mass accrues and closes the run', () =>
     const stranger = wreck(sim, 20, 0, 60, { thrownBy: 'npc_9' });
     sim.step();
     assert.equal(events.length, 1, 'no second completion');
+    // The completed stamp rides the garden's persistent entity data so a save/continue cannot
+    // re-mint the reward even though the u.compost ledger itself is session-only.
+    assert.equal(garden.data.compostRunComplete, true, 'the completion stamp is on the persistent body');
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('a completed Compost Run cannot re-mint its reward after a session reset', () => {
+  const { sim, state, bus, player } = boot();
+  try {
+    const garden = spawnGarden(state, sim.helpers, { x: 0, z: 0, sectorId: 'sector_charon_expanse' });
+    const events = [];
+    const grants = [];
+    bus.on('understory:compostRunComplete', (p) => events.push(p));
+    bus.on('economy:grantCredits', (p) => { if (p && p.reason === 'understory_compost_run') grants.push(p); });
+
+    let fed = 0;
+    while (fed < UNDERSTORY_COMPOST_RUN.targetMass) {
+      wreck(sim, 20, 0, 60, { thrownBy: player.id });
+      sim.step();
+      fed += 60;
+    }
+    assert.equal(events.length, 1, 'the run closed once');
+    assert.equal(grants.length, 1, 'the reward paid once');
+
+    // A save/continue drops state.understory entirely — only the persistent entity's data
+    // survives. Re-materialize exactly what a restore sees.
+    state.understory = { gardens: {}, compost: {}, tidePushback: {} };
+    for (let i = 0; i < 3; i++) {
+      wreck(sim, 20, 0, 60, { thrownBy: player.id });
+      sim.step();
+    }
+    assert.equal(events.length, 1, 'a restored garden cannot re-close the run');
+    assert.equal(grants.length, 1, 'a restored garden cannot re-pay the reward');
   } finally {
     sim.dispose();
   }
