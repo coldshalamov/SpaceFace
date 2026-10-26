@@ -42,3 +42,22 @@ test('veil settle re-arms for the next veil', () => {
   render.flightVeilHoldsSim = false; assert.equal(p(), 0);
   render.flightVeilHoldsSim = true; assert.equal(p(), 1);
 });
+
+test('veil drains unused programs one per frame behind the veil, even after settling (oc1v7)', () => {
+  const h = harness(); const render = { flightVeilHoldsSim: true, firstPlayableFrameAt: 1 };
+  let unused = 2; const pool = { get size() { return unused; }, drain: (n) => { unused = Math.max(0, unused - n); return unused; } };
+  const p = createVeilSettle(render, { host: h.host, now: h.now, unusedPrograms: () => pool });
+  assert.equal(p(), 1); assert.equal(unused, 1);
+  h.idle(40); h.idle(40); h.idle(40); h.advance(1300);
+  assert.equal(p(), 0, 'last unused program drained, settle reached'); assert.equal(unused, 0);
+  unused = 1; h.advance(10);
+  assert.equal(p(), 0); assert.equal(unused, 0, 'late program drained while veil holds');
+  assert.equal(render.veilDrain.drained, 3);
+});
+
+test('veil drain is bounded by its cap', () => {
+  const h = harness(); const render = { flightVeilHoldsSim: true, firstPlayableFrameAt: 1 };
+  const pool = { size: 5, drain: () => 5 };
+  const p = createVeilSettle(render, { host: h.host, now: h.now, unusedPrograms: () => pool, drainCapMs: 100 });
+  assert.equal(p(), 1); h.advance(3000); assert.equal(p(), 0);
+});

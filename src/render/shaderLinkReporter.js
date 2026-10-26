@@ -43,16 +43,28 @@ export function installShaderLinkReporter(renderer, options = {}) {
     settleArmedAt: new WeakMap(),
     settlePollTimer: null,
     ledger: createLinkBlockLedger(),
+    // Programs three has created but never used (no first-use introspection yet). A program
+    // acquired behind the loading veil but first drawn in flight pays its whole driver link
+    // inside a measured frame (oc1v6: a 278 ms Forge_ore_barge_paint link at +9.45 s on a
+    // wreck admitted 0.5 s after the first picture). drainUnusedProgramFirstUse() lets the
+    // veil force those first uses while it still owns the picture.
+    unused: new Set(),
+    programs: renderer.info.programs,
   };
   // Where the main thread waited on a driver link inside a draw. Read by the launch probes
   // (renderer.userData.spacefaceLinkBlocks) so a stall is named by program, time and stack.
   if (!renderer.userData || typeof renderer.userData !== 'object') renderer.userData = {};
   renderer.userData.spacefaceLinkBlocks = context.ledger;
+  renderer.userData.spacefaceUnusedPrograms = {
+    get size() { return pruneUnused(context); },
+    drain: (max = 1) => drainUnused(context, max),
+  };
   guardProgramList(renderer, context);
   const canvas = renderer.domElement;
   if (canvas && typeof canvas.addEventListener === 'function') {
     canvas.addEventListener('webglcontextlost', () => {
       context.generation += 1;
+      context.unused.clear();
       // Handles die with the context: stop the poll instead of querying dead programs.
       context.settleArmed.clear();
       if (context.settlePollTimer != null) {
@@ -91,9 +103,11 @@ function guardFirstUse(program, context) {
   if (typeof program.getUniforms !== 'function' || typeof program.getAttributes !== 'function') return;
   guardedPrograms.add(program);
   context.programGenerations.set(program, context.generation);
+  context.unused.add(program);
   const getUniforms = program.getUniforms;
   const getAttributes = program.getAttributes;
   const beforeFirstUse = (self) => {
+    context.unused.delete(self);
     if (!programSettled(self, context)) return false;
     self.getUniforms = getUniforms;
     self.getAttributes = getAttributes;
@@ -108,6 +122,38 @@ function guardFirstUse(program, context) {
     if (beforeFirstUse(this)) return getAttributes.call(this);
     return timedBlockingFirstUse(context.ledger, this, getAttributes);
   };
+}
+
+// Drop programs three released (spliced out of info.programs) or that died with a context.
+function pruneUnused(context) {
+  const list = Array.isArray(context.programs) ? context.programs : null;
+  for (const program of context.unused) {
+    if (!program.program || context.programGenerations.get(program) !== context.generation
+        || (list && !list.includes(program))) {
+      context.unused.delete(program);
+    }
+  }
+  return context.unused.size;
+}
+
+// Force the first use (uniform discovery, which waits for the driver link) of up to `max` programs
+// that were created but never drawn. Returns how many remain unused.
+function drainUnused(context, max) {
+  let left = Math.max(0, Number(max) || 0);
+  if (pruneUnused(context) === 0) return 0;
+  try {
+    if (typeof context.gl.isContextLost === 'function' && context.gl.isContextLost()) {
+      context.unused.clear();
+      return 0;
+    }
+  } catch (_) { return 0; }
+  for (const program of [...context.unused]) {
+    if (left <= 0) break;
+    left -= 1;
+    context.unused.delete(program);
+    try { program.getUniforms(); } catch (_) { /* a failed discovery reports through the draw path */ }
+  }
+  return context.unused.size;
 }
 
 // COMPLETION_STATUS_KHR is the non-blocking readiness read: false while the link is in flight,

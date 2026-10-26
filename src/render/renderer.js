@@ -15202,7 +15202,9 @@ export const render = {
     };
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileExplicit(scene);
     // The veil-settle term is non-zero only after the first picture while the veil holds the sim.
-    const veilSettlePending = createVeilSettle(state.render);
+    const veilSettlePending = createVeilSettle(state.render, {
+      unusedPrograms: () => (renderer && renderer.userData ? renderer.userData.spacefaceUnusedPrograms : null),
+    });
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount + veilSettlePending();
     // Cook-ledger sampler (1 Hz while the opening cook runs): the admission lane and the upgrade queue.
     state.render.sampleOpeningCookLane = () => {

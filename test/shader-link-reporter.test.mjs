@@ -214,3 +214,21 @@ test('the vendored three still has the program internals the reporter relies on'
   assert.match(three, /programs\.push\( program \);/);
   assert.match(three, /info\.programs = programCache\.programs;/);
 });
+
+test('unused programs are tracked and drained one at a time; released and used ones drop out (oc1v7)', () => {
+  const gl = fakeGl();
+  const renderer = fakeRenderer(gl);
+  installShaderLinkReporter(renderer);
+  const a = fakeProgram(); const b = fakeProgram(); const c = fakeProgram();
+  renderer.info.programs.push(a, b, c);
+  const pool = renderer.userData.spacefaceUnusedPrograms;
+  assert.equal(pool.size, 3);
+  b.getUniforms();
+  assert.equal(pool.size, 2, 'a drawn program is no longer unused');
+  renderer.info.programs.splice(renderer.info.programs.indexOf(c), 1);
+  assert.equal(pool.size, 1, 'a released program is dropped');
+  assert.equal(pool.drain(1), 0);
+  assert.equal(a.firstUses, 1, 'drain ran the first use');
+  assert.equal(pool.drain(1), 0);
+  assert.equal(a.firstUses, 1);
+});
