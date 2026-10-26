@@ -138,6 +138,17 @@ export {
 export { PQ032_BEAT_SET_PIECES, listPq032SpineSetPieces } from '../../data/missions.js';
 
 export {
+  CAMPAIGN_INTERLUDES,
+  CAMPAIGN_INTERLUDE_ENCOUNTER_PREFIX,
+  CAMPAIGN_INTERLUDE_FLAG_PREFIX,
+  interludeByEncounterId,
+  interludeById,
+  interludeByShape,
+  interludeEligible,
+  interludeSeen,
+} from './interludes.js';
+
+export {
   BEAT_COMMS,
   CAREER_CROSSOVER_IDS,
   CONTACT_CARDS,

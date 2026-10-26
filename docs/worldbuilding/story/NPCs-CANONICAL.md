@@ -41,3 +41,56 @@ Quinn is not skimming to get by. Quinn is three years, by his own arithmetic, fr
 Quinn's scheme is also the one that backfired upward into a windfall nobody planned. Six years ago the short count on a Vael courier's stack triggered the courier's pattern-match alert — the Vael addendum flags short counts, page 9 again — and the courier's outfit retaliated by pulling their entire currency business from Outpost 9 and routing it through Meridian. The loss cleaned Quinn out for a cycle. But the Vael pullout left a vacuum, and MTS filled it within the quarter at worse rates, and the worse rates made Outpost 9's currency desk *more* profitable for the station's holding company than the Vael business had ever been. The holding company credited the gain to "market repositioning" and promoted the station manager. Quinn got nothing. Quinn's skim created a windfall that made the people above him richer and the people around him poorer (the Vael rates had subsidized the commissary; the MTS rates don't). The windfall appears in the Kurtz figure's ledger under Outpost 9, year 11, annotated in the margin with a single word: *unintended*. Quinn still doesn't know he caused it. He thinks he's three years from buying the bar.
 
 Eight names. Contract boards. After-action logs. They transact. They log. They leave. Graffiti appears one cycle after. Station maintenance covers it. New lines appear same locations next visit.
+
+---
+
+## ADOPTED FACES AND MACHINE-PEOPLE (canon, row 537 — 2026-10-26)
+
+*Adopted from `design/expansion/03_PEOPLES_CREATURES_MACHINES.md` §4 under the PROPOSED CANON rule.
+Same register: they transact, they log, they leave. Placement lives in
+`sheets/worlds/sector-wonders.md` §The residents.*
+
+**Eleven new faces, one per faction that had none:**
+
+| Name | Faction | Role | First line |
+|---|---|---|---|
+| **Ma Sprocket** | Pitborn | Cull announcer and yard boss; names ballast balls after good pilots | "Heavy's honest, babies! COUNT 'EM!" |
+| **Clatter** | Pitborn | your Cull rival ace; plays Ballast, magnet-head junk ball | "That rock had my name on it. It has your hull on it now." |
+| **Moss-Keeps-Moss** | Understory | garden elder; pays by the tonne | "Bring us what died. We will make it something." |
+| **Brother Index** | Archive | Reading-room keeper; trades a secret for a secret | "That entry is sealed. Unseal one of yours." |
+| **Addendum Seroy** | Vael | contract officer; the voice of page 9 | "Provided that you read it, the terms are fair." |
+| **Cantor Lise** | Choir | shrine keeper of the Fourth Toll | "The relic was never inert. Only waiting." |
+| **Adjudicator Mael Ost** | Helix | the false-flag commander; Gate Audit officer | "Lawful interdiction. Read the invoice." |
+| **Commander Petra Lusk** | Concord | a straight officer who believes the file; the Iron Maw's last relief captain | "Hold for weight. I will not ask twice." |
+| **Nine-Finger Abe** | Drift | claim boss; runs the Claim Jump | "The rock took one. It won't take another." |
+| **Tamsin** | Free Frontier | homestead pilot; crew candidate | "Still temporary. Tell me where to put the wall." |
+| **Clerk 0003** | Fulfillment | the routing capital's voice | "Your order has always been important to us." |
+
+**Cade Haltred** is canon alongside them: Callum Oakes' collector, the man who comes around when
+Callum's name needs collecting on, mid-Reunion (B5, `story/CAMPAIGN-EVENTS.md`).
+
+**The Orphaned Shift — the machine-people.** The Reach is full of human-built machines whose crews
+never came back, and they kept working. They are the warmth of the game and the canon's honest
+narrators alongside the graffiti. *"The machines kept the count better than we did."* Each one is a
+single, physical, optional relationship built on the real verbs — the Orphaned Shift trials are
+canon (`story/CAMPAIGN-EVENTS.md`).
+
+**Existing machine-people (implemented):** Morrow R-07, Vesper SV-3, Bracket BX-9, Ruckus RU-7,
+Rubric HM-11, Solstice SL-9, and Ravel (a precursor gravity loom, Pallas).
+
+**The twelve adopted machine-people, one for each sector that had no resident:**
+
+| Name | Sector | What it is |
+|---|---|---|
+| **TARE / WG-2** | Dione Lane | a weighing robot left on a decommissioned scale deck — "Tare set. Bring me something true." |
+| **DOCKET / PX-14** | Io Reach | a Fulfillment parcel drone that lost its fleet and wants to be delivered |
+| **LAMPLIGHTER / LL-6** | Sedna Dark | relights dead lane buoys on the dark rim — the Lit Path |
+| **SHEPHERD-12** | Orcus Shadow | a broken Verge Shepherd Engine herding debris flocks |
+| **QUILL / AR-3** | Triton Wake | an Archive page-drone that deserted; trades a sealed secret per log |
+| **HOLDFAST / AN-1** | Haumea Rift | an ice-anchor robot holding a cracking rift together |
+| **BOUNCER / DR-0** | Sker Haven | the bazaar's door robot — "No guns in the ring. Rocks are fine." |
+| **RECEIPT / PR-8** | Kepler Scar | a receipt printer that prints a receipt for everything that happens |
+| **MOP / CL-5** | Nyx March | a Quiet clean-up drone that erases evidence |
+| **BELLHOP / CB-9** | Phoebe Echo | a Choir bell-tuning drone for the Song Field |
+| **GRAVEDIGGER / UG-4** | Eunomia Gulf | an Understory machine that buries wrecks into gardens |
+| **TALLYHO / CN-2** | Rhea Cinder | a Cull scoreboard robot that came loose and wants a crowd |

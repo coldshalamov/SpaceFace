@@ -318,37 +318,43 @@ import * as encounter314 from './922-scene-sweep-window.js';
 import * as encounter315 from './923-scene-dead-drop-lift.js';
 import * as encounter316 from './924-scene-flock-pass.js';
 import * as encounter317 from './925-scene-struck-bell.js';
-import * as encounter318 from './1100-breakaway-freight.js';
-import * as encounter319 from './1101-salvage-dispute.js';
-import * as encounter320 from './1102-missing-piece.js';
-import * as encounter321 from './1103-harvest-owned.js';
-import * as encounter322 from './1104-dead-letter.js';
-import * as encounter323 from './1105-mason-cover.js';
-import * as encounter324 from './1106-edge-of-order.js';
-import * as encounter325 from './1200-the-wedge.js';
-import * as encounter326 from './1201-the-cold-shoulder.js';
-import * as encounter327 from './1202-the-kick-start.js';
-import * as encounter328 from './1203-the-declaration.js';
-import * as encounter329 from './1204-the-mine-garden.js';
-import * as encounter330 from './1205-the-second-bite.js';
-import * as encounter331 from './1206-the-fire-sale.js';
-import * as encounter332 from './1207-the-witnessed-price.js';
-import * as encounter333 from './1208-the-vetting.js';
-import * as encounter334 from './1209-the-last-tow.js';
-import * as encounter335 from './1210-the-deadweight.js';
-import * as encounter336 from './1211-the-forecastle-vote.js';
-import * as encounter337 from './1212-the-clean-sheet.js';
-import * as encounter338 from './1301-the-runaway-kiln.js';
-import * as encounter339 from './1302-the-working-battlefield.js';
-import * as encounter340 from './1303-glue-meet-mass.js';
-import * as encounter341 from './1304-two-ships-one-mistake.js';
-import * as encounter342 from './1305-the-blind-welder.js';
-import * as encounter343 from './1306-the-drift-auction.js';
-import * as encounter344 from './8201-pro-yard.js';
-import * as encounter345 from './8202-pro-rig-workshop.js';
-import * as encounter346 from './8203-pro-salvage-tender.js';
-import * as encounter347 from './8204-pro-salvage-outfits.js';
-import * as encounter348 from './8205-pro-industrial-disasters.js';
+import * as encounter318 from './926-interlude-unknown-vessel.js';
+import * as encounter319 from './927-interlude-the-hand.js';
+import * as encounter320 from './928-interlude-second-client.js';
+import * as encounter321 from './929-interlude-the-ticker.js';
+import * as encounter322 from './930-interlude-the-drawer.js';
+import * as encounter323 from './931-interlude-the-smell-ticket.js';
+import * as encounter324 from './1100-breakaway-freight.js';
+import * as encounter325 from './1101-salvage-dispute.js';
+import * as encounter326 from './1102-missing-piece.js';
+import * as encounter327 from './1103-harvest-owned.js';
+import * as encounter328 from './1104-dead-letter.js';
+import * as encounter329 from './1105-mason-cover.js';
+import * as encounter330 from './1106-edge-of-order.js';
+import * as encounter331 from './1200-the-wedge.js';
+import * as encounter332 from './1201-the-cold-shoulder.js';
+import * as encounter333 from './1202-the-kick-start.js';
+import * as encounter334 from './1203-the-declaration.js';
+import * as encounter335 from './1204-the-mine-garden.js';
+import * as encounter336 from './1205-the-second-bite.js';
+import * as encounter337 from './1206-the-fire-sale.js';
+import * as encounter338 from './1207-the-witnessed-price.js';
+import * as encounter339 from './1208-the-vetting.js';
+import * as encounter340 from './1209-the-last-tow.js';
+import * as encounter341 from './1210-the-deadweight.js';
+import * as encounter342 from './1211-the-forecastle-vote.js';
+import * as encounter343 from './1212-the-clean-sheet.js';
+import * as encounter344 from './1301-the-runaway-kiln.js';
+import * as encounter345 from './1302-the-working-battlefield.js';
+import * as encounter346 from './1303-glue-meet-mass.js';
+import * as encounter347 from './1304-two-ships-one-mistake.js';
+import * as encounter348 from './1305-the-blind-welder.js';
+import * as encounter349 from './1306-the-drift-auction.js';
+import * as encounter350 from './8201-pro-yard.js';
+import * as encounter351 from './8202-pro-rig-workshop.js';
+import * as encounter352 from './8203-pro-salvage-tender.js';
+import * as encounter353 from './8204-pro-salvage-outfits.js';
+import * as encounter354 from './8205-pro-industrial-disasters.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -699,5 +705,11 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter346,
   encounter347,
   encounter348,
+  encounter349,
+  encounter350,
+  encounter351,
+  encounter352,
+  encounter353,
+  encounter354,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
