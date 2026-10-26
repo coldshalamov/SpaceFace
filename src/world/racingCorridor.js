@@ -4,6 +4,12 @@ import { RACING_CIRCUITS } from '../data/raceLevels.js';
 import { RACING_CIRCUIT_LAYOUTS } from '../data/racingCircuitLayouts.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js';
+import {
+  killMachinesForSector, VESTA_ORE_WINNOW,
+  PALLAS_REEF_SECTOR_ID, PALLAS_REEF_MINES, PALLAS_REEF_MINE_BODY, pallasReefMinePos,
+  APERTURE_SECTOR_ID, APERTURE_PLUG,
+} from '../data/environmentalMachinery.js';
 import { hash32 } from '../core/rng.js';
 
 const sessions = new WeakMap();
@@ -95,39 +101,29 @@ export function clearsRacingCorridor(plan, pos, radius = 0) {
 
 // Peer rows are { pos:{x,z}, radius, key?, cls, placed }. A keyed row belongs to one
 // named body — the same authored slot on a re-materialization — so the body skips its
-// own stale seat instead of being pushed further out every pass. Row classes:
-//   'resv' — authored reservations and restored bodies.
+// own stale seat instead of being pushed further out every pass. Row classes record
+// who registered the seat:
+//   'resv' — authored reservations, native standing solids, and restored bodies.
 //   'seed' — stations and authored POI sites.
 //   'rock' — every settled scatter rock (arranger or membrane).
 //   'solid'— scenery this membrane placed or moved.
 // placed marks a pos this pass CHOSE — a mover's seat, a bank placement, a restored
 // pose, a reserved runtime slot — as opposed to an authored point. Only placed rows
-// can occupy space no author saw, so every mover class clears them, and a
-// corridor-clear body yields to them on the keep path: overlapping an authored row
-// is the author's own geometry, but landing on a moved body is a membrane-made stack.
-// Movers check against their own contract:
-//   'rock' movers (arranger banking) honor seeds, reservations and the earlier
-//        pile — exactly what the arranger's per-instance reservation set always
-//        held — so the seeded bank stays bitwise what the courses were tuned
-//        around.
-//   'memrock' movers (membrane re-seats of intruding scatter) honor reservations,
-//        fixed seeds, and placed seats — never the authored pile, so the tuned bank
-//        is not reshuffled, but two shifted rocks can no longer collapse onto each
-//        other or onto a station's hull.
-//   'solid' movers (POI shifts, dressing, props) honor the whole list — that is
-//        the defect this list exists for: a shifted unique body can never again
-//        collapse onto a moved or settled one.
+// can occupy space no author saw, so a corridor-clear body yields to them on the keep
+// path: overlapping an authored row is the author's own geometry, but landing on a
+// moved body is a membrane-made stack.
+// Every mover — 'rock' banking, 'memrock' membrane re-seats, 'solid' scenery —
+// honors the whole list but its own key. An earlier draft let rock movers skip
+// slices of the unplaced pile on the theory that authored seats were dense anyway;
+// a reseated ladder boulder then collapsed onto a kept one — the same stack this
+// list exists to prevent.
 const PEER_CAP = 8192;
 
-function peerBlocked(plan, pos, radius, key, cls) {
+function peerBlocked(plan, pos, radius, key) {
   const peers = plan.peers;
   if (!peers) return false;
   for (const row of peers) {
     if (!row || (key != null && row.key === key)) continue;
-    if (row.placed !== true) {
-      if (cls === 'memrock' && row.cls !== 'resv' && row.cls !== 'seed') continue;
-      if (cls === 'rock' && row.cls === 'solid') continue;
-    }
     if (Math.hypot(pos.x - row.pos.x, pos.z - row.pos.z) < radius + row.radius + 8) return true;
   }
   return false;
@@ -213,7 +209,7 @@ function outsidePoint(plan, original, radius, salt, cls) {
     const sign = (attempt & 1) ? -side : side;
     const offset = plan.halfWidthWU + radius + plan.layout.shoulderWU + Math.floor(attempt / 2) * 36;
     const pos = { x: closest.x + nx * offset * sign, z: closest.z + nz * offset * sign };
-    if (clearsRacingCorridor(plan, pos, radius) && !peerBlocked(plan, pos, radius, key, cls)) {
+    if (clearsRacingCorridor(plan, pos, radius) && !peerBlocked(plan, pos, radius, key)) {
       notePeer(plan, pos, radius, key, rowCls, true);
       return pos;
     }
@@ -229,7 +225,7 @@ function outsidePoint(plan, original, radius, salt, cls) {
     const reach = baseReach + Math.floor(attempt / 8) * (radius + 40);
     const angle = baseAngle + attempt * 2.399963229728653;
     const pos = { x: plan.origin.x + Math.cos(angle) * reach, z: plan.origin.z + Math.sin(angle) * reach };
-    if (!peerBlocked(plan, pos, radius, key, cls)) {
+    if (!peerBlocked(plan, pos, radius, key)) {
       notePeer(plan, pos, radius, key, rowCls, true);
       return pos;
     }
@@ -302,6 +298,64 @@ export function racingAsteroidSpec(state, spec) {
   return moved.x === spec.pos.x && moved.z === spec.pos.z ? spec : { ...spec, pos: moved };
 }
 
+// Static bodies spawned outside the membrane — the environmental-machinery layer's
+// anvils, furniture banks, reef mines and aperture plugs (terrainAnchors listens to
+// a bus AFTER the field pass) plus the persistent physical world one-offs — never
+// pass a scenery hook, so nothing else learns they occupy the lane. All their poses
+// are plain data; resolving them here at arranger time turns them into reservations
+// BEFORE the first movable seat is computed. Returns [{pos(global), radius}].
+function nativeRacingStatics(sector, plan) {
+  const marks = [];
+  for (const machine of killMachinesForSector(sector.id) || []) {
+    if (machine && machine.anvil && finitePoint(machine.anvil.pos)
+      && Number.isFinite(machine.anvil.radius)) {
+      marks.push({ pos: machine.anvil.pos, radius: machine.anvil.radius });
+    }
+    for (const bank of (machine && machine.furniture) || []) {
+      if (finitePoint(bank && bank.pos) && Number.isFinite(bank.radius)) {
+        marks.push({ pos: bank.pos, radius: bank.radius });
+      }
+    }
+  }
+  if (sector.id === PALLAS_REEF_SECTOR_ID) {
+    for (const slot of PALLAS_REEF_MINES) {
+      const pos = pallasReefMinePos(slot);
+      if (finitePoint(pos) && Number.isFinite(PALLAS_REEF_MINE_BODY.radius)) {
+        marks.push({ pos, radius: PALLAS_REEF_MINE_BODY.radius });
+      }
+    }
+  }
+  if (sector.id === VESTA_ORE_WINNOW.sectorId) {
+    for (const bank of VESTA_ORE_WINNOW.furniture || []) {
+      if (finitePoint(bank && bank.pos) && Number.isFinite(bank.radius)) {
+        marks.push({ pos: bank.pos, radius: bank.radius });
+      }
+    }
+  }
+  if (sector.id === APERTURE_SECTOR_ID && finitePoint(APERTURE_PLUG.pos)
+    && Number.isFinite(APERTURE_PLUG.radius)) {
+    marks.push({ pos: APERTURE_PLUG.pos, radius: APERTURE_PLUG.radius });
+  }
+  for (const oneOff of WORLD_ONE_OFFS) {
+    if (!oneOff || oneOff.sectorId !== sector.id || !oneOff.physicalBody) continue;
+    const anchor = oneOff.anchor;
+    const row = anchor && (anchor.type === 'station'
+      ? (sector.stations || []).find((s) => s && s.id === anchor.id)
+      : anchor.type === 'gate'
+        ? (sector.gates || []).find((g) => g && g.to === anchor.id)
+        : null);
+    if (!row || !finitePoint(row.pos) || !finitePoint(oneOff.offsetLocal)) continue;
+    marks.push({
+      pos: {
+        x: row.pos.x + oneOff.offsetLocal.x + plan.origin.x,
+        z: row.pos.z + oneOff.offsetLocal.z + plan.origin.z,
+      },
+      radius: Number(oneOff.radius) || 20,
+    });
+  }
+  return marks;
+}
+
 /** Existing world's arranger interface; active only for explicitly registered sector objects. */
 export function createRacingCorridorArranger(sector, options = {}) {
   const session = sector && registeredSectors.get(sector);
@@ -323,9 +377,15 @@ export function createRacingCorridorArranger(sector, options = {}) {
     if (finitePoint(station.pos)) notePeer(plan, station.pos, 150, undefined, 'seed');
   }
   for (const poi of sector.pois || []) {
-    if (finitePoint(poi.pos)) notePeer(plan, {
+    if (!finitePoint(poi.pos)) continue;
+    // A fleet-bearing landmark's ring rides the same 280-WU envelope the scenery
+    // shift reserves for it — a banked rock must not land inside a ring the
+    // marker's own radius would never have warned it about.
+    const fleetEnvelope = Math.trunc(Number(poi.bandLandmarkFleet) || 0) > 0 ? 280 : 0;
+    notePeer(plan, {
       x: poi.pos.x + plan.origin.x, z: poi.pos.z + plan.origin.z,
-    }, Math.max(24, Number(poi.placeTargetRadius) || Number(poi.visualRadius) || (poi.runtimeOwner ? 100 : 24)),
+    }, Math.max(24, Number(poi.placeTargetRadius) || Number(poi.visualRadius)
+      || (poi.runtimeOwner ? 100 : 24), fleetEnvelope),
       undefined, 'seed');
   }
   // Already-global authored activity marks enter as reservations BEFORE the first
@@ -336,8 +396,16 @@ export function createRacingCorridorArranger(sector, options = {}) {
   for (const r of options.reservations || []) {
     if (finitePoint(r?.pos) && Number.isFinite(r.radius)) notePeer(plan, r.pos, r.radius, undefined, 'resv', true);
   }
+  // Native standing solids never pass through the membrane: machinery anvils,
+  // winnow furniture, reef mines, aperture plugs, and physical world one-offs go
+  // straight to helpers.spawnEntity after the field pass, so no mover ever saw
+  // them and a computed seat could land inside one. Their poses are pure data —
+  // reserve them up front exactly like the authored marks above.
+  for (const mark of nativeRacingStatics(sector, plan)) {
+    notePeer(plan, mark.pos, mark.radius, undefined, 'resv', true);
+  }
   const stats = { placed: 0, moved: 0, skirts: 0 };
-  const peerClear = (pos, radius, key, cls) => !peerBlocked(plan, pos, radius, key, cls);
+  const peerClear = (pos, radius, key) => !peerBlocked(plan, pos, radius, key);
   const reserve = (pos, radius, key, cls, placed) => notePeer(plan, pos, radius, key, cls, placed);
   return {
     profile: plan.layout,
@@ -376,7 +444,7 @@ export function createRacingCorridorArranger(sector, options = {}) {
             const offset = (plan.halfWidthWU + radius + depth) * side;
             const pos = { x: a.x + (b.x - a.x) * t - (b.z - a.z) / length * offset,
               z: a.z + (b.z - a.z) * t + (b.x - a.x) / length * offset };
-            if (!clearsRacingCorridor(plan, pos, radius) || !peerClear(pos, radius, bodyKey, 'rock')) continue;
+            if (!clearsRacingCorridor(plan, pos, radius) || !peerClear(pos, radius, bodyKey)) continue;
             reserve(pos, radius, bodyKey, 'rock', true); stats.placed++; stats.moved++;
             return pos;
           }
@@ -387,7 +455,7 @@ export function createRacingCorridorArranger(sector, options = {}) {
           // retry ring then walks raw reaches, so it must re-prove corridor clearance
           // as well as peer space — a 3000-WU circle still crosses a big course's legs.
           for (let attempt = 0;
-            (!peerClear(pos, radius, bodyKey, 'rock') || !clearsRacingCorridor(plan, pos, radius))
+            (!peerClear(pos, radius, bodyKey) || !clearsRacingCorridor(plan, pos, radius))
             && attempt < 64; attempt++) {
             const angle = (seed / 4294967296 + attempt * 0.381966) * Math.PI * 2;
             const reach = 3000 + attempt * (radius * 2 + 12);
