@@ -128,7 +128,8 @@ const UNKNOWN_COLOURS = Object.freeze(['glass', 'grit', 'signal', 'drift', 'cold
 
 export function resolveScoreIdentity(sectorId) {
   if (!sectorId) return DEFAULT_SCORE_IDENTITY;
-  const row = SECTOR_SCORE_IDENTITY[sectorId];
+  // hasOwn: a prototype-keyed sectorId must take the hashed path, not return an inherited member.
+  const row = Object.hasOwn(SECTOR_SCORE_IDENTITY, sectorId) ? SECTOR_SCORE_IDENTITY[sectorId] : null;
   if (row) return row;
   const h = hash32(String(sectorId));
   return identity(String(sectorId), (h % 12) - 6, MODE_NAMES[(h >>> 4) % MODE_NAMES.length],
@@ -152,18 +153,18 @@ const PITCH_CLASS = Object.freeze({
 // its distance from the moved root.
 export function scoreNoteHz(note, octave = 4, identityRow = null) {
   const pc = PITCH_CLASS[note];
-  if (pc == null) return 440;
+  if (typeof pc !== 'number') return 440; // prototype-keyed notes defeat == null — they inherit functions
   const base = 440 * Math.pow(2, (pc - 9) / 12 + (octave - 4));
   if (!identityRow) return base;
   const rel = (pc - 9 + 12) % 12;
   const idx = MODES.aeolian.indexOf(rel);
-  const scale = MODES[identityRow.mode] || MODES.aeolian;
+  const scale = (identityRow.mode && Object.hasOwn(MODES, identityRow.mode) && MODES[identityRow.mode]) || MODES.aeolian;
   const moved = idx >= 0 ? scale[idx] : rel;
   return base * Math.pow(2, (moved - rel + foldTonic(identityRow.tonic)) / 12);
 }
 
 export function resolveFactionColour(factionId) {
-  return (factionId && FACTION_SCORE_COLOUR[factionId]) || null;
+  return (factionId && Object.hasOwn(FACTION_SCORE_COLOUR, factionId) && FACTION_SCORE_COLOUR[factionId]) || null;
 }
 
 function clamp01(v) {
@@ -175,7 +176,7 @@ function clamp01(v) {
 // from A. `raiseLeading` gives minor modes a major dominant for combat cadences.
 export function scaleChord(identityRow, degree, opts = {}) {
   const row = identityRow || DEFAULT_SCORE_IDENTITY;
-  const scale = MODES[row.mode] || MODES.aeolian;
+  const scale = (row.mode && Object.hasOwn(MODES, row.mode) && MODES[row.mode]) || MODES.aeolian;
   const size = opts.size || 4;
   const tones = [];
   for (let i = 0; i < size; i += 1) {
@@ -193,7 +194,8 @@ export function semitoneHz(baseHz, semis) {
 }
 
 export function scoreChordForBar(identityRow, musicState, barIndex) {
-  const prog = STATE_PROGRESSIONS[musicState] || STATE_PROGRESSIONS.calm;
+  const prog = (musicState && Object.hasOwn(STATE_PROGRESSIONS, musicState) && STATE_PROGRESSIONS[musicState])
+    || STATE_PROGRESSIONS.calm;
   const bar = ((Math.floor(barIndex) % prog.length) + prog.length) % prog.length;
   const degree = prog[bar];
   return Object.freeze({
@@ -215,7 +217,7 @@ export function nextPhraseBoundary(nowS, anchorS, bpm, bars = 1) {
 }
 
 export function phaseBpm(phase, identityRow) {
-  const stem = PHASE_STEM[phase] || 'A';
+  const stem = (phase && Object.hasOwn(PHASE_STEM, phase) && PHASE_STEM[phase]) || 'A';
   const row = identityRow || DEFAULT_SCORE_IDENTITY;
   return STEM_BPM[stem] + (row.tempo || 0) * (phase === 'fight' ? 0.5 : 1);
 }
@@ -404,9 +406,10 @@ export function createScoreDirector(options = {}) {
   return {
     step,
     get frame() { return mem.frame; },
-    reset() { mem.t = null; mem.phase = 'travel'; mem.sectorId = undefined; mem.docked = false; mem.peak = 0;
+    reset() { mem.t = null; mem.phase = 'travel'; mem.phaseSince = 0; mem.sectorId = undefined; mem.docked = false; mem.peak = 0;
       mem.lastFightAt = -Infinity; mem.fightSector = undefined; mem.arrivalAt = -Infinity; mem.departureAt = -Infinity; mem.threatLatched = false;
-      mem.pendingPhase = null; mem.intensity = 0.2; mem.frame = null; mem.transitions = 0; },
+      mem.aftermathArmed = false; mem.anchor = 0; mem.t0 = 0;
+      mem.pendingPhase = null; mem.pendingSince = 0; mem.transitionAt = 0; mem.intensity = 0.2; mem.frame = null; mem.transitions = 0; },
   };
 }
 

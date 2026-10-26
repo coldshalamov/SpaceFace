@@ -749,7 +749,8 @@ export function createCreditsOrrery(doc = globalThis.document, sections = []) {
   litWrap.appendChild(litArt);
   const C0 = 500;
   const ORBIT = 400;
-  const STEP = 72;
+  // the sections share the whole orbit, so a sixth body does not land on the first (72° held five)
+  const STEP = 360 / Math.max(5, sections.length);
   const HAND = 270;
   const s = svg('svg', { class: 'orr-svg orr-cr-orrery__svg', viewBox: '0 0 1000 1000' });
   const rotor = svg('g', { class: 'orr-cr-orrery__rotor' });

@@ -7,7 +7,6 @@
 // --all writes every corpus line. --check verifies bytes against the shipped renderer.
 //
 //   node scripts/generate-bark-voice.mjs
-//   node scripts/generate-bark-voice.mjs --check
 //   node scripts/generate-bark-voice.mjs --catalog
 //   node scripts/generate-bark-voice.mjs --all
 //   node scripts/generate-bark-voice.mjs --all --check

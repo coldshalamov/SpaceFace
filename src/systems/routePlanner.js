@@ -15,6 +15,7 @@ import { FREIGHT_SPINE, gateTollFor, spineFix } from '../data/travelChoices.js';
 import { gateTransitClosed } from '../data/worldPressure.js';
 
 export const ROUTE_BASE_FUEL = 4;            // fuel units per lightyear
+export const ROUTE_GATE_CHARGE = 3;          // seconds a gate takes to align
 export const ROUTE_BASE_INTERDICT = 0.35;
 
 // Jump-drive tiers (design 05). Resolved from the equipped module; defaults to T1.
@@ -223,8 +224,10 @@ export function computeDiscoveredRoute(state, targetSectorId, mode, opts = {}) {
     // Dark space spends jump fuel and takes interdiction risk; the policed road pays customs.
     const mandatoryGate = routeLegVia(a, nodes[i + 1]) === 'gate';
     const via = mode === 'gate' || mode === 'spine' || mandatoryGate ? 'gate' : 'drive';
-    const fuel = mode === 'gate' || mode === 'spine' ? 0 : Math.ceil(ROUTE_BASE_FUEL * edgeDist * drive.tierFuelMult);
-    const charge = drive.baseCharge * (edgeDist / 4);
+    // A gate leg spends nothing and aligns in the same three seconds the jump uses.
+    // Drive legs keep the drive bill. The road was already chosen above.
+    const fuel = via === 'gate' ? 0 : Math.ceil(ROUTE_BASE_FUEL * edgeDist * drive.tierFuelMult);
+    const charge = via === 'gate' ? ROUTE_GATE_CHARGE : drive.baseCharge * (edgeDist / 4);
     const interdict = routeInterdictChance(b, via, drive);
     const toll = via === 'gate' ? gateTollFor(b) : 0;
     totalToll += toll;

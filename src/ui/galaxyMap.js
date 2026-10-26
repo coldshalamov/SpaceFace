@@ -6589,7 +6589,9 @@ _stepAnimation(now) {
       });
 
     const credits = state.player && state.player.credits ? Math.round(state.player.credits).toLocaleString('en-US') : '0';
-    const cargo = state.player && state.player.cargo ? (state.player.cargo.volume || 0) : 0;
+    // The hold owner stores usedVolume. `volume` is not a field, so a loaded
+    // hold printed as empty on this tab.
+    const cargo = state.player && state.player.cargo ? (state.player.cargo.usedVolume || 0) : 0;
     const cargoCap = state.player && state.player.cargo ? (state.player.cargo.capVolume || 1) : 1;
 
     return `

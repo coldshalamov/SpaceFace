@@ -1252,6 +1252,25 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
   ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { display:flex !important; align-items:baseline !important; gap:0 8px !important;
     line-height:15px !important; padding-block:1px !important; }
   ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy :is(b, em) { display:inline !important; line-height:15px !important; }
+  /* …and the live hull drawing's own callouts (1024×640, 1100×640): four two-line labels in the right
+     column needed ~210px of a ~200px band, so the Drive label ran under the verb row and its
+     "STOCK · M" was cut by the foot's fade. Name and state share one line; the solver measures them. */
+  ${W} .orr-sw-jig .orr-sw-node { padding:2px 0 3px !important; }
+  ${W} .orr-sw-jig .orr-sw-node__body { flex-direction:row !important; align-items:baseline !important; gap:0 8px !important; }
+  ${W} .orr-sw-jig .orr-sw-node.is-left .orr-sw-node__body { justify-content:flex-end !important; }
+  ${W} .orr-sw-jig .orr-sw-node__name { flex:0 1 auto !important; }
+  ${W} .orr-sw-jig .orr-sw-node__state { flex:none !important; }
+  /* the right column grows away from the ring (its left edge is the solver's), so a long name like
+     Vector Reaction Drive M reads whole beside STOCK · M instead of "Vector Rea…" in 220px */
+  ${W} .orr-sw-jig .orr-sw-node.is-right { width:max-content !important; max-width:300px !important; }
+}
+/* 1001-1100 x 461-640 (1024×640): the identity (STARTER · 1/7 systems fitted · 0 t modules) wrapped in
+   its 220px box and its second line sat on the hull drawing's top-right numeral (05, Mining). Keep it to
+   one line beside DOCKED. Not at 960×540, where the hardpoint cards rise to the nameplate's line and the
+   identity has to wrap clear of them. */
+@media (min-width:1001px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) and (hover:hover) {
+  ${W}.orr-sw--jig > .sx-sw__side { max-width:none !important; }
+  ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:nowrap !important; white-space:nowrap !important; }
 }
 /* 1280×720 / 1366×768 desktop: Range / Record / Paint own a foot inside the main
    column, leaving the schematic its own height above it instead of pinning to the viewport. */

@@ -1026,6 +1026,32 @@ function workerDest(entity) {
     || xz(data.destination) || xz(data.ai && data.ai.dest);
 }
 
+function workMarkLabel(mark) {
+  const ref = String((mark && (mark.targetRef || mark.id)) || '');
+  if (ref.startsWith('dest:')) {
+    const station = stationById(ref.slice(5));
+    if (station && station.name && station.name !== station.stationId) return station.name;
+  }
+  if (/scan-mark|survey_mark/.test(ref)) return 'the seam scan';
+  if (/ore|field:/.test(ref)) return 'the ore face';
+  if (/throughline/.test(ref)) return 'the lane';
+  return 'the work';
+}
+
+/** The mark the live job is on. A hull with no route still has no work mark. */
+function jobWorkMark(state, entity) {
+  const jobId = entity && entity.data && entity.data.jobId;
+  const bag = state && state.npcJobs && state.npcJobs.byId;
+  const entry = jobId && bag ? bag[jobId] : null;
+  const route = entry && entry.job && entry.job.route;
+  if (!Array.isArray(route) || route.length === 0) return null;
+  const index = entry.job.routeIndex;
+  const mark = route[Number.isInteger(index) && index >= 0 && index < route.length ? index : 0];
+  const pos = xz(mark && mark.pos);
+  if (!pos) return null;
+  return { pos, label: workMarkLabel(mark) };
+}
+
 function workerRole(entity) {
   const data = entity && entity.data || {};
   const role = String(data.trafficRole || data.jobRole || data.role || (data.ai && data.ai.role) || '');
@@ -1043,6 +1069,13 @@ function workerLesson(state, entity, now) {
     || (state.world && state.world.currentSectorId);
   let dest = workerDest(entity);
   let destLabel = dest ? 'a berth' : null;
+  if (!dest) {
+    const mark = jobWorkMark(state, entity);
+    if (mark) {
+      dest = mark.pos;
+      destLabel = mark.label;
+    }
+  }
   if (!dest && sectorId === 'sector_ceres_belt') {
     const refinery = refineryGlobal();
     if (refinery) {

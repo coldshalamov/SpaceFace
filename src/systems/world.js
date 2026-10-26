@@ -241,6 +241,7 @@ import {
   DRIVE_TIERS,
   DEFAULT_DRIVE,
   ROUTE_BASE_FUEL as BASE_FUEL,
+  ROUTE_GATE_CHARGE as GATE_CHARGE,
   ROUTE_BASE_INTERDICT as BASE_INTERDICT,
   routeEdgeDist,
   routeInterdictChance,
@@ -332,7 +333,6 @@ function setVecXZTow(vec, x, z) {
   else { vec.x = x; vec.y = 0; vec.z = z; }
 }
 
-const GATE_CHARGE = 3.0;        // s align time for a gate jump
 const GATE_COOLDOWN = 0;
 const DRIVE_COOLDOWN = 6.0;     // s
 const JUMPING_DURATION = 1.2;   // s tunnel/blackout

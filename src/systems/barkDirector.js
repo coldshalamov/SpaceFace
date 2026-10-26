@@ -216,7 +216,8 @@ export const WITNESS_THEFT_BARKS = Object.freeze({
  * range, same contract as the barks.js selectors). Falls back to the Frontier pack.
  */
 export function witnessTheftBarkFor(factionId, rng) {
-  const lines = (factionId && WITNESS_THEFT_BARKS[factionId]) || WITNESS_THEFT_BARKS.faction_free;
+  const lines = (factionId && Object.hasOwn(WITNESS_THEFT_BARKS, factionId) && WITNESS_THEFT_BARKS[factionId])
+    || WITNESS_THEFT_BARKS.faction_free;
   let index = 0;
   if (typeof rng === 'number' && Number.isFinite(rng)) {
     index = ((Math.floor(rng) % lines.length) + lines.length) % lines.length;
@@ -617,19 +618,19 @@ export function cargoSpillCauseOf(eventName, payload = {}) {
 }
 
 export function cargoSpillBarkText(ownerName, reaction) {
-  const template = CARGO_SPILL_BARKS[reaction] || '{owner} marked the spill.';
+  const template = (Object.hasOwn(CARGO_SPILL_BARKS, reaction) && CARGO_SPILL_BARKS[reaction]) || '{owner} marked the spill.';
   return template.replace(/\{owner\}/g, String(ownerName || 'Unknown owner'));
 }
 
 export function cargoSpillLedgerText(ownerName, reaction) {
-  const verb = (CARGO_OWNER_REACTIONS[reaction] && CARGO_OWNER_REACTIONS[reaction].ledgerVerb)
+  const verb = (Object.hasOwn(CARGO_OWNER_REACTIONS, reaction) && CARGO_OWNER_REACTIONS[reaction].ledgerVerb)
     || reaction
     || 'spill';
   return `${ownerName || 'Unknown owner'} — ${verb} after the spill.`;
 }
 
 export function stuntRecognitionBarkFor(factionId, rng, tokens = {}) {
-  const faction = (factionId && STUNT_BARKS[factionId]) ? STUNT_BARKS[factionId] : STUNT_BARKS.faction_free;
+  const faction = (factionId && Object.hasOwn(STUNT_BARKS, factionId)) ? STUNT_BARKS[factionId] : STUNT_BARKS.faction_free;
   let idx = 0;
   if (typeof rng === 'number' && Number.isFinite(rng)) {
     idx = ((Math.floor(rng) % faction.length) + faction.length) % faction.length;
@@ -887,7 +888,7 @@ export const barkDirector = {
         const state = this.state;
         const own = ensureState(state);
         const entityId = String(entity.id);
-        const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+        const rec = entityRecordFor(own, entityId, entity);
         rec.said['npc-counterplay'] = true;
         rec.lastSpokenAt = state.simTime || 0;
         rec.history.push({ situation: 'npc-counterplay', reason: 'massline:npcCounterplay', t: rec.lastSpokenAt, text: admitted.text });
@@ -1067,7 +1068,7 @@ export const barkDirector = {
     const state = this.state;
     const own = ensureState(state);
     const entityId = String(entity.id);
-    const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+    const rec = entityRecordFor(own, entityId, entity);
     if (rec.lastSituation === situation || rec.said[situation]) return false;
     if (this._isSuppressed(entity, situation, rec)) return false;
 
@@ -1420,7 +1421,7 @@ export const barkDirector = {
     const state = this.state;
     const own = ensureState(state);
     const entityId = String(entity.id);
-    const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+    const rec = entityRecordFor(own, entityId, entity);
     if (rec.said[situation]) return false;
     const factionId = factionFor(entity);
     const seed = state.meta && state.meta.seed;
@@ -1524,18 +1525,22 @@ export const barkDirector = {
     const record = stuntRecognitionRecord(ensureState(state));
     if (['delivered', 'suppressed'].includes(incident.barkStatus) || record.deliveredIds.includes(incident.id)) return null;
     if (record.pending.some(p => p.incidentId === incident.id)) return null;
-    const witness = (incident.witnesses || []).find(w => {
+    const witness = (Array.isArray(incident.witnesses) ? incident.witnesses : []).find(w => {
+      if (!w || typeof w !== 'object') return false;
       const profile=observerProfile(state, state.entities?.get?.(w.id));
       return completeWitness(w) && profile?.canSpeak && profile.lifeId===w.lifeId;
     });
     if (!witness) return null;
-    const title = (incident.titleIds || []).map(id => state.story.titles.byId[id]).find(t => t?.knownWitnesses?.includes(witness.identity));
+    const title = (Array.isArray(incident.titleIds) ? incident.titleIds : []).map(id => state.story.titles.byId?.[id])
+      .find(t => t && Array.isArray(t.knownWitnesses) && t.knownWitnesses.includes(witness.identity));
     const rule = title && STUNT_TITLE_RULES.find(r => r.id === title.titleId);
-    const lines = STUNT_SITUATION_LINES[incident.trickId] || ['That changed the fight.', 'I saw that impact.', 'Keep clear.'];
+    const lines = (Object.hasOwn(STUNT_SITUATION_LINES, incident.trickId) && STUNT_SITUATION_LINES[incident.trickId])
+      || ['That changed the fight.', 'I saw that impact.', 'Keep clear.'];
     // THE WORLD ANSWERS: a variant (own wingman, bolas pair) or the cargo of an Ore Shotgun speaks
     // ahead of the generic title bark.
     const text = stuntSpecificLine(incident) || rule?.bark || lines[witness.role === 'hostile' ? 2 : witness.role === 'patrol' ? 0 : 1];
-    const first = !!title || !(state.story.titles.stuntIncidents || []).some(i => i.id !== incident.id && i.trickId === incident.trickId && i.barkDelivered);
+    const first = !!title || !(Array.isArray(state.story.titles.stuntIncidents) ? state.story.titles.stuntIncidents : [])
+      .some(i => i && i.id !== incident.id && i.trickId === incident.trickId && i.barkDelivered);
     const queued = { id: `stunt:${incident.id}:${witness.identity}`, incidentId: incident.id, speakerId: witness.id,
       speakerIdentity: witness.identity, speakerLife: witness.lifeId, speakerName: witness.name, factionId: witness.factionId, trickId: incident.trickId,
       title: title?.title || null, titleId: title?.titleId || null, text, first, tick: state.tick,
@@ -1560,10 +1565,10 @@ export const barkDirector = {
     const record = stuntRecognitionRecord(ensureState(state));
     const encounter = incidentIdentity(state,{}).encounterId ?? entity.data?.encounter?.id ?? entity.data?.encounterId ?? null;
     if (encounter == null) return;
-    const speaker = record.speakers[profile.identity] ||= { titleEncounter: null, lines: [] };
+    const speaker = speakerRow(record, profile.identity);
     if (speaker.titleEncounter === encounter || record.pending.some(p => p.speakerIdentity === profile.identity)) return;
     const known = knownStuntTitles(state, entity);
-    const title = known.find(t => !speaker.lines.slice(-3).some(l => l.titleId === t.titleId));
+    const title = known.find(t => !speaker.lines.slice(-3).some(l => l && l.titleId === t.titleId));
     if (!title) return;
     const rule = STUNT_TITLE_RULES.find(r => r.id === title.titleId); if (!rule) return;
     if (record.pending.length >= 8) return;
@@ -1651,7 +1656,7 @@ export const barkDirector = {
     record.count = (record.count || 0)+1; record.recentTicks.push(tick);
     if (!queued.recognition) record.deliveredIds.push(queued.incidentId);
     if (record.deliveredIds.length > 128) record.deliveredIds.shift();
-    const speaker = record.speakers[queued.speakerIdentity] ||= { titleEncounter: null, lines: [] };
+    const speaker = speakerRow(record, queued.speakerIdentity);
     speaker.titleEncounter = queued.encounterId; speaker.lines.push({ titleId: queued.titleId, text: queued.text, encounterId: queued.encounterId });
     if (speaker.lines.length>3) speaker.lines.shift();
     const incident = findStuntIncident(state, queued.incidentId);
@@ -1914,7 +1919,7 @@ export const barkDirector = {
     if (!state || !entity) return false;
     const own = ensureState(state);
     const entityId = String(entity.id);
-    const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+    const rec = entityRecordFor(own, entityId, entity);
     if (rec.said[situation]) return false;
     if (this._isSuppressed(entity, 'patrol-greeting', rec)) return false;
     const seed = state.meta && state.meta.seed;
@@ -2397,7 +2402,7 @@ export const barkDirector = {
     markHaulerRescueThanked(state, key, now);
     const own = ensureState(state);
     const entityId = String(entity.id);
-    const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+    const rec = entityRecordFor(own, entityId, entity);
     rec.said['patrol-greeting'] = true;
     rec.lastSituation = 'hauler-rescue';
     rec.lastSpokenAt = now;
@@ -2496,7 +2501,7 @@ export const barkDirector = {
     if (!resolved || !resolved.ownerName) return null;
 
     const reaction = resolved.reaction;
-    if (!reaction || !CARGO_OWNER_REACTIONS[reaction]) return null;
+    if (!reaction || !Object.hasOwn(CARGO_OWNER_REACTIONS, reaction)) return null;
 
     const own = ensureState(state);
     const now = Number(state.simTime) || 0;
@@ -2565,9 +2570,13 @@ export const barkDirector = {
     if (!custodyId || qty <= 0) return false;
     const own = ensureState(state);
     if (!own.raiderEscapesSaid || typeof own.raiderEscapesSaid !== 'object' || Array.isArray(own.raiderEscapesSaid)) {
-      own.raiderEscapesSaid = {};
+      own.raiderEscapesSaid = Object.create(null);
+    } else if (Object.getPrototypeOf(own.raiderEscapesSaid) !== null) {
+      own.raiderEscapesSaid = Object.assign(Object.create(null), own.raiderEscapesSaid);
     }
-    if (own.raiderEscapesSaid[custodyId]) return false;
+    // A corrupt truthy-primitive row would mute this custody id forever — only a real record
+    // dedupes; a dead value is overwritten below.
+    if (own.raiderEscapesSaid[custodyId] && typeof own.raiderEscapesSaid[custodyId] === 'object') return false;
 
     const raider = entityFromState(state, payload.raiderId);
     if (raider && raider.alive !== false) {
@@ -2636,6 +2645,9 @@ export const barkDirector = {
       if (this._onLawDispatchStarted) this.bus.off('law:dispatchStarted', this._onLawDispatchStarted);
       if (this._onLawWarrantPosted) this.bus.off('law:wantedWarrantPosted', this._onLawWarrantPosted);
       if (this._onLawCheckpointPosted) this.bus.off('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
+      if (this._onRivalCut) this.bus.off('wreckEcology:scavenged', this._onRivalCut);
+      if (this._onRivalPressured) this.bus.off('wreckEcology:rivalPressured', this._onRivalPressured);
+      if (this._onRivalDeparted) this.bus.off('wreckEcology:departed', this._onRivalDeparted);
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
       if (this._onPatrolIntervened) this.bus.off('encounter:patrolIntervened', this._onPatrolIntervened);
       if (this._onHarasserDisengaged) this.bus.off('harasser:disengaged', this._onHarasserDisengaged);
@@ -2644,6 +2656,7 @@ export const barkDirector = {
       if (this._onLawFineAssessed) this.bus.off('law:fineAssessed', this._onLawFineAssessed);
       if (this._onLawSanctuaryWithdrawal) this.bus.off('law:sanctuaryWithdrawal', this._onLawSanctuaryWithdrawal);
       if (this._onLawResponseDeferred) this.bus.off('law:responseDeferred', this._onLawResponseDeferred);
+      if (this._onLawResponse) this.bus.off('law:response', this._onLawResponse);
       if (this._onLawIncidentResolved) this.bus.off('law:incidentResolved', this._onLawIncidentResolved);
       if (this._onLawWarrantReleased) this.bus.off('law:wantedWarrantReleased', this._onLawWarrantReleased);
       if (this._onLawDistressRaised) this.bus.off('law:distressRaised', this._onLawDistressRaised);
@@ -2674,6 +2687,12 @@ export const barkDirector = {
     this._onCombatOutcome = null;
     this._onHullHistory = null;
     this._onStuntTrick = null;
+    this._onStuntSurface = null;
+    this._onStuntLoad = null;
+    this._onStuntDamage = null;
+    this._onRaiderEscaped = null;
+    this._onNpcCounterplay = null;
+    this._onHarasserDepartureRecord = null;
     this._onCargoSpilled = null;
     this._onCargoJettisoned = null;
     this._onCargoKilled = null;
@@ -2690,7 +2709,11 @@ export const barkDirector = {
     this._onLawFineAssessed = null;
     this._onLawSanctuaryWithdrawal = null;
     this._onLawResponseDeferred = null;
+    this._onLawResponse = null;
     this._onLawIncidentResolved = null;
+    this._onRivalCut = null;
+    this._onRivalPressured = null;
+    this._onRivalDeparted = null;
     this._onLawWarrantReleased = null;
     this._onLawDistressRaised = null;
     this._onCounterHintSpawn = null;
@@ -2778,9 +2801,9 @@ export function classifyBarkSituation(entity, state) {
 
 function freshState() {
   return {
-    entities: {},
+    entities: Object.create(null),
     postCombatSilenceUntil: 0,
-    ambientBySector: {},
+    ambientBySector: Object.create(null),
     suppressed: [],
     hullRecognition: freshHullRecognition(),
     stuntRecognition: freshStuntRecognition(),
@@ -2986,7 +3009,7 @@ function hullRecognitionRecord(own) {
 }
 
 function freshStuntRecognition() {
-  return { lastAt: 0, nextAt: 0, lastEntityId: null, count: 0, pending: [], recentTicks: [], deliveredIds: [], speakers: {}, safeSince: null };
+  return { lastAt: 0, nextAt: 0, lastEntityId: null, count: 0, pending: [], recentTicks: [], deliveredIds: [], speakers: Object.create(null), safeSince: null };
 }
 
 function findStuntIncident(state, episodeId) {
@@ -3000,14 +3023,49 @@ function stuntRecognitionRecord(own) {
     own.stuntRecognition = freshStuntRecognition();
   }
   const record = own.stuntRecognition;
-  record.pending ||= []; record.recentTicks ||= []; record.deliveredIds ||= []; record.speakers ||= {};
+  if (!Array.isArray(record.pending)) record.pending = [];
+  // Entries always carry a finite expiresTick by construction — a foreign queue can hold
+  // null/primitive/shapeless entries that crash the expiry sweep or wedge the head of the
+  // queue forever (no expiresTick means they can never expire and never speak).
+  record.pending = record.pending.filter((q) => q && typeof q === 'object' && !Array.isArray(q) && Number.isFinite(q.expiresTick));
+  if (!Array.isArray(record.recentTicks)) record.recentTicks = [];
+  record.recentTicks = record.recentTicks.filter(Number.isFinite);
+  if (!Array.isArray(record.deliveredIds)) record.deliveredIds = [];
+  // speakers keys on record-derived observer identities — a restored plain-proto bag re-opens
+  // the '__proto__'/'toString' read seam, so re-home it as null-prototype.
+  if (!record.speakers || typeof record.speakers !== 'object' || Object.getPrototypeOf(record.speakers) !== null) {
+    record.speakers = Object.assign(Object.create(null), record.speakers);
+  }
   return record;
+}
+
+// A foreign/null row inside the speakers bag is dead data of the same class as a corrupt
+// entity record — a fresh row replaces it; a non-array `lines` resets so writers can push.
+function speakerRow(record, identity) {
+  let row = Object.hasOwn(record.speakers, identity) ? record.speakers[identity] : null;
+  if (!row || typeof row !== 'object' || Array.isArray(row)) {
+    row = { titleEncounter: null, lines: [] };
+    record.speakers[identity] = row;
+    return row;
+  }
+  if (!Array.isArray(row.lines)) row.lines = [];
+  return row;
 }
 
 function ensureState(state) {
   if (!state.barkDirector || typeof state.barkDirector !== 'object') state.barkDirector = freshState();
-  if (!state.barkDirector.entities || typeof state.barkDirector.entities !== 'object') state.barkDirector.entities = {};
-  if (!state.barkDirector.ambientBySector || typeof state.barkDirector.ambientBySector !== 'object') state.barkDirector.ambientBySector = {};
+  // entities/ambientBySector key on record-derived ids (entity.id, sectorId) — re-home restored
+  // plain-prototype bags so a '__proto__'-class id reads/writes an own key, not the prototype.
+  if (!state.barkDirector.entities || typeof state.barkDirector.entities !== 'object') {
+    state.barkDirector.entities = Object.create(null);
+  } else if (Object.getPrototypeOf(state.barkDirector.entities) !== null) {
+    state.barkDirector.entities = Object.assign(Object.create(null), state.barkDirector.entities);
+  }
+  if (!state.barkDirector.ambientBySector || typeof state.barkDirector.ambientBySector !== 'object') {
+    state.barkDirector.ambientBySector = Object.create(null);
+  } else if (Object.getPrototypeOf(state.barkDirector.ambientBySector) !== null) {
+    state.barkDirector.ambientBySector = Object.assign(Object.create(null), state.barkDirector.ambientBySector);
+  }
   if (!Array.isArray(state.barkDirector.suppressed)) state.barkDirector.suppressed = [];
   hullRecognitionRecord(state.barkDirector);
   stuntRecognitionRecord(state.barkDirector);
@@ -3024,6 +3082,21 @@ function freshEntityRecord(entity) {
     said: {},
     history: [],
   };
+}
+
+// The entities bag adopts foreign rows the same way ambientBySector does — a restored or
+// hand-built primitive/shapeless row is dead data, not a speaker history. Rebuild it, and
+// normalize said/history so every writer below can deref without a TypeError.
+function entityRecordFor(own, entityId, entity) {
+  let rec = Object.hasOwn(own.entities, entityId) ? own.entities[entityId] : null;
+  if (!rec || typeof rec !== 'object' || Array.isArray(rec)) {
+    rec = freshEntityRecord(entity);
+    own.entities[entityId] = rec;
+    return rec;
+  }
+  if (!rec.said || typeof rec.said !== 'object' || Array.isArray(rec.said)) rec.said = {};
+  if (!Array.isArray(rec.history)) rec.history = [];
+  return rec;
 }
 
 function occupationalRoleOf(entity) {
@@ -3382,7 +3455,7 @@ function speakerRecentlySpoke(own, entity, now) {
 
 function noteSpeakerSpoke(own, entity, situation, now, text) {
   const id = String(entity.id);
-  const rec = own.entities[id] || (own.entities[id] = freshEntityRecord(entity));
+  const rec = entityRecordFor(own, id, entity);
   rec.lastSituation = situation;
   rec.lastSpokenAt = now;
   rec.history.push({ situation, reason: 'world-answer', t: now, text });

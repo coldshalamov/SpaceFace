@@ -217,9 +217,10 @@ export function resolveBarkVoice(input = {}) {
   return Object.freeze({
     schema: 'spaceface.barkVoice.v1',
     seed: BARK_VOICE_SEED,
-    // A named contact reports no faction: the audio consumer must not start a house theme sting
-    // (instructor precedent).
-    factionId: maera ? null : factionId,
+    // A named voice reports no faction: the audio consumer must not start a house theme sting
+    // or swap the standing house colour (Maera instructor precedent; the mechanic is likewise
+    // one voice, not a faction crowd).
+    factionId: (maera || mechanic) ? null : factionId,
     situation,
     mechanic,
     registerId: register.id,
@@ -456,11 +457,18 @@ function mulberry32(seed) {
  * only. Never reads sim RNG.
  */
 export function renderBarkUtterancePcm(resolved, options = {}) {
-  const sr = Number.isFinite(options.sampleRate) && options.sampleRate > 0 ? options.sampleRate : 32000;
+  // Ceilings: an absurd rate or duration clamps to a sane render rather than RangeErroring on
+  // alloc. 384 kHz is the highest rate used in pro audio; 60 s × 384 kHz bounds the buffer.
+  const sr = Number.isFinite(options.sampleRate) && options.sampleRate > 0
+    ? Math.min(options.sampleRate, 384000)
+    : 32000;
   const rawDur = options.seconds == null
     ? (resolved && resolved.speech && resolved.speech.durationS) || BARK_UTTERANCE_SECONDS
     : options.seconds;
-  const dur = Number.isFinite(Number(rawDur)) && Number(rawDur) > 0 ? Number(rawDur) : BARK_UTTERANCE_SECONDS;
+  const dur = Math.min(
+    Number.isFinite(Number(rawDur)) && Number(rawDur) > 0 ? Number(rawDur) : BARK_UTTERANCE_SECONDS,
+    60,
+  );
   const n = Math.max(1, Math.round(dur * sr));
   const out = new Float64Array(n);
   if (!resolved || !resolved.speech) return out;
@@ -499,9 +507,14 @@ export function renderBarkUtterancePcm(resolved, options = {}) {
 /** Isolated pitch callsign: a stranger hears the register's fundamental, no radio hash. */
 export function renderRegisterCallsignPcm(register, options = {}) {
   const f0 = Number(register && register.f0);
-  const sr = Number.isFinite(options.sampleRate) && options.sampleRate > 0 ? options.sampleRate : 32000;
+  const sr = Number.isFinite(options.sampleRate) && options.sampleRate > 0
+    ? Math.min(options.sampleRate, 384000)
+    : 32000;
   const rawSeconds = options.seconds == null ? REGISTER_CALLSIGN_SECONDS : options.seconds;
-  const seconds = Number.isFinite(Number(rawSeconds)) && Number(rawSeconds) > 0 ? Number(rawSeconds) : REGISTER_CALLSIGN_SECONDS;
+  const seconds = Math.min(
+    Number.isFinite(Number(rawSeconds)) && Number(rawSeconds) > 0 ? Number(rawSeconds) : REGISTER_CALLSIGN_SECONDS,
+    60, // same ceilings as the utterance render
+  );
   const n = Math.max(1, Math.round(seconds * sr));
   const pcm = new Float64Array(n);
   if (!(f0 > 0)) return pcm;
