@@ -1115,6 +1115,8 @@ export const scanner = {
     // so a late-run pulse must not keep scanning locked for the whole old timestamp.
     this._cooldownUntil = 0;
     if (this.state) this.state.signalInvestigation = freshSignalState();
+    const survey = this.registry && this.registry.get && this.registry.get('scanReveal');
+    if (survey && typeof survey.newGame === 'function') survey.newGame();
   },
 
   update(_dt, state) {

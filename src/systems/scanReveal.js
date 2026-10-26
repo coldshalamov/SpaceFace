@@ -278,6 +278,10 @@ export const scanReveal = {
     return cloneSurveyMemory(this.state && this.state.scanReveal);
   },
 
+  newGame() {
+    if (this.state) this.state.scanReveal = cloneSurveyMemory(null);
+  },
+
   deserialize(data) {
     if (this.state) this.state.scanReveal = cloneSurveyMemory(data);
   },
