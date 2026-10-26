@@ -235,6 +235,19 @@ export function* canonicalizeObjectSurfaceProgramKeysSteps(root) {
   return changed;
 }
 
+const SURFACE_VERTEX_MEMO = new Map();
+const SURFACE_FRAGMENT_MEMO = new Map();
+const SURFACE_MEMO_CAP = 64;
+function memoSurfaceSource(memo, source, rewrite) {
+  let out = memo.get(source);
+  if (out === undefined) {
+    out = rewrite(source);
+    if (memo.size >= SURFACE_MEMO_CAP) memo.delete(memo.keys().next().value);
+    memo.set(source, out);
+  }
+  return out;
+}
+
 /** Chain existing packed-ORM/breakup hooks. One version key for every colour and hull. */
 export function installIllustratedSurface(material) {
   if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)
@@ -271,10 +284,12 @@ export function installIllustratedSurface(material) {
     shader.uniforms.sfStencilStrength = { value: stencils?.strength || 0 };
     shader.uniforms.sfStencilCenter = { value: new Vector3().fromArray(stencils?.center || [0, 0, 0]) };
     shader.uniforms.sfStencilSize = { value: new Vector3().fromArray(stencils?.size || [1, 1, 1]) };
-    if (shader.vertexShader) shader.vertexShader = shader.vertexShader
+    // Pure string rewrite of three's unresolved templates: memoised by input so each material
+    // instance (hundreds of cloned hulls) reuses one output instead of re-running ~10 replaces.
+    if (shader.vertexShader) shader.vertexShader = memoSurfaceSource(SURFACE_VERTEX_MEMO, shader.vertexShader, (src) => src
       .replace('#include <common>', '#include <common>\nattribute vec3 sfHullPosition;\nvarying vec3 vSfHullPosition;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfHullPosition = sfHullPosition;');
-    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfHullPosition = sfHullPosition;'));
+    shader.fragmentShader = memoSurfaceSource(SURFACE_FRAGMENT_MEMO, shader.fragmentShader, (src) => src
       .replace('#include <envmap_physical_pars_fragment>',
         ShaderChunk.envmap_physical_pars_fragment.replaceAll('* envMapIntensity', '* (envMapIntensity * sfAuthoredEnv * sfLookSceneEnv)'))
       .replace('#include <common>', `#include <common>
@@ -400,7 +415,7 @@ export function installIllustratedSurface(material) {
           float sfRoom = sfLookPaintCeiling - sfKnee;
           sfPaint *= (sfKnee + sfOver * sfRoom / (sfOver + sfRoom)) / sfPaintY;
         }
-        vec3 outgoingLight = sfPaint + sfRimLight * sfHeadroom + sfCoatLight + totalSpecular + totalEmissiveRadiance;`);
+        vec3 outgoingLight = sfPaint + sfRimLight * sfHeadroom + sfCoatLight + totalSpecular + totalEmissiveRadiance;`));
   }
   Object.assign(illustratedSurfaceShader, previousHook);
   registerGeometryPreservingShaderHook(illustratedSurfaceShader, previousHook);
