@@ -28,12 +28,15 @@ import { catalogQuestionIssues } from '../data/survivalWaves.js';
 import {
   SWARM_BOSS_ENEMY_ID,
   SWARM_WAVE_DURATION_TICKS,
+  expireSwarmPressureHold,
   pickSwarmArchetype,
+  resetSwarmPressureState,
   swarmCatalogIssues,
   swarmGateFor,
   swarmLevel,
   swarmPressureAt,
   swarmPressureIsHolding,
+  swarmPressureSuppressing,
   swarmReinforceCount,
 } from '../data/swarmMode.js';
 import { validateCombatChoreography } from '../presentation/combatChoreography.js';
@@ -91,6 +94,10 @@ const OPENING_ARRIVAL_GAP_TICKS = 80;
 const SWARM_SHOOTERS_BY_WAVE = Object.freeze([2, 2, 3, 4, 5, 6, 6, 7, 8]);
 const SWARM_ARRIVAL_HOLD_S = SWARM_ARRIVAL_GRACE_S;
 const SWARM_RETURN_FIRE_S = 2;
+// A breath is SWARM_BREATH_TICKS of held stream; this window is more than two of them. A hold
+// still suppressing owed work after it is not a breath — it is the D195 stall, and the owner
+// lifts it rather than let a finite round starve on a quota nothing can deliver.
+export const SWARM_STALL_RELEASE_TICKS = 9 * 60;
 
 /**
  * SWARM REINFORCEMENT (PQ-135).
@@ -236,6 +243,7 @@ export const survivalWave = {
     this._tickCircuitObjective();
     this._publishWaveProgress();
     this._checkCleared(run);
+    this._watchSwarmStall();
   },
 
   // ---- receipts -------------------------------------------------------------
@@ -297,6 +305,14 @@ export const survivalWave = {
     const roles = Array.isArray(rules.blockingRoles) ? rules.blockingRoles : [];
     this._blockingRoles = new Set(roles);
     if (swarm) {
+      // A pressure hold is a breath between arrivals INSIDE one wave — never a lid on the next
+      // wave's opening. Carried across the boundary its suppressed schedule keeps the census at
+      // target, so the reservoir is never consulted and the hold cannot spend: the D195 freeze
+      // arriving on purpose instead of late. The debt is what lawfully carries — expire the
+      // clock, keep `holding`/`stored`/`killsSinceReinforce` on the books, and the new wave's
+      // first real deficit pays the owed group through the ordinary spend. A hold the old wave
+      // was not owed re-raises only if this wave earns the same air.
+      expireSwarmPressureHold();
       const rulesDuration = Number.isInteger(rules.durationTicks) && rules.durationTicks > 0
         ? rules.durationTicks
         : 0;
@@ -948,10 +964,13 @@ export const survivalWave = {
         this._pending[write++] = item;
         continue;
       }
-      const holding = this._swarm && swarmPressureIsHolding();
+      const holding = this._swarm && swarmPressureSuppressing();
       // A wipe is an earned breath, including when no hull survives. Keep scheduled
       // bodies owed instead of silently dropping them or refilling through the hold.
+      // The flag is the RUNNING breath only: a hold whose clock is already out is owed
+      // a spend, not more suppression — work goes through so the stream can reach it.
       if (this._swarm && holding) {
+        this._stallSuppressed = true;
         this._pending[write++] = item;
         continue;
       }
@@ -959,14 +978,15 @@ export const survivalWave = {
       // Without this, a wave inheriting a full room from the last one would stack its own burst on
       // top and hand the whole overflow to the spawn cap to sort out.
       //
-      // A CHAMPION IS NEVER CLAMPED. Note what the clamp does when it bites: `continue` without
-      // re-queueing, so the batch is DROPPED, not deferred. That is right for chaff — the room is
-      // already full and the stream will bring more when it thins. It is catastrophic for a boss.
-      // Waves now run at concurrency 20 with no taper and clear with that many survivors, while a
-      // boss wave's own ceiling is 18 — so the Dreadnought's batch computed min(1, 18 - 20) = 0 and
-      // was thrown away. `requireBoss` then had nothing to require and the boss wave cleared on
-      // chaff, with no boss ever fielded. The spawn budget (raised to 38 for the run) is the real
-      // authority on whether there is room, and it has plenty.
+      // A CHAMPION IS NEVER CLAMPED. And nothing the schedule owed is silently dropped, either:
+      // the clamp used to `continue` without re-queueing, which was catastrophic for a boss —
+      // the Dreadnought's batch once computed min(1, 18 - 20) = 0 and was thrown away,
+      // `requireBoss` had nothing to require, and the boss wave cleared on chaff. Chaff is
+      // owed too, just cheaply: a planned group the room cannot seat retries on the same
+      // short delay a held batch already rides, keeping its own roster pick and gate instead
+      // of dissolving into whatever the stream's remaining math might later approximate. The
+      // spawn budget (raised to 38 for the run) is the real authority on whether there is
+      // room, and it has plenty.
       let count = entry.count;
       // A debut body is owed like a champion is owed (SF-064): the wave's staged introduction
       // must not be silently dropped because the room happened to be full when its tick came.
@@ -978,7 +998,10 @@ export const survivalWave = {
       );
       if (this._swarm && entry.champion !== true && entry.debut !== true && entry.wall !== true && !oweObjective) {
         count = Math.min(count, Math.max(0, this._concurrent - this._cohort.size));
-        if (count <= 0) continue;
+        if (count <= 0) {
+          this._pending[write++] = { ...item, entry: { ...entry, atTick: this._cursor + SWARM_SPAWN_RETRY_TICKS } };
+          continue;
+        }
       }
       const capitalChampion = this._swarm
         && entry.champion === true
@@ -1043,12 +1066,15 @@ export const survivalWave = {
       }
       // A champion refused by the budget is still owed; ordinary reinforcements cannot replace it.
       // The same is true of a staged debut, a wall's heavies, or an act round's staged body: a
-      // staged body must land, not vanish.
+      // staged body must land, not vanish. And on a finite-quota round the clamp-shaved tail of
+      // an ordinary batch is owed too — `entry.count - admitted` is what the schedule still has
+      // coming, not what the room could seat this tick.
       const stillOwed = this._swarm?.circuit?.kind === 'commander' && !this._swarm.circuit.commanderMarked
         || this._swarm?.circuit?.kind === 'nodes' && (this._swarm.circuit.nodesMarked || 0) < (this._swarm.circuit.nodeCount || 0);
-      if ((this._swarm?.killTarget || stillOwed) && (receipt.deferred > 0 || entry.champion === true || entry.debut === true || entry.wall === true || entry.staged === true || stillOwed)
-        && receipt.admitted < count) {
-        this._pending[write++] = { ...item, entry: { ...entry, count: count - receipt.admitted,
+      const clampShaved = count < entry.count;
+      if ((this._swarm?.killTarget || stillOwed) && (receipt.deferred > 0 || clampShaved || entry.champion === true || entry.debut === true || entry.wall === true || entry.staged === true || stillOwed)
+        && receipt.admitted < entry.count) {
+        this._pending[write++] = { ...item, entry: { ...entry, count: entry.count - receipt.admitted,
           atTick: this._cursor + SWARM_SPAWN_RETRY_TICKS } };
       }
       // A refused swarm batch must never shrink the planned figure — the stream will bring
@@ -1302,7 +1328,11 @@ export const survivalWave = {
       : target;
     if (remaining <= 0) return;
     const want = Math.min(remaining, swarmReinforceCount(target - alive));
-    if (want <= 0) return;
+    if (want <= 0) {
+      // A zero under `holding` is the breath refusing a top-up the stream asked for.
+      if (swarmPressureIsHolding()) this._stallSuppressed = true;
+      return;
+    }
 
     this._lastReinforceTick = this._cursor;
     const index = this._reinforceIndex++;
@@ -1695,6 +1725,43 @@ export const survivalWave = {
     });
   },
 
+  /**
+   * D195 — a pressure hold only unwinds while the stream keeps consulting it: every breath tick
+   * is a `swarmReinforceCount` call. A hold that lands while the schedule still owes bodies can
+   * freeze instead — held batches keep the room census at target, so the decision is never
+   * reached again — and the round starves on a quota nothing can deliver. Count consecutive
+   * sim-ticks that still owe kills, where the hold suppressed a dispatch or a top-up, and no
+   * spawn or resolution landed; past a conservative window the owner lifts the hold with the
+   * same reset teardown and a fresh run already use. Any spawn or kill resets the clock.
+   */
+  _watchSwarmStall() {
+    const suppressed = this._stallSuppressed === true;
+    this._stallSuppressed = false;
+    const progressed = this._resolved !== this._stallSeenResolved
+      || this._admittedTotal !== this._stallSeenAdmitted;
+    this._stallSeenResolved = this._resolved;
+    this._stallSeenAdmitted = this._admittedTotal;
+    const quotaOwed = !!this._swarm && this._swarm.killTarget > 0
+      && !this._cleared
+      && this._resolved < this._plannedBodies;
+    if (!suppressed || !quotaOwed || progressed) {
+      this._stallTicks = 0;
+      return;
+    }
+    this._stallTicks += 1;
+    if (this._stallTicks < SWARM_STALL_RELEASE_TICKS) return;
+    const heldTicks = this._stallTicks;
+    this._stallTicks = 0;
+    // The lightest lawful release: drop the hold. Held batches dispatch on the next tick and
+    // the reservoir decision is consultable again — the stream's own law resumes the round.
+    resetSwarmPressureState();
+    this._emit('swarm:stallReleased', {
+      wave: this._wave,
+      heldTicks,
+      cause: 'pressure_hold',
+    });
+  },
+
   // ---- lifecycle ------------------------------------------------------------
 
   _resetWave() {
@@ -1727,6 +1794,10 @@ export const survivalWave = {
     this._lastReinforceTick = -9999;
     this._lessonReleased = false;
     this._lessonOpenedAt = null;
+    this._stallSuppressed = false;
+    this._stallTicks = 0;
+    this._stallSeenResolved = 0;
+    this._stallSeenAdmitted = 0;
     this._bossIds = new Set();
     this._clearCircuitMark();
     this._clearCircuitCores();

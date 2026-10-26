@@ -144,6 +144,15 @@ test('only assets/ is graded: a design doc on the branch is not an environment a
   assert.equal(isRouteServed('design/program/DEMO_READINESS_2026-09-20.md'), false);
 });
 
+test('concept art directions do not block gameplay while their media and runtime metadata stay pinned', () => {
+  assert.equal(isRouteServed('assets/concept/people/CANONICAL_PORTRAIT_DIRECTION.md'), false);
+  assert.equal(isRouteServed('assets/concept/ships/brief.MD'), false);
+  assert.equal(isRouteServed('assets/concept/people/portrait.png'), true);
+  assert.equal(isRouteServed('assets/portraits/manifest.json'), true);
+  assert.equal(isRouteServed('assets/ships/release/render-packages/kestrel/render.glb'), true);
+  assert.equal(isRouteServed('assets/ships/release/README.md'), true, 'only the authoring-document namespace is excluded');
+});
+
 test('this worktree\'s served assets match HEAD', async () => {
   const { startBenchServer } = await import('../scripts/lib/benchServer.mjs');
   const server = await startBenchServer();

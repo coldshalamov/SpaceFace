@@ -1099,7 +1099,7 @@ input[type="radio"]:checked::before {
   height: 9px;
   transform: skewX(-16deg);
   border: 1px solid currentColor;
-  opacity: .45;
+  opacity: .62;   /* unlit slots must still read at 720 — .45 washed out against a bright field */
 }
 .sf-overview-row__tier i.is-lit {
   background: currentColor;

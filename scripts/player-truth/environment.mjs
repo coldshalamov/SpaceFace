@@ -12,9 +12,11 @@
 // IO for the shared box. Extra files on disk are ignored. A git failure is a
 // harness error (exit 3), not an environment verdict.
 //
-// Only `assets/` is graded. The runtime never fetches `design/` (docs, specs,
+// Only route assets are graded. The runtime never fetches `design/` (docs, specs,
 // receipts), so a branch that adds or edits a design doc must not turn every
 // gate on a shared-assets worktree into an ENVIRONMENT abort.
+// Art-direction Markdown under assets/concept/ is also authoring documentation.
+// Its images and every runtime manifest/model remain part of the asset check.
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -39,9 +41,10 @@ export function isHarnessOutput(filePath) {
   return String(filePath).startsWith(HARNESS_OUTPUT_PREFIX);
 }
 
-/** Files the public route can load: everything under assets/. design/ is documentation only. */
+/** Runtime assets, excluding concept-art direction documents that the game never fetches. */
 export function isRouteServed(filePath) {
-  return String(filePath).startsWith('assets/');
+  const name = String(filePath);
+  return name.startsWith('assets/') && !/^assets\/concept\/.*\.md$/i.test(name);
 }
 
 /** Directories the public route loads as the starter hull, plus their lod1 sibling. */

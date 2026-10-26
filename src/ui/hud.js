@@ -4562,7 +4562,7 @@ export function createHud(ctx, alerts) {
     const nameTextEl = document.createElement('span');
     nameEl.appendChild(nameTextEl);
     const stateEl = document.createElement('span');
-    left.append(lampEl, iffIcon, glyphEl, nameEl, stateEl);
+    left.append(lampEl, iffIcon, glyphEl, nameEl);
 
     const right = document.createElement('div');
     right.className = 'sf-overview-row__right';
@@ -4572,7 +4572,11 @@ export function createHud(ctx, alerts) {
     const speedEl = document.createElement('span');
     speedEl.style.setProperty('width', '24px');
     speedEl.style.setProperty('text-align', 'right');
-    right.append(tierEl, distEl, speedEl);
+    // The state word belongs to the datum cluster, not the name lane: inside __left it stole the
+    // name's only flexible width and pushed callsigns to three wrapped lines at 1080p
+    // ("FIELD / COIL / CRADLE"). Beside the tier segments it keeps its fixed gap AND the name
+    // gets the whole lane back (craft critic r2).
+    right.append(stateEl, tierEl, distEl, speedEl);
 
     el.append(left, right);
 

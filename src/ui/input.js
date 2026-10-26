@@ -26,6 +26,7 @@ import { interactionProfileForEntity } from '../data/entityInteractionProfiles.j
 import { resolveDockDeny } from './dockDenyBanner.js';
 import { dedupError } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
+import { activeAuthoredRace } from '../systems/racingSteer.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
@@ -535,6 +536,14 @@ export function createUiInput(ctx, screenManager) {
       ev.preventDefault();
       if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
       bus.emit('race:toggleView', { source: 'keyboard' });
+      return;
+    }
+    if (matchesBinding(ev, BINDINGS.raceRestart)
+      && activeAuthoredRace(state)?.params?.raceMode === 'time-trial') {
+      if (ev.repeat || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('race:restart', { source: 'keyboard' });
       return;
     }
     if (matchesBinding(ev, BINDINGS.band)) {

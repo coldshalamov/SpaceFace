@@ -1292,13 +1292,21 @@ async function mountFlightHud(opts = {}) {
   const benchContacts = [
     { id: 11, callsign: 'Relief-Freighter Choir-Tender', team: 1, x: 60, z: -140 },
     { id: 12, callsign: 'FIELD COIL CRADLE', team: 2, x: 0, z: 450 },
+    // One live threat on the roster, or the drawn tier segments only ever photograph unlit
+    // (craft critic 2026-10-26 r2 finding R3). huntPlayer + armed + mass ≥1200 → HOSTILE, tier 2,
+    // red lit pips — the state the pilot actually needs to read under fire.
+    { id: 13, callsign: 'RAIDER VEE-TWO', team: 5, x: -220, z: 90, hostile: true, mass: 1500 },
   ];
   for (const bc of benchContacts) {
     if (state.entities.has(bc.id)) continue;
     const e = {
       id: bc.id, type: 'ship', alive: true, team: bc.team, radius: 14,
       pos: { x: bc.x, y: 0, z: bc.z }, vel: { x: 0, y: 0, z: 0 },
-      data: { defId: 'ship_kestrel', callsign: bc.callsign },
+      data: {
+        defId: 'ship_kestrel', callsign: bc.callsign,
+        ...(bc.mass ? { mass: bc.mass } : {}),
+        ...(bc.hostile ? { ai: { huntPlayer: true }, weapons: ['wpn_pulse_s'], trafficRole: 'raider' } : {}),
+      },
     };
     state.entities.set(bc.id, e);
     state.entityList.push(e);
@@ -1318,7 +1326,10 @@ async function mountFlightHud(opts = {}) {
   // One persistent affordance + one warning through the live event path, so the annunciator is
   // lit in the frame rather than judged empty. In-run swarm is never in a berth — skip the dock cue.
   if (opts.dockCue !== false) bus.emit('dock:range', { inRange: true });
-  bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 80, kind: 'warn', text: 'TAKING FIRE', ttl: 30 });
+  // Mirror alerts.js' real announce path for combat:damage: TAKING FIRE surfaces as a DANGER
+  // voice (kind 'danger', priority 110 — the amber warn dot the fixture used to emit made the
+  // threat line read as an advisory, craft critic 2026-10-26 finding R1).
+  bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 110, kind: 'danger', text: 'TAKING FIRE', ttl: 30 });
   // One marketNews instance per page (a --walk remount would otherwise stack subscriptions and
   // double-commit each headline). In a live Survival run its gate keeps the ticker silent —
   // the crucibleHud shot proves that suppression too.

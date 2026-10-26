@@ -14213,7 +14213,7 @@ export const render = {
             laneWarn(this, 'admissionTouch', '[render] admission touch detach reattach failed', error);
           }
           try {
-            await refillPresentedCompressedUploads(collectStartupTextures(subject));
+            await refillPresentedCompressedUploads(collectStartupTextures(subject), renderer);
           } catch (error) {
             exactTargetReady = false;
             laneWarn(this, 'admissionTouch', '[render] admission touch compressed refill failed', error);
@@ -14420,7 +14420,7 @@ export const render = {
               })
               .then(async () => {
                 try {
-                  await refillPresentedCompressedUploads(collectStartupTextures(subject));
+                  await refillPresentedCompressedUploads(collectStartupTextures(subject), renderer);
                 } catch (error) {
                   laneWarn(this, 'admissionTouch', '[render] exact-target compressed refill failed', error);
                 }
@@ -14443,7 +14443,7 @@ export const render = {
           // reveal must cover ancestors as well as the subject subtree — a hidden ancestor makes
           // the draw a silent no-op and leaves the exact variant cold for the presented pass.
           try {
-            await refillPresentedCompressedUploads(collectStartupTextures(subject));
+            await refillPresentedCompressedUploads(collectStartupTextures(subject), renderer);
           } catch (error) {
             laneWarn(this, 'admissionTouch', '[render] exact-target compressed refill failed', error);
           }
