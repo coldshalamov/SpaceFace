@@ -134,7 +134,7 @@ async function boot() {
       isEntityJournaled: entityIsJournaled,
     });
     const loadingPresenter = createLoadingPresenter({ document, bus, state });
-    const startupReportControl = mountStartupReportControl({ document, state });
+    const startupReportControl = mountStartupReportControl({ document, state, bus });
     // SFQ-B228: the same instance showBootError uses — one pane owner over #boot-overlay.
     const failurePresenter = bootRecoveryPresenter();
     bus.emit('game:loadingProgress', { id: 'boot-contract', progress: .18, ceiling: .20,
