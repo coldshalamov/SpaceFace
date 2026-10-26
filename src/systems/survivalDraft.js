@@ -70,9 +70,11 @@ import { buildSlotList, fits, getDerivedStats } from './ships.js';
 import { swarmHullPrice } from '../data/swarmCatalog.js';
 import {
   SWARM_CALLIN_CATALOG,
+  SWARM_HULL_PATCH,
   SWARM_PASSIVE_CATALOG,
   SWARM_PASSIVE_RECORD_KIND,
   SWARM_PASSIVE_STACK_MAX,
+  swarmHullPatchQuote,
   swarmPassiveById,
   swarmPassiveCount,
   SWARM_CALLIN_MAX_PER_TYPE,
@@ -297,6 +299,8 @@ export const survivalDraft = {
           ? 'Cargo would overflow its hold'
           : entry.service === 'weld' && !entry._serviceHurt
           ? 'Hull already sound'
+          : entry.service === 'hull_patch' && !(entry._patchRestored > 0)
+            ? 'Hull already sound'
           : entry.service === 'ordnance' && (entry._serviceCharges || 0) >= SWARM_ORDNANCE_RACK_MAX
             ? 'Rack already full'
             : entry.service === 'mystery' && entry._mysteryEmpty
@@ -411,7 +415,8 @@ export const survivalDraft = {
       && pending.generation === this._armoryGeneration && pending.wave === this._wave
       && this.state.run.phase === 'draft'
       && (allowHullChange || pending.ship === this.state.player.ownedShips?.[this.state.player.activeShipIndex])
-      && (pending.offer?.service !== 'weld' || pending.entity === this._playerEntity());
+      && ((pending.offer?.service !== 'weld' && pending.offer?.service !== 'hull_patch')
+        || pending.entity === this._playerEntity());
   },
 
   _recordPreparation(pending, outcome) {
@@ -1236,6 +1241,18 @@ export const survivalDraft = {
       price: ask(SWARM_WELD_PRICE), category: 'Service', slotLabel: 'Hull & armor',
       _serviceHurt: hurt,
     });
+    // The patch is the weld's cheap leg: a bounded mend priced by the scar it closes, so a
+    // hurt pilot who cannot reach the weld's flat rate still buys their way out of a bad
+    // round. The quote is re-read on every refresh — a mid-armory heal re-prices what is left.
+    const patchQuote = entity ? swarmHullPatchQuote(entity.hull, hullMax) : { restored: 0, price: 0 };
+    extras.push({
+      id: SWARM_HULL_PATCH.offerId, kind: SWARM_SERVICE_OFFER_KIND, service: SWARM_HULL_PATCH.service,
+      verb: SWARM_HULL_PATCH.verb, name: SWARM_HULL_PATCH.name,
+      blurb: SWARM_HULL_PATCH.blurb,
+      price: patchQuote.restored > 0 ? Math.max(1, ask(patchQuote.price)) : 0,
+      category: SWARM_HULL_PATCH.category, slotLabel: SWARM_HULL_PATCH.slotLabel,
+      _patchRestored: patchQuote.restored,
+    });
     const held = player && player.cargo && player.cargo.items
       ? (player.cargo.items.cmdty_impulse_charge || 0) : 0;
     extras.push({
@@ -1566,6 +1583,30 @@ export const survivalDraft = {
       this._emit('service:completed', { type: 'repair', restoredHull, restoredArmor });
       this._purchased.add(pending.id);
       this._notice = 'Welded to full — the scars read as patched, not new.';
+      this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+      return;
+    }
+    if (pending.service === 'hull_patch') {
+      // The metered mend: the heal lands on the entity's own numbers under the same hullMax
+      // clamp the weld and swarmSupply's cell use (no healing kernel — the clamp is the
+      // contract). The quote is re-read live so a hull topped up since the card priced pays
+      // for the scar as it stands, and a sound hull refunds rather than selling nothing.
+      if (!entity) {
+        refund(`No hull in the cradle. ${pending.price} cr refunded.`);
+        return;
+      }
+      const hullMax = Number.isFinite(entity.hullMax) ? entity.hullMax : 0;
+      const quote = swarmHullPatchQuote(entity.hull, hullMax);
+      if (quote.restored <= 0) {
+        refund(`The hull is already sound. ${pending.price} cr refunded.`);
+        return;
+      }
+      const before = Number.isFinite(entity.hull) ? entity.hull : 0;
+      entity.hull = Math.min(hullMax, before + quote.restored);
+      const restoredHull = Math.max(0, Math.round(entity.hull - before));
+      this._emit('service:completed', { type: 'repair', restoredHull, restoredArmor: 0 });
+      this._purchased.add(pending.id);
+      this._notice = `Patched +${restoredHull} hull. The weld can still take it the rest of the way.`;
       this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
       return;
     }
