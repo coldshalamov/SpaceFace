@@ -258,6 +258,8 @@ const CHARGE_CELL_LIFETIME_S = 30;
 const CHARGE_CELL_COLLECTION_GRACE_S = 0.25;
 const CHARGE_CELL_THROW_GRACE_S = 0.5;
 const MAX_CHARGE_CELLS = 24;
+const BROOD_REMAINS_LIFETIME_S = 45;
+const MAX_BROOD_REMAINS = 16;
 
 function chargeCellData(entity) {
   if (entity?.type !== 'payload' || entity.data?.payloadType !== 'charge_cell') return null;
@@ -292,6 +294,22 @@ function chargeCellAttached(state, id) {
       && (attachment.ownerId === id || attachment.targetId === id)) return true;
   }
   return false;
+}
+
+// W-BLOOM-LOW remains: a payload the brood engine left behind — a real latched body that
+// carries the family's authored effect (splash burst, leech glue, the eel's held whip) into
+// the flock. Same physical-custody shape as a charge cell, different consequence.
+function broodRemainData(entity) {
+  if (entity?.type !== 'payload' || entity.data?.payloadType !== 'brood_remains') return null;
+  const rem = entity.data.broodRemain;
+  return rem && typeof rem.kind === 'string' ? rem : null;
+}
+
+function broodRemainBodies(state) {
+  const list = state.entityIndex?.payloads || state.entityList || [];
+  const out = [];
+  for (const entity of list) if (entity && broodRemainData(entity)) out.push(entity);
+  return out;
 }
 
 export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
@@ -850,11 +868,24 @@ export const combat = {
     }
     // Restored bodies own their remaining charge/deadlines. Only transient identity resets.
     onCell('save:loaded', () => { this._chargeCellVictims = new WeakSet(); });
+    // W-BLOOM-LOW remains: the brood engine speaks the death intent, this system owns the
+    // bodies — same run-boundary clears as the charge cells that share its custody rules.
+    onCell('swarm:broodRemains', (payload) => this._onBroodRemains(payload));
+    onCell('swarm:broodRemainsSpent', (payload) => this._onBroodRemainSpent(payload));
+    onCell('run:wavePlanned', (payload) => this._clearBroodRemains((entity) =>
+      entity.data.runCohort === 'survival' && entity.data.runWave !== (payload?.wave ?? this.state.run?.wave)));
+    onCell('run:ended', () => this._clearBroodRemains((entity) => entity.data.runCohort === 'survival'));
+    onCell('run:transitioned', (payload) => {
+      if (payload && (payload.phase === 'victory' || payload.phase === 'ended')) {
+        this._clearBroodRemains((entity) => entity.data.runCohort === 'survival');
+      }
+    });
   },
 
   newGame() {
     this._chargeCellVictims = new WeakSet();
     this._clearChargeCells(() => true);
+    this._clearBroodRemains(() => true);
   },
 
   _retireChargeCell(entity) {
@@ -867,6 +898,72 @@ export const combat = {
   _clearChargeCells(predicate) {
     for (const entity of chargeCellBodies(this.state)) {
       if (entity.alive && chargeCellData(entity) && predicate(entity)) this._retireChargeCell(entity);
+    }
+  },
+
+  // W-BLOOM-LOW remains: a brood death spoke its authored deathLeaves — spawn the real body.
+  // The victim's last position and momentum come through on the intent; the pool is bounded
+  // and the oldest unattached body leaves first, exactly like the charge-cell residency law.
+  _onBroodRemains(payload) {
+    const state = this.state;
+    if (!payload || typeof this.helpers?.spawnEntity !== 'function') return;
+    if (!Number.isFinite(payload.pos?.x) || !Number.isFinite(payload.pos.z)) return;
+    if (typeof payload.kind !== 'string' || !payload.kind) return;
+    const run = state.run;
+    const runScoped = run?.kind === 'survival' && run.phase !== 'ended' && run.phase !== 'victory';
+    let count = 0, oldest = null;
+    for (const entity of broodRemainBodies(state)) {
+      if (!entity.alive) continue;
+      count++;
+      if (chargeCellAttached(state, entity.id)) continue;
+      const birth = entity.data.broodRemain.createdTick ?? (entity.data.despawnAt - BROOD_REMAINS_LIFETIME_S) * 60;
+      const previous = oldest && (oldest.data.broodRemain.createdTick
+        ?? (oldest.data.despawnAt - BROOD_REMAINS_LIFETIME_S) * 60);
+      if (!oldest || birth < previous || (birth === previous && entity.id < oldest.id)) oldest = entity;
+    }
+    if (count >= MAX_BROOD_REMAINS) {
+      // A fully latched pool has no legal eviction; preserve custody and the residency bound.
+      if (!oldest) return;
+      this._retireChargeCell(oldest);
+    }
+    const mass = Number.isFinite(payload.mass) && payload.mass > 0 ? payload.mass : 10;
+    this.helpers.spawnEntity({
+      type: 'payload', alive: true, collides: true,
+      radius: Number.isFinite(payload.radius) && payload.radius > 0 ? payload.radius : 4,
+      mass,
+      physicsBody: { dynamic: true, mass },
+      pos: { x: payload.pos.x, z: payload.pos.z },
+      vel: {
+        x: Number.isFinite(payload.vel?.x) ? payload.vel.x : 0,
+        z: Number.isFinite(payload.vel?.z) ? payload.vel.z : 0,
+      },
+      hull: 20, hullMax: 20,
+      data: {
+        kind: 'payload', payloadType: 'brood_remains',
+        name: typeof payload.name === 'string' ? payload.name : 'Brood remains',
+        masslineTetherable: true, physicalCustodyOnly: true, salvagePool: {},
+        transientSector: true, despawnAt: state.simTime + BROOD_REMAINS_LIFETIME_S,
+        ...(runScoped ? { runCohort: 'survival', runWave: payload.wave ?? run.wave } : {}),
+        broodRemain: {
+          familyId: payload.familyId, kind: payload.kind,
+          splashRadius: payload.splashRadius, glueS: payload.glueS,
+          whipMult: payload.whipMult, createdTick: state.tick,
+        },
+      },
+    });
+  },
+
+  // The engine has spoken: the burst landed or the leech stuck. The body retires through the
+  // same transient-payload removal path — identity-scoped, so a stale or foreign receipt can
+  // never clear a live remain or a cell.
+  _onBroodRemainSpent(payload) {
+    const entity = this.state.entities.get(payload?.entityId);
+    if (entity && broodRemainData(entity)) this._retireChargeCell(entity);
+  },
+
+  _clearBroodRemains(predicate) {
+    for (const entity of broodRemainBodies(this.state)) {
+      if (entity.alive && predicate(entity)) this._retireChargeCell(entity);
     }
   },
 

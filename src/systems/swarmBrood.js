@@ -130,6 +130,9 @@ export const BROOD_ATTACK_GAP_S = 0.45;
 export const BROOD_ATTACK_ARRIVAL_S = 1.25;
 export const BROOD_LEECHER_STACK_MAX = 3;
 const BROOD_CREDIT_WINDOW_S = 5;
+// W-BLOOM-LOW leech remain: per-tick velocity keep while the glue clock is live — the body
+// fights its own steering and crawls instead of dashing until the timer lets go.
+const BROOD_GLUE_KEEP = 0.82;
 export function broodAttackLimit(wave) {
   return Math.min(4, 2 + Math.floor((Math.max(1, finite(wave, 1)) - 1) / 10));
 }
@@ -219,6 +222,8 @@ export function createBroodEngine(deps = {}) {
   const swellStage = new Uint8Array(CAP);
   const swellUntil = new Float64Array(CAP);
   const primeUntil = new Float64Array(CAP);
+  // W-BLOOM-LOW remains: a leech body stuck to a cell pins it until this clock lets go.
+  const gluedUntil = new Float64Array(CAP);
 
   // spatial hash
   const gridHead = new Int32Array(GRID_TABLE);
@@ -241,6 +246,11 @@ export function createBroodEngine(deps = {}) {
   const movIsPlayer = new Uint8Array(MOVER_CACHE_MAX);
   const movIsHead = new Uint8Array(MOVER_CACHE_MAX);
   const movCredited = new Uint8Array(MOVER_CACHE_MAX);
+  // W-BLOOM-LOW remains movers: splashRadius/glueS the moving remain carries, and its entity
+  // id so combat can retire the body once the burst or the stick is spent. -1 is "no remain".
+  const movRemainId = new Int32Array(MOVER_CACHE_MAX);
+  const movSplashR = new Float32Array(MOVER_CACHE_MAX);
+  const movGlueS = new Float32Array(MOVER_CACHE_MAX);
   let movCount = 0;
   let nextAttackAt = 0;
   let spawnRequested = false;
@@ -438,6 +448,7 @@ export function createBroodEngine(deps = {}) {
     if (aliveCount > 0) alive.fill(0);
     aliveCount = 0;
     creditUntil.fill(0);
+    gluedUntil.fill(0);
     nextAttackAt = 0;
     spawnRequested = false;
     nextSpawnAttemptAt = 0;
@@ -584,6 +595,7 @@ export function createBroodEngine(deps = {}) {
     swellStage[slot] = 0;
     swellUntil[slot] = 0;
     primeUntil[slot] = 0;
+    gluedUntil[slot] = 0;
     aliveCount += 1;
   }
 
@@ -702,6 +714,32 @@ export function createBroodEngine(deps = {}) {
       movIsPlayer[movCount] = e.id === playerId ? 1 : 0;
       movCredited[movCount] = playerOwnsBody(state, e) ? 1 : 0;
       movIsHead[movCount] = isHead ? 1 : 0;
+      movRemainId[movCount] = -1;
+      movSplashR[movCount] = 0;
+      movGlueS[movCount] = 0;
+      movCount += 1;
+    }
+    // W-BLOOM-LOW remains: bodies the brood left are real thrown mass — the line's catch and
+    // the free fling both plow the flock through this cache. Only payload entities carrying
+    // the broodRemain stamp opt in; every other payload keeps its own semantics and stays out.
+    const payloads = indexedTypeScan(state, 'payloads');
+    for (let i = 0; i < payloads.length && movCount < MOVER_CACHE_MAX; i++) {
+      const e = payloads[i];
+      if (!e || e.alive === false || !e.pos || !e.vel) continue;
+      const rem = e.data && e.data.broodRemain;
+      if (!rem) continue;
+      movX[movCount] = finite(e.pos.x);
+      movZ[movCount] = finite(e.pos.z);
+      movVX[movCount] = finite(e.vel.x);
+      movVZ[movCount] = finite(e.vel.z);
+      movMass[movCount] = finite(e.mass, 1);
+      movRad[movCount] = finite(e.radius, 6);
+      movIsPlayer[movCount] = 0;
+      movCredited[movCount] = playerOwnsBody(state, e) ? 1 : 0;
+      movIsHead[movCount] = 0;
+      movRemainId[movCount] = e.id;
+      movSplashR[movCount] = finite(rem.splashRadius);
+      movGlueS[movCount] = finite(rem.glueS);
       movCount += 1;
     }
   }
@@ -762,6 +800,14 @@ export function createBroodEngine(deps = {}) {
     for (let i = 0; i < CAP; i++) {
       if (!alive[i]) continue;
       const fam = family[i];
+
+      // W-BLOOM-LOW leech glue: a sticky remain latched on — the body crawls against its own
+      // steering until the clock lets go, dash bodies included (a pinned pass never lands).
+      // The glue dies with the cell; a freed body keeps its motion the moment it is out.
+      if (gluedUntil[i] > simTime) {
+        vx[i] *= BROOD_GLUE_KEEP;
+        vz[i] *= BROOD_GLUE_KEEP;
+      }
 
       // -- latched leechers ride the host: glue position, brake, shed by wall scrape
       if (phase[i] === BROOD_PHASE_LATCHED) {
@@ -998,13 +1044,31 @@ export function createBroodEngine(deps = {}) {
         const dz = pz[i] - movZ[m];
         const rr = movRad[m] + rad;
         if (dx * dx + dz * dz > rr * rr) continue;
+        // W-BLOOM-LOW leech: a sticky remain adheres on any touch — the body is pinned, not
+        // killed, and the leech is spent. Glue beats feeding the dash another ram.
+        if (movGlueS[m] > 0) {
+          gluedUntil[i] = Math.max(gluedUntil[i], simTime + movGlueS[m]);
+          vx[i] *= 0.08;
+          vz[i] *= 0.08;
+          emitRemainSpent(m);
+          break;
+        }
         const relx = movVX[m] - vx[i];
         const relz = movVZ[m] - vz[i];
         const relSpeed2 = relx * relx + relz * relz;
         const isPlayer = movIsPlayer[m] === 1;
         const ramSpeed = isPlayer ? BROOD_PLAYER_RAM_SPEED : BROOD_PLOW_MIN_SPEED;
-        if (relSpeed2 >= ramSpeed * ramSpeed && (isPlayer || movMass[m] >= BROOD_PLOW_MIN_MASS)) {
-          kill(i, 'collision', px[i], pz[i], !!movCredited[m] || creditUntil[i] > simTime);
+        // The mass gate keeps ambient pebbles from shredding the brood; a remain is a thrown
+        // weapon the kill authored, so speed alone decides whether it lands.
+        if (relSpeed2 >= ramSpeed * ramSpeed && (isPlayer || movMass[m] >= BROOD_PLOW_MIN_MASS || movRemainId[m] >= 0)) {
+          const credited = !!movCredited[m] || creditUntil[i] > simTime;
+          kill(i, 'collision', px[i], pz[i], credited);
+          // W-BLOOM-LOW burst remains: an acid sac or a glass shard shatters on impact and
+          // its splash kills by 'explosive' law — each hit family's own kill-gate decides.
+          if (movSplashR[m] > 0) {
+            splashKillAround(px[i], pz[i], movSplashR[m], credited);
+            emitRemainSpent(m);
+          }
           break;
         }
       }
@@ -1499,7 +1563,9 @@ export function createBroodEngine(deps = {}) {
         const relSpeed2 = relx * relx + relz * relz;
         const isPlayer = movIsPlayer[m] === 1;
         const ramSpeed = isPlayer ? BROOD_PLAYER_RAM_SPEED : BROOD_PLOW_MIN_SPEED;
-        if (relSpeed2 >= ramSpeed * ramSpeed && (isPlayer || movMass[m] >= BROOD_PLOW_MIN_MASS)) {
+        // The mass gate keeps ambient pebbles from shredding the brood; a remain is a thrown
+        // weapon the kill authored, so speed alone decides whether it lands.
+        if (relSpeed2 >= ramSpeed * ramSpeed && (isPlayer || movMass[m] >= BROOD_PLOW_MIN_MASS || movRemainId[m] >= 0)) {
           killSeg(i, 'collision', segX[i], segZ[i], !!movCredited[m]);
           break;
         }
@@ -1527,7 +1593,10 @@ export function createBroodEngine(deps = {}) {
     const kills = massSpeed >= BROOD_WHIP_KILL_SPEED;
     const bats = massSpeed >= BROOD_WHIP_BAT_SPEED;
     if (!kills && !bats) return;
-    const halfWidth = 2.0;
+    // W-BLOOM-LOW wake eel: its body held on the line is the authored whip — the swing's kill
+    // width grows while the eel is the payload and falls back the moment it is released.
+    const heldMult = finite(payload.data && payload.data.broodRemain && payload.data.broodRemain.whipMult);
+    const halfWidth = 2.0 * (heldMult > 1 ? heldMult : 1);
     const batx = finite(payload.vel.x) * 0.55;
     const batz = finite(payload.vel.z) * 0.55;
     for (let i = 0; i < CAP; i++) {
@@ -1712,6 +1781,25 @@ export function createBroodEngine(deps = {}) {
       }
     }
     if (def && def.splits) releaseSplit(i, def);
+    // W-BLOOM-LOW remains: the authored deathLeaves becomes a real latched body. Combat owns
+    // the spawned payload's custody; the engine only speaks the intent, with the victim's
+    // last position and momentum, exactly like every other swarm receipt on the bus.
+    if (def && def.remains && bus) {
+      const rem = def.remains;
+      bus.emit('swarm:broodRemains', {
+        familyId: liveFamilyId[family[i]],
+        kind: rem.kind,
+        name: rem.name,
+        mass: rem.mass,
+        radius: rem.radius,
+        splashRadius: rem.splashRadius,
+        glueS: rem.glueS,
+        whipMult: rem.whipMult,
+        pos: { x: px[i], z: pz[i] },
+        vel: { x: vx[i], z: vz[i] },
+        wave: liveWave,
+      });
+    }
     if (!credited) return;
     creditedCount[c]++;
     const pay = killPayFor(liveFamilyId[family[i]]);
@@ -1720,6 +1808,30 @@ export function createBroodEngine(deps = {}) {
     // Same Domino receipt as the chain: the cell's own last position, keyed by its spawn serial
     // so a slot reused inside the wave still counts as a new death.
     noteCreditedDeath(`cell:${serial[i]}`, px[i], pz[i]);
+  }
+
+  // W-BLOOM-LOW: a burst remain's splash kills by 'explosive' law around the impact point —
+  // the same cause every family's own burst uses, so each cell's kill-gate still decides.
+  function splashKillAround(x, z, radius, credited) {
+    const simTime = finite(getState()?.simTime);
+    const r2 = radius * radius;
+    for (let n = 0; n < CAP; n++) {
+      if (!alive[n]) continue;
+      const dx = px[n] - x;
+      const dz = pz[n] - z;
+      if (dx * dx + dz * dz > r2) continue;
+      kill(n, 'explosive', px[n], pz[n], credited || creditUntil[n] > simTime);
+    }
+  }
+
+  // A remain that delivered its burst or its stick is done as a body — combat retires the
+  // entity on this receipt, and the mover slot forgets it so it cannot be spent twice.
+  function emitRemainSpent(m) {
+    if (movRemainId[m] < 0) return;
+    if (bus) bus.emit('swarm:broodRemainsSpent', { entityId: movRemainId[m] });
+    movRemainId[m] = -1;
+    movGlueS[m] = 0;
+    movSplashR[m] = 0;
   }
 
   function assignMotherShares() {
@@ -1965,7 +2077,7 @@ export function createBroodEngine(deps = {}) {
       return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget };
     },
     // Test seams: direct, read-only unless named as a seam.
-    _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase },
+    _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, liveFamilyId },
     _lobs: { x: lobX, z: lobZ, t: lobT, total: lobTotal, tx: lobTX, tz: lobTZ, alive: lobAlive },
     _pools: { x: poolX, z: poolZ, age: poolAge, ttl: poolTtl },
     // B3 — the Tendril's chain: read-only buffers plus one write seam for the split test.
