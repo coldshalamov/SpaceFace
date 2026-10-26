@@ -122,7 +122,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "VERGE: Thread the gap between the two escort hulls, then hold formation off the lead. — RIBBON ON THE NEBULA FOG.",
+      "line": "VERGE: Thread the gap between the two escort hulls, then hold station sixty to a hundred-eighty off the lead while it makes a hundred. — RIBBON ON THE NEBULA FOG.",
       "channel": "info",
       "next": "offer"
     },

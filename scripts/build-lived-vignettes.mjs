@@ -953,7 +953,7 @@ const RC459_COPY = {
     aReceipt: 'You rode the wake station behind the lead while it made its hundred at ${placeLabel}.',
   },
   gap_formation: {
-    instruction: '${voice}: Thread the gap between the two escort hulls, then hold formation off the lead.',
+    instruction: '${voice}: Thread the gap between the two escort hulls, then hold station sixty to a hundred-eighty off the lead while it makes a hundred.',
     aLabel: 'Thread the escort gap, then hold formation',
     aLine: 'I cross between the escort pair and hold formation off your lead through ${placeLabel}.',
     aReceipt: 'You threaded the gap between the escorts and held formation off the lead at ${placeLabel}.',
