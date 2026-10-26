@@ -5901,6 +5901,500 @@
       "releaseSha256": "59a22977b1fc3872bb79d10580f96c3f498d114f06f0cb2545932cceaf84ffee",
       "sourceBytes": 72188,
       "releaseBytes": 72188
+    },
+    {
+      "id": "place_rhea_slag_hauler",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rhea_slag_hauler.glb",
+      "release": "assets/ships/release/parts/places/place_rhea_slag_hauler.glb",
+      "sourceSha256": "e73c94a51356d6bf82f6640c35e21652dc25f5ccbc077cf3c41f37d01eee88b5",
+      "releaseSha256": "c38d15f8bb2e5a0f206faa2322a8742ac2a6a0ce3dc33957e026a8787ddfef83",
+      "sourceBytes": 1265012,
+      "releaseBytes": 496032,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 136,
+      "contractNodeCount": 39,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_proteus_funnel",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_proteus_funnel.glb",
+      "release": "assets/ships/release/parts/places/place_proteus_funnel.glb",
+      "sourceSha256": "c95ebf38b0b714eaf9adb61e09fcd971b422fb6aab05fdbdbfc38dc502824021",
+      "releaseSha256": "9afec20d1b7c23ff291ed97907e3b4f0fde6df597587f4bc86ba69d45595751d",
+      "sourceBytes": 863812,
+      "releaseBytes": 355176,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 130,
+      "contractNodeCount": 38,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_cooked_rock_boulder",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_cooked_rock_boulder.glb",
+      "release": "assets/ships/release/parts/places/place_rock_cooked_rock_boulder.glb",
+      "sourceSha256": "b537aa66395f41f23708570aa8f32f8079660ad48eaa6ae51e9f7e2200ca9bf3",
+      "releaseSha256": "a6c4080568acbb1704a4c9e13947b034c1414e215903341581b1740f8faab3cd",
+      "sourceBytes": 796688,
+      "releaseBytes": 274696,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 39,
+      "contractNodeCount": 21,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_cooked_rock_monolith",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_cooked_rock_monolith.glb",
+      "release": "assets/ships/release/parts/places/place_rock_cooked_rock_monolith.glb",
+      "sourceSha256": "06e5a16b0f6b470c218d56c3dfa19fa443984b95b64303257618367c20de2343",
+      "releaseSha256": "97caba404e4a7b3eede7bf2472d042fd776506025e51bc9f4b809224762e67d6",
+      "sourceBytes": 1068440,
+      "releaseBytes": 361784,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 39,
+      "contractNodeCount": 21,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_cooked_rock_pebble",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_cooked_rock_pebble.glb",
+      "release": "assets/ships/release/parts/places/place_rock_cooked_rock_pebble.glb",
+      "sourceSha256": "053f260640cd0b84599f48de8d08e51bb6816eb058d284036c4baf7db54cd03d",
+      "releaseSha256": "065c5153e4d80e66d66b5ae61541ec72a81103deac7745efd4dc5c116032fb6b",
+      "sourceBytes": 335600,
+      "releaseBytes": 123216,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 27,
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_crystal_boulder",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_crystal_boulder.glb",
+      "release": "assets/ships/release/parts/places/place_rock_crystal_boulder.glb",
+      "sourceSha256": "c55c44b9bcabf641c323fe0bde26aec9465d326cc0f80a1fe4e1b36d379a6551",
+      "releaseSha256": "c426e605259d0a655ef93e2b49064ca8af7e7b4edbb238849d0d9a33731ad321",
+      "sourceBytes": 800708,
+      "releaseBytes": 281784,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 51,
+      "contractNodeCount": 24,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_crystal_monolith",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_crystal_monolith.glb",
+      "release": "assets/ships/release/parts/places/place_rock_crystal_monolith.glb",
+      "sourceSha256": "b52763777bd26e8a1abbef077fc7d6fe87018fdb1f8934d0a06f002e9b6aafbe",
+      "releaseSha256": "cdb290399dab58a174b6801941821549d9f1f64483a094187f7227f2861f0a83",
+      "sourceBytes": 1073352,
+      "releaseBytes": 369076,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 51,
+      "contractNodeCount": 24,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_crystal_pebble",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_crystal_pebble.glb",
+      "release": "assets/ships/release/parts/places/place_rock_crystal_pebble.glb",
+      "sourceSha256": "61d96bb4eb6e0ecc8544f673848127f1e52bccf75d2f7706ea84854c4199cdf8",
+      "releaseSha256": "fbb75009574f5110e92137ef262e6375055b7e8293bb88368346cb1082c18674",
+      "sourceBytes": 331144,
+      "releaseBytes": 125500,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 35,
+      "contractNodeCount": 21,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_ice_boulder",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_ice_boulder.glb",
+      "release": "assets/ships/release/parts/places/place_rock_ice_boulder.glb",
+      "sourceSha256": "b9661ab6a33802a4447c44fb2fa785b16d49fc893fb923af433f97d5e7acfe26",
+      "releaseSha256": "d7de8d0084cedada6daf4fc5ce16aeb57de96dd3db4b89f48c96da7319b73d27",
+      "sourceBytes": 981412,
+      "releaseBytes": 354032,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 63,
+      "contractNodeCount": 27,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_ice_monolith",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_ice_monolith.glb",
+      "release": "assets/ships/release/parts/places/place_rock_ice_monolith.glb",
+      "sourceSha256": "bf4b12b391310a310838f5da26677c4fe282fa4485f9af1c29e843819bd4af3b",
+      "releaseSha256": "d48d7065263fd39a1d73df8b692df137be18bb2410eae0a80e1ff89f135832cb",
+      "sourceBytes": 1237844,
+      "releaseBytes": 435412,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 63,
+      "contractNodeCount": 27,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_ice_pebble",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_ice_pebble.glb",
+      "release": "assets/ships/release/parts/places/place_rock_ice_pebble.glb",
+      "sourceSha256": "7bdf1575a0cbc1c91811e492a33f4e73817b8a0378190b083f2f04d79b5298cf",
+      "releaseSha256": "2dfc9bb2c03667de38feb256ebb4323bcda5bd8da8ba7035f38b17c909627cae",
+      "sourceBytes": 507948,
+      "releaseBytes": 197676,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 51,
+      "contractNodeCount": 24,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_junk_boulder",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_junk_boulder.glb",
+      "release": "assets/ships/release/parts/places/place_rock_junk_boulder.glb",
+      "sourceSha256": "7d137516f22695ea1e880749c8bcbbb432ef5587ed00827a3b205ba632183855",
+      "releaseSha256": "908821c91ba2489cbd403482a5ab087bf6f3fc3f2082da60494364765bf22a71",
+      "sourceBytes": 1143388,
+      "releaseBytes": 445604,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 70,
+      "contractNodeCount": 30,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_junk_monolith",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_junk_monolith.glb",
+      "release": "assets/ships/release/parts/places/place_rock_junk_monolith.glb",
+      "sourceSha256": "1043c056745c2094d4e3be54e83ece37df80200050e0c7b779b739c2d4d3cc01",
+      "releaseSha256": "d26363474425d95254e28aab3e75583a3a6c1793b8e4568cf32acebcfae48757",
+      "sourceBytes": 1362296,
+      "releaseBytes": 516336,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 70,
+      "contractNodeCount": 30,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_junk_pebble",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_junk_pebble.glb",
+      "release": "assets/ships/release/parts/places/place_rock_junk_pebble.glb",
+      "sourceSha256": "760f052d62fe8e4d6d4d872c03d0d0508ad9a87a23fb3f76a2bddc819fbe0b61",
+      "releaseSha256": "5ae7ab5b44c64d63ebaea0d40cc49667c34606bb5063aa9128816c82b9da8876",
+      "sourceBytes": 706264,
+      "releaseBytes": 304512,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 62,
+      "contractNodeCount": 27,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_metallic_ore_boulder",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_metallic_ore_boulder.glb",
+      "release": "assets/ships/release/parts/places/place_rock_metallic_ore_boulder.glb",
+      "sourceSha256": "8e91acecb0b6ec1107226d449c42e905e240447a4ce89b703c7b83ae870b02f5",
+      "releaseSha256": "9db9d2f2b1329c4a23c5f47fd8211496e9adbee259168782903cf65d1ae57f4a",
+      "sourceBytes": 1054668,
+      "releaseBytes": 410956,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 67,
+      "contractNodeCount": 28,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_metallic_ore_monolith",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_metallic_ore_monolith.glb",
+      "release": "assets/ships/release/parts/places/place_rock_metallic_ore_monolith.glb",
+      "sourceSha256": "99362e7a4120a9c2a8da10916694dd3cf06c4b8494c559f823a7eee0fa6b691e",
+      "releaseSha256": "c53cd6d1c34f3765a20f7a3db62a3719acd21d8090c3ccf659bf43b5ae6c773e",
+      "sourceBytes": 1311868,
+      "releaseBytes": 490508,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 63,
+      "contractNodeCount": 27,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_metallic_ore_pebble",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_metallic_ore_pebble.glb",
+      "release": "assets/ships/release/parts/places/place_rock_metallic_ore_pebble.glb",
+      "sourceSha256": "65c171f88dba9f696404799688f104bdd5d07f9fe7107d6f0a722a7ee4343685",
+      "releaseSha256": "06aecb300b6bcd5beece74f2a8499d9b8a16e1342a409bdccdc64e8279d26037",
+      "sourceBytes": 590224,
+      "releaseBytes": 255176,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 51,
+      "contractNodeCount": 24,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_reef_metal_boulder",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_reef_metal_boulder.glb",
+      "release": "assets/ships/release/parts/places/place_rock_reef_metal_boulder.glb",
+      "sourceSha256": "4bafcf549a73dbf67de069cc70585ac690b6b14c8e53d2ef743cf47b03884bcc",
+      "releaseSha256": "c5bfb5945a4f206b980b1d689e664bc8664e27564563730b3958a08d84f11155",
+      "sourceBytes": 1057512,
+      "releaseBytes": 408928,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 63,
+      "contractNodeCount": 27,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_reef_metal_monolith",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_reef_metal_monolith.glb",
+      "release": "assets/ships/release/parts/places/place_rock_reef_metal_monolith.glb",
+      "sourceSha256": "b1055237dc5e3bf1154db6fdbfcb81bc00935d9ad40d7b66bfc4514c1910f724",
+      "releaseSha256": "d999a6aeaa15be3000a668c6a1eb2abbf85cdc04d05847ea2abc1203f62ec5c9",
+      "sourceBytes": 1311824,
+      "releaseBytes": 490916,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 63,
+      "contractNodeCount": 27,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_reef_metal_pebble",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_reef_metal_pebble.glb",
+      "release": "assets/ships/release/parts/places/place_rock_reef_metal_pebble.glb",
+      "sourceSha256": "85cc5d8a7162e834df875dc3b7e2745cc50794395bf2419ad8a6093cf180d150",
+      "releaseSha256": "e78613d31640247bc49b842356fe815a1bd6c4869eaf1b37e4287f782fbdbc51",
+      "sourceBytes": 594860,
+      "releaseBytes": 256420,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 51,
+      "contractNodeCount": 24,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_silicate_boulder",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_silicate_boulder.glb",
+      "release": "assets/ships/release/parts/places/place_rock_silicate_boulder.glb",
+      "sourceSha256": "5f4e1d1db22604460dbed7df0e7e6776695170a4ec6e044233224bcac996661b",
+      "releaseSha256": "d75b5d5535090cd37ef666d7b2a38d9cafeb5fcf625059b3ea1985a94f2f3745",
+      "sourceBytes": 798164,
+      "releaseBytes": 276992,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 39,
+      "contractNodeCount": 21,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_silicate_monolith",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_silicate_monolith.glb",
+      "release": "assets/ships/release/parts/places/place_rock_silicate_monolith.glb",
+      "sourceSha256": "c5ea58a257f5152f6c5847441f0fded014f3b01fae78d63dc8e4f0f96ef7231d",
+      "releaseSha256": "0d3c430c78a6659c18d71cad243fa7481c2e0699116ce0add0af9f24b2835c0b",
+      "sourceBytes": 1022608,
+      "releaseBytes": 348892,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 39,
+      "contractNodeCount": 21,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_silicate_pebble",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_silicate_pebble.glb",
+      "release": "assets/ships/release/parts/places/place_rock_silicate_pebble.glb",
+      "sourceSha256": "4d09728492c3e28c223e450b3ce9049db56c5d5cc233ec12cb613495955700a2",
+      "releaseSha256": "d86203a09f3a9bb249e2dcaa4c9a76224699bd11ae50c920fd9859ae261a81a2",
+      "sourceBytes": 362280,
+      "releaseBytes": 131924,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 27,
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_slag_boulder",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_slag_boulder.glb",
+      "release": "assets/ships/release/parts/places/place_rock_slag_boulder.glb",
+      "sourceSha256": "f74921d0032c7b8a9f2a4347787046130c73a4e577439891f4e0c5094e256d9c",
+      "releaseSha256": "a167897ef16c8d268a9fe7822e5cff4b8ed69b96344c0f833c23f8338f02229a",
+      "sourceBytes": 863552,
+      "releaseBytes": 306888,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 63,
+      "contractNodeCount": 27,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_slag_monolith",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_slag_monolith.glb",
+      "release": "assets/ships/release/parts/places/place_rock_slag_monolith.glb",
+      "sourceSha256": "860ad135eee59693147a5eef4d3ad907db6d80491e7cbea4befdb5e014b77c90",
+      "releaseSha256": "89fc72a159d6381fabaac2207a21099e5c06c3d2b5a90e88231ccfd26acf0653",
+      "sourceBytes": 1126520,
+      "releaseBytes": 390328,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 63,
+      "contractNodeCount": 27,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_rock_slag_pebble",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_rock_slag_pebble.glb",
+      "release": "assets/ships/release/parts/places/place_rock_slag_pebble.glb",
+      "sourceSha256": "5c1487002ae123a2ef53667b1a2ddd083955e03af5932b821a899d80b018eeb7",
+      "releaseSha256": "078a7d76348c3fb80f9d51fe27be3253d9b8dced7c40a5129ed175e3022c149b",
+      "sourceBytes": 403152,
+      "releaseBytes": 155036,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 51,
+      "contractNodeCount": 24,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

@@ -254,7 +254,7 @@ test('restored runtime state bags re-home to null-prototype — record-derived k
 test('malformed values inside restored bags are dead data — no tick crash, no silent wedge', async () => {
   const {
     witnessState, observeStuntWitnesses, deliverWitnessReports, sendWitnessReports,
-    boundStuntNarrative, qualifyStuntTitles, stuntDossierForNetwork, knownStuntTitles,
+    boundStuntNarrative, qualifyStuntTitles, stuntDossierForNetwork, knownStuntTitles, observerProfile,
   } = await import('../src/combat/stuntWitnesses.js');
   const { bindStuntEvidence, unbindStuntEvidence } = await import('../src/combat/stuntEvidence.js');
   const { barkDirector } = await import('../src/systems/barkDirector.js');
@@ -264,22 +264,32 @@ test('malformed values inside restored bags are dead data — no tick crash, no 
   assert.doesNotThrow(() => witnessState(corruptOwn), 'a primitive restored bag must be rebuilt, not dereferenced');
   assert.equal(Object.getPrototypeOf(corruptOwn.story.titles.stuntWitnessing.episodes), null);
 
+  // The parent hops are restored-state too — a truthy primitive at story/titles must not
+  // TypeError the leaf write inside the 60 Hz tick.
+  const primParents = { mode: 'flight', tick: 1, entities: new Map(), playerId: 'p1', story: 7 };
+  assert.doesNotThrow(() => witnessState(primParents), 'a primitive story must normalize, not throw');
+  const primTitles = { mode: 'flight', tick: 1, entities: new Map(), playerId: 'p1', story: { titles: 'x' } };
+  assert.doesNotThrow(() => witnessState(primTitles), 'a primitive titles must normalize, not throw');
+
   // A live journal root plus malformed episode rows: the sweep must drop dead rows and the
   // root walk must replace them — not crash on row.rootTick or mint observers onto a number.
   const state = { mode: 'flight', tick: 10, simTime: 0, entities: new Map(), playerId: 'p1',
-    story: { titles: { stuntWitnessing: { episodes: { junk: null, live: 7, stale: 'x' }, reports: [], sequence: 0, lastTick: -1 } } } };
+    story: { titles: { stuntWitnessing: { episodes: { junk: null, live: 7, stale: 'x', nan: { rootTick: NaN }, arr: [] }, reports: [], sequence: 0, lastTick: -1 } } } };
   const journal = bindStuntEvidence(state);
   journal.roots.set('live', { id: 'live', actorId: 'p1', tick: 0, sourceId: 's1', sourceLife: 'life:s1', nodes: [] });
   state.entities.set('p1', { id: 'p1', type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: {} });
   state.entities.set('s1', { id: 's1', type: 'payload', alive: true, pos: { x: 5, z: 0 }, data: {} });
   assert.doesNotThrow(() => observeStuntWitnesses(state), 'malformed episode rows must not crash the tick');
   assert.equal(state.story.titles.stuntWitnessing.episodes.junk, undefined, 'a null episode row is dropped by the sweep');
+  assert.equal(state.story.titles.stuntWitnessing.episodes.nan, undefined, 'a non-finite rootTick can never expire — dropped');
+  assert.equal(state.story.titles.stuntWitnessing.episodes.arr, undefined, 'an array row can never expire — dropped');
   assert.equal(typeof state.story.titles.stuntWitnessing.episodes.live, 'object', 'a primitive row at a live root is replaced');
   unbindStuntEvidence(state);
 
-  // The report queue ejects null/primitive packets instead of crashing the delivery tick.
+  // The report queue ejects null/primitive packets instead of crashing the delivery tick —
+  // and a non-finite or unreachable deliveryTick cannot wedge one of the 8 slots forever.
   const delivery = { mode: 'flight', tick: 10, simTime: 0, entities: new Map(), playerId: 'p1',
-    story: { titles: { stuntWitnessing: { episodes: {}, reports: [null, 7, {}], sequence: 0, lastTick: -1 }, stuntIncidents: 'x' } } };
+    story: { titles: { stuntWitnessing: { episodes: {}, reports: [null, 7, {}, { deliveryTick: Infinity }, { deliveryTick: 1e15 }], sequence: 0, lastTick: -1 }, stuntIncidents: 'x' } } };
   assert.doesNotThrow(() => deliverWitnessReports(delivery, null));
   assert.deepEqual(delivery.story.titles.stuntWitnessing.reports, [], 'dead packets drain from the queue');
 
@@ -325,4 +335,67 @@ test('malformed values inside restored bags are dead data — no tick crash, no 
   assert.doesNotThrow(() => dir._completeStuntBark(record.pending[0], 'voice'), 'a primitive speaker row must be rebuilt, not crash');
   assert.equal(typeof record.speakers.s1, 'object');
   assert.equal(dir._speakRaiderEscape({ custodyId: 'c1', qty: 2 }), true, 'a corrupt said row must not mute the custody id forever');
+
+  // Array custody rows are dead data too — arrays pass typeof==='object' but dedupe nothing.
+  const dir3 = Object.create(barkDirector);
+  const estate3 = { mode: 'flight', tick: 0, simTime: 0, playerId: 'p1', entities: new Map(), story: {},
+    barkDirector: { raiderEscapesSaid: { c2: [] } } };
+  dir3.state = estate3;
+  assert.equal(dir3._speakRaiderEscape({ custodyId: 'c2', qty: 1 }), true, 'an array said row must not mute the custody id');
+
+  // A restored non-finite nextTick must not wedge the stunt-bark queue forever.
+  const dir4 = Object.create(barkDirector);
+  const wstate = { mode: 'flight', tick: 0, simTime: 0, playerId: 'p1', entities: new Map(), story: {}, settings: {}, combat: {},
+    barkDirector: { stuntRecognition: { nextTick: NaN, pending: [], recentTicks: [], deliveredIds: [] } } };
+  assert.doesNotThrow(() => dir4.update(1 / 60, wstate));
+  assert.equal(wstate.barkDirector.stuntRecognition.nextTick, 0, 'a non-finite nextTick normalizes to 0');
+
+  // A restored non-finite safeSince never satisfies the 72-tick settle gate — null re-arms it.
+  const dir5 = Object.create(barkDirector);
+  const nstate = { mode: 'flight', tick: 5, simTime: 0, playerId: 'p1', entities: new Map(), story: {}, settings: {}, combat: {},
+    barkDirector: { stuntRecognition: { safeSince: 'Infinity', nextTick: 0, pending: [], recentTicks: [], deliveredIds: [] } } };
+  assert.doesNotThrow(() => dir5.update(1 / 60, nstate));
+  assert.equal(nstate.barkDirector.stuntRecognition.safeSince, null, 'a non-finite safeSince re-arms the settle gate');
+
+  // A suppressed recognition entry must NOT mark the cited incident delivered — its incidentId
+  // is the citation, not the recognition. voice + captions off drives the suppression path.
+  const dir6 = Object.create(barkDirector);
+  const sstate = { mode: 'flight', tick: 1000, simTime: 0, playerId: 'p1',
+    entities: new Map(), story: {}, settings: { audio: { muted: true }, accessibility: { captions: false } }, combat: {},
+    barkDirector: { stuntRecognition: { pending: [
+      { id: 'q', incidentId: 'cited-incident', recognition: true, status: 'queued',
+        speakerId: 's1', speakerLife: null, eligibleTick: 0, expiresTick: 2000, text: 'x' }],
+      recentTicks: [], deliveredIds: [], nextTick: 0 } } };
+  sstate.entities.set('s1', { id: 's1', type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: {} });
+  const speakerLife = observerProfile(sstate, sstate.entities.get('s1')).lifeId;
+  sstate.barkDirector.stuntRecognition.pending[0].speakerLife = speakerLife;
+  dir6.state = sstate;
+  dir6._advanceStuntBarks();
+  assert.equal(sstate.barkDirector.stuntRecognition.pending.length, 0, 'the suppressed entry drains');
+  assert.equal(sstate.barkDirector.stuntRecognition.deliveredIds.includes('cited-incident'), false,
+    'a suppressed recognition must not consume the cited incident bark slot');
+  sstate.barkDirector.stuntRecognition.pending.push(
+    { id: 'q2', incidentId: 'own-incident', status: 'queued', speakerId: 's1', speakerLife,
+      eligibleTick: 0, expiresTick: 3000, text: 'y' });
+  dir6._advanceStuntBarks();
+  assert.deepEqual(sstate.barkDirector.stuntRecognition.deliveredIds, ['own-incident'],
+    'a real incident bark still records delivery');
+
+  // A restored ambient row with non-finite nextAt suppresses a sector's greetings forever;
+  // a restored non-finite post-combat silence permanently mutes flavor barks.
+  const dir7 = Object.create(barkDirector);
+  const astate = { mode: 'flight', tick: 0, simTime: 100, playerId: 'p1', entities: new Map(), story: {}, settings: {},
+    world: { currentSectorId: 'sec1' },
+    barkDirector: { ambientBySector: { sec1: { quietSince: 'x', lastAt: NaN, nextAt: Infinity, lastGap: null } },
+      postCombatSilenceUntil: Infinity, entities: {}, stuntRecognition: {} } };
+  dir7.state = astate;
+  assert.equal(dir7._isSuppressed({ id: 'p2', pos: { x: 0, z: 0 } }, 'taunt', {}), false,
+    'a non-finite post-combat silence must not suppress flavor barks forever');
+  dir7._isSuppressed({ id: 'p2', pos: { x: 0, z: 0 } }, 'patrol-greeting', {});
+  const amb = astate.barkDirector.ambientBySector.sec1;
+  assert.deepEqual([amb.quietSince, amb.lastAt, amb.nextAt, amb.lastGap].map(Number.isFinite), [true, true, true, true],
+    'ambient timing fields normalize to finite values');
+  dir7._enterPostCombatSilence();
+  assert.equal(Number.isFinite(astate.barkDirector.postCombatSilenceUntil), true,
+    'a fresh combat outcome heals a corrupt silence horizon');
 });

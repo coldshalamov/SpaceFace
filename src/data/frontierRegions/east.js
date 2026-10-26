@@ -527,7 +527,7 @@ export const EAST_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_proteus_hulk',
         pos: Object.freeze({ x: 1120, z: 860 }),
-        landmarkGlb: 'place_dead_hulk',
+        landmarkGlb: 'place_proteus_funnel',
         landmark: true,
       }),
       Object.freeze({

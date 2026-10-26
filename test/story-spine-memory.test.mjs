@@ -15,6 +15,7 @@ import {
   FAIL_RECOVERY_COOLDOWN_S,
   applyCampaign47aSaveBlob,
   buildMissionBoardContract,
+  completeBeatStepsForLegacy,
   ensureCampaign47aState,
   failEncounter,
   initCampaignSidecar,
@@ -64,6 +65,30 @@ function contact(state, stationId, id) {
   return depthContactsForStation(stationId, state).find((row) => row.id === id) || null;
 }
 
+/** W-BOOKS-0-2: drive the authored Book 1 — sealed alloy run → Scale 4 variance → furnace. */
+function driveBook1(state, t) {
+  const alloy = recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b1:alloy_run', physicalVerb: 'weigh',
+  }, t);
+  const scale = recordBeatStep(state, 'kesslerPod:weighed', { variance: true, massT: 12.5 }, t + 0.1);
+  const burn = recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b1:infested', physicalVerb: 'burn',
+  }, t + 0.2);
+  return { alloy, scale, burn };
+}
+
+/** W-BOOKS-0-2: drive the authored Book 2 — cinder board → Compost Run → the Nest → register. */
+function driveBook2(state, t) {
+  recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b2:cinder', physicalVerb: 'clear',
+  }, t);
+  recordBeatStep(state, 'understory:gardenFed', { byPlayer: true }, t + 0.1);
+  recordBeatStep(state, 'encounter:resolved', { shape: 'the_nest', outcome: 'cleared' }, t + 0.2);
+  return recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b2:elroy', physicalVerb: 'hunt', completionMethod: 'custody_reel',
+  }, t + 0.3);
+}
+
 function offerOf(beat, options) {
   return buildMissionBoardContract(beat, { seed: SEED, epoch: 1, ...options });
 }
@@ -90,30 +115,37 @@ test('B0 through B7 record the physical step and leave the beat cursor alone', (
   assert.equal(mine.stepsComplete, false);
   assert.equal(mine.advancedCanonicalBeat, false);
 
-  const dock = recordBeatStep(state, 'dock:docked', { stationId: 'station_helios' }, 5);
+  const skim = recordBeatStep(state, 'story:skimResolved', { massT: 12.4 }, 5);
+  assert.equal(skim.ok, true);
+  assert.equal(skim.stepId, 'skim');
+  assert.equal(skim.stepsComplete, false);
+
+  const dock = recordBeatStep(state, 'dock:docked', { stationId: 'station_helios' }, 6);
   assert.equal(dock.ok, true);
   assert.equal(dock.stepsComplete, true);
   assert.equal(readSpine(state).solved['0'].stepId, 'dock');
   assert.equal(readSpine(state).solved['0'].verb, null);
 
   state.story.beatIndex = 1;
-  const knock = recordBeatStep(state, 'mission:completed', {
-    storyTag: 'campaign47a:b1:honest_work',
-    physicalVerb: 'knock_down',
-  }, 6);
-  assert.equal(knock.ok, true);
-  assert.equal(knock.stepsComplete, true);
-  assert.equal(knock.advancedCanonicalBeat, false);
-  assert.equal(readSpine(state).solved['1'].verb, 'knock_down');
+  const b1 = driveBook1(state, 7);
+  assert.equal(b1.alloy.ok, true);
+  assert.equal(b1.alloy.stepId, 'alloy_run');
+  assert.equal(b1.alloy.stepsComplete, false);
+  assert.equal(b1.scale.ok, true);
+  assert.equal(b1.scale.stepId, 'scale_4');
+  assert.equal(b1.burn.ok, true);
+  assert.equal(b1.burn.stepId, 'infested');
+  assert.equal(b1.burn.stepsComplete, true);
+  assert.equal(b1.burn.advancedCanonicalBeat, false);
+  assert.equal(readSpine(state).solved['1'].verb, 'burn');
   assert.equal(readSpine(state).solved['1'].method, null);
 
   state.story.beatIndex = 2;
-  const pull = recordBeatStep(state, 'mission:completed', {
-    physicalVerb: 'pull', completionMethod: 'corridor_pull',
-  }, 7);
-  assert.equal(pull.stepsComplete, true);
-  assert.equal(readSpine(state).solved['2'].method, 'corridor_pull');
-  assert.equal(readSpine(state).solved['2'].verb, 'pull');
+  const elroy = driveBook2(state, 8);
+  assert.equal(elroy.stepsComplete, true);
+  // The register's custody/kill token is not one of the beat's two physical solutions.
+  assert.equal(readSpine(state).solved['2'].method, null);
+  assert.equal(readSpine(state).solved['2'].verb, 'hunt');
 
   state.story.beatIndex = 3;
   const tow = recordBeatStep(state, 'mission:completed', { physicalVerb: 'tow' }, 8);
@@ -180,64 +212,64 @@ test('B0 through B7 record the physical step and leave the beat cursor alone', (
 });
 
 test('a miss replaces the ask, a second miss does not restore it, and the cursor stays', () => {
-  const state = fresh(1);
+  const state = fresh(3);
   const before = snapshotCanonicalSpine(state);
-  const plain = offerOf(1, {});
+  const plain = offerOf(3, {});
   assert.equal(plain.params.completionMethods.length, 2);
-  assert.equal(plain.title, 'Knock the variance tower');
+  assert.equal(plain.title, 'Tow the slag core');
 
-  const first = failEncounter(state, 'tower_stood', 20, { failedMethod: 'wrecking_ball' });
+  const first = failEncounter(state, 'tow_slipped', 20, { failedMethod: 'tow_in' });
   assert.equal(first.ok, true);
   assert.equal(first.advancedCanonicalBeat, false);
-  assert.equal(state.story.beatIndex, 1);
+  assert.equal(state.story.beatIndex, 3);
   const sit = readSpine(state).situation;
   assert.equal(sit.attempt, 1);
-  assert.equal(sit.closedMethod, 'wrecking_ball');
-  assert.equal(sit.openMethod, 'cut_down');
-  assert.equal(sit.askId, 'b1_a1_wrecking_ball');
-  assert.equal(sit.instruction, 'The throw missed. Cut the spar down.');
-  assert.equal(isBeatStepsComplete(state, 1), false);
+  assert.equal(sit.closedMethod, 'tow_in');
+  assert.equal(sit.openMethod, 'sling_in');
+  assert.equal(sit.askId, 'b3_a1_tow_in');
+  assert.equal(sit.instruction, 'The line parted. Sling the core the rest of the way.');
+  assert.equal(isBeatStepsComplete(state, 3), false);
 
-  const untouched = offerOf(1, {});
+  const untouched = offerOf(3, {});
   assert.deepEqual(untouched, plain);
-  const scarred = offerOf(1, { state });
+  const scarred = offerOf(3, { state });
   assert.equal(scarred.type, plain.type);
   assert.equal(scarred.storyTag, plain.storyTag);
   assert.equal(scarred.title, plain.title);
-  assert.equal(scarred.params.authoredSetPieceId, 'wrecking_ball');
-  assert.deepEqual(scarred.params.completionMethods, ['cut_down']);
+  assert.equal(scarred.params.authoredSetPieceId, 'long_tow');
+  assert.deepEqual(scarred.params.completionMethods, ['sling_in']);
   assert.equal(scarred.brief, sit.instruction);
-  assert.equal(scarred.params.targetStrength, 1.55);
-  assert.equal(scarred.params.taskTime, 62);
-  assert.equal(scarred.params.fValue, 1.35);
+  assert.equal(scarred.params.massU, 42);
+  assert.equal(scarred.params.taskTime, 52);
+  assert.equal(scarred.params.fValue, 1.25);
   assert.equal(scarred.params.situationAsk, sit.askId);
 
-  const second = failEncounter(state, 'tower_stood', 40, {});
+  const second = failEncounter(state, 'tow_slipped', 40, {});
   const again = readSpine(state).situation;
   assert.equal(again.attempt, 2);
-  assert.equal(again.closedMethod, 'wrecking_ball');
-  assert.equal(again.openMethod, 'cut_down');
-  assert.equal(again.askId, 'b1_a2_wrecking_ball');
+  assert.equal(again.closedMethod, 'tow_in');
+  assert.equal(again.openMethod, 'sling_in');
+  assert.equal(again.askId, 'b3_a2_tow_in');
   assert.notEqual(again.instruction, sit.instruction);
-  assert.equal(again.instruction, 'The throw missed twice. The spar is split. Cut what is left.');
+  assert.equal(again.instruction, 'The line is gone. Sling the core from where it drifted.');
   assert.notEqual(again.instruction, plain.brief);
-  const harder = offerOf(1, { state });
-  assert.deepEqual(harder.params.completionMethods, ['cut_down']);
-  assert.equal(harder.params.targetStrength, 1.9);
+  const harder = offerOf(3, { state });
+  assert.deepEqual(harder.params.completionMethods, ['sling_in']);
+  assert.equal(harder.params.massU, 48);
   assert.equal(harder.brief, again.instruction);
   assert.equal(harder.title, plain.title);
   assert.ok(readSpine(state).closed.some((row) => row.askId === sit.askId));
 
-  const nameless = fresh(1);
-  failEncounter(nameless, 'tower_stood', 20, {});
-  const open = offerOf(1, { state: nameless });
-  assert.deepEqual(open.params.completionMethods, ['wrecking_ball', 'cut_down']);
-  assert.equal(open.brief, 'The tower cracked. Swing mass through what still stands, or cut what is left.');
-  assert.doesNotMatch(open.brief, /throw/);
-  assert.equal(open.params.targetStrength, 1.55);
+  const nameless = fresh(3);
+  failEncounter(nameless, 'tow_slipped', 20, {});
+  const open = offerOf(3, { state: nameless });
+  assert.deepEqual(open.params.completionMethods, ['tow_in', 'sling_in']);
+  assert.equal(open.brief, 'The core drifted wide. Tow it in on the line, or sling it the rest of the way.');
+  assert.doesNotMatch(open.brief, /parted/);
+  assert.equal(open.params.massU, 42);
   assert.notEqual(open.brief, plain.brief);
 
-  assertSpineUnchanged(before, state, 'B1 miss');
+  assertSpineUnchanged(before, state, 'B3 miss');
 });
 
 test('B5 and B7 scars change the physical ask and leave the authored identity', () => {
@@ -290,14 +322,14 @@ test('recovery keeps the same ask, and finishing the beat archives it', () => {
   assert.equal(kept.instruction, ask.instruction);
   assert.equal(kept.rearmed, true);
   assert.equal(state.story.beatIndex, 1);
-  assert.equal(CAMPAIGN_BEATS[1].recovery.line, 'The tower still stands. Knock it down.');
-  assert.equal(recoveryCommsForBeat(1).text, 'Tower still stands. Knock it down.');
+  assert.equal(CAMPAIGN_BEATS[1].recovery.line, 'Honest work still on the board. The book re-posts the next job.');
+  assert.equal(recoveryCommsForBeat(1).text, 'Honest work holds. The book re-posts the next job.');
 
-  const done = recordBeatStep(state, 'mission:completed', { physicalVerb: 'knock_down' }, 80);
+  const done = driveBook1(state, 80).burn;
   assert.equal(done.stepsComplete, true);
   assert.equal(readSpine(state).situation, null);
   assert.equal(readSpine(state).closed.at(-1).askId, ask.askId);
-  assert.equal(readSpine(state).solved['1'].verb, 'knock_down');
+  assert.equal(readSpine(state).solved['1'].verb, 'burn');
 });
 
 test('every beat\'s second miss is a different ask and does not move the cursor', () => {
@@ -337,16 +369,14 @@ test('an earlier miss stays filed when a later beat fails', () => {
 
 test('a Deep Reach method is cited as the climax, not as the tower', () => {
   const state = fresh(1);
-  recordBeatStep(state, 'mission:completed', {
-    physicalVerb: 'knock_down', completionMethod: 'cut_down',
-  }, 2);
+  driveBook1(state, 2);
   state.story.beatIndex = 7;
   state.story.branch = 'traders';
   recordBeatStep(state, 'mission:completed', {
     physicalVerb: 'knock_down', completionMethod: 'wrecking_ball',
   }, 9);
   const cite = spineRoadFrom(state).cite;
-  assert.match(cite, /the tower cut/);
+  assert.match(cite, /the hauler fed to the furnace/);
   assert.match(cite, /the climax thrown/);
   assert.doesNotMatch(cite, /the tower thrown/);
   assert.doesNotMatch(cite, /the tower knocked/);
@@ -356,28 +386,28 @@ test('a Deep Reach method is cited as the climax, not as the tower', () => {
 
 test('the door, the refusal, and the solved verb survive migrate and Continue', () => {
   const state = fresh(1);
-  recordBeatStep(state, 'mission:completed', { physicalVerb: 'knock_down' }, 4);
+  driveBook1(state, 4);
   const refused = recordBeatStep(state, 'dock:docked', { refusedBranch: 'free' }, 5);
   assert.equal(refused.reason, 'already_complete');
   assert.equal(state.story.beatIndex, 1);
   assert.ok(readSpine(state).refused.includes('free'));
-  assert.deepEqual(ensureCampaign47aState(state).stepProgress['1'].completed, ['knock']);
+  assert.deepEqual(ensureCampaign47aState(state).stepProgress['1'].completed, ['alloy_run', 'scale_4', 'infested']);
 
   state.story.beatIndex = 4;
   recordBeatStep(state, 'mission:accepted', liveBranchIntroPayload('patrol'), 6);
   const spine = readSpine(state);
   assert.equal(spine.door, 'patrol');
   assert.deepEqual(spine.refused.slice().sort(), ['free', 'traders']);
-  assert.equal(spine.solved['1'].verb, 'knock_down');
-  assert.deepEqual(ensureCampaign47aState(state).stepProgress['1'].completed, ['knock']);
+  assert.equal(spine.solved['1'].verb, 'burn');
+  assert.deepEqual(ensureCampaign47aState(state).stepProgress['1'].completed, ['alloy_run', 'scale_4', 'infested']);
   const own = ensureCampaign47aState(state);
   assert.ok(own.choiceLog.some((row) => row.kind === 'spine_refused' && row.branch === 'free'));
   assert.ok(own.choiceLog.some((row) => row.kind === 'spine_door' && row.branch === 'patrol'));
 
   const migrated = migrateCampaign47aState(JSON.parse(JSON.stringify(own)));
   assert.equal(migrated.flags.spine.door, 'patrol');
-  assert.deepEqual(migrated.stepProgress['1'].completed, ['knock']);
-  assert.equal(migrated.flags.spine.solved['1'].verb, 'knock_down');
+  assert.deepEqual(migrated.stepProgress['1'].completed, ['alloy_run', 'scale_4', 'infested']);
+  assert.equal(migrated.flags.spine.solved['1'].verb, 'burn');
   assert.ok(migrated.choiceLog.some((row) => row.kind === 'spine_door' && row.branch === 'patrol'));
 
   const blank = fresh(0);
@@ -385,11 +415,11 @@ test('the door, the refusal, and the solved verb survive migrate and Continue', 
   blank.story.beatIndex = 4;
   blank.story.branch = 'patrol';
   assert.equal(readSpine(blank).door, 'patrol');
-  assert.equal(readSpine(blank).solved['1'].verb, 'knock_down');
+  assert.equal(readSpine(blank).solved['1'].verb, 'burn');
   assert.deepEqual(readSpine(blank).refused.slice().sort(), ['free', 'traders']);
   const round = JSON.parse(JSON.stringify(serializeCampaign47aState(ensureCampaign47aState(blank))));
   assert.equal(round.flags.spine.door, 'patrol');
-  assert.equal(round.flags.spine.solved['1'].verb, 'knock_down');
+  assert.equal(round.flags.spine.solved['1'].verb, 'burn');
 });
 
 test('Helios remembers the hull, and two contacts do not give the same account', () => {
@@ -406,6 +436,7 @@ test('Helios remembers the hull, and two contacts do not give the same account',
   quiet.morrow = morrow;
   assert.equal(spineGreeting('contact_maera_vols', quiet), 'R-07 has your hull. The engines stayed warm.');
   recordBeatStep(quiet, 'mining:yield', {}, 2);
+  recordBeatStep(quiet, 'story:skimResolved', { massT: 12.4 }, 2.5);
   recordBeatStep(quiet, 'dock:docked', { stationId: 'station_helios' }, 3);
   assert.equal(JSON.stringify(quiet.morrow), morrowJson);
   assert.equal(spineGreeting('contact_maera_vols', quiet), 'You docked the variance sample here.');
@@ -420,10 +451,10 @@ test('Helios remembers the hull, and two contacts do not give the same account',
   missed.morrow = JSON.parse(morrowJson);
   failEncounter(missed, 'tower_stood', 10, {});
   recordBeatStep(missed, 'dock:docked', { stationId: 'station_helios' }, 10 + FAIL_RECOVERY_COOLDOWN_S);
-  recordBeatStep(missed, 'mission:completed', { physicalVerb: 'knock_down' }, 30);
+  driveBook1(missed, 30);
   assert.equal(JSON.stringify(missed.morrow), morrowJson);
-  assert.equal(spineGreeting('contact_maera_vols', missed), 'You knocked the tower. The yard still rings.');
-  assert.equal(spineGreeting('contact_halev_doss', missed), 'Filed: a miss, then the knock.');
+  assert.equal(spineGreeting('contact_maera_vols', missed), 'You fed the hauler to the furnace.');
+  assert.equal(spineGreeting('contact_halev_doss', missed), 'Filed: a miss, then the furnace.');
   assert.ok(words(spineGreeting('contact_maera_vols', missed)) <= 12);
   assert.ok(words(spineGreeting('contact_halev_doss', missed)) <= 12);
 
@@ -431,8 +462,8 @@ test('Helios remembers the hull, and two contacts do not give the same account',
   recordBeatStep(missed, 'mission:accepted', liveBranchIntroPayload('traders'), 40);
   const maera = contact(missed, 'station_helios', 'contact_maera_vols');
   const halev = contact(missed, 'station_helios', 'contact_halev_doss');
-  assert.equal(maera.blurb, 'You knocked the tower. The yard still rings.');
-  assert.equal(halev.blurb, 'Filed: a miss, then the knock.');
+  assert.equal(maera.blurb, 'You fed the hauler to the furnace.');
+  assert.equal(halev.blurb, 'Filed: a miss, then the furnace.');
   assert.notEqual(maera.blurb, maeraAuthored);
   assert.notEqual(halev.blurb, DEPTH_PROGRAM_CONTACTS.find((row) => row.id === 'contact_halev_doss').blurb);
 
@@ -454,20 +485,22 @@ test('Helios remembers the hull, and two contacts do not give the same account',
   assert.notEqual(spineGreeting('contact_maera_vols', pods), spineGreeting('contact_halev_doss', pods));
 
   missed.story.endgameChoice = 'E';
-  assert.equal(spineGreeting('contact_maera_vols', missed), 'You knocked the tower. I watched you file and leave.');
-  assert.equal(spineGreeting('contact_halev_doss', missed), 'Filed: a miss, the knock, then the disposition.');
+  assert.equal(spineGreeting('contact_maera_vols', missed), 'You fed the furnace. I watched you file and leave.');
+  assert.equal(spineGreeting('contact_halev_doss', missed), 'Filed: a miss, the furnace, then the disposition.');
 
+  // Compat: the retired demolition route still files through the legacy fill, so the
+  // method the receipt carried is still the one contacts name.
   const namedOnly = fresh(1);
-  recordBeatStep(namedOnly, 'mission:completed', { physicalVerb: 'knock_down' }, 4);
+  completeBeatStepsForLegacy(namedOnly, 1, 4, 'legacy_contract', { physicalVerb: 'knock_down' });
   assert.match(spineGreeting('contact_latch_child', namedOnly), /knock/);
   assert.doesNotMatch(spineGreeting('contact_latch_child', namedOnly), /throw/);
   assert.doesNotMatch(spineGreeting('contact_tinker_zell', namedOnly), /crush/);
   assert.match(spineGreeting('contact_dustwife_senna', namedOnly), /knock/);
   assert.doesNotMatch(spineGreeting('contact_dustwife_senna', namedOnly), /throw/);
   const thrown = fresh(1);
-  recordBeatStep(thrown, 'mission:completed', {
+  completeBeatStepsForLegacy(thrown, 1, 4, 'legacy_contract', {
     physicalVerb: 'knock_down', completionMethod: 'wrecking_ball',
-  }, 4);
+  });
   assert.match(spineGreeting('contact_latch_child', thrown), /throw/);
   assert.match(spineGreeting('contact_tinker_zell', thrown), /crush/);
   assert.ok(words(spineGreeting('contact_maera_vols', missed)) <= 12);
@@ -512,17 +545,18 @@ test('witness contacts and empty late saves keep the authored line', () => {
 });
 
 test('the ledger names a method only when the receipt carries one', () => {
+  // Compat: the retired demolition route files through the legacy fill.
   const verbOnly = fresh(1);
-  recordBeatStep(verbOnly, 'mission:completed', { physicalVerb: 'knock_down' }, 4);
+  completeBeatStepsForLegacy(verbOnly, 1, 4, 'legacy_contract', { physicalVerb: 'knock_down' });
   const verbLine = leftoverLedgerLine(verbOnly);
   assert.match(verbLine, /knocked the variance tower/);
   assert.doesNotMatch(verbLine, /thrown mass/);
   assert.doesNotMatch(verbLine, /cut the tower/);
 
   const thrown = fresh(1);
-  recordBeatStep(thrown, 'mission:completed', {
+  completeBeatStepsForLegacy(thrown, 1, 4, 'legacy_contract', {
     physicalVerb: 'knock_down', completionMethod: 'wrecking_ball',
-  }, 4);
+  });
   const thrownLine = leftoverLedgerLine(thrown);
   assert.match(thrownLine, /thrown mass/);
   assert.doesNotMatch(thrownLine, /knocked the variance tower/);
@@ -530,7 +564,7 @@ test('the ledger names a method only when the receipt carries one', () => {
   const generic = fresh(1);
   failEncounter(generic, 'tower_stood', 8, {});
   const genericLine = leftoverLedgerLine(generic);
-  assert.match(genericLine, /missing the variance tower/);
+  assert.match(genericLine, /missing the honest work/);
   assert.match(genericLine, /the attempt failed/);
   assert.doesNotMatch(genericLine, /with the throw/);
 
@@ -582,7 +616,7 @@ test('a deployed trader is not remembered as a drone', () => {
 
 test('a headline verb is not spoken as one of the two solutions', () => {
   const knock = fresh(1);
-  recordBeatStep(knock, 'mission:completed', { physicalVerb: 'knock_down' }, 2);
+  completeBeatStepsForLegacy(knock, 1, 2, 'legacy_contract', { physicalVerb: 'knock_down' });
   assert.equal(spineGreeting('contact_halev_doss', knock), 'Filed: the tower fell. I did not see the hand.');
   assert.equal(spineGreeting('contact_lira_vonn', knock), 'I printed the knock. The yard kept it.');
   assert.doesNotMatch(spineGreeting('contact_halev_doss', knock), /throw|cut/);
@@ -601,7 +635,7 @@ test('the finale cites the retained road and does not change which ending is off
   assert.doesNotMatch(bareArchive.text, /The road retained/);
 
   const state = fresh(1);
-  recordBeatStep(state, 'mission:completed', { physicalVerb: 'knock_down' }, 4);
+  completeBeatStepsForLegacy(state, 1, 4, 'legacy_contract', { physicalVerb: 'knock_down' });
   state.story.beatIndex = 4;
   recordBeatStep(state, 'mission:accepted', liveBranchIntroPayload('traders'), 6);
   state.story.beatIndex = 7;

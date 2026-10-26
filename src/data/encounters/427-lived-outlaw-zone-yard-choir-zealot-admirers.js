@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, CANTOR — send the relief to Outlaw Zone instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, CANTOR — send the relief to Outlaw Zone; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "CONE",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CANTOR: The cone needs a hand at outlaw zone. The shift is already short. — CONE ON THE OUTLAW ZONE.",
+      "line": "CANTOR: The cone needs a hand at Outlaw Zone. The shift is already short. — CONE ON THE OUTLAW ZONE.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Park the cone inside twenty of the receiver, dead slow for a four-count. — CONE ON THE OUTLAW ZONE.",
+      "line": "CANTOR: Tow the cone over — a hundred-twenty of drag — and park it inside twenty of the receiver, dead slow for a four-count. — CONE ON THE OUTLAW ZONE.",
       "channel": "info",
       "next": "offer"
     },
@@ -185,7 +185,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "CANTOR: Time ran out on the work ask — CONE ON THE OUTLAW ZONE. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "CANTOR: The 24 cr stays spent — the relief still runs on your credit at Outlaw Zone; the close-in just never came — CONE ON THE OUTLAW ZONE.",
       "keepMotion": false,
       "steps": [
         {
@@ -309,7 +309,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "CONE ON THE OUTLAW ZONE",
-  "primaryLine": "CANTOR: The cone needs a hand at outlaw zone. The shift is already short.",
+  "primaryLine": "CANTOR: The cone needs a hand at Outlaw Zone. The shift is already short.",
   "factionId": "faction_free",
   "choices": [
     {
@@ -319,8 +319,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, CANTOR — send the relief to Outlaw Zone instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, CANTOR — send the relief to Outlaw Zone; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

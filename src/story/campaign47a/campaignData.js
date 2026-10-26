@@ -90,11 +90,22 @@ export const CAMPAIGN_BEATS = Object.freeze([
         label: 'Mine / sample yield',
       }),
       Object.freeze({
-        id: 'dock',
+        // W-BOOKS-0-2 (§34.7 Book 0): THE SKIM — a black-Line vessel lifts the 12.4 t sample
+        // mid-flight; the escorts die on the kill feed and their wrecks persist as the
+        // receipt. The scene emits story:skimResolved; liveDockCheck can also resolve it
+        // inline at the Pit for a player who jumps the lane before the tick fires.
+        id: 'skim',
         order: 1,
-        accept: Object.freeze(['dock:docked']),
-        label: 'Dock after sample',
+        accept: Object.freeze(['story:skimResolved']),
+        label: 'The Skim — the sample is taken',
         requiresPrior: Object.freeze(['mine']),
+      }),
+      Object.freeze({
+        id: 'dock',
+        order: 2,
+        accept: Object.freeze(['dock:docked']),
+        label: 'Dock at the Pit — payment withheld',
+        requiresPrior: Object.freeze(['mine', 'skim']),
       }),
     ]),
     observeOnly: false,
@@ -115,50 +126,106 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 1,
     id: 'honest_work',
     title: 'Honest Work',
-    objective: 'Knock the variance tower — wrecking-ball contract.',
-    headlineVerb: 'knock',
-    setPiece: 'wrecking-ball contract',
+    objective: 'Alloy run to Tethys, weigh the crate on Scale 4, burn the infested hauler.',
+    headlineVerb: 'weigh',
+    setPiece: 'weighing + infested hauler furnace disposal',
     steps: Object.freeze([
       Object.freeze({
-        id: 'knock',
+        // §34.7 Book 1: the sealed alloy run to Tycho — the manifest re-categorizes silent.
+        id: 'alloy_run',
         order: 0,
         accept: Object.freeze(['mission:completed']),
-        label: 'Knock the tower down',
+        match: Object.freeze({ storyTag: 'campaign47a:b1:alloy_run' }),
+        contractId: 'campaign47a:b1:alloy_run',
+        label: 'Deliver sealed alloys to Tycho — manifest lies',
+      }),
+      Object.freeze({
+        // §34.7 Book 1: SCALE 4 — the delivered crate weighs 0.94 on the Tethys scale and the
+        // variance object stays in hand. kesslerScale owns the pad and emits the flag.
+        id: 'scale_4',
+        order: 1,
+        accept: Object.freeze(['kesslerPod:weighed']),
+        match: Object.freeze({ variance: true }),
+        label: 'Weigh the crate on Scale 4 — keep the variance',
+      }),
+      Object.freeze({
+        // §34.7 Book 1: the infested ore hauler — mites cleared, three ore pods fed to the
+        // Ceres furnace intake, the Casket worm left sleeping in the hold.
+        id: 'infested',
+        order: 2,
+        accept: Object.freeze(['mission:completed']),
+        match: Object.freeze({ storyTag: 'campaign47a:b1:infested' }),
+        contractId: 'campaign47a:b1:infested',
+        label: 'Clear the mites; feed the ore to the furnace',
       }),
     ]),
     observeOnly: false,
-    liveMissionType: 'demolition',
-    introduces: 'wrecking_ball',
+    liveMissionType: 'cargo_delivery',
+    introduces: 'weighing',
     rewardDoc: Object.freeze({ credits: 600, reason: 'story:beat:1', rep: Object.freeze([]) }),
     next: 2,
     recovery: Object.freeze({
       rearmOn: Object.freeze(['dock:docked', 'mission:failed']),
-      line: 'The tower still stands. Knock it down.',
+      line: 'Honest work still on the board. The book re-posts the next job.',
     }),
   },
   {
     beat: 2,
     id: 'first_blood',
     title: 'First Blood',
-    objective: 'Pull the life pods out under fire.',
-    headlineVerb: 'pull',
-    setPiece: 'pod rescue under fire',
+    objective: 'Cinder board, Compost Run, the Nest — then the name on the register.',
+    headlineVerb: 'hunt',
+    setPiece: 'cinder board + compost run + the nest + elroy',
     steps: Object.freeze([
       Object.freeze({
-        id: 'pull',
+        // §34.7 Book 2: ORDINARY BOUNTY — three lane wasps down and a marked wreck towed to
+        // Rook's booth at Charon. Wasp light ships are ammunition on the radiation lane.
+        id: 'cinder_board',
         order: 0,
         accept: Object.freeze(['mission:completed']),
-        label: 'Pull the pods out',
+        match: Object.freeze({ storyTag: 'campaign47a:b2:cinder' }),
+        contractId: 'campaign47a:b2:cinder',
+        label: 'Clear three wasps; tow the mark to Rook',
+      }),
+      Object.freeze({
+        // §34.7 Book 2: THE COMPOST RUN — feed a hungry garden; the Understory keeps the
+        // biomass and pays out when the run completes.
+        id: 'compost',
+        order: 1,
+        accept: Object.freeze(['understory:gardenFed', 'understory:gardenStage', 'understory:compostRunComplete']),
+        match: Object.freeze({ byPlayer: true }),
+        matchSignals: Object.freeze(['understory:gardenFed']),
+        label: 'Feed the garden — the Compost Run',
+      }),
+      Object.freeze({
+        // §34.7 Book 2: THE NEST — encounter 705 bound to the book: a wasp nest in the
+        // Charon expanse that resolves on clear or escape.
+        id: 'nest',
+        order: 2,
+        accept: Object.freeze(['encounter:resolved']),
+        match: Object.freeze({ shape: 'the_nest' }),
+        label: 'Meet the Nest',
+      }),
+      Object.freeze({
+        // §34.7 Book 2: ELROY — the named contract. UNKNOWN resolves CIVILIAN — REGISTERED,
+        // then the choice: kill or reel inside sixty. The terminal register shows
+        // THEY WERE CARRYING MEDICINE. and the wreck stays behind as contraband.
+        id: 'elroy',
+        order: 3,
+        accept: Object.freeze(['mission:completed']),
+        match: Object.freeze({ storyTag: 'campaign47a:b2:elroy' }),
+        contractId: 'campaign47a:b2:elroy',
+        label: 'Take the name on the register',
       }),
     ]),
     observeOnly: false,
-    liveMissionType: 'rescue_under_fire',
-    introduces: 'pod_rescue',
+    liveMissionType: 'patrol_clear',
+    introduces: 'bounty_board',
     rewardDoc: Object.freeze({ credits: 800, reason: 'story:beat:2', rep: Object.freeze([]) }),
     next: 3,
     recovery: Object.freeze({
       rearmOn: Object.freeze(['mission:failed', 'encounter:resolved', 'dock:docked']),
-      line: 'Pods still drift. Pull them out.',
+      line: 'The board still holds. The book re-posts the next job.',
     }),
   },
   {

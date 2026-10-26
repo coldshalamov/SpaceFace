@@ -433,6 +433,20 @@ const SHIPPED_MODULES = [
     visuals: { part: 'greebles/greeble_armor_plates.glb' },
   },
   {
+    // AL-LG-11 — the earned plate. Three committed player rams mint ONE copy bound to the hull
+    // that did them (systems/ships.js owns the history, the award and every fitting gate). Not a
+    // second damage tier: same stats, same greeble — earned, never bought. `purchasable:false`
+    // keeps it off every rack and sandbox list; no `unique`/`baseId` — the physical uniqueness
+    // lives in the rewardInstanceId binding, and a unique-flagged def with no wreck/lineage
+    // reservation fails the loot audit (depthProgramLootAudit). `historyGate` is the data mirror
+    // of the ships-owned threshold so a reader can see the earn rule on the catalog row itself.
+    id: 'mod_ram_plate_scarred', name: 'Scarred Ram Plate', slotType: 'utility', size: 'S', tier: 1, mass: 4, price: 0,
+    energyDraw: 0, purchasable: false,
+    historyGate: { act: 'ram', count: 3 },
+    mods: { ramDamageDealtMult: 1.80 },
+    visuals: { part: 'greebles/greeble_armor_plates.glb' },
+  },
+  {
     // GRAVITY BUMPER — the first HULL BURST (design doc 2026-09-29 section 4). A timed, front-facing
     // special attack: press the burst key and for a few seconds the nose throws away every hostile
     // hull it touches, harder the faster you arrive (a Massline swing is the fastest way to arrive).
@@ -911,6 +925,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_drone_bay_l: 'Puts a drone in the water.',
   mod_jump_drive_m: 'Jumps you farther than the hull\'s own drive.',
   mod_ram_plate: 'The hull itself hits harder when you mean to ram.',
+  mod_ram_plate_scarred: 'Earned through three rams; it only fits the hull that did them.',
   mod_gravity_bumper_s: 'Press the burst key and, for a few seconds, the nose throws every hostile hull it touches. The faster you arrive, the farther they fly.',
   mod_fire_lance_s: 'Press the burst key and, for a few seconds, a narrow lance burns whatever the nose touches: light and medium hulls die, heavies ignite. Fly straight at it, fast.',
   mod_grip_bumper_s: 'Press the burst key and the nose catches the first light hostile hull it meets and carries it: ram things with it, then press again to let it go.',

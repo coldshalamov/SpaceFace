@@ -3621,6 +3621,26 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "59a22977b1fc3872bb79d10580f96c3f498d114f06f0cb2545932cceaf84ffee",
     "sourceUrl": "assets/ships/release/parts/places/place_phoebe_shard_sphere.glb"
+  },
+  {
+    "assetId": "sf.render.rhea-slag-hauler",
+    "expectedContentHash": "76ba9eebc6f8fb978cd8aa3f83ae566cba7b4bb94008de4160e8b285dba8a82c",
+    "key": "rhea-slag-hauler",
+    "metadataUrl": "assets/ships/release/render-packages/rhea-slag-hauler/render-package.json",
+    "runtimeAssetId": "SF_PLACE_RHEA_SLAG_HAULER",
+    "slot": "place",
+    "sourceSha256": "c38d15f8bb2e5a0f206faa2322a8742ac2a6a0ce3dc33957e026a8787ddfef83",
+    "sourceUrl": "assets/ships/release/parts/places/place_rhea_slag_hauler.glb"
+  },
+  {
+    "assetId": "sf.render.proteus-funnel",
+    "expectedContentHash": "f07c859ae7f66f07f681fa9590ee59f3a4b3cfbdced4edac29bffbb50e938d69",
+    "key": "proteus-funnel",
+    "metadataUrl": "assets/ships/release/render-packages/proteus-funnel/render-package.json",
+    "runtimeAssetId": "SF_PLACE_PROTEUS_FUNNEL",
+    "slot": "place",
+    "sourceSha256": "9afec20d1b7c23ff291ed97907e3b4f0fde6df597587f4bc86ba69d45595751d",
+    "sourceUrl": "assets/ships/release/parts/places/place_proteus_funnel.glb"
   }
 ];
 

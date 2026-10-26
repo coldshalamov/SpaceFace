@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, DESK — send the relief to Civilian Core instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, DESK — send the relief to Civilian Core; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "DESK: We found the ash trail crossing civilian core. Stay outside it. — ASH ON THE CIVILIAN CORE.",
+      "line": "DESK: We found the ash trail crossing Civilian Core. Stay outside it. — ASH ON THE CIVILIAN CORE.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -166,7 +166,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "DESK: Time ran out on the work ask — ASH ON THE CIVILIAN CORE. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "DESK: The 24 cr stays spent — the relief still runs on your credit at Civilian Core; the close-in just never came — ASH ON THE CIVILIAN CORE.",
       "keepMotion": false,
       "steps": [
         {
@@ -290,7 +290,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "ASH ON THE CIVILIAN CORE",
-  "primaryLine": "DESK: We found the ash trail crossing civilian core. Stay outside it.",
+  "primaryLine": "DESK: We found the ash trail crossing Civilian Core. Stay outside it.",
   "factionId": "faction_mts",
   "choices": [
     {
@@ -300,8 +300,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, DESK — send the relief to Civilian Core instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, DESK — send the relief to Civilian Core; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

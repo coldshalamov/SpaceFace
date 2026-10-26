@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "27a182dd41cf77b19b7348270636303b28c8c00bc71999748b1e62db67fc503b",
+  "contentHash": "ca501ec6fd2805f30a1569c7803c8dee2fddcadd9f87f05809e8de78a6000903",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -237,8 +237,8 @@
       "uri": "place_hyperion_caved_shaft.glb"
     },
     "sourceManifest": {
-      "bytes": 277460,
-      "sha256": "ce15084f86543f45fe3d9ea42091d72e1af70bb0217db59e60b40d397a240e07",
+      "bytes": 300891,
+      "sha256": "50dce1990827c217ea558e306d2fd95a0b8c63660e437c5595127100ce1f8393",
       "uri": "pilots.json"
     }
   },
@@ -348,7 +348,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_hyperion_caved_shaft.glb"
   },
-  "runtimeHash": "61b64bc2222c025e2d6a5950a0b85f38635a99bcedfbbf86d901618fddedfa17",
+  "runtimeHash": "3d17fcecc325e2cb1a3211a7035f3b5e6954656059aca0a7a61392e92d6dbce9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

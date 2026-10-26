@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, VAEL — send the relief to Derelict Field instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, VAEL — send the relief to Derelict Field; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "HYMN",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "VAEL: The hymn is stamped on a wreck at derelict field. Do not cut yet. — HYMN ON THE DERELICT FIELD.",
+      "line": "VAEL: The hymn is stamped on a wreck at Derelict Field. Do not cut yet. — HYMN ON THE DERELICT FIELD.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "VAEL: The hymn goes to the second hull, not ours. Tow it there, release, park it inside thirty. — HYMN ON THE DERELICT FIELD.",
+      "line": "VAEL: The hymn goes to the second hull, not ours — a hundred-twenty of haul. Tow it there, release, park it inside thirty. — HYMN ON THE DERELICT FIELD.",
       "channel": "info",
       "next": "offer"
     },
@@ -185,7 +185,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "VAEL: Time ran out on the work ask — HYMN ON THE DERELICT FIELD. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "VAEL: The 24 cr stays spent — the relief still runs on your credit at Derelict Field; the close-in just never came — HYMN ON THE DERELICT FIELD.",
       "keepMotion": false,
       "steps": [
         {
@@ -309,7 +309,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "HYMN ON THE DERELICT FIELD",
-  "primaryLine": "VAEL: The hymn is stamped on a wreck at derelict field. Do not cut yet.",
+  "primaryLine": "VAEL: The hymn is stamped on a wreck at Derelict Field. Do not cut yet.",
   "factionId": "faction_vael",
   "choices": [
     {
@@ -319,8 +319,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, VAEL — send the relief to Derelict Field instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, VAEL — send the relief to Derelict Field; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

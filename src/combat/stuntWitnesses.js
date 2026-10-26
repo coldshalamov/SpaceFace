@@ -6,14 +6,16 @@ import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 export { witnessLineOfSight } from './lineOfSight.js';
 const LIMITS = { episodes: 32, witnesses: 8, terminals: 8, reportQueue: 8 };
-const finite = n => Number.isFinite(n) ? n : 0;
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
 const distance = (a,b) => Math.hypot(a.x-b.x,a.z-b.z);
-const key = id => String(id);
 const copy = value => JSON.parse(JSON.stringify(value));
 export function adventureStunts(state) { return !state.run || state.run.phase === 'inactive' || state.run.kind === 'adventure'; }
 export function witnessState(state) {
-  state.story ||= {}; state.story.titles ||= {}; const titles = state.story.titles;
+  // The hops to the bag are restored-state too: a truthy primitive at story/titles survives
+  // ||= and then throws when the leaf key is written — normalize by shape, not truthiness.
+  if (!state.story || typeof state.story !== 'object') state.story = {};
+  if (!state.story.titles || typeof state.story.titles !== 'object') state.story.titles = {};
+  const titles = state.story.titles;
   // A restored save adopts this bag wholesale — normalize every field the tick loop
   // dereferences (a plain-proto episodes bag re-opens the '__proto__' read seam; a missing
   // reports/sequence crashes or mints NaN ids; a primitive/array bag itself is corrupt too).
@@ -106,7 +108,7 @@ export function observeStuntWitnesses(state) {
   if(own.lastTick===tick)return;own.lastTick=tick;
   // Malformed restored rows (null, primitives) hold no evidence and can never expire — drop
   // them with the stale ones so the bag cannot crash or wedge the sweep.
-  for(const [id,row] of Object.entries(own.episodes))if(!row||typeof row!=='object'||tick>row.rootTick+480)delete own.episodes[id];
+  for(const [id,row] of Object.entries(own.episodes))if(!row||typeof row!=='object'||Array.isArray(row)||!Number.isFinite(row.rootTick)||tick>row.rootTick+480)delete own.episodes[id];
   const player=state.entities?.get?.(state.playerId);if(!player)return;
   const observers=[];
   for(const entity of witnessCandidatesFor(state)) { const profile=observerProfile(state,entity);if(profile&&distance(entity.pos,player.pos)<=450)observers.push({entity,profile}); }
@@ -169,7 +171,7 @@ export function observeStuntWitnesses(state) {
         if(relevantFlight)v.flight=true;
         tracked++;
       }
-      for(const [id,v] of Object.entries(row.targets))if(!v||typeof v!=='object'||(!v.flight&&tick-v.last>6))delete row.targets[id];
+      for(const [id,v] of Object.entries(row.targets))if(!v||typeof v!=='object'||!Number.isFinite(v.last)||(!v.flight&&tick-v.last>6))delete row.targets[id];
       if(root.escape?.completed&&tick-root.escape.completedTick<=1) {
         const ids=[...(root.escape.threatIds||[]),...(root.escape.boundaryIds||[])];
         row.escapeVerified=seesSource&&ids.length>0&&ids.every(id=>Object.values(row.targets).some(v=>v&&v.id===id&&v.max>=6));
@@ -461,7 +463,12 @@ export function deliverWitnessReports(state,bus) {
   let changed=false;
   for(const packet of own.reports.slice()) {
     // A restored null/primitive packet can never deliver — eject it with the queue sweep.
-    if(!packet||typeof packet!=='object'){own.reports.splice(own.reports.indexOf(packet),1);changed=true;continue;}
+    // Same for an unreachable deliveryTick: a legit packet lands within ~60 ticks of send
+    // (comms range ≤ ~1000 WU), so a non-finite or far-future value is dead weight occupying
+    // one of the 8 queue slots forever.
+    if(!packet||typeof packet!=='object'||!Number.isFinite(packet.deliveryTick)||packet.deliveryTick>tick+7200) {
+      own.reports.splice(own.reports.indexOf(packet),1);changed=true;continue;
+    }
     if(tick<packet.deliveryTick)continue;
     own.reports.splice(own.reports.indexOf(packet),1);
     changed=true;

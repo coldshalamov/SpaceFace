@@ -35,7 +35,8 @@ import { createRacingOpponents } from '../src/missions/racingOpponents.js';
 import { observeRacingGhost, readRacingGhost } from '../src/systems/racingGhosts.js';
 import {
   configureRacingCorridorSession, isRacingCorridorSession,
-  racingCorridorPlan, clearsRacingCorridor,
+  racingCorridorPlan, clearsRacingCorridor, racingCorridorSceneryShift,
+  racingDressingSpec, racingAsteroidSpec,
 } from '../src/world/racingCorridor.js';
 import {
   PALLAS_REEF_MINES, PALLAS_REEF_GLOBAL_POS, PALLAS_REEF_FIELD, pallasReefPhase,
@@ -45,7 +46,7 @@ import {
   weatherVolumesForSector, weatherPhase,
 } from '../src/data/environmentalMachinery.js';
 import { SECTORS } from '../src/data/sectors.js';
-import { sectorLocalToGlobalForSector, globalToSectorLocalForSector } from '../src/data/sectorCoordinates.js';
+import { sectorLocalToGlobalForSector, globalToSectorLocalForSector, RESIDENCY_TIER } from '../src/data/sectorCoordinates.js';
 import { segmentDistanceSquared, createSectorArranger } from '../src/world/arranger.js';
 import { asteroidColliderRadius } from '../src/data/asteroidColliders.js';
 import { stageRacingLaunch, armRacingContract, takeRacingLaunch } from '../src/ui/racingLaunch.js';
@@ -656,6 +657,291 @@ test('corridor arranger honors authored activity reservations before any rock sp
       'a banked rock never lands on a reserved authored mark');
     assert.ok(clearsRacingCorridor(plan, moved, 18), 'the relocated body stays off-corridor');
   } finally { f.dispose(); }
+});
+
+test('corridor arranger: pinned slots keep authored marks and yield only to the lane', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const sector = f.state.world.sectors['sector_ceres_belt'];
+    const plan = racingCorridorPlan(sector.id);
+    const field = { id: 'f_ceres_1', type: 'ast_metallic' };
+    // A pinned slot owns its authored mark — Ceres activity/collision bindings,
+    // authored geology — so the caller's `pinned` flag must keep a clear mark
+    // verbatim like every other membrane does. Dropping the flag re-seated the
+    // bound prop onto a leg bank while its reservation held the real mark empty.
+    let clearMark = null;
+    for (let i = 0; i < 512 && !clearMark; i++) {
+      const angle = i * 2.399963229728653;
+      // Beyond the authored sector volume: corridor-clear and free of every
+      // seeded/native mark, so only the pinned flag decides the outcome.
+      const reach = 8000 + i * 120;
+      const p = { x: plan.origin.x + Math.cos(angle) * reach, z: plan.origin.z + Math.sin(angle) * reach };
+      if (clearsRacingCorridor(plan, p, 18)) clearMark = p;
+    }
+    assert.ok(clearMark, 'a corridor-clear authored mark exists');
+    const kept = createSectorArranger(sector, {}).createField(field).place(clearMark, 18, 1, true);
+    assert.deepEqual(kept, { x: clearMark.x, z: clearMark.z },
+      'a pinned body keeps its authored mark instead of banking');
+    const banked = createSectorArranger(sector, {}).createField(field).place(clearMark, 18, 1);
+    assert.ok(banked.x !== clearMark.x || banked.z !== clearMark.z,
+      'the same slot unpinned still banks — the flag is actually read');
+    // The lane itself still wins: a pinned mark on the corridor takes the
+    // nearest off-corridor seat rather than sitting mid-course.
+    const seg = plan.keepouts[0];
+    const onLane = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    const moved = createSectorArranger(sector, {}).createField(field).place(onLane, 18, 1, true);
+    assert.ok(clearsRacingCorridor(plan, moved, 18),
+      'a pinned mark on the lane still yields to the corridor');
+    assert.ok(moved.x !== onLane.x || moved.z !== onLane.z, 'the pinned body leaves the lane');
+  } finally { f.dispose(); }
+});
+
+test('corridor membrane: moved bodies never stack, and re-materialization re-settles', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const sector = f.state.world.sectors['sector_ceres_belt'];
+    const plan = racingCorridorPlan(sector.id);
+    const seg = plan.keepouts[0];
+    // Two solids stacked along one leg's normal share a closest corridor point: the
+    // un-peered membrane pushed each to its own minimal-clearance locus — |r1 − r2|
+    // apart, an overlap. Reservation order makes the second body clear the first.
+    const length = Math.hypot(seg.b.x - seg.a.x, seg.b.z - seg.a.z);
+    const nx = -(seg.b.z - seg.a.z) / length, nz = (seg.b.x - seg.a.x) / length;
+    const mid = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    const r1 = 20, r2 = 60;
+    const orig1 = { x: mid.x + nx * 10, z: mid.z + nz * 10 };
+    const orig2 = { x: mid.x + nx * 40, z: mid.z + nz * 40 };
+    const s1 = racingCorridorSceneryShift(f.state, sector.id, orig1, r1);
+    const s2 = racingCorridorSceneryShift(f.state, sector.id, orig2, r2);
+    assert.ok(s1 && s2, 'both stacked bodies start on the corridor');
+    const p1 = { x: orig1.x + s1.x, z: orig1.z + s1.z };
+    const p2 = { x: orig2.x + s2.x, z: orig2.z + s2.z };
+    assert.ok(clearsRacingCorridor(plan, p1, r1), 'the first body still lands off-corridor');
+    assert.ok(clearsRacingCorridor(plan, p2, r2), 'the second body still lands off-corridor');
+    assert.ok(Math.hypot(p2.x - p1.x, p2.z - p1.z) >= r1 + r2 + 8 - 0.01,
+      'the second moved body never collapses onto the first');
+    // A re-materializing body skips its own stale seat: the same shift call returns
+    // the same offset instead of drifting further out every pass.
+    const again1 = racingCorridorSceneryShift(f.state, sector.id, orig1, r1);
+    const again2 = racingCorridorSceneryShift(f.state, sector.id, orig2, r2);
+    assert.deepEqual(again1, s1, 'the first body re-settles its own seat');
+    assert.deepEqual(again2, s2, 'the second body re-settles its own seat');
+  } finally { f.dispose(); }
+});
+
+test('corridor membrane: co-located bodies keep separate seats by authored identity', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const sector = f.state.world.sectors['sector_ceres_belt'];
+    const plan = racingCorridorPlan(sector.id);
+    const seg = plan.keepouts[0];
+    const length = Math.hypot(seg.b.x - seg.a.x, seg.b.z - seg.a.z);
+    const nx = -(seg.b.z - seg.a.z) / length, nz = (seg.b.x - seg.a.x) / length;
+    const mid = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    // Two different bodies authored onto the same corridor point: a position-keyed
+    // seat map would alias them, so the second body's self-skip would let it stack
+    // onto the first. Stable seat ids (poi.id / faunaKey) reserve two seats.
+    const pos = { x: mid.x + nx * 10, z: mid.z + nz * 10 };
+    const s1 = racingCorridorSceneryShift(f.state, sector.id, pos, 20, 'poi:alpha');
+    const s2 = racingCorridorSceneryShift(f.state, sector.id, pos, 60, 'poi:beta');
+    assert.ok(s1 && s2, 'both co-located bodies start on the corridor');
+    const p1 = { x: pos.x + s1.x, z: pos.z + s1.z };
+    const p2 = { x: pos.x + s2.x, z: pos.z + s2.z };
+    assert.ok(clearsRacingCorridor(plan, p1, 20) && clearsRacingCorridor(plan, p2, 60));
+    assert.ok(Math.hypot(p2.x - p1.x, p2.z - p1.z) >= 20 + 60 + 8 - 0.01,
+      'co-located bodies reserve two seats, never alias one row and stack');
+    // The same authored slot re-settles its own seat on the next pass.
+    const again = racingCorridorSceneryShift(f.state, sector.id, pos, 20, 'poi:alpha');
+    assert.deepEqual(again, s1, 'the named body keeps its own seat');
+  } finally { f.dispose(); }
+});
+
+test('corridor membranes fail closed on a malformed radius', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const sector = f.state.world.sectors['sector_ceres_belt'];
+    const plan = racingCorridorPlan(sector.id);
+    const seg = plan.keepouts[0];
+    const onCorridor = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    // The scenery shift already validates; the spec membrane's radius clamp let
+    // Infinity through, and the unguarded mover minted a non-finite seat the
+    // dressing table then collapsed to (0,0). Now the spec returns untouched.
+    const spec = { collides: true, pos: { ...onCorridor }, radius: Infinity,
+      homeSectorId: sector.id, data: { placeId: 'probe_bad_radius' } };
+    assert.equal(racingDressingSpec(f.state, spec), spec,
+      'an Infinity radius leaves the authored spec alone');
+    assert.equal(racingCorridorSceneryShift(f.state, sector.id, onCorridor, Infinity), null);
+    assert.equal(racingCorridorSceneryShift(f.state, sector.id, { x: NaN, z: 0 }, 20), null);
+    void plan;
+  } finally { f.dispose(); }
+});
+
+test('a fieldless sector still resets corridor peers at the head of the pass', async () => {
+  const f = await sectorFixture('sector_pallas_drift');
+  try {
+    const sector = f.state.world.sectors['sector_pallas_drift'];
+    const plan = racingCorridorPlan(sector.id);
+    const seg = plan.keepouts[0];
+    const length = Math.hypot(seg.b.x - seg.a.x, seg.b.z - seg.a.z);
+    const nx = -(seg.b.z - seg.a.z) / length, nz = (seg.b.x - seg.a.x) / length;
+    const mid = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    // Swap the sector for a fieldless copy and re-register the new object: the
+    // fields pass then returned before its arranger ran, so the POI membrane
+    // worked against last pass's seats and the dressing pass's arranger wiped
+    // every seat the POIs had just reserved.
+    const fieldless = { ...sector, fields: [] };
+    f.state.world.sectors[sector.id] = fieldless;
+    configureRacingCorridorSession(f.state, true);
+    delete f.state.world.sectorContents[sector.id];
+    f.world._ensureSectorMaterialized(sector.id, RESIDENCY_TIER.REDUCED);
+    const bag = f.state.world.sectorContents[sector.id];
+    assert.ok(bag, 'the fieldless pass still materializes');
+    // A shifted solid from the POI phase holds a seat...
+    const orig1 = { x: mid.x + nx * 10, z: mid.z + nz * 10 };
+    const s1 = racingCorridorSceneryShift(f.state, sector.id, orig1, 20, 'poi:head');
+    assert.ok(s1, 'the corridor-blocking body shifts');
+    const p1 = { x: orig1.x + s1.x, z: orig1.z + s1.z };
+    // ...and the dressing phase's arranger creation over the same published bag
+    // must not wipe it before the next body settles.
+    createSectorArranger(f.state.world.sectors[sector.id], { active: bag });
+    const orig2 = { x: mid.x + nx * 40, z: mid.z + nz * 40 };
+    const s2 = racingCorridorSceneryShift(f.state, sector.id, orig2, 60, 'poi:tail');
+    assert.ok(s2);
+    const p2 = { x: orig2.x + s2.x, z: orig2.z + s2.z };
+    assert.ok(Math.hypot(p2.x - p1.x, p2.z - p1.z) >= 20 + 60 + 8 - 0.01,
+      'seats the POI pass reserved survive into the dressing pass');
+  } finally { f.dispose(); }
+});
+
+test('corridor membrane: a clear body yields to a seat a mover already took', async () => {
+  const f = await sectorFixture('sector_pallas_drift');
+  try {
+    const sector = f.state.world.sectors['sector_pallas_drift'];
+    const plan = racingCorridorPlan(sector.id);
+    const seg = plan.keepouts[0];
+    const length = Math.hypot(seg.b.x - seg.a.x, seg.b.z - seg.a.z);
+    const nx = -(seg.b.z - seg.a.z) / length, nz = (seg.b.x - seg.a.x) / length;
+    const mid = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    // The POI pass runs before dressing/props/fauna: a shifted body takes a seat
+    // the later pass cannot see coming. The corridor-clear fast path once kept an
+    // authored pos without consulting peers, so a prop authored beside the seat
+    // stacked on the moved body — the same overlap the seat list exists to kill.
+    const orig = { x: mid.x + nx * 10, z: mid.z + nz * 10 };
+    const shift = racingCorridorSceneryShift(f.state, sector.id, orig, 30, 'poi:first');
+    assert.ok(shift);
+    const seat = { x: orig.x + shift.x, z: orig.z + shift.z };
+    const near = {
+      collides: true, radius: 30, homeSectorId: sector.id,
+      pos: { x: seat.x + 40, z: seat.z }, data: { placeId: 'place_nav_buoy' },
+    };
+    const out = racingDressingSpec(f.state, near);
+    assert.ok(Math.hypot(out.pos.x - seat.x, out.pos.z - seat.z) >= 30 + 30 + 8 - 0.01,
+      'the later clear body yields the moved body\'s seat');
+    assert.ok(clearsRacingCorridor(plan, out.pos, 30), 'the yielded body still clears the corridor');
+    // The same body re-registered at its own seat under another salt (the
+    // shift→dressing double pass) is the seat's owner, not an intruder: it
+    // keeps the seat instead of being shoved off it a second time.
+    const own = racingDressingSpec(f.state, {
+      collides: true, radius: 30, homeSectorId: sector.id,
+      pos: { x: seat.x, z: seat.z }, data: { placeId: 'place_container_rack' },
+    });
+    assert.equal(own.pos.x, seat.x);
+    assert.equal(own.pos.z, seat.z);
+    // A clear body overlapping only authored rows (a seeded station halo) keeps
+    // its authored pos — the pass may not reshuffle layout that predates it.
+    const stationPos = f.state.world.sectorContents[sector.id].stations?.[0]?.pos;
+    if (stationPos) {
+      const beside = {
+        collides: true, radius: 12, homeSectorId: sector.id,
+        pos: { x: stationPos.x + 130, z: stationPos.z }, data: { placeId: 'place_nav_buoy' },
+      };
+      if (clearsRacingCorridor(plan, beside.pos, 12)) {
+        assert.equal(racingDressingSpec(f.state, beside).pos, beside.pos,
+          'an authored-adjacent clear body is not reshuffled');
+      }
+    }
+  } finally { f.dispose(); }
+});
+
+test('corridor membrane: re-seated scatter honors the seats it joined', async () => {
+  const f = await sectorFixture('sector_pallas_drift');
+  try {
+    const sector = f.state.world.sectors['sector_pallas_drift'];
+    const plan = racingCorridorPlan(sector.id);
+    const seg = plan.keepouts[0];
+    const length = Math.hypot(seg.b.x - seg.a.x, seg.b.z - seg.a.z);
+    const nx = -(seg.b.z - seg.a.z) / length, nz = (seg.b.x - seg.a.x) / length;
+    const mid = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    // Two intruding rocks stacked along one leg's normal: the memrock contract once
+    // honored only reservations, so each landed on its own minimal-clearance locus —
+    // 6 WU apart for these radii — the same collapse the seat list was built to end.
+    const spec = (x, z, radius, fieldId) => ({
+      pos: { x, z }, radius, homeSectorId: sector.id,
+      data: { fieldId, typeId: 'ast_common_rock' },
+    });
+    const a = racingAsteroidSpec(f.state, spec(mid.x + nx * 10, mid.z + nz * 10, 20, 'f_pin_a'));
+    const b = racingAsteroidSpec(f.state, spec(mid.x + nx * 35, mid.z + nz * 35, 25, 'f_pin_b'));
+    assert.ok(clearsRacingCorridor(plan, a.pos, 20) && clearsRacingCorridor(plan, b.pos, 25));
+    assert.ok(Math.hypot(b.pos.x - a.pos.x, b.pos.z - a.pos.z) >= 20 + 25 + 8 - 0.01,
+      'a second re-seated rock clears the first\'s seat');
+    // And a re-seated rock never lands on a station halo either — fixed seeds are
+    // real hulls, not authored piles the bank was tuned around.
+    const seeded = f.state.world.sectorContents[sector.id].stations?.[0]?.pos;
+    if (seeded) {
+      for (const pos of [a.pos, b.pos]) {
+        assert.ok(Math.hypot(pos.x - seeded.x, pos.z - seeded.z) >= 150 + 25 - 0.01
+          || clearsRacingCorridor(plan, pos, 25) === false,
+          'a re-seated rock stays off the station seed');
+      }
+    }
+  } finally { f.dispose(); }
+});
+
+test('corridor membrane: a scatter motif re-registers its seat on a new pass', () => {
+  // The motif offset cache once lived on the session, outliving the peer pass that
+  // minted it: on re-materialization every cell re-applied a stale offset without
+  // re-running outsidePoint, so the motif's whole seat vanished from the peer list
+  // and later movers could be seated inside the lattice.
+  const level = SECTOR_RACE_LEVELS[0];
+  const sector = { id: level.sectorId, pois: [] };
+  const state = { world: { sectors: { [sector.id]: sector }, sectorContents: {} } };
+  configureRacingCorridorSession(state, true);
+  const plan = racingCorridorPlan(sector.id);
+  const seg = plan.keepouts[0];
+  const length = Math.hypot(seg.b.x - seg.a.x, seg.b.z - seg.a.z);
+  const nx = -(seg.b.z - seg.a.z) / length, nz = (seg.b.x - seg.a.x) / length;
+  const mid = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+  const cell = (x, z) => ({
+    pos: { x, z }, radius: 22, homeSectorId: sector.id,
+    data: { fieldId: 'f_x', typeId: 'ast_common_rock', opticStructureId: 'scatter:motif_a' },
+  });
+  const bag = () => ({ stations: [], fields: [], hazards: [], pois: [], gates: [], enemies: [], dressing: [] });
+  createSectorArranger(sector, { active: bag() });
+  const first = racingAsteroidSpec(state, cell(mid.x + nx * 10, mid.z + nz * 10));
+  const rigid = racingAsteroidSpec(state, cell(mid.x + nx * 10 + 64, mid.z + nz * 10));
+  assert.ok(Math.abs(rigid.pos.x - first.pos.x - 64) < 1e-6
+    && Math.abs(rigid.pos.z - first.pos.z) < 1e-6, 'the motif translates as one body');
+  // A fresh materialization bag wipes the seat list; the motif must seat again.
+  createSectorArranger(sector, { active: bag() });
+  const again = racingAsteroidSpec(state, cell(mid.x + nx * 10, mid.z + nz * 10));
+  assert.ok(Math.abs(again.pos.x - first.pos.x) < 1e-9
+    && Math.abs(again.pos.z - first.pos.z) < 1e-9, 'pass two re-derives the same seat');
+  // Proof the seat is back on the list: a corridor-clear body inside the motif's
+  // volume yields on this pass exactly as it did on the first.
+  let probe = null;
+  for (const d of [120, 220, 320]) {
+    for (const [sx, sz] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
+      const p = { x: again.pos.x + sx * d, z: again.pos.z + sz * d };
+      if (clearsRacingCorridor(plan, p, 30)) { probe = p; break; }
+    }
+    if (probe) break;
+  }
+  assert.ok(probe, 'a corridor-clear probe beside the motif seat exists');
+  const out = racingDressingSpec(state, {
+    collides: true, radius: 30, homeSectorId: sector.id, pos: probe, data: { placeId: 'place_probe' },
+  });
+  assert.ok(Math.hypot(out.pos.x - again.pos.x, out.pos.z - again.pos.z) >= 384 + 30 + 8 - 0.01,
+    'the re-registered motif seat still blocks a later clear body');
 });
 
 test('a live run reconciles on sector leave and the corridor returns on re-entry', async () => {

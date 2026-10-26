@@ -84,13 +84,21 @@ function toB1(h) {
   assert.equal(h.state.story.beatIndex, 1);
 }
 
+// W-BOOKS-0-2 (§34.7): the default route plays the ordered book lists — posted contracts
+// alternating with world signals.
 function toB3(h) {
   toB1(h);
-  completeMission(h, acceptStoryOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
+  completeMission(h, acceptStoryOffer(h, 'station_helios', 'campaign47a:b1:alloy_run'));
+  assert.equal(h.state.story.beatIndex, 1, 'the alloy run alone cannot close the book');
+  h.bus.emit('kesslerPod:weighed', { variance: true, massT: 6 });
+  completeMission(h, acceptStoryOffer(h, 'station_tethys', 'campaign47a:b1:infested'));
   assert.equal(h.state.story.beatIndex, 2);
-  const rescue = acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
-  assert.equal(rescue.type, 'rescue_under_fire');
-  completeMission(h, rescue);
+  completeMission(h, acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:cinder'));
+  h.bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g_save', fedMass: 10 });
+  h.bus.emit('encounter:resolved', { shape: 'the_nest', sectorId: 'sector_charon_expanse' });
+  const writ = acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
+  assert.equal(writ.type, 'bounty_hunt', 'the register contract is the book’s last post');
+  completeMission(h, writ);
   assert.equal(h.state.story.beatIndex, 3);
 }
 
@@ -159,21 +167,23 @@ function contractSnapshot(state) {
 test('B1 authored contract survives Continue with authority metadata', () => {
   const h = harness();
   toB1(h);
-  acceptStoryOffer(h, 'station_helios', 'campaign47a:b1:honest_work');
+  acceptStoryOffer(h, 'station_helios', 'campaign47a:b1:alloy_run');
   const before = contractSnapshot(h.state);
   const next = roundTrip(h);
   assert.deepEqual(contractSnapshot(next.state), { ...before, targetEntityIds: [] });
   assert.equal(next.state.story.campaign47a.schemaVersion, CAMPAIGN_SCHEMA_VERSION);
 });
 
-test('B2 pod-rescue contract survives Continue', () => {
+test('B2 cinder-board contract survives Continue', () => {
   const h = harness();
   toB1(h);
-  completeMission(h, acceptStoryOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
-  acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
+  completeMission(h, acceptStoryOffer(h, 'station_helios', 'campaign47a:b1:alloy_run'));
+  h.bus.emit('kesslerPod:weighed', { variance: true, massT: 6 });
+  completeMission(h, acceptStoryOffer(h, 'station_tethys', 'campaign47a:b1:infested'));
+  acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:cinder');
   const before = contractSnapshot(h.state);
-  assert.equal(before.type, 'rescue_under_fire');
-  assert.equal(before.storyTag, 'campaign47a:b2:elroy');
+  assert.equal(before.type, 'patrol_clear');
+  assert.equal(before.storyTag, 'campaign47a:b2:cinder');
   const next = roundTrip(h);
   assert.deepEqual(contractSnapshot(next.state), { ...before, targetEntityIds: [] });
   assert.equal(next.state.story.beatIndex, 2);
@@ -182,8 +192,10 @@ test('B2 pod-rescue contract survives Continue', () => {
 test('failure receipt and deterministic recovery survive Continue without cursor skip', () => {
   const h = harness();
   toB1(h);
-  completeMission(h, acceptStoryOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
-  const elroy = acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
+  completeMission(h, acceptStoryOffer(h, 'station_helios', 'campaign47a:b1:alloy_run'));
+  h.bus.emit('kesslerPod:weighed', { variance: true, massT: 6 });
+  completeMission(h, acceptStoryOffer(h, 'station_tethys', 'campaign47a:b1:infested'));
+  const elroy = acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:cinder');
   h.missions._failMission(elroy, h.state.missions.active.indexOf(elroy), 'proof_failure');
   assert.equal(h.state.story.campaign47a.beatStatus, 'failed');
   const next = roundTrip(h);

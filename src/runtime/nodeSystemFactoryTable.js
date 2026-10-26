@@ -195,6 +195,7 @@ import { wexTicket } from '../systems/wexTicket.js';
 import { moistureLoss } from '../systems/moistureLoss.js';
 import { rookBooth } from '../systems/rookBooth.js';
 import { kesslerScale } from '../systems/kesslerScale.js';
+import { furnaceIntake } from '../systems/furnaceIntake.js';
 import { gateThreeWeir } from '../systems/gateThreeWeir.js';
 import { slateColumn } from '../systems/slateColumn.js';
 import { bouncer } from '../systems/bouncer.js';
@@ -451,6 +452,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['moistureLoss', moistureLoss],
     ['rookBooth', rookBooth],
     ['kesslerScale', kesslerScale],
+    ['furnaceIntake', furnaceIntake],
     ['gateThreeWeir', gateThreeWeir],
     ['slateColumn', slateColumn],
     ['bouncer', bouncer],

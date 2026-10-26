@@ -37,6 +37,7 @@
 // callbacks from swarmReinforceCount (which survivalWave already calls on the sim tick).
 
 import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } from '../data/environmentMaterials.js';
+import { ROCK_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
 import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
 import { mulberry32 } from '../core/rng.js';
 import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
@@ -251,6 +252,27 @@ export const SWARM_DEBRIS_FIGHT_RADIUS = SWARM_DEBRIS_OUTER + 60;
  * fourteen rocks fit the smaller area the new camera framing wants them in.
  */
 export const SWARM_DEBRIS_SEPARATION = 34;
+// Row 495 — the rolled environment family picks the matching rock substance, so the stamped
+// body carries its Row 509 physics truth (restitution, break speed, density) and its authored
+// skin at once. Slag rides the everyday-rock slot; a wreck-material slot stays a dead hull.
+const DEBRIS_SUBSTANCE_BY_MATERIAL = Object.freeze({
+  rock: Object.freeze(['silicate', 'slag']),
+  metal: Object.freeze(['metallic_ore', 'reef_metal']),
+  crystal: Object.freeze(['crystal']),
+  volatile: Object.freeze(['cooked_rock']),
+  cryo: Object.freeze(['ice']),
+});
+function pickDebrisSubstance(material, rng) {
+  const table = DEBRIS_SUBSTANCE_BY_MATERIAL[material] || DEBRIS_SUBSTANCE_BY_MATERIAL.rock;
+  const pick = table[Math.floor((rng ? rng() : 0) * table.length) % table.length];
+  return ROCK_SUBSTANCES[pick] ? pick : 'silicate';
+}
+/** ROCK_SIZE_CLASSES band for a spawn radius: <14 wu pebble, <24 wu boulder, else monolith. */
+function rockSizeClassForRadius(radius) {
+  const r = Number(radius) || 0;
+  return r < 14 ? 'pebble' : r < 24 ? 'boulder' : 'monolith';
+}
+
 /** Nothing spawns closer than this to the player, whatever the roll says. */
 export const SWARM_DEBRIS_SAFE_RADIUS = 120;
 
@@ -1356,6 +1378,34 @@ export const swarmArena = {
     const oreHP = Math.round(360 + size * 14);
     const material = extraData?.material || 'rock';
     const typeId = material === 'metal' ? 'ast_metallic' : material === 'crystal' ? 'ast_crystalline' : TYPE_ID;
+    // Row 495: the debris field wears the hand-made rock family. The rolled env material
+    // picks the matching substance (slag rides the everyday-rock slot; wreck-material slots
+    // stay dead hulls) and the stamped substance answers density, restitution and break
+    // behaviour while the place skin makes the body itself authored, not displaced noise.
+    const substance = material === 'debris' ? null : pickDebrisSubstance(material, rng);
+    const placeId = substance
+      ? `place_rock_${substance}_${rockSizeClassForRadius(size)}`
+      : null;
+    const data = environmentSurfaceData(material, {
+      typeId,
+      tier: 0,
+      tierCap: 0,
+      oreHP,
+      oreHPMax: oreHP,
+      yieldU: Math.round(6 + size * 0.4),
+      size,
+      // Both marks on purpose: ours for census and teardown, terrainAnchor so the massline's
+      // existing anchor logic treats these exactly like the rocks it already knows.
+      [SWARM_DEBRIS_TAG]: true,
+      terrainAnchor: true,
+      terrainAnchorEncounterIds: [],
+      despawnAt: now + SWARM_DEBRIS_TTL_S,
+      ...(placeId ? { authoredGeologySkin: true, placeId, placeTargetRadius: size } : {}),
+      ...(extraData || {}),
+    });
+    // applyRockSubstance owns the substance stamp — restitution, break speed, impact VFX and
+    // the density that scales the thrown mass come through it, exactly like field rocks.
+    const densityMult = substance ? applyRockSubstance(data, substance) : 1;
     const spawned = helpers.spawnEntity({
       type: material === 'debris' ? 'wreck' : 'asteroid',
       pos: { x, z },
@@ -1363,27 +1413,12 @@ export const swarmArena = {
       radius: size,
       physicsBody: { radius: asteroidColliderRadius(typeId, size) },
       // Same 2D-area density scaling terrainAnchors uses, so these read (and sling) as monoliths.
-      mass: Math.round(size * size * 40),
+      mass: Math.round(size * size * 40 * densityMult),
       angVel: (rng() - 0.5) * 0.12,
       hull: oreHP,
       hullMax: oreHP,
       collides: true,
-      data: withBankStone(environmentSurfaceData(material, {
-        typeId,
-        tier: 0,
-        tierCap: 0,
-        oreHP,
-        oreHPMax: oreHP,
-        yieldU: Math.round(6 + size * 0.4),
-        size,
-        // Both marks on purpose: ours for census and teardown, terrainAnchor so the massline's
-        // existing anchor logic treats these exactly like the rocks it already knows.
-        [SWARM_DEBRIS_TAG]: true,
-        terrainAnchor: true,
-        terrainAnchorEncounterIds: [],
-        despawnAt: now + SWARM_DEBRIS_TTL_S,
-        ...(extraData || {}),
-      })),
+      data: withBankStone(data),
     });
     return spawned && typeof spawned === 'object' ? spawned.id : spawned;
   },

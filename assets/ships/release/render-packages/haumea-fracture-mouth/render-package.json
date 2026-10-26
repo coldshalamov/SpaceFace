@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "83df59b4608d0d6f6ce3cd21da34fd4fa2c226f01824899c33a6a3b7e79ec959",
+  "contentHash": "265520e4be108f4ce4f00e6e5a9bedbdd2ff4a7f9c7a39dbfd412175f6d22714",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -237,9 +237,9 @@
       "uri": "place_haumea_fracture_mouth.glb"
     },
     "sourceManifest": {
-      "bytes": 278191,
-      "sha256": "7c4ed68a58ea3bf7d157a37f8d0ac15b608f7adcbcfe91bcf640acf1992f6a40",
-      "uri": "assets/ships/render-packages/pilots.json"
+      "bytes": 300891,
+      "sha256": "50dce1990827c217ea558e306d2fd95a0b8c63660e437c5595127100ce1f8393",
+      "uri": "pilots.json"
     }
   },
   "render": {
@@ -347,7 +347,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_haumea_fracture_mouth.glb"
   },
-  "runtimeHash": "0ac66a5b731df9b5bbd9d7e17cb58d3a98e453e8d4780eed8de4887b68d56913",
+  "runtimeHash": "7827807ab76f443c6f47338d3b8a263d4d7ea47a7c5590858aa50c7f969d5bb5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

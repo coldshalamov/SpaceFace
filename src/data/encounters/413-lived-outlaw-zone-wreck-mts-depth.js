@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, DESK — send the relief to Outlaw Zone instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, DESK — send the relief to Outlaw Zone; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "SHADE",
-      "dx": 54,
-      "dz": -28,
+      "dx": 40,
+      "dz": -20,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "DESK: The shade is stamped on a wreck at outlaw zone. Do not cut yet. — SHADE ON THE OUTLAW ZONE.",
+      "line": "DESK: The shade is stamped on a wreck at Outlaw Zone. Do not cut yet. — SHADE ON THE OUTLAW ZONE.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "DESK: Drag the shade a hundred-eighty clear of both scavenger hulls, release, settle. — SHADE ON THE OUTLAW ZONE.",
+      "line": "DESK: The shade sits inside the scavengers' ring. Drag it a hundred-eighty clear of both their hulls — a hundred-twenty of line work at least — release, settle. — SHADE ON THE OUTLAW ZONE.",
       "channel": "info",
       "next": "offer"
     },
@@ -191,7 +191,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "DESK: Time ran out on the work ask — SHADE ON THE OUTLAW ZONE. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "DESK: The 24 cr stays spent — the relief still runs on your credit at Outlaw Zone; the close-in just never came — SHADE ON THE OUTLAW ZONE.",
       "keepMotion": false,
       "steps": [
         {
@@ -315,7 +315,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "SHADE ON THE OUTLAW ZONE",
-  "primaryLine": "DESK: The shade is stamped on a wreck at outlaw zone. Do not cut yet.",
+  "primaryLine": "DESK: The shade is stamped on a wreck at Outlaw Zone. Do not cut yet.",
   "factionId": "faction_mts",
   "choices": [
     {
@@ -325,8 +325,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, DESK — send the relief to Outlaw Zone instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, DESK — send the relief to Outlaw Zone; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

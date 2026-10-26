@@ -753,9 +753,9 @@ const RECIPES_BY_VARIANT = Object.freeze({
 const WEAPON_ART_SCALE = Object.freeze({
   'pulse-bolt': { pixel: 2.30, dash: 1.30, width: 1.30, intensity: 1.20, ribbon: 1.35, linger: 1.40, muzzle: 1.20 },
   'thermal-bolt': { pixel: 2.20, dash: 1.30, width: 1.25, intensity: 1.15, ribbon: 1.35, linger: 1.30, muzzle: 1.30 },
-  autocannon: { pixel: 1.20, dash: 1.15, width: 1.15, intensity: 1.10, ribbon: 1.30, linger: 1.20, muzzle: 1.15 },
+  autocannon: { pixel: 1.20, dash: 1.15, width: 1.15, intensity: 1.10, ribbon: 1.20, linger: 1.20, muzzle: 1.15 },
   flak: { pixel: 1.35, dash: 1.20, width: 1.20, intensity: 1.10, ribbon: 1.20, muzzle: 1.15 },
-  railgun: { pixel: 2.00, dash: 1.20, width: 1.30, intensity: 1.20, ribbon: 1.40, muzzle: 1.30 },
+  railgun: { pixel: 2.00, dash: 1.20, width: 1.12, intensity: 1.20, ribbon: 1.40, muzzle: 1.30 },
   'siege-lance': { pixel: 2.00, dash: 1.25, width: 1.35, intensity: 1.20, ribbon: 1.30, muzzle: 1.35 },
   disruptor: { pixel: 2.10, dash: 1.25, width: 1.30, intensity: 1.20, ribbon: 1.30, linger: 1.30, muzzle: 1.25 },
   'concussion-slug': { pixel: 2.30, dash: 1.50, width: 1.45, intensity: 1.25, ribbon: 1.30, muzzle: 1.25 },

@@ -21,12 +21,18 @@ import { MISSION_TUNING, STORY_BEATS, STORY_BRANCH_INTRO_TAG } from '../data/mis
 import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMissionRuntime.js';
 import { snapshotWorkingBattlefield } from './workingBattlefieldRuntime.js';
 import { snapshotReckoning } from '../missions/reckoningRuntime.js';
-import { getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
+import { CAMPAIGN_BEATS } from '../story/campaign47a/campaignData.js';
+import { buildMissionBoardContract, completeBeatStepsForLegacy, getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
 import { CONTRACT_47A_B0_BODY, THREAD_B_FRAGMENT_ID } from '../data/narrative.js';
 import { forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { ensureCampaign47aState, failEncounter, initCampaignSidecar, syncObservedBeat } from '../story/campaign47a/index.js';
 import { resetRacingGhostSession } from './racingGhosts.js';
 import { steerIntentToward } from './missions.js';
+
+// W-BOOKS-0-2 (§34.7 Book 0): the unknown vessel takes the sample mid-lane — the kill
+// feed and the 12.4 t strain read fire this long after the sample is recovered aboard.
+const CONTRACT_47A_SKIM_DELAY_S = 8;
+const CONTRACT_47A_SKIM_MASS_T = 12.4;
 
 export const missionStoryOps = {
   // =========================================================================================
@@ -1559,18 +1565,37 @@ export const missionStoryOps = {
     }
   },
 
-  /** Complete B1–B3 only through the authored 47-A set-piece contracts. Sidecar observes first;
-   * missions remains the sole cursor and reward authority. */
+  /** Complete B1–B3 only through the authored 47-A contracts. Sidecar observes first;
+   * missions remains the sole cursor and reward authority.
+   *
+   * W-BOOKS-0-2 (§34.7): each Book beat is an ordered script list. A posted book contract
+   * (`contractId` on the step) records its own step and the beat advances only when the
+   * whole list is satisfied. A pre-list contract — the old B1 cargo leg, the B2
+   * pod-rescue set piece, the B3 tow — still settles the entire beat at once: it fills the
+   * step log through completeBeatStepsForLegacy. B2's register contract shares the legacy
+   * elroy tag, so the legacy set piece is distinguished by mission type
+   * (rescue_under_fire / pod_rescue), never by tag alone. */
   _advanceEmbodiedStoryMission(m) {
     const story = this.state && this.state.story;
     const beat = story && STORY_BEATS[story.beatIndex];
-    if (!beat || !m || !m.storyTag) return false;
-    const expected = beat.beat === 1 ? CONTRACT_47A_B1_TAG
+    if (!beat || beat.beat < 1 || beat.beat > 3 || !m || !m.storyTag) return false;
+    const canon = CAMPAIGN_BEATS[beat.beat];
+    const bookTags = new Set();
+    for (const step of (canon && canon.steps) || []) {
+      if (step && step.contractId) bookTags.add(step.contractId);
+    }
+    const legacyTag = beat.beat === 1 ? CONTRACT_47A_B1_TAG
       : beat.beat === 2 ? CONTRACT_47A_B2_TAG
         : beat.beat === 3 ? CONTRACT_47A_B3_TAG : null;
-    if (!expected || m.storyTag !== expected) return false;
+    if (!bookTags.has(m.storyTag) && m.storyTag !== legacyTag) return false;
+    const legacySetPiece = m.storyTag === legacyTag
+      && (beat.beat !== 2
+        ? !bookTags.has(m.storyTag)
+        : (m.type === 'rescue_under_fire' || (m.params && m.params.authoredSetPieceId === 'pod_rescue')));
     this._ensureCampaignSidecar();
     // Leftover Continue bounty B2: stamp the old force meaning so later leftover stakes stay valid.
+    // The book's register contract always resolves through _resolveContract47aB2 first, which
+    // stamps investigationOutcome — so this block can never stamp it legacy mid-route.
     if (beat.beat === 2 && m.type === 'bounty_hunt' && !(m.params && m.params.investigationOutcome)) {
       m.params = m.params || {};
       m.params.investigationStage = 'identified';
@@ -1587,17 +1612,178 @@ export const missionStoryOps = {
     // stamp keeps the old route classified legacy.
     story.flags = story.flags || {};
     if (!story.flags.elroy_outcome && !story.flags.elroy_outcome_legacy) {
-      story.flags.embodied_route = 'rescue';
+      story.flags.embodied_route = (m.params && m.params.bookScene) ? 'book' : 'rescue';
+    }
+    if (legacySetPiece) {
+      const filled = completeBeatStepsForLegacy(this.state, beat.beat,
+        this.state.simTime || 0, `legacy:${m.storyTag}`, {
+          physicalVerb: m.params && m.params.physicalVerb || beat.headlineVerb || null,
+          completionMethod: m.params && m.params.completionMethod || null,
+        });
+      if (!filled || !filled.ok || !isBeatStepsComplete(this.state, beat.beat)) return false;
+      this._advanceStory(beat, { skipCredits: true });
+      return true;
     }
     const observed = recordBeatStep(this.state, 'mission:completed', {
       missionId: m.id,
       storyTag: m.storyTag,
       storyTargetId: m.storyTarget && m.storyTarget.id || null,
       physicalVerb: m.params && m.params.physicalVerb || beat.headlineVerb || null,
+      completionMethod: m.params && m.params.completionMethod || null,
     }, this.state.simTime || 0);
-    if (!observed || !observed.ok || !isBeatStepsComplete(this.state, beat.beat)) return false;
+    if (!observed || !observed.ok) return false;
+    // §34.7 B1: the sealed manifest re-categorizes silent — the HUD does not notify, but
+    // LOG notes it anyway, flatly. The recode is the visible lie the Scale 4 weigh answers.
+    if (m.params && m.params.silentRecat === true) {
+      this.bus.emit('comms:popup', {
+        id: `b1_silent_recat_${m.id}`, sender: 'TYCHO MANIFEST', category: 'story', ttl: 8,
+        persist: true,
+        text: `MANIFEST RE-CODED: ${m.params.manifestName || 'SEALED ALLOYS'} → HOUSEHOLD MINERALS. LOGGED.`,
+      });
+      m.params.silentRecatDone = true;
+    }
+    if (!isBeatStepsComplete(this.state, beat.beat)) {
+      // A mid-list contract settled — the beat stays open and the board may post the next
+      // book job (or nothing, when world work is next).
+      this._refreshEmbodiedStoryBoards();
+      this._refreshNavigation({ forceStory: true, silent: true });
+      return true;
+    }
     this._advanceStory(beat, { skipCredits: true });
     return true;
+  },
+
+  /**
+   * W-BOOKS-0-2 (§34.7): the Books 0–2 book-list world signals. The systems named on each
+   * canonical step emit them — the skim scene, Kessler's scale pad, Understory gardens, the
+   * furnace intake, Rook's booth, the encounter director — and missions records them into
+   * the sidecar's ordered step log. When the last pending step of the current beat lands,
+   * missions advances the live spine here; otherwise the board refreshes so the next book
+   * contract (if any) can post.
+   */
+  _recordCampaignBookSignal(signal, p) {
+    const story = this.state && this.state.story;
+    if (!story) return false;
+    const beat = STORY_BEATS[story.beatIndex];
+    if (!beat || beat.beat < 0 || beat.beat > 3) return false;
+    this._ensureCampaignSidecar();
+    const res = recordBeatStep(this.state, signal, p || {}, deferredEnterNow(this.state) || 0);
+    if (!res || !res.ok) return false;
+    if (res.stepsComplete === true && isBeatStepsComplete(this.state, beat.beat)) {
+      this._advanceStory(beat, { skipCredits: beat.beat !== 0 });
+      return true;
+    }
+    if (res.stepId) {
+      this._refreshEmbodiedStoryBoards();
+      this._refreshNavigation({ forceStory: true, silent: true });
+    }
+    return true;
+  },
+
+  // =========================================================================================
+  // W-BOOKS-0-2 — BOOK ZERO: THE SKIM (§34.7).
+  // Once the 47-A sample is aboard and the lane is under way, the unknown black-Line vessel
+  // takes exactly the 12.4 t off the player's tow: the escorts die on the kill feed, the
+  // strain gauge reads true at the instant of the theft, and their wrecks stay behind as
+  // the ambush site's salvage. Emits story:skimResolved — the ordered 'skim' step between
+  // 'mine' and 'dock'. A dock at the Pit resolves it inline for a pilot who jumps early.
+  // =========================================================================================
+  _activeContract47aSkimMission() {
+    return (this.state.missions.active || []).find((m) => m && m.status === 'active'
+      && m.storyTag === CONTRACT_47A_B0_TAG
+      && m.params && m.params.sampleRecovered === true
+      && m.params.skimResolved !== true) || null;
+  },
+
+  _stepContract47aSkim(state) {
+    const m = this._activeContract47aSkimMission();
+    if (!m) return false;
+    const at = Number(m.params && m.params.sampleRecoveredAt);
+    const recoveredAt = Number.isFinite(at) ? at : 0;
+    if ((state.simTime || 0) < recoveredAt + CONTRACT_47A_SKIM_DELAY_S) return false;
+    return this._resolveContract47aSkim(m, 'lane');
+  },
+
+  /** Dock fallback: the Skim resolves inline when the player reaches the Pit first. Runs
+   *  before the dock story trigger so the ordered 'skim' step lands before 'dock'. */
+  _resolveContract47aSkimForDock(stationId) {
+    const m = (this.state.missions.active || []).find((row) => row
+      && row.storyTag === CONTRACT_47A_B0_TAG
+      && row.params && row.params.sampleRecovered === true
+      && row.params.skimResolved !== true
+      && row.destStationId === stationId) || null;
+    if (!m) return false;
+    return this._resolveContract47aSkim(m, 'dock');
+  },
+
+  _resolveContract47aSkim(m, where) {
+    if (!m || (m.params && m.params.skimResolved === true)) return false;
+    m.params.skimResolved = true;
+    m.params.skimMassT = CONTRACT_47A_SKIM_MASS_T;
+    m.params.skimWhere = where;
+    const story = this.state.story;
+    story.flags = story.flags || {};
+    story.flags.contract_47a_skimmed = true;
+    this._spawnContract47aSkimWrecks(m);
+    // The kill feed, exactly as authored. The escorts die; the unknown hull departs with
+    // the alloy. The strain gauge reads 12.4 t — the Line reads true, so the player now
+    // knows the mass the manifest will lie about.
+    this.bus.emit('comms:popup', {
+      id: 'b0_skim_killfeed', sender: 'LANE TRAFFIC', category: 'story', ttl: 10, persist: true,
+      text: 'ESCORT-02 ELIMINATED. ESCORT-01 ELIMINATED. CARGO DRONE 03 LOST. UNKNOWN VESSEL DEPARTED.',
+    });
+    this.bus.emit('comms:popup', {
+      id: 'b0_skim_strain', sender: 'LINE STRAIN', category: 'story', ttl: 9, persist: true,
+      text: 'STRAIN GAUGE: 12.4t — UNKNOWN VESSEL ON A BLACK LINE. THE TOW IS EMPTY.',
+    });
+    this.bus.emit('toast', {
+      text: 'The black Line takes the load — 12.4 t on your own gauge. The escort feed is already a graveyard.',
+      kind: 'warn', ttl: 7,
+    });
+    this.bus.emit('story:skimResolved', {
+      missionId: m.id, massT: CONTRACT_47A_SKIM_MASS_T, where,
+      sectorId: this.state.world && this.state.world.currentSectorId || null,
+    });
+    return true;
+  },
+
+  /** The ambush site's receipt: the escort wrecks and the cargo drone stay behind as
+   *  salvageable hulls (§34.7 — "the ambush site keeps its escort wrecks"). Deterministic
+   *  offsets from the meta seed + mission id — no wall clock, no Math.random. */
+  _spawnContract47aSkimWrecks(m) {
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const player = this.state.entities && this.state.playerId != null
+      ? this.state.entities.get(this.state.playerId) : null;
+    if (!player || !player.pos) return;
+    const seed = (this.state.meta && this.state.meta.seed) >>> 0;
+    const sectorId = this.state.world && this.state.world.currentSectorId || null;
+    const rows = [
+      { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 140 },
+      { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 175 },
+      { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 210 },
+    ];
+    rows.forEach((row, idx) => {
+      const angle = ((hash32(seed, 4747, idx) % 360) * Math.PI) / 180;
+      const dist = row.r + (hash32(seed, 4751, idx) % 30);
+      this.helpers.spawnEntity({
+        type: 'wreck',
+        pos: { x: player.pos.x + Math.cos(angle) * dist, z: player.pos.z + Math.sin(angle) * dist },
+        vel: { x: 0, z: 0 },
+        radius: 9, mass: 40000, hull: 1, hullMax: 1,
+        homeSectorId: sectorId,
+        data: {
+          homeSectorId: sectorId,
+          parentType: 'ship',
+          wreckClass: 'battlefield',
+          wreckClassLabel: row.label,
+          contract47aSkim: true,
+          salvagePool: { cmdty_alloys: 1 },
+          salvageTimeLeft: 60,
+          scanLabel: `${row.name} — WRECK`,
+          killedAt: this.state.simTime || 0,
+        },
+      });
+    });
   },
 
   /** B5 branch-chain progress: completing a branch mission ticks chainProgress toward the goal. */
@@ -1968,32 +2154,45 @@ export const missionStoryOps = {
     this.bus.emit('mission:updated', { missionId: mission.id, tracked: true, source: CONTRACT_47A_B0_TAG });
   },
 
-  _activateContract47aB1OnDeparture() {
+  /**
+   * W-BOOKS-0-2: the departure rail hands the player the beat's NEXT posted job — the
+   * book's pending contract is resolved from the sidecar step log (so an active legacy
+   * contract still tracks, and a world-work gap in the list posts nothing).
+   */
+  _activateBookContractOnDeparture(beatIndex) {
     const story = this.state && this.state.story;
-    if (!story || story.beatIndex !== 1) return false;
-    const active = (this.state.missions.active || []).find((m) => m && m.status === 'active' && m.storyTag === CONTRACT_47A_B1_TAG);
+    if (!story || story.beatIndex !== beatIndex) return false;
+    const prefix = `campaign47a:b${beatIndex}:`;
+    const active = (this.state.missions.active || []).find((m) => m && m.status === 'active'
+      && typeof m.storyTag === 'string' && m.storyTag.startsWith(prefix));
     if (active) {
       this.trackMission(active.id, { silent: true });
       return true;
     }
-    const board = this.ensureBoard('station_helios');
-    const offer = board && board.slots && board.slots.find((row) => row && row.storyTag === CONTRACT_47A_B1_TAG);
-    if (!offer) return false;
-    return this.acceptMission(offer.id);
+    const offer = buildMissionBoardContract(beatIndex, {
+      seed: this.state.meta && this.state.meta.seed || 1,
+      epoch: this._epoch(),
+      branch: story.branch || null,
+      chainStep: story.chainProgress | 0,
+      state: this.state,
+      elroyOutcome: campaign47aOutcomeKey(this.state),
+      assetId: story.flags && story.flags.empire_seed_asset_id,
+      operationComplete: !!(story.flags && story.flags.deep_reach_operation_complete),
+      legacy: campaign47aRouteKind(this.state) === 'legacy',
+    });
+    if (!offer || !offer.stationId) return false;
+    const board = this.ensureBoard(offer.stationId);
+    const row = board && board.slots && board.slots.find((c) => c && c.storyTag === offer.storyTag);
+    if (!row) return false;
+    return this.acceptMission(row.id);
+  },
+
+  _activateContract47aB1OnDeparture() {
+    return this._activateBookContractOnDeparture(1);
   },
 
   _activateContract47aB2OnDeparture() {
-    const story = this.state && this.state.story;
-    if (!story || story.beatIndex !== 2) return false;
-    const active = (this.state.missions.active || []).find((m) => m && m.status === 'active' && m.storyTag === CONTRACT_47A_B2_TAG);
-    if (active) {
-      this.trackMission(active.id, { silent: true });
-      return true;
-    }
-    const board = this.ensureBoard('station_tethys');
-    const offer = board && board.slots && board.slots.find((row) => row && row.storyTag === CONTRACT_47A_B2_TAG);
-    if (!offer) return false;
-    return this.acceptMission(offer.id);
+    return this._activateBookContractOnDeparture(2);
   },
 
   _activateContract47aB3OnDeparture() {

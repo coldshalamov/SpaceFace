@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, HX-12 — send the relief to Refinery Approach instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, HX-12 — send the relief to Refinery Approach; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -166,7 +166,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "HX-12: Time ran out on the work ask — BOOT ON THE REFINERY APPROACH. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "HX-12: The 24 cr stays spent — the relief still runs on your credit at Refinery Approach; the close-in just never came — BOOT ON THE REFINERY APPROACH.",
       "keepMotion": true,
       "steps": [
         {
@@ -300,8 +300,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, HX-12 — send the relief to Refinery Approach instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, HX-12 — send the relief to Refinery Approach; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

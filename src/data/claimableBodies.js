@@ -272,21 +272,24 @@ const SITE_HISTORIES = Object.freeze({
 });
 
 export const CLAIMABLE_BODY_SITES = Object.freeze([
-  claimSite('sector_ceres_belt', 'poi_claim_rookery', 'Rookery Prospect', 'S', -1900, 1100, 'place_asteroid_rock_a'),
-  claimSite('sector_vesta_forge', 'poi_claim_kilnside', 'Kilnside Lease', 'S', 1650, 1350, 'place_asteroid_rock_a'),
-  claimSite('sector_pallas_drift', 'poi_claim_drift_nine', 'Drift Claim Nine', 'M', -2050, 1250, 'place_asteroid_seamed'),
-  claimSite('sector_io_reach', 'poi_claim_pallas', 'Pallas Industrial Moon', 'M', 320, 1280, 'place_asteroid_seamed'),
+  // Row 495: claim bodies wear the rock family — the site's home substance, not the generic
+  // boulder (Ceres/Vesta ore, Pallas reef metal, the Veil's crystal, Rhea/Charon cooked rock,
+  // the Pit's scrap shoals).
+  claimSite('sector_ceres_belt', 'poi_claim_rookery', 'Rookery Prospect', 'S', -1900, 1100, 'place_rock_metallic_ore_boulder'),
+  claimSite('sector_vesta_forge', 'poi_claim_kilnside', 'Kilnside Lease', 'S', 1650, 1350, 'place_rock_slag_boulder'),
+  claimSite('sector_pallas_drift', 'poi_claim_drift_nine', 'Drift Claim Nine', 'M', -2050, 1250, 'place_rock_reef_metal_monolith'),
+  claimSite('sector_io_reach', 'poi_claim_pallas', 'Pallas Industrial Moon', 'M', 320, 1280, 'place_rock_metallic_ore_monolith'),
   claimSite('sector_charon_expanse', 'poi_colony', 'Abandoned Mining Colony', 'S', -620, 1420, 'place_conveyor_barge'),
-  claimSite('sector_sker_haven', 'poi_claim_morrow', 'Morrow Freehold', 'M', 2100, -1450, 'place_asteroid_rock_b'),
-  claimSite('sector_veil_nebula', 'poi_claim_lacuna', 'Lacuna Survey Moon', 'L', -2300, 1700, 'place_asteroid_rock_c'),
-  claimSite('sector_ashfall_reach', 'poi_claim_cinder_crown', 'Cinder Crown', 'L', 2500, -1900, 'place_asteroid_rock_c'),
-  claimSite('sector_nyx_march', 'poi_claim_blackglass', 'Blackglass Lease', 'S', -1700, -1500, 'place_asteroid_rock_a'),
-  claimSite('sector_hyperion_cut', 'poi_claim_cutwater', 'Cutwater Anchorage', 'M', 1800, -1200, 'place_asteroid_seamed'),
-  claimSite('sector_kepler_scar', 'poi_claim_scarline', 'Scarline Hold', 'M', -2200, 900, 'place_asteroid_rock_b'),
-  claimSite('sector_rhea_cinder', 'poi_claim_emberwake', 'Emberwake Plot', 'S', 1900, 1600, 'place_asteroid_rock_a'),
-  claimSite('sector_nereid_shoal', 'poi_claim_shoal_exchange', 'Shoal Exchange Rock', 'M', -1800, 1250, 'place_asteroid_seamed'),
-  claimSite('sector_dione_lane', 'poi_claim_wayline', 'Wayline Charter', 'S', 1500, -950, 'place_asteroid_rock_a'),
-  claimSite('sector_sedna_dark', 'poi_claim_far_ledger', 'Far Ledger', 'L', -2600, -1700, 'place_asteroid_rock_c'),
+  claimSite('sector_sker_haven', 'poi_claim_morrow', 'Morrow Freehold', 'M', 2100, -1450, 'place_rock_ice_monolith'),
+  claimSite('sector_veil_nebula', 'poi_claim_lacuna', 'Lacuna Survey Moon', 'L', -2300, 1700, 'place_rock_crystal_monolith'),
+  claimSite('sector_ashfall_reach', 'poi_claim_cinder_crown', 'Cinder Crown', 'L', 2500, -1900, 'place_rock_slag_monolith'),
+  claimSite('sector_nyx_march', 'poi_claim_blackglass', 'Blackglass Lease', 'S', -1700, -1500, 'place_rock_junk_pebble'),
+  claimSite('sector_hyperion_cut', 'poi_claim_cutwater', 'Cutwater Anchorage', 'M', 1800, -1200, 'place_rock_silicate_monolith'),
+  claimSite('sector_kepler_scar', 'poi_claim_scarline', 'Scarline Hold', 'M', -2200, 900, 'place_rock_cooked_rock_monolith'),
+  claimSite('sector_rhea_cinder', 'poi_claim_emberwake', 'Emberwake Plot', 'S', 1900, 1600, 'place_rock_cooked_rock_boulder'),
+  claimSite('sector_nereid_shoal', 'poi_claim_shoal_exchange', 'Shoal Exchange Rock', 'M', -1800, 1250, 'place_rock_junk_monolith'),
+  claimSite('sector_dione_lane', 'poi_claim_wayline', 'Wayline Charter', 'S', 1500, -950, 'place_rock_junk_boulder'),
+  claimSite('sector_sedna_dark', 'poi_claim_far_ledger', 'Far Ledger', 'L', -2600, -1700, 'place_rock_ice_boulder'),
 ]);
 
 const CLAIM_SITES_BY_SECTOR = new Map();

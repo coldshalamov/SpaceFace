@@ -25,13 +25,45 @@ const STEP_SPEECH = Object.freeze({
     id: 'b0-dock', rank: 20,
     doing: 'docking the sample', so: 'docked the sample', then: 'the berth took the ship',
   }),
+  '0:skim': Object.freeze({
+    id: 'b0-skim', rank: 15,
+    doing: 'watching the lane take the sample', so: 'watched the lane take the sample', then: 'the skim passed',
+  }),
   '1:knock': Object.freeze({
     id: 'b1', rank: 30,
     doing: 'knocking the variance tower', so: 'knocked the variance tower', then: 'the contract closed',
   }),
+  '1:alloy_run': Object.freeze({
+    id: 'b1-alloy', rank: 28,
+    doing: 'flying the sealed alloys to Tethys', so: 'flew the sealed alloys to Tethys', then: 'the contract closed',
+  }),
+  '1:scale_4': Object.freeze({
+    id: 'b1-scale', rank: 29,
+    doing: 'weighing the crate on Scale 4', so: 'weighed the crate on Scale 4', then: 'the scale read low',
+  }),
+  '1:infested': Object.freeze({
+    id: 'b1', rank: 30,
+    doing: 'feeding the infested hauler to the furnace', so: 'fed the hauler to the furnace', then: 'the furnace took it',
+  }),
   '2:pull': Object.freeze({
     id: 'b2', rank: 40,
     doing: 'pulling the pods under fire', so: 'pulled the pods under fire', then: 'the contract closed',
+  }),
+  '2:cinder_board': Object.freeze({
+    id: 'b2-cinder', rank: 40,
+    doing: 'clearing the cinder marks', so: 'cleared the cinder marks', then: 'the board paid',
+  }),
+  '2:compost': Object.freeze({
+    id: 'b2-compost', rank: 41,
+    doing: 'running the compost to the understory', so: 'ran the compost to the understory', then: 'the garden took it',
+  }),
+  '2:nest': Object.freeze({
+    id: 'b2-nest', rank: 42,
+    doing: 'holding the Nest', so: 'held the Nest', then: 'the Nest survived',
+  }),
+  '2:elroy': Object.freeze({
+    id: 'b2', rank: 43,
+    doing: 'answering the register on Elroy', so: 'answered the register', then: 'the writ closed',
   }),
   '3:tow': Object.freeze({
     id: 'b3', rank: 50,
@@ -84,12 +116,23 @@ const METHOD_SPEECH = Object.freeze({
 
 const FAIL_SPEECH = Object.freeze({
   0: Object.freeze({ doing: 'missing the sample', so: 'missed the sample' }),
-  1: Object.freeze({ doing: 'missing the variance tower', so: 'missed the variance tower' }),
-  2: Object.freeze({ doing: 'missing the pods', so: 'missed the pods' }),
+  1: Object.freeze({ doing: 'missing the honest work', so: 'missed the honest work' }),
+  2: Object.freeze({ doing: 'missing the board mark', so: 'missed the board mark' }),
   3: Object.freeze({ doing: 'missing the slag core', so: 'missed the slag core' }),
   4: Object.freeze({ doing: 'missing the intro', so: 'missed the intro' }),
   5: Object.freeze({ doing: 'missing the proving runs', so: 'missed the proving runs' }),
   6: Object.freeze({ doing: 'missing the deploy', so: 'missed the deploy' }),
+});
+
+const VERB_SPEECH = Object.freeze({
+  knock_down: Object.freeze({
+    id: 'b1', rank: 30,
+    doing: 'knocking the variance tower down', so: 'knocked the variance tower', then: 'the tower fell',
+  }),
+  pull: Object.freeze({
+    id: 'b2', rank: 40,
+    doing: 'pulling the pods under fire', so: 'pulled the pods under fire', then: 'the pods made the dock',
+  }),
 });
 
 const SIGNAL_THEN = Object.freeze({
@@ -351,6 +394,13 @@ function readCampaignReceipts(map, state) {
     const methodSpeech = METHOD_SPEECH[clean(raw.completionMethod)];
     if (methodSpeech) {
       put(map, speakAct(methodSpeech, at, { timed: true, specific: true }));
+      continue;
+    }
+    // The played verb speaks when no named method was filed (legacy fills and book
+    // completions both carry physicalVerb on the receipt).
+    const verbSpeech = VERB_SPEECH[clean(raw.physicalVerb)];
+    if (verbSpeech) {
+      put(map, speakAct(verbSpeech, at, { timed: true, specific: true }));
       continue;
     }
     const beatIndex = Number.isFinite(raw.beatIndex) ? raw.beatIndex : null;

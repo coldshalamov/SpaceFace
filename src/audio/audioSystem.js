@@ -20,6 +20,11 @@ import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { WEAPONS } from '../data/weapons.js';
 import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
+import {
+  classifyImpactAudioEvent,
+  impactMaterialForTarget,
+  resolveImpactAudioCue,
+} from '../presentation/causalVfxGrammar.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
 import { installWorldFeelSeams } from './worldFeelSeams.js';
 import { AFTERMATH_HUSH, admitAftermathHush, cloakBurnCue, distressCallCue, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
@@ -650,6 +655,10 @@ export function mixCueStaysReadable(recipeId, opts) {
 }
 
 export const KILL_ADMIT_MS = 40;
+// The projectile chip (`_onHit`, inline) and the material layer voice (`_onDamage`, presentation-
+// deferred) can be separated by a catch-up frame or two. Keep the cross-owner claim long enough to
+// cover that drain, and let position disambiguate a recycled target id.
+export const IMPACT_VOICE_WINDOW_MS = 150;
 export const STUNT_HUSH_GAP_MS = 6000;
 export const ENCOUNTER_ARC_HOLD_S = 1.5;
 export const FUEL_THIN_GAIN = 0.62;
@@ -1245,6 +1254,46 @@ export function resolveCollisionCue(input) {
   });
 }
 
+/**
+ * The one voice an accepted damage receipt speaks. The damage layer stays the admission key
+ * (shield / armor / hull, 40 ms per target in `admitLayerVoice`); the struck body's material
+ * picks WHICH authored impact id answers, and a decisive event class outranks the material.
+ * Pure. A missing entity and an unknown surface both fall back through `impactMaterialForTarget`
+ * and `resolveImpactAudioCue`, so the caller always gets a resolvable recipe.
+ */
+export function resolveImpactDamageVoice(payload, target) {
+  const layer = damageLayer(payload);
+  if (!layer) return null;
+  const materialId = impactMaterialForTarget(target, layer);
+  // Severity is the damage that actually reached THIS layer, not the packet total: a shot that
+  // strips armor and then dents hull must not read as a heavier hull contact than it was.
+  const layerDamage = layer === 'shield'
+    ? payload && payload.shieldDamage
+    : layer === 'armor'
+      ? payload && payload.armorDamage
+      : payload && payload.hullDamage;
+  const amount = Number.isFinite(layerDamage)
+    ? layerDamage
+    : (Number.isFinite(payload && payload.amount)
+      ? payload.amount
+      : (Number.isFinite(payload && payload.applied) ? payload.applied : 0));
+  const maxLayer = layer === 'shield'
+    ? (Number(target && target.shieldMax) || Number(target && target.shield))
+    : layer === 'armor'
+      ? (Number(target && target.armorMax) || Number(target && target.armorHp))
+      : (Number(target && target.hullMax) || Number(target && target.hull));
+  const severity = clamp(amount / Math.max(1, maxLayer || 100), 0, 1);
+  const eventClass = classifyImpactAudioEvent({
+    eventClass: payload && (payload.eventClass || payload.impactClass || payload.impactEventClass),
+    materialId,
+    severity,
+    axisSigned: !(payload && payload.axisSigned === false),
+  });
+  const cue = resolveImpactAudioCue({ eventClass, materialId });
+  const recipeId = resolveAudioCueRecipeId(cue.cueId) || layerRecipeId(layer);
+  return Object.freeze({ ...cue, layer, recipeId, severity });
+}
+
 export function audioNearbyHostileCount(state, player, range = 1200, scratch = [], maxCount = Infinity) {
   if (!state || !player || !player.pos) return 0;
   const fallback = (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 && state.entityIndex.ships) || state.entityList || [];
@@ -1522,6 +1571,12 @@ export const BARK_PUNCT = Object.freeze({
   keyGain: 0.5,
   tailGain: 0.42,
   popupTailDelayS: 0.12,
+});
+
+/** One ear, one voice: chatter waits out the open mic; deep pileups drop rather than lag badly. */
+export const BARK_CHATTER = Object.freeze({
+  deferCapS: 2.5,
+  gapS: 0.18,
 });
 
 /** Same instructor line inside this window keys the mic once (a retried beat re-emits the text). */
@@ -1918,6 +1973,27 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'combat.causal.tether': 'sfx.tetherSnap',
   'combat.causal.field': 'sfx_mining_field_settle',
   'combat.causal.reaction': 'sfx_reactor_overload_shudder',
+  // The contact layer's authored material/event ids (causalVfxGrammar IMPACT_MATERIAL_GRAMMAR /
+  // IMPACT_EVENT_GRAMMAR). One row per authored id, each an EXISTING synthesized recipe: a
+  // damaged surface answers with its own matter, while a decisive structural event answers with
+  // its own shape. `resolveImpactDamageVoice` picks exactly one of these rows per contact; no
+  // material hit stacks a generic impact layer underneath it.
+  'combat.impact.hull': 'sfx.hullHit',
+  'combat.impact.armor': 'sfx.armorHit',
+  'combat.impact.rock': 'sfx_mining_impact',
+  'combat.impact.ice': 'sfx_optic_reflect',
+  'combat.impact.ceramic': 'sfx_optic_split',
+  'combat.impact.composite': 'sfx_salvage_plate',
+  'combat.impact.shield': 'sfx.shieldHit',
+  'combat.impact.generic': 'sfx_hull_scrape',
+  'combat.impact.graze': 'sfx_hull_scrape',
+  'combat.impact.pinprick': 'sfx_mining_cutter_lock',
+  'combat.impact.cut': 'sfx_mining_drill_contact',
+  'combat.impact.slam': 'sfx_swarm_slam_thud',
+  'combat.impact.breach': 'sfx_hull_decompress',
+  'combat.impact.fracture': 'sfx_mining_fracture_break',
+  'combat.impact.detonation': 'sfx.chargeDetonate',
+  'combat.impact.breakup': 'sfx_explosion_large',
   // Field deploy voices (INST-24): primary cue table mapping
   'fields:deployed:well': 'sfx_field_deploy_well',
   'fields:deployed:repulsor': 'sfx_field_deploy_repulsor',
@@ -2619,6 +2695,7 @@ export const audio = {
     rt._mixLedger = { cap: PRESSURE_MIX.ledgerCap, head: 0, n: 0, nextAt: 0, entries: null };
     rt._heardAudioTick = -1;
     rt._heardRecipes = new Set();
+    rt._impactVoiceMarks = new Map();
     rt.sidechainDuck = 1;
     rt._busGainCache = null;      // last settings-derived bus gain written per bus
     rt._bedTargetCache = null;    // last brake/tether bed target written per param
@@ -4140,6 +4217,10 @@ export const audio = {
     const commsTarget = linearGain(sfxVal) * linearGain(commsVal) * 0.15849 * hushSoft;
     ramp('comms', rt.commsBus.gain, commsTarget);
 
+    // The Voice slider gates stunt-bark delivery upstream but never scaled the heard voices —
+    // barks, the instructor and named contacts ride the comms bus on their own body gain.
+    rt._barkVoiceScale = linearGain(a.voice == null ? 1 : a.voice);
+
     const musicVal = a.music == null ? 0.32 : a.music;
     rt._musicBase = linearGain(musicVal) * 0.05012 * sidechain;
     // Pause/main-menu must keep music bus silent even though _frame re-applies settings every tick.
@@ -4514,8 +4595,9 @@ export const audio = {
 
   _onHit(p) {
     if (!p) return;
-    // Ships wait for combat:damage, which knows the layer. A rock has no layer, so the chip
-    // stays here. Playing the rock sample on a hull was a second, wrong voice.
+    // Ships wait for combat:damage, which knows the layer. A rock has no damage layer, so the
+    // contact chip stays here as the fallback owner. When the same projectile also routed damage
+    // this tick, `_onDamage` has already claimed the one voice and this handler stays silent.
     const entities = this.state && this.state.entities;
     const target = p.targetId != null && entities && typeof entities.get === 'function'
       ? entities.get(p.targetId)
@@ -4531,7 +4613,17 @@ export const audio = {
       const projectile = entities.get(p.projectileId);
       if (projectile && (isOpticEnergyBolt(projectile) || isOpticOrdnance(projectile))) return;
     }
-    this.play('sfx_mining_impact', {
+    if (!this._claimImpactVoice(
+      target && target.id != null ? target.id : p.targetId,
+      this._wallClockMs(),
+      p.pos,
+      'hit',
+    )) return;
+    // A receipt with no live body still knows it struck a rock; do not let a missing entity turn
+    // the chip into the unknown-surface scrape.
+    const materialId = impactMaterialForTarget(target || { type: 'asteroid' }, 'hull');
+    const cue = resolveImpactAudioCue({ eventClass: 'pinprick', materialId });
+    this.play(resolveAudioCueRecipeId(cue.cueId) || 'sfx_mining_impact', {
       position: p.pos,
       gain: 0.5,
       rate: 1.4,
@@ -4547,24 +4639,39 @@ export const audio = {
 
     const layer = damageLayer(p);
     if (!layer) return;
-    const recipeId = layerRecipeId(layer);
+    const entities = this.state && this.state.entities;
+    const target = p.targetId != null && entities && typeof entities.get === 'function'
+      ? entities.get(p.targetId)
+      : null;
+    const impact = resolveImpactDamageVoice(p, target);
+    const recipeId = impact && impact.recipeId || layerRecipeId(layer);
     if (!recipeId) return;
     const nowMs = this._wallClockMs();
     if (!rt._layerVoiceBook) rt._layerVoiceBook = Object.create(null);
     if (!admitLayerVoice(rt._layerVoiceBook, p.targetId, layer, nowMs)) return;
+    // One contact, one voice across both raw owners: the projectile chip (`_onHit`) and this
+    // layer voice can see the same asteroid hit in one tick. Ships only reach this handler (and
+    // `_onHit` returns for them), so only the asteroid chip needs the cross-owner claim; two
+    // distinct layer contacts on a ship in one tick keep their own 40 ms gate and both speak.
+    // The rock may already be gone by the time the presentation drain runs. The `_onHit` mark
+    // still names the same target and contact point, so a destroyed asteroid keeps its chip voice
+    // instead of falling through to a second generic layer voice.
+    const onAsteroid = (!!target && target.type === 'asteroid')
+      || this._impactVoiceWasRock(p.targetId, nowMs, p.pos);
+    if (onAsteroid && !this._claimImpactVoice(p.targetId, nowMs, p.pos, 'damage')) return;
 
     const playerSignature = p.isPlayer ? resolvePlayerDamageAudioSignature(p, this.state) : null;
     const hitPosition = playerSignature && playerSignature.position || p.pos || p.hitPoint;
     const gain = playerSignature
       ? playerSignature.gain
-      : (layer === 'armor' ? 0.8 : layer === 'shield' ? 0.7 : 0.9);
-    const attacker = p.attackerId != null && this.state.entities && typeof this.state.entities.get === 'function'
-      ? this.state.entities.get(p.attackerId)
+      : onAsteroid ? 0.5 : (layer === 'armor' ? 0.8 : layer === 'shield' ? 0.7 : 0.9);
+    const attacker = p.attackerId != null && entities && typeof entities.get === 'function'
+      ? entities.get(p.attackerId)
       : null;
     this.play(recipeId, {
       position: hitPosition,
       gain,
-      rate: playerSignature ? playerSignature.rate : 1,
+      rate: playerSignature ? playerSignature.rate : (onAsteroid ? 1.4 : 1),
       detune: playerSignature ? playerSignature.detune : 0,
       pan: playerSignature ? playerSignature.pan : undefined,
       lockRate: !!playerSignature,
@@ -4656,6 +4763,75 @@ export const audio = {
     if (rt._wonderTick === tick) return;
     rt._wonderTick = tick;
     this.play('sfx_discovery_reveal', { gain: 0.7 });
+  },
+
+  /**
+   * One asteroid-contact chip per target across `_onHit` and `_onDamage`. The projectile chip is
+   * inline; the material layer voice is presentation-deferred, so under a catch-up frame the same
+   * rock contact can arrive after `state.tick` advanced — or after the rock was destroyed and
+   * removed. The claim therefore keys on TARGET + contact position + (same tick, or a short
+   * wall-clock window for a deferred drain), never on a live `entity.type`. Same tick is always
+   * the same contact, so scheduler delay cannot split one dispatch into two voices. Whichever
+   * owner speaks first claims the target; the other yields. Ships never call this: their 40 ms
+   * layer gate in `_onDamage` stays the only floor, so two different layer contacts on one hull
+   * in a tick still each speak.
+   */
+  _claimImpactVoice(targetId, nowMs, pos, owner) {
+    const rt = this.rt;
+    if (!rt || targetId == null) return true;
+    const now = Number.isFinite(nowMs) ? nowMs : this._wallClockMs();
+    const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1;
+    let marks = rt._impactVoiceMarks;
+    if (!marks) marks = rt._impactVoiceMarks = new Map();
+    const mark = marks.get(targetId);
+    const sameContact = !!mark
+      && (mark.tick === tick || now - mark.at < IMPACT_VOICE_WINDOW_MS)
+      && this._impactVoiceSameContact(mark, pos);
+    if (sameContact) {
+      if (mark.owner !== owner) {
+        // The other raw owner already spoke for this contact; this receipt closes the episode so
+        // a genuinely new contact after it can speak again.
+        marks.delete(targetId);
+        return false;
+      }
+      // Same owner, same tick: one chip per rock per tick. A later tick is a new contact.
+      if (mark.tick === tick) return false;
+    }
+    marks.set(targetId, {
+      at: now,
+      tick,
+      owner,
+      x: Number(pos && pos.x),
+      z: Number(pos && pos.z),
+    });
+    if (marks.size > 64) {
+      for (const [id, entry] of marks) {
+        if (now - entry.at >= IMPACT_VOICE_WINDOW_MS) marks.delete(id);
+      }
+      if (marks.size > 64) marks.delete(marks.keys().next().value);
+    }
+    return true;
+  },
+
+  // Did `_onHit` already speak for this target and contact point? Used by the deferred damage
+  // handler when the asteroid is no longer in `state.entities` (destroyed by the same shot).
+  _impactVoiceWasRock(targetId, nowMs, pos) {
+    const marks = this.rt && this.rt._impactVoiceMarks;
+    if (!marks || targetId == null) return false;
+    const mark = marks.get(targetId);
+    if (!mark || nowMs - mark.at >= IMPACT_VOICE_WINDOW_MS) return false;
+    return this._impactVoiceSameContact(mark, pos);
+  },
+
+  // The same physical contact reports the same point. A distant point on a recycled id is a
+  // different contact. Missing coordinates fail open (assume same) so a stripped receipt still
+  // keeps the one-voice law.
+  _impactVoiceSameContact(mark, pos) {
+    const fx = Number(pos && pos.x);
+    const fz = Number(pos && pos.z);
+    if (!Number.isFinite(mark.x) || !Number.isFinite(mark.z)
+      || !Number.isFinite(fx) || !Number.isFinite(fz)) return true;
+    return Math.hypot(fx - mark.x, fz - mark.z) <= 60;
   },
 
   // One voice per contact.
@@ -6283,9 +6459,16 @@ export const audio = {
     // Start ambient station hum loop (faction-tinted when possible)
     this._startStationHum(p);
     const hullLines = leftoverMechanicLines(this.state);
-    // A stock graze is a lie when this hull has nothing filed. Silence beats an invented scar.
-    const mechanicLine = hullLines && hullLines[0];
-    if (mechanicLine) this._onBarkVoice({ mechanic: true, kind: 'mechanic', text: mechanicLine, line: mechanicLine });
+    // A stock graze is a lie when this hull has nothing filed. Silence beats an invented scar —
+    // and a verbatim rerun reads as a broken radio, so the mechanic speaks the first line he
+    // hasn't said this session (the berth card still lists the full set).
+    const said = this.rt._mechanicDockSaid instanceof Set
+      ? this.rt._mechanicDockSaid : (this.rt._mechanicDockSaid = new Set());
+    const mechanicLine = hullLines && hullLines.find((line) => line && !said.has(line));
+    if (mechanicLine) {
+      said.add(mechanicLine);
+      this._onBarkVoice({ mechanic: true, kind: 'mechanic', text: mechanicLine, line: mechanicLine });
+    }
   },
 
   _onUndocked() {
@@ -6769,34 +6952,61 @@ export const audio = {
       mechanic: payload.mechanic || payload.kind === 'mechanic',
     });
     const rt = this.rt, ctx = rt && rt.ctx;
-    const t0 = ctx ? ctx.currentTime : 0;
+    const rate = barkPlaybackRate(resolved);
     const speechDur = resolved.speech && Number.isFinite(resolved.speech.durationS)
       ? resolved.speech.durationS : 0.9;
+    // The PCM buffer plays `rate`× faster than the authored seconds — the tail, duck, holds and
+    // captions all schedule on the heard duration (a slow register used to chirp mid-word).
+    const heardDur = speechDur / (rate > 0 ? rate : 1);
+    let t0 = ctx ? ctx.currentTime : 0;
+    // One ear, one voice: chatter waits out the open mic instead of overlapping a playing bark.
+    // A line that would wait past the cap drops — the text floor still surfaces it.
+    if (ctx && !verdict.immediate) {
+      const busyUntil = rt && Number.isFinite(rt._commsChatterUntilS) ? rt._commsChatterUntilS : 0;
+      if (busyUntil - t0 > BARK_CHATTER.deferCapS) return;
+      t0 = Math.max(t0, busyUntil);
+    }
+    const speakerPos = (() => {
+      const e = payload.entityId != null && this.state && this.state.entities
+        && typeof this.state.entities.get === 'function'
+        ? this.state.entities.get(payload.entityId) : null;
+      return e && e.pos && Number.isFinite(e.pos.x) && Number.isFinite(e.pos.z) ? e.pos : null;
+    })();
+    const player = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId) : null;
+    // Bearing pan only — radio carries the distance; gain stays flat (unlike world position,
+    // which would cull and attenuate a far hail the receiver still hears clearly).
+    const pan = speakerPos && player && player.pos
+      ? Math.max(-1, Math.min(1, (speakerPos.x - player.pos.x) / PAN_SPAN)) : 0;
     // Industrial punctuation: the mic solenoid keys open, the voice rides the carrier, then the
     // squelch tail collapses it. Scheduled starts keep the gap tight and sample-accurate.
     this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain, startTime: t0 });
     const body = this.play(resolved.recipeId, {
-      gain: resolved.gain,
-      rate: barkPlaybackRate(resolved),
+      gain: resolved.gain * (rt && Number.isFinite(rt._barkVoiceScale) ? rt._barkVoiceScale : 1),
+      rate,
       barkPcmBuffer: ctx && ctx.state === 'running' && !this._isMuted()
         ? cachedBarkBuffer(ctx, rt._barkPcmCache || (rt._barkPcmCache = new Map()), resolved) : null,
       barkSampleId: resolved.sampleId,
       critical: true,
-      duckSeconds: BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS + COMMS_DUCK.releasePadS,
+      pan,
+      duckSeconds: BARK_PUNCT.keyLeadS + heardDur + BARK_PUNCT.tailPadS + COMMS_DUCK.releasePadS,
       startTime: t0 + BARK_PUNCT.keyLeadS,
     });
-    this.play('sfx_comms_squelch_tail', {
+    // A dying hull does not get a tidy squelch — the channel dies with it.
+    this.play(payload.situation === 'distress' ? 'sfx_squelch_danger' : 'sfx_comms_squelch_tail', {
       gain: BARK_PUNCT.tailGain,
-      startTime: t0 + BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS,
+      startTime: t0 + BARK_PUNCT.keyLeadS + heardDur + BARK_PUNCT.tailPadS,
     });
     if (rt0) {
       rt0._commsContext = context;
-      if (verdict.immediate) rt0._commsImmediateUntilS = nowS + speechDur + 0.35;
+      if (verdict.immediate) rt0._commsImmediateUntilS = nowS + heardDur + 0.35;
+      else if (ctx) rt0._commsChatterUntilS = t0 + BARK_PUNCT.keyLeadS + heardDur + BARK_PUNCT.tailPadS + BARK_CHATTER.gapS;
     }
     if (body) {
       this._emitPresentationCaption(resolved.caption, {
         assertive: resolved.assertive,
         shape: 'radio',
+        durationMs: Math.ceil((BARK_PUNCT.keyLeadS + heardDur + BARK_PUNCT.tailPadS + 0.3) * 1000),
       });
     }
     if (resolved.factionId) {

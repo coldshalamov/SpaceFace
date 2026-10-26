@@ -47,47 +47,62 @@ function harness() {
   state.ui.trackedMissionId = null;
   state.story.beatIndex = 2;
   missions._syncCampaignSidecarAfterAdvance();
+  // W-BOOKS-0-2 (§34.7): the register contract posts only after the cinder board, the
+  // Compost Run, and the Nest are done — stamp those steps so the departure dispatches
+  // the named writ, exactly as a save resuming late in Book 2 would.
+  state.story.campaign47a.stepProgress = state.story.campaign47a.stepProgress || {};
+  state.story.campaign47a.stepProgress['2'] = {
+    completed: ['cinder_board', 'compost', 'nest'], updatedAtS: 30,
+  };
 
   return { state, bus, missions, player, credits, resolved };
 }
 
-function departForRescue(h) {
+function departForElroy(h) {
   h.bus.emit('dock:undocked', {});
   const mission = h.state.missions.active.find((row) => row.storyTag === CONTRACT_47A_B2_TAG);
-  assert.ok(mission, 'departing Tethys dispatches the pod rescue');
-  assert.equal(mission.type, 'rescue_under_fire');
+  assert.ok(mission, 'departing Tethys dispatches the register writ');
+  assert.equal(mission.type, 'bounty_hunt');
   assert.equal(h.state.ui.trackedMissionId, mission.id);
   h.state.world.currentSectorId = mission.destSectorId;
   h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
-  const pod = mission.targetEntityIds
+  const elroy = mission.targetEntityIds
     .map((id) => h.state.entities.get(id))
-    .find((entity) => entity && entity.data && entity.data.physicalRole === 'life_pod');
-  assert.ok(pod && pod.alive, 'a life pod is a physical mission target');
-  return { mission, pod };
+    .find((entity) => entity && entity.data && entity.data.storyTargetId === 'npc_elroy');
+  assert.ok(elroy && elroy.alive, 'the named vessel is a physical mission target');
+  return { mission, elroy };
 }
 
-test('47-A B2 is a linear pod rescue under fire, not an Elroy choice menu', () => {
+test('47-A B2 posts the register writ — scan identifies Elroy, fire resolves force', () => {
   const h = harness();
-  const { mission, pod } = departForRescue(h);
-  if (![...h.state.entities.values()].some((e) => e && e.type === 'station' && e.data && e.data.stationId === mission.destStationId)) {
-    const station = {
-      id: 80, type: 'station', alive: true, pos: { x: 80, z: 40 },
-      data: { stationId: mission.destStationId, dockRadius: 80 },
-    };
-    h.state.entities.set(station.id, station);
-    h.state.entityList.push(station);
-  }
-  const berth = [...h.state.entities.values()].find((e) => (
-    e && e.type === 'station' && e.data && e.data.stationId === mission.destStationId
-  ));
-  assert.ok(berth && berth.pos, 'B2 dest berth must exist for the leftover latch-dock');
-  h.bus.emit('tether:latched', { targetId: pod.id });
-  pod.pos = { x: berth.pos.x, z: berth.pos.z };
-  h.bus.emit('dock:docked', { stationId: mission.destStationId });
+  const { mission, elroy } = departForElroy(h);
+  elroy.pos = { x: 5, z: 0 };
 
+  // Scan first — the UNKNOWN resolves to the filed civilian hull before the tag closes.
+  h.bus.emit('scan:completed', { targetId: elroy.id });
+  assert.equal(mission.params.investigationStage, 'identified');
+  assert.equal(mission.params.identifiedBy, 'scanner');
+
+  h.bus.emit('entity:killed', { id: elroy.id, killerId: h.state.playerId });
+  assert.equal(h.resolved.length, 1);
+  assert.equal(h.resolved[0].outcome, 'force');
+  assert.equal(h.state.story.flags.elroy_outcome, 'force');
+  assert.equal(h.state.story.beatIndex, 3, 'the writ closes First Blood when the list is done');
+  assert.equal(h.credits.filter((row) => row.amount === 800).length, 1);
+  const receipt = h.state.missions.receipts.find((row) => row.missionId === mission.id);
+  assert.equal(receipt.outcome, 'completed');
+});
+
+test('47-A B2 register writ — the custody reel resolves without a kill', () => {
+  const h = harness();
+  const { mission, elroy } = departForElroy(h);
+  elroy.pos = { x: 5, z: 0 };
+  h.bus.emit('scan:completed', { targetId: elroy.id });
+  h.bus.emit('tether:reel', { actorId: h.state.playerId, targetId: elroy.id, after: 50 });
+  assert.equal(h.resolved.length, 1);
+  assert.equal(h.resolved[0].outcome, 'custody');
+  assert.equal(h.state.story.flags.elroy_outcome, 'custody');
   assert.equal(h.state.story.beatIndex, 3);
-  assert.equal(h.state.story.flags.elroy_outcome, undefined);
-  assert.equal(h.resolved.length, 0, 'pod rescue adds no Elroy branch');
   assert.equal(h.credits.filter((row) => row.amount === 800).length, 1);
   const receipt = h.state.missions.receipts.find((row) => row.missionId === mission.id);
   assert.equal(receipt.outcome, 'completed');

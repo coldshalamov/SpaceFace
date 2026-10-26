@@ -18,19 +18,25 @@ assert.deepEqual(beats.map((beat) => beat.id), [
   'pick_a_side', 'proving_ground', 'empire_seed', 'deep_reach',
 ]);
 
+// W-BOOKS-0-2 (§34.7): B1 posts the book's first pending contract — the sealed alloy run
+// — and B2 posts the cinder board. The world-work steps between them post nothing.
 const b1a = buildMissionBoardContract(1, { seed: 47, epoch: 3 });
 const b1b = buildMissionBoardContract(1, { seed: 47, epoch: 3 });
 assert.deepEqual(b1a, b1b, 'authored offer must be deterministic');
-assert.equal(b1a.type, 'demolition');
-assert.equal(b1a.storyTag, 'campaign47a:b1:honest_work');
+assert.equal(b1a.type, 'cargo_delivery');
+assert.equal(b1a.storyTag, 'campaign47a:b1:alloy_run');
+assert.equal(b1a.storyContractId, 'campaign47a:b1:alloy_run');
 assert.equal(b1a.campaign47aBeat, 1);
-assert.equal(b1a.title, 'Knock the variance tower');
-assert.deepEqual(b1a.params.completionMethods, ['wrecking_ball', 'cut_down']);
+assert.equal(b1a.stationId, 'station_helios');
+assert.equal(b1a.destStationId, 'station_tethys');
+assert.equal(b1a.params.bookScene, 'alloy_run');
+assert.equal(b1a.params.silentRecat, true);
 
 const b2 = buildMissionBoardContract(2, { seed: 47, epoch: 3 });
-assert.equal(b2.type, 'rescue_under_fire');
-assert.equal(b2.title, 'Pull the pods under fire');
-assert.deepEqual(b2.params.completionMethods, ['stage_tow', 'corridor_pull']);
+assert.equal(b2.type, 'patrol_clear');
+assert.equal(b2.storyTag, 'campaign47a:b2:cinder');
+assert.equal(b2.stationId, 'station_tethys');
+assert.equal(b2.params.bookScene, 'cinder_board');
 assert.equal(b2.destSectorId, 'sector_charon_expanse');
 assert.deepEqual(buildAftermathHook(2), {
   beat: 2,

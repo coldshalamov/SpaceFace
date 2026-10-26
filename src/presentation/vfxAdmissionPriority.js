@@ -158,3 +158,13 @@ export function deriveVfxAdmissionMetadata(cue = {}, state = null) {
     targetId,
   };
 }
+
+/**
+ * Player-facing contact: the player caused it, or it landed on the player / the player's current
+ * target. This is the ONE test a presentation owner needs to put a contact above ambient NPC and
+ * terrain events, and to let it admit per primitive group instead of all-or-nothing.
+ */
+export function isPlayerFacingVfxAdmission(metadata) {
+  if (!metadata) return false;
+  return metadata.playerCaused === true || Number(metadata.targetRelevance) >= 1;
+}

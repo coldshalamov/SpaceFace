@@ -1531,7 +1531,7 @@ export const barkDirector = {
       return completeWitness(w) && profile?.canSpeak && profile.lifeId===w.lifeId;
     });
     if (!witness) return null;
-    const title = (Array.isArray(incident.titleIds) ? incident.titleIds : []).map(id => state.story.titles.byId?.[id])
+    const title = (Array.isArray(incident.titleIds) ? incident.titleIds : []).map(id => state.story?.titles?.byId?.[id])
       .find(t => t && Array.isArray(t.knownWitnesses) && t.knownWitnesses.includes(witness.identity));
     const rule = title && STUNT_TITLE_RULES.find(r => r.id === title.titleId);
     const lines = (Object.hasOwn(STUNT_SITUATION_LINES, incident.trickId) && STUNT_SITUATION_LINES[incident.trickId])
@@ -1539,7 +1539,7 @@ export const barkDirector = {
     // THE WORLD ANSWERS: a variant (own wingman, bolas pair) or the cargo of an Ore Shotgun speaks
     // ahead of the generic title bark.
     const text = stuntSpecificLine(incident) || rule?.bark || lines[witness.role === 'hostile' ? 2 : witness.role === 'patrol' ? 0 : 1];
-    const first = !!title || !(Array.isArray(state.story.titles.stuntIncidents) ? state.story.titles.stuntIncidents : [])
+    const first = !!title || !(Array.isArray(state.story?.titles?.stuntIncidents) ? state.story.titles.stuntIncidents : [])
       .some(i => i && i.id !== incident.id && i.trickId === incident.trickId && i.barkDelivered);
     const queued = { id: `stunt:${incident.id}:${witness.identity}`, incidentId: incident.id, speakerId: witness.id,
       speakerIdentity: witness.identity, speakerLife: witness.lifeId, speakerName: witness.name, factionId: witness.factionId, trickId: incident.trickId,
@@ -1603,7 +1603,10 @@ export const barkDirector = {
     const transcriptOn = accessibility.captions !== false;
     const incident = findStuntIncident(state, queued.incidentId);
     if (!voiceOn && !transcriptOn) {
-      queued.status = 'suppressed'; record.pending.shift(); record.deliveredIds.push(queued.incidentId);
+      queued.status = 'suppressed'; record.pending.shift();
+      // A recognition entry's incidentId is the *cited* incident — marking it delivered would
+      // suppress that incident's own bark forever. Same guard as the 'expired'/'delivered' paths.
+      if (!queued.recognition) record.deliveredIds.push(queued.incidentId);
       if(record.deliveredIds.length>128)record.deliveredIds.shift();
       if (incident && !queued.recognition) { incident.barkStatus = 'suppressed'; incident.barkSuppression = 'suppressed by player setting'; }
       return;
@@ -1804,7 +1807,10 @@ export const barkDirector = {
     const own = ensureState(this.state);
     const now = this.state.simTime || 0;
     const until = now + POST_COMBAT_SILENCE_S;
-    own.postCombatSilenceUntil = Math.max(Number(own.postCombatSilenceUntil) || 0, until);
+    // A restored Infinity/'Infinity' is truthy — `|| 0` misses it and the silence would re-wedge
+    // on every combat outcome instead of healing.
+    const prevSilence = Number(own.postCombatSilenceUntil);
+    own.postCombatSilenceUntil = Math.max(Number.isFinite(prevSilence) ? prevSilence : 0, until);
     const sectorId = currentSectorId(this.state);
     const ambient = ambientRecord(own, sectorId);
     ambient.quietSince = now;
@@ -2427,7 +2433,10 @@ export const barkDirector = {
     const own = ensureState(state);
     const now = state.simTime || 0;
     let until = 0;
-    if (FLAVOR_SITUATIONS.has(situation)) until = Number(own.postCombatSilenceUntil) || 0;
+    if (FLAVOR_SITUATIONS.has(situation)) {
+      const silence = Number(own.postCombatSilenceUntil);
+      until = Number.isFinite(silence) ? silence : 0;
+    }
     if (until > now) {
       rememberSuppressed(own, entity, situation, now, until, 'post-combat-silence');
       return true;
@@ -2574,9 +2583,10 @@ export const barkDirector = {
     } else if (Object.getPrototypeOf(own.raiderEscapesSaid) !== null) {
       own.raiderEscapesSaid = Object.assign(Object.create(null), own.raiderEscapesSaid);
     }
-    // A corrupt truthy-primitive row would mute this custody id forever — only a real record
-    // dedupes; a dead value is overwritten below.
-    if (own.raiderEscapesSaid[custodyId] && typeof own.raiderEscapesSaid[custodyId] === 'object') return false;
+    // A corrupt truthy-primitive or array row would mute this custody id forever — only a real
+    // record dedupes; a dead value is overwritten below.
+    const saidRow = own.raiderEscapesSaid[custodyId];
+    if (saidRow && typeof saidRow === 'object' && !Array.isArray(saidRow)) return false;
 
     const raider = entityFromState(state, payload.raiderId);
     if (raider && raider.alive !== false) {
@@ -2610,7 +2620,8 @@ export const barkDirector = {
         const t = Number(own.raiderEscapesSaid[key] && own.raiderEscapesSaid[key].t);
         if (Number.isFinite(t) && t < oldestT) { oldestT = t; oldest = key; }
       }
-      if (oldest != null) delete own.raiderEscapesSaid[oldest];
+      if (oldest == null) oldest = saidKeys[0]; // every row's .t corrupt → still evict one
+      delete own.raiderEscapesSaid[oldest];
     }
 
     this._emit('comms:log', {
@@ -3002,10 +3013,16 @@ function freshHullRecognition() {
 }
 
 function hullRecognitionRecord(own) {
-  if (!own.hullRecognition || typeof own.hullRecognition !== 'object') {
+  if (!own.hullRecognition || typeof own.hullRecognition !== 'object' || Array.isArray(own.hullRecognition)) {
     own.hullRecognition = freshHullRecognition();
   }
-  return own.hullRecognition;
+  const record = own.hullRecognition;
+  // Same normalization idiom as the stunt record: a corrupt nextAt wedges the suppression
+  // gate forever (nextAt > now never false for Infinity), non-finite lastAt/count mint NaN.
+  if (!Number.isFinite(record.lastAt)) record.lastAt = 0;
+  if (!Number.isFinite(record.nextAt)) record.nextAt = 0;
+  if (!Number.isFinite(record.count)) record.count = 0;
+  return record;
 }
 
 function freshStuntRecognition() {
@@ -3027,10 +3044,16 @@ function stuntRecognitionRecord(own) {
   // Entries always carry a finite expiresTick by construction — a foreign queue can hold
   // null/primitive/shapeless entries that crash the expiry sweep or wedge the head of the
   // queue forever (no expiresTick means they can never expire and never speak).
-  record.pending = record.pending.filter((q) => q && typeof q === 'object' && !Array.isArray(q) && Number.isFinite(q.expiresTick));
+  if (record.pending.length) record.pending = record.pending.filter((q) => q && typeof q === 'object' && !Array.isArray(q) && Number.isFinite(q.expiresTick));
   if (!Array.isArray(record.recentTicks)) record.recentTicks = [];
-  record.recentTicks = record.recentTicks.filter(Number.isFinite);
+  if (record.recentTicks.length) record.recentTicks = record.recentTicks.filter(Number.isFinite);
   if (!Array.isArray(record.deliveredIds)) record.deliveredIds = [];
+  // A restored non-finite nextTick wedges the queue permanently (tick < NaN/Infinity gates the
+  // advance forever); normalize to 0 — a finite-but-far value is shape-valid corruption.
+  if (!Number.isFinite(record.nextTick)) record.nextTick = 0;
+  // A restored non-finite safeSince never satisfies the 72-tick settle gate — the queue drains
+  // by expiry without ever speaking. null means "not settled" and re-arms on the next tick.
+  if (record.safeSince != null && !Number.isFinite(record.safeSince)) record.safeSince = null;
   // speakers keys on record-derived observer identities — a restored plain-proto bag re-opens
   // the '__proto__'/'toString' read seam, so re-home it as null-prototype.
   if (!record.speakers || typeof record.speakers !== 'object' || Object.getPrototypeOf(record.speakers) !== null) {
@@ -3344,15 +3367,21 @@ function currentSectorId(state) {
 function ambientRecord(own, sectorId) {
   const key = sectorId || 'unknown';
   let rec = own.ambientBySector[key];
-  if (!rec || typeof rec !== 'object') {
+  if (!rec || typeof rec !== 'object' || Array.isArray(rec)) {
     rec = {
       quietSince: 0,
-      lastAt: -Infinity,
-      nextAt: -Infinity,
+      lastAt: 0,
+      nextAt: 0,
       lastGap: AMBIENT_BASE_GAP_S,
     };
     own.ambientBySector[key] = rec;
   }
+  // A restored row's fields can carry JSON-corrupt values — a non-finite nextAt suppresses the
+  // sector's ambient barks forever (both the suppression gate and the `> next` write-back wedge).
+  if (!Number.isFinite(rec.quietSince)) rec.quietSince = 0;
+  if (!Number.isFinite(rec.lastAt)) rec.lastAt = 0;
+  if (!Number.isFinite(rec.nextAt)) rec.nextAt = 0;
+  if (!Number.isFinite(rec.lastGap)) rec.lastGap = AMBIENT_BASE_GAP_S;
   return rec;
 }
 

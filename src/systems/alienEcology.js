@@ -395,7 +395,8 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
       // AL-RACE-2: solid ambient fauna are incidental scenery on a temporary circuit —
       // nudged clear at materialization; their own migration owns them after.
       if (species.physicsBody) {
-        const sceneryShift = racingCorridorSceneryShift(state, sector.id, pos, species.radius);
+        const sceneryShift = racingCorridorSceneryShift(state, sector.id, pos, species.radius,
+          `fauna:${member.faunaKey}`);
         if (sceneryShift) { pos.x += sceneryShift.x; pos.z += sceneryShift.z; }
       }
       // Migration route: members of migrates species walk the waypoint loop. AE-165:

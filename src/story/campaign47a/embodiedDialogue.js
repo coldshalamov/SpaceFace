@@ -74,12 +74,14 @@ const line = (id, beatIndex, variant, contactId, sender, text, choiceId = null) 
 });
 
 export const BEAT_COMMS = Object.freeze([
-  line('comms.47a.b0.primary', 0, 'primary', 'contact_kessler', 'KESSLER', 'Sample the variance. Dock Helios afterward.'),
+  // W-BOOKS-0-2 (§34.7): the comms name the book route — the lane skim, the alloy run,
+  // the cinder board, not the old set pieces.
+  line('comms.47a.b0.primary', 0, 'primary', 'contact_kessler', 'KESSLER', 'Sample the variance. Run the lane home. Dock Helios.'),
   line('comms.47a.b0.recovery', 0, 'failure_recovery', 'contact_kessler', 'KESSLER', 'Manifest remains open. Sample again, then dock.'),
-  line('comms.47a.b1.primary', 1, 'primary', 'contact_kessler', 'KESSLER', 'Knock the dead tower. Swing mass or cut it.'),
-  line('comms.47a.b1.recovery', 1, 'failure_recovery', 'contact_kessler', 'KESSLER', 'Tower still stands. Knock it down.'),
-  line('comms.47a.b2.primary', 2, 'primary', 'contact_rook', 'ROOK', 'Pods in the field. Pull them under fire.'),
-  line('comms.47a.b2.recovery', 2, 'failure_recovery', 'contact_rook', 'ROOK', 'Pods still drift. Pull them out.'),
+  line('comms.47a.b1.primary', 1, 'primary', 'contact_kessler', 'KESSLER', 'The book posts the alloy run. Scale 4 and the furnace follow.'),
+  line('comms.47a.b1.recovery', 1, 'failure_recovery', 'contact_kessler', 'KESSLER', 'Honest work holds. The book re-posts the next job.'),
+  line('comms.47a.b2.primary', 2, 'primary', 'contact_rook', 'ROOK', 'Cinder board first. Compost, the Nest, the register after.'),
+  line('comms.47a.b2.recovery', 2, 'failure_recovery', 'contact_rook', 'ROOK', 'The board still holds. The book re-posts the next job.'),
   line('comms.47a.b3.primary', 3, 'primary', 'contact_slate', 'SLATE', 'Tow the slag core. Line or sling.'),
   line('comms.47a.b3.recovery', 3, 'failure_recovery', 'contact_slate', 'SLATE', 'Core still waits. Tow it in.'),
   line('comms.47a.b4.primary', 4, 'primary', 'contact_vale', 'V. DIRECTOR', 'Three introductions. One administrator. Choose the work.'),

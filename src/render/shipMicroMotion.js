@@ -62,10 +62,18 @@
 //      through cherry to gunmetal over two seconds.
 //  30. Drift slipstream demand: cutting forward thrust while sliding or yawing publishes a
 //      cold-gas ribbon request the overhead presentation draws along the slide.
+//  31. Sub-Tumble Weapon Reaction: a hit that does NOT earn a solver tumble still lands on a body.
+//      The struck hull rocks (roll/pitch), the nose swings and — for the concussive family — the
+//      helm visibly leaves the pilot's hands for a beat before the recovery pose claws it back.
+//      Contact yield follows the delivered impulse, the drive servos flail and the bells flash
+//      heat (existing hull transforms / material state), and cold-gas nozzle hardware breathes a
+//      correction. `combat:tumbled` adds a precession wobble to the same child channel so a hull
+//      the solver IS turning over reads as a body rolling, never a static mannequin.
 
 import { resolveRcsFirings, resolveActuatorScale } from './rcsJets.js';
 import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 import { clampSlideAgainstHulls, deathSlideOffset, DEATH_SLIDE_S } from './deathSlide.js';
+import { WEAPONS } from '../data/weapons.js';
 import {
   integrateBellHeat,
   resolveSlipstreamInto,
@@ -93,6 +101,8 @@ function craftCosmeticSettled(rec, entity, options, speed, isBoosting) {
   if (rec.deathSlideT >= 0 || rec.dockClampAt > 0) return false;
   if (rec.swingDashT0 >= 0 || rec.rebootT0 >= 0) return false;
   if (rec.materializeT0 >= 0 || rec.cloakWaveT0 >= 0 || rec.shieldBreathT0 >= 0) return false;
+  if (rec.subTumbleT >= 0) return false;
+  if (rec.tumbleReadUntil > (rec.frameSim || 0) && rec.tumbleReadStart <= (rec.frameSim || 0)) return false;
   if (rec.isVenting || rec.boostFlashT > 0) return false;
   if ((rec.weaponHeat || 0) > SETTLED_SPRING_EPS) return false;
   if ((rec.bellHeat || 0) >= 0.004) return false;
@@ -228,39 +238,291 @@ const RECOIL_DEFS = Object.freeze({
 // Weapon families read differently through the hull. Kinetic and concussive loads
 // physically rock a body; coherent and induction defects mostly shake the frame; thermal
 // and explosive hits sit between. These are presentation multipliers, never damage or force.
+//
+// `stagger` is the bodily (sub-tumble) response, `helm` how much heading the hit takes from the
+// pilot, and `spool` the drive/vent disruption. All three keep the same ladder as the hull
+// multipliers — concussive > explosive > kinetic > thermal > induction > coherent — because they
+// are family authority, not damage: a concussion slug trades damage for momentum and must read
+// like it.
 const HIT_REACTION_DEFS = Object.freeze({
-  concussive: Object.freeze({ flinch: 1.80, roll: 1.55, yaw: 2.10, yield: 1.55 }),
-  explosive: Object.freeze({ flinch: 1.45, roll: 1.30, yaw: 1.35, yield: 1.30 }),
-  kinetic: Object.freeze({ flinch: 1.18, roll: 1.12, yaw: 0.82, yield: 1.18 }),
-  thermal: Object.freeze({ flinch: 1.00, roll: 0.92, yaw: 0.45, yield: 0.92 }),
-  coherent: Object.freeze({ flinch: 0.82, roll: 0.72, yaw: 0.30, yield: 0.68 }),
-  induction: Object.freeze({ flinch: 0.90, roll: 0.85, yaw: 0.55, yield: 0.62 }),
-  default: Object.freeze({ flinch: 1.00, roll: 1.00, yaw: 0.55, yield: 1.00 }),
+  concussive: Object.freeze({ key: 'concussive', flinch: 1.80, roll: 1.55, yaw: 2.10, yield: 1.55, stagger: 1.40, helm: 1.00, spool: 0.85 }),
+  explosive: Object.freeze({ key: 'explosive', flinch: 1.45, roll: 1.30, yaw: 1.35, yield: 1.30, stagger: 1.10, helm: 0.62, spool: 0.70 }),
+  kinetic: Object.freeze({ key: 'kinetic', flinch: 1.18, roll: 1.12, yaw: 0.82, yield: 1.18, stagger: 0.85, helm: 0.38, spool: 0.40 }),
+  thermal: Object.freeze({ key: 'thermal', flinch: 1.00, roll: 0.92, yaw: 0.45, yield: 0.92, stagger: 0.62, helm: 0.24, spool: 0.34 }),
+  induction: Object.freeze({ key: 'induction', flinch: 0.90, roll: 0.85, yaw: 0.55, yield: 0.62, stagger: 0.50, helm: 0.18, spool: 0.26 }),
+  coherent: Object.freeze({ key: 'coherent', flinch: 0.82, roll: 0.72, yaw: 0.30, yield: 0.68, stagger: 0.34, helm: 0.10, spool: 0.16 }),
+  default: Object.freeze({ key: 'default', flinch: 1.00, roll: 1.00, yaw: 0.55, yield: 1.00, stagger: 0.65, helm: 0.30, spool: 0.35 }),
 });
 
 function hitReactionFor(weaponId, damageType) {
   const id = String(weaponId || '').toLowerCase();
   const type = String(damageType || '').toLowerCase();
+  // The authored family is ground truth when it names one; id fragments only fill gaps. This is
+  // what keeps a plasma cannon thermal (its id carries 'cannon') instead of reading as kinetic.
   if (id.includes('concussion') || id.includes('shunt') || id.includes('bumper') || id.includes('wedge')) {
     return HIT_REACTION_DEFS.concussive;
   }
-  if (id.includes('missile') || id.includes('torpedo') || id.includes('bomb') || type === 'explosive') {
+  if (type === 'explosive' || id.includes('missile') || id.includes('torpedo') || id.includes('bomb')) {
     return HIT_REACTION_DEFS.explosive;
   }
-  if (id.includes('rail') || id.includes('cannon') || id.includes('slug') || id.includes('driver')
-    || id.includes('autocannon') || id.includes('flak') || id.includes('glaive') || type === 'kinetic') {
-    return HIT_REACTION_DEFS.kinetic;
-  }
-  if (id.includes('emp') || id.includes('disruptor') || id.includes('primer') || type === 'ion') {
-    return HIT_REACTION_DEFS.induction;
-  }
-  if (id.includes('plasma') || id.includes('thermal') || id.includes('cooker') || type === 'thermal') {
+  if (type === 'thermal' || id.includes('plasma') || id.includes('thermal') || id.includes('cooker')) {
     return HIT_REACTION_DEFS.thermal;
   }
-  if (id.includes('laser') || id.includes('beam') || id.includes('pulse') || type === 'energy') {
+  if (type === 'ion' || type === 'emp'
+    || id.includes('emp') || id.includes('disruptor') || id.includes('primer')) {
+    return HIT_REACTION_DEFS.induction;
+  }
+  if (type === 'energy' || id.includes('laser') || id.includes('beam') || id.includes('pulse')) {
     return HIT_REACTION_DEFS.coherent;
   }
+  if (type === 'kinetic' || id.includes('rail') || id.includes('cannon') || id.includes('slug')
+    || id.includes('driver') || id.includes('autocannon') || id.includes('flak') || id.includes('glaive')) {
+    return HIT_REACTION_DEFS.kinetic;
+  }
   return HIT_REACTION_DEFS.default;
+}
+
+// Weapon metadata is data-driven (no hardcoded ids): the reaction reads authored mass, damage
+// reference and delivered impulse from the same table the gun fires from. Uniques fall back to
+// their base hardware for any field they do not override.
+const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+
+function weaponEntry(weaponId) {
+  return weaponId == null ? null : WEAPON_BY_ID.get(String(weaponId)) || null;
+}
+
+function weaponNumber(weaponId, field) {
+  const entry = weaponEntry(weaponId);
+  if (entry && Number.isFinite(entry[field])) return entry[field];
+  const base = entry && entry.baseId ? WEAPON_BY_ID.get(entry.baseId) : null;
+  return base && Number.isFinite(base[field]) ? base[field] : 0;
+}
+
+function weaponDamageType(weaponId) {
+  const entry = weaponEntry(weaponId);
+  if (entry && entry.damageType) return entry.damageType;
+  const base = entry && entry.baseId ? WEAPON_BY_ID.get(entry.baseId) : null;
+  return base && base.damageType ? base.damageType : '';
+}
+
+function payloadWeaponId(payload) {
+  if (!payload) return null;
+  const origin = payload.origin;
+  const id = payload.weaponId
+    || (origin && (origin.weaponId || origin.id));
+  return id == null ? null : String(id);
+}
+
+// The sub-tumble tier is a WEAPON/HARDWARE answer. Collisions are already answered by
+// physics:impact, and repeated environmental/DoT sources must not run a body beat every tick.
+// A legacy receipt with no origin is allowed (focused callers, directionless test payloads).
+const SUB_TUMBLE_SOURCES = new Set([
+  'weapon', 'action', 'emergent', 'bomb', 'mine', 'impulse_charge', 'detonator_dart',
+  'massline_whip', 'ram_plate', 'thrown_mass', 'hull_burst',
+]);
+
+function isWeaponReactionSource(payload) {
+  const origin = payload && payload.origin;
+  const kind = origin && origin.kind;
+  if (kind == null) return true;
+  return SUB_TUMBLE_SOURCES.has(String(kind));
+}
+
+// --- Sub-tumble weapon reaction -------------------------------------------------------------
+// The solver owns hitstun: it decides whether a delivered impulse earns a tumble, for how long,
+// and how fast the hull spins. This tier is what a hit looks like when that answer is "not a
+// tumble" — and the first beat of the answer when it is. Render-only: no status is applied, no
+// impulse is queued, and `setsTumble` is permanently false.
+export const SUB_TUMBLE_ROLL_MAX = 0.17;     // rad — hull roll at full severity
+export const SUB_TUMBLE_PITCH_MAX = 0.11;    // rad — pitch at full severity
+export const SUB_TUMBLE_YAW_MAX = 0.12;      // rad — short strike-side swing
+export const SUB_TUMBLE_HELM_MAX = 0.26;     // rad — heading the pilot loses before recovering
+export const SUB_TUMBLE_REF_DAMAGE = 60;     // authored damage that reads as a full hit
+export const SUB_TUMBLE_REF_IMPULSE = 500;   // mass·wu/s — authored impulse that reads as a full shove
+export const SUB_TUMBLE_REF_MASS = 24;       // tonnes — L hardpoint
+export const SUB_TUMBLE_S_MIN = 0.34;        // s — lightest readable beat
+export const SUB_TUMBLE_S_MAX = 0.78;        // s — heaviest sub-tumble beat
+export const SUB_TUMBLE_BELL_HEAT = 0.34;    // 0..1 — exhaust/vent flash on the disrupted drive
+export const TUMBLE_READ_ROLL = 0.085;       // rad — precession wobble on a live solver tumble
+export const TUMBLE_READ_PITCH = 0.055;
+const SUB_TUMBLE_HEAVE_MAX = 0.05;
+
+function numberOr(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/**
+ * Pure sub-tumble reaction for a weapon damage receipt. Writes into `out` when supplied (the
+ * per-ship record's retained scratch) so the hit path allocates nothing.
+ *
+ * `severity` is physical authority — delivered damage + authored impulse + hardware mass,
+ * weighted by family. `recoveryS` is the whole beat: the hit pose, the helm plateau, and the
+ * counter-correction that settles the body. `setsTumble` is always false: this never touches the
+ * sim's hitstun law, so a sub-tumble hit can never become a tumble in presentation.
+ */
+export function resolveSubTumbleReaction(payload, out = null) {
+  if (!payload) return null;
+  const weaponId = payloadWeaponId(payload);
+  const damageType = payload.damageType || weaponDamageType(weaponId);
+  const family = hitReactionFor(weaponId, damageType);
+  const damage = Math.max(
+    numberOr(payload.hullDamage, 0),
+    numberOr(payload.applied, 0),
+    numberOr(payload.amount, 0),
+    numberOr(payload.damage, 0),
+    numberOr(payload.rawTotal, 0),
+  );
+  const struck = damage > 0
+    || payload.shieldHit === true || payload.armorHit === true || payload.hullHit === true
+    || payload.brokeShield === true;
+  if (!struck) return null;
+
+  const impulse = Math.max(0, weaponNumber(weaponId, 'impulsePerHit'));
+  const mass = Math.max(0, weaponNumber(weaponId, 'mass'));
+  const refDamage = Math.max(0, weaponNumber(weaponId, 'dmg'));
+  const delivered = refDamage > 0 ? Math.min(1.25, Math.max(0.25, damage / refDamage)) : 1;
+  const damageU = clamp(damage / SUB_TUMBLE_REF_DAMAGE, 0, 1.35);
+  const impulseU = clamp(impulse / SUB_TUMBLE_REF_IMPULSE, 0, 1.60);
+  const massU = clamp(mass / SUB_TUMBLE_REF_MASS, 0, 1);
+  const severity = clamp((0.35 * damageU + 0.45 * impulseU + 0.20 * massU) * family.stagger, 0, 1.6);
+  const scaled = Math.min(1, severity);
+
+  const target = out || {};
+  target.family = family.key;
+  target.severity = severity;
+  target.rollAmp = SUB_TUMBLE_ROLL_MAX * scaled;
+  target.pitchAmp = SUB_TUMBLE_PITCH_MAX * scaled;
+  target.yawAmp = SUB_TUMBLE_YAW_MAX * scaled;
+  // Helm loss is the concussive family's signature; coherent fire barely moves the nose.
+  target.helmAmp = SUB_TUMBLE_HELM_MAX * scaled * family.helm;
+  // Contact yield is bought with delivered momentum, exactly like a collision; the frame path
+  // divides it by the struck hull's mass so the same shot folds a fighter and nudges a hauler.
+  target.yieldMomentum = impulse * delivered;
+  target.spool = clamp(family.spool * (0.30 + 0.90 * severity) * (0.60 + 0.40 * impulseU), 0, 1);
+  target.rcs = clamp(target.spool * 0.80 + severity * 0.15, 0, 1);
+  target.recoveryS = SUB_TUMBLE_S_MIN
+    + (SUB_TUMBLE_S_MAX - SUB_TUMBLE_S_MIN) * Math.min(1, severity / 1.2);
+  target.setsTumble = false;
+  return target;
+}
+
+// One beat, three phases: a hard over-rotation, a helm plateau the pilot fights, then a single
+// counter-correction that settles the body. Values stay bounded in 0..1 so every pose amplitude
+// is authored by the tier constants above.
+function subTumbleEnvelope(k) {
+  if (!(k > 0)) return 0;
+  if (k < 0.22) {
+    const u = k / 0.22;
+    return 1 - (1 - u) * (1 - u);
+  }
+  if (k < 0.55) return 1 - 0.22 * ((k - 0.22) / 0.33);
+  const u = (k - 0.55) / 0.45;
+  return 0.78 * Math.cos(u * Math.PI * 1.5) * (1 - u);
+}
+
+function subTumbleHelmHold(k) {
+  if (!(k > 0)) return 0;
+  if (k < 0.14) return k / 0.14;
+  if (k < 0.74) return 1;
+  return Math.max(0, 1 - (k - 0.74) / 0.26);
+}
+
+/**
+ * Advance this hull's sub-tumble beat and solver-tumble precession into the record's retained
+ * pose channels. Mutates the record only; zero allocation. Reduced motion keeps the tier's state
+ * (severity/family/spool are still live) but scales the vestibular pose, exactly like the other
+ * angular channels in this file.
+ */
+function stepSubTumbleReaction(rec, dt, simTime, reducedMotion) {
+  const poseScale = reducedMotion ? 0.3 : 1;
+  let roll = 0;
+  let pitch = 0;
+  let yaw = 0;
+  let heave = 0;
+  let spool = 0;
+  let rcs = 0;
+
+  if (rec.subTumbleT >= 0) {
+    rec.subTumbleT += dt;
+    const k = rec.subTumbleDur > 1e-4 ? rec.subTumbleT / rec.subTumbleDur : 1;
+    if (!Number.isFinite(k) || k < 0 || k >= 1) {
+      rec.subTumbleT = -1;
+      rec.subTumbleSpool = 0;
+      rec.subTumbleRcs = 0;
+      rec.subTumbleSpoolNow = 0;
+      rec.subTumbleRcsNow = 0;
+    } else {
+      const env = subTumbleEnvelope(k);
+      const helm = rec.subTumbleHelmAmp * subTumbleHelmHold(k);
+      roll = rec.subTumbleRollAmp * env * poseScale;
+      pitch = rec.subTumblePitchAmp * env * poseScale;
+      yaw = (rec.subTumbleYawAmp * env + helm) * poseScale;
+      // The body drops into the hit and climbs back out — vertical, not a silhouette change.
+      heave = -Math.abs(env) * SUB_TUMBLE_HEAVE_MAX * rec.subTumbleSeverity * poseScale;
+      // Drive disruption leads the pose: the servos answer first, the body follows.
+      const driveEnv = Math.max(0, 1 - k);
+      spool = rec.subTumbleSpool * driveEnv * (0.55 + 0.45 * Math.max(0, env));
+      // Cold-gas correction: hardware breathes hardest on the counter-swing.
+      const correct = Math.max(0, -env) + 0.35 * Math.max(0, 1 - Math.abs(k - 0.7) / 0.3);
+      rcs = rec.subTumbleRcs * driveEnv * Math.min(1, correct);
+    }
+  }
+
+  // Solver tumble read: the root spin belongs to the physics body; this child-channel precession
+  // makes that spin read as a heavy body rolling over itself, then settles as the tumble ends.
+  let tumbleRoll = 0;
+  let tumblePitch = 0;
+  let tumbleSpool = 0;
+  const until = rec.tumbleReadUntil;
+  const start = rec.tumbleReadStart;
+  if (until > simTime && start <= simTime) {
+    const span = Math.max(0.3, until - start);
+    const age = simTime - start;
+    const env = Math.min(1, age / 0.25) * Math.min(1, (until - simTime) / Math.min(0.4, span * 0.5));
+    const spin = Math.min(12, Math.abs(rec.tumbleReadSpin || 0));
+    const phase = rec.tumbleReadPhase + age * (2.2 + spin * 0.55);
+    tumbleRoll = Math.sin(phase) * TUMBLE_READ_ROLL * env * rec.tumbleReadSeverity * poseScale;
+    tumblePitch = Math.cos(phase * 0.83 + 1.1) * TUMBLE_READ_PITCH * env * rec.tumbleReadSeverity * poseScale;
+    tumbleSpool = env * (0.35 + 0.25 * Math.abs(Math.sin(phase)));
+  } else if (until > simTime) {
+    // Retrograde read from a dead sim epoch: expire it rather than wobble forever.
+    rec.tumbleReadUntil = -1;
+  }
+
+  rec.subTumbleRoll = roll + tumbleRoll;
+  rec.subTumblePitch = pitch + tumblePitch;
+  rec.subTumbleYaw = yaw;
+  rec.subTumbleHeave = heave;
+  rec.subTumbleSpoolNow = Math.max(spool, tumbleSpool);
+  rec.subTumbleRcsNow = rcs;
+}
+
+// Start (or refresh) the beat for one struck hull. `nx`/`nz` are the hit normal in ship-local
+// axes (+X forward, +Z starboard); `side` is the strike side for the heading swing. A materially
+// smaller follow-up only tops up the drive disruption — it does not restart the body beat, so a
+// burst cannot turn the reaction into a vibration.
+function startSubTumbleReaction(rec, reaction, nx, nz, side) {
+  if (!rec || !reaction || !(reaction.severity > 0)) return false;
+  const live = rec.subTumbleT >= 0;
+  if (live && reaction.severity < rec.subTumbleSeverity * 0.75) {
+    rec.subTumbleSpool = Math.max(rec.subTumbleSpool, reaction.spool * 0.6);
+    rec.subTumbleRcs = Math.max(rec.subTumbleRcs, reaction.rcs * 0.6);
+    return false;
+  }
+  // The same momentum rocks a fighter and barely leans on a hauler: the authored pose is
+  // mass-relative (the same law contact yield uses), floored so a capital still reads the hit.
+  const massScale = clamp(massYieldScale(rec.mass), 0.25, 1.15);
+  rec.subTumbleT = 0;
+  rec.subTumbleDur = reaction.recoveryS;
+  rec.subTumbleSeverity = reaction.severity;
+  rec.subTumbleRollAmp = nz * reaction.rollAmp * massScale;
+  rec.subTumblePitchAmp = nx * reaction.pitchAmp * massScale;
+  rec.subTumbleYawAmp = side * reaction.yawAmp * massScale;
+  rec.subTumbleHelmAmp = side * reaction.helmAmp * massScale;
+  rec.subTumbleSpool = Math.max(reaction.spool, live ? rec.subTumbleSpool * 0.5 : 0);
+  rec.subTumbleRcs = Math.max(reaction.rcs, live ? rec.subTumbleRcs * 0.5 : 0);
+  return true;
 }
 
 function resolveRecoilClass(weaponId) {
@@ -507,6 +769,33 @@ export function createShipMicroMotionTracker() {
         // solver deliberately strips player sim yaw — we replay its measured kick).
         impactYaw: 0,
         impactVelYaw: 0,
+        // Sub-tumble weapon reaction (render-only). subTumbleT < 0 = idle; the beat writes a
+        // bounded pose + helm plateau + drive disruption, never a sim status.
+        subTumbleT: -1,
+        subTumbleDur: 0,
+        subTumbleSeverity: 0,
+        subTumbleRollAmp: 0,
+        subTumblePitchAmp: 0,
+        subTumbleYawAmp: 0,
+        subTumbleHelmAmp: 0,
+        subTumbleSpool: 0,
+        subTumbleRcs: 0,
+        subTumbleRoll: 0,
+        subTumblePitch: 0,
+        subTumbleYaw: 0,
+        subTumbleHeave: 0,
+        subTumbleSpoolNow: 0,
+        subTumbleRcsNow: 0,
+        subTumbleScratch: null, // lazy retained output for resolveSubTumbleReaction
+        // Live solver-tumble read: precession + drive distress on the hull child channel while
+        // `combat:tumbled` says the helm is gone. Sim clock (startedAt/until), never a timer.
+        tumbleReadStart: 0,
+        tumbleReadUntil: -1,
+        tumbleReadSpin: 0,
+        tumbleReadSeverity: 0,
+        tumbleReadPhase: 0,
+        // Per-frame sim stamp so the settled fast path can see a live tumble without a clock arg.
+        frameSim: 0,
         // Contact yield spring. Amount > 0 shortens the hull along (yieldFwd, yieldLat).
         yieldAmt: 0,
         yieldVel: 0,
@@ -669,10 +958,16 @@ export function createShipMicroMotionTracker() {
       || Number(payload.amount) || Number(payload.damage) || 10;
     // approach is the shot's travel; normal is the surface. Either beats a random twitch.
     const hitNormal = payload.hitNormal || payload.approach || payload.normal || null;
-    const reaction = hitReactionFor(
-      payload.weaponId || (payload.origin && (payload.origin.weaponId || payload.origin.id)),
-      payload.damageType,
-    );
+    const weaponId = payloadWeaponId(payload);
+    const reaction = hitReactionFor(weaponId, payload.damageType);
+    const originKind = payload.origin && payload.origin.kind;
+    const fromContact = typeof originKind === 'string' && originKind.indexOf('collision') === 0;
+    // Family/impulse/mass decide the bodily tier. Retained scratch: no per-hit object.
+    // Contact damage is answered by physics:impact; environmental/DoT ticks are not a weapon
+    // answer and must not run a body beat every tick.
+    const sub = !fromContact && isWeaponReactionSource(payload)
+      ? resolveSubTumbleReaction(payload, rec.subTumbleScratch || (rec.subTumbleScratch = {}))
+      : null;
 
     // Every hit rocks the hull; the weapon family decides how much of the answer is a
     // physical roll, a directional yaw swing and a local shape yield.
@@ -703,9 +998,40 @@ export function createShipMicroMotionTracker() {
     }
     rec.flinchShudder = Math.min(0.48, rec.flinchShudder + intensity * 0.30);
 
+    // A shot that does not earn a solver tumble still lands on a body: the visible tier is the
+    // helm jolt, the hull rock and the drive's correction. The player's authored heading is
+    // protected by the frame path (the yaw channel is simply not applied to the player hull).
+    if (sub) {
+      const rot = Number.isFinite(rec.rot) ? rec.rot : 0;
+      const cf = Math.cos(rot);
+      const sf = Math.sin(rot);
+      let nx;
+      let nz;
+      let worldNx = 0;
+      let worldNz = 0;
+      if (hitNormal) {
+        worldNx = Number(hitNormal.x) || 0;
+        worldNz = Number(hitNormal.z) || 0;
+        // Convert the world contact axis into the hull's own frame so roll/pitch always answer
+        // the side that was struck, even after a turn.
+        nx = worldNx * cf + worldNz * sf;
+        nz = worldNx * -sf + worldNz * cf;
+        const len = Math.hypot(nx, nz);
+        if (len > 1e-4) { nx /= len; nz /= len; } else { nx = 1; nz = 0; }
+      } else {
+        nx = Math.sin(rec.idlePhase * 3.3);
+        nz = Math.cos(rec.idlePhase * 2.1);
+      }
+      // The nose leaves the line toward the struck side; a player hull never reads this.
+      const leverSide = hitNormal && payload.pos && rec.px != null
+        ? Math.sign(((Number(payload.pos.x) || 0) - rec.px) * worldNz
+          - ((Number(payload.pos.z) || 0) - rec.pz) * worldNx)
+        : 0;
+      const side = leverSide !== 0 ? leverSide : (nz !== 0 ? Math.sign(nz) : Math.sign(nx) || 1);
+      startSubTumbleReaction(rec, sub, nx, nz, side);
+    }
+
     // Collisions already crumple through physics:impact. A second yield here doubles the dent.
-    const originKind = payload.origin && payload.origin.kind;
-    const fromContact = typeof originKind === 'string' && originKind.indexOf('collision') === 0;
     if (!fromContact && !payload.emp) {
       const rot = Number.isFinite(rec.rot) ? rec.rot : 0;
       const cf = Math.cos(rot);
@@ -714,10 +1040,18 @@ export function createShipMicroMotionTracker() {
       const nz = hitNormal ? (Number(hitNormal.z) || 0) : 0;
       const pushFwd = nx * cf + nz * sf;
       const pushLat = nx * -sf + nz * cf;
-      let dv = Math.min(80, dmg * 0.55) * reaction.yield;
+      // Delivered impulse sets the crumple when the receipt knows its weapon; damage alone is
+      // the fallback for directionless/legacy receipts. Same law, same floor, same mass scaling:
+      // momentum ÷ struck mass is a Δv, so the same shot folds a fighter and nudges a hauler.
+      const hullMass = Number.isFinite(rec.mass) && rec.mass > 0 ? rec.mass : 400;
+      const dv = sub
+        ? Math.max(
+          Math.min(80, dmg * 0.55),
+          Math.min(80, (sub.yieldMomentum || 0) / hullMass),
+        ) * reaction.yield
+        : Math.min(80, dmg * 0.55) * reaction.yield;
       // The field takes a shield hit; the hull only shivers.
-      if (payload.shieldHit && !payload.hullHit) dv *= 0.3;
-      noteContactYield(rec, pushFwd, pushLat, dv, rec.mass);
+      noteContactYield(rec, pushFwd, pushLat, payload.shieldHit && !payload.hullHit ? dv * 0.3 : dv, rec.mass);
     }
   }
 
@@ -781,6 +1115,45 @@ export function createShipMicroMotionTracker() {
     rec.flinchZ += pushLat * intensity * 0.30;
     rec.flinchShudder = Math.min(0.4, rec.flinchShudder + intensity * 0.3);
     noteContactYield(rec, pushFwd, pushLat, dv, mass);
+  }
+
+  // A witnessed solver tumble: the physics body owns the spin and the helm loss. This only
+  // records the receipt's own sim envelope so the child hull channel can precess as a body
+  // rolling over itself. No status, no torque, no timer, no sim write.
+  function onTumbled(payload) {
+    if (!payload || payload.victimId == null) return;
+    // The player is immune to forced tumbles; even a stray receipt must not wobble their hull.
+    if (payload.victimId === rememberedPlayerId) return;
+    const rec = getRecord(payload.victimId);
+    const startedAt = Number(payload.startedAt);
+    const until = Number(payload.until);
+    const durationS = Number(payload.durationS);
+    const start = Number.isFinite(startedAt) ? startedAt : lastSimTime;
+    const end = Number.isFinite(until)
+      ? until
+      : start + (Number.isFinite(durationS) && durationS > 0 ? durationS : 1);
+    if (!(end > start)) return;
+    rec.tumbleReadStart = start;
+    rec.tumbleReadUntil = end;
+    rec.tumbleReadSpin = clamp(Number(payload.spin) || 0, -12, 12);
+    const u = Number(payload.u);
+    const u01 = Number.isFinite(u) ? clamp(u, 0, 1) : 0.5;
+    rec.tumbleReadSeverity = clamp(
+      0.55 + u01 * 0.6 + Math.min(1, (end - start) / 2.2) * 0.35,
+      0.55,
+      1.4,
+    );
+    // Deterministic phase from the hull's own seed + the receipt tick: no RNG.
+    const tick = Number(payload.tick);
+    rec.tumbleReadPhase = (rec.idlePhase * 3.1 + (Number.isFinite(tick) ? tick : 0) * 0.017)
+      % (Math.PI * 2);
+  }
+
+  // Stabilization ended (or the helm came back early): stop the precession with it.
+  function onTumbleEnd(payload) {
+    if (!payload || payload.victimId == null) return;
+    const rec = craftMotion.get(payload.victimId);
+    if (rec) rec.tumbleReadUntil = -1;
   }
 
   function onHazardEnter(payload) {
@@ -1022,6 +1395,9 @@ export function createShipMicroMotionTracker() {
     if (!payload) return;
     // Ships and drones die into wrecks; anything else typed is not our spiral.
     if (payload.type && payload.type !== 'ship' && payload.type !== 'drone') return;
+    // The death spiral owns the wreck's motion; a stale helm-loss precession must not ride it.
+    const deadRec = payload.id != null ? craftMotion.get(payload.id) : null;
+    if (deadRec) deadRec.tumbleReadUntil = -1;
     const pos = payload.pos || null;
     if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
       const slot = recentKills[killCursor];
@@ -1050,9 +1426,18 @@ export function createShipMicroMotionTracker() {
     if (id == null) return;
     const type = (payload && payload.type) || (entity && entity.type);
     if (type === 'wreck') spiralDone.delete(id);
+    // A recycled id is a fresh hull: no beat, no precession, no stale pose from the old body.
+    // Existing records only — spawning an asteroid/prop must not fabricate a craft record.
+    const existing = craftMotion.get(id);
+    if (existing) {
+      existing.subTumbleT = -1;
+      existing.subTumbleSpool = 0;
+      existing.subTumbleRcs = 0;
+      existing.tumbleReadUntil = -1;
+    }
     // Ships and drones materialize on arrival instead of popping in mid-frame.
     if (type === 'ship' || type === 'drone') {
-      getRecord(id).materializeT0 = lastSimTime;
+      (existing || getRecord(id)).materializeT0 = lastSimTime;
     }
   }
 
@@ -1348,6 +1733,8 @@ export function createShipMicroMotionTracker() {
     busSubscribers.push(bus.on('combat:fire', onFire));
     busSubscribers.push(bus.on('weapons:vent', onVent));
     busSubscribers.push(bus.on('combat:damage', onDamage, { presentation: true }));
+    busSubscribers.push(bus.on('combat:tumbled', onTumbled, { presentation: true }));
+    busSubscribers.push(bus.on('massline:tumbleEnd', onTumbleEnd, { presentation: true }));
     busSubscribers.push(bus.on('physics:impact', onImpact, { presentation: true }));
     busSubscribers.push(bus.on('hazard:enter', onHazardEnter));
     busSubscribers.push(bus.on('hazard:exit', onHazardExit));
@@ -1393,6 +1780,7 @@ export function createShipMicroMotionTracker() {
     const reducedMotion = options.motionReduce === true;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getRecord(entity.id);
+    rec.frameSim = simTime;
     const isPlayer = options.playerId != null ? entity.id === options.playerId : entity.isPlayer === true;
     if (isPlayer) {
       rememberedPlayerId = entity.id;
@@ -1606,6 +1994,8 @@ export function createShipMicroMotionTracker() {
     rec.impactVelYaw += (-kYaw * rec.impactYaw - cYaw * rec.impactVelYaw) * dt;
     rec.impactYaw = clamp(rec.impactYaw + rec.impactVelYaw * dt, -0.38, 0.38);
     stepYieldSpring(rec, dt);
+    // Sub-tumble weapon beat + live solver-tumble precession (bounded pose, retained fields).
+    stepSubTumbleReaction(rec, dt, simTime, reducedMotion);
 
     // 3. Environmental hazard atmospheric buffet
     if (rec.inHazard && !reducedMotion) {
@@ -1790,6 +2180,12 @@ export function createShipMicroMotionTracker() {
     // the new hull group — rescan on hull identity too or the scale base stays the pre-swap
     // fallback's (scale 1) and the next scale channel flattens the authored radius fit to ~1 WU.
     if (rec.mountMesh !== mesh || rec.mountHull !== hull) scanMountPivots(rec, mesh, hull);
+    // A weapon that staggered the helm also interrupts the drive: the bells flash their heat
+    // skin and the servos flail for the length of the beat. Existing material state only.
+    if (rec.subTumbleSpoolNow > 0.001) {
+      rec.bellHeat = Math.max(rec.bellHeat || 0, SUB_TUMBLE_BELL_HEAT * rec.subTumbleSpoolNow);
+      if (!reducedMotion) rec.recoilShudder = Math.max(rec.recoilShudder, 0.10 * rec.subTumbleSpoolNow);
+    }
     const driveHeat = isBoosting ? 1 : mainN;
     rec.bellHeat = integrateBellHeat(rec.bellHeat || 0, driveHeat, dt);
     if (!((rec.bellHeat || 0) < 0.004 && rec.bellCool)) {
@@ -1825,6 +2221,15 @@ export function createShipMicroMotionTracker() {
         rebootRock = Math.sin(rk * Math.PI * 2) * 0.022 * renv;
       }
     }
+    // Battle-damage drive correction: the servos hunt for the vector, so the bells flail a few
+    // degrees while the hull staggers and settle as the beat ends. Reduced motion keeps a smaller
+    // mechanical tick (hardware state, not the body's vestibular pose).
+    if (rec.subTumbleSpoolNow > 0.001) {
+      const p = simTime * 33.0 + rec.idlePhase;
+      const flail = (reducedMotion ? 0.35 : 1) * rec.subTumbleSpoolNow;
+      rec.gimbalYaw += Math.sin(p) * 0.085 * flail;
+      rec.gimbalPitch += Math.cos(p * 0.87) * 0.055 * flail;
+    }
     // Plume flare is multiplicative over the drive-state base (which resets scale every
     // frame): unapply last frame's factor first so mock graphs without a drive driver
     // cannot compound, then apply this frame's.
@@ -1851,8 +2256,10 @@ export function createShipMicroMotionTracker() {
       }
     }
     rec.flareApplied = flare;
-    // RCS nozzle hardware breathes with total attitude effort (absolute set; we own it).
-    const nozzlePulse = 1 + rcsMax * 0.4;
+    // RCS nozzle hardware breathes with total attitude effort (absolute set; we own it). A
+    // stagger adds the cold-gas correction beat on top: the hardware visibly answers the hit.
+    const nozzlePulse = (1 + rcsMax * 0.4)
+      * (1 + rec.subTumbleRcsNow * (0.20 + 0.20 * Math.sin(simTime * 41.0 + rec.idlePhase)));
     for (let i = 0; i < rec.rcsNozzleCount; i++) {
       const nz = rec.rcsNozzles[i];
       const node = nz.node;
@@ -1947,7 +2354,7 @@ export function createShipMicroMotionTracker() {
     if (!reducedMotion) {
       hull.position.x = rec.recoilX + rec.flinchX + boostJitterX + surgeSquatX + jumpShudderX + rcsKickFwd
         + yieldShiftX + haulShiftX;
-      hull.position.y = idleBreathHeave + boostJitterY;
+      hull.position.y = idleBreathHeave + boostJitterY + rec.subTumbleHeave;
       hull.position.z = rec.flinchZ + shudderOffset + jumpShudderZ + rcsKickLat
         + yieldShiftZ + haulShiftZ;
     } else {
@@ -1985,15 +2392,21 @@ export function createShipMicroMotionTracker() {
       }
     }
 
-    // Additive secondary angular micro-motion
+    // Additive secondary angular micro-motion. The sub-tumble pose carries its own motion-reduce
+    // scale (state stays readable), so it is added after the shared channel scale.
     hull.rotation.x += (rec.flinchRoll + idleBreathRoll + rcsRoll + swingBank + rebootRock
       + critList + critCough + rec.haulPose.bank) * (reducedMotion ? 0.3 : 1.0);
     hull.rotation.z += (rec.recoilPitch + rec.flinchPitch + rec.accelSurge + idleBreathPitch + rcsPitchKick) * (reducedMotion ? 0.3 : 1.0);
+    hull.rotation.x += rec.subTumbleRoll;
+    hull.rotation.z += rec.subTumblePitch;
     // Impact yaw swing on the hull channel — unowned here (entity sync only resets the root yaw,
     // which is −entity.rot, so sim-frame yaw writes mirrored). Absolute set around the authored
-    // base, spring-decays back to it; for the player hull that channel is the heading itself.
-    hull.rotation.y = (rec.hullYawBase || 0)
-      - (isPlayer ? 0 : (rec.impactYaw + rec.haulPose.yaw) * (reducedMotion ? 0.3 : 1.0));
+    // base, spring-decays back to it; for the player hull that channel is the heading itself, so
+    // the stagger helm loss is NPC-only and the player keeps every degree of authored heading.
+    const hullYawOffset = isPlayer
+      ? 0
+      : clamp((rec.impactYaw + rec.haulPose.yaw) * (reducedMotion ? 0.3 : 1.0) + rec.subTumbleYaw, -0.62, 0.62);
+    hull.rotation.y = (rec.hullYawBase || 0) - hullYawOffset;
 
     // Hull-scale channels: materialize ramp, cloak ripple, swing stretch, shield breath.
     // hull.scale is set-once-at-build everywhere, so this tracker owns it multiplicatively
@@ -2387,6 +2800,8 @@ export function createShipMicroMotionTracker() {
     onVent,
     onDamage,
     onImpact,
+    onTumbled,
+    onTumbleEnd,
     onHazardEnter,
     onHazardExit,
     onJumpChargeStart,

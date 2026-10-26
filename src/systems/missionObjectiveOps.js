@@ -76,6 +76,8 @@ export const missionObjectiveOps = {
       const sourceMatches = !p.pos || !source || distSq(p.pos, source.pos) <= 80 * 80;
       if (sourceMatches && addCargo(this.state, CONTRACT_47A_SAMPLE_ID, 1) === 1) {
         b0.params.sampleRecovered = true;
+        // W-BOOKS-0-2 (§34.7): the Skim's lane delay is anchored on this stamp.
+        b0.params.sampleRecoveredAt = this.state.simTime || 0;
         b0.objectiveProgress = 1;
         const locked = this.state.story.persistentCargo || (this.state.story.persistentCargo = []);
         if (!locked.includes(CONTRACT_47A_SAMPLE_ID)) locked.push(CONTRACT_47A_SAMPLE_ID);
@@ -253,8 +255,88 @@ export const missionObjectiveOps = {
     }
     m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
     m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
-    if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
-    else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
+    if (m.objectiveProgress >= m.objectiveTarget && this._bookExtrasSatisfied(m)) this._completeMission(m, i);
+    else {
+      this._refreshTrackedMissionNav(m);
+      this.bus.emit('mission:updated', { missionId: m.id });
+      this._announceBookExtrasPending(m);
+    }
+  },
+
+  /**
+   * W-BOOKS-0-2 (§34.7): Book contract physical extras — the infested hauler's ore pods
+   * into the CR-FEED intake (`furnaceFeedsNeeded`), the cinder mark's wreck into Rook's
+   * booth ring (`rookDeliveryNeeded`). Kills alone do not settle a contract whose authored
+   * disposal leg is still owed; the extras count through their own live signals and the
+   * mission completes when BOTH halves stand.
+   */
+  _bookExtrasSatisfied(m) {
+    const p = (m && m.params) || {};
+    if (Number(p.furnaceFeedsNeeded) > 0 && (p.furnaceFeeds | 0) < p.furnaceFeedsNeeded) return false;
+    if (Number(p.rookDeliveryNeeded) > 0 && (p.rookDeliveries | 0) < p.rookDeliveryNeeded) return false;
+    return true;
+  },
+
+  _bookExtrasPending(m) {
+    const p = (m && m.params) || {};
+    const rows = [];
+    if (Number(p.furnaceFeedsNeeded) > 0) {
+      const left = Math.max(0, p.furnaceFeedsNeeded - (p.furnaceFeeds | 0));
+      if (left > 0) rows.push(`feed ${left} more to the CR-FEED intake`);
+    }
+    if (Number(p.rookDeliveryNeeded) > 0) {
+      const left = Math.max(0, p.rookDeliveryNeeded - (p.rookDeliveries | 0));
+      if (left > 0) rows.push(`tow ${left} more wreck into Rook's booth ring`);
+    }
+    return rows;
+  },
+
+  _announceBookExtrasPending(m) {
+    if (!m || m.objectiveProgress < m.objectiveTarget) return;
+    const rows = this._bookExtrasPending(m);
+    if (!rows.length || m._extrasAnnounced === rows.join('|')) return;
+    m._extrasAnnounced = rows.join('|');
+    this._sayStoryLine(`Kills cleared — still owed: ${rows.join('; ')}.`, 6);
+  },
+
+  _onFurnaceFed(p) {
+    if (!p) return;
+    const sectorId = (this.state.world && this.state.world.currentSectorId) || null;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.status !== 'active' || !m.params || !(Number(m.params.furnaceFeedsNeeded) > 0)) continue;
+      if (m.destSectorId && sectorId && m.destSectorId !== sectorId) continue;
+      m.params.furnaceFeeds = (m.params.furnaceFeeds | 0) + 1;
+      delete m._extrasAnnounced;
+      if (m.objectiveProgress >= m.objectiveTarget && this._bookExtrasSatisfied(m)) {
+        this._completeMission(m, i);
+      } else {
+        this._refreshTrackedMissionNav(m);
+        this.bus.emit('mission:updated', { missionId: m.id, furnaceFeeds: m.params.furnaceFeeds });
+        this._sayStoryLine(`CR-FEED intake: ${m.params.furnaceFeeds}/${m.params.furnaceFeedsNeeded}`, 4);
+      }
+      return;
+    }
+  },
+
+  _onRookWreckDelivered(p) {
+    if (!p) return;
+    const sectorId = (this.state.world && this.state.world.currentSectorId) || null;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.status !== 'active' || !m.params || !(Number(m.params.rookDeliveryNeeded) > 0)) continue;
+      if (m.destSectorId && sectorId && m.destSectorId !== sectorId) continue;
+      m.params.rookDeliveries = (m.params.rookDeliveries | 0) + 1;
+      delete m._extrasAnnounced;
+      if (m.objectiveProgress >= m.objectiveTarget && this._bookExtrasSatisfied(m)) {
+        this._completeMission(m, i);
+      } else {
+        this._refreshTrackedMissionNav(m);
+        this.bus.emit('mission:updated', { missionId: m.id, rookDeliveries: m.params.rookDeliveries });
+        this._sayStoryLine(`Rook's book: wreck logged ${m.params.rookDeliveries}/${m.params.rookDeliveryNeeded}`, 4);
+      }
+      return;
+    }
   },
 
   /**
@@ -1081,6 +1163,15 @@ export const missionObjectiveOps = {
       storyTargetId: m.storyTarget && m.storyTarget.id || 'npc_elroy',
       outcome,
       identifiedBy: m.params.identifiedBy || null,
+    });
+    // §34.7 Book 2 — the terminal register: UNKNOWN resolves to a filed civilian hull for
+    // one dropped frame, then the bounty posts. The second kill-feed line appears and is
+    // overwritten in the same second (R11). No music, no joke — the register speaks.
+    const register = (m.storyTarget && m.storyTarget.registry) || 'CIVILIAN VESSEL — REGISTERED';
+    this.bus.emit('comms:popup', {
+      id: `b2_elroy_register_${m.id}`, sender: 'IFF REGISTER', category: 'story', ttl: 8,
+      persist: true,
+      text: `IFF: ${register} — ${outcome === 'custody' ? 'TAKEN INTO CUSTODY' : 'BOUNTY COLLECTED'}. THEY WERE CARRYING MEDICINE.`,
     });
     this._sayStoryLine(outcome === 'custody'
       ? 'Elroy secured. Registry discrepancy preserved.'

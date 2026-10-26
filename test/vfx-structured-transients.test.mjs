@@ -96,8 +96,8 @@ test('live transient pools share one density texture and do not add a back/front
   assert.equal(a,b.combustion.mesh.material.uniforms.uDensityFilm.value);
   assert.equal(b.combustion.mesh.material.blending,THREE.NormalBlending,
     'combustion retains absorbing cavities when lobes overlap');
-  assert.equal(b.glow.mesh.material.blending,THREE.AdditiveBlending,
-    'the separate thin ignition surface still emits additive light');
+  assert.equal(b.glow.mesh.material.blending,THREE.NormalBlending,
+    'the closed glow volume needs normal compositing to preserve dark internal channels');
   for(const kind of ['glow','ring','smoke','combustion']) {
     const m=b[kind].mesh.material;
     assert.equal(m.forceSinglePass,true);

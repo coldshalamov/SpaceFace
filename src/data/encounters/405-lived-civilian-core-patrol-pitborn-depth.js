@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, PIT — send the relief to Civilian Core instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, PIT — send the relief to Civilian Core; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "PIT: Hold at civilian core. The cradle is not on your manifest. — CRADLE ON THE CIVILIAN CORE.",
+      "line": "PIT: Hold at Civilian Core. The cradle is not on your manifest. — CRADLE ON THE CIVILIAN CORE.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -165,7 +165,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "PIT: Time ran out on the work ask — CRADLE ON THE CIVILIAN CORE. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "PIT: The 18 cr stays spent — the relief still runs on your credit at Civilian Core; the close-in just never came — CRADLE ON THE CIVILIAN CORE.",
       "keepMotion": false,
       "steps": [
         {
@@ -289,7 +289,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "CRADLE ON THE CIVILIAN CORE",
-  "primaryLine": "PIT: Hold at civilian core. The cradle is not on your manifest.",
+  "primaryLine": "PIT: Hold at Civilian Core. The cradle is not on your manifest.",
   "factionId": "faction_pitborn",
   "choices": [
     {
@@ -299,8 +299,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, PIT — send the relief to Civilian Core instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, PIT — send the relief to Civilian Core; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

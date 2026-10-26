@@ -29,12 +29,12 @@ export const spec = {
     {
       "id": "a",
       "label": "Relay the can past both hulls",
-      "playerLine": "I carry the can past your hull, then the far one — in that order — and let it rest."
+      "playerLine": "I carry the can past your hull, then the far one — in that order — and let go dead slow."
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, BUOY — send the relief to Refinery Approach instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, BUOY — send the relief to Refinery Approach; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "CAN",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "BUOY: The can is the whole lot. refinery approach has room to bargain. — CAN ON THE REFINERY APPROACH.",
+      "line": "BUOY: The can is the whole lot. Refinery Approach has room to bargain. — CAN ON THE REFINERY APPROACH.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "BUOY: Carry the can past our hull, then the far hull, in that order. Release and let it rest. — CAN ON THE REFINERY APPROACH.",
+      "line": "BUOY: Carry the can a hundred-twenty on the line — inside sixty of our hull first, then inside sixty of the far hull, in that order. Let go dead slow. — CAN ON THE REFINERY APPROACH.",
       "channel": "info",
       "next": "offer"
     },
@@ -195,7 +195,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "BUOY: Time ran out on the work ask — CAN ON THE REFINERY APPROACH. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "BUOY: The 18 cr stays spent — the relief still runs on your credit at Refinery Approach; the close-in just never came — CAN ON THE REFINERY APPROACH.",
       "keepMotion": false,
       "steps": [
         {
@@ -319,18 +319,18 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "CAN ON THE REFINERY APPROACH",
-  "primaryLine": "BUOY: The can is the whole lot. refinery approach has room to bargain.",
+  "primaryLine": "BUOY: The can is the whole lot. Refinery Approach has room to bargain.",
   "factionId": "faction_free",
   "choices": [
     {
       "id": "a",
       "label": "Relay the can past both hulls",
-      "playerLine": "I carry the can past your hull, then the far one — in that order — and let it rest."
+      "playerLine": "I carry the can past your hull, then the far one — in that order — and let go dead slow."
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, BUOY — send the relief to Refinery Approach instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, BUOY — send the relief to Refinery Approach; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

@@ -34,6 +34,8 @@ import {
 import {
   defaultLivingHull,
   livingHullAfterWash,
+  livingHullRenown,
+  livingHullScars,
   livingHullWithGraffiti,
   livingHullWithKill,
   livingHullWithPatchedScars,
@@ -52,7 +54,7 @@ import {
   scarFromPlayerDamage,
   shouldAdmitScar,
 } from '../combat/hullScars.js';
-import { cleanShipName } from '../data/hullIdentity.js';
+import { cleanShipName, hullNameForOwnedShip } from '../data/hullIdentity.js';
 import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCrossover.js';
 import { FACTION_META } from '../data/factions.js';
 import { hash32 } from '../core/rng.js';
@@ -368,6 +370,142 @@ function countInventoryDefIds(moduleInventory) {
     counts.set(defId, (counts.get(defId) || 0) + 1);
   }
   return counts;
+}
+
+// ---- AL-LG-11 — the hull that did the rams owns the plate -------------------------------------
+//
+// `design/VISION.md` Part II: a hull that has done something carries the evidence of it. Three
+// committed player rams (a `combat:collisionConsequence` receipt with direct-contact or
+// ram-plate provenance against a hostile ship) mint ONE Scarred Ram Plate instance, bound to the
+// earning hull's `ramPlateHistory.rewardInstanceId`. The binding — never the defId — is what a
+// fitting gate checks, so an identical twin, a sold-hull souvenir and a New Run+ keepsake are
+// all readable objects that simply cannot be fitted.
+export const SCARRED_RAM_PLATE_DEF_ID = 'mod_ram_plate_scarred';
+export const RAM_PLATE_HISTORY_VERSION = 1;
+export const RAM_PLATE_HISTORY_HIT_MAX = 3;
+// A stranded end-of-step contact resolves one to three ticks late carrying the tick it happened
+// (collisionConsequences' deferred sweep). Four ticks stale is a different fight's receipt.
+export const RAM_PLATE_RECEIPT_TICK_WINDOW = 3;
+const RAM_PLATE_HIT_RE = /^\d+:\d+$/;
+const RAM_PLATE_INSTANCE_ID_RE = /^mi_\d+_\d+$/;
+const RAM_PLATE_PROVENANCE_TAGS = new Set(['direct_contact', 'ram_plate']);
+const RAM_PLATE_EARNED_TOAST = 'Scarred Ram Plate earned — fit it to this hull at Shipworks.';
+const RAM_PLATE_UNEARNED_TEXT = 'This hull has not earned a Scarred Ram Plate.';
+
+/**
+ * The bounded per-owned-hull record `{ version:1, hits:['<tick>:<targetId>',…≤3], rewardInstanceId? }`.
+ * A record with a malformed hit, a wrong version or more than three keys is dropped whole — never
+ * repaired, never granted progress it cannot prove. An absent record stays absent: zero rams.
+ * A rewardInstanceId that fails the instance-id shape is stripped (evidence kept, binding lost —
+ * the plate becomes a permanently unfittable souvenir, the same fate as a sold hull's).
+ */
+export function normalizeRamPlateHistory(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  if (input.version !== RAM_PLATE_HISTORY_VERSION) return null;
+  const rawHits = Array.isArray(input.hits) ? input.hits : [];
+  if (rawHits.length > RAM_PLATE_HISTORY_HIT_MAX) return null;
+  const hits = [];
+  const seen = new Set();
+  for (const entry of rawHits) {
+    if (typeof entry !== 'string' || !RAM_PLATE_HIT_RE.test(entry)) return null;
+    if (seen.has(entry)) continue;
+    seen.add(entry);
+    hits.push(entry);
+  }
+  const out = { version: RAM_PLATE_HISTORY_VERSION, hits };
+  if (typeof input.rewardInstanceId === 'string' && RAM_PLATE_INSTANCE_ID_RE.test(input.rewardInstanceId)) {
+    out.rewardInstanceId = input.rewardInstanceId;
+  }
+  return out;
+}
+
+// ---- AL-LG-10 — the resale quote names the hull's deeds ---------------------------------------
+//
+// `design/VISION.md` Part II: a hull that has done something is not the same hull as its showroom
+// twin, and the yard pays for that. The baseline is the half-price the yard always offered; what
+// the durable living-hull record proves moves the number inside a bounded window: witnessed
+// renown acts (kill / ram / rescue) add a capped premium, and the marks the buyer inherits take
+// a capped discount — an open scar costs more than one a yard already patched. The quote carries
+// its reasons as player words, so the line that names the price also names the deeds that made
+// it. Two identical hulls with different records quote differently; a hull with no record still
+// quotes the plain half. Every input is bounded by the living-hull caps AND by the caps below —
+// a forged record cannot mint an uncapped number, and the answer is never above the buy price.
+export const RESALE_BASE_FRACTION = 0.5;
+export const RESALE_RENOWN_PREMIUM_PER_ACT = 0.02;
+export const RESALE_RENOWN_PREMIUM_CAP = 0.10;
+// An open scar is damage the buyer inherits, priced by the band the record already kept.
+export const RESALE_OPEN_SCAR_DISCOUNT = Object.freeze({ graze: 0.01, hard: 0.02, heavy: 0.03, crushing: 0.04 });
+export const RESALE_PATCHED_SCAR_DISCOUNT = 0.005;
+export const RESALE_SCAR_DISCOUNT_CAP = 0.15;
+
+const RESALE_ACT_WORD = Object.freeze({ kill: 'kill', ram: 'ram', rescue: 'rescue' });
+// Deeds read in a stable order — kill, ram, rescue — so the same record always quotes the same line.
+const RESALE_ACT_ORDER = Object.freeze(['kill', 'ram', 'rescue']);
+
+function resaleCountPhrase(count, singular) {
+  return count === 1 ? `a ${singular}` : `${count} ${singular}s`;
+}
+
+function resaleJoinEnglish(bits) {
+  if (bits.length <= 1) return bits.join('');
+  if (bits.length === 2) return `${bits[0]} and ${bits[1]}`;
+  return `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}`;
+}
+
+/**
+ * The yard's read of one owned hull: `{ base, amount, fraction, premium, discount, reasons }`.
+ * `amount` is the credits the sale pays — `floor(base * fraction)` clamped to `[0, base]`, so the
+ * deeds can move the price inside the half-price window and can NEVER quote above the buy price.
+ * `reasons` are the player-word lines naming the counted deeds; a hull with no record gets an
+ * empty list and the plain half. Pure: same record in, same quote out, nothing mutated.
+ */
+export function deedResaleQuote(owned, shipDef) {
+  const rawBase = shipDef && (shipDef.buyback != null ? shipDef.buyback : shipDef.price);
+  const base = Number.isFinite(Number(rawBase)) ? Math.max(0, Number(rawBase)) : 0;
+  const hull = owned && owned.livingHull;
+  const renown = livingHullRenown(hull);
+  const scars = livingHullScars(hull);
+
+  const actCounts = {};
+  let renownCount = 0;
+  for (const act of renown) {
+    if (!act || !RESALE_ACT_WORD[act.act]) continue;
+    actCounts[act.act] = (actCounts[act.act] || 0) + 1;
+    renownCount += 1;
+  }
+  const premium = Math.min(RESALE_RENOWN_PREMIUM_CAP, renownCount * RESALE_RENOWN_PREMIUM_PER_ACT);
+
+  let openCount = 0;
+  let patchedCount = 0;
+  let rawDiscount = 0;
+  for (const scar of scars) {
+    if (!scar) continue;
+    if (scar.patchedAtT == null) {
+      openCount += 1;
+      rawDiscount += RESALE_OPEN_SCAR_DISCOUNT[scar.band] != null
+        ? RESALE_OPEN_SCAR_DISCOUNT[scar.band]
+        : RESALE_OPEN_SCAR_DISCOUNT.graze;
+    } else {
+      patchedCount += 1;
+      rawDiscount += RESALE_PATCHED_SCAR_DISCOUNT;
+    }
+  }
+  const discount = Math.min(RESALE_SCAR_DISCOUNT_CAP, rawDiscount);
+
+  const fraction = RESALE_BASE_FRACTION + premium - discount;
+  const amount = Math.min(base, Math.max(0, Math.floor(base * fraction)));
+
+  const reasons = [];
+  const actBits = RESALE_ACT_ORDER
+    .filter((act) => actCounts[act])
+    .map((act) => resaleCountPhrase(actCounts[act], RESALE_ACT_WORD[act]));
+  if (actBits.length) reasons.push(`${resaleJoinEnglish(actBits)} on the record`);
+  const scarBits = [];
+  if (openCount) scarBits.push(resaleCountPhrase(openCount, 'open scar'));
+  if (patchedCount) scarBits.push(resaleCountPhrase(patchedCount, 'patched scar'));
+  if (scarBits.length) reasons.push(`${resaleJoinEnglish(scarBits)} the buyer reads`);
+
+  return Object.freeze({ base, amount, fraction, premium, discount, reasons: Object.freeze(reasons) });
 }
 
 function missingModulesText(missingCount) {
@@ -1715,6 +1853,7 @@ export const ships = {
     bus.on('cargo:changed', () => { this._cargoMassRefreshPending = true; });
     bus.on('cargo:massSettled', () => this.flushCargoMassRefresh());
     bus.on('save:loaded', () => {
+      this._reconcileRamPlateHistories();
       this.reconcileIllegalFittings();
       this.flushCargoMassRefresh();
       this._resetScarAdmission();
@@ -1831,6 +1970,10 @@ export const ships = {
       if (!p || p.playerInvolved !== true) return;
       this._recordContactScar(p);
     });
+    // AL-LG-11 — a committed, player-caused ram is the only mint evidence for the Scarred Ram
+    // Plate. The receipt's own provenance says who hit whom and how; raw contact notices,
+    // incoming collisions, rope/weapon causes, friendly or dead outcomes count nothing.
+    bus.on('combat:collisionConsequence', (p) => this._recordRamPlateHistory(p));
     bus.on('service:completed', (p) => {
       if (!p) return;
       if (p.type === 'repair') {
@@ -1875,6 +2018,7 @@ export const ships = {
     });
     bus.on('game:started', () => {
       this._resetScarAdmission();
+      this._reconcileRamPlateHistories();
       this.reconcileLivingHull({ announce: false });
     });
     bus.on('run:loadoutReady', () => {
@@ -1991,6 +2135,132 @@ export const ships = {
   /** Transient admission memory only — the durable marks live in the saved hull record. */
   _resetScarAdmission() {
     this._lastScarByCause = { weapon: null, slam: null };
+  },
+
+  /**
+   * AL-LG-11 — consume one committed `combat:collisionConsequence` receipt. Only a player-caused,
+   * damaging hit on a hostile ship counts, and only inside a bounded tick window so the deferred
+   * end-of-step contact sweep still credits (it arrives with the tick it happened). Each admitted
+   * ram is one `<tick>:<targetId>` key — deeds, not victims — so a replayed receipt is the same
+   * ram, and the record stops at three. Store extracted scalars only; never retain stuntEvidence.
+   */
+  _recordRamPlateHistory(receipt) {
+    const state = this.state;
+    if (!state || state.mode !== 'flight' || !receipt || typeof receipt !== 'object') return false;
+    const playerId = state.playerId;
+    const tick = receipt.tick;
+    if (!Number.isInteger(tick) || tick < 0) return false;
+    const stateTick = Number.isInteger(state.tick) ? state.tick : 0;
+    if (stateTick - tick < 0 || stateTick - tick > RAM_PLATE_RECEIPT_TICK_WINDOW) return false;
+    if (receipt.otherId !== playerId) return false;
+    const targetId = receipt.targetId;
+    if (targetId == null || targetId === playerId) return false;
+    if (receipt.targetType !== 'ship' || receipt.targetHostile !== true) return false;
+    if (receipt.damageApplied !== true) return false;
+    if (!(Number.isFinite(receipt.impactDamage) && receipt.impactDamage > 0)) return false;
+    const provenance = receipt.provenance;
+    if (!provenance || provenance.actorId !== playerId || !RAM_PLATE_PROVENANCE_TAGS.has(provenance.tag)) return false;
+    const owned = this.ownedShip();
+    if (!owned || !this.activeShipEntity()) return false;
+
+    const key = `${tick}:${targetId}`;
+    const history = normalizeRamPlateHistory(owned.ramPlateHistory)
+      || { version: RAM_PLATE_HISTORY_VERSION, hits: [] };
+    if (history.hits.includes(key) || history.hits.length >= RAM_PLATE_HISTORY_HIT_MAX) return false;
+    history.hits.push(key);
+    owned.ramPlateHistory = history;
+
+    // The same act also lives on the hull's durable renown sheet — the ledger reads it there,
+    // and the existing ship:livingHullChanged event publishes progress.
+    this._reduceLivingHull((hull, now) => livingHullWithRenown(hull, {
+      id: `ram:${key}`,
+      act: 'ram',
+      atT: now,
+      tick,
+    }, now), 'hull_ram');
+
+    if (history.hits.length === RAM_PLATE_HISTORY_HIT_MAX && !history.rewardInstanceId) {
+      this._awardScarredRamPlate(owned);
+    }
+    return true;
+  },
+
+  /**
+   * Mint the ONE bound plate at the third admitted ram. The record's rewardInstanceId is set
+   * before any receipt publishes, so a listener can never observe the earned state without the
+   * binding. A hull whose history already names a reward never mints again — unfit, transferred,
+   * sold or reloaded, the keepsake fate is a souvenir, not a second plate.
+   */
+  _awardScarredRamPlate(owned) {
+    const p = this.state && this.state.player;
+    const history = owned && normalizeRamPlateHistory(owned.ramPlateHistory);
+    if (!p || !Array.isArray(p.moduleInventory) || !history || history.rewardInstanceId) return false;
+    const seed = Number(this.state.meta && this.state.meta.seed);
+    const shipIndex = Math.max(0, (p.ownedShips || []).indexOf(owned));
+    const name = hullNameForOwnedShip(owned, shipIndex, Number.isFinite(seed) ? seed : 0);
+    // Two hulls can resolve to the same spoken name (two owner-named twins): the keepsake label
+    // carries the berth so Shipworks' hold rows and the instance identity text stay distinct.
+    const nameCollision = (p.ownedShips || []).filter((other, otherIndex) => other
+      && hullNameForOwnedShip(other, otherIndex, Number.isFinite(seed) ? seed : 0) === name).length > 1;
+    const label = `Three rams aboard ${name}` + (nameCollision ? ` · berth ${shipIndex + 1}` : '');
+    const item = {
+      instanceId: this.nextInstanceId(),
+      defId: SCARRED_RAM_PLATE_DEF_ID,
+      condition: 'scarred',
+      provenance: { label, source: 'hull_ram_history' },
+    };
+    p.moduleInventory.push(item);
+    history.rewardInstanceId = item.instanceId;
+    owned.ramPlateHistory = history;
+    this.bus.emit('module:granted', { defId: item.defId, instanceId: item.instanceId, reason: 'hull_ram_history' });
+    this.bus.emit('toast', { text: RAM_PLATE_EARNED_TOAST, kind: 'success', ttl: 6 });
+    return true;
+  },
+
+  /**
+   * The shared ownership predicate. Def-level (`instanceId` omitted): this hull earned a plate at
+   * all — the fitting blocker and preset stock-count ask that question. Instance-level: THIS
+   * instance is the bound keepsake — `fitModule`, preset take and restored-fitting reconciliation
+   * all require the exact identity match, so a twin's plate and a keepsake souvenir both fail.
+   */
+  _scarredRamPlateEligible(owned, instanceId = null) {
+    const history = normalizeRamPlateHistory(owned && owned.ramPlateHistory);
+    if (!history || history.hits.length < RAM_PLATE_HISTORY_HIT_MAX || !history.rewardInstanceId) return false;
+    return instanceId == null || instanceId === history.rewardInstanceId;
+  },
+
+  /**
+   * save:loaded / game:started — normalize every owned hull's ram record (malformed drops whole,
+   * absent stays absent, restoration never awards), then move an illegally fitted scarred
+   * instance back to the hold with its exact identity — never deleted, never a fresh mint.
+   */
+  _reconcileRamPlateHistories() {
+    const p = this.state && this.state.player;
+    if (!p || !Array.isArray(p.ownedShips)) return 0;
+    let moved = 0;
+    for (const owned of p.ownedShips) {
+      if (!owned || typeof owned !== 'object') continue;
+      if (Object.hasOwn(owned, 'ramPlateHistory')) {
+        const normalized = normalizeRamPlateHistory(owned.ramPlateHistory);
+        if (normalized) owned.ramPlateHistory = normalized;
+        else delete owned.ramPlateHistory;
+      }
+      if (!Array.isArray(owned.fittings)) continue;
+      let movedHere = 0;
+      for (let slotIndex = 0; slotIndex < owned.fittings.length; slotIndex += 1) {
+        if (owned.fittings[slotIndex] !== SCARRED_RAM_PLATE_DEF_ID) continue;
+        const inst = owned.fittedInstances && owned.fittedInstances[slotIndex];
+        if (this._scarredRamPlateEligible(owned, inst && inst.instanceId)) continue;
+        const taken = this._takeFittedInstance(owned, slotIndex);
+        owned.fittings[slotIndex] = null;
+        if (!Array.isArray(p.moduleInventory)) p.moduleInventory = [];
+        p.moduleInventory.push(taken ? { ...taken } : { instanceId: this.nextInstanceId(), defId: SCARRED_RAM_PLATE_DEF_ID });
+        moved += 1;
+        movedHere += 1;
+      }
+      if (movedHere) this.recomputeIfActive(p.ownedShips.indexOf(owned), owned.fittings);
+    }
+    return moved;
   },
 
   _reduceLivingHull(reducer, source) {
@@ -2289,6 +2559,12 @@ export const ships = {
     const def = defById(defId);
     const p = this.state.player;
     if (!def) { this.bus.emit('toast', { text: 'Unknown module', kind: 'error', ttl: 2 }); return refuse('unknown_module'); }
+    // AL-LG-11 — reward-only def: price 0 plus no requiresTech would otherwise free-mint the
+    // earned plate at the counter. The gate is load-bearing, not decorative.
+    if (def.id === SCARRED_RAM_PLATE_DEF_ID) {
+      this.bus.emit('toast', { text: 'A Scarred Ram Plate is earned by the hull that did the rams — it is not for sale.', kind: 'error', ttl: 4 });
+      return refuse('hull_history_required');
+    }
     if (!this.isUnlocked(def)) {
       this.bus.emit('toast', { text: defLockReasonText(def), kind: 'error', ttl: 3 });
       return refuse('research_required');
@@ -2348,6 +2624,27 @@ export const ships = {
     const def = defById(defId);
     const p = this.state.player;
     if (!def || !p || !Array.isArray(p.moduleInventory)) return false;
+    // AL-LG-11 — the earned plate can never be a generic grant. The ONE sanctioned second door
+    // (PLAN-GATE §8): a New Run+ keepsake mint is an unbound souvenir — scarred, named, and
+    // permanently unfittable, exactly like a sold hull's orphan. crafting.js/cargo pickups mint
+    // moduleInventory directly and bypass this gate, but no recipe or pickup can mint this def.
+    if (def.id === SCARRED_RAM_PLATE_DEF_ID) {
+      if (typeof reason === 'string' && reason.startsWith('new-game-plus')) {
+        const item = {
+          instanceId: this.nextInstanceId(),
+          defId,
+          condition: 'scarred',
+          provenance: {
+            label: 'Scarred Ram Plate — three rams aboard a hull you no longer fly',
+            source: 'new-game-plus',
+          },
+        };
+        p.moduleInventory.push(item);
+        this.bus.emit('module:granted', { defId, instanceId: item.instanceId, reason });
+        return true;
+      }
+      return false;
+    }
     const item = { instanceId: this.nextInstanceId(), defId };
     // NXB-032 — supported optional instance fields ride along unchanged; absence is
     // legitimate ('unrecorded' fallback), never fabricated.
@@ -2410,6 +2707,11 @@ export const ships = {
       impoundLossId: current.lossId || null,
     };
     if (quirk) owned.impoundQuirk = quirk;
+    // AL-LG-11 (PLAN-GATE §8.3) — defensive carry, not a live path today: postImpoundListing
+    // never lists the player's own hull, but a lot that somehow carries a ram history hands it
+    // to the bought hull verbatim. A malformed record is not carried at all.
+    const carriedRamHistory = normalizeRamPlateHistory(current.ramPlateHistory);
+    if (carriedRamHistory) owned.ramPlateHistory = carriedRamHistory;
     const shadow = mintImpoundShadow(current, this.state.simTime || 0);
     if (shadow) owned.impoundShadow = shadow;
     p.ownedShips.push(owned);
@@ -2488,8 +2790,11 @@ export const ships = {
       return false;
     }
     const def = SHIP_BY_ID.get(owned.defId);
-    const base = (def && (def.buyback != null ? def.buyback : def.price)) || 0;
-    const refund = Math.floor(base * 0.5);
+    // AL-LG-10 — the quote reads the hull's record: renown adds a capped premium, scars a capped
+    // discount, the number stays inside the half-price window and never passes the buy price.
+    // The reasons ride ship:sold so the line that pays also names the deeds that moved it.
+    const quote = deedResaleQuote(owned, def);
+    const refund = quote.amount;
     // return fitted modules to inventory before scrapping the hull — NXB-032: the same
     // instance (id + provenance) goes back to the hold, never a fresh mint.
     for (let i = 0; i < owned.fittings.length; i++) {
@@ -2500,7 +2805,10 @@ export const ships = {
     p.ownedShips.splice(index, 1);
     if (p.activeShipIndex > index) p.activeShipIndex--;
     if (refund) this.bus.emit('economy:grantCredits', { amount: refund, reason: 'sellShip:' + owned.defId });
-    this.bus.emit('ship:sold', { defId: owned.defId, refund });
+    this.bus.emit('ship:sold', { defId: owned.defId, refund, quote });
+    if (quote.reasons.length) {
+      this.bus.emit('toast', { text: 'The yard read the record — ' + quote.reasons.join(' · '), kind: 'info', ttl: 5 });
+    }
     return true;
   },
 
@@ -2677,6 +2985,11 @@ export const ships = {
     if (!fits(slot, def)) {
       return { reason: 'incompatible_slot', text: fitRefusalText(slot, def) };
     }
+    // AL-LG-11 — the earned plate is hull-bound: a hull without three admitted rams and a reward
+    // binding cannot mount it, whichever instance the caller later names.
+    if (def.id === SCARRED_RAM_PLATE_DEF_ID && !this._scarredRamPlateEligible(owned)) {
+      return { reason: 'hull_history_required', text: RAM_PLATE_UNEARNED_TEXT };
+    }
     const saucerRefusal = saucerFittingRefusal(shipDef.id, def);
     if (saucerRefusal) return { reason: 'intrinsic_saucer_drive', text: saucerRefusal };
     if (!this.isUnlocked(def)) {
@@ -2766,6 +3079,13 @@ export const ships = {
     if (blocker) {
       if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
       return refuse(blocker.reason);
+    }
+    // AL-LG-11 — even on an earning hull, only THE bound instance fits: a defId-only mint, a
+    // twin's plate, or a keepsake souvenir all stop here, before anything is displaced.
+    if (def.id === SCARRED_RAM_PLATE_DEF_ID
+      && (instanceId == null || !this._scarredRamPlateEligible(owned, instanceId))) {
+      this.bus.emit('toast', { text: RAM_PLATE_UNEARNED_TEXT, kind: 'error', ttl: 3 });
+      return refuse('hull_history_required');
     }
 
     const existing = owned.fittings[slotIndex];
@@ -2980,11 +3300,17 @@ export const ships = {
       this.bus.emit('toast', { text: 'Preset does not match this hull layout', kind: 'error', ttl: 3 });
       return false;
     }
+    // AL-LG-11 — the stock count sees only what THIS hull may seat: a twin's bound plate and a
+    // keepsake souvenir are real objects but not this hull's stock, so a preset naming the
+    // scarred plate reports missing_modules instead of borrowing the wrong identity.
+    const eligibleInventory = (Array.isArray(p.moduleInventory) ? p.moduleInventory : [])
+      .filter((item) => !item || item.defId !== SCARRED_RAM_PLATE_DEF_ID
+        || this._scarredRamPlateEligible(owned, item.instanceId));
     const dryRun = dryRunLoadoutPresetApply({
       shipDefId: shipDef.id,
       currentFittings: owned.fittings,
       targetFittings,
-      moduleInventory: p.moduleInventory,
+      moduleInventory: eligibleInventory,
       player: p,
       enforceCargo: owned === this.ownedShip(),
       isUnlockedFn: (def) => this.isUnlocked(def),
@@ -3032,6 +3358,9 @@ export const ships = {
       const items = [];
       for (let i = inventory.length - 1; i >= 0 && items.length < takeCount; i -= 1) {
         if (!inventory[i] || inventory[i].defId !== defId) continue;
+        // AL-LG-11 — same eligibility read the dry run used: another hull's bound plate and the
+        // keepsake souvenir stay in the hold (and ride back into p.moduleInventory untouched).
+        if (defId === SCARRED_RAM_PLATE_DEF_ID && !this._scarredRamPlateEligible(owned, inventory[i].instanceId)) continue;
         items.unshift(inventory.splice(i, 1)[0]);
       }
       if (items.length < takeCount) {
@@ -3067,8 +3396,24 @@ export const ships = {
       const fromDisplaced = displaced && displaced.length ? displaced.shift() : null;
       const fromHold = !fromDisplaced && takenByDef.get(defId) && takenByDef.get(defId).length
         ? takenByDef.get(defId).shift() : null;
-      nextInstances[i] = fromDisplaced || (fromHold && { ...fromHold })
-        || { instanceId: this.nextInstanceId(), defId };
+      // AL-LG-11 — the earned plate is never minted by a preset: only this hull's bound copy can
+      // fill the slot. The eligibility sweep below rejects the plan atomically otherwise.
+      const freshMint = defId === SCARRED_RAM_PLATE_DEF_ID
+        ? { instanceId: null, defId }
+        : { instanceId: this.nextInstanceId(), defId };
+      nextInstances[i] = fromDisplaced || (fromHold && { ...fromHold }) || freshMint;
+    }
+    // The bound-instance check runs BEFORE the rack commit and any ownership mutation: a missing
+    // or wrong-bound scarred plate fails the whole apply atomically, inventory untouched.
+    for (let i = 0; i < afterFittings.length; i += 1) {
+      if (afterFittings[i] !== SCARRED_RAM_PLATE_DEF_ID) continue;
+      const inst = nextInstances[i];
+      if (inst && inst.defId === SCARRED_RAM_PLATE_DEF_ID && this._scarredRamPlateEligible(owned, inst.instanceId)) continue;
+      this.bus.emit('ship:loadoutPresetApplyRejected', {
+        presetId, hullDefId: shipDef.id, reason: 'hull_history_required',
+      });
+      this.bus.emit('toast', { text: RAM_PLATE_UNEARNED_TEXT, kind: 'error', ttl: 3 });
+      return false;
     }
     for (const pool of displacedByDef.values()) {
       for (const inst of pool) inventory.push({ ...inst });

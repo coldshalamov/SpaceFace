@@ -212,9 +212,9 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
   // XZ-symmetric about +X; circumradius 15.02 WU fills (not overfills) its 16 WU body.
   place_breakaway_sp07: binding({
     partId: 'place_breakaway_sp07', assetId: 'SF_PLACE_BREAKAWAY_SP07',
-    sourceSha256: '220955d866d318956720858b97880b0927ad708885dbf8d1b0ad4b146499de6f',
-    releaseSha256: '851ad640417dbd95872a48ddd77115b92b7269aaf82d18e86153773117cbf98d',
-    sourceBytes: 861372, releaseBytes: 543564,
+    sourceSha256: 'e813fe6760aef2a28b60d4d9f5fba85e194d89d05891e733feb27cc0d33d520d',
+    releaseSha256: 'a50d1f31090d8d89aca98ecf70955d5a39d67edac6bd2d75ad0e46ab0e45da17',
+    sourceBytes: 876300, releaseBytes: 373664,
     rootName: 'SF_PLACE_BREAKAWAY_SP07_ROOT', visualCenterXZ: { x: 0, z: 0 },
     socketBindings: spindleSockets,
   }),

@@ -72,6 +72,7 @@ export {
 
 export {
   checkEndingRequirements,
+  completeBeatStepsForLegacy,
   describeEnding,
   failEncounter,
   getBeatStepStatus,

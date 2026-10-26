@@ -22,6 +22,7 @@ import {
 } from './campaignData.js';
 import { ENDING_DEFS } from '../endings/endingDefs.js';
 import { adjustBoardOffer } from './storySpine.js';
+import { getBeatStepStatus } from './campaignTransitions.js';
 
 export const EMBODIED_MISSIONS_ID = 'campaign47a.embodiedMissions.v2';
 export const EMBODIED_MISSIONS_SCHEMA_VERSION = 2;
@@ -34,6 +35,12 @@ export const CANONICAL_CONTACT_SIGNALS = Object.freeze([
   'ship:purchased', 'mission:accepted', 'mission:completed', 'mission:failed',
   'mission:offered', 'asset:deployed', 'encounter:spawned', 'encounter:resolved',
   'automation:programAssigned',
+  // W-BOOKS-0-2: the Books 0–2 book-list signals — emitted by the live systems named on
+  // each step (skim scene, Kessler scale pad, Understory gardens, furnace intake,
+  // Rook's booth, encounter director).
+  'story:skimResolved', 'kesslerPod:weighed',
+  'understory:gardenFed', 'understory:gardenStage', 'understory:compostRunComplete',
+  'rookWreck:delivered', 'furnace:fed',
 ]);
 
 export const CANONICAL_INTENT_EVENTS = Object.freeze([
@@ -110,7 +117,8 @@ export const EMBODIED_MISSIONS = Object.freeze([
     location: B({ sectorId: 'sector_helios_prime', stationId: 'station_helios', fieldId: 'f_helios_starter' }),
     physicalContact: B({ mode: 'ordered_and', steps: B([
       B({ id: 'mine', signal: 'mining:yield', accept: B(['mining:yield', 'mining.yield']) }),
-      B({ id: 'dock', signal: 'dock:docked', accept: B(['dock:docked']), requiresPrior: B(['mine']) }),
+      B({ id: 'skim', signal: 'story:skimResolved', accept: B(['story:skimResolved']), requiresPrior: B(['mine']) }),
+      B({ id: 'dock', signal: 'dock:docked', accept: B(['dock:docked']), requiresPrior: B(['mine', 'skim']) }),
     ]) }),
     missionBoardContract: null,
     recovery: 'Manifest still open. Sample again, then re-dock Helios.',
@@ -118,49 +126,110 @@ export const EMBODIED_MISSIONS = Object.freeze([
   }),
   B({
     beat: 1, id: 'honest_work', contactId: 'contact_kessler', contactName: 'Kessler',
-    headlineVerb: 'knock', setPiece: 'wrecking-ball contract',
-    location: B({ sectorId: 'sector_helios_prime', stationId: 'station_helios', destSectorId: 'sector_helios_prime', destStationId: 'station_helios' }),
+    headlineVerb: 'weigh', setPiece: 'weighing + infested hauler furnace disposal',
+    location: B({ sectorId: 'sector_helios_prime', stationId: 'station_helios', destSectorId: 'sector_tethys_junction', destStationId: 'station_tethys' }),
     physicalContact: B({ mode: 'mission', steps: B([
-      B({ id: 'knock', signal: 'mission:completed', accept: B(['mission:completed']) }),
+      B({ id: 'alloy_run', signal: 'mission:completed', accept: B(['mission:completed']) }),
+      B({ id: 'scale_4', signal: 'kesslerPod:weighed', accept: B(['kesslerPod:weighed']) }),
+      B({ id: 'infested', signal: 'mission:completed', accept: B(['mission:completed']) }),
     ]) }),
-    missionBoardContract: B({
-      type: 'demolition', storyTag: 'campaign47a:b1:honest_work',
-      title: 'Knock the variance tower', brief: 'Swing mass through the tower, or cut it down.',
-      factionId: 'faction_mts',
-      stationId: 'station_helios', destStationId: 'station_helios', destSectorId: 'sector_helios_prime',
-      reward_cr: 600, collateral_cr: 0, riskTier: 1, minRep: -149, time_limit_s: 0,
-      params: B({
-        physicalVerb: 'knock_down',
-        completionMethods: B(['wrecking_ball', 'cut_down']),
-        authoredSetPieceId: 'wrecking_ball',
-        targetStrength: 1.2, fValue: 1.2, taskTime: 50,
+    // W-BOOKS-0-2 (§34.7 Book 1): the book posts the 06 mission list in order — the sealed
+    // alloy run, then the furnace detail after the Scale 4 variance is weighed. The next
+    // pending contract is selected from the sidecar's step log in buildMissionBoardContract.
+    bookContracts: B([
+      B({
+        stepId: 'alloy_run',
+        type: 'cargo_delivery', storyTag: 'campaign47a:b1:alloy_run',
+        title: 'Weigh-In — sealed alloys for Tycho',
+        brief: 'Sealed manifest. Carry the crate to Tycho intact; compare the manifest on arrival.',
+        factionId: 'faction_mts',
+        stationId: 'station_helios', destStationId: 'station_tethys', destSectorId: 'sector_tethys_junction',
+        reward_cr: 600, collateral_cr: 0, riskTier: 1, minRep: -149, time_limit_s: 0,
+        preloadedCargo: true,
+        params: B({
+          physicalVerb: 'weigh',
+          completionMethods: B(['sealed_delivery', 'partial_settle']),
+          bookScene: 'alloy_run',
+          cmdtyId: 'cmdty_alloys', qty: 6, manifestName: 'SEALED ALLOYS — 47-A RESERVE',
+          silentRecat: true,
+        }),
       }),
-    }),
-    recovery: 'The tower still stands. Knock it down.',
+      B({
+        stepId: 'infested',
+        type: 'patrol_clear', storyTag: 'campaign47a:b1:infested',
+        title: 'Furnace Detail — the infested hauler',
+        brief: 'Clear the mites off the ore hauler at Ceres; feed three pods to the CR-FEED intake. The Casket worm is beyond your class — leave it sleeping.',
+        factionId: 'faction_dmc',
+        stationId: 'station_tethys', destStationId: 'station_ceres', destSectorId: 'sector_ceres_belt',
+        reward_cr: 480, collateral_cr: 0, riskTier: 1, minRep: -149, time_limit_s: 0,
+        params: B({
+          physicalVerb: 'burn',
+          completionMethods: B(['mites_then_furnace', 'furnace_then_mites']),
+          bookScene: 'infested_hauler',
+          clearCount: 7, mitesNeeded: 4, furnaceFeedsNeeded: 3,
+          targetStrength: 1.1, fValue: 1.1, taskTime: 60,
+        }),
+      }),
+    ]),
+    missionBoardContract: null,
+    recovery: 'Honest work still on the board. The book re-posts the next job.',
     careerIds: B(['hunter', 'hauler']),
   }),
   B({
     beat: 2, id: 'first_blood', contactId: 'contact_rook', contactName: 'Rook',
-    headlineVerb: 'pull', setPiece: 'pod rescue under fire',
+    headlineVerb: 'hunt', setPiece: 'cinder board + compost + nest + elroy',
     location: B({ sectorId: 'sector_tethys_junction', stationId: 'station_tethys', destSectorId: 'sector_charon_expanse', destStationId: 'station_expanse', zoneId: 'zone_charon_ambush' }),
     physicalContact: B({ mode: 'mission', steps: B([
-      B({ id: 'pull', signal: 'mission:completed', accept: B(['mission:completed']) }),
+      B({ id: 'cinder_board', signal: 'mission:completed', accept: B(['mission:completed']) }),
+      B({ id: 'compost', signal: 'understory:gardenFed', accept: B(['understory:gardenFed', 'understory:gardenStage', 'understory:compostRunComplete']) }),
+      B({ id: 'nest', signal: 'encounter:resolved', accept: B(['encounter:resolved']) }),
+      B({ id: 'elroy', signal: 'mission:completed', accept: B(['mission:completed']) }),
     ]) }),
-    missionBoardContract: B({
-      type: 'rescue_under_fire', storyTag: 'campaign47a:b2:elroy',
-      title: 'Pull the pods under fire', brief: 'Tow a pod to Expanse, or clear both Wasp escorts and reel a pod from stand-off.',
-      factionId: 'faction_scn',
-      stationId: 'station_tethys', destStationId: 'station_expanse', destSectorId: 'sector_charon_expanse',
-      reward_cr: 800, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,
-      params: B({
-        physicalVerb: 'pull',
-        completionMethods: B(['stage_tow', 'corridor_pull']),
-        authoredSetPieceId: 'pod_rescue',
-        podCount: 2, escortCount: 2, escortsDown: 0, podsLost: 0,
-        targetStrength: 1.3, fValue: 1.3, taskTime: 70,
+    // W-BOOKS-0-2 (§34.7 Book 2): the board posts the cinder marks first; the Compost Run and
+    // the Nest play as world work in between; the named register contract is posted last.
+    bookContracts: B([
+      B({
+        stepId: 'cinder_board',
+        type: 'patrol_clear', storyTag: 'campaign47a:b2:cinder',
+        title: 'Hunt the lane — cinder marks',
+        brief: 'Three Wasps work the Ashfall approach. Clear them, then tow the marked wreck to Rook\u2019s booth at Expanse.',
+        factionId: 'faction_scn',
+        stationId: 'station_tethys', destStationId: 'station_expanse', destSectorId: 'sector_charon_expanse',
+        reward_cr: 700, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,
+        params: B({
+          physicalVerb: 'hunt',
+          completionMethods: B(['clear_and_tow', 'tow_under_fire']),
+          bookScene: 'cinder_board',
+          clearCount: 4, waspsNeeded: 3, rookDeliveryNeeded: 1,
+          targetStrength: 1.3, fValue: 1.3, taskTime: 70,
+        }),
       }),
-    }),
-    recovery: 'Pods still drift. Pull them out.',
+      B({
+        stepId: 'elroy',
+        type: 'bounty_hunt', storyTag: 'campaign47a:b2:elroy',
+        title: 'Registry Writ — vessel unknown',
+        brief: 'A marked vessel holds station off the Ashfall approach. Scan before firing; the register decides what the wreck is worth.',
+        factionId: 'faction_scn',
+        stationId: 'station_tethys', destStationId: 'station_expanse', destSectorId: 'sector_charon_expanse',
+        reward_cr: 800, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,
+        storyTarget: B({
+          id: 'npc_elroy', name: 'Elroy', label: 'UNKNOWN VESSEL', archetype: 'wasp_swarmer',
+          factionId: 'faction_free', role: 'register_mark', zoneId: 'zone_charon_ambush',
+          registry: 'CIVILIAN VESSEL — REGISTERED',
+          lastRegisteredOwner: 'PIT ENGINEERING — MAINTENANCE',
+          salvageCargo: 'SEALED MEDICINE — PIT RATION LOT',
+        }),
+        params: B({
+          physicalVerb: 'hunt',
+          completionMethods: B(['terminal_register_kill', 'custody_reel']),
+          bookScene: 'elroy_register',
+          clearCount: 1,
+          targetStrength: 1.0, fValue: 1.2, taskTime: 60,
+        }),
+      }),
+    ]),
+    missionBoardContract: null,
+    recovery: 'The board still holds. The book re-posts the next job.',
     careerIds: B(['hunter']),
     aftermath: B({ owner: 'aftermathWrecks', source: 'entity:killed', sectorId: 'sector_charon_expanse', zoneId: 'zone_charon_ambush' }),
   }),
@@ -351,11 +420,17 @@ export function buildMissionBoardContract(beatIndex, options = {}) {
   const def = embodiedMissionAt(beatIndex);
   if (!def) return null;
   if (def.beat === 7) return buildDeepReachOperationOffer(options);
-  if (!def.missionBoardContract) return null;
   if (def.beat === 4) return { beat: 4, kind: 'existing_branch_intro', storyTag: STORY_BRANCH_INTRO_TAG };
   const seed = (Number(options.seed) >>> 0) || 1;
   const epoch = Math.max(0, Number(options.epoch) | 0);
   if (def.beat === 5) return buildBranchChainOffer(def, seed, epoch, options);
+  // W-BOOKS-0-2 (§34.7): a Book-list beat posts the contract bound to its NEXT pending
+  // ordered step, read from the sidecar's step log — world-work steps post nothing, so the
+  // board names only the job the player can actually take next.
+  if (Array.isArray(def.bookContracts) && def.bookContracts.length) {
+    return buildBookContractOffer(def, seed, epoch, options);
+  }
+  if (!def.missionBoardContract) return null;
   const base = def.missionBoardContract;
   return adjustBoardOffer({
     ...base,
@@ -366,6 +441,35 @@ export function buildMissionBoardContract(beatIndex, options = {}) {
     expiresAtEpoch: epoch + 1,
     campaign47aBeat: def.beat,
     storyContractId: base.storyTag,
+    source: 'campaign47a.embodied',
+  }, def.beat, options);
+}
+
+/**
+ * W-BOOKS-0-2: pick the bookContracts row bound to the first uncompleted ordered step.
+ * `match`-gated world steps (scale_4, compost, nest) have no row and return null — the
+ * book's next posted job lands only after the player finishes the world work in between.
+ * Without options.state the step log is empty and the first contract posts.
+ */
+function buildBookContractOffer(def, seed, epoch, options) {
+  const canon = CAMPAIGN_BEATS[def.beat];
+  const steps = (canon && canon.steps) || [];
+  const status = options.state ? getBeatStepStatus(options.state, def.beat) : null;
+  const done = new Set((status && status.completed) || []);
+  const nextStep = steps.find((s) => s && !done.has(s.id)) || null;
+  if (!nextStep) return null; // list complete — the cursor will move to the next beat
+  const row = def.bookContracts.find((bk) => bk && bk.stepId === nextStep.id);
+  if (!row) return null; // world work next: nothing to post
+  const order = Number.isFinite(nextStep.order) ? nextStep.order : 0;
+  return adjustBoardOffer({
+    ...row,
+    id: stableOfferId(seed, def.beat, epoch, order, row.storyTag),
+    params: { ...(row.params || {}) },
+    storyTarget: row.storyTarget ? { ...row.storyTarget } : null,
+    distance: Number(options.distance) || (def.beat === 2 ? 3000 : 1600),
+    expiresAtEpoch: epoch + 1,
+    campaign47aBeat: def.beat,
+    storyContractId: row.storyTag,
     source: 'campaign47a.embodied',
   }, def.beat, options);
 }

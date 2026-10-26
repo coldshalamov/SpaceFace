@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, SABLE — send the relief to Mining Belt instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, SABLE — send the relief to Mining Belt; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -56,7 +56,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "SABLE: The winch rides with this convoy through mining belt. Hold formation. — WINCH ON THE MINING BELT.",
+      "line": "SABLE: The winch rides with this convoy through Mining Belt. Hold formation. — WINCH ON THE MINING BELT.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -126,7 +126,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "SABLE: Thread the gap between the two escort hulls, then hold formation off the lead. — WINCH ON THE MINING BELT.",
+      "line": "SABLE: Thread the gap between the two escort hulls, then hold station sixty to a hundred-eighty off the lead while it makes a hundred. — WINCH ON THE MINING BELT.",
       "channel": "info",
       "next": "offer"
     },
@@ -178,7 +178,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "SABLE: Time ran out on the winch ask — WINCH ON THE MINING BELT. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "SABLE: The 24 cr stays spent — the relief still runs on your credit at Mining Belt; the close-in just never came — WINCH ON THE MINING BELT.",
       "keepMotion": true,
       "steps": [
         {
@@ -302,7 +302,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "WINCH ON THE MINING BELT",
-  "primaryLine": "SABLE: The winch rides with this convoy through mining belt. Hold formation.",
+  "primaryLine": "SABLE: The winch rides with this convoy through Mining Belt. Hold formation.",
   "factionId": "faction_understory",
   "choices": [
     {
@@ -312,8 +312,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, SABLE — send the relief to Mining Belt instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, SABLE — send the relief to Mining Belt; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

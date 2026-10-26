@@ -194,26 +194,47 @@ export function admitStructuralFxCue(eventName, payload, state) {
  * actually use. A hero cue is lifted with the same floor as a kill, so flavor already sitting in
  * the pool cannot crowd it out. `pools` may contain holes — only entries with `admission()` count.
  *
+ * `partial` is the player-facing contract: a contact whose own pools are full drops only the
+ * primitive groups that cannot fit, so a full shard pool never deletes the contact blade. Ambient
+ * decoration keeps the all-or-nothing default, where half a contact is worse than none.
+ *
+ * `groups` is an optional caller-owned boolean array filled per pool index (true = this pool took
+ * its beats). It is meaningful with `partial`: an all-or-nothing refusal returns at the first
+ * refusing pool, before later indices are written, so no caller gates spawns on a partial fill.
+ * It lets a caller gate each group's spawns without allocating a decision list.
+ *
  * @returns {{ admitted: boolean, reason: string|null, priority: number }}
- *   `reason` is `over_budget` when any needed pool cannot take this cue's beats.
- *   A gate with `live === false` is an unused slot in a reused list, not a pool.
+ *   `reason` is `over_budget` when any needed pool cannot take this cue's beats (`partial` only
+ *   reports it when NO group fits). A gate with `live === false` is an unused slot in a reused
+ *   list, not a pool.
  */
 export function arbitrateStructuralImpactCue(pools, cue = {}) {
   const raw = Number(cue.priority);
   const base = Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : 0.5;
   const priority = cue.hero ? scaleHeroAdmissionPriority(base) : base;
   const list = pools || [];
+  const groups = Array.isArray(cue.groups) ? cue.groups : null;
+  const partial = cue.partial === true;
   let sawPool = false;
+  let anyAdmitted = false;
   for (let i = 0; i < list.length; i += 1) {
     const pool = list[i];
-    if (!pool || pool.live === false || typeof pool.admission !== 'function') continue;
+    if (!pool || pool.live === false || typeof pool.admission !== 'function') {
+      if (groups) groups[i] = false;
+      continue;
+    }
     sawPool = true;
     const slot = pool.admission(priority);
-    if (slot !== 'free' && slot !== 'evict') {
+    const fits = slot === 'free' || slot === 'evict';
+    if (groups) groups[i] = fits;
+    if (fits) {
+      anyAdmitted = true;
+    } else if (!partial) {
       return { admitted: false, reason: 'over_budget', priority };
     }
   }
   if (!sawPool) return { admitted: false, reason: 'empty', priority };
+  if (!anyAdmitted) return { admitted: false, reason: 'over_budget', priority };
   return { admitted: true, reason: null, priority };
 }
 
@@ -252,6 +273,8 @@ export const CUE_BUDGET_DECLARATION = Object.freeze({
     pool: 'src/render/combat/arcadeStructuralFx.js',
     admission: 'deriveVfxAdmissionMetadata',
     impactCue: 'arbitrateStructuralImpactCue',
+    playerContactGroups: 'per-primitive; a full pool drops only its own beat group',
+    ambientCue: 'all-or-nothing; a saturated ambient cue draws no partial contact',
     laneBudgetsCharged: false,
   }),
   allocation: Object.freeze({

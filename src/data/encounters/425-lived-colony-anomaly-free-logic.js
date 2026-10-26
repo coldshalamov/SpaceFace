@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 30 cr",
-      "playerLine": "Take 30 cr, NELL — send the relief to Colony instead of my hands."
+      "label": "Sponsor relief — 30 cr, then close in slow",
+      "playerLine": "Take 30 cr, NELL — send the relief to Colony; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "NELL: The sled signal repeats from colony. Do not answer its second voice. — SLED ON THE COLONY.",
+      "line": "NELL: The sled signal repeats from Colony. Do not answer its second voice. — SLED ON THE COLONY.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -122,7 +122,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "NELL: Circle us — start one side, cross a hundred-twenty through to the other, inside the hundred-sixty band. — SLED ON THE COLONY.",
+      "line": "NELL: Circle us — start one side, cross a hundred-twenty through to the other, between a hundred and a hundred-sixty of us. — SLED ON THE COLONY.",
       "channel": "info",
       "next": "offer"
     },
@@ -165,7 +165,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "NELL: Time ran out on the work ask — SLED ON THE COLONY. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "NELL: The 30 cr stays spent — the relief still runs on your credit at Colony; the close-in just never came — SLED ON THE COLONY.",
       "keepMotion": false,
       "steps": [
         {
@@ -289,7 +289,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "SLED ON THE COLONY",
-  "primaryLine": "NELL: The sled signal repeats from colony. Do not answer its second voice.",
+  "primaryLine": "NELL: The sled signal repeats from Colony. Do not answer its second voice.",
   "factionId": "faction_free",
   "choices": [
     {
@@ -299,8 +299,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 30 cr",
-      "playerLine": "Take 30 cr, NELL — send the relief to Colony instead of my hands."
+      "label": "Sponsor relief — 30 cr, then close in slow",
+      "playerLine": "Take 30 cr, NELL — send the relief to Colony; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

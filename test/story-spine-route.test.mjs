@@ -178,7 +178,51 @@ function completePhysicalMission(h, mission) {
 
 function postedB1(h) {
   const board = h.missions.ensureBoard('station_helios');
-  return board.slots.find((row) => row && row.storyTag === 'campaign47a:b1:honest_work');
+  return board.slots.find((row) => row && row.storyTag === 'campaign47a:b1:alloy_run');
+}
+
+// W-BOOKS-0-2 (§34.7): the book plays contracts alternating with world signals.
+function completeBookContract(h, mission) {
+  if (mission.type === 'cargo_delivery') {
+    addCargo(h.state, mission.params.cmdtyId, Math.max(1, mission.params.qty || 1));
+    h.bus.emit('dock:docked', { stationId: mission.destStationId });
+    return;
+  }
+  if (mission.type === 'patrol_clear' || mission.type === 'bounty_hunt') {
+    h.state.world.currentSectorId = mission.destSectorId;
+    h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
+    h.missions.spawnTargetsForSector(mission.destSectorId);
+    h.missions._ensureMissionTargets(mission);
+    if (mission.type === 'bounty_hunt') {
+      const targetId = mission.targetEntityIds[0];
+      h.state.entities.get(targetId).pos = { x: 5, z: 0 };
+      h.bus.emit('scan:completed', { targetId });
+    }
+    for (const id of [...mission.targetEntityIds]) {
+      h.bus.emit('entity:killed', { id, killerId: h.state.playerId });
+    }
+    for (let i = 0; i < (mission.params.furnaceFeedsNeeded || 0); i++) {
+      h.bus.emit('furnace:fed', { entityId: 9000 + i });
+    }
+    for (let i = 0; i < (mission.params.rookDeliveryNeeded || 0); i++) {
+      h.bus.emit('rookWreck:delivered', { entityId: 9100 + i });
+    }
+    return;
+  }
+  completeSpineSetPiece(h, mission);
+}
+
+function playBookBeat1(h) {
+  completeBookContract(h, acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:alloy_run'));
+  h.bus.emit('kesslerPod:weighed', { variance: true, massT: 6 });
+  completeBookContract(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b1:infested'));
+}
+
+function playBookBeat2(h) {
+  completeBookContract(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:cinder'));
+  h.bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g_spine', fedMass: 10 });
+  h.bus.emit('encounter:resolved', { shape: 'the_nest', sectorId: 'sector_charon_expanse' });
+  completeBookContract(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy'));
 }
 
 test('Cold Start ignores freight and a kill, then remembers the sample and R-07', () => {
@@ -208,32 +252,29 @@ test('Cold Start ignores freight and a kill, then remembers the sample and R-07'
   assert.equal(JSON.stringify(h.state.morrow), morrowJson);
 });
 
-test('a missed tower stays beat 1, scars only when state is passed, and both contacts remember the knock', () => {
+test('a missed job stays beat 1, the book re-posts, and both contacts remember the furnace', () => {
   const h = makeHarness();
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 1);
 
-  const mission = acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:honest_work');
-  h.missions._failMission(mission, h.state.missions.active.indexOf(mission), 'tower_stood');
+  const mission = acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:alloy_run');
+  h.missions._failMission(mission, h.state.missions.active.indexOf(mission), 'crate_lost');
   assert.equal(h.state.story.beatIndex, 1);
   assert.equal(h.state.story.campaign47a.beatStatus, 'failed');
   const ask = readSpine(h.state).situation;
   assert.equal(ask.beat, 1);
   assert.equal(ask.attempt, 1);
   assert.equal(ask.closedMethod, null);
-  assert.match(ask.instruction, /not the same|what still stands|cracked/i);
-  assert.equal(CAMPAIGN_BEATS[1].recovery.line, 'The tower still stands. Knock it down.');
-  assert.equal(recoveryCommsForBeat(1).text, 'Tower still stands. Knock it down.');
+  assert.ok(ask.instruction, 'a miss still names the open job');
+  assert.equal(CAMPAIGN_BEATS[1].recovery.line, 'Honest work still on the board. The book re-posts the next job.');
+  assert.match(recoveryCommsForBeat(1).text, /book|board/i);
 
   const live = postedB1(h);
-  assert.ok(live, 'the tower contract is back on the Helios board');
-  assert.equal(live.params.completionMethods.length, 2);
-  assert.equal(live.title, 'Knock the variance tower');
+  assert.ok(live, 'the alloy run is back on the Helios board');
+  assert.equal(live.storyTag, 'campaign47a:b1:alloy_run');
   const remembered = buildMissionBoardContract(1, { seed: SEED, epoch: 1, state: h.state });
   assert.equal(remembered.brief, ask.instruction);
-  assert.equal(remembered.params.completionMethods.length, 2);
-  assert.ok(remembered.params.targetStrength > 1.2);
   assert.equal(remembered.title, live.title);
   assert.equal(remembered.type, live.type);
   assert.equal(remembered.storyTag, live.storyTag);
@@ -244,27 +285,25 @@ test('a missed tower stays beat 1, scars only when state is passed, and both con
   assert.equal(readSpine(h.state).situation.askId, ask.askId);
   assert.equal(readSpine(h.state).situation.rearmed, true);
 
-  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
+  playBookBeat1(h);
   assert.equal(h.state.story.beatIndex, 2);
   const solved = readSpine(h.state).solved['1'];
-  assert.equal(solved.verb, 'knock_down');
+  assert.equal(solved.verb, 'burn');
+  assert.equal(solved.stepId, 'infested');
   assert.equal(readSpine(h.state).situation, null);
   assert.equal(readSpine(h.state).closed.at(-1).askId, ask.askId);
-  const maera = solved.method === 'cut_down'
-    ? 'You cut the tower. I kept the spar.'
-    : solved.method === 'wrecking_ball'
-      ? 'You threw the tower. The yard still rings.'
-      : 'You knocked the tower. The yard still rings.';
-  assert.equal(barLine(h.state, 'contact_maera_vols'), maera);
-  assert.equal(barLine(h.state, 'contact_halev_doss'), 'Filed: a miss, then the knock.');
+  assert.equal(barLine(h.state, 'contact_maera_vols'), 'You fed the hauler to the furnace.');
+  assert.equal(barLine(h.state, 'contact_halev_doss'), 'Filed: a miss, then the furnace.');
 });
 
 test('the played road survives save and Continue and is cited at the ending', () => {
   const h = makeHarness();
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
-  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
-  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy'));
+  playBookBeat1(h);
+  assert.equal(h.state.story.beatIndex, 2, 'the book list closes Honest Work');
+  playBookBeat2(h);
+  assert.equal(h.state.story.beatIndex, 3, 'the writ closes First Blood');
   h.bus.emit('ship:purchased', {
     defId: 'ship_drifter', hullId: 'ship_drifter', stationId: 'station_tethys', price: 9000,
   });
@@ -306,8 +345,8 @@ test('the played road survives save and Continue and is cited at the ending', ()
 
   const road = readSpine(h.state);
   assert.equal(road.door, 'traders');
-  assert.equal(road.solved['1'].verb, 'knock_down');
-  assert.equal(road.solved['2'].verb, 'pull');
+  assert.equal(road.solved['1'].verb, 'burn');
+  assert.equal(road.solved['2'].verb, 'hunt');
   assert.equal(road.solved['3'].verb, 'tow');
 
   const blob = JSON.parse(JSON.stringify(h.missions.serialize()));
@@ -318,24 +357,24 @@ test('the played road survives save and Continue and is cited at the ending', ()
   assert.equal(continued.state.story.branch, 'traders');
   assert.equal(readSpine(continued.state).door, 'traders');
   assert.deepEqual(readSpine(continued.state).refused.slice().sort(), ['free', 'patrol']);
-  assert.equal(readSpine(continued.state).solved['1'].verb, 'knock_down');
+  assert.equal(readSpine(continued.state).solved['1'].verb, 'burn');
   assert.equal(readSpine(continued.state).solved['6'].stepId, 'asset_deploy');
   assert.equal(continued.state.story.flags.deep_reach_variant, 'ashfall_siege');
-  assert.equal(barLine(continued.state, 'contact_maera_vols'), 'You finished the siege. I kept the tower.');
-  assert.equal(barLine(continued.state, 'contact_halev_doss'), 'Filed: the knock, then the grain door.');
+  assert.equal(barLine(continued.state, 'contact_maera_vols'), 'You finished the siege. I watched it leave.');
+  assert.equal(barLine(continued.state, 'contact_halev_doss'), 'Filed: the furnace. The scale still lies.');
 
   const facts = readLifeLedger(continued.state);
   assert.match(facts.spineRoad.cite, /the grain door taken/);
   assert.match(facts.spineRoad.cite, /2 doors refused/);
   assert.match(facts.spineRoad.cite, /the variance sample docked/);
-  assert.match(facts.spineRoad.cite, /the tower knocked/);
-  assert.match(facts.spineRoad.cite, /the pods pulled/);
+  assert.match(facts.spineRoad.cite, /the hauler fed to the furnace/);
+  assert.match(facts.spineRoad.cite, /the register answered/);
   assert.match(facts.spineRoad.cite, /the core towed/);
   assert.match(facts.spineRoad.cite, /the proving runs finished/);
   assert.match(facts.spineRoad.cite, /the yard drone deployed/);
   assert.match(facts.spineRoad.cite, /the siege finished/);
   assert.equal(readSpine(continued.state).solved['6'].asset, 'drone');
-  assert.ok(facts.spineRoad.solved.some((row) => row.beat === 1 && row.verb === 'knock_down'));
+  assert.ok(facts.spineRoad.solved.some((row) => row.beat === 1 && row.verb === 'burn'));
   const finale = createWrittenFinale('E', facts, 'spine-played-road');
   const archive = finale.beats.find((row) => row.evidenceSlot === 'archive');
   assert.match(archive.text, /The road retained: the grain door taken/);

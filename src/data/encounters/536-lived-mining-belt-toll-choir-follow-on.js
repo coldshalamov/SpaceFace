@@ -34,7 +34,7 @@ export const spec = {
     {
       "id": "b",
       "label": "Tow the dent clear of the lane",
-      "playerLine": "No coin — I tow your dent a hundred-twenty clear of the Mining Belt lane and let it settle."
+      "playerLine": "No coin — I tow your dent a hundred-twenty clear of the Mining Belt lane and cut it quiet."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "DENT",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CANTOR: The dent is due at mining belt. Pay, dispute, or keep moving. — DENT ON THE MINING BELT.",
+      "line": "CANTOR: The dent is due at Mining Belt. Pay, dispute, or keep moving. — DENT ON THE MINING BELT.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: 36 cr clears the count — then pass the hull on the far side, inside the band. Or tow our dent a hundred-twenty clear. — DENT ON THE MINING BELT.",
+      "line": "CANTOR: 36 cr clears the count — then cross a hundred-twenty past the hull to the far side, between a hundred and a hundred-sixty of us. Or tow our dent a hundred-twenty clear. — DENT ON THE MINING BELT.",
       "channel": "info",
       "next": "offer"
     },
@@ -307,7 +307,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "DENT ON THE MINING BELT",
-  "primaryLine": "CANTOR: The dent is due at mining belt. Pay, dispute, or keep moving.",
+  "primaryLine": "CANTOR: The dent is due at Mining Belt. Pay, dispute, or keep moving.",
   "factionId": "faction_choir",
   "choices": [
     {
@@ -318,7 +318,7 @@ export default defineEncounter(trigger, {
     {
       "id": "b",
       "label": "Tow the dent clear of the lane",
-      "playerLine": "No coin — I tow your dent a hundred-twenty clear of the Mining Belt lane and let it settle."
+      "playerLine": "No coin — I tow your dent a hundred-twenty clear of the Mining Belt lane and cut it quiet."
     },
     {
       "id": "c",

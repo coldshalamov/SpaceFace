@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 30 cr",
-      "playerLine": "Take 30 cr, ARCHIVIST — send the relief to Derelict Field instead of my hands."
+      "label": "Sponsor relief — 30 cr, then close in slow",
+      "playerLine": "Take 30 cr, ARCHIVIST — send the relief to Derelict Field; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "ARCHIVIST: The manifest signal repeats from derelict field. Do not answer its second voice. — MANIFEST ON THE DERELICT FIELD.",
+      "line": "ARCHIVIST: The manifest signal repeats from Derelict Field. Do not answer its second voice. — MANIFEST ON THE DERELICT FIELD.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -122,7 +122,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "ARCHIVIST: Circle us — start one side, cross a hundred-twenty through to the other, inside the hundred-sixty band. — MANIFEST ON THE DERELICT FIELD.",
+      "line": "ARCHIVIST: Circle us — start one side, cross a hundred-twenty through to the other, between a hundred and a hundred-sixty of us. — MANIFEST ON THE DERELICT FIELD.",
       "channel": "info",
       "next": "offer"
     },
@@ -165,7 +165,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "ARCHIVIST: Time ran out on the work ask — MANIFEST ON THE DERELICT FIELD. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "ARCHIVIST: The 30 cr stays spent — the relief still runs on your credit at Derelict Field; the close-in just never came — MANIFEST ON THE DERELICT FIELD.",
       "keepMotion": false,
       "steps": [
         {
@@ -289,7 +289,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "MANIFEST ON THE DERELICT FIELD",
-  "primaryLine": "ARCHIVIST: The manifest signal repeats from derelict field. Do not answer its second voice.",
+  "primaryLine": "ARCHIVIST: The manifest signal repeats from Derelict Field. Do not answer its second voice.",
   "factionId": "faction_archive",
   "choices": [
     {
@@ -299,8 +299,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 30 cr",
-      "playerLine": "Take 30 cr, ARCHIVIST — send the relief to Derelict Field instead of my hands."
+      "label": "Sponsor relief — 30 cr, then close in slow",
+      "playerLine": "Take 30 cr, ARCHIVIST — send the relief to Derelict Field; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

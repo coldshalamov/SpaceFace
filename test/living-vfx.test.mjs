@@ -81,6 +81,17 @@ test('initial overlaps resolve before first draw; impossible decorative occupanc
   const p=f.system.particles[0];assert.ok(p.forceKinematics[13]>0);assert.equal(p.color.w,0);
   assert.ok(!f.contactLight.active,'invisible constrained matter must not illuminate the world');
 }));
+test('only metric fields cloak a contacted body; heat and current grow no aura',()=>withFlow(f=>{
+  const environment={count:1,records:[{x:0,z:0,radius:3,strength:1}]};
+  f.emit({...event('well'),radius:40,environment});
+  assert.ok(f.system.particles.some(p=>p.forceAura),'a metric field lights the body it holds');
+  f.clear();
+  f.emit({...event('heat'),radius:40,environment});
+  assert.equal(f.system.particles.some(p=>p.forceAura),false,'heat is not telekinesis');
+  f.clear();
+  f.emit({...event('current'),radius:40,environment});
+  assert.equal(f.system.particles.some(p=>p.forceAura),false,'a current does not cloak matter');
+}));
 test('contact light exists only for a real contact and respects clear and reduced flash',()=>withFlow((f,scene)=>{
   const read=createMaterialContactRead();f.emit(event('heat'));f.update(.05);assert.equal(readMaterialContact(scene,read).active,false);
   f.clear();f.emit({...event('heat'),environment:{count:1,records:[{x:0,z:0,radius:9,strength:1}]}});
