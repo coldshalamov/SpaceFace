@@ -108,18 +108,26 @@ ${S} #hud .sf-radar-wrap--orrery .sf-radar-objective-key { margin-top:22px; font
 
 /* ---- the contact roster: a ladder of words on a lit spine, never a plate with row rules ------- */
 ${S} #hud .sf-overview { background:none !important; border:0 !important; box-shadow:none !important; overflow:visible !important; position:relative; isolation:isolate;
-  padding:2px 0 4px 24px !important; border-radius:0 !important; }
+  padding:2px 12px 4px 24px !important; border-radius:0 !important; }
 ${S} #hud .sf-overview::before { content:"" !important; display:block !important; position:absolute; inset:-16px -26px -14px -30px; z-index:-1; pointer-events:none;
   background:radial-gradient(ellipse closest-side, rgb(3 4 7 / .9), rgb(3 4 7 / .66) 62%, rgb(3 4 7 / 0)) !important; }
 ${S} #hud .sf-overview::after { content:""; position:absolute; left:4px; top:6px; bottom:6px; width:6px; pointer-events:none;
   background:linear-gradient(90deg, transparent 2px, rgb(232 226 212 / .62) 2px 4px, transparent 4px), linear-gradient(90deg, rgb(232 226 212 / .24) 0 6px); }
-${S} #hud .sf-overview-row { border:0 !important; background:none !important; box-shadow:none !important; padding:5px 0 5px 8px !important; position:relative; ${HALO} }
+${S} #hud .sf-overview-row { border:0 !important; background:none !important; box-shadow:none !important; padding:5px 10px 5px 8px !important; position:relative; ${HALO} }
 ${S} #hud .sf-overview-row::before { content:""; position:absolute; left:-22px; top:50%; width:13px; height:2px; margin-top:-1px; background:rgb(232 226 212 / .6); pointer-events:none; }
 ${S} #hud .sf-overview-row:hover { background:none !important; }
 ${S} #hud .sf-overview-row:hover::before { background:rgb(255 252 244); }
 ${S} #hud .sf-overview-row.selected { background:none !important; box-shadow:none !important; }
 ${S} #hud .sf-overview-row.selected::before { width:19px; left:-24px; height:3px; margin-top:-1.5px; background:var(--dp-hand, #f2b950); box-shadow:0 0 10px 2px rgb(242 185 80 / .55); }
 ${S} #hud .sf-overview-row.selected .sf-overview-row__name { color:var(--dp-hand-hot, #ffd98c); text-shadow:none; }
+/* 720p rail discipline (craft critic 2026-10-26): a callsign may take a second line, but only
+   at word boundaries — hud.js writes a WORD JOINER after every hyphen so "Choir-Tender" never
+   splits; and the state word is pinned off the name by a fixed datum gap so a wrapped name can
+   never kern into "NEUTRAL". The run sits one level inside __name (hud.js) so this clip box is
+   also the run's own edge. */
+${S} #hud .sf-overview-row__left { flex:1 1 auto; min-width:0; overflow:hidden; }
+${S} #hud .sf-overview-row__name { flex:0 1 auto; min-width:0; overflow:hidden; overflow-wrap:break-word; }
+${S} #hud .sf-overview-row__state { flex:0 0 auto; margin-left:10px; }
 ${S} #hud .sf-overview-row__right { color:rgb(223 238 255 / .92); font-variant-numeric:tabular-nums; }
 ${S} #hud .sf-overview-row__detail { color:rgb(232 226 212 / .7); }
 ${S} #hud .sf-overview-footer { color:rgb(232 226 212 / .7); background:none !important; }

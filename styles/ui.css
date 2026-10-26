@@ -1085,9 +1085,25 @@ input[type="radio"]:checked::before {
   text-transform: uppercase;
   opacity: 0.85;
 }
+/* Threat tier is drawn (hud.js writes three <i> segments, .is-lit to the tier), never typeset —
+   the ▰/▱ codepoints showed as missing-glyph boxes on fonts that lack them. Slanted hairline
+   slots, filled where lit, in the row's state colour (hostile still reads red). */
 .sf-overview-row__tier {
-  font-size: 12px;
-  letter-spacing: -0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.sf-overview-row__tier i {
+  display: block;
+  width: 5px;
+  height: 9px;
+  transform: skewX(-16deg);
+  border: 1px solid currentColor;
+  opacity: .45;
+}
+.sf-overview-row__tier i.is-lit {
+  background: currentColor;
+  opacity: 1;
 }
 .sf-overview-row__detail {
   flex-basis: 100%;
