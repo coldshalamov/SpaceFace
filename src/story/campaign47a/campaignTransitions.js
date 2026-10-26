@@ -220,10 +220,10 @@ function recordOrderedSteps(state, own, def, signal, payload, simTime, canon) {
     };
   }
 
-  if (!stepAcceptsSignal(nextStep, signal)) {
+  if (!stepAcceptsSignal(nextStep, signal) || !stepMatchesPayload(nextStep, signal, payload)) {
     // Out-of-order or wrong signal — reject without completing later steps early.
     // Also reject if signal matches a later step before prior ones.
-    const laterHit = steps.find((s) => !completed.has(s.id) && s.id !== nextStep.id && stepAcceptsSignal(s, signal));
+    const laterHit = steps.find((s) => !completed.has(s.id) && s.id !== nextStep.id && stepAcceptsSignal(s, signal) && stepMatchesPayload(s, signal, payload));
     if (laterHit) {
       return {
         ok: false,
@@ -526,6 +526,83 @@ function recordAssetDeployStep(state, own, signal, payload, simTime, canon) {
 
 function stepAcceptsSignal(step, signal) {
   return Array.isArray(step.accept) && step.accept.includes(signal);
+}
+
+/**
+ * W-BOOKS-0-2: a step may carry a `match` predicate — a small object of payload fields that
+ * must equal the live signal's payload for the step to take it (e.g. { storyTag }, { shape:
+ * 'the_nest' }). `matchSignals` restricts the predicate to only those signals; signals not
+ * listed skip the predicate entirely so multi-accept steps can gate one member only.
+ * Pure data-driven predicates keep the sidecar a recorder — no new writers.
+ */
+function stepMatchesPayload(step, signal, payload) {
+  const match = step && step.match;
+  if (!match || typeof match !== 'object') return true;
+  if (Array.isArray(step.matchSignals) && step.matchSignals.length
+      && !step.matchSignals.includes(signal)) return true;
+  for (const key of Object.keys(match)) {
+    if (!payload || payload[key] !== match[key]) return false;
+  }
+  return true;
+}
+
+/**
+ * W-BOOKS-0-2: a pre-book-list contract (the old B1 cargo leg, the B2 pod-rescue set
+ * piece, the B3 tow) settles a whole beat before the ordered script lists existed on it.
+ * Fill the beat's step log so the sidecar keeps recording ordered evidence instead of
+ * rejecting every signal the old contract never named. Still never advances the live
+ * cursor — missions does that after this returns.
+ */
+export function completeBeatStepsForLegacy(state, beatIndex, simTime = 0, note = 'legacy_contract', info = {}) {
+  const own = ensureCampaign47aState(state);
+  if (!own) return { ok: false, reason: 'no_state' };
+  const def = beatDefAt(beatIndex);
+  if (!def || !(def.steps || []).length) return { ok: false, reason: 'no_steps', own };
+  const t = Number(simTime) || 0;
+  const bucket = getOrCreateStepBucket(own, def.beat, t);
+  for (const step of def.steps) {
+    if (step && !bucket.completed.includes(step.id)) bucket.completed.push(step.id);
+  }
+  bucket.updatedAtS = t;
+  own.beatStatus = BEAT_STATUS.TRACKING;
+  own.observedBeatIndex = def.beat;
+  pushCampaignHistory(own, { kind: 'legacy_steps_filled', beatIndex: def.beat, note }, t);
+  const stepsComplete = isBeatStepsComplete(state, def.beat);
+  // A whole-list legacy fill still files the spine note a per-step record would have
+  // written — the bar and the life ledger cite the played verb, not the fill.
+  if (stepsComplete) {
+    const lastStep = def.steps[def.steps.length - 1];
+    const payload = {
+      physicalVerb: info.physicalVerb || null,
+      completionMethod: info.completionMethod || null,
+    };
+    // File the step_progress receipt too — the berth ledger reads receipts, not the
+    // spine, so a legacy fill without one would retell as the wrong beat.
+    pushCampaignReceipt(own, buildStepProgressReceipt({
+      beatIndex: def.beat,
+      stepId: (lastStep && lastStep.id) || null,
+      signal: note || 'legacy_contract',
+      completedSteps: bucket.completed,
+      stepsComplete: true,
+      simTime: t,
+      attempt: own.attempt,
+      physicalVerb: payload.physicalVerb,
+      completionMethod: methodFromPayload(payload, def.beat, null),
+    }));
+    noteSpineStep(state, own, {
+      beat: def.beat,
+      stepId: (lastStep && lastStep.id) || null,
+      payload,
+      simTime: t,
+      stepsComplete: true,
+    });
+  }
+  return {
+    ok: true,
+    own,
+    stepsComplete,
+    completedSteps: bucket.completed.slice(),
+  };
 }
 
 /**

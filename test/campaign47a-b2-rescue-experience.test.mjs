@@ -60,10 +60,35 @@ function bootAtTethys() {
   return { state, bus, missions, player, credits, failures, completions };
 }
 
+// W-BOOKS-0-2: the default Book 2 route is the §34.7 list (cinder → compost → nest →
+// register). The pod-rescue set piece is no longer board-posted, but an in-flight
+// instance from a pre-list save must still spawn, settle, fail, and re-accept — this
+// suite keeps covering that machinery by carrying the instance in directly, exactly
+// the way serialize/deserialize restores one.
+function acceptInFlightRescue(h) {
+  const offer = {
+    id: 'b2_pod_rescue_legacy', type: 'rescue_under_fire',
+    storyTag: B2_TAG, storyContractId: B2_TAG, campaign47aBeat: 2,
+    title: 'Pull the pods under fire',
+    brief: 'Tow a pod to Expanse, or clear both Wasp escorts and reel a pod from stand-off.',
+    factionId: 'faction_scn', stationId: 'station_tethys',
+    destStationId: 'station_expanse', destSectorId: 'sector_charon_expanse',
+    reward_cr: 800, collateral_cr: 0, riskTier: 2, minRep: -149,
+    source: 'campaign47a.embodied', distance: 3000,
+    params: {
+      physicalVerb: 'pull', completionMethods: ['stage_tow', 'corridor_pull'],
+      authoredSetPieceId: 'pod_rescue', podCount: 2, escortCount: 2,
+      escortsDown: 0, podsLost: 0, targetStrength: 1.3, fValue: 1.3, taskTime: 70,
+    },
+  };
+  const mission = h.missions._instanceFromOffer(offer);
+  h.state.missions.active.push(mission);
+  h.missions.trackMission(mission.id, { silent: true });
+  return mission;
+}
+
 function departForB2(h) {
-  h.bus.emit('dock:undocked', {});
-  const mission = h.state.missions.active.find((row) => row.storyTag === B2_TAG);
-  assert.ok(mission, 'the ordinary Tethys departure route accepts B2');
+  const mission = acceptInFlightRescue(h);
   assert.equal(mission.type, 'rescue_under_fire');
   h.state.world.currentSectorId = mission.destSectorId;
   h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
@@ -175,15 +200,12 @@ test('B2 actor losses survive Continue without respawn and a failed cast can be 
   assert.equal(h.state.story.beatIndex, 2, 'failure leaves the campaign beat available for recovery');
   assert.equal(h.credits.filter((row) => row.amount === 800).length, 0);
 
+  // W-BOOKS-0-2: a failed in-flight set piece is not re-posted — the book hands the
+  // player its next pending job instead (the cinder board opens Book 2).
   h.state.world.currentSectorId = 'sector_tethys_junction';
   h.bus.emit('dock:undocked', {});
-  const retry = h.state.missions.active.find((row) => row.storyTag === B2_TAG);
-  assert.ok(retry, 'the normal departure path rearms the failed B2 rescue');
-  assert.notEqual(retry.id, first.mission.id);
-  h.state.world.currentSectorId = retry.destSectorId;
-  h.bus.emit('sector:enter', { sectorId: retry.destSectorId });
-  const retryPods = retry.targetEntityIds.map((id) => h.state.entities.get(id))
-    .filter((entity) => entity && entity.alive !== false && entity.data && entity.data.physicalRole === 'life_pod');
-  assert.equal(retryPods.length, 2, 'a fresh mission cast restores both authored capsules');
-  assert.ok(retryPods.every((pod) => pod.data.missionActorId.startsWith(`${retry.id}:`)));
+  const retry = h.state.missions.active.find((row) => row.storyTag === 'campaign47a:b2:cinder');
+  assert.ok(retry, 'the departure rail re-posts the book’s pending job after a failed legacy cast');
+  assert.equal(retry.type, 'patrol_clear');
+  assert.equal(retry.stationId, 'station_tethys');
 });

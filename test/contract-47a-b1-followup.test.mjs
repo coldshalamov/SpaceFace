@@ -58,35 +58,33 @@ function activeB1(h) {
   return h.state.missions.active.find((mission) => mission.storyTag === CONTRACT_47A_B1_TAG);
 }
 
-test('47-A settlement dispatches the wrecking-ball contract, not a cargo haul', () => {
+test('47-A settlement dispatches the sealed alloy run — §34.7 Book 1 first post', () => {
   const h = harness();
   h.bus.emit('mining:yield', {
     commodityId: 'cmdty_ore_iron', qty: 1, minerId: 1, pos: { ...h.asteroid.pos },
   });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 1);
-  assert.equal(activeB1(h), undefined, 'follow-up waits until the player departs the settlement dock');
+  const activeB1 = () => h.state.missions.active
+    .find((mission) => mission.storyTag === 'campaign47a:b1:alloy_run');
+  assert.equal(activeB1(), undefined, 'follow-up waits until the player departs the settlement dock');
 
   h.bus.emit('dock:undocked', {});
-  const mission = activeB1(h);
-  assert.ok(mission, 'undock dispatches the wrecking-ball contract');
-  assert.equal(mission.type, 'demolition');
-  assert.equal(mission.title, 'Knock the variance tower');
+  const mission = activeB1();
+  assert.ok(mission, 'undock dispatches the book’s first Honest Work contract');
+  assert.equal(mission.type, 'cargo_delivery');
+  assert.equal(mission.title, 'Weigh-In — sealed alloys for Tycho');
+  assert.equal(mission.preloadedCargo, true, 'the crate is sealed aboard');
+  assert.equal(mission.params.silentRecat, true);
   assert.equal(h.state.ui.trackedMissionId, mission.id);
-  assert.equal(h.state.player.cargo.items.cmdty_alloys, undefined);
 
-  h.state.world.currentSectorId = mission.destSectorId;
-  h.missions._ensureMissionTargets(mission);
-  const towerId = mission.targetEntityIds[0];
-  assert.ok(towerId, 'the tower is a physical target');
-  h.bus.emit('tether:whipImpact', {
-    victimId: towerId, targetId: h.state.playerId, rating: 'solid', relSpeed: 80,
-  });
-  assert.equal(h.state.story.beatIndex, 2);
-  assert.equal(activeB1(h), undefined);
-  assert.equal(h.credits.filter((row) => row.amount === 600).length, 1);
-  assert.equal(h.credits.some((row) => row.reason === 'story:honest_work'), false, 'B1 reward cannot double-pay');
+  // The sealed crate settles its list step at Tycho — but Book 1 stays open:
+  // Scale 4 and the furnace detail are still owed before the beat advances.
+  h.bus.emit('dock:docked', { stationId: 'station_tethys' });
+  assert.equal(mission.status, 'completed');
+  assert.equal(h.state.story.beatIndex, 1, 'the alloy run alone cannot close the book');
   const receipt = h.state.missions.receipts.find((row) => row.missionId === mission.id);
   assert.equal(receipt.outcome, 'completed');
-  assert.equal(receipt.rewardCr, 600);
+  assert.equal(receipt.rewardCr, 600, 'the posted offer pays exactly once');
+  assert.equal(h.credits.some((row) => row.reason === 'story:honest_work'), false, 'B1 reward only follows the whole list');
 });

@@ -226,22 +226,78 @@ function completeSpineSetPiece(h, mission) {
   completePhysicalMission(h, mission);
 }
 
+// W-BOOKS-0-2 (§34.7): Books 1–2 play their ordered script lists — posted contracts
+// alternate with world work (the Scale 4 weigh, the Compost Run, the Nest). The beat
+// stays open until the whole list is recorded.
+function playBookBeat1(h) {
+  const { state, bus } = h;
+  const alloy = acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:alloy_run');
+  addCargo(state, alloy.params.cmdtyId, Math.max(1, alloy.params.qty || 1));
+  bus.emit('dock:docked', { stationId: alloy.destStationId });
+  assert.equal(state.story.beatIndex, 1, 'the alloy run alone cannot close Honest Work');
+  bus.emit('kesslerPod:weighed', { variance: true, massT: 6 });
+  const infested = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b1:infested');
+  state.world.currentSectorId = infested.destSectorId;
+  bus.emit('sector:enter', { sectorId: infested.destSectorId });
+  h.missions.spawnTargetsForSector(infested.destSectorId);
+  h.missions._ensureMissionTargets(infested);
+  for (const id of [...infested.targetEntityIds]) {
+    bus.emit('entity:killed', { id, killerId: state.playerId });
+  }
+  for (let i = 0; i < (infested.params.furnaceFeedsNeeded || 0); i++) {
+    bus.emit('furnace:fed', { entityId: 9700 + i });
+  }
+}
+
+function playBookBeat2(h, outcome = 'force') {
+  const { state, bus } = h;
+  const cinder = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:cinder');
+  state.world.currentSectorId = cinder.destSectorId;
+  bus.emit('sector:enter', { sectorId: cinder.destSectorId });
+  h.missions.spawnTargetsForSector(cinder.destSectorId);
+  h.missions._ensureMissionTargets(cinder);
+  for (const id of [...cinder.targetEntityIds]) {
+    bus.emit('entity:killed', { id, killerId: state.playerId });
+  }
+  for (let i = 0; i < (cinder.params.rookDeliveryNeeded || 0); i++) {
+    bus.emit('rookWreck:delivered', { entityId: 9800 + i });
+  }
+  assert.equal(state.story.beatIndex, 2, 'the cinder board alone cannot close First Blood');
+  bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g_live', fedMass: 20 });
+  bus.emit('encounter:resolved', {
+    shape: 'the_nest', encounterId: 'enc_nest_live', sectorId: 'sector_charon_expanse',
+  });
+  const elroy = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
+  state.world.currentSectorId = elroy.destSectorId;
+  bus.emit('sector:enter', { sectorId: elroy.destSectorId });
+  h.missions.spawnTargetsForSector(elroy.destSectorId);
+  h.missions._ensureMissionTargets(elroy);
+  const targetId = elroy.targetEntityIds[0];
+  state.entities.get(targetId).pos = { x: 5, z: 0 };
+  bus.emit('scan:completed', { targetId });
+  if (outcome === 'custody') {
+    bus.emit('tether:reel', { actorId: state.playerId, targetId, after: 50 });
+  } else {
+    bus.emit('entity:killed', { id: targetId, killerId: state.playerId });
+  }
+}
+
 function advanceEmbodiedB1B2(h, outcome = 'force') {
   const { state, bus } = h;
   assert.equal(state.story.beatIndex, 1);
   // Unrelated trade cannot advance the campaign.
   bus.emit('economy:tradeCompleted', { side: 'sell', stationId: 'station_helios', commodityId: 'cmdty_ore_iron', qty: 1 });
   assert.equal(state.story.beatIndex, 1);
-  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
+  playBookBeat1(h);
   assert.equal(state.story.beatIndex, 2);
 
   // Unrelated kills cannot advance First Blood.
   bus.emit('entity:killed', { id: 9999, killerId: state.playerId, factionId: 'faction_free' });
   assert.equal(state.story.beatIndex, 2);
-  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy'));
+  playBookBeat2(h, outcome);
   assert.equal(state.story.beatIndex, 3);
-  // Later leftover stakes still read elroy_outcome. The set piece itself adds no choice menu.
-  state.story.flags.elroy_outcome = outcome;
+  // The register contract itself writes elroy_outcome; leftover stakes read it.
+  assert.equal(state.story.flags.elroy_outcome, outcome);
 }
 
 const PHYSICAL_ROUTE = Object.freeze({
@@ -395,23 +451,23 @@ const LIVE_ROUTE = Object.freeze({
   }),
 });
 
-function assertLiveRouteClean(h, label) {
-  assert.equal(h.state.story.flags.elroy_outcome, undefined, `${label}: live route writes no outcome`);
-  assert.equal(h.state.story.flags.elroy_outcome_legacy, undefined, `${label}: live route writes no legacy mark`);
-  assert.equal(h.elroyResolved.length, 0, `${label}: live route emits no story:elroyResolved`);
+function assertLiveRouteClean(h, label, outcome) {
+  assert.equal(h.state.story.flags.elroy_outcome_legacy, undefined, `${label}: the book route writes no legacy mark`);
+  assert.equal(h.elroyResolved.length, 1, `${label}: the register contract resolves Elroy exactly once`);
+  if (outcome) {
+    assert.equal(h.state.story.flags.elroy_outcome, outcome, `${label}: the writ stamps ${outcome}`);
+  }
 }
 
-function advanceEmbodiedB1B2Live(h) {
+function advanceEmbodiedB1B2Live(h, outcome = 'force') {
   const { state } = h;
   assert.equal(state.story.beatIndex, 1);
-  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
+  playBookBeat1(h);
   assert.equal(state.story.beatIndex, 2);
-  const rescue = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
-  assert.equal(rescue.type, 'rescue_under_fire', 'live B2 is the pod rescue, not a bounty hunt');
-  completeSpineSetPiece(h, rescue);
+  playBookBeat2(h, outcome);
   assert.equal(state.story.beatIndex, 3);
-  assert.equal(state.story.flags.embodied_route, 'rescue', 'authored B1–B3 settlement marks the live route');
-  assertLiveRouteClean(h, 'B2');
+  assert.equal(state.story.flags.embodied_route, 'book', 'the book list marks the live route');
+  assertLiveRouteClean(h, 'B2', outcome);
 }
 
 function completeB4Live(h, branch) {
@@ -478,7 +534,7 @@ function advanceLiveToB7(h, branch) {
   bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
   bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(state.story.beatIndex, 1, 'B0 completes on mine then dock');
-  advanceEmbodiedB1B2Live(h);
+  advanceEmbodiedB1B2Live(h, branch === 'patrol' ? 'custody' : 'force');
   completeB3(h, null);
   completeB4Live(h, branch);
   completeB5Live(h, branch);
@@ -879,7 +935,7 @@ check('post-ending sandbox remains playable after Ending A', () => {
 // `rescue_under_fire` settles B2 without an Elroy outcome token. These checks walk the
 // whole embodied route exactly as the live game produces it — no hand-set outcome.
 
-check('live route: B1–B3 authored contracts stamp embodied_route, never an Elroy outcome', () => {
+check('live route: B1–B3 book contracts stamp embodied_route; the writ stamps the outcome', () => {
   const h = makeLiveHarness(57);
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
@@ -887,41 +943,43 @@ check('live route: B1–B3 authored contracts stamp embodied_route, never an Elr
   advanceEmbodiedB1B2Live(h);
   completeB3(h, null);
   assert.equal(h.state.story.beatIndex, 4);
-  assertLiveRouteClean(h, 'B3');
+  assertLiveRouteClean(h, 'B3', 'force');
 });
 
-check('live route: all three B4 doors open for a save with no outcome', () => {
-  const h = makeLiveHarness(58);
-  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
-  h.bus.emit('dock:docked', { stationId: 'station_helios' });
-  advanceEmbodiedB1B2Live(h);
-  completeB3(h, null);
-  assert.equal(h.state.story.beatIndex, 4);
-
-  const doors = {};
-  for (const [stationId, name] of [
-    ['station_coalition', 'patrol'],
-    ['station_tethys', 'traders'],
-    ['station_reach', 'free'],
+check('live route: the register outcome pins exactly one B4 door', () => {
+  // §34.7: the writ's verdict chooses which door the book earned — force posts the
+  // Meridian charter, custody posts the Coalition evidence patrol, and no other door.
+  for (const [outcome, open, closed] of [
+    ['force', ['station_tethys', 'traders', 'bulk_trade'], [['station_coalition'], ['station_reach']]],
+    ['custody', ['station_coalition', 'patrol', 'patrol_clear'], [['station_tethys'], ['station_reach']]],
   ]) {
-    const board = h.missions.ensureBoard(stationId);
-    const row = board.slots.find((o) => String(o.storyTag || '').startsWith(STORY_BRANCH_INTRO_TAG));
-    assert.ok(row, `${name} intro must post at ${stationId} on the live route`);
-    doors[name] = `${stationId}:${row.type}`;
+    const h = makeLiveHarness(outcome === 'force' ? 58 : 59);
+    h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+    h.bus.emit('dock:docked', { stationId: 'station_helios' });
+    advanceEmbodiedB1B2Live(h, outcome);
+    completeB3(h, null);
+    assert.equal(h.state.story.beatIndex, 4);
+
+    const openBoard = h.missions.ensureBoard(open[0]);
+    const row = openBoard.slots.find((o) => String(o.storyTag || '').startsWith(STORY_BRANCH_INTRO_TAG));
+    assert.ok(row, `${outcome}: the ${open[1]} intro must post at ${open[0]}`);
+    assert.equal(row.type, open[2]);
+    for (const [stationId] of closed) {
+      const board = h.missions.ensureBoard(stationId);
+      const blocked = board.slots.find((o) => String(o.storyTag || '').startsWith(STORY_BRANCH_INTRO_TAG));
+      assert.equal(blocked, undefined, `${outcome}: ${stationId} must not post an intro`);
+    }
+    assertLiveRouteClean(h, `${outcome} door`, outcome);
   }
-  assert.deepEqual(doors, {
-    patrol: 'station_coalition:patrol_clear',
-    traders: 'station_tethys:bulk_trade',
-    free: 'station_reach:smuggling_run',
-  });
-  assertLiveRouteClean(h, 'B4 doors');
 });
 
-check('live route: pod-rescue B2 (no elroy_outcome) reaches the authored B7 op per branch', () => {
-  for (const branch of ['patrol', 'traders', 'free']) {
-    const h = makeLiveHarness(branch === 'patrol' ? 61 : branch === 'traders' ? 62 : 63);
+check('live route: the book-list B2 reaches the authored B7 op per pinned branch', () => {
+  // The register's two verdicts earn the patrol and traders doors; the free door only
+  // exists on the legacy no-outcome route.
+  for (const branch of ['patrol', 'traders']) {
+    const h = makeLiveHarness(branch === 'patrol' ? 61 : 62);
     advanceLiveToB7(h, branch);
-    assertLiveRouteClean(h, `live ${branch}`);
+    assertLiveRouteClean(h, `live ${branch}`, branch === 'patrol' ? 'custody' : 'force');
     // Beat 7 is observeOnly — the sidecar mirrors the canonical beat without owning it.
     assert.equal(
       h.state.story.campaign47a.observedBeatIndex,

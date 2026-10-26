@@ -2629,12 +2629,17 @@ export const STORY_BEATS = [
   { beat: 0, id: 'cold_start',     objective: 'Contract 47-A: sample the 12.4t mass discrepancy, dock Helios. Payment withheld. Status pending.',
     headlineVerb: 'mine',
     reward: { credits: 400, rp: 4, rep: { faction: 'home', amount: 5 }, unlock: 'mod_mining_laser_s' }, introduces: 'mining', next: 1 },
-  { beat: 1, id: 'honest_work',    objective: 'Knock the variance tower — wrecking-ball contract. Swing mass through it, or cut it down.',
-    headlineVerb: 'knock', setPiece: 'wrecking-ball contract', physicalType: 'demolition', authoredSetPieceId: 'wrecking_ball',
-    reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'wrecking_ball', next: 2 },
-  { beat: 2, id: 'first_blood',    objective: 'Pull the life pods out under fire. Tow one home, or open a corridor and reel.',
-    headlineVerb: 'pull', setPiece: 'pod rescue under fire', physicalType: 'rescue_under_fire', authoredSetPieceId: 'pod_rescue',
-    reward: { credits: 800, unlock: 'wpn_pulse_laser_s' }, introduces: 'pod_rescue', next: 3 },
+  // W-BOOKS-0-2 (§34.7): B1/B2 play the 06 script's ordered mission list — the sealed
+  // alloy run, the Scale 4 weigh, and the infested hauler's furnace detail, then the
+  // cinder board, the Compost Run, the Nest, and the register contract on Elroy. The
+  // physical contracts post one at a time from embodiedMissions.bookContracts; the world
+  // steps between them record through the systems that already emit their signals.
+  { beat: 1, id: 'honest_work',    objective: 'Run the sealed alloys to Tycho, weigh the crate on Scale 4, and feed the infested hauler\'s pods to the CR-FEED intake.',
+    headlineVerb: 'weigh', setPiece: 'alloy run + Scale 4 + infested hauler furnace detail',
+    reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'weighing', next: 2 },
+  { beat: 2, id: 'first_blood',    objective: 'Run the cinder board, feed a garden its first stage, meet the Nest — then take the name on the register.',
+    headlineVerb: 'hunt', setPiece: 'cinder board + compost run + the nest + register contract',
+    reward: { credits: 800, unlock: 'wpn_pulse_laser_s' }, introduces: 'bounty_board', next: 3 },
   { beat: 3, id: 'bigger_boat',    objective: 'Tow the slag core the long way. Keep it on the line into the yard, or sling it in.',
     headlineVerb: 'tow', setPiece: 'long tow', physicalType: 'tow_recovery', authoredSetPieceId: 'long_tow',
     reward: { credits: 1000, milestone: 'cargo+20u' }, introduces: 'long_tow', next: 4 },
@@ -2653,9 +2658,11 @@ export const STORY_BEATS = [
     reward: { credits: 5000, unlock: 'newgame_plus' }, introduces: 'endgame', next: null },
 ];
 
-/** PQ-032.00 — beats 1–3 are the three PQ-152 physical set pieces, one linear spine. */
+/** PQ-032.00 — the spine's authored physical set pieces. W-BOOKS-0-2 (§34.7): B1/B2 now
+ *  play the 06 script's ordered book lists, so only B3's long tow remains in this table —
+ *  the filter keys on the authored fields themselves, not the beat range. */
 export const PQ032_BEAT_SET_PIECES = Object.freeze(
-  STORY_BEATS.filter((beat) => beat.beat >= 1 && beat.beat <= 3).map((beat) => Object.freeze({
+  STORY_BEATS.filter((beat) => beat.physicalType != null && beat.authoredSetPieceId != null).map((beat) => Object.freeze({
     beat: beat.beat,
     id: beat.id,
     headlineVerb: beat.headlineVerb,

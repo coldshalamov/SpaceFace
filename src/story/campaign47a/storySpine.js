@@ -29,8 +29,8 @@ const SCAR_DELTA = Object.freeze({
 
 const SCAR = Object.freeze({
   0: 'The first cut went wide. Sample the marked face, then dock Helios.',
-  1: 'The tower cracked. Swing mass through what still stands, or cut what is left.',
-  2: 'A pod went cold. Pull the ones still answering, by a yard tow or a corridor reel.',
+  1: 'The honest work came back short. The board re-posts the next book job.',
+  2: 'The board mark went wrong. The book re-posts the next job.',
   3: 'The core drifted wide. Tow it in on the line, or sling it the rest of the way.',
   4: 'The introduction you were on failed. The other doors remain.',
   5: 'The proving leg came back short. The next one is heavier.',
@@ -39,8 +39,8 @@ const SCAR = Object.freeze({
 });
 const SCAR_HARD = Object.freeze({
   0: 'The marked face is the only sample left. Cut that face, then dock.',
-  1: 'The spar is split and the tower leans. Finish it by mass or by cut.',
-  2: 'Another pod has gone quiet. Pull whoever still answers. The field is worse.',
+  1: 'The honest work failed twice. The book still posts the next job.',
+  2: 'The board mark failed again. The book still holds the next job.',
   3: 'The core is further out and turning. Tow it or sling it. The first line is gone.',
   4: 'That introduction has failed again. The other doors are still open.',
   5: 'The short leg was not a reset. The next haul, clear, or seal is heavier still.',
@@ -310,6 +310,14 @@ function solvedPhrase(row) {
   if (row.method === 'corridor_pull') return 'the pods reeled';
   if (row.method === 'stage_tow') return 'the pods towed in';
   if (row.verb === 'pull') return 'the pods pulled';
+  // W-BOOKS-0-2 (§34.7): the book list files its own verbs.
+  if (row.stepId === 'infested' || row.verb === 'burn') return 'the hauler fed to the furnace';
+  if (row.stepId === 'alloy_run' || row.verb === 'weigh') return 'the sealed crate weighed';
+  if (row.stepId === 'elroy' || row.verb === 'hunt') return 'the register answered';
+  if (row.stepId === 'cinder_board') return 'the cinder marks cleared';
+  if (row.stepId === 'compost') return 'the garden fed';
+  if (row.stepId === 'nest') return 'the Nest survived';
+  if (row.stepId === 'skim') return 'the lane skim survived';
   if (row.method === 'sling_in') return 'the core slung';
   if (row.method === 'tow_in' || row.verb === 'tow') return 'the core towed';
   if (row.verb === 'jam') return 'the approach jammed';
@@ -416,6 +424,7 @@ function filedMaera(view) {
   if (tower && tower.method === 'cut_down') return 'You cut the tower. I watched you file and leave.';
   if (tower && tower.method === 'wrecking_ball') return 'You threw the tower. I watched you file and leave.';
   if (tower && tower.verb === 'knock_down') return 'You knocked the tower. I watched you file and leave.';
+  if (tower && tower.verb === 'burn') return 'You fed the furnace. I watched you file and leave.';
   if (view.door === 'traders') return 'You took the grain door. I watched you file and leave.';
   if (view.door === 'patrol') return 'You took the patrol door. I watched you file and leave.';
   if (view.door === 'free') return 'You took the free door. I watched you file and leave.';
@@ -444,9 +453,17 @@ function maeraLine(view) {
   if (sit) return 'That miss changed the job. It is still yours.';
   const filed = filedMaera(view);
   if (filed) return filed;
-  if (view.climax && solved1) return view.climax.withTower;
+  // 'I kept the tower' only scans when a tower actually fell; the book route files the
+  // furnace instead, so its climax reads the plain variant.
+  if (view.climax && solved1
+    && (solved1.method === 'cut_down' || solved1.method === 'wrecking_ball'
+      || solved1.verb === 'knock_down')) {
+    return view.climax.withTower;
+  }
   if (view.climax) return view.climax.alone;
-  if (solved1 && solved1.method === 'cut_down') return 'You cut the tower. I kept the spar.';
+  // W-BOOKS-0-2: the book route closes B1 on the furnace detail and B2 on the writ.
+  if (solved1 && solved1.verb === 'burn') return 'You fed the hauler to the furnace.';
+  if (solved1 && solved1.verb === 'weigh') return 'You weighed the sealed crate here.';
   if (solved1 && solved1.method === 'wrecking_ball') return 'You threw the tower. The yard still rings.';
   if (solved1 && solved1.verb === 'knock_down') return 'You knocked the tower. The yard still rings.';
   if (solved0 && solved0.stepId === 'dock') return 'You docked the variance sample here.';
@@ -466,6 +483,8 @@ function filedHalev(view) {
   const missedKnock = view.missed && tower && (tower.method === 'wrecking_ball' || tower.verb === 'knock_down' || tower.method === 'cut_down');
   if (missedKnock && tower.method === 'cut_down') return 'Filed: a miss, the cut, then the disposition.';
   if (missedKnock) return 'Filed: a miss, the knock, then the disposition.';
+  if (view.missed && tower && tower.verb === 'burn') return 'Filed: a miss, the furnace, then the disposition.';
+  if (tower && tower.verb === 'burn') return 'Filed: the furnace, then the disposition.';
   if (tower && tower.method === 'cut_down') return 'Filed: the cut, then the disposition.';
   if (tower && (tower.method === 'wrecking_ball' || tower.verb === 'knock_down')) return 'Filed: the knock, then the disposition.';
   if (view.door === 'traders') return 'Filed: the grain door, then the disposition.';
@@ -487,6 +506,10 @@ function halevLine(view) {
   if (sit) return 'Filed: a miss. The work is not the same.';
   const filed = filedHalev(view);
   if (filed) return filed;
+  // W-BOOKS-0-2: book-route filings for Honest Work.
+  if (hadMiss && solved1 && solved1.verb === 'burn') return 'Filed: a miss, then the furnace.';
+  if (solved1 && solved1.verb === 'burn') return 'Filed: the furnace. The scale still lies.';
+  if (solved1 && solved1.verb === 'weigh') return 'Filed: the sealed crate. The scale lied low.';
   if (hadMiss && solved1 && solved1.method === 'cut_down') return 'Filed: a miss, then the cut.';
   if (hadMiss && solved1 && (solved1.method === 'wrecking_ball' || solved1.verb === 'knock_down')) return 'Filed: a miss, then the knock.';
   if (solved1 && solved1.method === 'cut_down') return 'Filed: the cut. The throw never ran.';

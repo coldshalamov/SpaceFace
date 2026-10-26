@@ -170,9 +170,13 @@ check('beats have ordered steps and no primarySignal or story.beat shortcuts', (
       }
     }
   }
-  assert.equal(CAMPAIGN_BEATS[0].steps.length, 2);
+  // W-BOOKS-0-2 (§34.7): Cold Start is mine → skim → dock.
+  assert.equal(CAMPAIGN_BEATS[0].steps.length, 3);
   assert.equal(CAMPAIGN_BEATS[0].steps[0].id, 'mine');
-  assert.equal(CAMPAIGN_BEATS[0].steps[1].id, 'dock');
+  assert.equal(CAMPAIGN_BEATS[0].steps[1].id, 'skim');
+  assert.equal(CAMPAIGN_BEATS[0].steps[2].id, 'dock');
+  assert.equal(CAMPAIGN_BEATS[1].steps.map((s) => s.id).join(','), 'alloy_run,scale_4,infested');
+  assert.equal(CAMPAIGN_BEATS[2].steps.map((s) => s.id).join(','), 'cinder_board,compost,nest,elroy');
   assert.equal(CAMPAIGN_BEATS[7].observeOnly, true);
   assert.equal(CAMPAIGN_BEATS[7].steps.length, 0);
 });
@@ -278,7 +282,7 @@ check('legacy outpost identity collisions migrate to newest canonical ownership 
 });
 
 // ── Ordered B0 steps (embodied recipe, no teleport claim) ──────────────────
-check('B0 requires mine then dock in order; dock alone fails', () => {
+check('B0 requires mine then skim then dock in order; dock alone fails', () => {
   const state = makeCampaignState();
   state.story.beatIndex = 0;
   initCampaignSidecar(state, 0);
@@ -299,7 +303,16 @@ check('B0 requires mine then dock in order; dock alone fails', () => {
   assert.equal(mine.advancedCanonicalBeat, false);
   assert.equal(isBeatStepsComplete(state, 0), false);
 
-  const dock = recordBeatStep(state, 'dock:docked', { stationId: 'station_helios' }, 3);
+  // The Pit cannot close the book before the Skim has happened (§34.7).
+  const dockEarly = recordBeatStep(state, 'dock:docked', { stationId: 'station_helios' }, 3);
+  assert.equal(dockEarly.ok, false, 'dock before skim must fail');
+  assert.equal(dockEarly.reason, 'step_out_of_order:need_skim', dockEarly.reason);
+
+  const skim = recordBeatStep(state, 'story:skimResolved', { where: 'lane', massT: 12.4 }, 4);
+  assert.equal(skim.ok, true, skim.reason);
+  assert.equal(skim.stepId, 'skim');
+
+  const dock = recordBeatStep(state, 'dock:docked', { stationId: 'station_helios' }, 5);
   assert.equal(dock.ok, true, dock.reason);
   assert.equal(dock.stepsComplete, true);
   assert.equal(isBeatStepsComplete(state, 0), true);

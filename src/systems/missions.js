@@ -1041,7 +1041,8 @@ export function mutationPartialSettlement(have, need, rewardCr) {
  */
 export function partialDeliverySettlement(m, state) {
   if (!m || m.status !== 'active' || m.type !== 'cargo_delivery' || !m.params || !m.params.cmdtyId) return null;
-  if (m.storyTag === CONTRACT_47A_B0_TAG || m.storyTag === CONTRACT_47A_B1_TAG) return null;
+  if (m.storyTag === CONTRACT_47A_B0_TAG || m.storyTag === CONTRACT_47A_B1_TAG
+    || m.storyTag === 'campaign47a:b1:alloy_run') return null;
   const tracked = m.preloadedCargo === true;
   const need = tracked
     ? Math.max(0, Math.floor(Number(m.params.sealedRemaining != null ? m.params.sealedRemaining : m.params.qty) || 0))
@@ -1623,6 +1624,9 @@ export const missions = {
       }
       this.ensureBoard(stationId);
       this._onDockedAuthoredRaces(stationId);
+      // W-BOOKS-0-2 (§34.7): the Skim resolves inline at the Pit before the dock step is
+      // recorded — the ordered B0 list needs 'skim' landed before 'dock'.
+      this._resolveContract47aSkimForDock(stationId);
       this._onDockedObjectives(stationId);
       this._onContract47aB3Docked(stationId);
       this._storyTrigger('dock', { stationId });
@@ -1633,6 +1637,24 @@ export const missions = {
       this._activateContract47aB2OnDeparture();
       this._activateContract47aB3OnDeparture();
       this._onPassengerUndock();
+    });
+
+    // ── W-BOOKS-0-2 (§34.7): the Books 0–2 book-list world signals. The systems named on
+    // each canonical step emit them; missions records them into the sidecar's ordered step
+    // log and advances the live cursor when the current beat's list is satisfied.
+    bus.on('story:skimResolved', (p) => this._recordCampaignBookSignal('story:skimResolved', p));
+    bus.on('kesslerPod:weighed', (p) => this._recordCampaignBookSignal('kesslerPod:weighed', p));
+    bus.on('understory:gardenFed', (p) => this._recordCampaignBookSignal('understory:gardenFed', p));
+    bus.on('understory:gardenStage', (p) => this._recordCampaignBookSignal('understory:gardenStage', p));
+    bus.on('understory:compostRunComplete', (p) => this._recordCampaignBookSignal('understory:compostRunComplete', p));
+    bus.on('encounter:resolved', (p) => this._recordCampaignBookSignal('encounter:resolved', p));
+    bus.on('rookWreck:delivered', (p) => {
+      this._onRookWreckDelivered(p);
+      this._recordCampaignBookSignal('rookWreck:delivered', p);
+    });
+    bus.on('furnace:fed', (p) => {
+      this._onFurnaceFed(p);
+      this._recordCampaignBookSignal('furnace:fed', p);
     });
     bus.on('pickup:collected', (payload) => onWakePickupCollected(this, payload));
 
@@ -1872,6 +1894,9 @@ export const missions = {
     this._racingSetPieces?.reconcile(state.missions?.active || []);
     this._adventureSpeedSetPieces?.reconcile();
     if (state.mode && state.mode !== 'flight') return; // sim frozen while docked/paused
+    // W-BOOKS-0-2 (§34.7 Book 0): the Skim fires on the lane once the sample has been
+    // aboard long enough — the dock fallback covers a pilot who jumps the lane first.
+    this._stepContract47aSkim(state);
     // Flush settlement-detached capital boss fights AFTER the score's own fixed-tick step has run
     // at least once past the terminal observation, so capitalBoss:ended (final voice/telemetry)
     // is emitted before the record is removed.
@@ -5063,6 +5088,24 @@ export const missions = {
         ttl: 10,
         persist: true,
       });
+      // §34.7 Book 0 — The Pit: the manifest reads zero on the delivered slot, and the
+      // airlock says what the office will not. The Skim took exactly the mass it knew.
+      this.bus.emit('comms:popup', {
+        id: 'b0_manifest_zero',
+        sender: 'MANIFEST',
+        text: 'SLOT01 TITANIUM ALLOY 00000KG',
+        category: 'story',
+        ttl: 9,
+        persist: true,
+      });
+      this.bus.emit('comms:popup', {
+        id: 'b0_airlock_mass',
+        sender: 'AIRLOCK',
+        text: 'THEY KNEW THE MASS.',
+        category: 'story',
+        ttl: 10,
+        persist: true,
+      });
     }
 
     // ── clean-clause honor + reward credits + collateral refund ──
@@ -6270,8 +6313,8 @@ export const BRANCH_CHAIN_COUNT = { traders: 3, patrol: 2, free: 2 };
 // Direction hints shown when a beat becomes current (Captain's Log north star).
 export const BEAT_HINT = {
   0: 'Cold Start: mine ore from an asteroid field, then dock to sell or deliver it.',
-  1: 'Honest Work: knock the variance tower. Swing mass, or cut it.',
-  2: 'First Blood: pull the pods out under fire.',
+  1: 'Honest Work: the book posts the alloy run first — the Scale 4 weigh and the furnace detail follow.',
+  2: 'First Blood: the cinder board posts first — the Compost Run, the Nest, and the register follow.',
   3: 'Bigger Boat: tow the slag core the long way into the yard.',
   4: 'Pick a Side: accept an intro contract from a faction to choose your path.',
   5: 'Proving Ground: complete your faction\'s mission chain.',
