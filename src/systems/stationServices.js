@@ -521,7 +521,11 @@ export const stationServices = {
    */
   decantFuelCells() {
     const state = this.state;
-    if (!state || !isProductionDocked(state)) return { ok: false, reason: 'not_docked', cells: 0, units: 0 };
+    // The dock panel remains live until the undock fade ends. Its late self-service
+    // request must obey the same departed-berth latch as a paid yard booking.
+    if (!state || !isProductionDocked(state) || state.stationServices?._departedLatch === true) {
+      return { ok: false, reason: 'not_docked', cells: 0, units: 0 };
+    }
     const cargo = state.player && state.player.cargo;
     const fuel = state.fuel;
     if (!cargo || !fuel) return { ok: false, reason: 'unavailable', cells: 0, units: 0 };
