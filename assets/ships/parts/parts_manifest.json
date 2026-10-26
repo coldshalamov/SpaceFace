@@ -9875,6 +9875,432 @@
       "note": "PQ-193.09 S6 faction hull — live Drift Miners Collective barge: the Helios Cradle in copper plate with a dark umber bin and copper strip lights. Worn by the miner traffic role in faction_dmc sectors (Ceres, Vesta, Charon). Forge variant (tools/blender/forge/ships/helios_cradle_dmc.py)"
     },
     {
+      "id": "wholeship_drifter_helix_courier",
+      "assetId": "SF_DRIFTER_HELIX_COURIER",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/drifter_helix_courier.glb",
+      "tris": 60548,
+      "bytes": 3379968,
+      "textureSize": 1024,
+      "mount": "origin",
+      "note": "Row 514 Helix white-glass seal kit (directorate courier). Variant of drifter.",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "bounds": {
+        "min": [
+          -9.020537376403809,
+          -0.9406448006629944,
+          -3.5915112495422363
+        ],
+        "max": [
+          9.600050926208496,
+          2.4249234199523926,
+          3.5206985473632812
+        ],
+        "dimensionsM": [
+          18.620588302612305,
+          3.365568220615387,
+          7.112209796905518
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "wholeship_drifter_archive_censor",
+      "assetId": "SF_DRIFTER_ARCHIVE_CENSOR",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/drifter_archive_censor.glb",
+      "tris": 60548,
+      "bytes": 3380024,
+      "textureSize": 1024,
+      "mount": "origin",
+      "note": "Row 514 Archive indigo scriptorium kit (reading courier — the hull presence actually fields at Pallas). Variant of drifter.",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "bounds": {
+        "min": [
+          -9.020537376403809,
+          -0.9406448006629944,
+          -3.5915112495422363
+        ],
+        "max": [
+          9.600050926208496,
+          2.4249234199523926,
+          3.5206985473632812
+        ],
+        "dimensionsM": [
+          18.620588302612305,
+          3.365568220615387,
+          7.112209796905518
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "wholeship_mule_fulfillment_hauler",
+      "assetId": "SF_MULE_FULFILLMENT_HAULER",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/mule_fulfillment_hauler.glb",
+      "tris": 62664,
+      "bytes": 3781400,
+      "textureSize": 1024,
+      "mount": "origin",
+      "note": "Row 514 Fulfillment hospital-white barcode kit (re-router hauler). Variant of mule.",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "bounds": {
+        "min": [
+          -8.120311737060547,
+          -1.0499999523162842,
+          -3.4626388549804688
+        ],
+        "max": [
+          8.029999732971191,
+          2.2760696411132812,
+          3.4626212120056152
+        ],
+        "dimensionsM": [
+          16.15031147003174,
+          3.3260695934295654,
+          6.925260066986084
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "wholeship_mule_pitborn_junk",
+      "assetId": "SF_MULE_PITBORN_JUNK",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/mule_pitborn_junk.glb",
+      "tris": 44436,
+      "bytes": 2830292,
+      "textureSize": 1024,
+      "mount": "origin",
+      "note": "Row 514 Pitborn junk-and-string-light kit (salvage tender / cull announcer). Variant of mule + welded plates and string lamps.",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "bounds": {
+        "min": [
+          -8.120311737060547,
+          -1.0499999523162842,
+          -3.4626388549804688
+        ],
+        "max": [
+          8.031285285949707,
+          2.2760746479034424,
+          3.4626212120056152
+        ],
+        "dimensionsM": [
+          16.151597023010254,
+          3.3260746002197266,
+          6.925260066986084
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "wholeship_ironback_pitborn_junk",
+      "assetId": "SF_IRONBACK_PITBORN_JUNK",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/ironback_pitborn_junk.glb",
+      "tris": 71775,
+      "bytes": 4054968,
+      "textureSize": 1024,
+      "mount": "origin",
+      "note": "Row 514 Pitborn junk kit (yard tender — the hull presence fields at Ashfall/Vesta/Ceres). Variant of ironback + skin-seated scrap plates and string lamps.",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "bounds": {
+        "min": [
+          -9.970586776733398,
+          -1.0499999523162842,
+          -3.3908004760742188
+        ],
+        "max": [
+          9.946377754211426,
+          2.7751877307891846,
+          3.3908004760742188
+        ],
+        "dimensionsM": [
+          19.916964530944824,
+          3.8251876831054688,
+          6.7816009521484375
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "wholeship_ranger_archive_censor",
+      "assetId": "SF_RANGER_ARCHIVE_CENSOR",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/ranger_archive_censor.glb",
+      "tris": 48728,
+      "bytes": 2984036,
+      "textureSize": 1024,
+      "mount": "origin",
+      "note": "Row 514 Archive indigo scriptorium kit (censor frigate). Variant of ranger.",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "bounds": {
+        "min": [
+          -8.320536613464355,
+          -0.6499999761581421,
+          -3.770914077758789
+        ],
+        "max": [
+          9.410038948059082,
+          2.7469706535339355,
+          3.770984172821045
+        ],
+        "dimensionsM": [
+          17.730575561523438,
+          3.3969706296920776,
+          7.541898250579834
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "wholeship_ranger_verge_surveyor",
+      "assetId": "SF_RANGER_VERGE_SURVEYOR",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/ranger_verge_surveyor.glb",
+      "tris": 50522,
+      "bytes": 3081276,
+      "textureSize": 1024,
+      "mount": "origin",
+      "note": "Row 514 Verge-Layers nacre-lattice kit (surveyor prism). Variant of ranger + skin-seated strut lattice.",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "bounds": {
+        "min": [
+          -8.320536613464355,
+          -0.6499999761581421,
+          -3.770914077758789
+        ],
+        "max": [
+          9.410038948059082,
+          2.7469706535339355,
+          3.770984172821045
+        ],
+        "dimensionsM": [
+          17.730575561523438,
+          3.3969706296920776,
+          7.541898250579834
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "wholeship_kestrel_understory_growth",
+      "assetId": "SF_KESTREL_UNDERSTORY_GROWTH",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/kestrel_understory_growth.glb",
+      "tris": 63604,
+      "bytes": 3794960,
+      "textureSize": 1024,
+      "mount": "origin",
+      "note": "Row 514 Understory Overgrowth kit (gardener skiff). Variant of kestrel + skin-seated moss/vines.",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "bounds": {
+        "min": [
+          -14.120523452758789,
+          -3.049999952316284,
+          -6.6305999755859375
+        ],
+        "max": [
+          13.399999618530273,
+          3.7699413299560547,
+          6.6305999755859375
+        ],
+        "dimensionsM": [
+          27.520523071289062,
+          6.819941282272339,
+          13.261199951171875
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
       "id": "wholeship_yard_tug",
       "category": "wholeships",
       "priority": "P2",

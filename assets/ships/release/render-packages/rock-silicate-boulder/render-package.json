@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "547d1848faa8abd218ce2d9f639943f08bd7500b0f440f48375cdc9461873d4b",
+  "contentHash": "bd0827a982604fbfbe3ae49d051c131e64515f913602f37a35f45829014b72d2",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1395,8 +1395,8 @@
       "uri": "place_rock_silicate_boulder.glb"
     },
     "sourceManifest": {
-      "bytes": 300891,
-      "sha256": "50dce1990827c217ea558e306d2fd95a0b8c63660e437c5595127100ce1f8393",
+      "bytes": 307707,
+      "sha256": "6f2278df60560e6b8ffac9ea5d7f3df816951bb08252171b81e759230549f8a6",
       "uri": "pilots.json"
     }
   },
@@ -2351,7 +2351,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_silicate_boulder.glb"
   },
-  "runtimeHash": "4bcbd32f8fac3d0f1a1fe4307defb7ac500a90f4513f1b90c5186451db75cd60",
+  "runtimeHash": "ddb75ddeebfb3bb66284c41d87c780dbc7323988e87bc0ac78ca998ebf9e281e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
