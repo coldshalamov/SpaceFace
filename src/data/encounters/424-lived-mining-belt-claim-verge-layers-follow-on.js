@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, VERGE — send the relief to Mining Belt instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, VERGE — send the relief to Mining Belt; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "GASKET",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "VERGE: The gasket sits inside our claim at mining belt. Keep your cutter out. — GASKET ON THE MINING BELT.",
+      "line": "VERGE: The gasket sits inside our claim at Mining Belt. Keep your cutter out. — GASKET ON THE MINING BELT.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "VERGE: Park the gasket inside twenty of the receiver, dead slow for a four-count. — GASKET ON THE MINING BELT.",
+      "line": "VERGE: Tow the gasket over — a hundred-twenty of drag — and park it inside twenty of the receiver, dead slow for a four-count. — GASKET ON THE MINING BELT.",
       "channel": "info",
       "next": "offer"
     },
@@ -185,7 +185,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "VERGE: Time ran out on the gasket ask — GASKET ON THE MINING BELT. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "VERGE: The 24 cr stays spent — the relief still runs on your credit at Mining Belt; the close-in just never came — GASKET ON THE MINING BELT.",
       "keepMotion": false,
       "steps": [
         {
@@ -309,7 +309,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "GASKET ON THE MINING BELT",
-  "primaryLine": "VERGE: The gasket sits inside our claim at mining belt. Keep your cutter out.",
+  "primaryLine": "VERGE: The gasket sits inside our claim at Mining Belt. Keep your cutter out.",
   "factionId": "faction_verge_layers",
   "choices": [
     {
@@ -319,8 +319,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, VERGE — send the relief to Mining Belt instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, VERGE — send the relief to Mining Belt; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

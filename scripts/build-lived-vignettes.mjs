@@ -845,6 +845,25 @@ const RC459_STEPS = {
   ],
 };
 
+// Prop placement is part of the physical ask, not decoration: a towed prop starts far
+// enough out that hauling it to the receiver — the exact route the instruction names —
+// clears the 120-WU displacement bar before the park/settle window can open (~197 WU
+// from hull_0). A salvage prop starts inside the scavengers' own zone so "drag it clear"
+// is real work; a strain prop stays on the hook beside the hail (it has no drag ask).
+const PROP_TOW_OFFSET = Object.freeze({ dx: 170, dz: -100 });
+const PROP_SCAV_OFFSET = Object.freeze({ dx: 40, dz: -20 });
+const PROP_HOOK_OFFSET = Object.freeze({ dx: 54, dz: -28 });
+const RC459_PROP_OFFSETS = {
+  tow_settle: PROP_TOW_OFFSET,
+  tow_clear: PROP_TOW_OFFSET,
+  relay: PROP_TOW_OFFSET,
+  park_tight: PROP_TOW_OFFSET,
+  clear_scav: PROP_SCAV_OFFSET,
+  deliver_second: PROP_TOW_OFFSET,
+  strain: PROP_HOOK_OFFSET,
+  toll: PROP_TOW_OFFSET,
+};
+
 // order → recipe. keepMotion where the cast still moves (escort/procession verbs);
 // cast: 3 where the recipe needs a second hull and the scene only spawned one.
 const RC459_RECIPES = {
@@ -886,7 +905,7 @@ const RC459_RECIPES = {
 // so no two curated vignettes transmit the same line.
 const RC459_COPY = {
   tow_settle: {
-    instruction: '${voice}: Tether the ${noun}, haul it to the receiver hull, let go, and let it drift to rest within thirty.',
+    instruction: '${voice}: Tether the ${noun} and haul it to the receiver hull — a hundred-twenty of drag before you let go — then let it drift to rest within thirty.',
     aLabel: 'Tow the ${noun} to the receiver',
     aLine: 'I will put my line on the ${noun} and settle it at the receiver hull myself.',
     aReceipt: 'The ${noun} came in on your line and rests inside thirty of the receiver at ${placeLabel}.',
@@ -898,25 +917,25 @@ const RC459_COPY = {
     aReceipt: 'The ${noun} drifted a hundred-twenty clear of its berth at ${placeLabel} and settled on its own.',
   },
   relay: {
-    instruction: '${voice}: Carry the ${noun} past our hull, then the far hull, in that order. Release and let it rest.',
+    instruction: '${voice}: Carry the ${noun} a hundred-twenty on the line — past our hull first, then the far hull, in that order. Release and let it rest.',
     aLabel: 'Relay the ${noun} past both hulls',
     aLine: 'I carry the ${noun} past your hull, then the far one — in that order — and let it rest.',
     aReceipt: 'The ${noun} passed both hulls in order and rests loose at ${placeLabel}.',
   },
   park_tight: {
-    instruction: '${voice}: Park the ${noun} inside twenty of the receiver, dead slow for a four-count.',
+    instruction: '${voice}: Tow the ${noun} over — a hundred-twenty of drag — and park it inside twenty of the receiver, dead slow for a four-count.',
     aLabel: 'Park the ${noun} beside the receiver',
     aLine: 'I set the ${noun} inside twenty of your receiver hull and hold it dead slow for the count.',
     aReceipt: 'The ${noun} sits parked inside twenty of the receiver at ${placeLabel}, delivered dead slow.',
   },
   clear_scav: {
-    instruction: '${voice}: Drag the ${noun} a hundred-eighty clear of both scavenger hulls, release, settle.',
+    instruction: '${voice}: The ${noun} sits inside the scavengers\' ring. Drag it a hundred-eighty clear of both their hulls — a hundred-twenty of line work at least — release, settle.',
     aLabel: 'Haul the ${noun} clear of both hulls',
     aLine: 'I drag the ${noun} a hundred-eighty off both scavenger hulls and leave it settled.',
     aReceipt: 'The ${noun} rests a hundred-eighty clear of both scavenger hulls at ${placeLabel}.',
   },
   deliver_second: {
-    instruction: '${voice}: The ${noun} goes to the second hull, not ours. Tow it there, release, park it inside thirty.',
+    instruction: '${voice}: The ${noun} goes to the second hull, not ours — a hundred-twenty of haul. Tow it there, release, park it inside thirty.',
     aLabel: 'Deliver the ${noun} to the second hull',
     aLine: 'The ${noun} berths at the second hull — I tow it there and park it inside thirty.',
     aReceipt: 'The ${noun} is parked inside thirty of the second hull at ${placeLabel} — the first kept its hands off.',
@@ -982,8 +1001,11 @@ const RC459_COPY = {
 
 // Shared curated choice frames: `b` is the paid sponsor branch (its price rides on the
 // label, never hidden), `c` is the clean decline. The toll branch overrides above.
-const RC459_B_LABEL = 'Sponsor relief — ${bCost} cr';
-const RC459_B_LINE = 'Take ${bCost} cr, ${voice} — send the relief to ${placeLabel} instead of my hands.';
+// The sponsor branch is paid AND physical: the label carries the price and the close,
+// slow meeting it buys — the charge lands before the await, so a lapsed meeting keeps
+// the debit and says so.
+const RC459_B_LABEL = 'Sponsor relief — ${bCost} cr, then close in slow';
+const RC459_B_LINE = 'Take ${bCost} cr, ${voice} — send the relief to ${placeLabel}; I close your hull dead slow for the hand-off.';
 const RC459_B_RECEIPT = '${bCost} cr funded the relief call — ${voice} sends the shift at ${placeLabel} on your credit.';
 const RC459_C_LABEL = 'Decline and depart';
 const RC459_C_LINE = 'Not my work, ${voice} — my hull is leaving ${placeLabel}.';
@@ -1007,6 +1029,17 @@ function curatedValues(row, recipe) {
 function curatedFill(row, recipe) {
   const values = curatedValues(row, recipe);
   return (tpl) => String(tpl).replace(/\$\{(noun|voice|placeLabel|aCost|bCost)\}/g, (_, k) => values[k]);
+}
+
+// Retained curated hails spoke the zone slug lowercase ("at nebula fog") while every
+// authored field around it capitalizes the same name — the transmitted hail carries the
+// scene's capitalized place label, same as its receipts and choice lines do.
+function curatedHail(row) {
+  const hail = String(row.hail || '');
+  const phrase = String(row.place || '').replace(/_/g, ' ');
+  if (!phrase) return hail;
+  const label = phrase.replace(/\b\w/g, (m) => m.toUpperCase());
+  return hail.replace(phrase, label);
 }
 
 // Choice rows for a curated scene: `a` names the physical job, `b` names its price on the
@@ -1059,17 +1092,18 @@ function curatedPhases(row, recipe) {
     { id: 'spawn', verb: 'spawn', next: recipe.prop ? 'prop' : 'hail' },
   ];
   if (recipe.prop) {
+    const off = RC459_PROP_OFFSETS[recipe.kind] || PROP_TOW_OFFSET;
     phases.push({
       id: 'prop', verb: 'prop',
       scanLabel: row.prop || (row.title || 'canister').split(' ')[0],
-      dx: 54, dz: -28, radius: 9, mass: 48, next: 'hail',
+      dx: off.dx, dz: off.dz, radius: 9, mass: 48, next: 'hail',
     });
   } else if (row.prop) {
     // Baseline phase ID retained as a dormant noop (compatibility): the old module ran a
     // real prop phase here; the curated recipe does not need it, but the ID survives.
     phases.push({ id: 'prop', verb: 'noop' });
   }
-  phases.push({ id: 'hail', verb: 'say', line: row.hail + tail, channel: 'info', primary: true, next: 'move' });
+  phases.push({ id: 'hail', verb: 'say', line: curatedHail(row) + tail, channel: 'info', primary: true, next: 'move' });
   phases.push({ id: 'move', verb: 'motion', seconds: MOVE_S, motion, next: 'a0' });
   row.color.forEach((line, index) => {
     const sayId = `a${index}`;
@@ -1117,9 +1151,13 @@ function curatedPhases(row, recipe) {
       id: `await_${choiceId}`,
       verb: 'await',
       timeoutS: 120,
+      // A lapsed branch speaks what the ledger actually holds: the paid toll and the
+      // funded relief both keep their debit and say so; unpaid asks owe nothing.
       timeoutLine: isToll && choiceId === 'a'
         ? `${row.voice}: Count paid, no pass. The lane reopens when the hull crosses — or the count stands and we log the stop at ${placeLabel}.`
-        : `${row.voice}: Time ran out on the ${String(row.prop || 'work').toLowerCase()} ask — ${row.title}. Nothing owed either way — the lane forgets it.`,
+        : !isToll && choiceId === 'b'
+          ? `${row.voice}: The ${chargeB} cr stays spent — the relief still runs on your credit at ${placeLabel}; the close-in just never came — ${row.title}.`
+          : `${row.voice}: Time ran out on the ${String(row.prop || 'work').toLowerCase()} ask — ${row.title}. Nothing owed either way — the lane forgets it.`,
       keepMotion: recipe.keepMotion === true,
       steps: stepsList,
       next: nextPhase,
@@ -1256,7 +1294,7 @@ function rowText(row) {
     motive: 'lane_courtesy',
     engagementTrigger: 'hailed',
     title: row.title,
-    primaryLine: row.hail,
+    primaryLine: recipe ? curatedHail(row) : row.hail,
     factionId: row.factionId,
     choices,
     timeoutChoice: spec.timeoutChoice,

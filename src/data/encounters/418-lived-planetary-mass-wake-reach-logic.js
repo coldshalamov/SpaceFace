@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 12 cr",
-      "playerLine": "Take 12 cr, SLIP — send the relief to Planetary Mass instead of my hands."
+      "label": "Sponsor relief — 12 cr, then close in slow",
+      "playerLine": "Take 12 cr, SLIP — send the relief to Planetary Mass; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "PIN",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "SLIP: Your wake crossed the pin marker at planetary mass. Log it or clear it. — PIN ON THE PLANETARY MASS.",
+      "line": "SLIP: Your wake crossed the pin marker at Planetary Mass. Log it or clear it. — PIN ON THE PLANETARY MASS.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "SLIP: Park the pin inside twenty of the receiver, dead slow for a four-count. — PIN ON THE PLANETARY MASS.",
+      "line": "SLIP: Tow the pin over — a hundred-twenty of drag — and park it inside twenty of the receiver, dead slow for a four-count. — PIN ON THE PLANETARY MASS.",
       "channel": "info",
       "next": "offer"
     },
@@ -185,7 +185,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "SLIP: Time ran out on the work ask — PIN ON THE PLANETARY MASS. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "SLIP: The 12 cr stays spent — the relief still runs on your credit at Planetary Mass; the close-in just never came — PIN ON THE PLANETARY MASS.",
       "keepMotion": false,
       "steps": [
         {
@@ -309,7 +309,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "PIN ON THE PLANETARY MASS",
-  "primaryLine": "SLIP: Your wake crossed the pin marker at planetary mass. Log it or clear it.",
+  "primaryLine": "SLIP: Your wake crossed the pin marker at Planetary Mass. Log it or clear it.",
   "factionId": "faction_reach",
   "choices": [
     {
@@ -319,8 +319,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 12 cr",
-      "playerLine": "Take 12 cr, SLIP — send the relief to Planetary Mass instead of my hands."
+      "label": "Sponsor relief — 12 cr, then close in slow",
+      "playerLine": "Take 12 cr, SLIP — send the relief to Planetary Mass; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

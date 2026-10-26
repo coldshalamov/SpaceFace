@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, VERGE — send the relief to Nebula Fog instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, VERGE — send the relief to Nebula Fog; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "VERGE: Keep the ribbon behind your drive through nebula fog. No passing. — RIBBON ON THE NEBULA FOG.",
+      "line": "VERGE: Keep the ribbon behind your drive through Nebula Fog. No passing. — RIBBON ON THE NEBULA FOG.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -174,7 +174,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "VERGE: Time ran out on the work ask — RIBBON ON THE NEBULA FOG. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "VERGE: The 24 cr stays spent — the relief still runs on your credit at Nebula Fog; the close-in just never came — RIBBON ON THE NEBULA FOG.",
       "keepMotion": true,
       "steps": [
         {
@@ -298,7 +298,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "RIBBON ON THE NEBULA FOG",
-  "primaryLine": "VERGE: Keep the ribbon behind your drive through nebula fog. No passing.",
+  "primaryLine": "VERGE: Keep the ribbon behind your drive through Nebula Fog. No passing.",
   "factionId": "faction_verge_layers",
   "choices": [
     {
@@ -308,8 +308,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, VERGE — send the relief to Nebula Fog instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, VERGE — send the relief to Nebula Fog; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

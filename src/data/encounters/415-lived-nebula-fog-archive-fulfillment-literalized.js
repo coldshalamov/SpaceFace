@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, DISPATCH — send the relief to Nebula Fog instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, DISPATCH — send the relief to Nebula Fog; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "DISPATCH: The spar carries a name at nebula fog. Read it without adding one. — SPAR ON THE NEBULA FOG.",
+      "line": "DISPATCH: The spar carries a name at Nebula Fog. Read it without adding one. — SPAR ON THE NEBULA FOG.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -170,7 +170,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "DISPATCH: Time ran out on the work ask — SPAR ON THE NEBULA FOG. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "DISPATCH: The 18 cr stays spent — the relief still runs on your credit at Nebula Fog; the close-in just never came — SPAR ON THE NEBULA FOG.",
       "keepMotion": false,
       "steps": [
         {
@@ -294,7 +294,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "SPAR ON THE NEBULA FOG",
-  "primaryLine": "DISPATCH: The spar carries a name at nebula fog. Read it without adding one.",
+  "primaryLine": "DISPATCH: The spar carries a name at Nebula Fog. Read it without adding one.",
   "factionId": "faction_fulfillment",
   "choices": [
     {
@@ -304,8 +304,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, DISPATCH — send the relief to Nebula Fog instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, DISPATCH — send the relief to Nebula Fog; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

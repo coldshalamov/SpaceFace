@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 30 cr",
-      "playerLine": "Take 30 cr, CANTOR — send the relief to Trade Lane instead of my hands."
+      "label": "Sponsor relief — 30 cr, then close in slow",
+      "playerLine": "Take 30 cr, CANTOR — send the relief to Trade Lane; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "KETTLE",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CANTOR: A distress call names the kettle near trade lane. Answer or stand clear. — KETTLE ON THE TRADE LANE.",
+      "line": "CANTOR: A distress call names the kettle near Trade Lane. Answer or stand clear. — KETTLE ON THE TRADE LANE.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -183,7 +183,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "CANTOR: Time ran out on the work ask — KETTLE ON THE TRADE LANE. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "CANTOR: The 30 cr stays spent — the relief still runs on your credit at Trade Lane; the close-in just never came — KETTLE ON THE TRADE LANE.",
       "keepMotion": false,
       "steps": [
         {
@@ -307,7 +307,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "KETTLE ON THE TRADE LANE",
-  "primaryLine": "CANTOR: A distress call names the kettle near trade lane. Answer or stand clear.",
+  "primaryLine": "CANTOR: A distress call names the kettle near Trade Lane. Answer or stand clear.",
   "factionId": "faction_choir",
   "choices": [
     {
@@ -317,8 +317,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 30 cr",
-      "playerLine": "Take 30 cr, CANTOR — send the relief to Trade Lane instead of my hands."
+      "label": "Sponsor relief — 30 cr, then close in slow",
+      "playerLine": "Take 30 cr, CANTOR — send the relief to Trade Lane; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

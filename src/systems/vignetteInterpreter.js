@@ -72,6 +72,13 @@ function tetherOf(state) {
   return state && state.player ? state.player.tether || null : null;
 }
 
+// The line-work steps read the prop implicitly rather than through `subject`/`of`/`at`.
+// A dead, recycled, or non-finite-positioned prop is a gone subject on EVERY prop-dependent
+// step — never a satisfied ask — so each of them validates the referenced body itself.
+function propEnt(d, live, state, v) {
+  return subjectEnt(roleEnt(d, live, state, v, 'prop'));
+}
+
 // Every physical predicate observes; it never moves a body, touches the tether, or writes
 // credits. A missing/dead/non-finite subject is a 'gone' marker the await aborts on.
 // `true` completes the step, 'gone' aborts the await, false keeps it running.
@@ -97,12 +104,18 @@ function evalAwaitStep(d, live, state, v, step, now) {
   };
   switch (step.kind) {
     case 'latched':
+      // The prop is the implicit subject of every line-work step: validate it every
+      // observation, not just at step entry. A dead, recycled, or non-finite body cannot
+      // hold a latch — it is 'gone', never a satisfied ask.
+      if (!propEnt(d, live, state, v)) return 'gone';
       if (latchedToProp) v.latchedPropId = propId;
       return latchedToProp;
     // Amended bar (plan gate): 'the line is working' = an active latch that has finished
     // its capture and carries real load — tether.load ≥ 0.35 — held 2 s, not the legacy
-    // strain ratio which never reaches 0.05 under a real tow.
+    // strain ratio which never reaches 0.05 under a real tow. The anchor body is validated
+    // the same way — a destroyed prop strains nothing.
     case 'strained': {
+      if (!propEnt(d, live, state, v)) return 'gone';
       const ok = latchedToProp && tether.phase !== 'slack'
         && num(tether.load, 0) >= num(step.loadMin, 0.35);
       return heldFor(ok);
@@ -130,7 +143,10 @@ function evalAwaitStep(d, live, state, v, step, now) {
       return v.visitArmed === true;
     }
     case 'released':
-      return propId == null || String(tether && tether.targetId) !== String(propId);
+      // A release only exists relative to a living anchor body: a prop that died or went
+      // non-finite under the line is 'gone', not "freed".
+      if (!propEnt(d, live, state, v)) return 'gone';
+      return String(tether && tether.targetId) !== String(propId);
     case 'settled': {
       const prop = roleEnt(d, live, state, v, 'prop');
       if (!subjectEnt(prop)) return 'gone';
@@ -227,11 +243,11 @@ function evalAwaitStep(d, live, state, v, step, now) {
       const a = roleEnt(d, live, state, v, (step.of || [])[0]);
       const b = roleEnt(d, live, state, v, (step.of || [])[1]);
       if (!subjectEnt(a) || !subjectEnt(b)) return 'gone';
-      // The gap is the bounded segment between the two hulls. Crossing it means the
-      // player's signed perpendicular distance to the AB line changed sides between
-      // observations AND the interpolated crossing point landed on the segment itself,
-      // inside `within` of its midpoint — sliding along the axis or crossing the line's
-      // extension past the hulls does not count.
+      // The gap is the bounded segment between the two hulls. Crossing it is an event in
+      // the PLAYER's own path only: both the previous and the current player position are
+      // measured against today's segment. Reference geometry sliding or pivoting under a
+      // stationary player rewrites the line, not the crossing — old and new reads land on
+      // the same side, so hull motion alone can never count.
       const abx = b.pos.x - a.pos.x, abz = b.pos.z - a.pos.z;
       const lenSq = abx * abx + abz * abz;
       const len = Math.sqrt(lenSq) || 1;
@@ -240,9 +256,15 @@ function evalAwaitStep(d, live, state, v, step, now) {
       const perp = sideOf(player.pos.x, player.pos.z);
       const prev = v.gapPrev || null;
       v.gapPrev = { perp, x: player.pos.x, z: player.pos.z };
-      if (!prev || (prev.perp >= 0) === (perp >= 0)) return false;
-      const denom = prev.perp - perp;
-      const frac = Math.abs(denom) > 1e-9 ? prev.perp / denom : 0.5;
+      if (!prev) return false;
+      const prevPerp = sideOf(prev.x, prev.z);
+      if ((prevPerp >= 0) === (perp >= 0)) return false;
+      // The sign change came from the player's own displacement between observations.
+      // The interpolated crossing point on today's segment must still land between the
+      // hulls and inside `within` of the midpoint — sliding along the axis or crossing
+      // the line's extension past the hulls does not count.
+      const denom = prevPerp - perp;
+      const frac = Math.abs(denom) > 1e-9 ? prevPerp / denom : 0.5;
       const cx = prev.x + (player.pos.x - prev.x) * frac;
       const cz = prev.z + (player.pos.z - prev.z) * frac;
       const rel = lenSq > 0 ? ((cx - a.pos.x) * abx + (cz - a.pos.z) * abz) / lenSq : 0.5;
@@ -532,7 +554,13 @@ function runVerb(d, live, state, spec, phase) {
   if (verb === 'prop') {
     const anchor = live.anchor || { x: 0, z: 0 };
     const prop = d.spawnProp(live, {
-      type: 'beacon',
+      // The tow scenes stand on the real massline, so the prop must be a body the massline
+      // can actually see and catch: 'payload' lands in the acquisition index's attachable
+      // buckets (a 'beacon' never does — it is invisible to the scored pick), resolves to
+      // combat_profile_tether_payload for its 'tether'-tagged socket, and carries a dynamic
+      // body the rope can drag. It stays data.parentType 'story_prop', so the vignette owns
+      // none of its maneuvering — only the player's line moves it.
+      type: 'payload',
       pos: { x: anchor.x + (phase.dx || 40), z: anchor.z + (phase.dz || -24) },
       radius: phase.radius || 8,
       mass: phase.mass || 40,
@@ -548,7 +576,12 @@ function runVerb(d, live, state, spec, phase) {
     live.roles = live.roles || {};
     live.ids.push(prop.id);
     live.roles[prop.id] = phase.role || 'prop';
-    if (prop.data) prop.data.masslineTetherable = true;
+    if (prop.data) {
+      prop.data.masslineTetherable = true;
+      // Payload already resolves to combat_profile_tether_payload by entity-type default;
+      // only stamp it when the profile is not already authored so an authored one wins.
+      if (prop.data.combatProfileId == null) prop.data.combatProfileId = 'combat_profile_tether_payload';
+    }
     return true;
   }
   if (verb === 'grant') {

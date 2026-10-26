@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, PIT — send the relief to Radiation Field instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, PIT — send the relief to Radiation Field; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "PIT: The satchel carries a name at radiation field. Read it without adding one. — SATCHEL ON THE RADIATION FIELD.",
+      "line": "PIT: The satchel carries a name at Radiation Field. Read it without adding one. — SATCHEL ON THE RADIATION FIELD.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -165,7 +165,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "PIT: Time ran out on the work ask — SATCHEL ON THE RADIATION FIELD. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "PIT: The 18 cr stays spent — the relief still runs on your credit at Radiation Field; the close-in just never came — SATCHEL ON THE RADIATION FIELD.",
       "keepMotion": false,
       "steps": [
         {
@@ -289,7 +289,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "SATCHEL ON THE RADIATION FIELD",
-  "primaryLine": "PIT: The satchel carries a name at radiation field. Read it without adding one.",
+  "primaryLine": "PIT: The satchel carries a name at Radiation Field. Read it without adding one.",
   "factionId": "faction_pitborn",
   "choices": [
     {
@@ -299,8 +299,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, PIT — send the relief to Radiation Field instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, PIT — send the relief to Radiation Field; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, CLERK — send the relief to Ambush Lane instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, CLERK — send the relief to Ambush Lane; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CLERK: The filter carries a name at ambush lane. Read it without adding one. — FILTER ON THE AMBUSH LANE.",
+      "line": "CLERK: The filter carries a name at Ambush Lane. Read it without adding one. — FILTER ON THE AMBUSH LANE.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -166,7 +166,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "CLERK: Time ran out on the work ask — FILTER ON THE AMBUSH LANE. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "CLERK: The 18 cr stays spent — the relief still runs on your credit at Ambush Lane; the close-in just never came — FILTER ON THE AMBUSH LANE.",
       "keepMotion": false,
       "steps": [
         {
@@ -290,7 +290,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "FILTER ON THE AMBUSH LANE",
-  "primaryLine": "CLERK: The filter carries a name at ambush lane. Read it without adding one.",
+  "primaryLine": "CLERK: The filter carries a name at Ambush Lane. Read it without adding one.",
   "factionId": "faction_scn",
   "choices": [
     {
@@ -300,8 +300,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, CLERK — send the relief to Ambush Lane instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, CLERK — send the relief to Ambush Lane; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

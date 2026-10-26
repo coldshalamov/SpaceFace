@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "DENT",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CANTOR: The dent is due at mining belt. Pay, dispute, or keep moving. — DENT ON THE MINING BELT.",
+      "line": "CANTOR: The dent is due at Mining Belt. Pay, dispute, or keep moving. — DENT ON THE MINING BELT.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -307,7 +307,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "DENT ON THE MINING BELT",
-  "primaryLine": "CANTOR: The dent is due at mining belt. Pay, dispute, or keep moving.",
+  "primaryLine": "CANTOR: The dent is due at Mining Belt. Pay, dispute, or keep moving.",
   "factionId": "faction_choir",
   "choices": [
     {

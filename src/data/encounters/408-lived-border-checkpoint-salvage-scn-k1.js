@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, CLERK — send the relief to Border Checkpoint instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, CLERK — send the relief to Border Checkpoint; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "TAG",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CLERK: The tag came loose at border checkpoint. We have not called it scrap. — TAG ON THE BORDER CHECKPOINT.",
+      "line": "CLERK: The tag came loose at Border Checkpoint. We have not called it scrap. — TAG ON THE BORDER CHECKPOINT.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CLERK: Tether the tag, haul it to the receiver hull, let go, and let it drift to rest within thirty. — TAG ON THE BORDER CHECKPOINT.",
+      "line": "CLERK: Tether the tag and haul it to the receiver hull — a hundred-twenty of drag before you let go — then let it drift to rest within thirty. — TAG ON THE BORDER CHECKPOINT.",
       "channel": "info",
       "next": "offer"
     },
@@ -185,7 +185,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "CLERK: Time ran out on the work ask — TAG ON THE BORDER CHECKPOINT. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "CLERK: The 24 cr stays spent — the relief still runs on your credit at Border Checkpoint; the close-in just never came — TAG ON THE BORDER CHECKPOINT.",
       "keepMotion": false,
       "steps": [
         {
@@ -309,7 +309,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "TAG ON THE BORDER CHECKPOINT",
-  "primaryLine": "CLERK: The tag came loose at border checkpoint. We have not called it scrap.",
+  "primaryLine": "CLERK: The tag came loose at Border Checkpoint. We have not called it scrap.",
   "factionId": "faction_scn",
   "choices": [
     {
@@ -319,8 +319,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, CLERK — send the relief to Border Checkpoint instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, CLERK — send the relief to Border Checkpoint; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

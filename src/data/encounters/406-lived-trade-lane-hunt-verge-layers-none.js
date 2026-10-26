@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, VERGE — send the relief to Trade Lane instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, VERGE — send the relief to Trade Lane; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "VERGE: We found the lamp trail crossing trade lane. Stay outside it. — LAMP ON THE TRADE LANE.",
+      "line": "VERGE: We found the lamp trail crossing Trade Lane. Stay outside it. — LAMP ON THE TRADE LANE.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -167,7 +167,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "VERGE: Time ran out on the work ask — LAMP ON THE TRADE LANE. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "VERGE: The 24 cr stays spent — the relief still runs on your credit at Trade Lane; the close-in just never came — LAMP ON THE TRADE LANE.",
       "keepMotion": true,
       "steps": [
         {
@@ -291,7 +291,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "LAMP ON THE TRADE LANE",
-  "primaryLine": "VERGE: We found the lamp trail crossing trade lane. Stay outside it.",
+  "primaryLine": "VERGE: We found the lamp trail crossing Trade Lane. Stay outside it.",
   "factionId": "faction_verge_layers",
   "choices": [
     {
@@ -301,8 +301,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, VERGE — send the relief to Trade Lane instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, VERGE — send the relief to Trade Lane; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

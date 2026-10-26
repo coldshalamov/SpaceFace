@@ -10,6 +10,13 @@ import { join } from 'node:path';
 import { createSimulation } from '../src/core/sim.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { tickLivedVignettes } from '../src/systems/livedWorldDirector.js';
+import { tetherGameplay } from '../src/systems/tetherGameplay.js';
+import { createAttachmentService } from '../src/combat/attachments.js';
+import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
+import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
+import { ensurePhysicsBodySpec, writePhysicsControl } from '../src/core/physicsAuthority.js';
+import { makeEntity, allocateEntityId } from '../src/core/entity.js';
+import { save } from '../src/save/saveSystem.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { zonesForSector, zoneAt } from '../src/data/sectorZones.js';
@@ -126,7 +133,7 @@ test('catalog: thirty curated entries compile, keep identities, and mark rotatio
     'no ambient scene is admitted to automatic rotation');
 });
 
-test('physical gate: tow_settle resolves only after the real tow sequence (order 401)', async () => {
+test('physical gate: tow_settle resolves on the INSTRUCTED route (order 401)', async () => {
   const mods = await loadCurated();
   const row = mods.find((m) => m.order === 401);
   const t = boot();
@@ -145,6 +152,12 @@ test('physical gate: tow_settle resolves only after the real tow sequence (order
   const hull0 = entOf(t, live, 'hull_0');
   assert.ok(prop && hull0, 'prop + receiving hull exist');
   const propStart = { ...prop.pos };
+  // Authored layout truth: the instruction says "haul it to the receiver hull", so the
+  // berth itself must sit far enough out that the instructed route clears the 120-WU
+  // displacement bar before the park window opens (worst case: park on the near rim).
+  assert.ok(Math.hypot(propStart.x - hull0.pos.x, propStart.z - hull0.pos.z) >= 150,
+    `the instructed haul must be able to satisfy displaced:120 — prop starts `
+    + `${Math.hypot(propStart.x - hull0.pos.x, propStart.z - hull0.pos.z).toFixed(1)} WU from hull_0`);
   // Wrong object latched — never satisfies the gate.
   t.state.player.tether = { active: true, targetId: hull0.id };
   ticks(t, 30);
@@ -154,28 +167,32 @@ test('physical gate: tow_settle resolves only after the real tow sequence (order
   prop.pos.x = propStart.x + 200; prop.pos.z = propStart.z;
   ticks(t, 30);
   assert.notEqual(live.phase, 'done', 'moving an unlatched prop is not a tow');
-  // Real sequence: the director samples at ~1 Hz, so each held physical stage must last
-  // at least a second of sim — latch, drag the prop 200 WU while latched, then release
-  // it parked beside the receiving hull and let it settle.
+  // The instructed route, verbatim: latch the prop where it lies, haul it TO the receiver
+  // hull (no detour, no pre-drag), let go, and let it drift to rest inside thirty.
   prop.pos.x = propStart.x; prop.pos.z = propStart.z;
   t.state.player.tether = { active: true, targetId: prop.id, phase: 'capture', load: 0.2 };
   ticks(t, 90);
-  prop.pos.x = propStart.x + 200;
-  ticks(t, 90);
-  prop.pos.x = hull0.pos.x + 25; prop.pos.z = hull0.pos.z;
+  for (let leg = 1; leg <= 3; leg += 1) {
+    prop.pos.x = propStart.x + (hull0.pos.x + 25 - propStart.x) * (leg / 3);
+    prop.pos.z = propStart.z + (hull0.pos.z - propStart.z) * (leg / 3);
+    ticks(t, 60);
+  }
   t.state.player.tether = { active: false, targetId: null };
   prop.vel.x = 0; prop.vel.z = 0;
   ticks(t, 60 * 8);
-  assert.equal(live.phase, 'done', 'the tow sequence resolves the scene');
+  assert.equal(live.phase, 'done', 'the instructed tow route resolves the scene');
   assert.equal(live.outcome, 'a');
   assert.equal(t.state.player.credits, creditsBefore + 48, 'yard work pays 48');
 });
 
-test('economics + timeout: the toll charges 36, grants 0, and a lapse is never silent', async () => {
+test('economics + timeout: the toll charges 36, grants 0, and a lapse speaks the kept debit', async () => {
   const mods = await loadCurated();
   const row = mods.find((m) => m.order === 536);
   const t = boot();
   t.state.player.credits = 500;
+  // Collect the encounter's transmitted speech — a lapse that "speaks" must actually emit.
+  const speech = [];
+  t.sim.bus.on('encounter:voice', (p) => speech.push(p && p.text));
   const { live } = fire(t, row.mod.spec.id);
   for (let i = 0; i < 900 && live.vars.vPhase !== 'offer'; i += 1) ticks(t, 1);
   assert.equal(live.vars.vPhase, 'offer');
@@ -190,6 +207,334 @@ test('economics + timeout: the toll charges 36, grants 0, and a lapse is never s
   ticks(t, 60 * 121);
   assert.equal(live.phase, 'done', 'expiry closes the encounter');
   assert.equal(t.state.player.credits, 464, 'the debit stands after a lapse');
+  const ack = speech.filter(Boolean).find((line) => /no pass|count stands|log the stop/i.test(line));
+  assert.ok(ack, `the lapsed toll must emit its paid timeout acknowledgement — heard: ${JSON.stringify(speech)}`);
+});
+
+test('economics + timeout: the funded relief keeps its 24 cr and says so on a lapse (order 401)', async () => {
+  const mods = await loadCurated();
+  const row = mods.find((m) => m.order === 401);
+  const t = boot();
+  t.state.player.credits = 500;
+  const speech = [];
+  t.sim.bus.on('encounter:voice', (p) => speech.push(p && p.text));
+  const { live } = fire(t, row.mod.spec.id);
+  for (let i = 0; i < 900 && live.vars.vPhase !== 'offer'; i += 1) ticks(t, 1);
+  assert.equal(live.vars.vPhase, 'offer');
+  const sponsor = row.mod.spec.choices.find((c) => c.id === 'b');
+  assert.ok(/24/.test(sponsor.label), 'the sponsor label names its price');
+  assert.ok(/close in slow|dead slow/i.test(sponsor.label + sponsor.playerLine),
+    'the sponsor branch discloses the required close, slow meeting');
+  t.director.emit('encounter:choose', { encounterId: live.id, choiceId: 'b' });
+  ticks(t, 2);
+  assert.equal(t.state.player.credits, 476, 'the relief debit lands before the meeting ask');
+  // Stall inside the close-in ring: the 120 s deadline lapses with the debit kept.
+  ticks(t, 60 * 121);
+  assert.equal(live.phase, 'done', 'expiry closes the encounter');
+  assert.equal(t.state.player.credits, 476, 'the retained relief debit stands after a lapse');
+  const ack = speech.filter(Boolean).find((line) => /stays spent/i.test(line));
+  assert.ok(ack,
+    `a lapsed paid branch must acknowledge the retained debit, not claim "nothing owed" — heard: ${JSON.stringify(speech)}`);
+  assert.ok(!/Nothing owed/i.test(String(ack)), 'the acknowledgement must not deny the charge that already landed');
+});
+
+// A dead or corrupt prop is a gone physical subject on EVERY prop-dependent step —
+// latch, strain, and release validate the body each tick, not just when their step opens.
+for (const [label, corrupt] of [
+  ['dead', (prop) => { prop.alive = false; }],
+  ['NaN-positioned', (prop) => { prop.pos.x = NaN; }],
+]) {
+  test(`physical gate: a ${label} prop aborts the strain scene physical_subject_gone (order 417)`, async () => {
+    const mods = await loadCurated();
+    const row = mods.find((m) => m.order === 417);
+    const t = boot();
+    const resolved = [];
+    t.sim.bus.on('encounter:resolved', (p) => resolved.push(p && p.outcome));
+    const { live } = fire(t, row.mod.spec.id);
+    for (let i = 0; i < 900 && live.vars.vPhase !== 'offer'; i += 1) ticks(t, 1);
+    assert.equal(live.vars.vPhase, 'offer');
+    t.director.emit('encounter:choose', { encounterId: live.id, choiceId: 'a' });
+    const prop = entOf(t, live, 'prop');
+    assert.ok(prop, 'the strain scene spawns its line-work prop');
+    // Provide the matching loaded tether the ask wants — the latch leg passes.
+    t.state.player.tether = { active: true, targetId: prop.id, phase: 'loaded', load: 0.5 };
+    for (let i = 0; i < 60 * 6 && live.phase !== 'done'; i += 1) {
+      // Hold the line loaded a beat, then corrupt the anchor mid-strain: the very next
+      // prop-dependent evaluation must see 'gone', never release-or-strain a ghost.
+      if (i === 90) corrupt(prop);
+      ticks(t, 1);
+    }
+    assert.equal(live.phase, 'done', `a ${label} prop closes the scene`);
+    assert.equal(live.outcome, 'aborted:physical_subject_gone',
+      `a ${label} prop aborts as a gone subject, never a satisfied release`);
+    assert.ok(resolved.includes('aborted:physical_subject_gone'),
+      'the abort receipt publishes the physical_subject_gone outcome');
+  });
+}
+
+// gapCross belongs to the player's own path: reference geometry sliding under a parked
+// player rewrites the line, not the crossing — the old prev-line compare counted it.
+test('physical gate: moving escort hulls cannot cross the gap for a parked player (order 410)', async () => {
+  const mods = await loadCurated();
+  const row = mods.find((m) => m.order === 410);
+  const t = boot();
+  const { live } = fire(t, row.mod.spec.id);
+  for (let i = 0; i < 900 && live.vars.vPhase !== 'offer'; i += 1) ticks(t, 1);
+  assert.equal(live.vars.vPhase, 'offer');
+  t.director.emit('encounter:choose', { encounterId: live.id, choiceId: 'a' });
+  ticks(t, 2);
+  const v = live.vars.vAwait;
+  assert.ok(v, 'the await is live');
+  const a = entOf(t, live, 'hull_0');
+  const b = entOf(t, live, 'hull_1');
+  assert.ok(a && b, 'the escort pair exists');
+  // Pin the review geometry: player parked on the future segment midpoint while the
+  // escort pair slides the whole segment past them — ~90 WU of pure hull motion spread
+  // over four sim-seconds so the 1 Hz predicate cadence actually re-observes the scene
+  // several times mid-slide. The player's signed distance only flips because the line
+  // moved; measured against today's segment, the old position reads on the same side.
+  for (let leg = 0; leg < 240 && live.phase !== 'done'; leg += 1) {
+    const z = -10 + leg * 0.4;
+    a.pos.x = 0; a.pos.z = z; a.vel.x = 0; a.vel.z = 0;
+    b.pos.x = 100; b.pos.z = z; b.vel.x = 0; b.vel.z = 0;
+    t.player.pos.x = 50; t.player.pos.z = 0; t.player.vel.x = 0; t.player.vel.z = 0;
+    ticks(t, 1);
+  }
+  assert.equal(v.stepIndex, 0,
+    'hull motion sliding the reference segment past a parked player is not a crossing');
+  assert.notEqual(live.phase, 'done', 'the scene is still waiting for a real crossing');
+  assert.ok(v.gapPrev, 'the 1 Hz sampler really observed during the slide');
+  // The real crossing: hold the segment still at z=-10 and walk the player through it —
+  // hold the positive side (~1.5 s so the 1 Hz sampler records), then the far side; the
+  // player's own displacement between those two observations crosses the midpoint.
+  for (let leg = 0; leg < 90 && live.phase !== 'done' && v.stepIndex === 0; leg += 1) {
+    a.pos.x = 0; a.pos.z = -10; b.pos.x = 100; b.pos.z = -10;
+    t.player.pos.x = 50; t.player.pos.z = 30;
+    ticks(t, 1);
+  }
+  assert.ok(v.stepIndex === 0 && v.gapPrev && v.gapPrev.perp > 0,
+    'the sampler saw the approach side without counting a crossing');
+  for (let leg = 0; leg < 90 && live.phase !== 'done' && v.stepIndex === 0; leg += 1) {
+    a.pos.x = 0; a.pos.z = -10; b.pos.x = 100; b.pos.z = -10;
+    t.player.pos.x = 50; t.player.pos.z = -30;
+    ticks(t, 1);
+  }
+  assert.ok(v.stepIndex > 0 || live.phase === 'done',
+    'the player\'s own path through the still-held gap counts the crossing');
+});
+
+// ── the real massline tow (finding 5) ────────────────────────────────────────────
+// The rest of this file drives predicates with entity-position fixtures and a
+// fabricated state.player.tether — legal for predicate boundaries, but it never proves
+// a real tow is possible. This harness runs the production chain instead: the real
+// acquisition press, the real attachment authority, the real Rapier dynamic-body owner
+// pulling the prop, and the real tetherGameplay tick mirroring measured telemetry into
+// state.player.tether — the fields the interpreter reads. Player motion is a per-tick
+// physics-control force on the player's real body — never a pos/vel write.
+
+const PHYS_DT = 1 / 60;
+
+async function bootPhysics() {
+  const t = boot();
+  const { state, sim } = t;
+  // Production spawn also maintains entityList — acquisition queries fall back to it
+  // when no spatial hash is active. Bodies come from the canonical factory so the
+  // native owner and the core preStep see real SimVector3 pos/vel/prevPos.
+  state.entityList = [];
+  t.director.helpers.spawnEntity = (opts) => {
+    const e = makeEntity({ ...opts, pos: opts.pos, vel: opts.vel });
+    e.id = allocateEntityId(state);
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+    return e;
+  };
+  // The player as a production body: authored physics spec minted by the authority's
+  // own normalizer, standard ship combat profile (source socket tether_spool).
+  const oldPlayer = t.player;
+  const player = makeEntity({
+    type: 'ship', pos: { x: 260, z: -60 }, radius: 8, mass: 120,
+    data: { defId: 'ship_wasp', combat: {}, weapons: [] },
+  });
+  player.id = oldPlayer.id;
+  player.isPlayer = true;
+  player.team = 0;
+  player.maxSpeed = 218;
+  state.entities.delete(oldPlayer.id);
+  state.entities.set(player.id, player);
+  if (!Number.isSafeInteger(state.nextEntityId) || state.nextEntityId <= player.id) {
+    state.nextEntityId = player.id + 1;
+  }
+  state.freeIds = state.freeIds || [];
+  ensurePhysicsBodySpec(player);
+  state.entityList.push(player);
+  state.input = state.input || {};
+  state.input.actions = { tetherFire: false, tetherCut: false, reelDelta: 0 };
+  state.input.aimIntentActive = true;
+  state.input.pointerScreen = { active: true, x: 0, y: 0 };
+  ensureCombatState(state);
+  // The production physics port: the real Rapier-backed owner — same contract the
+  // combat kernel's combatPhysics slot fills in the live game.
+  const owner = await createSg02DynamicBodyOwner({ mode: 'rapier-dynamic' });
+  assert.ok(owner, 'native dynamic-body owner minted (Rapier available)');
+  const helpers = { combatPhysics: owner };
+  const catalog = createCombatCatalog();
+  const attachments = createAttachmentService({ state, catalog, helpers, bus: sim.bus });
+  const kernel = { attachments, catalog: { attachments: catalog.attachments } };
+  const registry = {
+    get: (n) => (n === 'actions' || n === 'combat'
+      ? { kernel }
+      : (n === 'encounterDirector' ? t.director : null)),
+  };
+  const tetherSys = Object.assign({}, tetherGameplay);
+  tetherSys.init({ state, bus: sim.bus, helpers, registry });
+  return { ...t, player, owner, tetherSys, attachments };
+}
+
+// One honest frame: refresh the world list the owner owns, write the player's flight
+// control (a PD throttle — the same writePhysicsControl seam flightV3 uses), step the
+// real physics, then let the tether system mirror the measured line into
+// state.player.tether, then let the director's scripts read the fresh world.
+function physTick(t, ctl) {
+  const { state } = t;
+  const player = t.player;
+  if (ctl) {
+    const dx = ctl.x - player.pos.x, dz = ctl.z - player.pos.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const desired = Math.min(ctl.cap ?? 25, d * 1.4);
+    const mass = Math.max(1, player.mass || 100);
+    writePhysicsControl(player, {
+      mode: 'flight',
+      source: 'flightV3',
+      force: { x: mass * (dx / d * desired - player.vel.x) / 0.25, y: 0, z: mass * (dz / d * desired - player.vel.z) / 0.25 },
+      torque: { x: 0, y: 0, z: 0 },
+      maxSpeed: ctl.cap ?? 25,
+      authority: { forward: 1, reverse: 1, strafe: 1, yaw: 1 },
+    });
+  }
+  state.entityList.length = 0;
+  for (const e of state.entities.values()) if (e && e.alive !== false) state.entityList.push(e);
+  t.owner.syncFromEntities(state.entityList);
+  t.owner.step(PHYS_DT, state.tick);
+  t.tetherSys.update(PHYS_DT, state);
+  state.input.actions.tetherFire = false;
+  state.input.actions.tetherCut = false;
+  if (state.input.actions.massline) state.input.actions.massline = null;
+  t.sim.runTicks(1);
+}
+
+test('physical gate: a REAL massline tow resolves tow_settle (order 401)', async () => {
+  const mods = await loadCurated();
+  const row = mods.find((m) => m.order === 401);
+  const t = await bootPhysics();
+  const { state } = t;
+  const creditsBefore = state.player.credits;
+  const latched = [];
+  t.sim.bus.on('tether:latched', (p) => latched.push(p));
+  const denials = [];
+  t.sim.bus.on('tether:latchDenied', (p) => denials.push(p));
+  const { live } = fire(t, row.mod.spec.id);
+  assert.ok(live, 'scene fires');
+  for (let i = 0; i < 900 && live.vars.vPhase !== 'offer'; i += 1) physTick(t, { x: 260, z: -60, cap: 4 });
+  assert.equal(live.vars.vPhase, 'offer', 'offer reached');
+  t.sim.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'a' });
+  physTick(t, { x: 260, z: -60, cap: 4 });
+  physTick(t, { x: 260, z: -60, cap: 4 });
+  const v = live.vars.vAwait;
+  assert.ok(v, 'the tow await is live');
+  const prop = entOf(t, live, 'prop');
+  const hull0 = entOf(t, live, 'hull_0');
+  assert.ok(prop && hull0, 'prop + receiving hull exist');
+  const propStart = { ...prop.pos };
+  // Real latch: the production acquisition press — cursor on the prop, one tetherFire.
+  state.input.aimWorld = { x: prop.pos.x, z: prop.pos.z };
+  state.input.actions.tetherFire = true;
+  physTick(t, { x: 260, z: -60, cap: 4 });
+  assert.ok(latched.length === 1 && latched[0].targetId === prop.id,
+    `the real acquisition latched the prop — denials: ${JSON.stringify(denials)}`);
+  physTick(t, { x: 260, z: -60, cap: 4 }); // the mirror publishes on the next tether tick
+  assert.equal(state.player.tether.active, true, 'the real mirror reports the live line');
+  assert.equal(state.player.tether.targetId, prop.id, 'the mirror binds the prop');
+  assert.ok(state.player.tether.attachmentId, 'the mirror carries the real attachment id');
+  // The tow, for real. A snapped-fast haul on a shortening cable pumps the load's
+  // momentum into a bound orbit around the player — the payload material carries no
+  // linear damping, so the swing never dies on its own (that is exactly what the
+  // authored "let it drift to rest" line warns about). The honest pilot line has two
+  // legs: first haul the load along a path PARALLEL to the tow axis offset ~26 WU —
+  // the prop trails behind the player, rope and load stay clear of the receiver's
+  // collision rim (r19). Then the swing must be killed the way a pilot kills it:
+  // hold the ship on the TRAILING side of the load's motion so the taut rope's
+  // tension works against the velocity until the line is calm, creep the hanging
+  // load into the ring at walking speed, and cut only while it is quiet inside.
+  const ux = (hull0.pos.x - prop.pos.x), uz = (hull0.pos.z - prop.pos.z);
+  const ulen = Math.hypot(ux, uz) || 1;
+  const u = { x: ux / ulen, z: uz / ulen };           // tow axis, prop -> receiver
+  const n = { x: -u.z, z: u.x };                      // lateral offset keeps the rope off the hull
+  const drop = {
+    x: hull0.pos.x + u.x * 45 + n.x * 26,
+    z: hull0.pos.z + u.z * 45 + n.z * 26,
+  };
+  // A straight shot at the drop crosses the receiver itself — the pilot goes around it:
+  // first to the offset tow line on this side of the hull, then down the line so the
+  // rope and the load both stay ~26 WU clear of the hull's collision rim.
+  const stage = { x: drop.x - u.x * 60, z: drop.z - u.z * 60 };
+  const awaitSteps = phaseSteps(row.mod.spec, 'await_a');
+  for (let i = 0; i < 60 * 100 && live.phase !== 'done'; i += 1) {
+    const v = live.vars.vAwait;
+    const step = v ? awaitSteps[v.stepIndex] : null;
+    const stepIdx = v ? v.stepIndex : -1;
+    const propSpeed = Math.hypot(prop.vel.x, prop.vel.z);
+    const propRange = Math.hypot(prop.pos.x - hull0.pos.x, prop.pos.z - hull0.pos.z);
+    // Winch toward ~45 WU of rope while hauling — the measured line length is read back
+    // from the real attachment mirror, never assumed.
+    const rest = state.player.tether.restLength;
+    let waypoint, cap;
+    if (stepIdx >= 0 && stepIdx < 2) {
+      // Haul leg: stage then drop on the offset tow line.
+      state.input.actions.reelDelta = (state.player.tether.active && Number.isFinite(rest) && rest > 47) ? -1 : 0;
+      const dStage = Math.hypot(t.player.pos.x - stage.x, t.player.pos.z - stage.z);
+      waypoint = dStage > 14 ? stage : drop;
+      cap = propRange > 60 ? 7 : 3;
+    } else if (!state.player.tether.active) {
+      // The line is away — hold station while the released load settles into the ring.
+      state.input.actions.reelDelta = 0;
+      waypoint = { x: t.player.pos.x, z: t.player.pos.z };
+      cap = 2;
+    } else if (propSpeed > 2.6) {
+      // Snub the swing: hover just outside the current rope length directly downwind
+      // of the load's velocity — the taut line keeps doing negative work until it
+      // hangs quiet off the stern instead of orbiting.
+      state.input.actions.reelDelta = 0;
+      const inv = 1 / propSpeed;
+      const standoff = (Number.isFinite(rest) ? rest : 46) + 6;
+      waypoint = { x: prop.pos.x - prop.vel.x * inv * standoff, z: prop.pos.z - prop.vel.z * inv * standoff };
+      cap = Math.min(9, Math.max(3, propSpeed + 1.5));
+    } else {
+      // Calm line: creep so the hanging load drifts through the parked ring, then cut
+      // while it is still inside and quiet.
+      state.input.actions.reelDelta = 0;
+      const dxh = hull0.pos.x - prop.pos.x, dzh = hull0.pos.z - prop.pos.z;
+      const dh = Math.hypot(dxh, dzh) || 1;
+      waypoint = { x: hull0.pos.x + (dxh / dh) * 18, z: hull0.pos.z + (dzh / dh) * 18 };
+      cap = 2.2;
+    }
+    physTick(t, { x: waypoint.x, z: waypoint.z, cap });
+    // The drop: cut through the real input path at a calm moment inside the ring.
+    if (step && step.kind === 'released' && state.player.tether.active
+        && propRange < 27 && propSpeed < 2.6) {
+      state.input.actions.massline = { cut: true };
+    }
+  }
+  assert.equal(live.phase, 'done',
+    `the real tow resolves the scene — tether phase ${state.player.tether.phase}, `
+    + `prop at (${Math.round(prop.pos.x)},${Math.round(prop.pos.z)}) vs hull_0 (${Math.round(hull0.pos.x)},${Math.round(hull0.pos.z)}), `
+    + `denials ${JSON.stringify(denials)}`);
+  assert.equal(live.outcome, 'a');
+  assert.ok(Math.hypot(prop.pos.x - hull0.pos.x, prop.pos.z - hull0.pos.z) <= 30,
+    'the prop rests inside the receiver ring, delivered by the rope');
+  assert.ok(Math.hypot(prop.pos.x - propStart.x, prop.pos.z - propStart.z) >= 120,
+    'the rope really carried the prop past the 120-WU bar');
+  assert.equal(state.player.credits, creditsBefore + 48, 'yard work pays 48');
+  t.owner.dispose();
 });
 
 test('all thirty: awaited choices gate every curated outcome on physical work', async () => {
@@ -302,42 +647,75 @@ test('rotation: post-first-hour picks reach non-prop scenes; ambient never enter
     'with the curated pool exhausted nothing fires — ambient stays out of rotation');
 });
 
-test('save: livedStarted/livedSeen serialize and restore; await progress stays transient', async () => {
+test('save: the real serializer carries once-ever stats through an active-await restore', async () => {
+  const mods = await loadCurated();
+  const specById = Object.fromEntries(mods.map((m) => [m.mod.spec.id, m.mod.spec]));
+  const curated = Object.values(ENCOUNTERS).filter((e) => e.livedRotation === true);
+  const byZone = new Map();
+  for (const enc of curated) for (const z of enc.zoneTypes || []) {
+    if (!byZone.has(z)) byZone.set(z, []);
+    byZone.get(z).push(enc);
+  }
+  const zoneEntry = [...byZone.entries()][0];
+  // Fire through the real unsolicited picker so stats.livedStarted is stamped by the
+  // production path — not by hand — then drive the scene into its active physical await.
   const t = boot();
+  t.state.player.credits = 500;
+  t.state.simTime = 4000;
+  seedStarted(t, zoneEntry[1].map((e) => e.id)); // keep this zone's scenes eligible
+  const fired = parkAndTick(t, zoneEntry[0]);
+  assert.ok(fired, 'the picker fired a curated scene');
+  const firedId = fired.shapeId;
+  assert.ok(curated.some((e) => e.id === firedId), `${firedId} is a curated id`);
   const dir = t.state.encounterDirector;
-  dir.stats.livedStarted = { lived_401: 12.5 };
-  dir.stats.livedSeen = { lived_402: 'a' };
-  // Serialize the way the save path does — JSON through the bus payloads — then restore
-  // onto a fresh director and confirm both maps survive.
-  const snapshot = JSON.parse(JSON.stringify({ encounterDirector: dir }));
+  assert.ok(dir.stats.livedStarted[firedId] != null, 'the picker stamped livedStarted on fire');
+  const spec = specById[firedId];
+  for (let i = 0; i < 900 && fired.vars.vPhase !== 'offer'; i += 1) ticks(t, 1);
+  assert.equal(fired.vars.vPhase, 'offer', 'offer reached');
+  t.sim.bus.emit('encounter:choose', { encounterId: fired.id, choiceId: 'a' });
+  for (let i = 0; i < 60 && !fired.vars.vAwait; i += 1) ticks(t, 1);
+  assert.ok(fired.vars.vAwait, 'the scene sits in an active physical await');
+  assert.ok(fired.phase !== 'done', 'the encounter is still live');
+  // The real production serializer — the exact method save writes into
+  // data.encounterDirector — while the scene's await is in flight.
+  const serializeCtx = { state: t.state, _rollbackCaptureActive: false };
+  const snapshot = save._serializeEncounterDirector.call(serializeCtx);
+  const round = JSON.parse(JSON.stringify(snapshot));
+  // The durable slice carries the once-ever statistics gathered while the scene is
+  // active; the live await itself is transient by contract (never serialized).
+  assert.ok(round.stats && typeof round.stats === 'object', 'serialized stats exist');
+  assert.equal(round.stats.livedStarted[firedId], dir.stats.livedStarted[firedId],
+    'the once-ever stamp rides the real serializer');
+  assert.ok(!('live' in round), 'the durable slice never carries live encounters');
+  assert.ok(!('ids' in round) && !('roles' in round), 'no entity ids leak into the durable slice');
+  // Restore through the production save:loaded handler, exactly as the load path stages it.
   const t2 = boot();
-  t2.state.encounterDirector = snapshot.encounterDirector;
+  t2.state.simTime = t.state.simTime;
+  t2.state.encounterDirector = round;
   t2.director._onSaveLoaded();
   const restored = t2.state.encounterDirector;
-  assert.equal(restored.stats.livedStarted.lived_401, 12.5, 'livedStarted survives the save round-trip');
-  assert.equal(restored.stats.livedSeen.lived_402, 'a', 'livedSeen survives the save round-trip');
-  assert.equal(Object.keys(restored.live || {}).length, 0, 'no live await state persists across a load');
-  // Old saves without livedStarted initialize safely.
+  assert.equal(restored.stats.livedStarted[firedId], dir.stats.livedStarted[firedId],
+    'the once-ever stamp survives the real serializer through restore');
+  assert.equal(Object.keys(restored.live || {}).length, 0,
+    'await progress is transient — the load carries no live encounter');
+  // Once-ever across the restore: the same zone pick can never re-fire the consumed id.
+  restored.stats.livedNextAt = -1;
+  const refire = parkAndTick(t2, zoneEntry[0]);
+  assert.ok(!refire || refire.shapeId !== firedId,
+    'a scene consumed before the save is still consumed after it');
+  // Old saves that predate livedStarted initialize safely on the next pick.
   const t3 = boot();
-  const stale = JSON.parse(JSON.stringify({ encounterDirector: t3.state.encounterDirector }));
-  delete stale.encounterDirector.stats.livedStarted;
-  t3.state.encounterDirector = stale.encounterDirector;
+  const stale = save._serializeEncounterDirector.call({ state: t3.state, _rollbackCaptureActive: false });
+  delete stale.stats.livedStarted;
+  t3.state.encounterDirector = stale;
   t3.director._onSaveLoaded();
   t3.state.encounterDirector.stats.livedStarted = undefined;
-  const mods = await loadCurated();
-  const curated = Object.values(ENCOUNTERS).filter((e) => e.livedRotation === true);
-  const zoneList = new Map();
-  for (const enc of curated) for (const z of enc.zoneTypes || []) {
-    if (!zoneList.has(z)) zoneList.set(z, []);
-    zoneList.get(z).push(enc);
-  }
-  const anyZone = [...zoneList.entries()][0];
   t3.state.encounterDirector.stats.livedNextAt = -1;
-  parkAndTick(t3, anyZone[0]);
+  parkAndTick(t3, zoneEntry[0]);
   assert.ok(t3.state.encounterDirector.stats.livedStarted
     && typeof t3.state.encounterDirector.stats.livedStarted === 'object',
     'a save missing livedStarted normalizes on the next pick');
-  void mods;
+  void spec;
 });
 
 // ── the scripted route ─────────────────────────────────────────────────────────────────

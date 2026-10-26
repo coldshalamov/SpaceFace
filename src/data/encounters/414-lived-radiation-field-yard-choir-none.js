@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, CANTOR — send the relief to Radiation Field instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, CANTOR — send the relief to Radiation Field; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "SLOT",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CANTOR: The slot needs a hand at radiation field. The shift is already short. — SLOT ON THE RADIATION FIELD.",
+      "line": "CANTOR: The slot needs a hand at Radiation Field. The shift is already short. — SLOT ON THE RADIATION FIELD.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Carry the slot past our hull, then the far hull, in that order. Release and let it rest. — SLOT ON THE RADIATION FIELD.",
+      "line": "CANTOR: Carry the slot a hundred-twenty on the line — past our hull first, then the far hull, in that order. Release and let it rest. — SLOT ON THE RADIATION FIELD.",
       "channel": "info",
       "next": "offer"
     },
@@ -195,7 +195,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "CANTOR: Time ran out on the work ask — SLOT ON THE RADIATION FIELD. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "CANTOR: The 24 cr stays spent — the relief still runs on your credit at Radiation Field; the close-in just never came — SLOT ON THE RADIATION FIELD.",
       "keepMotion": false,
       "steps": [
         {
@@ -319,7 +319,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "SLOT ON THE RADIATION FIELD",
-  "primaryLine": "CANTOR: The slot needs a hand at radiation field. The shift is already short.",
+  "primaryLine": "CANTOR: The slot needs a hand at Radiation Field. The shift is already short.",
   "factionId": "faction_choir",
   "choices": [
     {
@@ -329,8 +329,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, CANTOR — send the relief to Radiation Field instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, CANTOR — send the relief to Radiation Field; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

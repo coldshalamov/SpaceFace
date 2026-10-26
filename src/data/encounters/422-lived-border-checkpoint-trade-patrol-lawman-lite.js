@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, WARD — send the relief to Border Checkpoint instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, WARD — send the relief to Border Checkpoint; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "WARD: The stamp is the whole lot. border checkpoint has room to bargain. — STAMP ON THE BORDER CHECKPOINT.",
+      "line": "WARD: The stamp is the whole lot. Border Checkpoint has room to bargain. — STAMP ON THE BORDER CHECKPOINT.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -179,7 +179,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "WARD: Time ran out on the work ask — STAMP ON THE BORDER CHECKPOINT. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "WARD: The 18 cr stays spent — the relief still runs on your credit at Border Checkpoint; the close-in just never came — STAMP ON THE BORDER CHECKPOINT.",
       "keepMotion": false,
       "steps": [
         {
@@ -303,7 +303,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "STAMP ON THE BORDER CHECKPOINT",
-  "primaryLine": "WARD: The stamp is the whole lot. border checkpoint has room to bargain.",
+  "primaryLine": "WARD: The stamp is the whole lot. Border Checkpoint has room to bargain.",
   "factionId": "faction_free",
   "choices": [
     {
@@ -313,8 +313,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 18 cr",
-      "playerLine": "Take 18 cr, WARD — send the relief to Border Checkpoint instead of my hands."
+      "label": "Sponsor relief — 18 cr, then close in slow",
+      "playerLine": "Take 18 cr, WARD — send the relief to Border Checkpoint; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

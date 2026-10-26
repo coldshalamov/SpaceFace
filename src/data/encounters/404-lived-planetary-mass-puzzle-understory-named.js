@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, SABLE — send the relief to Planetary Mass instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, SABLE — send the relief to Planetary Mass; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "SABLE: The addendum count fails at planetary mass. Find which mark does not belong. — ADDENDUM ON THE PLANETARY MASS.",
+      "line": "SABLE: The addendum count fails at Planetary Mass. Find which mark does not belong. — ADDENDUM ON THE PLANETARY MASS.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -170,7 +170,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "SABLE: Time ran out on the work ask — ADDENDUM ON THE PLANETARY MASS. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "SABLE: The 24 cr stays spent — the relief still runs on your credit at Planetary Mass; the close-in just never came — ADDENDUM ON THE PLANETARY MASS.",
       "keepMotion": false,
       "steps": [
         {
@@ -294,7 +294,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "ADDENDUM ON THE PLANETARY MASS",
-  "primaryLine": "SABLE: The addendum count fails at planetary mass. Find which mark does not belong.",
+  "primaryLine": "SABLE: The addendum count fails at Planetary Mass. Find which mark does not belong.",
   "factionId": "faction_understory",
   "choices": [
     {
@@ -304,8 +304,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, SABLE — send the relief to Planetary Mass instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, SABLE — send the relief to Planetary Mass; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

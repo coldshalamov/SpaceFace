@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, FOREMAN — send the relief to Nebula Fog instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, FOREMAN — send the relief to Nebula Fog; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "SCOOP",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "FOREMAN: The scoop needs a hand at nebula fog. The shift is already short. — SCOOP ON THE NEBULA FOG.",
+      "line": "FOREMAN: The scoop needs a hand at Nebula Fog. The shift is already short. — SCOOP ON THE NEBULA FOG.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "FOREMAN: Tether the scoop, haul it to the receiver hull, let go, and let it drift to rest within thirty. — SCOOP ON THE NEBULA FOG.",
+      "line": "FOREMAN: Tether the scoop and haul it to the receiver hull — a hundred-twenty of drag before you let go — then let it drift to rest within thirty. — SCOOP ON THE NEBULA FOG.",
       "channel": "info",
       "next": "offer"
     },
@@ -185,7 +185,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "FOREMAN: Time ran out on the work ask — SCOOP ON THE NEBULA FOG. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "FOREMAN: The 24 cr stays spent — the relief still runs on your credit at Nebula Fog; the close-in just never came — SCOOP ON THE NEBULA FOG.",
       "keepMotion": false,
       "steps": [
         {
@@ -309,7 +309,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "SCOOP ON THE NEBULA FOG",
-  "primaryLine": "FOREMAN: The scoop needs a hand at nebula fog. The shift is already short.",
+  "primaryLine": "FOREMAN: The scoop needs a hand at Nebula Fog. The shift is already short.",
   "factionId": "faction_dmc",
   "choices": [
     {
@@ -319,8 +319,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, FOREMAN — send the relief to Nebula Fog instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, FOREMAN — send the relief to Nebula Fog; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

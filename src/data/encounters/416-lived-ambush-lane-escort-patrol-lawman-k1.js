@@ -25,8 +25,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, WARD — send the relief to Ambush Lane instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, WARD — send the relief to Ambush Lane; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -44,7 +44,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "WARD: Keep the dent behind your drive through ambush lane. No passing. — DENT ON THE AMBUSH LANE.",
+      "line": "WARD: Keep the dent behind your drive through Ambush Lane. No passing. — DENT ON THE AMBUSH LANE.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -159,7 +159,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "WARD: Time ran out on the work ask — DENT ON THE AMBUSH LANE. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "WARD: The 24 cr stays spent — the relief still runs on your credit at Ambush Lane; the close-in just never came — DENT ON THE AMBUSH LANE.",
       "keepMotion": true,
       "steps": [
         {
@@ -283,7 +283,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "DENT ON THE AMBUSH LANE",
-  "primaryLine": "WARD: Keep the dent behind your drive through ambush lane. No passing.",
+  "primaryLine": "WARD: Keep the dent behind your drive through Ambush Lane. No passing.",
   "factionId": "faction_free",
   "choices": [
     {
@@ -293,8 +293,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, WARD — send the relief to Ambush Lane instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, WARD — send the relief to Ambush Lane; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",

@@ -33,8 +33,8 @@ export const spec = {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, DISPATCH — send the relief to Patrol Corridor instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, DISPATCH — send the relief to Patrol Corridor; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
@@ -53,8 +53,8 @@ export const spec = {
       "id": "prop",
       "verb": "prop",
       "scanLabel": "CASKET",
-      "dx": 54,
-      "dz": -28,
+      "dx": 170,
+      "dz": -100,
       "radius": 9,
       "mass": 48,
       "next": "hail"
@@ -62,7 +62,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "DISPATCH: The casket came loose at patrol corridor. We have not called it scrap. — CASKET ON THE PATROL CORRIDOR.",
+      "line": "DISPATCH: The casket came loose at Patrol Corridor. We have not called it scrap. — CASKET ON THE PATROL CORRIDOR.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "DISPATCH: Carry the casket past our hull, then the far hull, in that order. Release and let it rest. — CASKET ON THE PATROL CORRIDOR.",
+      "line": "DISPATCH: Carry the casket a hundred-twenty on the line — past our hull first, then the far hull, in that order. Release and let it rest. — CASKET ON THE PATROL CORRIDOR.",
       "channel": "info",
       "next": "offer"
     },
@@ -195,7 +195,7 @@ export const spec = {
       "id": "await_b",
       "verb": "await",
       "timeoutS": 120,
-      "timeoutLine": "DISPATCH: Time ran out on the work ask — CASKET ON THE PATROL CORRIDOR. Nothing owed either way — the lane forgets it.",
+      "timeoutLine": "DISPATCH: The 24 cr stays spent — the relief still runs on your credit at Patrol Corridor; the close-in just never came — CASKET ON THE PATROL CORRIDOR.",
       "keepMotion": false,
       "steps": [
         {
@@ -319,7 +319,7 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "CASKET ON THE PATROL CORRIDOR",
-  "primaryLine": "DISPATCH: The casket came loose at patrol corridor. We have not called it scrap.",
+  "primaryLine": "DISPATCH: The casket came loose at Patrol Corridor. We have not called it scrap.",
   "factionId": "faction_fulfillment",
   "choices": [
     {
@@ -329,8 +329,8 @@ export default defineEncounter(trigger, {
     },
     {
       "id": "b",
-      "label": "Sponsor relief — 24 cr",
-      "playerLine": "Take 24 cr, DISPATCH — send the relief to Patrol Corridor instead of my hands."
+      "label": "Sponsor relief — 24 cr, then close in slow",
+      "playerLine": "Take 24 cr, DISPATCH — send the relief to Patrol Corridor; I close your hull dead slow for the hand-off."
     },
     {
       "id": "c",
