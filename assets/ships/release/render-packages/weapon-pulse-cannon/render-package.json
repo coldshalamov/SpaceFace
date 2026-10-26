@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f251ae4912b0755c3d5bbef5dad23d9063a2164438c35e362986205630795220",
+  "contentHash": "2c4e8f268660b9f0840c3b3f8e1ebc0c5579b9355f042c5311eac66dd5f11113",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1662,8 +1662,8 @@
       "uri": "weapon_pulse_cannon.glb"
     },
     "sourceManifest": {
-      "bytes": 273915,
-      "sha256": "2158f45fecffff0683cbad20bd718ecea6dce83f8bd02b12e37db597b5d7e56c",
+      "bytes": 300891,
+      "sha256": "50dce1990827c217ea558e306d2fd95a0b8c63660e437c5595127100ce1f8393",
       "uri": "pilots.json"
     }
   },
@@ -2020,7 +2020,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
   },
-  "runtimeHash": "82c2fe05684a19c5f3d29704c1981c451d6aae5ba62a087fe7cb85dbf969b664",
+  "runtimeHash": "6df877351133561467e8924f49871b307167af9643b9212360334d5e0ff65e84",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

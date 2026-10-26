@@ -42,6 +42,7 @@ import {
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { rockSubstanceForSlot } from '../data/rockSubstances.js';
 import { sectorEnterTrafficShipStubs, priorityCourierServiceForSector, TRAFFIC_ROLES } from '../systems/traffic.js';
 import { planFactionPresence } from '../data/factionPresence.js';
 import { lossesFor } from '../systems/lossLedger.js';
@@ -346,13 +347,21 @@ export function saveEnvelopeSectorStubs(data) {
   }
 
   // Each field's head rock is the authored geology variant when the type declares one.
+  // Row 495: the live hero wears the rock-family body for its deterministic substance roll —
+  // warm that substance at the field's size-range midpoint (the authored loader still resolves
+  // whatever size class the real spawn drew).
   for (const fdef of sector.fields || []) {
-    const authoredPlaceId = fdef && AST_BY_ID.get(fdef.type) && AST_BY_ID.get(fdef.type).authoredPlaceId;
+    const astDef = fdef && AST_BY_ID.get(fdef.type);
+    const authoredPlaceId = astDef && astDef.authoredPlaceId;
     if (!authoredPlaceId) continue;
+    const sub = rockSubstanceForSlot(seed, fdef.id, 0);
+    const [lo, hi] = astDef.sizeRange || [6, 14];
+    const mid = (lo + hi) / 2;
+    const warmPlaceId = `place_rock_${sub}_${mid < 14 ? 'pebble' : mid < 24 ? 'boulder' : 'monolith'}`;
     out.placeStubs.push({
       type: 'asteroid',
       radius: 1,
-      data: { authoredGeologySkin: true, placeId: authoredPlaceId, placeTargetRadius: 1 },
+      data: { authoredGeologySkin: true, placeId: warmPlaceId, placeTargetRadius: 1 },
     });
   }
 

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a045d3c9546d9d2653416c7fb64bf4caf30927a7a0df6c286e676d2fb205bf63",
+  "contentHash": "0921e91590a317fe09f1febaf61421e8b0f837c197b698c48e29674764afdf9c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -237,8 +237,8 @@
       "uri": "place_triton_aperture_monolith.glb"
     },
     "sourceManifest": {
-      "bytes": 277460,
-      "sha256": "ce15084f86543f45fe3d9ea42091d72e1af70bb0217db59e60b40d397a240e07",
+      "bytes": 300891,
+      "sha256": "50dce1990827c217ea558e306d2fd95a0b8c63660e437c5595127100ce1f8393",
       "uri": "pilots.json"
     }
   },
@@ -347,7 +347,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_triton_aperture_monolith.glb"
   },
-  "runtimeHash": "1554e8a018a0c996b51243d2b73488dfade393761d66135462c6b3f01a48579b",
+  "runtimeHash": "284f9b074189c5039d8565f48a7ffdc2041f82e37dab05abb7fb92a37b70927a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

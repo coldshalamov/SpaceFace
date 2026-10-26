@@ -811,7 +811,175 @@
       "asset_id": "SF_PLACE_ASTEROID_GRAFFITI_GEOLOGY_V3",
       "note": "Forge rebuild: graffiti rock \u2014 quarried face with modelled miners' paint bands, survey stakes, lamp.",
       "part_id": "place_asteroid_graffiti"
+    },    "place_rock_metallic_ore_pebble": {
+      "layout": "place",
+      "file": "place_rock_metallic_ore_pebble",
+      "asset_id": "SF_PLACE_ROCK_METALLIC_ORE_PEBBLE",
+      "note": "Row 495 rock family (metallic_ore/pebble): dark metal-tinged stone, bare-metal veins, cyan ore glints.",
+      "part_id": "place_rock_metallic_ore_pebble"
     },
+    "place_rock_metallic_ore_boulder": {
+      "layout": "place",
+      "file": "place_rock_metallic_ore_boulder",
+      "asset_id": "SF_PLACE_ROCK_METALLIC_ORE_BOULDER",
+      "note": "Row 495 rock family (metallic_ore/boulder): dark metal-tinged stone, bare-metal veins, cyan ore glints.",
+      "part_id": "place_rock_metallic_ore_boulder"
+    },
+    "place_rock_metallic_ore_monolith": {
+      "layout": "place",
+      "file": "place_rock_metallic_ore_monolith",
+      "asset_id": "SF_PLACE_ROCK_METALLIC_ORE_MONOLITH",
+      "note": "Row 495 rock family (metallic_ore/monolith): dark metal-tinged stone, bare-metal veins, cyan ore glints.",
+      "part_id": "place_rock_metallic_ore_monolith"
+    },
+    "place_rock_silicate_pebble": {
+      "layout": "place",
+      "file": "place_rock_silicate_pebble",
+      "asset_id": "SF_PLACE_ROCK_SILICATE_PEBBLE",
+      "note": "Row 495 rock family (silicate/pebble): warm grey boulder with strata bands.",
+      "part_id": "place_rock_silicate_pebble"
+    },
+    "place_rock_silicate_boulder": {
+      "layout": "place",
+      "file": "place_rock_silicate_boulder",
+      "asset_id": "SF_PLACE_ROCK_SILICATE_BOULDER",
+      "note": "Row 495 rock family (silicate/boulder): warm grey boulder with strata bands.",
+      "part_id": "place_rock_silicate_boulder"
+    },
+    "place_rock_silicate_monolith": {
+      "layout": "place",
+      "file": "place_rock_silicate_monolith",
+      "asset_id": "SF_PLACE_ROCK_SILICATE_MONOLITH",
+      "note": "Row 495 rock family (silicate/monolith): warm grey boulder with strata bands.",
+      "part_id": "place_rock_silicate_monolith"
+    },
+    "place_rock_ice_pebble": {
+      "layout": "place",
+      "file": "place_rock_ice_pebble",
+      "asset_id": "SF_PLACE_ROCK_ICE_PEBBLE",
+      "note": "Row 495 rock family (ice/pebble): cold grey rock with rime caps and glass ice veins.",
+      "part_id": "place_rock_ice_pebble"
+    },
+    "place_rock_ice_boulder": {
+      "layout": "place",
+      "file": "place_rock_ice_boulder",
+      "asset_id": "SF_PLACE_ROCK_ICE_BOULDER",
+      "note": "Row 495 rock family (ice/boulder): cold grey rock with rime caps and glass ice veins.",
+      "part_id": "place_rock_ice_boulder"
+    },
+    "place_rock_ice_monolith": {
+      "layout": "place",
+      "file": "place_rock_ice_monolith",
+      "asset_id": "SF_PLACE_ROCK_ICE_MONOLITH",
+      "note": "Row 495 rock family (ice/monolith): cold grey rock with rime caps and glass ice veins.",
+      "part_id": "place_rock_ice_monolith"
+    },
+    "place_rock_slag_pebble": {
+      "layout": "place",
+      "file": "place_rock_slag_pebble",
+      "asset_id": "SF_PLACE_ROCK_SLAG_PEBBLE",
+      "note": "Row 495 rock family (slag/pebble): near-black crust with ember fissures.",
+      "part_id": "place_rock_slag_pebble"
+    },
+    "place_rock_slag_boulder": {
+      "layout": "place",
+      "file": "place_rock_slag_boulder",
+      "asset_id": "SF_PLACE_ROCK_SLAG_BOULDER",
+      "note": "Row 495 rock family (slag/boulder): near-black crust with ember fissures.",
+      "part_id": "place_rock_slag_boulder"
+    },
+    "place_rock_slag_monolith": {
+      "layout": "place",
+      "file": "place_rock_slag_monolith",
+      "asset_id": "SF_PLACE_ROCK_SLAG_MONOLITH",
+      "note": "Row 495 rock family (slag/monolith): near-black crust with ember fissures.",
+      "part_id": "place_rock_slag_monolith"
+    },
+    "place_rock_crystal_pebble": {
+      "layout": "place",
+      "file": "place_rock_crystal_pebble",
+      "asset_id": "SF_PLACE_ROCK_CRYSTAL_PEBBLE",
+      "note": "Row 495 rock family (crystal/pebble): violet stone with glass spike cluster.",
+      "part_id": "place_rock_crystal_pebble"
+    },
+    "place_rock_crystal_boulder": {
+      "layout": "place",
+      "file": "place_rock_crystal_boulder",
+      "asset_id": "SF_PLACE_ROCK_CRYSTAL_BOULDER",
+      "note": "Row 495 rock family (crystal/boulder): violet stone with glass spike cluster.",
+      "part_id": "place_rock_crystal_boulder"
+    },
+    "place_rock_crystal_monolith": {
+      "layout": "place",
+      "file": "place_rock_crystal_monolith",
+      "asset_id": "SF_PLACE_ROCK_CRYSTAL_MONOLITH",
+      "note": "Row 495 rock family (crystal/monolith): violet stone with glass spike cluster.",
+      "part_id": "place_rock_crystal_monolith"
+    },
+    "place_rock_reef_metal_pebble": {
+      "layout": "place",
+      "file": "place_rock_reef_metal_pebble",
+      "asset_id": "SF_PLACE_ROCK_REEF_METAL_PEBBLE",
+      "note": "Row 495 rock family (reef_metal/pebble): rusted ore with teal sheen pockets.",
+      "part_id": "place_rock_reef_metal_pebble"
+    },
+    "place_rock_reef_metal_boulder": {
+      "layout": "place",
+      "file": "place_rock_reef_metal_boulder",
+      "asset_id": "SF_PLACE_ROCK_REEF_METAL_BOULDER",
+      "note": "Row 495 rock family (reef_metal/boulder): rusted ore with teal sheen pockets.",
+      "part_id": "place_rock_reef_metal_boulder"
+    },
+    "place_rock_reef_metal_monolith": {
+      "layout": "place",
+      "file": "place_rock_reef_metal_monolith",
+      "asset_id": "SF_PLACE_ROCK_REEF_METAL_MONOLITH",
+      "note": "Row 495 rock family (reef_metal/monolith): rusted ore with teal sheen pockets.",
+      "part_id": "place_rock_reef_metal_monolith"
+    },
+    "place_rock_cooked_rock_pebble": {
+      "layout": "place",
+      "file": "place_rock_cooked_rock_pebble",
+      "asset_id": "SF_PLACE_ROCK_COOKED_ROCK_PEBBLE",
+      "note": "Row 495 rock family (cooked_rock/pebble): black body with green fissures.",
+      "part_id": "place_rock_cooked_rock_pebble"
+    },
+    "place_rock_cooked_rock_boulder": {
+      "layout": "place",
+      "file": "place_rock_cooked_rock_boulder",
+      "asset_id": "SF_PLACE_ROCK_COOKED_ROCK_BOULDER",
+      "note": "Row 495 rock family (cooked_rock/boulder): black body with green fissures.",
+      "part_id": "place_rock_cooked_rock_boulder"
+    },
+    "place_rock_cooked_rock_monolith": {
+      "layout": "place",
+      "file": "place_rock_cooked_rock_monolith",
+      "asset_id": "SF_PLACE_ROCK_COOKED_ROCK_MONOLITH",
+      "note": "Row 495 rock family (cooked_rock/monolith): black body with green fissures.",
+      "part_id": "place_rock_cooked_rock_monolith"
+    },
+    "place_rock_junk_pebble": {
+      "layout": "place",
+      "file": "place_rock_junk_pebble",
+      "asset_id": "SF_PLACE_ROCK_JUNK_PEBBLE",
+      "note": "Row 495 rock family (junk/pebble): compacted scrap ball with welded plates and hazard band.",
+      "part_id": "place_rock_junk_pebble"
+    },
+    "place_rock_junk_boulder": {
+      "layout": "place",
+      "file": "place_rock_junk_boulder",
+      "asset_id": "SF_PLACE_ROCK_JUNK_BOULDER",
+      "note": "Row 495 rock family (junk/boulder): compacted scrap ball with welded plates and hazard band.",
+      "part_id": "place_rock_junk_boulder"
+    },
+    "place_rock_junk_monolith": {
+      "layout": "place",
+      "file": "place_rock_junk_monolith",
+      "asset_id": "SF_PLACE_ROCK_JUNK_MONOLITH",
+      "note": "Row 495 rock family (junk/monolith): compacted scrap ball with welded plates and hazard band.",
+      "part_id": "place_rock_junk_monolith"
+    },
+
     "place_dock_interior": {
       "layout": "place",
       "file": "place_dock_interior",

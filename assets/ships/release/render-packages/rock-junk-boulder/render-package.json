@@ -1,0 +1,3448 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6612648367881775,
+        -0.36559343338012695,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6612648367881775,
+        -0.36559343338012695,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19766688346862793,
+        -6.068559646606445,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19766688346862793,
+        -6.068559646606445,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.365990161895752,
+        -0.36559343338012695,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.365990161895752,
+        -0.36559343338012695,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.670656204223633,
+        -0.515593409538269,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.670656204223633,
+        -0.515593409538269,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19766688346862793,
+        -0.36559343338012695,
+        -3.49216365814209,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19766688346862793,
+        -0.36559343338012695,
+        -3.49216365814209,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19766688346862793,
+        -0.36559343338012695,
+        3.49216365814209,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19766688346862793,
+        -0.36559343338012695,
+        3.49216365814209,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5597290992736816,
+        2.6936864852905273,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5597290992736816,
+        2.6936864852905273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.665989875793457,
+        -0.36559343338012695,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.665989875793457,
+        -0.36559343338012695,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.665989875793457,
+        -0.36559343338012695,
+        -1.4550682306289673,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.665989875793457,
+        -0.36559343338012695,
+        -1.4550682306289673,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.665989875793457,
+        -0.36559343338012695,
+        1.4550682306289673,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.665989875793457,
+        -0.36559343338012695,
+        1.4550682306289673,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19766688346862793,
+        5.337372779846191,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19766688346862793,
+        5.337372779846191,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.770656108856201,
+        -0.36559343338012695,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentNodeId": "sf.render.rock-junk-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.770656108856201,
+        -0.36559343338012695,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.rock-junk-boulder",
+  "collisions": [
+    {
+      "id": "sf.render.rock-junk-boulder.collision",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "bad1d0ca3569db44b607622a583a16502bd53dcde2b7a65e9bde82a5bac3fa43",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          5.170445919036865,
+          5.387372970581055,
+          4.769178867340088
+        ],
+        "min": [
+          -5.565779685974121,
+          -6.118559837341309,
+          -5.469827175140381
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ceec81b843e692967849ab7d74baaed83f761c27083b7e4440c0c17a7e106699",
+      "id": "sf.render.rock-junk-boulder.mesh.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 872
+    },
+    {
+      "bounds": {
+        "max": [
+          4.641848564147949,
+          3.801105499267578,
+          2.2586817741394043
+        ],
+        "min": [
+          -4.898171424865723,
+          -2.3694679737091064,
+          -3.7709765434265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "552a18f023660acde4b7856a7b3262386e7536bf46349483b0b4a73a5ff525df",
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-beacon-amber.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "f5a42d4efe29eb1b3d4c129e151478ad5ca34d31b5f0f3cd5cc0f2d43074cd4f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7900969982147217,
+          3.87152361869812,
+          4.7383198738098145
+        ],
+        "min": [
+          -4.568436622619629,
+          -2.087954044342041,
+          -5.469427585601807
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d23a7242691e7288d195416d1c117cbf70574bd3eb1809b46d1f6bcba46e54d2",
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-brushedmetal.primitive.0",
+      "indexCount": 3948,
+      "indexed": true,
+      "materialHash": "cd04b88fd2233605d8741287026e8945056d0c8372b14bbc04c703fab8f7668b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 1234
+    },
+    {
+      "bounds": {
+        "max": [
+          2.127765417098999,
+          3.833211898803711,
+          3.712876319885254
+        ],
+        "min": [
+          -4.195549011230469,
+          -1.9201115369796753,
+          -2.7452495098114014
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9e006a675b0a11c3a243915612af70e324143d66a2439e0c007dcf6a5ce793a3",
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-mechanicaldark.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "f5a49f0e16e10279c0b9bdcfdb8dfdffcf6e7145470da538564c58683fbf1973",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          1.88309645652771,
+          5.387372970581055,
+          2.1870028972625732
+        ],
+        "min": [
+          -5.5657958984375,
+          -2.937530994415283,
+          -1.9463587999343872
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "17755cbbaf5ee060d52d2e308a7144a276e82976f745d6a18f653521517e3bbc",
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-stone-deep.primitive.0",
+      "indexCount": 7680,
+      "indexed": true,
+      "materialHash": "368689ec14bfc79e9b930210a478d364b31e7de74e3145c8a163e0080e32a188",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone_deep",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod0-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 5360
+    },
+    {
+      "bounds": {
+        "max": [
+          5.170656204223633,
+          4.1231513023376465,
+          4.7113800048828125
+        ],
+        "min": [
+          -5.2217936515808105,
+          -6.1183295249938965,
+          -4.770180702209473
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "461752ae3bccfd0259a13c8a4f7c268e3c0f253fe26d51f23b62fdd7d393cea4",
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-stone.primitive.0",
+      "indexCount": 3933,
+      "indexed": true,
+      "materialHash": "d63926f6e55ecf495b96e018471309b0a4d106f865120cbc6380b91eaa6783c9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod0-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 2689
+    },
+    {
+      "bounds": {
+        "max": [
+          4.462826728820801,
+          1.7808516025543213,
+          4.768922805786133
+        ],
+        "min": [
+          -4.122989177703857,
+          0.14695534110069275,
+          -4.430025100708008
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a193ae4381ab59df1d0fdb01df86515763325c8107be97b37138862b0f2a9a63",
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-warning.primitive.0",
+      "indexCount": 981,
+      "indexed": true,
+      "materialHash": "dcb7939f25f17a39fd436817e9d90044aa570a688913c93f4792783589c4610f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 537
+    },
+    {
+      "bounds": {
+        "max": [
+          4.641848564147949,
+          3.735888719558716,
+          2.2586817741394043
+        ],
+        "min": [
+          -4.898171424865723,
+          -2.304250955581665,
+          -3.7709765434265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2275957f9d1bbf38c06b95ee31171b2650150b60263f7633f52868d672850553",
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-beacon-amber.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "f5a42d4efe29eb1b3d4c129e151478ad5ca34d31b5f0f3cd5cc0f2d43074cd4f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          3.789055585861206,
+          3.868105888366699,
+          4.7375969886779785
+        ],
+        "min": [
+          -4.566136837005615,
+          -2.084536552429199,
+          -5.469113349914551
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "78d743673895cba563a1dd2742e6ab042b71816a343e28f9e801079ee1fb9089",
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-brushedmetal.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "cd04b88fd2233605d8741287026e8945056d0c8372b14bbc04c703fab8f7668b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod1-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1155810356140137,
+          3.833211898803711,
+          3.712876319885254
+        ],
+        "min": [
+          -4.195908069610596,
+          -1.9201115369796753,
+          -2.7452495098114014
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0188a9a4231fb1f4577a0a7117627a3838ce04708dd75287d0644a84a1dc3296",
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-mechanicaldark.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "f5a49f0e16e10279c0b9bdcfdb8dfdffcf6e7145470da538564c58683fbf1973",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          1.883198618888855,
+          5.4000396728515625,
+          2.174574375152588
+        ],
+        "min": [
+          -5.5658979415893555,
+          -2.960452079772949,
+          -1.9866629838943481
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3e303080f8e4095a837ae1b7a04f0019b26e60beaff7330d790a915b4b18343e",
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-stone-deep.primitive.0",
+      "indexCount": 3114,
+      "indexed": true,
+      "materialHash": "368689ec14bfc79e9b930210a478d364b31e7de74e3145c8a163e0080e32a188",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone_deep",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod1-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 2239
+    },
+    {
+      "bounds": {
+        "max": [
+          5.170656204223633,
+          4.1231513023376465,
+          4.700313091278076
+        ],
+        "min": [
+          -5.2217936515808105,
+          -6.1183295249938965,
+          -4.769829750061035
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72c969c884ffd6eb71210719be57889cd2754f767e45845accedb75d5b9ede51",
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-stone.primitive.0",
+      "indexCount": 2796,
+      "indexed": true,
+      "materialHash": "d63926f6e55ecf495b96e018471309b0a4d106f865120cbc6380b91eaa6783c9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 1979
+    },
+    {
+      "bounds": {
+        "max": [
+          4.662476062774658,
+          1.9089863300323486,
+          4.768922805786133
+        ],
+        "min": [
+          -4.057459831237793,
+          -0.11999785155057907,
+          -4.500977516174316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "53e6976cbcdb9345f7d69104c37abde220ed10cf63ae68b78e78488140c4101b",
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-warning.primitive.0",
+      "indexCount": 378,
+      "indexed": true,
+      "materialHash": "dcb7939f25f17a39fd436817e9d90044aa570a688913c93f4792783589c4610f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 276
+    },
+    {
+      "bounds": {
+        "max": [
+          4.641848564147949,
+          3.735888719558716,
+          2.2586817741394043
+        ],
+        "min": [
+          -4.898171424865723,
+          -2.304250955581665,
+          -3.7709765434265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ffd5456a221c7b7c83c98ff65548fb32ad2a312380a2ae1696be42052f7cb36e",
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-beacon-amber.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "f5a42d4efe29eb1b3d4c129e151478ad5ca34d31b5f0f3cd5cc0f2d43074cd4f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          3.789055585861206,
+          3.868105888366699,
+          4.7375969886779785
+        ],
+        "min": [
+          -4.566136837005615,
+          -2.084536552429199,
+          -5.469113349914551
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "78d743673895cba563a1dd2742e6ab042b71816a343e28f9e801079ee1fb9089",
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-brushedmetal.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "cd04b88fd2233605d8741287026e8945056d0c8372b14bbc04c703fab8f7668b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1020851135253906,
+          3.7040483951568604,
+          3.6594438552856445
+        ],
+        "min": [
+          -4.041374206542969,
+          -1.787312626838684,
+          -2.6103017330169678
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b6426ce134bf05aa61cb69425c2e62df333efbc083d6cf81d4d8fb55f3c871ef",
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-mechanicaldark.primitive.0",
+      "indexCount": 18,
+      "indexed": true,
+      "materialHash": "f5a49f0e16e10279c0b9bdcfdb8dfdffcf6e7145470da538564c58683fbf1973",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 18
+    },
+    {
+      "bounds": {
+        "max": [
+          1.909907579421997,
+          5.409103870391846,
+          2.1565170288085938
+        ],
+        "min": [
+          -5.480855464935303,
+          -2.8859169483184814,
+          -2.020991802215576
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fc67f542c173fb02c1e5ccdc3a82941ecc543466d132e466fb0b322943223c01",
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-stone-deep.primitive.0",
+      "indexCount": 1236,
+      "indexed": true,
+      "materialHash": "368689ec14bfc79e9b930210a478d364b31e7de74e3145c8a163e0080e32a188",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone_deep",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod2-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 873
+    },
+    {
+      "bounds": {
+        "max": [
+          5.269308090209961,
+          4.05592679977417,
+          4.77601957321167
+        ],
+        "min": [
+          -5.184628009796143,
+          -6.1555399894714355,
+          -4.829273700714111
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4190528d0dcef26f4a6b9b22047aa061797a57f4ad53d5a0331e1653fc5b8997",
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-stone.primitive.0",
+      "indexCount": 1275,
+      "indexed": true,
+      "materialHash": "d63926f6e55ecf495b96e018471309b0a4d106f865120cbc6380b91eaa6783c9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod2-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 911
+    },
+    {
+      "bounds": {
+        "max": [
+          4.662623405456543,
+          1.969477653503418,
+          4.775740146636963
+        ],
+        "min": [
+          -4.128274917602539,
+          -0.38289666175842285,
+          -4.500977516174316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4dd1bdbf025c4a9dac54ff6459271bd34b1485f45c37fe4b66b86903480ac9ad",
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-warning.primitive.0",
+      "indexCount": 219,
+      "indexed": true,
+      "materialHash": "dcb7939f25f17a39fd436817e9d90044aa570a688913c93f4792783589c4610f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.rock-junk-boulder.mesh.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 181
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "368689ec14bfc79e9b930210a478d364b31e7de74e3145c8a163e0080e32a188",
+      "id": "material:368689ec14bfc79e9b930210",
+      "name": "Material_Stone_deep",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cd04b88fd2233605d8741287026e8945056d0c8372b14bbc04c703fab8f7668b",
+      "id": "material:cd04b88fd2233605d8741287",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d63926f6e55ecf495b96e018471309b0a4d106f865120cbc6380b91eaa6783c9",
+      "id": "material:d63926f6e55ecf495b96e018",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "dcb7939f25f17a39fd436817e9d90044aa570a688913c93f4792783589c4610f",
+      "id": "material:dcb7939f25f17a39fd436817",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f5a42d4efe29eb1b3d4c129e151478ad5ca34d31b5f0f3cd5cc0f2d43074cd4f",
+      "id": "material:f5a42d4efe29eb1b3d4c129e",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f5a49f0e16e10279c0b9bdcfdb8dfdffcf6e7145470da538564c58683fbf1973",
+      "id": "material:f5a49f0e16e10279c0b9bdcf",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-stone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone",
+      "nodeName": "LOD0_Stone",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-stone-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone_deep",
+      "nodeName": "LOD0_Stone_deep",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-stone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone",
+      "nodeName": "LOD1_Stone",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-stone-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone_deep",
+      "nodeName": "LOD1_Stone_deep",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-stone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone",
+      "nodeName": "LOD2_Stone",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-stone-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone_deep",
+      "nodeName": "LOD2_Stone_deep",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.mesh.lod2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.rock-junk-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-junk-boulder.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_ROCK_JUNK_BOULDER_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-junk-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "7121fcb007d576e1c4ac0d01c3d1d13b71124c7f9a4063a01a931d20466a1c1a"
+    },
+    "sourceGlb": {
+      "bytes": 445604,
+      "sha256": "908821c91ba2489cbd403482a5ab087bf6f3fc3f2082da60494364765bf22a71",
+      "uri": "place_rock_junk_boulder.glb"
+    },
+    "sourceManifest": {
+      "bytes": 300891,
+      "sha256": "50dce1990827c217ea558e306d2fd95a0b8c63660e437c5595127100ce1f8393",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 776840,
+    "sha256": "8bc90d53df829426859df2f73d6606f407022c4e5c3967f5e433fa8a55f073ee",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.14829492568969727,
+        -0.3732180595397949,
+        -0.34690380096435547
+      ],
+      "max": [
+        5.269308090209961,
+        5.409103870391846,
+        4.77601957321167
+      ],
+      "min": [
+        -5.5658979415893555,
+        -6.1555399894714355,
+        -5.469827175140381
+      ],
+      "size": [
+        10.835206031799316,
+        11.564643859863281,
+        10.24584674835205
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.6612648367881775,
+          -0.36559343338012695,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.19766688346862793,
+          -6.068559646606445,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.365990161895752,
+          -0.36559343338012695,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.670656204223633,
+          -0.515593409538269,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.19766688346862793,
+          -0.36559343338012695,
+          -3.49216365814209,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.19766688346862793,
+          -0.36559343338012695,
+          3.49216365814209,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5597290992736816,
+          2.6936864852905273,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 27,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.665989875793457,
+          -0.36559343338012695,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 28,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.665989875793457,
+          -0.36559343338012695,
+          -1.4550682306289673,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 29,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.665989875793457,
+          -0.36559343338012695,
+          1.4550682306289673,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 30,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.19766688346862793,
+          5.337372779846191,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 31,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.770656108856201,
+          -0.36559343338012695,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 32,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.rock-junk-boulder.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 7,
+      "mechanical": 6,
+      "signal": 3,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "warning"
+      }
+    ],
+    "nodeCount": 33,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Stone",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Stone_deep",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Stone",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Stone_deep",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Stone",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Stone_deep",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_rock_junk_boulder.glb"
+  },
+  "runtimeHash": "025cd663b1ced95c7c28ad4d9cf313c2781bafe0512637c29fecb1ec6acc0316",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.269308090209961,
+          5.409103870391846,
+          4.77601957321167
+        ],
+        "min": [
+          -5.5658979415893555,
+          -6.1555399894714355,
+          -5.469827175140381
+        ]
+      },
+      "id": "sf.render.rock-junk-boulder.body",
+      "nodeIds": [
+        "sf.render.rock-junk-boulder.mesh.collision-hull",
+        "sf.render.rock-junk-boulder.mesh.lod0-beacon-amber",
+        "sf.render.rock-junk-boulder.mesh.lod0-brushedmetal",
+        "sf.render.rock-junk-boulder.mesh.lod0-mechanicaldark",
+        "sf.render.rock-junk-boulder.mesh.lod0-stone",
+        "sf.render.rock-junk-boulder.mesh.lod0-stone-deep",
+        "sf.render.rock-junk-boulder.mesh.lod0-warning",
+        "sf.render.rock-junk-boulder.mesh.lod1-beacon-amber",
+        "sf.render.rock-junk-boulder.mesh.lod1-brushedmetal",
+        "sf.render.rock-junk-boulder.mesh.lod1-mechanicaldark",
+        "sf.render.rock-junk-boulder.mesh.lod1-stone",
+        "sf.render.rock-junk-boulder.mesh.lod1-stone-deep",
+        "sf.render.rock-junk-boulder.mesh.lod1-warning",
+        "sf.render.rock-junk-boulder.mesh.lod2-beacon-amber",
+        "sf.render.rock-junk-boulder.mesh.lod2-brushedmetal",
+        "sf.render.rock-junk-boulder.mesh.lod2-mechanicaldark",
+        "sf.render.rock-junk-boulder.mesh.lod2-stone",
+        "sf.render.rock-junk-boulder.mesh.lod2-stone-deep",
+        "sf.render.rock-junk-boulder.mesh.lod2-warning",
+        "sf.render.rock-junk-boulder.root"
+      ]
+    }
+  ]
+}
