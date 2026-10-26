@@ -22,7 +22,20 @@
 // driver link and the value of the readiness batch is that links overlap — pacing each unit would
 // serialize the overlap the batch was built to keep.
 
+import { bootShellPacingActive, pacedBootShellYield } from '../core/bootShellPacing.js';
+
 const DEFAULT_UNSTICK_MS = 48;
+
+// While the boot/loading shell is the picture, a presented-frame wait per serial unit is pure
+// latency: the 2026-10-24 oc1 SwiftShader profile showed ~1,500 rAF gaps of 10-20 ms (19 of
+// cook.buffers' 23.5 s idle) around ~1 ms units whose gl.finish found the queue already empty.
+// Under the shell the unit rides the shell's own duty cycle instead (pacedBootShellYield: work
+// up to its adaptive slice budget, then hand the compositor a frame). Every unit still drains
+// with gl.finish, so the queue stays one unit deep; flight keeps the per-unit frame wait.
+function paceYield(unstickMs, scheduleTask) {
+  if (bootShellPacingActive()) return pacedBootShellYield(() => Promise.resolve());
+  return waitForPresentedFrame(unstickMs, scheduleTask);
+}
 
 /**
  * One real task-queue slot: resume in a macrotask after the next rAF (falling back to a plain
@@ -91,7 +104,7 @@ export function makeGpuQueuePacer(renderer, options = {}) {
   if (parallel) return null;
   const unstickMs = Number.isFinite(options.unstickMs) ? options.unstickMs : DEFAULT_UNSTICK_MS;
   const paceQueue = async function paceGpuQueue() {
-    await waitForPresentedFrame(unstickMs, options.scheduleTask);
+    await paceYield(unstickMs, options.scheduleTask);
     let gl = null;
     try {
       gl = renderer.getContext();

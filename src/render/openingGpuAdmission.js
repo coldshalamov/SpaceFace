@@ -717,7 +717,7 @@ export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
   if (session) {
     for (const object of session.drawables) {
       if (object.visible === false || keep.has(object)) continue;
-      saved.push({ object, visible: object.visible });
+      saved.push(object);
       object.visible = false;
     }
   } else if (scene && typeof scene.traverse === 'function') {
@@ -725,14 +725,16 @@ export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
     const traverse = typeof scene.traverseVisible === 'function' ? scene.traverseVisible : scene.traverse;
     traverse.call(scene, (object) => {
       if (object.visible === false || !isDrawable(object) || keep.has(object)) return;
-      saved.push({ object, visible: object.visible });
+      saved.push(object);
       object.visible = false;
     });
   }
   try {
     return fn();
   } finally {
-    for (const entry of saved) entry.object.visible = entry.visible;
+    // Only visible objects were hidden, so restore is `visible = true`. Bare references, not
+    // {object, visible} records: this runs per touch over every drawable (~90 MB per cook).
+    for (let i = 0; i < saved.length; i += 1) saved[i].visible = true;
   }
 }
 

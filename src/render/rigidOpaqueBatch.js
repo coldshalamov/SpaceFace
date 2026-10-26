@@ -1410,6 +1410,32 @@ export function noteRigidOpaqueBatchProgramWarmed(key) {
 }
 export function clearRigidOpaqueBatchWarmedKeys() {
   warmedRigidOpaqueBatchKeys.clear();
+  // These specimen materials own retained program references. Release each through three's
+  // normal material-dispose path, which preserves references held by live/shared materials.
+  // Pop before notifying listeners so repeated or reentrant teardown cannot dispose it twice.
+  while (retainedRigidOpaqueBatchSpecimenMaterials.length > 0) {
+    const material = retainedRigidOpaqueBatchSpecimenMaterials.pop();
+    try { material.dispose?.(); } catch (_) { /* continue releasing the remaining owned references */ }
+  }
+}
+
+// A program dies with its last live material: disposing a specimen's material runs
+// releaseProgram() -> gl.deleteProgram, so the key above would claim "warmed" while the
+// live cohort's first batch relinks mid-flight (and, being marked warmed, gets no twin).
+// Keep each specimen's material alive (its mesh/geometry/textures are still freed) so
+// the linked colour and shadow-depth programs stay resident for the session.
+const RETAINED_SPECIMEN_MATERIAL_LIMIT = 512;
+const retainedRigidOpaqueBatchSpecimenMaterials = [];
+/** Retain a specimen material for the session. Returns false (caller disposes) when full. */
+export function retainRigidOpaqueBatchSpecimenMaterial(material) {
+  if (!material) return false;
+  if (retainedRigidOpaqueBatchSpecimenMaterials.includes(material)) return true;
+  if (retainedRigidOpaqueBatchSpecimenMaterials.length >= RETAINED_SPECIMEN_MATERIAL_LIMIT) return false;
+  retainedRigidOpaqueBatchSpecimenMaterials.push(material);
+  return true;
+}
+export function retainedRigidOpaqueBatchSpecimenMaterialCount() {
+  return retainedRigidOpaqueBatchSpecimenMaterials.length;
 }
 
 /**
@@ -1466,7 +1492,8 @@ export function settleRigidOpaqueBatchSpecimenTwins(root, holder) {
   for (const twin of holder.children) {
     try { twin.dispose?.(); } catch (_) { /* best effort */ }
     const material = twin.material;
-    if (material && typeof material.dispose === 'function') {
+    if (material && !retainRigidOpaqueBatchSpecimenMaterial(material)
+        && typeof material.dispose === 'function') {
       try { material.dispose(); } catch (_) { /* best effort */ }
     }
   }
