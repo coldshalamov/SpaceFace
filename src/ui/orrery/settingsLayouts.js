@@ -432,7 +432,6 @@ ${C} .orr-cr-body.is-current text { fill:rgb(${HOT}); }
 ${C} .orr-cr-body.is-current text.orr-cr-body__name { opacity:1; }
 ${C} .orr-cr-orrery__hand path, ${C} .orr-cr-orrery__hand circle { stroke-linecap:round; }
 @media (min-width:1501px) { ${C} .orr-cr-orrery__svg text { paint-order:stroke; stroke:rgb(5 7 10 / .9); stroke-width:6px; stroke-linejoin:round; } }
-}
 /* ------------------------------------------------ credits: the section ladder + progress -------- */
 ${C} > .k-hang { overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
 ${ladder(C, '.k-hang > .k-words', '.k-word', '[aria-current="true"]', { numbered: true })}
