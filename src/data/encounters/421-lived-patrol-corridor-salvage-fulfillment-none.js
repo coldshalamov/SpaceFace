@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "DISPATCH: Carry the casket a hundred-twenty on the line — past our hull first, then the far hull, in that order. Let go dead slow. — CASKET ON THE PATROL CORRIDOR.",
+      "line": "DISPATCH: Carry the casket a hundred-twenty on the line — inside sixty of our hull first, then inside sixty of the far hull, in that order. Let go dead slow. — CASKET ON THE PATROL CORRIDOR.",
       "channel": "info",
       "next": "offer"
     },

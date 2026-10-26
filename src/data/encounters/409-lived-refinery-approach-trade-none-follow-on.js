@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "BUOY: Carry the can a hundred-twenty on the line — past our hull first, then the far hull, in that order. Let go dead slow. — CAN ON THE REFINERY APPROACH.",
+      "line": "BUOY: Carry the can a hundred-twenty on the line — inside sixty of our hull first, then inside sixty of the far hull, in that order. Let go dead slow. — CAN ON THE REFINERY APPROACH.",
       "channel": "info",
       "next": "offer"
     },

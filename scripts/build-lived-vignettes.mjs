@@ -917,7 +917,7 @@ const RC459_COPY = {
     aReceipt: 'The ${noun} drifted a hundred-twenty clear of its berth at ${placeLabel} and settled on its own.',
   },
   relay: {
-    instruction: '${voice}: Carry the ${noun} a hundred-twenty on the line — past our hull first, then the far hull, in that order. Let go dead slow.',
+    instruction: '${voice}: Carry the ${noun} a hundred-twenty on the line — inside sixty of our hull first, then inside sixty of the far hull, in that order. Let go dead slow.',
     aLabel: 'Relay the ${noun} past both hulls',
     aLine: 'I carry the ${noun} past your hull, then the far one — in that order — and let go dead slow.',
     aReceipt: 'The ${noun} passed both hulls in order and rests loose at ${placeLabel}.',
