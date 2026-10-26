@@ -659,6 +659,43 @@ test('corridor arranger honors authored activity reservations before any rock sp
   } finally { f.dispose(); }
 });
 
+test('corridor arranger: pinned slots keep authored marks and yield only to the lane', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const sector = f.state.world.sectors['sector_ceres_belt'];
+    const plan = racingCorridorPlan(sector.id);
+    const field = { id: 'f_ceres_1', type: 'ast_metallic' };
+    // A pinned slot owns its authored mark — Ceres activity/collision bindings,
+    // authored geology — so the caller's `pinned` flag must keep a clear mark
+    // verbatim like every other membrane does. Dropping the flag re-seated the
+    // bound prop onto a leg bank while its reservation held the real mark empty.
+    let clearMark = null;
+    for (let i = 0; i < 512 && !clearMark; i++) {
+      const angle = i * 2.399963229728653;
+      // Beyond the authored sector volume: corridor-clear and free of every
+      // seeded/native mark, so only the pinned flag decides the outcome.
+      const reach = 8000 + i * 120;
+      const p = { x: plan.origin.x + Math.cos(angle) * reach, z: plan.origin.z + Math.sin(angle) * reach };
+      if (clearsRacingCorridor(plan, p, 18)) clearMark = p;
+    }
+    assert.ok(clearMark, 'a corridor-clear authored mark exists');
+    const kept = createSectorArranger(sector, {}).createField(field).place(clearMark, 18, 1, true);
+    assert.deepEqual(kept, { x: clearMark.x, z: clearMark.z },
+      'a pinned body keeps its authored mark instead of banking');
+    const banked = createSectorArranger(sector, {}).createField(field).place(clearMark, 18, 1);
+    assert.ok(banked.x !== clearMark.x || banked.z !== clearMark.z,
+      'the same slot unpinned still banks — the flag is actually read');
+    // The lane itself still wins: a pinned mark on the corridor takes the
+    // nearest off-corridor seat rather than sitting mid-course.
+    const seg = plan.keepouts[0];
+    const onLane = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    const moved = createSectorArranger(sector, {}).createField(field).place(onLane, 18, 1, true);
+    assert.ok(clearsRacingCorridor(plan, moved, 18),
+      'a pinned mark on the lane still yields to the corridor');
+    assert.ok(moved.x !== onLane.x || moved.z !== onLane.z, 'the pinned body leaves the lane');
+  } finally { f.dispose(); }
+});
+
 test('corridor membrane: moved bodies never stack, and re-materialization re-settles', async () => {
   const f = await sectorFixture('sector_ceres_belt');
   try {

@@ -420,13 +420,27 @@ export function createRacingCorridorArranger(sector, options = {}) {
       const authored = Array.isArray(authoredLegs) ? authoredLegs.filter(inRange) : [];
       const legs = authored.length ? authored : plan.segments.map((_, i) => i);
       return {
-        place(original, bodyRadius, slotIndex) {
+        place(original, bodyRadius, slotIndex, pinned = false) {
           const radius = asteroidColliderRadius(fdef.type, bodyRadius);
           const seed = hash32(fdef.id, slotIndex, original.x, original.z) >>> 0;
           // The body's own reservation key: a re-materializing rock skips its own stale
           // seat and re-settles it, never drifting further out each pass. Matches the
           // key outsidePoint derives for the seeded fallback call below.
           const bodyKey = `${seed}|${original.x}|${original.z}`;
+          // Pinned slots — Ceres activity/collision bindings and authored geology —
+          // own their mark, not a bank seat: the caller's contract (and the campaign
+          // arranger's) is that pinned positions win verbatim. The corridor grants
+          // them the same membrane contract every other authored solid already gets:
+          // a corridor-clear mark is kept, a mark on the lane takes the nearest
+          // off-corridor seat. Re-seating them through the bank instead left the
+          // pocket's authored marks reserved but empty while the bound props landed
+          // wherever a leg seat opened.
+          if (pinned && finitePoint(original)) {
+            const pos = outsidePoint(plan, original, radius, `pinned|${seed}`, 'rock');
+            stats.placed++;
+            if (pos.x !== original.x || pos.z !== original.z) stats.moved++;
+            return pos;
+          }
           // slotIndex | 0 guards non-integer callers but a negative still indexes
           // legs[-1] — plan.segments[undefined] then throws on destructure. Wrap
           // through a positive modulo; non-negative indices are bit-identical to
