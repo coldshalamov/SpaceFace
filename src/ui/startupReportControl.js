@@ -13,6 +13,7 @@ export function mountStartupReportControl({ state, document = globalThis.documen
       right: '12px', maxWidth: 'calc(100vw - 24px)', zIndex: '12000', pointerEvents: 'auto' });
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'sf-state__verb';
+    Object.assign(button.style, { minHeight: '44px', padding: '10px 14px', fontSize: '16px', touchAction: 'manipulation' });
     button.textContent = 'Copy launch details';
     root.appendChild(button); document.body.appendChild(root);
     let fallback = null;
