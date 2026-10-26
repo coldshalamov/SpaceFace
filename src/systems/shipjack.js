@@ -12,6 +12,7 @@ import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctri
 import { makeEnemySpawnSpec } from './combat.js';
 import { advanceFleetOperations, executeFleetOperation } from '../shipjack/fleetOperations.js';
 import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
 const YARD_ACTIONS = new Set(['sell','return','extract','repair_module','register','settle_title','forge_broadcast','repaint','settle_lien']);
 const TERMINAL = new Set(['aborted','escaped','destroyed','expired']);
@@ -392,6 +393,8 @@ export const shipjack = {
       for(const e of state.entityList || []){const v=vesselForEntity(state,e);if(v&&e.alive){v.location.entityId=e.id;v.generation=e.data.shipjackGeneration;}}
       for(const v of Object.values(own.vesselsById))if(v.materializationOwner==='shipjack'&&v.location.kind==='remote'&&v.location.sectorId===currentSector(state))this.rematerialize(v);
     }
+    // Borrowed circuits admit no new campaign opportunities; retained custody still reconciles above.
+    if(isRacingCorridorSession(state))return;
     for(const row of BLACK_FLAG_ENCOUNTERS){
       if(row.sectorId!==currentSector(state))continue;
       const sj=ensureShipjack(state);if(sj.encounters[row.id])continue;
