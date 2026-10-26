@@ -39,7 +39,7 @@ function scanRangeOf(poi, state, sectorId) {
     const player = playerOf(state);
     const point = player && player.pos ? player.pos : { x: 0, z: 0 };
     weather = weatherScanScale(sectorId, point, Number(state && state.simTime) || 0);
-    if (!(weather > 0)) weather = 1;
+    if (!(weather >= 0)) weather = 1;
   }
   return base * bonus * weather;
 }

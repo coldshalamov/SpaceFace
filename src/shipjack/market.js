@@ -49,7 +49,14 @@ export function valuationBreakdown(vessel, owned, { illicit = false, saturation 
   const demandFactor = Math.max(0.45, 1 - Math.min(10, money(saturation)) * 0.08);
   const lien = money(vessel?.lienCr);
   const intact = money((shell + componentValue) * legalFactor * demandFactor - lien);
+  // A claimant sells the remaining physical property at replacement appraisal,
+  // never at a fence's discounted redemption price. Removed parts keep their own
+  // disputed provenance; purchasing this hull does not launder inventory.
+  const claimantCompensation = money(money(hull?.price) * integrity
+    + parts.reduce((n, p) => n + money(PARTS.get(p.defId)?.price * p.condition), 0));
+  const titleServiceFee = Math.max(300, money(claimantCompensation * 0.1));
   return { hullBase, integrity, shell, parts, componentValue, legalFactor, demandFactor,
+    claimantCompensation, titleServiceFee, titleSettlementCost: claimantCompensation + titleServiceFee,
     lien, intact, stripNet: money(componentValue - parts.reduce((n, p) => n + p.labor, 0)),
     returnFee: Math.min(2000, money(hullBase * 0.045 * integrity * (vessel?.proofRecorded&&vessel?.crewSafe?1.15:1))),
     registrationCost: Math.max(300, money(hullBase * 0.06)),
@@ -81,13 +88,17 @@ export function quoteFingerprint(vessel, owned, stationId, action, slotIndex, sa
   const signature = vessel?.signature || {};
   // Narrative notices advance the ledger revision during a booked job. They do not
   // change its price or inventory. Bind the actual economic/custody facts instead.
-  return hash32(JSON.stringify([vessel?.vesselId, vessel?.generation || '', owned?.defId, vessel?.title,
+  const factors = [vessel?.vesselId, vessel?.generation || '', owned?.defId, vessel?.title,
     vessel?.custodian, vessel?.recognizedOwner, vessel?.lienCr || 0,vessel?.proofRecorded===true,vessel?.crewSafe===true,
     [componentCondition(vessel?.condition?.hull), vessel?.condition?.driveMissing === true],
     [location.kind || '', location.sectorId || '', location.stationId || ''],
     [signature.broadcast || '', signature.frame || '', signature.engine || '',
       signature.forged === true, Number(signature.tamper) || 0, signature.repainted === true], owned?.shipjackDriveRemoved || false,
-    fits, items, stationId, action, slotIndex ?? null, saturation])).toString(36);
+    fits, items, stationId, action, slotIndex ?? null, saturation];
+  // Keep previously persisted cutter-job fingerprints byte-equivalent.
+  if (action === 'settle_title') factors.push([vessel?.originalOwner || '', vessel?.profile || '',
+    vessel?.crew || '', vessel?.claimResolved === true, signature.broadcastFlagged === true]);
+  return hash32(JSON.stringify(factors)).toString(36);
 }
 
 export function createYardQuote({ vessel, owned, stationId, action, slotIndex, simTime = 0,
@@ -96,7 +107,7 @@ export function createYardQuote({ vessel, owned, stationId, action, slotIndex, s
   const part = value.parts.find((p) => p.slotIndex === slotIndex);
   const amounts = { sell: value.intact, return: value.returnFee, extract: -(part?.labor || 0),
     repair_module: -Math.max(40, money((PARTS.get(part?.defId)?.price || 0) * (1 - (part?.condition ?? 1)) * 0.18)),
-    register: -value.registrationCost, forge_broadcast: -value.forgeryCost,
+    register: -value.registrationCost, settle_title: -value.titleSettlementCost, forge_broadcast: -value.forgeryCost,
     repaint: -Math.max(150, money(value.hullBase * 0.025)), settle_lien: -value.lien };
   return { version: 1, vesselId: vessel?.vesselId, stationId, action, slotIndex: slotIndex ?? null,
     fingerprint: quoteFingerprint(vessel, owned, stationId, action, slotIndex, saturation),
@@ -140,6 +151,7 @@ export function sanitizeYardPersistence(input, vesselsById = {}) {
     if (!plain(raw) || typeof raw.operationId !== 'string') continue;
     result.yardReceipts.push({ operationId: str(raw.operationId), vesselId: str(raw.vesselId),
       action: str(raw.action, 30), status: str(raw.status, 20), ok: raw.ok === true,
+      stationId: str(raw.stationId),
       amount: Math.max(-1e8, Math.min(1e8, finite(raw.amount))), at: Math.max(0, finite(raw.at)),
       reason: str(raw.reason, 180), instanceId: str(raw.instanceId), defId: str(raw.defId), subsystemId: str(raw.subsystemId, 60) });
   }

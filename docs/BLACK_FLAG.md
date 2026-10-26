@@ -169,3 +169,15 @@ tender reached the port but left its passenger orbiting outside the authored 20 
 frame matching (`sg02DynamicBodyOwner._applyFrameCoupler`). Unvalidated controller changes
 were removed. Distress currently marks a truthful beacon; it does not advertise accepted
 dispatch. Retained-hull reversal and player-controlled Massline towing remain available.
+
+## Compensated title
+
+Licensed recovery registries offer `settle_title` for physically berthed, disputed
+civilian property with a real claimant and safe crew. The canonical quote separates
+condition-based hull/fitting replacement compensation from a registry service fee.
+The economy's exact-payment callback commits title, lawful broadcast and a terminal
+receipt synchronously; public success follows the confirmed debit. It does not repair
+the hull, erase WANTED, settle liens or launder previously extracted parts. Military
+frames, missing claimants and unsafe crew receive specific refusals. The existing
+Claim War mission recognizes this as the compensated-owner ending, without adding
+an independent reward path.

@@ -807,6 +807,7 @@ export const missionBoardOps = {
     const flags = story && story.flags || {};
     const offer = buildMissionBoardContract(beat, {
       seed, epoch, branch, chainStep,
+      state: this.state,
       // PQ-032.02: the live route never writes elroy_outcome — derive the old-vocabulary
       // flavour from the chosen door, and only true legacy evidence suppresses the offer.
       elroyOutcome: campaign47aOutcomeKey(this.state),

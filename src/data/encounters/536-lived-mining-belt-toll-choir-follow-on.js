@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: 36 cr clears the count — then cross a hundred-twenty past the hull to the far side, between a hundred and a hundred-sixty of us. Or tow our dent a hundred-twenty clear. — DENT ON THE MINING BELT.",
+      "line": "CANTOR: 36 cr clears the count — then cross a hundred-twenty past the hull to the far side, between a hundred and a hundred-sixty of us. Or tow our dent a hundred-twenty clear and leave it settled — under five for a two-count. — DENT ON THE MINING BELT.",
       "channel": "info",
       "next": "offer"
     },

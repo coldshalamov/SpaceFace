@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "FOREMAN: Line on the puck. Drag it past the hundred-twenty mark, then cut it quiet — dead slow when the line comes off. — PUCK ON THE PATROL CORRIDOR.",
+      "line": "FOREMAN: Line on the puck. Drag it past the hundred-twenty mark, then cut it quiet — under five, held a two-count, when the line comes off. — PUCK ON THE PATROL CORRIDOR.",
       "channel": "info",
       "next": "offer"
     },

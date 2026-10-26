@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "339c39cc0230bed23143dcd404f9a1279c6aa4a6ffbf25d1dadecd8ca9544a4d",
+  "contentHash": "6e700f19a35d95069c27f96e5dafe829deed87f74bf6b9e48b1b3752ba74ff33",
   "dynamicGroups": [
     {
       "id": "sf.render.pip-spanner.node.lod0-claw-l-hull.dynamic",
@@ -2561,8 +2561,8 @@
       "uri": "place_pip_spanner.glb"
     },
     "sourceManifest": {
-      "bytes": 307707,
-      "sha256": "6f2278df60560e6b8ffac9ea5d7f3df816951bb08252171b81e759230549f8a6",
+      "bytes": 320050,
+      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
       "uri": "pilots.json"
     }
   },
@@ -3858,7 +3858,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_pip_spanner.glb"
   },
-  "runtimeHash": "78bee5637ee2c57aa8eed4341d0905f976adcb667f1db92f7c88fb88e7dc4d67",
+  "runtimeHash": "fef6b271246164e05816733f812bbf67f74d195146983f02a8db803cf475250c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

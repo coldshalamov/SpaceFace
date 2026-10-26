@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "VERGE: Tow the gasket over — a hundred-twenty of drag — and park it inside twenty of the receiver, dead slow for a four-count. — GASKET ON THE MINING BELT.",
+      "line": "VERGE: Tow the gasket over — a hundred-twenty of drag — and park it inside twenty of the receiver, under two for a four-count. — GASKET ON THE MINING BELT.",
       "channel": "info",
       "next": "offer"
     },

@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "seed-wl-07-history-tier",
-      "date": "2026-10-23",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Contract history reads First contracts, Working spacer, Established, or Veteran. A new pilot reads First contracts.",
-      "fingerprint": "verb=read,subject=contract-history,sector=station,layer=board,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "0ed563b744",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-wl-08-rank-board-gates",
       "date": "2026-10-23",
       "wf": "WF-08",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "635fc7f96a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inference26-throw-camera",
+      "date": "2026-10-26",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Thrown hostile remains framed through the live sling and impact handoff; five focused tests green within legal zoom envelope",
+      "fingerprint": "verb=follow,subject=thrown-hull,sector=combat,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "14c2aae9c7e",
       "verification": "focused_green"
     }
   ],

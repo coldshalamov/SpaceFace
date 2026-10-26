@@ -7,14 +7,14 @@ import { fenceForStation } from '../data/fences.js';
 
 const STATIONS = new Map(SECTORS.flatMap(s => (s.stations || []).map(st => [st.id, { ...st, sectorId: s.id }])));
 const LIMIT = 96;
-const ACTIONS = new Set(['scan','hail','probe','isolator','port','drone','shutdown','helm','secure','piloted','cargo','repair_module','register','forge_broadcast','repaint','return','sell','extract']);
+const ACTIONS = new Set(['scan','hail','probe','isolator','port','drone','shutdown','helm','secure','piloted','cargo','repair_module','register','settle_title','forge_broadcast','repaint','return','sell','extract']);
 export const BLACK_FLAG_JOB_PATTERNS = Object.freeze([
   { id:'intact_return', wage:300, name:'Bring the living frame home', steps:['Identify the frame','Return hull and installed equipment to its claimant'] },
   { id:'crew_return', wage:450, name:'People before machinery', steps:['Agree safe crew passage','Return the crew’s intact vessel'] },
   { id:'blackbird_prize', wage:600, name:'The Blackbird job', steps:['Identify Blackbird','Fly the actual prize or extract its unique governor'] },
   { id:'cold_controller', wage:400, name:'Cold Logic, live evidence', steps:['Perform a real safe shutdown','Extract the scanner controller or return the whole craft'] },
   { id:'warrant_return', wage:500, name:'One writ, one frame', steps:['Identify the exact warranted frame','Honor crew passage','Return this frame to its named receiver'] },
-  { id:'claim_resolution', wage:400, name:'The claim war', steps:['Read the physical frame record','Choose return, clean salvage registration, fence sale, or a tested copied broadcast'] },
+  { id:'claim_resolution', wage:400, name:'The claim war', steps:['Read the physical frame record','Choose return, compensated title, salvage registration, fence sale, or a tested copied broadcast'] },
   { id:'forensic_survey', wage:200, name:'A broadcast is not a frame', steps:['Record the target’s signatures','Submit the same vessel to a grade-three registry inspection'] },
   { id:'cold_restart', wage:250, name:'Give the drive a second life', steps:['Acquire the damaged vessel','Restore its installed engine through the yard'] },
   { id:'component_bounty', wage:250, name:'Bring the part, spare the shell', steps:['Identify the fitted component','Extract that exact component at recoverable condition'] },
@@ -89,7 +89,7 @@ function projection(e,pattern,params={}) {
     case 'blackbird_prize': tests=[e.scanned,e.piloted||part('unique_blackbird_governor')];method=e.piloted?'prototype_piloted':'prototype_governor_recovered';break;
     case 'cold_controller': tests=[e.action('shutdown'),part('mod_cargo_scanner_s')||e.returned];method=e.returned?'isolated_frame_return':'isolated_controller_extracted';break;
     case 'warrant_return': tests=[e.scanned,e.safe,e.returned&&e.v.location.stationId===e.row?.stationId];method='frame_specific_writ_return';break;
-    case 'claim_resolution': tests=[e.scanned,e.returned||e.v.title==='clean'&&e.action('register')||e.sold||e.v.signature?.forged&&e.f.lowAccepted];method=e.returned?'claimant_restitution':e.sold?'fence_affiliate':e.v.title==='clean'?'registered_salvager':'unresolved_copied_identity';break;
+    case 'claim_resolution': tests=[e.scanned,e.returned||e.v.title==='clean'&&(e.action('register')||e.action('settle_title'))||e.sold||e.v.signature?.forged&&e.f.lowAccepted];method=e.returned?'claimant_restitution':e.sold?'fence_affiliate':e.v.title==='clean'?e.action('settle_title')?'compensated_owner':'registered_salvager':'unresolved_copied_identity';break;
     case 'forensic_survey': tests=[e.scanned,e.f.highInspected];method='physical_signature_verified';break;
     case 'cold_restart': tests=[!!e.owned||e.piloted,e.f.driveRepaired||e.yards.some(r=>r.action==='repair_module'&&r.subsystemId==='subsystem_drive')];method='drive_restoration';break;
     case 'component_bounty': tests=[e.scanned,part(params.componentDefId || targetComponent(e))];method='specific_part_extraction';break;

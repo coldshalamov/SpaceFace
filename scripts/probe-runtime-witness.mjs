@@ -22,7 +22,7 @@ import { classifyRuntimeWitness, formatHitchAttributionDetailLines, formatRuntim
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { consumePageConditionValue, installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 import { digestSourcePaths, listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
-import { armoryLaunchWord, clickText, crucibleToArmory, waitForPreparationLaunch } from './player-truth/routes.mjs';
+import { armoryLaunchWord, clickText, crucibleToArmory, installFirstLightPromptHandler, waitForPreparationLaunch } from './player-truth/routes.mjs';
 import {
   formatRuntimeWitnessProductionMatrix,
   productionRouteById,
@@ -3257,6 +3257,7 @@ try {
     });
   }
   installCspSafePlaywrightPolling(page);
+  await installFirstLightPromptHandler(page, (label, _ok, detail) => log(`${label}: ${detail}`));
   const urlDeadline = Date.now() + 20_000;
   while (Date.now() < urlDeadline) {
     const liveUrl = page.url();

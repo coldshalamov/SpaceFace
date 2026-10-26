@@ -122,7 +122,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "PIT: Bring your hull inside sixty of us and hold dead slow for a two-count — the scan needs a clean read. — CRADLE ON THE CIVILIAN CORE.",
+      "line": "PIT: Bring your hull inside sixty of us and hold under five for a two-count — the scan needs a clean read. — CRADLE ON THE CIVILIAN CORE.",
       "channel": "info",
       "next": "offer"
     },

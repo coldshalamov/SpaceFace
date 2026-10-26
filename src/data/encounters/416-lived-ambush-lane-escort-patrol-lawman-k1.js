@@ -114,7 +114,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "WARD: Fall in behind our wake — sixty to a hundred-eighty, matched speed, six-count. — DENT ON THE AMBUSH LANE.",
+      "line": "WARD: Fall in behind our wake — sixty to a hundred-eighty, within eight of our pace, a six-count, while the lead makes its hundred. — DENT ON THE AMBUSH LANE.",
       "channel": "info",
       "next": "offer"
     },

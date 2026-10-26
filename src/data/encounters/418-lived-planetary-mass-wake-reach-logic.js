@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "SLIP: Tow the pin over — a hundred-twenty of drag — and park it inside twenty of the receiver, dead slow for a four-count. — PIN ON THE PLANETARY MASS.",
+      "line": "SLIP: Tow the pin over — a hundred-twenty of drag — and park it inside twenty of the receiver, under two for a four-count. — PIN ON THE PLANETARY MASS.",
       "channel": "info",
       "next": "offer"
     },

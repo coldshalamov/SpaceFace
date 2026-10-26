@@ -963,6 +963,7 @@ function initializeConvoyPredation(d, live, state) {
     const data = carrier.data || (carrier.data = {});
     data.predationEncounterId = live.id;
     data.predationRole = 'manifest_carrier';
+    if (config.engagementOwner === 'encounter') data.predationEngagementOwner = 'encounter';
     data.predationIdentityKey = `${live.id}:hauler:${i}`;
     data.freightCustody = {
       status: 'carrier',
@@ -984,6 +985,11 @@ function initializeConvoyPredation(d, live, state) {
     data.predationEncounterId = live.id;
     data.predationRole = 'raider';
     data.predationIdentityKey = `${live.id}:raider:${i}`;
+    // The authored scene owns the approach; custody only takes over after a real spill.
+    if (config.engagementOwner === 'encounter') {
+      data.predationEngagementOwner = 'encounter';
+      continue;
+    }
     if (!hotStart) {
       ai.predationStatus = 'standby';
       ai.passive = true;
@@ -1009,6 +1015,14 @@ function initializeConvoyPredation(d, live, state) {
     configurable: true,
   });
   raider.data.freightCustodyRaiderIdentityKey = raider.data.predationIdentityKey;
+  if (config.engagementOwner === 'encounter') {
+    live.data.predationStatus = 'authored';
+    live.data.predationRaiderId = raider.id;
+    live.data.predationRaiderIdentityKey = raider.data.predationIdentityKey;
+    live.data.predationTargetId = target.id;
+    live.data.predationTargetIdentityKey = target.data.predationIdentityKey;
+    return true;
+  }
   const ai = raider.data.ai;
   const responseWindowS = Math.max(
     PREDATION_MIN_RESPONSE_S,
@@ -1442,12 +1456,21 @@ function activeCivilianRecoveryOwnsPersistence(entity) {
     && annotation.phase !== 'lost' && annotation.phase !== 'recovered');
 }
 
-function releaseFreightCustodyPersistence(entity, record, owned) {
+function freightActorPlayerOwned(state, entity) {
+  if (!entity) return false;
+  if (entity.id === state?.playerId) return true;
+  const vesselId = entity.data.vesselId;
+  return typeof vesselId === 'string' && vesselId.length > 0
+    && !!state?.player?.ownedShips?.some(ship => ship.vesselId === vesselId);
+}
+
+function releaseFreightCustodyPersistence(entity, record, owned, state) {
   if (!entity || !record) return false;
   const data = entity.data || {};
   const marker = data.freightCustodyPersistence;
   if (marker && marker.custodyId === record.custodyId) delete data.freightCustodyPersistence;
-  if (!owned || activeCivilianRecoveryOwnsPersistence(entity) || !entity.flags) return false;
+  if (!owned || freightActorPlayerOwned(state, entity)
+    || activeCivilianRecoveryOwnsPersistence(entity) || !entity.flags) return false;
   delete entity.flags.persistent;
   return true;
 }
@@ -1456,8 +1479,8 @@ function releaseFreightCustodyActors(live, state, record) {
   if (!record || !state || !state.entities) return;
   const carrier = selectedFreightCarrier(live, state, true);
   const raider = selectedFreightRaider(live, state, true);
-  releaseFreightCustodyPersistence(carrier, record, record.carrierPersistenceOwned);
-  releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned);
+  releaseFreightCustodyPersistence(carrier, record, record.carrierPersistenceOwned, state);
+  releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned, state);
   record.carrierPersistenceOwned = false;
   record.raiderPersistenceOwned = false;
   // Loot-sweep survivors holding pods claimed persistence per hull; custody closing releases
@@ -1466,7 +1489,7 @@ function releaseFreightCustodyActors(live, state, record) {
   if (sweepOwned) {
     record.sweepPersistenceOwned = null;
     for (const key of Object.keys(sweepOwned)) {
-      releaseFreightCustodyPersistence(state.entities.get(Number(key)), record, sweepOwned[key] === true);
+      releaseFreightCustodyPersistence(state.entities.get(Number(key)), record, sweepOwned[key] === true, state);
     }
   }
 }
@@ -1568,10 +1591,47 @@ function freightSweeperForCollector(live, state, record, collectorId) {
   if (record.sweepEscapees && record.sweepEscapees[collectorId] === true) return null;
   const entity = state.entities && state.entities.get(collectorId);
   const data = entity && entity.data;
-  if (!entity || entity.alive === false || entity.type !== 'ship' || !data) return null;
+  if (!entity || entity.alive === false || entity.type !== 'ship' || !data
+    || freightActorPlayerOwned(state, entity)) return null;
   if (data.freightSweeperCustodyId !== record.custodyId || data.freightSweeperKey == null) return null;
   if (live.roles && live.roles[collectorId] !== 'raider') return null;
   return entity;
+}
+
+
+const FREIGHT_CONTROL_LEASES = new WeakMap();
+
+// Only doctrine submitted by this custody owner receives a process-local control lease.
+function setFreightCustodyDoctrine(d, entity, values) {
+  const previous = FREIGHT_CONTROL_LEASES.get(entity);
+  if (previous && previous.port && previous.token) previous.port.cancelActivity(previous.token);
+  const ai = setEntityDoctrine(entity, values);
+  const port = d.helpers && d.helpers.aiManeuver;
+  const token = port && typeof port.claimActivity === 'function' ? port.claimActivity(entity, ai.activity) : null;
+  FREIGHT_CONTROL_LEASES.set(entity, { ai, activity: ai.activity, generation: entity.occupantGeneration,
+    body: entity.physicsBody,
+    passive: ai.passive, status: ai.predationStatus, port, token });
+  return ai;
+}
+
+export function captureFreightCustodyControl(state, entity) {
+  const own = entity && FREIGHT_CONTROL_LEASES.get(entity);
+  if (!own) return null;
+  return () => releaseFreightCustodyControl(state, entity, own);
+}
+
+function releaseFreightCustodyControl(state, entity, own) {
+  if (!own || FREIGHT_CONTROL_LEASES.get(entity) !== own || !freightActorPlayerOwned(state, entity) || state.entities.get(entity.id) !== entity || entity.occupantGeneration !== own.generation
+    || entity.physicsBody !== own.body) return false;
+  if (own.port && own.token) own.port.cancelActivity(own.token);
+  // Do not clear intent or write a neutral physics packet: either may belong to a later owner.
+  if (entity.data.ai === own.ai && own.ai.activity === own.activity) {
+    own.ai.activity = null;
+    if (own.ai.passive === own.passive) own.ai.passive = true;
+    if (own.ai.predationStatus === own.status) delete own.ai.predationStatus;
+  }
+  FREIGHT_CONTROL_LEASES.delete(entity);
+  return true;
 }
 
 function beginFreightLootSweep(d, live, state, record, now) {
@@ -1579,7 +1639,7 @@ function beginFreightLootSweep(d, live, state, record, now) {
   const raiderRole = live.plan && live.plan.predation && live.plan.predation.raiderRole || 'raider';
   const survivors = d.entsOf(live, raiderRole).filter((entity) => {
     if (!entity || entity.id === live.data.predationRaiderId || !entity.data) return false;
-    if (entity.data.freightSweeperCustodyId != null) return false;
+    if (entity.data.freightSweeperCustodyId != null || freightActorPlayerOwned(state, entity)) return false;
     // A surrendered hull stays surrendered — it is nobody's survivor. Any other stand-down is
     // exactly what the cleared screen undoes: the survivor turns back for the spill.
     const ai = entity.data.ai;
@@ -1657,7 +1717,7 @@ function beginFreightSweeperEscape(d, live, state, record, sweeper, now) {
   const ai = data.ai || (data.ai = {});
   ai.passive = false;
   ai.predationStatus = 'loot_sweep_escape';
-  setEntityDoctrine(sweeper, {
+  setFreightCustodyDoctrine(d, sweeper, {
     activity: {
       kind: ActivityKind.FLEE,
       reason: `${live.shapeId}:freight_sweep_escape`,
@@ -1742,9 +1802,15 @@ function tickFreightLootSweep(d, live, state, record, now) {
   const claimed = new Set();
   for (const sweeper of sweepers) {
     const data = sweeper.data;
-    const ai = data.ai || (data.ai = {});
+    const ai = freightActorPlayerOwned(state, sweeper) ? data.ai : (data.ai || (data.ai = {}));
     const securedQty = freightHeldQty(record, sweeper.id);
     const escape = data.freightSweepEscape;
+    if (freightActorPlayerOwned(state, sweeper)) {
+      if (record.sweepPersistenceOwned) record.sweepPersistenceOwned[sweeper.id] = false;
+      if (securedQty > 0) respillFreightFromRaider(d, live, state, record, sweeper, 'sweeper_player_owned', sweeper.id);
+      delete data.freightSweepEscape;
+      continue;
+    }
     if (escape && escape.target) {
       const radius = Math.max(1, Number(escape.radius) || FREIGHT_RAIDER_ESCAPE_R);
       if (Number.isFinite(escape.startedAt) && now - escape.startedAt > FREIGHT_RAIDER_ESCAPE_S) {
@@ -1792,7 +1858,7 @@ function tickFreightLootSweep(d, live, state, record, now) {
         1,
         (Number(sweeper.radius) || 0) + (Number(target.entity.radius) || 0) - FREIGHT_RAIDER_CONTACT_PAD,
       );
-      setEntityDoctrine(sweeper, {
+      setFreightCustodyDoctrine(d, sweeper, {
         activity: {
           kind: ActivityKind.TRANSIT,
           reason: `${live.shapeId}:freight_pod_sweep`,
@@ -2162,6 +2228,11 @@ function collectFreightPod(d, live, state, payload) {
     return settleFreightPod(d, live, state, record, pod, 'player_collected', 'player_collected');
   }
   const raider = selectedFreightRaider(live, state);
+  if (raider && payload.collectorId === raider.id && freightActorPlayerOwned(state, raider)) {
+    payload.acceptedAmount = 0;
+    payload.rejectedAmount = pod.qty;
+    return false;
+  }
   if (raider && payload.collectorId === raider.id) {
     payload.acceptedAmount = pod.qty;
     payload.rejectedAmount = 0;
@@ -2198,6 +2269,7 @@ function freightRaiderTethered(state, entityId) {
 
 function freightRaiderIneligibleReason(state, raider) {
   if (!raider) return 'identity_lost';
+  if (freightActorPlayerOwned(state, raider)) return 'player_owned';
   if (raider.alive === false) return 'destroyed';
   if (raider.disabled === true) return 'drive_disabled';
   const runtime = state.combat && state.combat.entities && state.combat.entities[String(raider.id)];
@@ -2294,7 +2366,7 @@ function respillFreightFromRaider(d, live, state, record, raider, reason, holder
   record.raiderSecuredQty = Math.max(0, record.raiderSecuredQty);
   if (holder === record.raiderId) {
     if (record.raiderSecuredQty === 0) {
-      releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned);
+      releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned, state);
       record.raiderPersistenceOwned = false;
     }
     record.escapeStartedAt = null;
@@ -2303,17 +2375,17 @@ function respillFreightFromRaider(d, live, state, record, raider, reason, holder
     record.escapeTarget = null;
   } else if (freightHeldQty(record, holder) === 0) {
     const ownedMap = record.sweepPersistenceOwned || {};
-    releaseFreightCustodyPersistence(raider, record, ownedMap[holder] === true);
+    releaseFreightCustodyPersistence(raider, record, ownedMap[holder] === true, state);
     delete ownedMap[holder];
   }
   if (reason === 'raider_escape_stalled' || reason === 'custody_timeout_respill') {
     record.raiderRecoveryClosed = true;
   }
-  if (raider && raider.alive !== false && raider.data) {
+  if (raider && raider.alive !== false && raider.data && !freightActorPlayerOwned(state, raider)) {
     const ai = raider.data.ai || (raider.data.ai = {});
     ai.passive = true;
     ai.predationStatus = 'cargo_respilled';
-    setEntityDoctrine(raider, {
+    setFreightCustodyDoctrine(d, raider, {
       activity: {
         kind: ActivityKind.DISENGAGE,
         reason: `${live.shapeId}:freight_${reason}`,
@@ -2366,7 +2438,7 @@ function beginFreightRaiderEscape(d, live, state, record, raider) {
   ai.motiveSatisfied = false;
   ai.pirateDisengaged = false;
   ai.predationStatus = 'cargo_escape';
-  setEntityDoctrine(raider, {
+  setFreightCustodyDoctrine(d, raider, {
     activity: {
       kind: ActivityKind.FLEE,
       reason: `${live.shapeId}:freight_custody_escape`,
@@ -2379,6 +2451,42 @@ function beginFreightRaiderEscape(d, live, state, record, raider) {
     roe: RulesOfEngagement.HOLD_FIRE,
   });
   publishFreightCustody(d, live, record, 'raider_escape_started');
+}
+
+
+function setFreightRecoveryDoctrine(d, live, state, operationalRaider, livePods) {
+  if (livePods.length && operationalRaider) {
+    if (live.plan.predation?.engagementOwner === 'encounter') operationalRaider.data.predationEngagementOwner = 'custody';
+    const ai = operationalRaider.data.ai || (operationalRaider.data.ai = {});
+    ai.passive = false;
+    ai.motiveSatisfied = false;
+    ai.pirateDisengaged = false;
+    ai.predationStatus = 'cargo_recovery';
+    livePods.sort((a, b) => {
+      const ad = dist2(operationalRaider.pos.x, operationalRaider.pos.z, a.entity.pos.x, a.entity.pos.z);
+      const bd = dist2(operationalRaider.pos.x, operationalRaider.pos.z, b.entity.pos.x, b.entity.pos.z);
+      return ad - bd || a.pod.podIndex - b.pod.podIndex;
+    });
+    const nearest = livePods[0];
+    const contactRange = Math.max(
+      1,
+      (Number(operationalRaider.radius) || 0) + (Number(nearest.entity.radius) || 0)
+        - FREIGHT_RAIDER_CONTACT_PAD,
+    );
+    setFreightCustodyDoctrine(d, operationalRaider, {
+      activity: {
+        kind: ActivityKind.TRANSIT,
+        reason: `${live.shapeId}:freight_pod_recovery`,
+        anchor: nearest.entity.pos,
+        leashRadius: Math.max(700, Number(live.plan.predation && live.plan.predation.leashRadius) || 2600),
+        preferredRange: contactRange,
+        startedTick: state.tick | 0,
+        targetId: nearest.entity.id,
+        encounterId: live.id,
+      },
+      roe: RulesOfEngagement.HOLD_FIRE,
+    });
+  }
 }
 
 function tickFreightCargoCustody(d, live, state, now) {
@@ -2405,6 +2513,10 @@ function tickFreightCargoCustody(d, live, state, now) {
     record.raiderLastVel = { x: raider.vel && raider.vel.x || 0, z: raider.vel && raider.vel.z || 0 };
   }
   const raiderIneligible = record.raiderEscaped ? null : freightRaiderIneligibleReason(state, raider);
+  if (raiderIneligible === 'player_owned') {
+    record.raiderRecoveryClosed = true;
+    record.raiderPersistenceOwned = false;
+  }
   if (raiderIneligible === 'destroyed' || raiderIneligible === 'identity_lost') record.raiderDead = true;
   if (raiderIneligible && record.raiderSecuredQty > 0 && !record.raiderEscaped) {
     respillFreightFromRaider(d, live, state, record, raider, `raider_${raiderIneligible}`);
@@ -2417,37 +2529,7 @@ function tickFreightCargoCustody(d, live, state, now) {
     ? raider
     : null;
 
-  if (livePods.length && operationalRaider) {
-    const ai = operationalRaider.data.ai || (operationalRaider.data.ai = {});
-    ai.passive = false;
-    ai.motiveSatisfied = false;
-    ai.pirateDisengaged = false;
-    ai.predationStatus = 'cargo_recovery';
-    livePods.sort((a, b) => {
-      const ad = dist2(operationalRaider.pos.x, operationalRaider.pos.z, a.entity.pos.x, a.entity.pos.z);
-      const bd = dist2(operationalRaider.pos.x, operationalRaider.pos.z, b.entity.pos.x, b.entity.pos.z);
-      return ad - bd || a.pod.podIndex - b.pod.podIndex;
-    });
-    const nearest = livePods[0];
-    const contactRange = Math.max(
-      1,
-      (Number(operationalRaider.radius) || 0) + (Number(nearest.entity.radius) || 0)
-        - FREIGHT_RAIDER_CONTACT_PAD,
-    );
-    setEntityDoctrine(operationalRaider, {
-      activity: {
-        kind: ActivityKind.TRANSIT,
-        reason: `${live.shapeId}:freight_pod_recovery`,
-        anchor: nearest.entity.pos,
-        leashRadius: Math.max(700, Number(live.plan.predation && live.plan.predation.leashRadius) || 2600),
-        preferredRange: contactRange,
-        startedTick: state.tick | 0,
-        targetId: nearest.entity.id,
-        encounterId: live.id,
-      },
-      roe: RulesOfEngagement.HOLD_FIRE,
-    });
-  }
+  setFreightRecoveryDoctrine(d, live, state, operationalRaider, livePods);
 
   // FIGHT-15 — the escort wing was the only thing between the surviving raiders and the spill.
   // Once it is cleared each survivor joins the loot sweep beside the designated thief. The latch
@@ -2510,6 +2592,13 @@ function tickFreightCargoCustody(d, live, state, now) {
 
   if (!remainingLivePods && record.raiderSecuredQty === 0
     && (record.carrierDead || record.carrierRecovered || record.carrierAbandoned || record.carrierArrived)) {
+    // A failed/partial physical spawn cannot leave cargo aboard a destroyed carrier forever.
+    if (record.carrierDead && record.carrierQty > 0) {
+      record.lostQty += record.carrierQty;
+      record.carrierQty = 0;
+      const carrier = selectedFreightCarrier(live, state, true);
+      if (carrier) updateCarrierManifest(record, carrier);
+    }
     finishFreightCustody(d, live, record,
       record.playerCollectedQty > 0 ? 'player_recovered' : (record.carrierRecovered ? 'lawful_recovery' : 'lost'));
     return;
@@ -2712,6 +2801,7 @@ function restoreFreightCargoCustody(d, state, envelope) {
     data.predationRole = 'manifest_carrier';
     data.predationIdentityKey = record.carrierIdentityKey;
     data.freightCustodyCarrierIdentityKey = record.carrierIdentityKey;
+    if (plan.predation.engagementOwner === 'encounter') data.predationEngagementOwner = 'custody';
     data.freightCustody = data.freightCustody || {};
     Object.assign(data.freightCustody, {
       status: record.carrierQty > 0 ? 'carrier' : (record.carrierArrived ? 'delivered' : 'spilled'),
@@ -2725,6 +2815,7 @@ function restoreFreightCargoCustody(d, state, envelope) {
       configurable: true,
     });
     claimFreightCustodyPersistence(carrier, record, 'carrier');
+    if (freightActorPlayerOwned(state, carrier)) record.carrierPersistenceOwned = false;
     record.carrierId = carrier.id;
     updateCarrierManifest(record, carrier);
     live.ids.push(carrier.id);
@@ -2735,16 +2826,21 @@ function restoreFreightCargoCustody(d, state, envelope) {
 
   if (raider) {
     const data = raider.data || (raider.data = {});
-    const ai = data.ai || (data.ai = {});
+    const ai = freightActorPlayerOwned(state, raider) ? data.ai : (data.ai || (data.ai = {}));
     data.predationEncounterId = live.id;
     data.predationRole = 'raider';
     data.predationIdentityKey = record.raiderIdentityKey;
     data.freightCustodyRaiderIdentityKey = record.raiderIdentityKey;
+    if (plan.predation.engagementOwner === 'encounter') data.predationEngagementOwner = 'custody';
     Object.defineProperty(raider, FREIGHT_RAIDER_INSTANCE, {
       value: record.raiderIdentityKey,
       configurable: true,
     });
-    if (record.raiderSecuredQty > 0 && !record.raiderEscaped) {
+    if (freightActorPlayerOwned(state, raider)) {
+      record.raiderRecoveryClosed = true;
+      record.raiderPersistenceOwned = false;
+    }
+    if (record.raiderSecuredQty > 0 && !record.raiderEscaped && !freightActorPlayerOwned(state, raider)) {
       claimFreightCustodyPersistence(raider, record, 'secured_raider');
       ai.passive = false;
       ai.motiveSatisfied = false;
@@ -2752,7 +2848,7 @@ function restoreFreightCargoCustody(d, state, envelope) {
       ai.predationStatus = record.escapeStartedAt != null ? 'cargo_escape' : 'cargo_recovery';
       if (record.escapeStartedAt != null && record.escapeTarget) {
         const remainingS = Math.max(1, (record.escapeDeadlineAt || d.now() + 1) - d.now());
-        setEntityDoctrine(raider, {
+        setFreightCustodyDoctrine(d, raider, {
           activity: {
             kind: ActivityKind.FLEE,
             reason: `${live.shapeId}:freight_custody_escape`,
@@ -2797,6 +2893,13 @@ function restoreFreightCargoCustody(d, state, envelope) {
   const dir = state.encounterDirector;
   if (!dir || !dir.live || dir.live[live.id]) return null;
   dir.live[live.id] = live;
+  if (raider && !freightRaiderIneligibleReason(state, raider) && !record.raiderEscaped
+    && !record.raiderRecoveryClosed && record.escapeStartedAt == null) {
+    const recoveryPods = record.pods.filter(pod => pod.status === 'live')
+      .map(pod => ({ pod, entity: podEntities.get(pod.podIdentity) })).filter(row => row.entity);
+    if (recoveryPods.length) setFreightRecoveryDoctrine(d, live, state, raider, recoveryPods);
+    else if (record.raiderSecuredQty > 0) beginFreightRaiderEscape(d, live, state, record, raider);
+  }
   if (typeof d.persistOpenFreightCustody === 'function') d.persistOpenFreightCustody(live, record);
   return live;
 }
@@ -3096,7 +3199,7 @@ function convoyTick(d, live, state, now, isConvoy) {
     custody.carrierArrived = true;
     live.data.freightCarrierArrived = true;
     updateCarrierManifest(custody, lead);
-    releaseFreightCustodyPersistence(lead, custody, custody.carrierPersistenceOwned);
+    releaseFreightCustodyPersistence(lead, custody, custody.carrierPersistenceOwned, state);
     custody.carrierPersistenceOwned = false;
     lead.data = lead.data || {};
     lead.data.despawnAt = now + 6;

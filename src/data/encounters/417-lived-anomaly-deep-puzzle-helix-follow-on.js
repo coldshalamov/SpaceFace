@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "HX-12: Line on the gel, pull it onto the hook — hold real line load a two-count — then cut the line. — GEL ON THE ANOMALY DEEP.",
+      "line": "HX-12: Line on the gel, pull it onto the hook — hold line load past a third for a two-count — then cut the line. — GEL ON THE ANOMALY DEEP.",
       "channel": "info",
       "next": "offer"
     },

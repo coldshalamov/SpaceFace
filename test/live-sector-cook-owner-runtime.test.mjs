@@ -715,6 +715,7 @@ function preflightFixture() {
     createSlicedYield: () => async () => {},
     waitForOpeningCompositionSettled: () => opening.promise,
     waitForAuthoredUpgradeQueueIdle: async () => ({ idle: true }),
+    observePipelineAdmission,
     // startupPacing device-scaled budget; the fixture pins the desktop-scale window.
     openingGateBudgetMs: () => 20000,
   });
@@ -1178,3 +1179,39 @@ test('throwing presentation finalizer preserves the original context-loss reject
   await assert.rejects(flush(f.cook({ id: 'ceres' }, 7), f.frames), /webgl-context-lost-during-live-sector-cook/);
   assert.equal(closed, 1);
 });
+
+for (const timing of ['early-sibling', 'late-sibling', 'superseded']) {
+  test(`fanned preflight admissions retain rejection ownership: ${timing}`, async () => {
+    const f = preflightFixture();
+    const opening = Promise.withResolvers(), upgrades = Promise.withResolvers();
+    const openingError = new Error('webgl-context-lost-during-live-sector-cook');
+    const upgradeError = new Error('sibling-upgrade-context-loss');
+    let issued = 0, active = true;
+    f.values.waitForOpeningCompositionSettled = () => { issued++; return opening.promise; };
+    f.values.waitForAuthoredUpgradeQueueIdle = () => { issued++; return upgrades.promise; };
+    const running = f.preflight({ isActive: () => active });
+    const result = timing === 'superseded'
+      ? running
+      : assert.rejects(running, error => error === openingError);
+    await nextTurn();
+    assert.equal(issued, 2, 'both real admission siblings start before either is awaited');
+    if (timing === 'early-sibling') {
+      upgrades.reject(upgradeError);
+      await nextTurn();
+      opening.reject(openingError);
+    } else if (timing === 'superseded') {
+      active = false;
+      opening.resolve({ settled: true });
+      assert.equal((await result).reason, 'sector-superseded');
+      upgrades.reject(upgradeError);
+    } else {
+      opening.reject(openingError);
+      await result;
+      upgrades.reject(upgradeError);
+    }
+    await result;
+    // A detached sibling used to become a global unhandled rejection here.
+    await nextTurn();
+    assert.equal(f.state.render.openingCompositionSettle, undefined);
+  });
+}

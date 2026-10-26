@@ -3,7 +3,7 @@
 // exits nonzero if the contract is broken. No GPU, no browser, no dependencies.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { validateCaptureManifest } from './manifest.mjs';
+import { validateCaptureManifest, verifySourceFiles } from './manifest.mjs';
 
 const file = process.argv[2];
 if (!file) {
@@ -18,9 +18,14 @@ try {
   process.exit(1);
 }
 const result = validateCaptureManifest(manifest);
-if (!result.ok) {
-  console.error(`combat-feel manifest INVALID (${result.errors.length} issue(s)):`);
-  for (const issue of result.errors) console.error(`  - ${issue}`);
+// The schema is intentionally pure; provenance needs the filesystem. A capture made from another
+// bench revision is not evidence for this one, so the post-capture CLI checks it here.
+const repoRoot = resolve(import.meta.dirname, '../..');
+const sourceErrors = verifySourceFiles(manifest, repoRoot);
+const errors = [...result.errors, ...sourceErrors];
+if (errors.length > 0) {
+  console.error(`combat-feel manifest INVALID (${errors.length} issue(s)):`);
+  for (const issue of errors) console.error(`  - ${issue}`);
   process.exit(1);
 }
 const scenarioCount = Object.keys(manifest.scenarios || {}).length;

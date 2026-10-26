@@ -125,15 +125,35 @@ test('a run without callbacks still wins the actual B7 demolition route', () => 
   assert.equal(h.state.story.flags.endgame, true);
 });
 
-test('the actual B2 settlement records its surviving cohort, not ambient pod rescues', () => {
+test('the legacy B2 settlement records its surviving cohort, not ambient pod rescues', () => {
   for (const lost of [0, 1]) {
     const h = fixture(); h.missions.newGame(); h.state.missions.active = [];
     h.state.story.beatIndex = 2; h.state.world.currentSectorId = 'sector_tethys_junction';
-    h.missions._syncCampaignSidecarAfterAdvance(); h.bus.emit('dock:undocked', {});
-    const m = h.state.missions.active.find(row => row.storyTag === 'campaign47a:b2:elroy');
-    assert.ok(m); h.state.world.currentSectorId = m.destSectorId; h.missions._ensureMissionTargets(m);
+    h.missions._syncCampaignSidecarAfterAdvance();
+    // Book 2 now posts cinder -> compost -> nest -> the register writ. The old
+    // pod-rescue survives as an in-flight instance from a pre-list save, as in
+    // campaign47a-b2-rescue-experience.test.mjs; it is no longer departure work.
+    const m = h.missions._instanceFromOffer({
+      id: 'b2_pod_rescue_legacy', type: 'rescue_under_fire',
+      storyTag: 'campaign47a:b2:elroy', storyContractId: 'campaign47a:b2:elroy', campaign47aBeat: 2,
+      title: 'Pull the pods under fire',
+      brief: 'Tow a pod to Expanse, or clear both Wasp escorts and reel a pod from stand-off.',
+      factionId: 'faction_scn', stationId: 'station_tethys',
+      destStationId: 'station_expanse', destSectorId: 'sector_charon_expanse',
+      reward_cr: 800, collateral_cr: 0, riskTier: 2, minRep: -149,
+      source: 'campaign47a.embodied', distance: 3000,
+      params: {
+        physicalVerb: 'pull', completionMethods: ['stage_tow', 'corridor_pull'],
+        authoredSetPieceId: 'pod_rescue', podCount: 2, escortCount: 2,
+        escortsDown: 0, podsLost: 0, targetStrength: 1.3, fValue: 1.3, taskTime: 70,
+      },
+    });
+    h.state.missions.active.push(m);
+    h.missions.trackMission(m.id, { silent: true });
+    h.state.world.currentSectorId = m.destSectorId; h.missions._ensureMissionTargets(m);
     const targets = m.targetEntityIds.map(id => h.state.entities.get(id));
     const pods = targets.filter(e => e.data?.physicalRole === 'life_pod');
+    assert.equal(pods.length, 2);
     for (const escort of targets.filter(e => e.data?.physicalRole === 'rescue_escort')) {
       escort.alive = false; h.bus.emit('entity:killed', { id: escort.id, killerId: h.state.playerId });
     }

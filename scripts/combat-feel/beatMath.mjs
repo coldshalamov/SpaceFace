@@ -139,11 +139,15 @@ export function buildBeatTimes(scenario, shotPlan = null) {
     { beat: 'muzzle', atS: roundTime(first.fireAt) },
     { beat: 'travel', atS: travelAt },
     { beat: 'contact', atS: roundTime(firstContactBeat) },
+    // One frame after the hull contact: the authored flash is at its attack peak, not its tail.
+    { beat: 'light', atS: roundTime(hullContactBeat + STEP_SECONDS) },
     { beat: 'reaction', atS: roundTime(hullContactBeat + 0.10) },
-    { beat: 'light', atS: roundTime(hullContactBeat + 0.04) },
     { beat: 'debris', atS: roundTime(hullContactBeat + 0.20) },
     { beat: 'cooling', atS: roundTime(coolingBase + (hull && hull.beam ? 0.55 : 0.85)) },
-    { beat: 'aftermath', atS: roundTime(scenario.durationSeconds - 0.35) },
+    // After the hitstun envelope has closed, but before the settling root yaw turns the hull
+    // edge-on: a readable damaged body, not just a quiet frame. The shot-2.8s sample also catches
+    // the authored breach venting that the low-hull owner repeats through the settle.
+    { beat: 'aftermath', atS: roundTime(Math.min(scenario.durationSeconds - 0.2, hullContactBeat + 2.8)) },
   ];
   if (scenario.tumble) {
     beats.push({ beat: 'tumble', atS: roundTime(hullContactBeat + 0.40) });

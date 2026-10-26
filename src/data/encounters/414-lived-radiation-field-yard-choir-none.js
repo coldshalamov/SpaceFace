@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Carry the slot a hundred-twenty on the line — inside sixty of our hull first, then inside sixty of the far hull, in that order. Let go dead slow. — SLOT ON THE RADIATION FIELD.",
+      "line": "CANTOR: Carry the slot a hundred-twenty on the line — inside sixty of our hull first, then inside sixty of the far hull, in that order. Let go under five, held a two-count. — SLOT ON THE RADIATION FIELD.",
       "channel": "info",
       "next": "offer"
     },

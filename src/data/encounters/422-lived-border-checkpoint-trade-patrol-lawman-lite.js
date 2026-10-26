@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "WARD: Line on the stamp, pull it onto the hook — hold real line load a two-count — then cut the line. — STAMP ON THE BORDER CHECKPOINT.",
+      "line": "WARD: Line on the stamp, pull it onto the hook — hold line load past a third for a two-count — then cut the line. — STAMP ON THE BORDER CHECKPOINT.",
       "channel": "info",
       "next": "offer"
     },

@@ -41,10 +41,17 @@ export const WINGMAN_MINE_LEASH_WU = 1800;
 export const WINGMAN_MINE_ANCHOR_LEASH = 260;
 const WINGMAN_MINE_TOAST_COOLDOWN_S = 60;
 
+// Optic lattice cells are not ore — the lattice marker is opticStructureId. Ordinary ore also
+// carries an opticMaterial surface tag ('metal'/'diamond') from environmentSurfaceData; refusing
+// on the tag made metallic/crystalline rocks invisible to mining wings (D227, see mining.js).
+function isOpticLatticeCellData(data) {
+  return !!(data && typeof data.opticStructureId === 'string' && data.opticStructureId);
+}
+
 function wingmanMineableRock(rock) {
   if (!rock || rock.alive === false || rock.type !== 'asteroid' || !rock.pos) return false;
   const d = rock.data || {};
-  if (d.siteAnchored || d.opticMaterial || d.isChunk) return false;
+  if (d.siteAnchored || isOpticLatticeCellData(d) || d.isChunk) return false;
   if (d.oreHP != null && !(d.oreHP > 0)) return false;
   return true;
 }

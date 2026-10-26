@@ -7250,6 +7250,300 @@
       ],
       "outputDir": "assets/ships/release/render-packages/kestrel-understory-growth",
       "metadataUrl": "assets/ships/release/render-packages/kestrel-understory-growth/render-package.json"
+    },
+    {
+      "key": "var-station-kit-concord-v01",
+      "assetId": "sf.render.var-station-kit-concord-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_CONCORD",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_concord_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_concord_v01.glb",
+      "releaseSha256": "f7885ab92855e145f9502a5c70aa714c8cd6a9d94ffe27f0cc0c722479726f56",
+      "releaseBytes": 781872,
+      "rootNode": "SF_VAR_STATION_KIT_CONCORD_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-concord-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-concord-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-meridian-v01",
+      "assetId": "sf.render.var-station-kit-meridian-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_MERIDIAN",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_meridian_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_meridian_v01.glb",
+      "releaseSha256": "03d63e072d08c42253347e931c0b1f2f86503c72cffe0618063270d2731d5252",
+      "releaseBytes": 550292,
+      "rootNode": "SF_VAR_STATION_KIT_MERIDIAN_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-meridian-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-meridian-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-drift-v01",
+      "assetId": "sf.render.var-station-kit-drift-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_DRIFT",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_drift_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_drift_v01.glb",
+      "releaseSha256": "4fe1914f65f9ac0c5b3a8238e3747c396978cc09dd3168b16006444c622fc4f2",
+      "releaseBytes": 599416,
+      "rootNode": "SF_VAR_STATION_KIT_DRIFT_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-drift-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-drift-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-reach-v01",
+      "assetId": "sf.render.var-station-kit-reach-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_REACH",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_reach_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_reach_v01.glb",
+      "releaseSha256": "be9b6e2044cbe97b53761aebfb050f3286c6cf0d2d78431deced1c8000f675b0",
+      "releaseBytes": 617032,
+      "rootNode": "SF_VAR_STATION_KIT_REACH_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-reach-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-reach-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-quiet-v01",
+      "assetId": "sf.render.var-station-kit-quiet-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_QUIET",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_quiet_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_quiet_v01.glb",
+      "releaseSha256": "3cd3a97f30035bc102b3a9ca7b730061a9740b579bddec4c6da16fbd130ff6d3",
+      "releaseBytes": 404164,
+      "rootNode": "SF_VAR_STATION_KIT_QUIET_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-quiet-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-quiet-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-vael-v01",
+      "assetId": "sf.render.var-station-kit-vael-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_VAEL",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_vael_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_vael_v01.glb",
+      "releaseSha256": "c828edff6c3c92c9e50a9421d89f01df17d75cbc5b7bd0980aea124ab92367e0",
+      "releaseBytes": 573812,
+      "rootNode": "SF_VAR_STATION_KIT_VAEL_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-vael-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-vael-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-frontier-v01",
+      "assetId": "sf.render.var-station-kit-frontier-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_FRONTIER",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_frontier_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_frontier_v01.glb",
+      "releaseSha256": "4f7e29506c202668126a783aba4eac49c0001775efd6a0b5eef701a9cbaed69f",
+      "releaseBytes": 591040,
+      "rootNode": "SF_VAR_STATION_KIT_FRONTIER_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-frontier-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-frontier-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-choir-v01",
+      "assetId": "sf.render.var-station-kit-choir-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_CHOIR",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_choir_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_choir_v01.glb",
+      "releaseSha256": "00f29b18a03071a329474d4efb87af391fe981b00db32978b160377a20a60a9b",
+      "releaseBytes": 479352,
+      "rootNode": "SF_VAR_STATION_KIT_CHOIR_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-choir-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-choir-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-helix-v01",
+      "assetId": "sf.render.var-station-kit-helix-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_HELIX",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_helix_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_helix_v01.glb",
+      "releaseSha256": "57cec04ee89fdb2785735f070c79603a0e0a0df0ab63f64b399a67d25aadf9a4",
+      "releaseBytes": 578552,
+      "rootNode": "SF_VAR_STATION_KIT_HELIX_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-helix-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-helix-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-understory-v01",
+      "assetId": "sf.render.var-station-kit-understory-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_UNDERSTORY",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_understory_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_understory_v01.glb",
+      "releaseSha256": "135c77b3770f4fb15a6cb77338181db5e464793a640744f4c3ab6fafbc5a9647",
+      "releaseBytes": 498428,
+      "rootNode": "SF_VAR_STATION_KIT_UNDERSTORY_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-understory-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-understory-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-fulfillment-v01",
+      "assetId": "sf.render.var-station-kit-fulfillment-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_FULFILLMENT",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_fulfillment_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_fulfillment_v01.glb",
+      "releaseSha256": "46686cca017dec1eedd904dad52a89d588ef971fb7d1f89b2c7e0a5d082302a8",
+      "releaseBytes": 805500,
+      "rootNode": "SF_VAR_STATION_KIT_FULFILLMENT_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-fulfillment-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-fulfillment-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-archive-v01",
+      "assetId": "sf.render.var-station-kit-archive-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_ARCHIVE",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_archive_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_archive_v01.glb",
+      "releaseSha256": "334a187c9b1bb556b7669b6c1d2cfb45e1d909e114c3821820e5229d532e8c54",
+      "releaseBytes": 1280788,
+      "rootNode": "SF_VAR_STATION_KIT_ARCHIVE_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-archive-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-archive-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-pitborn-v01",
+      "assetId": "sf.render.var-station-kit-pitborn-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_PITBORN",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_pitborn_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_pitborn_v01.glb",
+      "releaseSha256": "9409ead7079e9c72e43001e97780c94306a9e87f84dc59bf5d7d872e7623ed6a",
+      "releaseBytes": 605664,
+      "rootNode": "SF_VAR_STATION_KIT_PITBORN_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-pitborn-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-pitborn-v01/render-package.json"
+    },
+    {
+      "key": "var-station-kit-verge-v01",
+      "assetId": "sf.render.var-station-kit-verge-v01",
+      "runtimeAssetId": "SF_PLACE_STATION_KIT_VERGE",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "var_station_kit_verge_v01",
+      "sourceUrl": "assets/ships/release/parts/places/var_station_kit_verge_v01.glb",
+      "releaseSha256": "e687bc2dc48fbd1fa92949790eaead6899c93ed14aa7ccfa05075c663f02fa8d",
+      "releaseBytes": 531024,
+      "rootNode": "SF_VAR_STATION_KIT_VERGE_V01_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/var-station-kit-verge-v01",
+      "metadataUrl": "assets/ships/release/render-packages/var-station-kit-verge-v01/render-package.json"
     }
   ]
 }

@@ -625,6 +625,10 @@ export function createCameraDirector() {
   let clockS = 0;
   let governorLockUntilS = -Infinity;
   const pairFamilyEntryClocks = [];
+  // Keep one continuous shot of the physical sling after the rope goes away. The existing
+  // masslineImpacts observer owns the bounded ballistic lifetime and its impact receipt;
+  // the camera only reads it, and never creates a second throw tracker in simulation state.
+  let lastTetherTick = -Infinity;
 
   function syncFollow(focusX = 0, focusZ = 0, zoom = DEFAULT_ZOOM) {
     output.mode = CameraDirectorMode.FOLLOW;
@@ -652,6 +656,7 @@ export function createCameraDirector() {
   }
 
   function reset(focusX = 0, focusZ = 0, zoom = DEFAULT_ZOOM) {
+    lastTetherTick = -Infinity;
     return syncFollow(focusX, focusZ, zoom);
   }
 
@@ -757,6 +762,7 @@ export function createCameraDirector() {
       let trainingFocusPair = false;
       let gateApproach = null;
       let twoBodyPair = null;
+      let slingPair = false;
 
       // A HOSTILE Flyby Focus lease no longer takes the camera.
       //
@@ -809,6 +815,7 @@ export function createCameraDirector() {
         if (target && isCombatPairTetherTarget(state, player, target)) {
           requestedMode = CameraDirectorMode.TETHER_PAIR;
           pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
+          lastTetherTick = finiteOr(state && state.tick, -Infinity);
         } else {
           // Non-combat tether: drop pair intent; keep FOLLOW.
           targetId = null;
@@ -825,6 +832,29 @@ export function createCameraDirector() {
         // scripted lesson may stage one, and the handoff must not jump the camera when it does.
         requestedMode = CameraDirectorMode.TETHER_PAIR;
         pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
+        lastTetherTick = finiteOr(state && state.tick, -Infinity);
+      }
+
+      // AL-HF-05: cutting a moving hostile loose is the start of the payoff, not the end
+      // of its shot. Continue the exact held pair (no fresh takeover/governor entry) until
+      // its first post-release impact, expiry, death, or a new player-chosen attachment.
+      const impacts = state && state.player && state.player.masslineImpacts;
+      if (requestedMode === CameraDirectorMode.FOLLOW
+          && !(tether && tether.active) && state && state.mode === 'flight'
+          && output.mode === CameraDirectorMode.TETHER_PAIR
+          && impacts && impacts.tracking && impacts.slung
+          && impacts.massId === output.targetId) {
+        const latest = impacts.latest;
+        const hit = latest && latest.slung && latest.targetId === output.targetId
+          && finiteOr(latest.tick, -Infinity) > lastTetherTick;
+        const slung = entityFor(state, output.targetId);
+        if (!hit && slung && isCombatPairTetherTarget(state, player, slung)) {
+          requestedMode = CameraDirectorMode.TETHER_PAIR;
+          targetId = slung.id;
+          target = slung;
+          pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
+          slingPair = true;
+        }
       }
 
       // PQ-159.01: a live twin bridle owns TWO_BODY (the line as the frame diagonal). A plain
@@ -1091,6 +1121,14 @@ export function createCameraDirector() {
               pairPrediction, player,
             );
         let pairZoomMax = CAMERA_DIRECTOR_ENGINE_MAX_ZOOM;
+        if (slingPair) {
+          // Ballistic separation can exceed the rope envelope. Use the already-authored
+          // combat framing budget, still bounded by the player's hull legibility ceiling.
+          pairZoomMax = Math.max(pairZoomMax, Math.min(
+            CAMERA_DIRECTOR_COMBAT_MAX_ZOOM,
+            finiteOr(view.maxZoom, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM),
+          ));
+        }
         if (requestedMode === CameraDirectorMode.TWO_BODY && twoBodyThreatRequired > CAMERA_DIRECTOR_MIN_ZOOM) {
           const playerLocalZ = player.pos.z - frameOrigin.z;
           const playerRadiusForContext = Math.max(0, finiteOr(player.radius, 0));
@@ -1180,7 +1218,7 @@ export function createCameraDirector() {
         // pair fitted immediately; impossible pairs remain clamped and explicitly reported.
         // TWO_BODY is a taut-line picture: ease the look-at so the takeover is not a cut, but never
         // stay tighter than the current-focus fit. Zooming out is not a cut; cropping the rock is.
-        let appliedZoom = (easingEntry && requestedMode !== CameraDirectorMode.TWO_BODY)
+        let appliedZoom = (easingEntry && requestedMode !== CameraDirectorMode.TWO_BODY && !slingPair)
           ? candidateZoom
           : Math.max(candidateZoom, required);
         if (requestedMode === CameraDirectorMode.TWO_BODY) {

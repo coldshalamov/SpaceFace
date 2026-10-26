@@ -1,6 +1,9 @@
 // Capture manifest contract for the combat-feel bench. The Python driver writes this shape; the
 // same validator runs from Node (test + post-capture CLI) so a driver/schema drift fails the run
 // instead of leaving a plausible-looking folder nobody can trust.
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   ALL_EVIDENCE,
   CATALOG_VERSION,
@@ -52,6 +55,39 @@ function checkRelativePath(errors, label, value, { optional = false } = {}) {
 
 function pushIssue(errors, label, message) {
   errors.push(`${label}: ${message}`);
+}
+
+/**
+ * Provenance is part of the evidence. A structural schema cannot tell a capture made from the
+ * committed bench from one made before a bench fix; this recomputes every recorded source hash.
+ * The post-capture CLI calls it, so a stale folder cannot pass as current evidence.
+ */
+export function verifySourceFiles(manifest, root = process.cwd()) {
+  const files = manifest && manifest.run && manifest.run.sourceFiles;
+  if (!isPlainObject(files) || Object.keys(files).length === 0) {
+    return ['run.sourceFiles: must record the hashed capture sources'];
+  }
+  const errors = [];
+  for (const [relative, expected] of Object.entries(files)) {
+    const problem = relativePathProblem(relative);
+    if (problem) {
+      pushIssue(errors, `run.sourceFiles.${relative}`, problem);
+      continue;
+    }
+    let actual;
+    try {
+      actual = createHash('sha256').update(readFileSync(resolve(root, relative))).digest('hex');
+    } catch (error) {
+      pushIssue(errors, `run.sourceFiles.${relative}`,
+        `unreadable (${error instanceof Error ? error.message : error})`);
+      continue;
+    }
+    if (actual !== expected) {
+      pushIssue(errors, `run.sourceFiles.${relative}`,
+        `stale (recorded ${String(expected).slice(0, 12)}…, current ${actual.slice(0, 12)}…)`);
+    }
+  }
+  return errors;
 }
 
 /**

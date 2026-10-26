@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "388f38ddf4f2c5ec96092b2e607eab7b9023a3fa2893ac6dfb9891fdcfc3a678",
+  "contentHash": "635f7dda9e9fb5957ad462f22a1251d05933be780f68cc9d52eb2e8ce8f2303c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -237,8 +237,8 @@
       "uri": "place_nyx_false_gate.glb"
     },
     "sourceManifest": {
-      "bytes": 307707,
-      "sha256": "6f2278df60560e6b8ffac9ea5d7f3df816951bb08252171b81e759230549f8a6",
+      "bytes": 320050,
+      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
       "uri": "pilots.json"
     }
   },
@@ -347,7 +347,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_nyx_false_gate.glb"
   },
-  "runtimeHash": "83cb4ae92517b9170e5b98ce9b6e287664875bdafe66d6e612abf885d9f6c3be",
+  "runtimeHash": "bde852f6600c868f89874e74335bfad427018d227377bea383c50076d995a552",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

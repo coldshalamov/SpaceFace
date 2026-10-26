@@ -310,6 +310,37 @@ test('physical gate: a recycled prop id aborts the strain scene (order 417)', as
   assert.ok(resolved.includes('aborted:physical_subject_gone'));
 });
 
+// The generation binds at SPAWN, not at the await's open — a cast member replaced while
+// the offer is still on the table must not quietly become the accepted baseline.
+test('physical gate: a prop replaced before the choice aborts the strain scene (order 417)', async () => {
+  const mods = await loadCurated();
+  const row = mods.find((m) => m.order === 417);
+  const t = boot();
+  const resolved = [];
+  t.sim.bus.on('encounter:resolved', (p) => resolved.push(p && p.outcome));
+  const { live } = fire(t, row.mod.spec.id);
+  for (let i = 0; i < 900 && live.vars.vPhase !== 'offer'; i += 1) ticks(t, 1);
+  assert.equal(live.vars.vPhase, 'offer');
+  const prop = entOf(t, live, 'prop');
+  assert.ok(prop, 'the prop spawns before the player chooses');
+  // Swap the occupant while the offer is still open — the id stays, the body changes.
+  const impostor = {
+    id: prop.id, type: 'ship', alive: true,
+    pos: { x: prop.pos.x + 5, z: prop.pos.z }, vel: { x: 0, z: 0 },
+    rot: 0, radius: 8, mass: 50, data: {},
+  };
+  t.state.entities.delete(prop.id);
+  t.state.entities.set(impostor.id, impostor);
+  stampOccupantGeneration(t.state, impostor);
+  t.director.emit('encounter:choose', { encounterId: live.id, choiceId: 'a' });
+  t.state.player.tether = { active: true, targetId: prop.id, phase: 'loaded', load: 0.5 };
+  for (let i = 0; i < 60 * 6 && live.phase !== 'done'; i += 1) ticks(t, 1);
+  assert.equal(live.phase, 'done', 'a pre-choice replacement still closes the scene');
+  assert.equal(live.outcome, 'aborted:physical_subject_gone',
+    'the spawn-time generation stays the baseline — the impostor is never accepted');
+  assert.ok(resolved.includes('aborted:physical_subject_gone'));
+});
+
 // gapCross belongs to the player's own path: reference geometry sliding under a parked
 // player rewrites the line, not the crossing — the old prev-line compare counted it.
 test('physical gate: moving escort hulls cannot cross the gap for a parked player (order 410)', async () => {

@@ -1,11 +1,12 @@
 // Imported by shipjack; no second inventory, wallet, heat, or reward owner.
 import { SECTORS } from '../data/sectors.js';
 import { fenceForStation } from '../data/fences.js';
+import { BLACK_FLAG_YARD_BY_STATION } from '../data/blackFlag.js';
 import { ensureShipjack, isBlackFlagAdventure } from './model.js';
 import { createYardQuote, validateYardQuote, componentDefinition } from './market.js';
 
 const STATIONS = new Map(SECTORS.flatMap((s) => (s.stations || []).map((st) => [st.id, { ...st, sectorId: s.id }])));
-const ACTIONS = new Set(['sell', 'return', 'extract', 'repair_module', 'register', 'forge_broadcast', 'repaint', 'settle_lien']);
+const ACTIONS = new Set(['sell', 'return', 'extract', 'repair_module', 'register', 'settle_title', 'forge_broadcast', 'repaint', 'settle_lien']);
 const RECEIPT_CAP = 128;
 const MAX_JOBS = 8;
 const IN_FLIGHT = new WeakSet(); // transient reentrancy guard; never a serializable transfer
@@ -46,6 +47,17 @@ function serviceBlocker(state, f) {
     return 'Registry needs an abandoned-frame salvage claim; custody alone is not title';
   }
   if (action === 'register' && illicit) return 'A lawful registry must adjudicate this salvage claim';
+  if (action === 'settle_title') {
+    const yard = BLACK_FLAG_YARD_BY_STATION.get(f.stationId);
+    if (illicit || !yard || !['lawful', 'authority'].includes(yard.kind)) return 'A licensed recovery registry must arrange claimant compensation';
+    if (!['active', 'berth'].includes(vessel.location?.kind) || vessel.location.stationId !== f.stationId) return 'Physically berth this hull at the licensed registry before buying title';
+    if (vessel.title !== 'disputed' || vessel.claimResolved) return 'No unresolved registered-owner claim is available to purchase';
+    if (!vessel.recognizedOwner || ['player', 'unregistered', 'abandoned', 'unclaimed', 'unknown', 'yard'].includes(vessel.recognizedOwner)) return 'No registered claimant can authorize a title purchase; use salvage adjudication where eligible';
+    if (!vessel.originalOwner || vessel.originalOwner !== vessel.recognizedOwner) return 'Competing registry claimants need adjudication before a private title purchase';
+    if (vessel.profile === 'military' || [vessel.originalOwner, vessel.recognizedOwner].includes('faction_scn')) return 'Government and military frames withhold private title; return the vessel to its authority';
+    if (vessel.crewSafe !== true && !['automated', 'evacuated', 'uncrewed'].includes(vessel.crew)) return 'Guarantee safe crew passage before negotiating claimant compensation';
+    if (!(Number(vessel.condition?.hull) > 0)) return 'A destroyed frame cannot be purchased as an intact vessel';
+  }
   if (action === 'forge_broadcast') {
     if (!illicit) return 'Only an illicit identity broker offers broadcast mimicry';
     if (!state.player.moduleInventory?.some((m) => m.defId === 'mod_cargo_scanner_s')) return 'A Cargo Scanner S donor is required and will be consumed';
@@ -70,12 +82,52 @@ export function quoteYardOperation(state, payload = {}) {
   return { ok: true, quote: createYardQuote(f) };
 }
 
-function finishReceipt(state, bus, receipt) {
+function finishReceipt(state, bus, receipt, publish = true) {
   const sj = ensureShipjack(state);
   if (!Array.isArray(sj.yardReceipts)) sj.yardReceipts = [];
   sj.yardReceipts.push(receipt);
   if (sj.yardReceipts.length > RECEIPT_CAP) sj.yardReceipts.splice(0, sj.yardReceipts.length - RECEIPT_CAP);
+  if (publish) bus.emit('shipjack:yardReceipt', receipt);
+  return receipt;
+}
+
+/** The economy's exact-payment callback owns the synchronous commit boundary.
+ * Do not publish title/claim success until that owner confirms its debit. */
+function settleTitle(ctx, payload, f, quote) {
+  const { state, bus, registry } = ctx;
+  if (!registry?.get?.('economy')) return bad('The economy owner is unavailable');
+  if (state.player.credits < -quote.amount) return bad('Insufficient credits for full claimant compensation');
+  const vessel = f.vessel;
+  const claimant = vessel.recognizedOwner;
+  const line = 'Claimant paid in full; player title and lawful broadcast issued. Liens and incident evidence remain.';
+  const receipt = { ok: true, status: 'completed', operationId: payload.operationId,
+    vesselId: vessel.vesselId, action: 'settle_title', stationId: f.stationId, amount: quote.amount, at: state.simTime || 0 };
+  const charge = { amount: -quote.amount, expectedCredits: state.player.credits,
+    requireFull: true, reason: `shipjack:${payload.operationId}`, result: false,
+    commit: () => {
+      vessel.title = 'clean';
+      vessel.recognizedOwner = 'player';
+      vessel.claimResolved = true;
+      vessel.noticeAt = 0;
+      vessel.signature ||= {};
+      vessel.signature.broadcast = `REG-${quote.fingerprint}-${vessel.vesselId.slice(-12)}`;
+      vessel.signature.broadcastFlagged = false;
+      vessel.signature.forged = false;
+      vessel.revision = (Number(vessel.revision) || 0) + 1;
+      vessel.history ||= [];
+      vessel.history.push({ at: Number(state.simTime) || 0, action: 'settle_title', text: line, operationId: payload.operationId });
+      if (vessel.history.length > 12) vessel.history.splice(0, vessel.history.length - 12);
+      // Stored silently inside the atomic boundary, so an autosave caused by the
+      // wallet notification includes both property truth and its terminal receipt.
+      finishReceipt(state, bus, receipt, false);
+      return true;
+    } };
+  bus.emit('economy:chargeCredits', charge);
+  if (charge.result !== true) return bad('Payment changed or the economy owner refused claimant compensation');
   bus.emit('shipjack:yardReceipt', receipt);
+  bus.emit('shipjack:yardCompleted', { ...receipt, line });
+  bus.emit('shipjack:claimResolved', { vesselId: vessel.vesselId, incidentId: vessel.incidentId,
+    operationId: payload.operationId, claimant, resolution: 'compensated' });
   return receipt;
 }
 
@@ -161,6 +213,7 @@ function executeOperation(ctx, payload = {}) {
   if (reason) return bad(reason);
   const checked = validateYardQuote(payload.quote, f);
   if (!checked.ok) return checked;
+  if (payload.action === 'settle_title') return settleTitle(ctx, payload, f, checked.quote);
   if (payload.action !== 'extract') {
     if (checked.quote.amount >= 0) return commit(ctx, payload, f, checked.quote);
     let settlement = null;

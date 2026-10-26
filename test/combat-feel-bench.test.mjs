@@ -3,6 +3,7 @@
 // schema. It does not prove the rendered picture; the Python driver + manifest validator do that
 // on a machine with a browser.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +35,7 @@ import {
   CAPTURE_SCHEMA_VERSION,
   sampleCaptureManifest,
   validateCaptureManifest,
+  verifySourceFiles,
 } from '../scripts/combat-feel/manifest.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -192,6 +194,18 @@ test('capture manifest schema rejects a broken contract', () => {
     beats[1].frame = frameForTime(beats[1].atS);
   }, /chronological/);
   reject((manifest) => { manifest.errors.push({ kind: 'driver', message: 'boom' }); }, /capture recorded errors/);
+});
+
+test('source freshness is evidence: a stale capture is rejected by recomputation', () => {
+  const source = 'package.json';
+  const hash = createHash('sha256').update(readFileSync(resolve(ROOT, source))).digest('hex');
+  assert.deepEqual(verifySourceFiles({ run: { sourceFiles: { [source]: hash } } }, ROOT), [],
+    'a capture made from the current tree verifies');
+  const stale = verifySourceFiles({ run: { sourceFiles: { [source]: '0'.repeat(64) } } }, ROOT);
+  assert.equal(stale.length, 1);
+  assert.match(stale[0], /stale/);
+  assert.ok(verifySourceFiles({ run: { sourceFiles: {} } }, ROOT).length > 0,
+    'a manifest without recorded sources cannot prove freshness');
 });
 
 test('the bench files mount the production owners, not a second VFX renderer', () => {

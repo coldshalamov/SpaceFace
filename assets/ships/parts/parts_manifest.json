@@ -5676,6 +5676,703 @@
       "note": "Forge rebuild of the Concord claim on the Helios hub: armoured cladding band with a blue rail, four diagonal bastion keeps, six masts, terminal docking-boom gate."
     },
     {
+      "id": "var_station_kit_concord_v01",
+      "assetId": "SF_PLACE_STATION_KIT_CONCORD",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_concord_v01.glb",
+      "tris": 36744,
+      "bytes": 2936460,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: pale enamel claim band + Concord-blue rail, four watch keeps, beacon crown. Envelope-fit onto any of the seven station archetypes.",
+      "bounds": {
+        "min": [
+          -57.619998931884766,
+          8,
+          -57.619998931884766
+        ],
+        "max": [
+          61.25416946411133,
+          50.824501037597656,
+          58.90775680541992
+        ],
+        "dimensionsM": [
+          118.8741683959961,
+          42.824501037597656,
+          116.52775573730469
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_meridian_v01",
+      "assetId": "SF_PLACE_STATION_KIT_MERIDIAN",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_meridian_v01.glb",
+      "tris": 22528,
+      "bytes": 1848292,
+      "textureSize": 1024,
+      "tintable": {
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: gold ticker dash band, pylon halo ring, gate arch over +X.",
+      "bounds": {
+        "min": [
+          -56.900001525878906,
+          7.860000133514404,
+          -57.57682800292969
+        ],
+        "max": [
+          58.20792007446289,
+          39.375,
+          58.45966720581055
+        ],
+        "dimensionsM": [
+          115.1079216003418,
+          31.514999866485596,
+          116.03649520874023
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_drift_v01",
+      "assetId": "SF_PLACE_STATION_KIT_DRIFT",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_drift_v01.glb",
+      "tris": 31067,
+      "bytes": 2411904,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: ochre claim band, two polar cage ribs, hazard-striped pylon fins, ore-cage crown.",
+      "bounds": {
+        "min": [
+          -54.40000534057617,
+          -7.076713562011719,
+          -54.40000534057617
+        ],
+        "max": [
+          54.40000534057617,
+          42.0099983215332,
+          54.40000534057617
+        ],
+        "dimensionsM": [
+          108.80001068115234,
+          49.08671188354492,
+          108.80001068115234
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_reach_v01",
+      "assetId": "SF_PLACE_STATION_KIT_REACH",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_reach_v01.glb",
+      "tris": 24267,
+      "bytes": 1895332,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: war band, three ram-prow blades, trophy spike rack with kill tokens, red war lamps.",
+      "bounds": {
+        "min": [
+          -54.25,
+          3.3892767429351807,
+          -54.25
+        ],
+        "max": [
+          59.69359588623047,
+          43.58761215209961,
+          54.25
+        ],
+        "dimensionsM": [
+          113.94359588623047,
+          40.19833540916443,
+          108.5
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_quiet_v01",
+      "assetId": "SF_PLACE_STATION_KIT_QUIET",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_quiet_v01.glb",
+      "tris": 18055,
+      "bytes": 1535868,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: matte dead shroud band, leaning baffle plates, dead antenna thicket; signature is no lights.",
+      "bounds": {
+        "min": [
+          -54.72672653198242,
+          6.729812145233154,
+          -55.88616180419922
+        ],
+        "max": [
+          55.88616180419922,
+          48.00204849243164,
+          55.886165618896484
+        ],
+        "dimensionsM": [
+          110.61288833618164,
+          41.272236347198486,
+          111.7723274230957
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_vael_v01",
+      "assetId": "SF_PLACE_STATION_KIT_VAEL",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_vael_v01.glb",
+      "tris": 25000,
+      "bytes": 1940932,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: nacre tile scales, etched glyph strips, pearl lien seal on the crown, teal lamp pairs.",
+      "bounds": {
+        "min": [
+          -53.6212043762207,
+          10,
+          -53.99362564086914
+        ],
+        "max": [
+          53.92626953125,
+          44.70000076293945,
+          53.99362564086914
+        ],
+        "dimensionsM": [
+          107.5474739074707,
+          34.70000076293945,
+          107.98725128173828
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_frontier_v01",
+      "assetId": "SF_PLACE_STATION_KIT_FRONTIER",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_frontier_v01.glb",
+      "tris": 23970,
+      "bytes": 1961032,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: patch-quilt salvage plates, lash trusses, strapped tank crown, warm porch lamps + cyan claim lights.",
+      "bounds": {
+        "min": [
+          -54.25,
+          6.84250020980835,
+          -54.25
+        ],
+        "max": [
+          54.25,
+          43.304222106933594,
+          54.25
+        ],
+        "dimensionsM": [
+          108.5,
+          36.461721897125244,
+          108.5
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_choir_v01",
+      "assetId": "SF_PLACE_STATION_KIT_CHOIR",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_choir_v01.glb",
+      "tris": 21804,
+      "bytes": 1768140,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: consecrated band, three spiral ribbons, belfry crown with three rung bells, votive lamps.",
+      "bounds": {
+        "min": [
+          -56.342994689941406,
+          -6.388339996337891,
+          -55.20643615722656
+        ],
+        "max": [
+          54.867488861083984,
+          45.59250259399414,
+          55.99238586425781
+        ],
+        "dimensionsM": [
+          111.21048355102539,
+          51.98084259033203,
+          111.19882202148438
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_helix_v01",
+      "assetId": "SF_PLACE_STATION_KIT_HELIX",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_helix_v01.glb",
+      "tris": 29803,
+      "bytes": 2337528,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: pale audit band, white-glass seal panes with red audit ticks, directorate seal ring crown.",
+      "bounds": {
+        "min": [
+          -55.900001525878906,
+          10,
+          -55.900001525878906
+        ],
+        "max": [
+          55.900001525878906,
+          40.84499740600586,
+          55.900001525878906
+        ],
+        "dimensionsM": [
+          111.80000305175781,
+          30.84499740600586,
+          111.80000305175781
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_understory_v01",
+      "assetId": "SF_PLACE_STATION_KIT_UNDERSTORY",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_understory_v01.glb",
+      "tris": 25863,
+      "bytes": 1704832,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit (the Overgrowth): root-mat band, moss mats, vine runs, spore pods, moss crown with fronds, bio-lamps.",
+      "bounds": {
+        "min": [
+          -57.62180709838867,
+          -4.2524333000183105,
+          -56.29335403442383
+        ],
+        "max": [
+          55.298545837402344,
+          47.07927322387695,
+          57.140411376953125
+        ],
+        "dimensionsM": [
+          112.92035293579102,
+          51.331706523895264,
+          113.43376541137695
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_fulfillment_v01",
+      "assetId": "SF_PLACE_STATION_KIT_FULFILLMENT",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_fulfillment_v01.glb",
+      "tris": 37723,
+      "bytes": 2650976,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: hospital-white consignment band, barcode stripe rows, red seal stamps, dispatch crown.",
+      "bounds": {
+        "min": [
+          -53.79999923706055,
+          10,
+          -53.79999923706055
+        ],
+        "max": [
+          53.79999923706055,
+          40.60000228881836,
+          53.79999923706055
+        ],
+        "dimensionsM": [
+          107.5999984741211,
+          30.60000228881836,
+          107.5999984741211
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_archive_v01",
+      "assetId": "SF_PLACE_STATION_KIT_ARCHIVE",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_archive_v01.glb",
+      "tris": 62634,
+      "bytes": 4801028,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: indigo vellum band, stacked scroll courses, pressed glyph tiles, catalogue crown with one gilt lamp.",
+      "bounds": {
+        "min": [
+          -53.90000534057617,
+          9,
+          -53.96856689453125
+        ],
+        "max": [
+          53.90000534057617,
+          41.87999725341797,
+          53.968563079833984
+        ],
+        "dimensionsM": [
+          107.80001068115234,
+          32.87999725341797,
+          107.93712997436523
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_pitborn_v01",
+      "assetId": "SF_PLACE_STATION_KIT_PITBORN",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_pitborn_v01.glb",
+      "tris": 29492,
+      "bytes": 2215480,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: rust scab band, welded scrap plates, amber string-light catenaries on scrap towers, rust offcut crown.",
+      "bounds": {
+        "min": [
+          -54.42133331298828,
+          8.54079532623291,
+          -54.366310119628906
+        ],
+        "max": [
+          54.3654899597168,
+          43.87999725341797,
+          54.97150421142578
+        ],
+        "dimensionsM": [
+          108.78682327270508,
+          35.33920192718506,
+          109.33781433105469
+        ]
+      }
+    },
+    {
+      "id": "var_station_kit_verge_v01",
+      "assetId": "SF_PLACE_STATION_KIT_VERGE",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_kit_verge_v01.glb",
+      "tris": 21796,
+      "bytes": 1785000,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "note": "Row 512 canonical-shell kit: measured grey band, nacre lattice rings through the poles, datum ticks, witness panels, plumb crown.",
+      "bounds": {
+        "min": [
+          -55.11637496948242,
+          -8.019096374511719,
+          -54.6609001159668
+        ],
+        "max": [
+          55.5972785949707,
+          42.083648681640625,
+          56.15868377685547
+        ],
+        "dimensionsM": [
+          110.71365356445312,
+          50.102745056152344,
+          110.81958389282227
+        ]
+      }
+    },
+    {
       "id": "place_tally_post",
       "category": "places",
       "priority": "P2",
