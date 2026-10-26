@@ -561,9 +561,12 @@ const IMPACT_MATERIAL_ALIASES = Object.freeze({
   ship: 'hull', metal: 'hull', steel: 'hull',
   plate: 'armor', plating: 'armor',
   asteroid: 'rock', stone: 'rock', ore: 'rock', terrain: 'rock', world: 'rock',
-  comet: 'ice', volatile: 'ice',
-  glass: 'ceramic', crystal: 'ceramic',
+  silicate: 'rock', cooked_rock: 'rock', bloom_husk: 'rock',
+  comet: 'ice', volatile: 'ice', cryo: 'ice',
+  glass: 'ceramic', crystal: 'ceramic', calcite: 'ceramic', slag: 'ceramic',
+  bone: 'ceramic', vethari_bone: 'ceramic',
   panel: 'composite', laminate: 'composite',
+  metallic_ore: 'composite', reef_metal: 'composite', junk: 'composite', debris: 'composite',
   barrier: 'shield', field: 'shield',
 });
 
@@ -573,6 +576,140 @@ export function normalizeImpactMaterial(value) {
   const lower = value.toLowerCase();
   if (IMPACT_MATERIALS[lower]) return lower;
   return IMPACT_MATERIAL_ALIASES[lower] || IMPACT_MATERIALS.unknown;
+}
+
+/**
+ * The struck body's surface identity, for the EAR. The damage router knows the layer it hit
+ * (shield/armor/hull); the body knows what that layer is made of. A live rock with an authored
+ * substance is ice/ceramic/composite/rock; a hull with an authored surface is that surface; a
+ * bare ship falls back to the damage layer. Pure and total: an unknown body is `unknown`, never
+ * a throw, so a receipt without an entity still has a graceful voice.
+ *
+ * @param {object|null} target a live entity (or a receipt's pre-resolved target)
+ * @param {string|null} layer the damage layer that spoke (`shield` / `armor` / `hull`)
+ * @returns {string} one of IMPACT_MATERIALS
+ */
+export function impactMaterialForTarget(target, layer = null) {
+  if (layer === IMPACT_MATERIALS.shield) return IMPACT_MATERIALS.shield;
+  const entity = target && typeof target === 'object' ? target : null;
+  if (!entity) {
+    // A missing body does not erase the layer the damage router already named.
+    if (layer === IMPACT_MATERIALS.armor) return IMPACT_MATERIALS.armor;
+    if (layer === IMPACT_MATERIALS.hull) return IMPACT_MATERIALS.hull;
+    return IMPACT_MATERIALS.unknown;
+  }
+  const data = entity.data && typeof entity.data === 'object' ? entity.data : {};
+
+  if (entity.type === 'asteroid') {
+    // Row 509 substances are the rock's physical identity. `data.material` is the fracture
+    // vocabulary (metal/crystal/cryo/...), which is the same vocabulary when a substance is absent.
+    const substance = typeof data.substance === 'string' ? data.substance.toLowerCase() : '';
+    if (substance) {
+      const normalized = normalizeImpactMaterial(substance);
+      if (normalized !== IMPACT_MATERIALS.unknown) return normalized;
+    }
+    const material = String(data.material || data.opticMaterial || '').toLowerCase();
+    if (material === 'metal' || material === 'debris') return IMPACT_MATERIALS.composite;
+    if (material === 'crystal' || material === 'calcite' || material === 'slag') {
+      return IMPACT_MATERIALS.ceramic;
+    }
+    if (material === 'cryo' || material === 'ice' || material === 'volatile') {
+      return IMPACT_MATERIALS.ice;
+    }
+    const normalizedMaterial = normalizeImpactMaterial(material);
+    if (normalizedMaterial !== IMPACT_MATERIALS.unknown
+      && normalizedMaterial !== IMPACT_MATERIALS.hull) {
+      return normalizedMaterial;
+    }
+    return IMPACT_MATERIALS.rock;
+  }
+
+  const surface = entity.surfaceMaterial
+    || entity.surfaceKind
+    || data.surfaceMaterial
+    || data.surfaceKind
+    || (entity.physicsBody && (entity.physicsBody.surfaceMaterial || entity.physicsBody.surfaceKind));
+  const normalized = normalizeImpactMaterial(surface);
+  if (normalized !== IMPACT_MATERIALS.unknown) return normalized;
+
+  if (layer === IMPACT_MATERIALS.armor) return IMPACT_MATERIALS.armor;
+  if (layer === IMPACT_MATERIALS.hull) return IMPACT_MATERIALS.hull;
+  if (entity.type === 'station') return IMPACT_MATERIALS.armor;
+  if (entity.type === 'wreck') return IMPACT_MATERIALS.hull;
+  if (entity.type === 'ship' || entity.type === 'drone') return IMPACT_MATERIALS.hull;
+  return IMPACT_MATERIALS.unknown;
+}
+
+// Audio policy, not a second impact classifier: ordinary contacts speak the struck surface;
+// an explicit structural event speaks its own class. `impactEventRecord.classifyImpactEvent`
+// still owns the visual ladder — audio must not import a render module into presentation.
+const STRUCTURAL_EVENT_CLASSES = Object.freeze(new Set([
+  'graze', 'cut', 'slam', 'breach', 'fracture', 'detonation', 'breakup',
+]));
+
+function clamp01(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return n < 0 ? 0 : (n > 1 ? 1 : n);
+}
+
+/**
+ * Audio-side event class for a raw damage receipt, mirroring the structural ladder's ordering
+ * without importing the render record. Ordinary brittle/metal contacts keep their material
+ * identity; only a decisive structural event takes the voice. An explicit `eventClass` always
+ * wins, so an owner that already knows the class never has it second-guessed here.
+ */
+export function classifyImpactAudioEvent(rec = {}) {
+  const explicit = rec && rec.eventClass;
+  if (explicit && IMPACT_EVENT_GRAMMAR[explicit]) return explicit;
+  const materialId = normalizeImpactMaterial(rec && rec.materialId);
+  // A shield is a field, not matter: even a huge absorbed hit is a shield contact, never a
+  // breach/detonation. Only an explicitly declared event class may overrule that.
+  if (materialId === IMPACT_MATERIALS.shield) return 'pinprick';
+  // An unknown surface has no material voice to speak, so it stays on the documented generic
+  // fallback rather than borrowing a structural event from a severity number it cannot explain.
+  if (materialId === IMPACT_MATERIALS.unknown) return 'pinprick';
+  const severity = clamp01(rec && rec.severity);
+  const tangent = clamp01(rec && rec.tangent);
+  const brittle = materialId === IMPACT_MATERIALS.rock
+    || materialId === IMPACT_MATERIALS.ice
+    || materialId === IMPACT_MATERIALS.ceramic;
+  if (brittle) {
+    if (severity >= 0.82) return 'breakup';
+    if (severity >= 0.55) return 'fracture';
+    return 'pinprick';
+  }
+  if (severity < 0.1 && tangent > 0.72) return 'graze';
+  if (severity >= 0.8) return 'breakup';
+  if (rec && rec.axisSigned === false) return 'slam';
+  if (severity >= 0.58) return 'detonation';
+  if (severity >= 0.28) return 'breach';
+  if (tangent > 0.66) return 'graze';
+  return 'pinprick';
+}
+
+/**
+ * Resolve the one authored cue id an accepted impact speaks. Both halves stay observable; the
+ * chosen `cueId` is the single voice. Structural events outrank the material, ordinary contacts
+ * let the material speak. Never throws for an unknown surface.
+ */
+export function resolveImpactAudioCue(rec = {}, options = {}) {
+  const source = rec && typeof rec === 'object' ? rec : {};
+  const eventClass = IMPACT_EVENT_GRAMMAR[source.eventClass] ? source.eventClass : 'pinprick';
+  const materialId = normalizeImpactMaterial(source.materialId);
+  const eventOwnsVoice = typeof options.eventOwnsVoice === 'boolean'
+    ? options.eventOwnsVoice
+    : STRUCTURAL_EVENT_CLASSES.has(eventClass);
+  const materialCueId = IMPACT_MATERIAL_GRAMMAR[materialId].audioCue;
+  const eventCueId = IMPACT_EVENT_GRAMMAR[eventClass].audioCue;
+  return Object.freeze({
+    cueId: eventOwnsVoice ? eventCueId : materialCueId,
+    materialCueId,
+    eventCueId,
+    materialId,
+    eventClass,
+    eventOwnsVoice,
+  });
 }
 
 /** The eight authored event classes. See `src/render/combat/impactEventRecord.js` for the ladder. */

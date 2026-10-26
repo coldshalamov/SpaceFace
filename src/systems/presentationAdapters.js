@@ -3,6 +3,11 @@
 // same contract is testable in headless replay.
 
 import { deriveVfxAdmissionMetadata } from '../presentation/vfxAdmissionPriority.js';
+import {
+  classifyImpactAudioEvent,
+  impactMaterialForTarget,
+  resolveImpactAudioCue,
+} from '../presentation/causalVfxGrammar.js';
 import { isSurvivalRunLive } from './adventureMigration.js';
 import { SECTOR_ARRIVAL_CUES } from '../data/audioRecipes.js';
 
@@ -203,6 +208,120 @@ const CAPTIONS = Object.freeze({
   'travel.arrival.oriented': 'Arrived.',
   'travel.interdiction.triggered': 'Interdicted.',
 });
+
+// ---------------------------------------------------------------------------------------------
+// Impact vocabulary seam. The contact lane authors a material id and an event class per accepted
+// impact (causalVfxGrammar). This adapter is the bus-facing half: it resolves exactly ONE cue id
+// and puts it on the existing presentation/audio lanes with the contact's world position,
+// distance, priority and reduced-motion metadata. Colour/geometry never enters here.
+// ---------------------------------------------------------------------------------------------
+
+function impactPayload(resolved, options = {}) {
+  const position = options.position
+    && Number.isFinite(options.position.x) && Number.isFinite(options.position.z)
+    ? { x: options.position.x, z: options.position.z }
+    : null;
+  return Object.freeze({
+    id: resolved.cueId,
+    cueId: options.cueId || resolved.cueId,
+    materialCueId: resolved.materialCueId,
+    eventCueId: resolved.eventCueId,
+    materialId: resolved.materialId,
+    eventClass: resolved.eventClass,
+    lane: options.lane || 'audio.impact',
+    position,
+    distance: Number.isFinite(options.distance) ? options.distance : null,
+    gain: round4(clamp01(finite(options.gain, 0.65))),
+    rate: round4(Math.max(0.5, Math.min(2, finite(options.rate, 1)))),
+    duck: options.duck === true,
+    importance: round4(clamp01(finite(options.importance, 0))),
+    playerRelevance: round4(clamp01(finite(options.playerRelevance, 0))),
+    reducedMotion: options.reducedMotion === true,
+    // The raw receipt owns the physical voice by default. The semantic cue still travels for
+    // observability/captions, exactly like shield.collapse and the causal family rows.
+    playbackOwnedByRaw: options.playbackOwnedByRaw !== false,
+  });
+}
+
+/** World-space distance from the player to a contact, for the payload's mix metadata. */
+function impactDistance(state, position) {
+  if (!position) return null;
+  const player = state && state.entities && state.playerId != null
+    && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!player || !player.pos) return null;
+  const dx = Number(position.x) - Number(player.pos.x);
+  const dz = Number(position.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return null;
+  return round4(Math.hypot(dx, dz));
+}
+
+function impactGainForLayer(layer) {
+  if (layer === 'shield') return 0.7;
+  if (layer === 'armor') return 0.8;
+  return 0.9;
+}
+
+/**
+ * Pure: the material/variant audio payload for one normalized presentation cue, or null when the
+ * cue is not an accepted impact. `combat.damage.applied` carries the target and the damage
+ * magnitude; the live body supplies the surface identity the layer alone cannot.
+ */
+export function impactAudioCueForCue(cue, state) {
+  if (!cue || cue.id !== 'combat.damage.applied') return null;
+  const lane = cue.lanes && cue.lanes.audio;
+  if (!lane || lane === 'audio.none') return null;
+  const target = state && state.entities && cue.targetId != null
+    && typeof state.entities.get === 'function'
+    ? state.entities.get(cue.targetId)
+    : null;
+  const layer = cue.material || cue.dominantLayer || null;
+  const materialId = impactMaterialForTarget(target, layer);
+  const magnitude = finite(cue.magnitude, 0);
+  const maxHull = Math.max(1, Number(target && target.hullMax) || Number(target && target.hull) || 100);
+  const eventClass = classifyImpactAudioEvent({
+    eventClass: cue.eventClass || cue.impactClass || cue.impactEventClass,
+    materialId,
+    severity: clamp01(magnitude / maxHull),
+    axisSigned: cue.axisSigned !== false,
+  });
+  const resolved = resolveImpactAudioCue({ eventClass, materialId });
+  const position = cue.position || (target && target.pos) || null;
+  return impactPayload(resolved, {
+    cueId: cue.id,
+    lane,
+    position,
+    distance: impactDistance(state, position),
+    gain: impactGainForLayer(layer),
+    importance: cue.importance,
+    playerRelevance: cue.playerRelevance,
+    duck: shouldDuckAudio(cue),
+    reducedMotion: !!(state && state.settings && state.settings.video
+      && state.settings.video.motionReduce),
+    playbackOwnedByRaw: true,
+  });
+}
+
+/**
+ * Bus emission seam for an accepted contact. A render/contact owner that has just admitted a
+ * material/event record calls this once; it resolves one cue and emits the existing presentation
+ * audio pair. `playbackOwnedByRaw` defaults true because the raw damage/collision receipt already
+ * speaks; an owner with no raw voice passes false to let this payload play. Never throws for an
+ * unknown material — `resolveImpactAudioCue` lands on `combat.impact.generic`.
+ */
+export function emitImpactAudioCue(bus, rec, options = {}) {
+  if (!bus || typeof bus.emit !== 'function') return null;
+  const resolved = resolveImpactAudioCue(rec, options);
+  const payload = impactPayload(resolved, options);
+  bus.emit('presentation:audioCue', payload);
+  // A raw-owned contact already speaks through combat:damage / the projectile chip. Sending its
+  // semantic id to `audio:cue` as well would re-enter the audio router for a cue that must not
+  // play; the presentation lane alone carries observability. An owner with no raw voice sets
+  // `playbackOwnedByRaw: false` and gets the playable lane too, exactly once.
+  if (payload.playbackOwnedByRaw !== true) bus.emit('audio:cue', payload);
+  return payload;
+}
 
 export const presentationAdapters = {
   name: 'presentationAdapters',

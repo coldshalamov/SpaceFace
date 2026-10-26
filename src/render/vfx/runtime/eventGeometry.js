@@ -22,7 +22,9 @@ export function createVfxEventGeometry({ instanced = false } = {}) {
       const u = row / VFX_EVENT_ROWS;
       for (let column = 0; column <= VFX_EVENT_COLUMNS; column++) {
         const v = column / VFX_EVENT_COLUMNS;
-        positions.push(u, 0, v);
+        // The vertex shader rebuilds this carrier from uv/aEventSection; the static y keeps
+        // CPU bounds and tooling honest about the volume existing in three axes.
+        positions.push(u, 0.5 + 0.5 * u, v);
         uvs.push(u, v);
         sections.push(lobe, VFX_EVENT_LOBES > 1 ? lobe / (VFX_EVENT_LOBES - 1) : 0);
       }

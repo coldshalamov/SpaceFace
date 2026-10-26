@@ -94,8 +94,15 @@ class TransportBehavior {
     // touching matter. It keeps the same pool and force grammar; only its origin moves
     // from the field centre to the affected body, so telekinesis visibly lights the thing
     // it is holding instead of only washing the space between.
-    p.forceAura = contactCount > 0 && ordinal % 3 === 0;
-    const auraContact = p.forceAura ? ordinal % contactCount : -1;
+    const auraCandidate = ordinal % 3 === 0 ? ordinal % contactCount : -1;
+    const auraRadius = auraCandidate >= 0 ? contacts[auraCandidate * CONTACT_STRIDE + 2] : 0;
+    // Only metric-field material cloaks a held body; heat/current/repair are not telekinesis.
+    // Read the CURRENT event's kind, not m[0]: flow memory is written below (and on a recycled
+    // particle still carries the previous event, so it cannot decide this one).
+    // A body larger than the field event itself is impossible decorative occupancy, not an aura.
+    p.forceAura = event.kind < 5 && auraCandidate >= 0
+      && auraRadius < Math.max(1, event.radius) * 1.25;
+    const auraContact = p.forceAura ? auraCandidate : -1;
     if (p.forceAura) owner.stats.aura++;
     const variety = unit(event.seed, ordinal * 3), phase = unit(event.seed, ordinal * 3 + 1) * TAU;
     m[0] = event.kind; m[1] = event.x; m[2] = event.y; m[3] = event.z;

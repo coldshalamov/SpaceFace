@@ -496,6 +496,16 @@ export class ArcadeStructuralFx {
         return this.pool ? this.pool.admission(priority, this.need) : 'refuse';
       },
     }));
+    // Reused per-group admission mask (blade / arc / shard / plate) plus the writer facade
+    // spawnImpactStructuralBeats receives. Both are built once, so gating primitive groups never
+    // allocates a wrapper per contact.
+    this._groupAdmit = [false, false, false, false];
+    this._gatedFx = {
+      spawnBlade: (spec) => (this._groupAdmit[0] ? this.blades.spawn(spec) : false),
+      spawnArc: (spec) => (this._groupAdmit[1] ? this.arcs.spawn(spec) : false),
+      spawnShard: (spec) => (this._groupAdmit[2] ? this.shards.spawn(spec) : false),
+      spawnPlate: (spec) => (this._groupAdmit[3] ? this.plates.spawn(spec) : false),
+    };
     // One resident spawn spec so composing an impact allocates nothing per element.
     this._impactSpec = {
       priority: DEFAULT_PRIORITY, life: 0.12, delay: 0,
@@ -543,15 +553,21 @@ export class ArcadeStructuralFx {
   /**
    * THE composition point for a contact. One simulation event becomes ONE recipe: this lane's
    * authored ignition and structure first, then the gas layer's material, then the debris layer's
-   * solids. The cue arbiter runs before any of those presenters. An over-budget cue is refused
-   * whole — no jets, no impact primitives, no debris — so a saturated pool cannot fall through to
-   * a second presenter. Primary structure still outranks decorative residue when the cue is let in.
+   * solids. The cue arbiter runs before any of those presenters. Primary structure still outranks
+   * decorative residue when the cue is let in.
+   *
+   * Admission granularity follows the contact's importance:
+   *  - `view.partial` (a player-facing contact, set by `_composeImpact`): each primitive group is
+   *    admitted against its OWN pool, so a full shard pool drops only the ejecta beat and the
+   *    contact blade / internal vent still draws. Gas and debris ride when any group lands.
+   *  - otherwise (ambient decoration): the cue stays all-or-nothing, because half a contact is
+   *    worse than none and a saturated ambient cue must not become a second presenter.
    *
    * @param {object} rec an impact record, WORLD space (see `impactEventRecord.js`). Passed to the
    *   supporting layers untouched — they localise for themselves.
    * @param {object} [view] caller-owned, reused: `{ x, y, z, priority, reduced, forcedColors,
-   *   hero }` where x/y/z are the contact point already in the renderer's local (floating-origin)
-   *   frame. Omit it and the record's own world coordinates are used.
+   *   hero, partial }` where x/y/z are the contact point already in the renderer's local
+   *   (floating-origin) frame. Omit it and the record's own world coordinates are used.
    * @returns {number} primitives this lane spawned.
    */
   emitImpact(rec, view) {
@@ -559,6 +575,7 @@ export class ArcadeStructuralFx {
     const reduced = !!(view && view.reduced);
     const forcedColors = !!(view && view.forcedColors);
     const hero = !!(view && view.hero);
+    const partial = !!(view && view.partial);
     const presentation = resolveImpactPresentation(rec, { reduced, forcedColors, hero });
     const needed = this._neededPools;
     const counts = this._neededCounts;
@@ -593,14 +610,19 @@ export class ArcadeStructuralFx {
       }
     }
     const priority = view && Number.isFinite(view.priority) ? view.priority : DEFAULT_PRIORITY;
-    const decision = arbitrateStructuralImpactCue(gates, { priority, hero });
+    const admit = partial ? this._groupAdmit : null;
+    const decision = arbitrateStructuralImpactCue(gates, {
+      priority, hero, partial, groups: admit,
+    });
     if (!decision.admitted) {
       this._cuesRefused++;
       return 0;
     }
     this._cuesAdmitted++;
     const spawned = spawnImpactStructuralBeats({
-      fx: this,
+      // A player contact writes through the gated facade: groups whose own pool refused are
+      // skipped per beat, never as a whole contact.
+      fx: admit ? this._gatedFx : this,
       rec,
       spec: this._impactSpec,
       lx: view && Number.isFinite(view.x) ? view.x : rec.x,

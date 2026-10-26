@@ -315,8 +315,10 @@ import {
 import {
   DEFAULT_VFX_ADMISSION_PRIORITY,
   deriveVfxAdmissionMetadata,
+  isPlayerFacingVfxAdmission,
   normalizeVfxAdmissionPriority,
 } from '../presentation/vfxAdmissionPriority.js';
+import { emitImpactAudioCue } from '../systems/presentationAdapters.js';
 import {
   admitStructuralFxCue,
   STRUCTURAL_FX_CUE_KIND,
@@ -446,11 +448,20 @@ const PROJECTILE_TRAIL_DIAG_CLASSES = Object.freeze([
 // accessibility scales intensity at the event choke point instead of adding/removing lights and
 // forcing a whole-scene shader recompile.
 export const EVENT_LIGHT_POOL_SIZE = 6;
+// Sustained residents (player plume, field-power glows, living-material contact, gyre payload) may
+// never hold every slot: at least this many stay transient-claimable so a contact/impact flash
+// always has a home. A resident that cannot fit degrades for the frame and re-upserts next frame.
+export const EVENT_LIGHT_TRANSIENT_RESERVE = 2;
+// Incoming fire on the player, and any contact the player caused or aimed at, is not ambient. Its
+// derived band must clear the authored impact/collision preset rows (0.6/0.75) or a busy NPC fight
+// can out-prioritize the hit that is landing on the player. Explosions and shield breaks (0.9+)
+// still outrank it, so the event hierarchy stays honest.
+export const PLAYER_FACING_CONTACT_PRIORITY_FLOOR = 0.78;
 export { WEAPON_LIGHT_POOL_SIZE };
 const PLAYER_PLUME_EVENT_LIGHT_KEY = 'player-plume';
 const PLAYER_PLUME_EVENT_LIGHT_PRIORITY = 0.72;
-// Sustained power-glow slots. Two at most, so with the plume resident three transient flash
-// slots always remain for hits and explosions.
+// Sustained power-glow slots. Two at most; with the plume and the other named residents the whole
+// sustained set is still capped below EVENT_LIGHT_POOL_SIZE, leaving the transient reserve free.
 const FIELD_POWER_LIGHT_KEYS = Object.freeze(['field-power-0', 'field-power-1']);
 
 // Engine plumeCore ('#36c8ff'-style) as raw 0..1 RGB, matching the family eventLight recipe
@@ -1390,7 +1401,17 @@ export const vfx = {
     this._transitSweepT = -1;
     this._transitSweepSpawned = 0;
     this._impactRecords = createImpactRecordPool(8);
-    this._impactView = { x: 0, y: 0.4, z: 0, priority: 0.5, reduced: false, forcedColors: false, hero: false };
+    this._impactView = {
+      x: 0, y: 0.4, z: 0, priority: 0.5, reduced: false, forcedColors: false, hero: false,
+      partial: false,
+    };
+    // One-shot: the next _composeImpact admits per primitive group because the contact is
+    // player-facing. Cleared at the top of _composeImpact (and by the call site) so no later
+    // ambient compose can inherit it.
+    this._impactPartialAdmission = false;
+    // Slot index of the last successful event light, so a duplicate contact receipt can take over
+    // the SAME light instead of claiming a second one.
+    this._lastEventLightSlot = -1;
     this._arcadeStructural = null;
     this._actionVfx = null;
     this._stationOperationVfx = null;
@@ -1402,6 +1423,10 @@ export const vfx = {
     this._arcadeStructuralSerial = 0;
     this._collisionContactTicks = new Map();
     this._collisionMediumTicks = new Map();
+    // Contact receipt identity: `projectile:hit` and `combat:damage` are two receipts for ONE
+    // contact when they carry the same attacker/target/tick. The record lets the first receipt own
+    // the contact light and picture; the other contributes residue only.
+    this._contactReceipts = new Map();
     this._wreckWispSlots = new Map();
     // Quiet settled flight: no-wrecks still paid player resolve + indexedTypeScan
     // + Map.clear every tick. Latch after first empty observe; wake on
@@ -1897,6 +1922,7 @@ export const vfx = {
     this._beamDamageCueNext?.clear?.();
     this._collisionContactTicks?.clear?.();
     this._collisionMediumTicks?.clear?.();
+    this._contactReceipts?.clear?.();
     this._wreckWispSlots?.clear?.();
     this._fieldActiveIds?.clear?.();
     this._hexRgbCache?.clear?.();
@@ -1940,6 +1966,7 @@ export const vfx = {
     this._beamDamageCueNext = null;
     this._collisionContactTicks = null;
     this._collisionMediumTicks = null;
+    this._contactReceipts = null;
     this._wreckWispSlots = null;
     this._fieldActiveIds = null;
     this._hexRgbCache = null;
@@ -3019,7 +3046,10 @@ export const vfx = {
     // the owning status; a second pass here would double-dim them and clamp short-lived marks'
     // life UP past the status owner (flashMinLife), so they spawn with the bypass raised.
     if ((kind === SPR_FLASH || kind === SPR_COMBUSTION) && !this._spawnFlashAccessibilityBypass) {
-      const authored = this._flashAccessibilityScratch;
+      // A reduced harness may construct this owner without init(); keep the first flash
+      // from dereferencing a missing pooled scratch.
+      const authored = this._flashAccessibilityScratch
+        || (this._flashAccessibilityScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0 });
       authored.life = life;
       authored.size0 = size0;
       authored.size1 = size1;
@@ -4339,11 +4369,27 @@ export const vfx = {
       this._spawnProjectileTrailStreak(pos.x, 0.18, pos.z, 0.18, 0.19 * scale, 2.7 * scale,
         0.38, shieldColor, 0, 0, -tx, -tz);
     }
-    this._eventLight({ x: pos.x, z: pos.z }, hitShield ? 'shield' : 'impact', {
-      color: hitShield ? shieldColor : profile.accentColor,
-      peak: profile.lightPeak * scale,
-      distance: 110 * scale,
-    });
+    // The contact's own receipt decides admission and light ownership. `projectile:hit` carries
+    // ownerId/targetId, so a player shot or a shot into the player/current target derives the high
+    // priority its player deserves; `combat:damage` for the same attacker/target/tick shares this
+    // record and will not light a second contact (see _contactReceipt).
+    const admission = deriveVfxAdmissionMetadata(p, this.state);
+    const playerContact = isPlayerFacingVfxAdmission(admission);
+    const contactPriority = playerContact
+      ? Math.max(admission.admissionPriority, PLAYER_FACING_CONTACT_PRIORITY_FLOOR)
+      : admission.admissionPriority;
+    const contact = this._contactReceipt(p);
+    this._emitContactLight(
+      contact,
+      { x: pos.x, z: pos.z },
+      hitShield ? 'shield' : 'impact',
+      {
+        color: hitShield ? shieldColor : profile.accentColor,
+        peak: profile.lightPeak * scale,
+        distance: 110 * scale,
+      },
+      playerContact ? contactPriority : undefined,
+    );
   },
 
   // One directional shock sheet + ribbon + cone along a REAL signed shove. Used by impulse-charge
@@ -4674,6 +4720,19 @@ export const vfx = {
       if (!p.brokeShield && now < (this._beamDamageCueNext.get(cueKey) || 0)) return;
       this._beamDamageCueNext.set(cueKey, now + 0.08);
     }
+    // The contact's own receipt decides admission. `combat:damage` carries the attacker/target
+    // pair, so a player-caused or player-target hit derives the high priority its player deserves,
+    // while an NPC-on-NPC or terrain tick keeps the ambient band.
+    const admission = deriveVfxAdmissionMetadata(p || {}, this.state);
+    const playerContact = isPlayerFacingVfxAdmission(admission);
+    const contactPriority = playerContact
+      ? Math.max(admission.admissionPriority, PLAYER_FACING_CONTACT_PRIORITY_FLOOR)
+      : admission.admissionPriority;
+    const contact = this._contactReceipt(p);
+    // A repeat of the same contact (same attacker/target/tick) contributes residue only: its
+    // authored structural sheet and pooled light are already on screen for this contact.
+    const primaryPicture = contact == null || contact.damagePictured !== true;
+    if (contact && primaryPicture) contact.damagePictured = true;
     // NOTE: on combat:damage, `p.type` is the DAMAGE type (kinetic/energy/…), not a shield flag — so
     // the shield branch keys off `shieldAbsorbed` (authoritative: true when any shield HP absorbed
     // damage this hit) plus `brokeShield` (shield HP just hit zero). Both trigger shield VFX.
@@ -4686,7 +4745,12 @@ export const vfx = {
 
       if (p.brokeShield) {
         // Shield break: the tear, not the scar as well. Five fixed tangent tears crawl the shell.
-        if (!reducedFlash) this._eventLight({ x: cx, z: cz }, 'shield', { severity: 'break' });
+        if (!reducedFlash) {
+          this._emitContactLight(
+            contact, { x: cx, z: cz }, 'shield', { severity: 'break' },
+            playerContact ? contactPriority : undefined,
+          );
+        }
         if (this._weaponPresenter && this._weaponPresenter.quarks) {
           const local = this._toLocalXZ(cx, cz, this._spawnLocalXZ);
           this._weaponPresenter.quarks.spawnShieldBreak(local.x, 0.35, local.z, 24);
@@ -4711,7 +4775,12 @@ export const vfx = {
       } else if (tgt) {
         // Ordinary shield receipt is the contact scar only. A second streak reads as a second hit.
         addShieldContact(tgt.id, nx, 0.12, nz, 1.0);
-        if (!reducedFlash) this._eventLight({ x: pos.x, z: pos.z }, 'shield', { severity: 'contact', color: col });
+        if (!reducedFlash) {
+          this._emitContactLight(
+            contact, { x: pos.x, z: pos.z }, 'shield', { severity: 'contact', color: col },
+            playerContact ? contactPriority : undefined,
+          );
+        }
       }
     }
     if (p.armorHit) {
@@ -4727,23 +4796,34 @@ export const vfx = {
       _impactOpts.serial = hashVfxId(String(p.attackerId) + ':' + String(p.targetId));
       _impactOpts.targetId = p.targetId ?? null;
       _impactOpts.eventClass = undefined;
-      _impactOpts.priority = 0.45;
+      // Legacy authored floor, lifted by the receipt's derived priority. A player contact never
+      // loses to an ambient one; an ambient tick keeps exactly the band it had.
+      _impactOpts.priority = Math.max(0.45, contactPriority);
       _impactOpts.hero = false;
-      const armored = this._composeImpact(
+      this._impactPartialAdmission = playerContact;
+      const armored = primaryPicture && this._composeImpact(
         pos.x, 0.18, pos.z, nx, 0, nz, true,
         Math.max(0.05, Math.min(0.26, 0.05 + (Number(p.amount) || 0) * 0.004)),
         'armor', Math.max(0.8, ((tgt && tgt.radius) || 6) * 0.22), _impactOpts,
       );
-      if (!armored && normalSigned) {
+      this._impactPartialAdmission = false;
+      if (!armored && primaryPicture && !playerContact && normalSigned) {
         // The cone is the mount-unavailable fallback; with no measured axis it would aim at a
-        // fabricated +X, so a directionless armor tick refuses it (SFQ-B183).
+        // fabricated +X, so a directionless armor tick refuses it (SFQ-B183). A player contact
+        // never falls back to this fixed-palette cone: its own group admission keeps the primary
+        // structure, and a fully saturated pool draws residue instead of a generic replacement.
         const count = Math.max(5, Math.min(10, Math.round(8 * (this._burst || 1))));
         this._impactParticleCone(pos.x, pos.z, normalAngle, 0.82, 24, 56, count,
           0.23, 0.82, '#f6ead2', '#514c46', 2.8);
       }
       this._spawnProjectileTrailStreak(pos.x, 0.16, pos.z, 0.17, 0.18, 2.2,
         0.44, '#b7aa96', 0, 0, nx, nz);
-      if (!this._isReduced()) this._eventLight({ x: pos.x, z: pos.z }, 'graze');
+      if (!this._isReduced()) {
+        this._emitContactLight(
+          contact, { x: pos.x, z: pos.z }, 'graze', undefined,
+          playerContact ? contactPriority : undefined,
+        );
+      }
     }
     if (p.hullHit) {
       this._emitJuiceCue('combat.damage.hull', p, 1);
@@ -4762,23 +4842,31 @@ export const vfx = {
       _impactOpts.serial = hashVfxId(String(p.attackerId) + ':h:' + String(p.targetId));
       _impactOpts.targetId = p.targetId ?? null;
       _impactOpts.eventClass = undefined;
-      _impactOpts.priority = 0.55;
+      _impactOpts.priority = Math.max(0.55, contactPriority);
       _impactOpts.hero = false;
-      const breached = this._composeImpact(
+      this._impactPartialAdmission = playerContact;
+      const breached = primaryPicture && this._composeImpact(
         pos.x, 0.2, pos.z, nx, 0, nz, true,
         Math.max(0.28, Math.min(0.55, 0.28 + (Number(p.amount) || 0) * 0.006)),
         'hull', Math.max(1.2, ((tgt && tgt.radius) || 6) * 0.3), _impactOpts,
       );
-      if (!breached && normalSigned) {
+      this._impactPartialAdmission = false;
+      if (!breached && primaryPicture && !playerContact && normalSigned) {
         // An aimed cone needs a measured direction: the impulse axis when the hit carries one,
         // else the contact axis rebuilt above from the receipt geometry. With neither, no cone
-        // draws — atan2(0,0) = 0 would aim one at a fabricated +X (SFQ-B183).
+        // draws — atan2(0,0) = 0 would aim one at a fabricated +X (SFQ-B183). Player contacts are
+        // exempt: a refused player contact must never be replaced by this generic cone.
         const coneAngle = hitRead.signed ? impulseAngle : normalAngle;
         this._impactParticleCone(pos.x, pos.z, coneAngle, 0.95, 9, 24,
           Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
           '#ffb36a', '#3a1710', 1.2);
       }
-      if (!this._isReduced()) this._eventLight({ x: pos.x, z: pos.z }, 'impact', { severity: 'hull' });
+      if (!this._isReduced()) {
+        this._emitContactLight(
+          contact, { x: pos.x, z: pos.z }, 'impact', { severity: 'hull' },
+          playerContact ? contactPriority : undefined,
+        );
+      }
     }
   },
 
@@ -5371,9 +5459,10 @@ export const vfx = {
     if (Number.isFinite(this._collisionPresentationTick) && this._collisionPresentationTick >= 0
       && tick < this._collisionPresentationTick) {
       // A simulation restart/load can move tick backwards before its boundary event reaches render.
-      // Old cooldowns and medium tokens belong to the prior presentation epoch.
+      // Old cooldowns, medium tokens and tick-keyed contact receipts belong to the prior epoch.
       this._collisionContactTicks.clear();
       if (this._collisionMediumTicks) this._collisionMediumTicks.clear();
+      if (this._contactReceipts) this._contactReceipts.clear();
     }
     this._collisionPresentationTick = tick;
     const key = this._collisionPairKey(p && p.aId, p && p.bId, p);
@@ -5406,6 +5495,7 @@ export const vfx = {
   _resetCollisionPresentation() {
     if (this._collisionContactTicks) this._collisionContactTicks.clear();
     if (this._collisionMediumTicks) this._collisionMediumTicks.clear();
+    if (this._contactReceipts) this._contactReceipts.clear();
     this._collisionPresentationTick = -1;
   },
 
@@ -5428,6 +5518,40 @@ export const vfx = {
     if (Math.abs(nx) < 1e-12) nx = 0;
     if (Math.abs(nz) < 1e-12) nz = 0;
     return Math.atan2(nz, nx);
+  },
+
+  // A collision receipt names a PAIR (aId/bId, or targetId/otherId), not an attacker/target. The
+  // player's side is read from whichever slot carries the player id, so a player ram is
+  // player-caused and a player hit is player-target — both outrank ambient NPC/terrain scrapes.
+  // A receipt that already names a victim and its other body keeps that truthful relation; only
+  // the unordered aId/bId pair needs the player moved onto the actor side.
+  // Reused scratch: a collision must not allocate a cue wrapper.
+  _collisionAdmission(p, severity) {
+    const cue = this._collisionAdmissionCue || (this._collisionAdmissionCue = {
+      sourceId: null,
+      targetId: null,
+      pos: null,
+      severity: 0.5,
+    });
+    const a = p && (p.aId ?? p.otherId ?? p.targetId);
+    const b = p && (p.bId ?? p.targetId ?? p.otherId);
+    const rolePair = !!(p && p.otherId != null && p.targetId != null);
+    const playerId = this.state && this.state.playerId;
+    const swap = !rolePair && playerId != null && b === playerId && a !== playerId;
+    cue.sourceId = (swap ? b : a) ?? null;
+    cue.targetId = (swap ? a : b) ?? null;
+    cue.pos = p && p.pos ? p.pos : null;
+    cue.severity = Number.isFinite(severity) ? severity : 0.5;
+    const admission = deriveVfxAdmissionMetadata(cue, this.state);
+    // A player ram / a collision landing on the player is a player-facing contact, not ambient
+    // scrape: floor its band above the authored collision preset so the pooled light and the
+    // structural sheet speak for the body the player is actually in or aiming at.
+    if (isPlayerFacingVfxAdmission(admission)) {
+      admission.admissionPriority = Math.max(
+        admission.admissionPriority, PLAYER_FACING_CONTACT_PRIORITY_FLOOR,
+      );
+    }
+    return admission;
   },
 
   _collisionPatternSerial(p) {
@@ -5568,6 +5692,10 @@ export const vfx = {
     const impactDp = Number(p && p.dp) || Math.abs(Number(p && p.impulse)) || 0;
     const severity = Math.max(0.06, Math.min(0.95, 0.06 + impactDp / 14000));
     const mag = 0.7 + severity * 0.9;
+    // The receipt's own causality decides its structural band: a player ram outranks an ambient
+    // NPC/terrain scrape, and a player-facing contact admits per primitive group.
+    const admission = this._collisionAdmission(p, severity);
+    const playerContact = isPlayerFacingVfxAdmission(admission);
     const pairCount = reduced ? 1 : 2;
     if (!seated) {
     this._c0.set('#fff4dc');
@@ -5616,11 +5744,13 @@ export const vfx = {
     _impactOpts.serial = serial;
     _impactOpts.targetId = p.aId ?? p.targetId ?? null;
     _impactOpts.eventClass = collisionEventClass(severity);
-    _impactOpts.priority = 0.3 + severity * 0.4;
+    _impactOpts.priority = Math.max(0.3 + severity * 0.4, admission.admissionPriority);
     _impactOpts.hero = false;
+    this._impactPartialAdmission = playerContact;
     const composed = this._composeImpact(
       p.pos.x, 0.2, p.pos.z, nx, 0, nz, false, severity, 'hull', 1.6 * mag, _impactOpts,
     );
+    this._impactPartialAdmission = false;
     if (!seated && !composed && this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(p.pos.x, p.pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnCollisionSpall(local.x, 0.2, local.z, nx, 0.4, nz, reduced ? 6 : 12);
@@ -5638,6 +5768,11 @@ export const vfx = {
   // which collider was listed first. Passing true for one of those manufactures a force that did
   // not happen, which is the defect standard rule E2 exists to prevent.
   _composeImpact(worldX, worldY, worldZ, nx, ny, nz, axisSigned, severity, materialId, radiusWU, opts) {
+    // One-shot player-contact admission: a player-facing contact admits per primitive group, so a
+    // full shard pool keeps its contact blade. Cleared here, before any return, so a later ambient
+    // compose can never inherit it.
+    const partialAdmission = this._impactPartialAdmission === true;
+    this._impactPartialAdmission = false;
     if (!this._scene) return false;
     this._initArcadeStructural();
     const fx = this._arcadeStructural;
@@ -5677,7 +5812,19 @@ export const vfx = {
     view.forcedColors = !!(this.state && this.state.settings && this.state.settings.accessibility
       && this.state.settings.accessibility.forcedColors);
     view.hero = !!options.hero;
-    return fx.emitImpact(rec, view) > 0;
+    view.partial = partialAdmission;
+    const emitted = fx.emitImpact(rec, view) > 0;
+    if (emitted) {
+      // The raw damage receipt already owns the audible layer voice; this semantic lane carries
+      // the same material/event identity for captions and observability without replaying audio.
+      emitImpactAudioCue(this.bus, rec, {
+        position: { x: worldX, z: worldZ },
+        importance: view.priority,
+        reducedMotion: view.reduced,
+        playbackOwnedByRaw: true,
+      });
+    }
+    return emitted;
   },
 
   _onPhysicsImpact(p) {
@@ -11226,10 +11373,13 @@ export const vfx = {
         this._admitAndSpawnArcadeStructural('combat:collisionConsequence', p);
       }
       const light = collisionImpactLight(p);
+      const collisionAdmission = this._collisionAdmission(p, seatSeverity);
       this._eventLight(p.pos, 'collision', {
         severity: p.surface === 'terrain' ? 'terrain' : undefined,
         peak: light.intensity,
         distance: light.range,
+        ...(isPlayerFacingVfxAdmission(collisionAdmission)
+          ? { priority: collisionAdmission.admissionPriority } : null),
       });
       return true;
     }
@@ -11308,10 +11458,13 @@ export const vfx = {
     }
     if (acc.eventLightPeakScale > 0) {
       const light = collisionImpactLight(p);
+      const fallbackAdmission = this._collisionAdmission(p);
       this._eventLight({ x: pos.x, z: pos.z }, 'collision', {
         severity: terrain ? 'terrain' : undefined,
         peak: light.intensity,
         distance: light.range,
+        ...(isPlayerFacingVfxAdmission(fallbackAdmission)
+          ? { priority: fallbackAdmission.admissionPriority } : null),
       });
     }
     this._fillCollisionStructuralReq(p);
@@ -15776,15 +15929,30 @@ export const vfx = {
   },
 
   /**
-   * Claim one existing PointLight slot without allocating. Sustained residents are never eviction
-   * candidates for transient flashes; this leaves five transient slots while the player plume is
-   * active and restores all six when it sleeps.
+   * Claim one existing PointLight slot without allocating.
+   *
+   * Two rules keep contact lights alive under sustained load:
+   *  - sustained residents (plume, field power, material contact, gyre payload) are capped at
+   *    `EVENT_LIGHT_POOL_SIZE - EVENT_LIGHT_TRANSIENT_RESERVE`, so at least two slots always stay
+   *    transient-claimable;
+   *  - a resident never evicts a live transient and never takes a slot when none is free. A refused
+   *    resident degrades for the frame and re-upserts on the next one.
+   * Transients may still evict weaker transients, exactly as before.
    */
   _claimEventLightSlot(priority, sustainedKey = null) {
     const pool = this._lights;
     if (!pool) return null;
+    const sustained = sustainedKey != null;
     let slotIndex = -1;
-    if (this._freeLightCount > 0) {
+    if (sustained) {
+      if (this._freeLightCount <= 0) return null;
+      let residents = 0;
+      for (let i = 0; i < pool.length; i++) {
+        if (pool[i].active && pool[i].sustainedKey != null) residents++;
+      }
+      if (residents >= EVENT_LIGHT_POOL_SIZE - EVENT_LIGHT_TRANSIENT_RESERVE) return null;
+      slotIndex = this._freeLights[--this._freeLightCount];
+    } else if (this._freeLightCount > 0) {
       slotIndex = this._freeLights[--this._freeLightCount];
     } else {
       for (let i = 0; i < pool.length; i++) {
@@ -15928,6 +16096,7 @@ export const vfx = {
   // FB-074: callers should route through _eventLight so the light director owns the identity;
   // direct _flashLight use is reserved for sites carrying externally-authored plans.
   _flashLight(pos, color, peak, decayRate, dist, admissionPriority) {
+    this._lastEventLightSlot = -1;
     const pool = this._lights;
     if (!pool || !pos) return false;
     const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
@@ -15945,6 +16114,7 @@ export const vfx = {
     );
     const slot = this._claimEventLightSlot(priority);
     if (!slot) return false;
+    this._lastEventLightSlot = slot.slot;
     const obj = slot.obj;
     const local = this._toLocalXZ(pos.x || 0, pos.z || 0, this._spawnLocalXZ);
     obj.position.set(local.x, 12, local.z); // lift above the play plane
@@ -15958,6 +16128,140 @@ export const vfx = {
     slot.sustainedKey = null;
     slot.sustained = false;
     return true;
+  },
+
+  // Effective admission priority an event light for `kind` will claim. `_eventLight` uses the same
+  // rule (an explicit priority wins, else the authored preset row), so two receipts for one contact
+  // compare like with like.
+  _contactLightPriority(kind, opts, explicitPriority) {
+    if (Number.isFinite(explicitPriority)) return normalizeVfxAdmissionPriority(explicitPriority);
+    if (opts && Number.isFinite(opts.priority)) return normalizeVfxAdmissionPriority(opts.priority);
+    const preset = presetFor(kind, opts && opts.severity);
+    return normalizeVfxAdmissionPriority(preset && preset.priority);
+  },
+
+  /**
+   * The ONE pooled event light for a contact. The first receipt to ask owns it; a later receipt for
+   * the same attacker/target/tick re-arms that SAME slot only when it is strictly more
+   * player-relevant (the preferred receipt). It never claims a second light.
+   *
+   * Ownership is the slot's admission serial, not its index. A saturated pool can retire this
+   * contact's light and recycle the slot for a stronger unrelated event; a late receipt must not
+   * re-arm that stranger's light. A stale record forgets its ownership and claims normally, so the
+   * pool's own admission law still decides.
+   * @returns {boolean} true when the contact has a light.
+   */
+  _emitContactLight(contact, pos, kind, opts, priority) {
+    if (!contact) {
+      return this._eventLight(
+        pos, kind,
+        Number.isFinite(priority)
+          ? (opts ? { ...opts, priority } : { priority })
+          : opts,
+      );
+    }
+    const requestPriority = this._contactLightPriority(kind, opts, priority);
+    if (contact.lightOwner != null) {
+      const owned = this._lights && contact.lightSlot >= 0
+        ? this._lights[contact.lightSlot] : null;
+      if (!owned || !owned.active || owned.admissionSerial !== contact.lightSerial) {
+        contact.lightOwner = null;
+        contact.lightSlot = -1;
+        contact.lightPriority = 0;
+        contact.lightSerial = -1;
+      }
+    }
+    if (contact.lightOwner == null) {
+      // The explicit band must reach the pool: `_eventLight` only reads `opts.priority`, and the
+      // authored preset row is the ambient fallback, not the player's derived band.
+      const requestOpts = Number.isFinite(priority)
+        ? (opts ? { ...opts, priority } : { priority })
+        : opts;
+      const ok = this._eventLight(pos, kind, requestOpts);
+      if (ok) {
+        contact.lightOwner = kind;
+        contact.lightSlot = this._lastEventLightSlot;
+        contact.lightPriority = requestPriority;
+        const slot = this._lights && contact.lightSlot >= 0
+          ? this._lights[contact.lightSlot] : null;
+        contact.lightSerial = slot ? slot.admissionSerial : -1;
+      }
+      return ok;
+    }
+    if (requestPriority > contact.lightPriority + 1e-6
+      && this._rearmContactLightSlot(contact, pos, kind, opts, priority)) {
+      contact.lightOwner = kind;
+      contact.lightPriority = requestPriority;
+      const slot = this._lights && contact.lightSlot >= 0
+        ? this._lights[contact.lightSlot] : null;
+      contact.lightSerial = slot ? slot.admissionSerial : -1;
+    }
+    return true;
+  },
+
+  // Takeover in place: the preferred receipt changes the authorship of the contact's EXISTING
+  // light (colour, peak, decay, priority) and leaves the visible light count untouched.
+  _rearmContactLightSlot(contact, pos, kind, opts, priority) {
+    const slot = this._lights && contact && contact.lightSlot >= 0
+      ? this._lights[contact.lightSlot] : null;
+    if (!slot || !slot.active || !pos) return false;
+    // The index still points at a live light, but not necessarily THIS contact's light.
+    if (slot.admissionSerial !== contact.lightSerial) return false;
+    const o = opts || _FLASH_LIGHT_BLANK_OPTS;
+    const scaled = scalePreset(presetFor(kind, o.severity), o);
+    if (!scaled) return false;
+    const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const peak = (o.peak != null ? o.peak : scaled.peak)
+      * (o.peakMul != null ? o.peakMul : 1)
+      * accessibility.eventLightPeakScale;
+    if (!(peak > 0)) return false;
+    const local = this._toLocalXZ(pos.x || 0, pos.z || 0, this._spawnLocalXZ);
+    slot.obj.position.set(local.x, 12, local.z);
+    const color = o.color || scaled.color;
+    if (typeof color === 'number') slot.obj.color.setHex(color);
+    else slot.obj.color.set(color);
+    const distance = o.distance != null ? o.distance : scaled.distance;
+    if (distance) slot.obj.distance = distance;
+    slot.peak = peak;
+    slot.intensity = Math.max(slot.intensity, peak * 0.3);
+    slot.decay = o.decay != null ? o.decay : (scaled.decay || 8);
+    slot.t = 0;
+    slot.admissionPriority = this._contactLightPriority(kind, opts, priority);
+    slot.admissionSerial = this._admissionSerial++;
+    return true;
+  },
+
+  // Identity of one damage contact: attacker + target + tick. `projectile:hit` (ownerId) and
+  // `combat:damage` (attackerId) derive the same key for one hit. A receipt with no attacker — a
+  // burn tick, a field — has no contact identity and always draws on its own.
+  _contactReceipt(p) {
+    if (!p) return null;
+    const attackerId = p.attackerId ?? p.ownerId ?? p.sourceId;
+    const targetId = p.targetId ?? p.entityId;
+    if (attackerId == null || targetId == null) return null;
+    const tick = Number.isFinite(p.tick)
+      ? Math.max(0, Math.trunc(p.tick))
+      : Math.max(0, Math.trunc(this.state && this.state.tick || 0));
+    const key = String(attackerId) + '\u0000' + String(targetId) + '\u0000' + tick;
+    let map = this._contactReceipts;
+    if (!map) map = this._contactReceipts = new Map();
+    let record = map.get(key);
+    if (!record) {
+      if (map.size >= COLLISION_PRESENTATION_CACHE_CAP) {
+        const oldest = map.keys().next();
+        if (!oldest.done) map.delete(oldest.value);
+      }
+      record = {
+        tick,
+        lightOwner: null,
+        lightSlot: -1,
+        lightPriority: 0,
+        lightSerial: -1,
+        damagePictured: false,
+      };
+      map.set(key, record);
+    }
+    return record;
   },
 
   _decayEventLights(dt) {

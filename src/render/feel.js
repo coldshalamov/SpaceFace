@@ -247,6 +247,115 @@ export function impactKickFromMomentum(momentum) {
   return last.kickWu;
 }
 
+// --- Player-caused weapon impact: the directed half of a heavy shot ------------------------------
+// A collision kick is bought with exchanged momentum; a weapon hit is bought with the shot's
+// authored impulse. The same bounded table decides HOW HARD, so a light repeater is silent and a
+// spinal lance shoves the frame a little; the receipt's approach vector decides WHICH WAY the
+// target was knocked, and the frame slides that way. This is the player's own shot landing —
+// never trauma/burn, never an FOV punch, and the hold is the shared presentation-only contact
+// ceiling (the simulation clock is never touched). motionReduce and photo mode silence it at the
+// resolver, exactly like every other feel channel.
+export const WEAPON_KICK_WU_MAX = 1.8;   // world units — below every collision slam row
+export const WEAPON_KICK_ID = 'weapon.impactKick';
+
+function weaponImpulsePerHit(weapon) {
+  if (!weapon) return 0;
+  if (Number.isFinite(weapon.impulsePerHit)) return Math.max(0, weapon.impulsePerHit);
+  const base = weapon.baseId ? WEAPON_BY_ID.get(weapon.baseId) : null;
+  return base && Number.isFinite(base.impulsePerHit) ? Math.max(0, base.impulsePerHit) : 0;
+}
+
+function weaponReferenceDamage(weapon) {
+  if (!weapon) return 0;
+  if (Number.isFinite(weapon.dmg) && weapon.dmg > 0) return weapon.dmg;
+  const base = weapon.baseId ? WEAPON_BY_ID.get(weapon.baseId) : null;
+  return base && Number.isFinite(base.dmg) && base.dmg > 0 ? base.dmg : 0;
+}
+
+/**
+ * Pure directional kick for a heavy weapon hit the player CAUSED. `out` is a retained caller
+ * record so the live listener allocates nothing. Returns null for light shots (below the
+ * momentum floor), for hits the player took rather than dealt, and under every vestibular gate.
+ */
+export function resolveWeaponImpactKick(payload, context = {}, out = null) {
+  if (!payload) return null;
+  if (context.motionReduce) return null;
+  if (context.photoMode || photoModeFeelPresentation(context.state).silencePunch) return null;
+  if (context.mode && context.mode !== 'flight') return null;
+  const playerId = context.playerId;
+  if (playerId == null) return null;
+  // Only the player's own shot answers here. Getting hit is the shield/armor/hull feel ladder.
+  if (payload.attackerId !== playerId) return null;
+  if (payload.targetId === playerId || payload.isPlayer) return null;
+  const struck = payload.armorHit || payload.hullHit || payload.shieldHit || payload.brokeShield
+    || (Number.isFinite(payload.amount) && payload.amount > 0);
+  if (!struck) return null;
+
+  const weaponId = payload.weaponId
+    || (payload.origin && (payload.origin.weaponId || payload.origin.id))
+    || null;
+  const weapon = weaponRecord(weaponId);
+  const impulse = weaponImpulsePerHit(weapon);  if (!(impulse > 0)) return null;
+  const refDamage = weaponReferenceDamage(weapon);
+  const amount = Number.isFinite(payload.amount) ? Math.max(0, payload.amount)
+    : Number.isFinite(payload.applied) ? Math.max(0, payload.applied) : 0;
+  // Delivered fraction of the authored shot: a torpedo's splash is not the direct hit.
+  const delivered = refDamage > 0 ? Math.min(1.25, Math.max(0.25, amount / refDamage)) : 1;
+  const momentum = impulse * delivered;
+  const shieldOnly = payload.shieldHit && !payload.armorHit && !payload.hullHit;
+  const kickWu = Math.min(
+    WEAPON_KICK_WU_MAX,
+    impactKickFromMomentum(momentum) * (shieldOnly ? 0.85 : 1),
+  );
+  if (!(kickWu > 0)) return null;
+
+  // Direction the target was knocked: the shot's own travel, then the attacker→target line,
+  // then the surface normal (a shot travels INTO the surface). No direction, no kick.
+  let dirX = 0;
+  let dirZ = 0;
+  const approach = payload.approach;
+  if (approach && Number.isFinite(approach.x) && Number.isFinite(approach.z)) {
+    dirX = approach.x;
+    dirZ = approach.z;
+  }
+  if (dirX === 0 && dirZ === 0 && context.state && context.state.entities
+    && typeof context.state.entities.get === 'function') {
+    const attacker = context.state.entities.get(payload.attackerId);
+    const target = context.state.entities.get(payload.targetId);
+    if (attacker && attacker.pos && target && target.pos) {
+      dirX = target.pos.x - attacker.pos.x;
+      dirZ = target.pos.z - attacker.pos.z;
+    }
+  }
+  if (dirX === 0 && dirZ === 0 && payload.normal
+    && Number.isFinite(payload.normal.x) && Number.isFinite(payload.normal.z)) {
+    dirX = -payload.normal.x;
+    dirZ = -payload.normal.z;
+  }
+  const len = Math.hypot(dirX, dirZ);
+  if (!(len > 1e-6)) return null;
+  dirX /= len;
+  dirZ /= len;
+
+  // The shared contact ceiling, scaled by the kick's own weight: 1–2 frames, never a pose hold.
+  const holdS = CRUNCH_HOLD_MIN_S
+    + (CRUNCH_HOLD_MAX_S - CRUNCH_HOLD_MIN_S) * Math.min(1, kickWu / WEAPON_KICK_WU_MAX);
+
+  const result = out || {};
+  result.id = WEAPON_KICK_ID;
+  result.weaponId = weaponId == null ? null : String(weaponId);
+  result.kickWu = kickWu;
+  result.dirX = dirX;
+  result.dirZ = dirZ;
+  result.holdS = holdS;
+  result.momentum = momentum;
+  result.shieldOnly = !!shieldOnly;
+  result.holdsPose = false;
+  result.stallsSim = false;
+  if (out) return result;
+  return Object.freeze(result);
+}
+
 // Optional caller-owned output lets the event bridge reuse its pending record.
 /** Photo mode is a still: no punch, vignette, or speed-line overlay on the store shot. */
 export function photoModeFeelPresentation(state) {
@@ -710,6 +819,7 @@ export const feel = {
     this._pendingCollisionFeel = null;  // strongest contact this frame, from either receipt source
     this._collisionFeelScratch = {};
     this._collisionFeelContext = {};
+    this._weaponKickScratch = {};   // retained out for resolveWeaponImpactKick (no per-hit object)
     this._armedCollisionTick = null;
     this._armedCollisionAId = null;
     this._armedCollisionBId = null;
@@ -1268,6 +1378,19 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
         state: this.state,
       });
 
+      // Player-caused heavy shot: a bounded, directional camera/haptic answer. Independent of the
+      // slug crunch (which owns family FOV/trauma) and never adds shake of its own.
+      if (playerId != null && p.attackerId === playerId && p.targetId !== playerId && !p.isPlayer) {
+        const kick = resolveWeaponImpactKick(p, {
+          motionReduce: mr,
+          mode: this.state.mode,
+          photoMode: photoModeFeelPresentation(this.state).silencePunch,
+          playerId,
+          state: this.state,
+        }, this._weaponKickScratch);
+        this._applyWeaponKick(kick);
+      }
+
       if (p.brokeShield) {
         const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
         this._trigger(HS_SHIELD_BREAK, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
@@ -1783,6 +1906,30 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     if (crunch.trauma * traumaScale > 0 && ctrl && typeof ctrl.addTrauma === 'function') {
       ctrl.addTrauma(crunch.trauma * traumaScale);
     }
+  },
+
+  /**
+   * Apply the player-caused weapon kick. Directional camera displacement + the shared bounded
+   * camera hold only: no trauma, no FOV punch, no simulation time. The caller already gates on
+   * the damage receipt; every vestibular gate is repeated here so a direct call is safe too.
+   */
+  _applyWeaponKick(kick) {
+    if (!kick || !(kick.kickWu > 0)) return false;
+    const state = this.state;
+    if (!state || state.mode !== 'flight' || !this._modalClear()) return false;
+    const mr = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
+    if (mr) return false;
+    if (photoModeFeelPresentation(state).silencePunch) return false;
+    const ctrl = state.render && state.render.cameraCtrl;
+    let applied = false;
+    if (ctrl && typeof ctrl.impactKick === 'function' && (kick.dirX !== 0 || kick.dirZ !== 0)) {
+      ctrl.impactKick(kick.dirX, kick.dirZ, kick.kickWu);
+      applied = true;
+    }
+    // Keep the bounded presentation hold that the contact path established. It freezes the
+    // presentation camera for 1–2 frames; the simulation clock is untouched.
+    if (this._holdCameraBeat(kick.holdS)) applied = true;
+    return applied;
   },
 
   /** Freeze the presentation camera for the contact beat; never the simulation clock. */
