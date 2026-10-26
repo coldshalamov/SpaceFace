@@ -461,9 +461,16 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-trade__words { justify-content:center; }
   ${M} .orr-mkt-holdarc { justify-content:center; }
 }
+`;
+/* The compact berth (dial, total, verbs and a slim console beside the analysis) was written for
+   ≤1100 × ≤800. Desktop ≤650 wide × ≥801 tall (600×844, 390×844) has the same ~300–345px tab body,
+   where the stacked 244px console stood past the right edge (BUY/SELL and the dial off the glass),
+   so it runs there too, desktop-scoped (phones keep their own sheet). M is the scope selector. */
+const NARROW_TALL = '(max-width:650px) and (min-height:801px)';
+const compactBerth = (M, MQ) => `
 /* ---- 960×540 berth: body ~192px — every part of the trade stays on the board, just smaller ---- */
-@media (max-width:1100px) and (max-height:800px) {
-  html body #screens > .sx-berth.orr-station .sx-screen__body > .sx-mkt.orr-market {
+@media ${MQ} {
+  ${M.replace(' .sx-mkt.orr-market', ' .sx-screen__body > .sx-mkt.orr-market')} {
     grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; column-gap:14px !important; }
   /* the browser: legend + find share one line (the find's rule is that line's foot); the families
      stand as a vertical ladder beside the register, so every family stays visible (D170) and the
@@ -567,7 +574,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
    so MAX wrapped to a second row and printed over the "36 cr" total. The console takes 146px (the
    gap beside it gives back 6px, so the analysis keeps its width to within 2px) and the words sit
    on one row, spaced apart; the chevrons step aside (the words say it). */
-@media (max-width:1100px) and (max-height:800px) {
+@media ${MQ} {
   ${M} .sx-mkt__stage { grid-template-columns:minmax(0, 1fr) 146px !important; column-gap:4px !important; }
   ${M} .sx-mkt__console { width:146px !important; }
   ${M} .sx-trade > .sx-qty { width:146px; }
@@ -579,11 +586,13 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { letter-spacing:.06em !important; white-space:nowrap !important; }
   ${M} .sx-qty .sx-qty__b[data-q]::before, ${M} .sx-qty .sx-qty__b[data-q]::after { content:none !important; }
 }
+`;
+const CSS_TAIL = `
 /* …in that 96px dial QUANTITY (~95px at the label's width and tracking) sat across the ring's lower
    arc, and "› QUOTE BREAKDOWN" took two lines, so at 960×540 the console ran 14px past the stage and
    BUY 1 / SELL were cut off under it. The number rides 4px higher and QUANTITY sets at the plain
    width (~60px) under it, inside the ring; QUOTE BREAKDOWN sets the same way on one line. Desktop only. */
-@media (min-width:651px) and (max-width:1100px) and (max-height:800px) {
+@media (min-width:651px) and (max-width:1100px) and (max-height:800px), ${NARROW_TALL} {
   ${MD} .sx-qty .sx-qty__in { top:24px; }
   ${MD} :is(.sx-qty .sx-qty__k, .so-trade-breakdown > summary) { font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 650 !important;
     letter-spacing:.03em !important; white-space:nowrap !important; }
@@ -614,7 +623,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
    "308" and "789u"), and a name that still does not fit wraps to a second line under its own first
    letter, never under the price. The heads sit apart over their numbers, and STOCK (tracking 0, 3px
    lead) ends inside the rail's scroll box instead of losing its K. */
-@media (max-width:1100px) and (max-height:800px) {
+@media (max-width:1100px) and (max-height:800px), ${NARROW_TALL} {
   ${MD} .sx-mkt-browser { column-gap:10px !important; }
   ${MD} .sx-mkt-browser__filters { padding-right:0 !important; }
   ${MD} .sx-mkt-table thead th:nth-child(2) { width:60px !important; }
@@ -687,7 +696,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
 /* ---- 651–900 × ≤800 desktop: beside the family ladder the register's name column was 0–25px (rows
    read as an icon and numbers; at 700×600 "Iron Ore" sat under its own price). The families wrap
    into a strip over the register instead, every one still on the board, and the names get ~100px. */
-@media (min-width:651px) and (max-width:900px) and (max-height:800px) {
+@media (min-width:651px) and (max-width:900px) and (max-height:800px), ${NARROW_TALL} {
   ${MD} .sx-mkt-browser { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) !important; row-gap:4px !important; }
   ${MD} .sx-mkt-browser__filters { grid-column:1; grid-row:2; flex-direction:row !important; flex-wrap:wrap !important; width:auto !important; min-width:0 !important;
     gap:0 14px !important; padding:0 0 0 9px !important; background:none !important; }
@@ -701,7 +710,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
    on one line and its terms wrap under it at the full width (two–three lines). The terms are the
    price and hull/armor numbers being chosen between, and the buttons carry no title, so they are
    never ellipsized. */
-@media (min-width:651px) and (max-width:720px) and (max-height:800px) {
+@media (min-width:651px) and (max-width:720px) and (max-height:800px), ${NARROW_TALL} {
   ${MD} .sx-mkt__decision .sx-decision {
     display:flex !important; flex-direction:column !important; gap:2px !important;
     grid-template-columns:none !important;
@@ -732,7 +741,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
    beside it, then the trace at the full width (beside the name the price left ~65px for both and
    squeezed the trace to ~20px; at 700×600 the title stood one letter wide). From ~1000 wide the
    two-column reading fits as it is. */
-@media (min-width:651px) and (max-width:900px) and (max-height:800px) {
+@media (min-width:651px) and (max-width:900px) and (max-height:800px), ${NARROW_TALL} {
   ${MD} .sx-mkt__quote { grid-template-columns:minmax(0, 1fr) max-content !important; column-gap:8px !important; align-items:start !important; }
   ${MD} .sx-mkt__quote > :is(.sx-mkt-cat-inline, .sx-mkt-title, .sx-mkt-cause) { grid-column:1 / -1 !important; }
   ${MD} .sx-mkt__quote > .sx-mkt-cat-inline { grid-row:1 !important; margin:0 !important; font-size:12px !important; letter-spacing:.16em !important; white-space:nowrap; }
@@ -788,7 +797,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
    readings ("SECTOR NO CONF", with SPREAD and TREND in a second column past the edge) and ROUTE
    INTELLIGENCE ran under its clipped edge. The readings stand in one column, and the lines close up
    and wrap at word breaks; each reading's value stays whole. */
-@media (min-width:651px) and (max-width:760px) and (max-height:800px) {
+@media (min-width:651px) and (max-width:760px) and (max-height:800px), ${NARROW_TALL} {
   ${MD} .sx-mkt__quote > .sx-mkt-cat-inline { letter-spacing:.06em !important; white-space:normal !important; line-height:14px !important; }
   ${MD} .orr-mkt-subkey { grid-template-columns:minmax(0, 1fr) !important; row-gap:2px !important; }
   ${MD} .orr-mkt-subkey__bit { letter-spacing:.04em !important; white-space:normal !important; line-height:14px; }
@@ -843,6 +852,44 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${MD} .sx-trade__note { line-height:14px !important; margin:0 !important; }
   ${MD} .so-trade-breakdown > summary { padding:2px 0 !important; }
 }
+/* ---- ≤650 wide × ≥801 tall desktop (600×844, 520×900, 390×844; ui-polish-148): the compact berth
+   above put the analysis and a 146px console side by side in a stage only ~130–280px wide, so the
+   reading stood one letter wide and the register lost its names. The stage is one 150px column
+   instead: the console (dial, total, BUY / SELL) on top, a pending decision under it, then the
+   reading, scrolling together; the register keeps the rest of the width. */
+@media ${NARROW_TALL} {
+  ${MD.replace(' .sx-mkt.orr-market', ' .sx-screen__body > .sx-mkt.orr-market')} { grid-template-columns:minmax(0, 1fr) 150px !important; column-gap:12px !important;
+    grid-template-rows:minmax(0, 1fr) 0 !important; row-gap:0 !important; }
+  ${MD} > .sx-mkt__list { height:auto !important; max-height:100% !important; }
+  ${MD} .sx-mkt__stage, ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:max-content max-content max-content !important; align-content:start !important; row-gap:10px !important; overflow:hidden auto !important; scrollbar-width:none; }
+  ${MD} .sx-mkt__console, ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__console { grid-column:1 !important; grid-row:1 !important;
+    justify-self:center !important; max-height:none !important; overflow:visible !important; }
+  ${MD} .sx-mkt__analysis { grid-column:1 !important; grid-row:3 !important; overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important;
+    padding-top:8px !important; border-top:1px solid rgb(${BONE} / .16) !important; }
+  ${MD} .sx-mkt__decision:not(:empty) { grid-column:1 !important; grid-row:2 !important; max-height:none !important; overflow:visible !important; }
+  ${MD} .sx-trade__go.orr-lampkey { white-space:nowrap !important; }
+  /* the family strip's wrapped lines touched (0 lead); 3px between them */
+  ${MD} .sx-mkt-browser__filters { row-gap:3px !important; }
+}
+/* …and under 481 wide (390×844) the register beside that column is ~165px: its three numbers left
+   the name ~0px. Each good reads on two lines there, its name across the whole register and its
+   BUY / SELL / STOCK under it, and the families close up so they take four lines, not seven. */
+@media (max-width:480px) and (min-height:801px) {
+  ${MD} .sx-mkt-browser__filters { column-gap:10px !important; }
+  ${MD} .sx-mkt-filter { letter-spacing:.04em !important; }
+  ${MD} .sx-mkt-table, ${MD} .sx-mkt-table > :is(thead, tbody) { display:block !important; width:100% !important; }
+  ${MD} .sx-mkt-table tr { display:grid !important; grid-template-columns:minmax(0, 1fr) 38px 44px !important; align-items:baseline; }
+  ${MD} .sx-mkt-table thead th:first-child { display:none !important; }
+  ${MD} .sx-mkt-table .sx-mkt-row > .sx-mkt-row__name:first-child { grid-column:1 / -1; padding-bottom:0 !important; }
+  ${MD} .sx-mkt-table :is(th, td):nth-child(2) { grid-column:1; width:auto !important; padding-left:30px !important; text-align:left !important;
+    overflow:visible !important; text-overflow:clip !important; white-space:nowrap !important; }
+  ${MD} .sx-mkt-table thead th { letter-spacing:.04em !important; }
+  ${MD} .sx-mkt-row td { line-height:15px !important; }
+  ${MD} .sx-mkt-table :is(th, td):nth-child(3) { grid-column:2; width:auto !important; padding-right:0 !important; text-align:right !important; }
+  ${MD} .sx-mkt-table :is(th, td):nth-child(4) { grid-column:3; width:auto !important; padding-right:0 !important; text-align:right !important; }
+  ${MD} .sx-mkt-row td:nth-child(n+2) { padding-top:0 !important; }
+}
 `;
 
 export function injectOrreryMarket(doc = globalThis.document) {
@@ -851,6 +898,6 @@ export function injectOrreryMarket(doc = globalThis.document) {
   if (typeof doc.getElementById === 'function' && doc.getElementById(STYLE_ID)) return;
   const style = doc.createElement('style');
   style.id = STYLE_ID;
-  style.textContent = CSS;
+  style.textContent = CSS + compactBerth(M, '(max-width:1100px) and (max-height:800px)') + compactBerth(MD, NARROW_TALL) + CSS_TAIL;
   doc.head.appendChild(style);
 }
