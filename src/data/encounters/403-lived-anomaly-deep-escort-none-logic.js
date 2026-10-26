@@ -167,7 +167,7 @@ export const spec = {
       "verb": "await",
       "timeoutS": 120,
       "timeoutLine": "BUOY: The 24 cr stays spent — the relief still runs on your credit at Anomaly Deep; the close-in just never came — VISOR ON THE ANOMALY DEEP.",
-      "keepMotion": true,
+      "keepMotion": false,
       "steps": [
         {
           "kind": "meet",

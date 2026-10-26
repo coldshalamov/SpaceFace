@@ -175,7 +175,7 @@ export const spec = {
       "verb": "await",
       "timeoutS": 120,
       "timeoutLine": "VERGE: The 24 cr stays spent — the relief still runs on your credit at Nebula Fog; the close-in just never came — RIBBON ON THE NEBULA FOG.",
-      "keepMotion": true,
+      "keepMotion": false,
       "steps": [
         {
           "kind": "meet",
