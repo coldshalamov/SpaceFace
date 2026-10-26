@@ -44,11 +44,19 @@ Preserve their dirty work; pathspec-commit only my paths.
 |---|---|---|
 | 495 24-body rock family | PARTIAL — landed 1ae25fa430 | gap: instanced field-rock pool still procedural (render-lane reroute); authored family owns debris/hero/claim bodies |
 | 512 fourteen station kits | OPEN | — |
-| 514 hull kits + Overgrowth/junk | OPEN | — |
+| 514 hull kits + Overgrowth/junk | PARTIAL — landed b2e766b27a | all six uncovered factions kitted on their dominant live hulls; gap: off-kit hulls in the same factions (helix security Wasps, understory arbitrary loss-ledger hulls, choir pilgrim transports) still production paint |
 | 543 portrait pools | OPEN | — |
 
 ## Working notes / decisions
 
+- Kit coverage rule (514): a variant kit is authored on the hull each faction actually
+  fields live — `src/data/factionPresence.js` plans are the guaranteed-hull authority
+  (archive courier = Drifter at Pallas, pitborn yard tender = Ironback at Ashfall/Vesta/
+  Ceres, verge prisms = Ranger), `shipRoles` in `src/data/factions/*.js` covers berth
+  keepers/missions/conflicts. New `*_FACTION_KIT_BY_FACTION` maps in partsLibrary hang the
+  kit off the resolved base file keyed by `entity.factionId`; the player is faction_free
+  and stays production paint. `variant.main` bakes any `*_bank` attr (Kestrel uses
+  `ani01_bank` — the old ani38-only guard silently shipped a bankless MOTION_ hull).
 - Rock ids: `place_rock_{substance}_{pebble|boulder|monolith}` — 24 forge place GLBs;
   shared builder `tools/blender/forge/rock_family.py`, thin per-body ship files.
 - Live-wiring plan for rocks: swarmArenaLadder `placeIds` rosters (census-validated) +

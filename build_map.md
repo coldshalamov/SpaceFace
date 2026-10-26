@@ -1160,7 +1160,7 @@ production units, and never build what they write.
 | 508 | W-BLOOM-HIGH | Bloom ladder T3–T6 — Bristle ram, Furnace maw, Husks, Blind shepherd, Hive-hulk, Veil ray, Anchor beast, the Long Field (§34.2) | BUILD | OPEN — after 507 |
 | 512 | W-STATIONS | Fourteen faction station kits (§34.4) | ART | OPEN |
 | 513 | W-STEALTH | Mass-signature stealth — sweep rings, mass shadows, cold coasting, Hush, decoys (§34.4) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
-| 514 | W-KITS | Faction hull kits plus the Overgrowth and junk kits (§34.5) | ART | OPEN |
+| 514 | W-KITS | Faction hull kits plus the Overgrowth and junk kits (§34.5) | ART | PARTIAL devin-fart 2026-10-26 — all six uncovered factions now field authored kits on their dominant live hulls (8 forge variants: helix/archive drifters, fulfillment/pitborn mules, archive/verge rangers, understory kestrel-Overgrowth, pitborn ironback junk; landed b2e766b27a); still open: off-kit hulls inside those factions (security Wasps, loss-ledger hulls of any class, choir pilgrim transports) keep production paint |
 | 515 | W-CONCORD | Concord — commanders, Clamp Tender, Scale Barge, the Weighing (§34.5) | BUILD | DONE devin-thirty-oct22 — after 513 for the Weighing |
 | 516 | W-MERIDIAN | Meridian — cargo spines, couplers, hull tickers, Spine Break (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
 | 517 | W-UNDERSTORY | Understory — five-stage gardens, the Compost Run, tide pushback (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
