@@ -27,6 +27,7 @@ import { createTimeEffects } from './core/timeEffects.js';
 
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
 import { installGameStartRecovery } from './core/gameStartRecovery.js';
+import { installStartupJournal } from './core/startupJournal.js';
 import { laneCommandSink, laneInputWrite, laneRpc, laneSetMode } from './core/simLaneCommands.js';
 import {
   resolveNewGamePlusOverlay,
@@ -42,6 +43,7 @@ import {
 import { applyAccessibility } from './ui/accessibility.js';
 import { ensureStylesheet as ensureStationStylesheet } from './ui/station/stationStyles.js';
 import { createLoadingPresenter } from './ui/loadingPresenter.js';
+import { mountStartupReportControl } from './ui/startupReportControl.js';
 import { registerToastAction } from './ui/toastAction.js';
 import { installSlowFrameOffer, SLOW_OFFER_ACTION_ID } from './render/slowFrameOffer.js';
 import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
@@ -112,6 +114,7 @@ async function boot() {
     const runTransitionGuard = createRunTransitionGuard();
     timeEffects.set('runtime:boot-menu', { scale: 0 });
     const bus = createBus();
+    const startupJournal = installStartupJournal({ bus, state });
     // Arm the error boundary here, not via window.SF (stripped from retail bundles). Its line reaches
     // the player through the presentation-only receipt route, never a bus `toast` that sim listeners hear.
     attachErrorBoundary({ getState: () => state });
@@ -131,6 +134,7 @@ async function boot() {
       isEntityJournaled: entityIsJournaled,
     });
     const loadingPresenter = createLoadingPresenter({ document, bus, state });
+    const startupReportControl = mountStartupReportControl({ document, state });
     // SFQ-B228: the same instance showBootError uses — one pane owner over #boot-overlay.
     const failurePresenter = bootRecoveryPresenter();
     bus.emit('game:loadingProgress', { id: 'boot-contract', progress: .18, ceiling: .20,
@@ -292,6 +296,8 @@ async function boot() {
         if (state.render) state.render.admissionRunGeneration = cancelledToken.generation;
         const errors = [];
         try { loadingPresenter.destroy(); } catch (error) { errors.push(error); }
+        try { startupJournal.dispose(); } catch (error) { errors.push(error); }
+        try { startupReportControl?.destroy(); } catch (error) { errors.push(error); }
         try { loopController?.stop?.(); } catch (error) { errors.push(error); }
         if (errors.length > 0) {
           throw new AggregateError(errors, 'Presentation listener teardown failed');

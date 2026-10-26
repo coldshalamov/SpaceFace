@@ -13,6 +13,7 @@ import { CREDITS } from '../data/credits.js';
 import { CURRENT_VERSION as SAVE_VERSION } from '../data/saveVersion.js';
 import { detectGpu } from '../render/adaptiveQuality.js';
 import { recentRuntimeErrors, sanitizeErrorText } from '../core/errorBoundary.js';
+import { startupJournalSnapshot } from '../core/startupJournal.js';
 import { leftoverVersionLabel, loadLeftoverVersionPayload } from './screens/mainMenu.js';
 
 // Video settings that decide how hard the renderer works (state.settings.video).
@@ -180,6 +181,19 @@ export function buildDiagnosticsReport(state, opts = {}) {
     field('Sim time', failure.simTime);
   }
 
+  const startup = safe(() => opts.startup || startupJournalSnapshot(), null);
+  if (startup) {
+    out.push('', 'Startup history');
+    for (const [name, attempt] of [['Previous document', startup.previous], ['Current document', startup.current]]) {
+      if (!attempt) continue;
+      out.push('  ' + name + ': ' + plain(attempt.status) + ', last phase ' + plain(attempt.phase));
+      out.push('    Started: ' + plain(attempt.startedAt) + ', time origin ' + plain(attempt.timeOrigin));
+      if (attempt.sample) out.push('    State: ' + sanitizeErrorText(JSON.stringify(attempt.sample), 1000));
+      for (const event of (attempt.events || []).slice(-24)) {
+        out.push('    ' + sanitizeErrorText(JSON.stringify(event), 600));
+      }
+    }
+  }
   const errors = safe(() => (Array.isArray(opts.errors) ? opts.errors : recentRuntimeErrors()), []);
   out.push('');
   out.push('Recent errors (' + errors.length + ')');
