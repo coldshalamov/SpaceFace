@@ -6,10 +6,8 @@ import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 export { witnessLineOfSight } from './lineOfSight.js';
 const LIMITS = { episodes: 32, witnesses: 8, terminals: 8, reportQueue: 8 };
-const finite = n => Number.isFinite(n) ? n : 0;
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
 const distance = (a,b) => Math.hypot(a.x-b.x,a.z-b.z);
-const key = id => String(id);
 const copy = value => JSON.parse(JSON.stringify(value));
 export function adventureStunts(state) { return !state.run || state.run.phase === 'inactive' || state.run.kind === 'adventure'; }
 export function witnessState(state) {
@@ -110,7 +108,7 @@ export function observeStuntWitnesses(state) {
   if(own.lastTick===tick)return;own.lastTick=tick;
   // Malformed restored rows (null, primitives) hold no evidence and can never expire — drop
   // them with the stale ones so the bag cannot crash or wedge the sweep.
-  for(const [id,row] of Object.entries(own.episodes))if(!row||typeof row!=='object'||Array.isArray(row)||tick>row.rootTick+480)delete own.episodes[id];
+  for(const [id,row] of Object.entries(own.episodes))if(!row||typeof row!=='object'||Array.isArray(row)||!Number.isFinite(row.rootTick)||tick>row.rootTick+480)delete own.episodes[id];
   const player=state.entities?.get?.(state.playerId);if(!player)return;
   const observers=[];
   for(const entity of witnessCandidatesFor(state)) { const profile=observerProfile(state,entity);if(profile&&distance(entity.pos,player.pos)<=450)observers.push({entity,profile}); }
@@ -465,7 +463,12 @@ export function deliverWitnessReports(state,bus) {
   let changed=false;
   for(const packet of own.reports.slice()) {
     // A restored null/primitive packet can never deliver — eject it with the queue sweep.
-    if(!packet||typeof packet!=='object'){own.reports.splice(own.reports.indexOf(packet),1);changed=true;continue;}
+    // Same for an unreachable deliveryTick: a legit packet lands within ~60 ticks of send
+    // (comms range ≤ ~1000 WU), so a non-finite or far-future value is dead weight occupying
+    // one of the 8 queue slots forever.
+    if(!packet||typeof packet!=='object'||!Number.isFinite(packet.deliveryTick)||packet.deliveryTick>tick+7200) {
+      own.reports.splice(own.reports.indexOf(packet),1);changed=true;continue;
+    }
     if(tick<packet.deliveryTick)continue;
     own.reports.splice(own.reports.indexOf(packet),1);
     changed=true;

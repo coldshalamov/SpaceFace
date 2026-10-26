@@ -3004,10 +3004,16 @@ function freshHullRecognition() {
 }
 
 function hullRecognitionRecord(own) {
-  if (!own.hullRecognition || typeof own.hullRecognition !== 'object') {
+  if (!own.hullRecognition || typeof own.hullRecognition !== 'object' || Array.isArray(own.hullRecognition)) {
     own.hullRecognition = freshHullRecognition();
   }
-  return own.hullRecognition;
+  const record = own.hullRecognition;
+  // Same normalization idiom as the stunt record: a corrupt nextAt wedges the suppression
+  // gate forever (nextAt > now never false for Infinity), non-finite lastAt/count mint NaN.
+  if (!Number.isFinite(record.lastAt)) record.lastAt = 0;
+  if (!Number.isFinite(record.nextAt)) record.nextAt = 0;
+  if (!Number.isFinite(record.count)) record.count = 0;
+  return record;
 }
 
 function freshStuntRecognition() {
@@ -3029,9 +3035,9 @@ function stuntRecognitionRecord(own) {
   // Entries always carry a finite expiresTick by construction — a foreign queue can hold
   // null/primitive/shapeless entries that crash the expiry sweep or wedge the head of the
   // queue forever (no expiresTick means they can never expire and never speak).
-  record.pending = record.pending.filter((q) => q && typeof q === 'object' && !Array.isArray(q) && Number.isFinite(q.expiresTick));
+  if (record.pending.length) record.pending = record.pending.filter((q) => q && typeof q === 'object' && !Array.isArray(q) && Number.isFinite(q.expiresTick));
   if (!Array.isArray(record.recentTicks)) record.recentTicks = [];
-  record.recentTicks = record.recentTicks.filter(Number.isFinite);
+  if (record.recentTicks.length) record.recentTicks = record.recentTicks.filter(Number.isFinite);
   if (!Array.isArray(record.deliveredIds)) record.deliveredIds = [];
   // A restored non-finite nextTick wedges the queue permanently (tick < NaN/Infinity gates the
   // advance forever); normalize to 0 — a finite-but-far value is shape-valid corruption.
@@ -3352,8 +3358,8 @@ function ambientRecord(own, sectorId) {
   if (!rec || typeof rec !== 'object' || Array.isArray(rec)) {
     rec = {
       quietSince: 0,
-      lastAt: -Infinity,
-      nextAt: -Infinity,
+      lastAt: 0,
+      nextAt: 0,
       lastGap: AMBIENT_BASE_GAP_S,
     };
     own.ambientBySector[key] = rec;

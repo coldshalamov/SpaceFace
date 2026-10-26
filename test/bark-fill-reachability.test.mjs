@@ -274,19 +274,22 @@ test('malformed values inside restored bags are dead data — no tick crash, no 
   // A live journal root plus malformed episode rows: the sweep must drop dead rows and the
   // root walk must replace them — not crash on row.rootTick or mint observers onto a number.
   const state = { mode: 'flight', tick: 10, simTime: 0, entities: new Map(), playerId: 'p1',
-    story: { titles: { stuntWitnessing: { episodes: { junk: null, live: 7, stale: 'x' }, reports: [], sequence: 0, lastTick: -1 } } } };
+    story: { titles: { stuntWitnessing: { episodes: { junk: null, live: 7, stale: 'x', nan: { rootTick: NaN }, arr: [] }, reports: [], sequence: 0, lastTick: -1 } } } };
   const journal = bindStuntEvidence(state);
   journal.roots.set('live', { id: 'live', actorId: 'p1', tick: 0, sourceId: 's1', sourceLife: 'life:s1', nodes: [] });
   state.entities.set('p1', { id: 'p1', type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: {} });
   state.entities.set('s1', { id: 's1', type: 'payload', alive: true, pos: { x: 5, z: 0 }, data: {} });
   assert.doesNotThrow(() => observeStuntWitnesses(state), 'malformed episode rows must not crash the tick');
   assert.equal(state.story.titles.stuntWitnessing.episodes.junk, undefined, 'a null episode row is dropped by the sweep');
+  assert.equal(state.story.titles.stuntWitnessing.episodes.nan, undefined, 'a non-finite rootTick can never expire — dropped');
+  assert.equal(state.story.titles.stuntWitnessing.episodes.arr, undefined, 'an array row can never expire — dropped');
   assert.equal(typeof state.story.titles.stuntWitnessing.episodes.live, 'object', 'a primitive row at a live root is replaced');
   unbindStuntEvidence(state);
 
-  // The report queue ejects null/primitive packets instead of crashing the delivery tick.
+  // The report queue ejects null/primitive packets instead of crashing the delivery tick —
+  // and a non-finite or unreachable deliveryTick cannot wedge one of the 8 slots forever.
   const delivery = { mode: 'flight', tick: 10, simTime: 0, entities: new Map(), playerId: 'p1',
-    story: { titles: { stuntWitnessing: { episodes: {}, reports: [null, 7, {}], sequence: 0, lastTick: -1 }, stuntIncidents: 'x' } } };
+    story: { titles: { stuntWitnessing: { episodes: {}, reports: [null, 7, {}, { deliveryTick: Infinity }, { deliveryTick: 1e15 }], sequence: 0, lastTick: -1 }, stuntIncidents: 'x' } } };
   assert.doesNotThrow(() => deliverWitnessReports(delivery, null));
   assert.deepEqual(delivery.story.titles.stuntWitnessing.reports, [], 'dead packets drain from the queue');
 
