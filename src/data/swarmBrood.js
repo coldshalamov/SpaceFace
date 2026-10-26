@@ -24,6 +24,10 @@
 
 import { isSwarmBossWave, swarmBossFor } from './swarmMode.js';
 import { HIVE_ARENA_ID } from '../systems/theHiveArena.js';
+// The late table continues this file's roster clock (foldBroodLatePlan spends mites into it).
+// Read inside functions only — the sibling module already imports this one, so a top-level
+// dereference here would race the cycle.
+import { SWARM_BROOD_LATE_FAMILIES } from './swarmBroodLate.js';
 
 export const SWARM_BROOD_SCHEMA_VERSION = 1;
 
@@ -309,11 +313,17 @@ export function swarmBroodRosterFor(wave) {
   return SWARM_BROOD_FAMILIES.filter((entry) => w >= entry.fromWave);
 }
 
-/** The archetype that first becomes legal on exactly this wave, or null (wave 1 is all-new). */
+/**
+ * The archetype that first becomes legal on exactly this wave, or null (wave 1 is all-new).
+ * The folded set is the law: the late families continue this same roster clock, so a debut
+ * on the late rows earns the same first-arrival read a base family gets.
+ */
 export function swarmBroodNewcomerFor(wave) {
   const w = Math.max(1, Math.trunc(Number(wave) || 1));
   if (w <= 1) return null;
-  return SWARM_BROOD_FAMILIES.find((entry) => entry.fromWave === w) || null;
+  return SWARM_BROOD_FAMILIES.find((entry) => entry.fromWave === w)
+    || SWARM_BROOD_LATE_FAMILIES.find((entry) => entry.fromWave === w)
+    || null;
 }
 
 const BROOD_FAMILY_IDS = new Set(SWARM_BROOD_FAMILIES.map((row) => row.id));
