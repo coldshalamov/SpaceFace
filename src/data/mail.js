@@ -872,12 +872,12 @@ export const MAIL_LETTERS = Object.freeze([
     id: 'mail_question_02', kind: 'cast', from: 'The Question',
     subject: 'An answer, partial',
     body: 'You answered the last thing that asked by outlasting it. That was not an answer. It was evidence. The question remains open.',
-    triggers: [DEED('hunter_disabled')],
+    triggers: [DEED('hunter_outran')],
   },
   {
     id: 'mail_job_union_01', kind: 'job', from: 'Salvage Assessors Local',
     subject: 'Certified adjuster wanted',
-    body: 'Wrecks need a pilot who photographs before they strip. The union pays for the photograph and looks away from the stripping. Rate card attached.',
+    body: 'The union does not pay for the photograph. The union certifies, after the fact, that a photograph existed. Certification is what pays, and certification looks away from the stripping. Rate card attached.',
     triggers: [E('encounter:resolved'), STAT('missionsDone', 5)],
   },
   {
@@ -913,7 +913,7 @@ export const MAIL_LETTERS = Object.freeze([
   {
     id: 'mail_crew_16', kind: 'crew', from: 'The navigator\'s apprentice',
     subject: 'Her margin notes',
-    body: 'Captain Vols wrote routes in the chart margins in pencil, so the ship could change its mind. If your Tessera still has the charts, page sixty-one is hers.',
+    body: 'Captain Vols wrote routes in the chart margins in pencil, so the ship could change its mind. If the Tessera still carries her charts, page sixty-one is hers.',
     triggers: [E('jump:arrive'), BEAT(4)],
   },
 ]);
