@@ -1216,13 +1216,18 @@ export function installAchievements({
   const api = {
     name: 'achievements',
     rows: () => achievementRows(bag, crucible),
-    snapshot: () => ({
-      unlocked: cloneJson(bag.unlocked) || {},
-      counters: { ...bag.counters },
-      crucible: { ...crucible },
-      unlockedCount: ACHIEVEMENTS.filter((def) => bag.unlocked[def.id]).length,
-      total: ACHIEVEMENTS.length,
-    }),
+    snapshot: () => {
+      // Statistics can open before any save or sector exit. Include the current
+      // residence at this sim instant; checkpointing is idempotent at a held clock.
+      if (!disposed) checkpointSectorStamp();
+      return {
+        unlocked: cloneJson(bag.unlocked) || {},
+        counters: { ...bag.counters },
+        crucible: { ...crucible },
+        unlockedCount: ACHIEVEMENTS.filter((def) => bag.unlocked[def.id]).length,
+        total: ACHIEVEMENTS.length,
+      };
+    },
     isUnlocked: (id) => !!(bag && bag.unlocked[id]),
     pendingNoticeCount: () => pendingNotice.length,
     flush: () => { if (!disposed) saveNow(); },
