@@ -148,6 +148,43 @@ async function clickButton(page, label) {
   }, label);
 }
 
+function playableStartupSnapshot() {
+  const state = window.SF?.state;
+  const render = state?.render;
+  const validation = render?.openingSubmissionPreSubmitValidation;
+  return {
+    mode: state?.mode,
+    tick: state?.tick,
+    simTime: state?.simTime,
+    timeScale: state?.timeScale,
+    firstPictureReady: render?.openingFirstPictureReady ?? null,
+    firstPictureHold: typeof render?.releaseOpeningPresentationHold === 'function',
+    worldSubmittedFrames: render?.worldSubmittedFrames ?? null,
+    firstDrawSubmittedAt: render?.openingSubmissionFirstDrawSubmittedAt ?? null,
+    preSubmitOk: validation?.ok ?? null,
+    preSubmitReason: validation?.reason ?? null,
+    missingProgramBindings: (validation?.missingProgramBindings || [])
+      .slice(0, 6).map(value => String(value).slice(0, 240)),
+  };
+}
+
+async function waitForRunningFlight(page) {
+  const baseline = await page.evaluate(playableStartupSnapshot);
+  try {
+    await page.waitForFunction(({ tick, simTime }) => {
+      const state = window.SF?.state;
+      return state?.mode === 'flight' && Number(state.timeScale) > 0
+        && typeof state.render?.releaseOpeningPresentationHold !== 'function'
+        && Number.isFinite(state.tick) && state.tick > tick
+        && Number.isFinite(state.simTime) && state.simTime > simTime;
+    }, baseline, { timeout: 30000 });
+  } catch (error) {
+    const current = await page.evaluate(playableStartupSnapshot).catch(() => null);
+    error.message += ` — flight simulation did not resume: ${JSON.stringify({ baseline, current })}`;
+    throw error;
+  }
+}
+
 async function exerciseSaveScreen(page, { protectedSession = false } = {}) {
   await page.evaluate(() => {
     const slots = () => Object.keys(localStorage).filter(key => /^sf\.(save|recovery)\./.test(key))
@@ -305,7 +342,7 @@ try {
     // the request listener below retains the matching ERR_ABORTED receipt. They are not errors in
     // the replacement game instance and must not contaminate its CLEAN result.
     if (isExpectedNavigationTextureAbort(text, phase)) return;
-    pageErrors.push(`[${phase}] console.error: ` + text.slice(0, 300));
+    pageErrors.push(`[${phase}] console.error: ` + text.slice(0, VERBOSE ? 4000 : 300));
   });
   // Warnings carry the diagnosis for asset-preload failures ("authored part library was not
   // preloaded", KTX2/decoder complaints). They are not failures, but without them a preload timeout
@@ -463,10 +500,12 @@ try {
         const st = window.SF.state;
         return st && st.mode === 'flight';
       }, null, { timeout: 180000 });
-      await page.waitForTimeout(2500);   // let the first sector settle
+      // Flight mode precedes the first-picture hold releasing and the worker tick loop
+      // rearming. Keys sent inside that window are swallowed without a simulation step.
+      await waitForRunningFlight(page);
       inFlight = true;
       phase = 'flight';
-      record('LAUNCH', true, 'flight mode entered');
+      record('LAUNCH', true, 'flight mode entered and simulation advanced');
       if (PHYSICS_VENUE) {
         await page.waitForFunction(kind => window.SF.state.physicsVenuePublic?.active
           && window.SF.state.physicsVenuePublic.kind === kind, PHYSICS_VENUE, { timeout: 15000 });
@@ -484,6 +523,14 @@ try {
         const state = window.SF?.state;
         const detail = {
           mode: state?.mode,
+          tick: state?.tick,
+          simTime: state?.simTime,
+          timeScale: state?.timeScale,
+          firstPictureHold: typeof state?.render?.releaseOpeningPresentationHold === 'function',
+          firstPictureReady: state?.render?.openingFirstPictureReady ?? null,
+          worldSubmittedFrames: state?.render?.worldSubmittedFrames ?? null,
+          missingProgramBindings: (state?.render?.openingSubmissionPreSubmitValidation?.missingProgramBindings || [])
+            .slice(0, 6).map(value => String(value).slice(0, 240)),
           start: window.__playableStart,
           screens: [...document.querySelectorAll('[data-screen]')]
             .filter(e => getComputedStyle(e).display !== 'none').map(e => e.dataset.screen),
@@ -588,7 +635,9 @@ try {
       const st = window.SF.state;
       const p = st.entities.get(st.playerId);
       const v = p && p.vel ? p.vel : { x: 0, z: 0 };
-      return { speed: Math.hypot(v.x || 0, v.z || 0), x: p ? p.pos.x : null, z: p ? p.pos.z : null };
+      return { speed: Math.hypot(v.x || 0, v.z || 0), x: p ? p.pos.x : null, z: p ? p.pos.z : null,
+        tick: st.tick, simTime: st.simTime, timeScale: st.timeScale,
+        firstPictureHold: typeof st.render?.releaseOpeningPresentationHold === 'function' };
     });
     await page.mouse.move(720, 450);
     await page.keyboard.down('KeyW');
@@ -599,7 +648,9 @@ try {
       const st = window.SF.state;
       const p = st.entities.get(st.playerId);
       const v = p && p.vel ? p.vel : { x: 0, z: 0 };
-      return { speed: Math.hypot(v.x || 0, v.z || 0), x: p ? p.pos.x : null, z: p ? p.pos.z : null };
+      return { speed: Math.hypot(v.x || 0, v.z || 0), x: p ? p.pos.x : null, z: p ? p.pos.z : null,
+        tick: st.tick, simTime: st.simTime, timeScale: st.timeScale,
+        firstPictureHold: typeof st.render?.releaseOpeningPresentationHold === 'function' };
     });
     const moved = Math.hypot((after.x ?? 0) - (control.x ?? 0), (after.z ?? 0) - (control.z ?? 0));
     // Either the ship gained speed or it physically moved. Both are proof input reached the sim;
@@ -608,6 +659,10 @@ try {
     record('CONTROLS' + tag, controlsOk, controlsOk
       ? `thrust responded (speed ${control.speed.toFixed(1)} -> ${after.speed.toFixed(1)}, moved ${moved.toFixed(1)} wu)`
       : `holding thrust for 1.6s did NOTHING (speed ${control.speed.toFixed(2)} -> ${after.speed.toFixed(2)}, moved ${moved.toFixed(2)} wu)`);
+    if (!controlsOk && VERBOSE) {
+      const startup = await page.evaluate(playableStartupSnapshot).catch(() => null);
+      diagnostics.push(`controls${tag} startup: ${JSON.stringify({ before: control, after, startup })}`);
+    }
 
     // ── 6b. LANE-FWD (worker lane only) ──────────────────────────────────────────────────────
     // Stage 9: the main→sim bus forward set is census-driven (~108 types). Emitting on the
@@ -900,17 +955,7 @@ try {
           return !!(st && st.mode === 'flight' && p && p.alive);
         }, null, { timeout: 120000 });
         continueStage = 'sim-resume';
-        // mode flips ahead of the tick loop on the worker lane: the 'flight' mode
-        // descriptor lands, then the host's tick cadence re-arms a beat later. A key
-        // down+up landing entirely inside that gap is swallowed (held toggles with no
-        // tick sampling it) — wait for the tick counter itself to advance so the
-        // CONTROLS probe can never be swallowed by the resume window.
-        const tickAtFlight = await page.evaluate(() => window.SF.state.tick);
-        await page.waitForFunction((t0) => {
-          const st = window.SF.state;
-          return st && Number.isFinite(st.tick) && st.tick > t0;
-        }, tickAtFlight, { timeout: 30000 });
-        await page.waitForTimeout(3000);
+        await waitForRunningFlight(page);
         phase = 'flight';
         loaded = true;
         record('CONTINUE', true, 'loaded the save back into flight');

@@ -15705,6 +15705,10 @@ export const render = {
           timeoutMs: Math.min(loadPolicy.compositionSettleMs, remainingMs()),
           yieldToMain: yieldAndFlushLiveSectorGpu,
         });
+      // Both siblings can reject before their turn to be awaited, or after this
+      // owner is superseded. Observe them now without changing their rejection.
+      observePipelineAdmission(openingPromise);
+      observePipelineAdmission(upgradesPromise);
       if (cookStale()) return cookSuperseded;
       const opening = await openingPromise;
       if (cookStale()) return cookSuperseded;
