@@ -114,32 +114,6 @@
   ],
   "units": [
     {
-      "id": "seed-wl-02-liner-last-leg",
-      "date": "2026-10-23",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A passenger liner with a settled last leg shows arrived, returned, or lost, plus the station. An unset leg shows nothing.",
-      "fingerprint": "verb=read,subject=liner-leg,sector=lane,layer=target,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "0ed563b744",
-      "verification": "focused_green"
-    },
-    {
-      "id": "seed-wl-03-lost-asset-list",
-      "date": "2026-10-23",
-      "wf": "WF-06",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "After an automated asset is lost, the automation desk keeps kind, sector, and value from the existing loss log.",
-      "fingerprint": "verb=lose,subject=automation-asset,sector=any,layer=ledger,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "0ed563b744",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-wl-07-history-tier",
       "date": "2026-10-23",
       "wf": "WF-14",
@@ -1671,6 +1645,32 @@
       "references": [],
       "integration": "live",
       "commit": "299346d578",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sc-08",
+      "date": "2026-10-26",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Rhea Cinder's postcard wreck is a burned pot-line slag hauler, not the shared dead hulk.",
+      "fingerprint": "verb=show,subject=slag-hauler,sector=rhea,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "635fc7f96a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-sc-15",
+      "date": "2026-10-26",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Proteus Well's postcard is a freighter cut into a violet-lit single-file throat, not the shared dead hulk.",
+      "fingerprint": "verb=show,subject=funnel,sector=proteus,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "635fc7f96a",
       "verification": "focused_green"
     }
   ],
