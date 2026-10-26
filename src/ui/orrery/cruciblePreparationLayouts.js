@@ -6,6 +6,7 @@ const VOID = '5 7 10';
 const D = 'html body #screens > .k-screen.orr-crucible.sf-crucible-door.orr-preparation[data-prep-step]';
 const A = 'html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory.orr-visual-armory';
 const R = 'html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit';
+const RD = `html:root:not([data-sf-mobile="1"]) ${R.replace(/^html /, '')}`;
 const CSS = `
 ${D} .orr-prep-daily { color:var(--dp-phos); font:500 14px var(--dp-face-body,'Instrument Sans'),sans-serif; margin:8px 0 16px; }
 ${D} .orr-cabinet-preview { position:absolute; top:4%; right:8%; width:80%; max-width:380px; z-index:3; pointer-events:none; background:var(--dp-void); }
@@ -728,6 +729,23 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
    it pushed PURCHASE half under the foot, so there it stays one line too. */
 @media (min-width:761px) and (max-height:400px) {
   html[data-sf-mobile="1"] ${A.replace(/^html /, '')} > .k-title .sf-cru-preview { display:block !important; white-space:nowrap; -webkit-line-clamp:unset; line-clamp:none; }
+}
+/* Narrow desktop refit (480–699 wide, 600+ tall: 600×844, 640×1000). The jig's compact label
+   columns are ~150px: a nowrap head ran "EMPTY THRUSTER M" off the left edge ("PTY"), the STRIP
+   verb squeezed fitted names to a word per line, and the fit count hid under the two-row foot.
+   Here the head wraps, the verb takes its own row under the name, and the name steps down to
+   15px. Desktop only; selectors and IDs are unchanged. */
+@media (min-width:480px) and (max-width:699px) and (min-height:600px) {
+  ${RD} > .sf-cru-stage.orr-hull--on .k-row__name { flex-wrap:wrap !important; white-space:normal !important; row-gap:2px !important; }
+  ${RD} > .sf-cru-stage.orr-hull--on .sf-cru-slottag { letter-spacing:.14em !important; }
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hp__line { flex-wrap:wrap !important; row-gap:4px !important; }
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hp__line > .orr-hp__value { flex:1 1 100% !important; }
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hp__value { font-size:15px !important; }
+  /* a spare's stat reads on the line under its name, not as a three-line sliver beside it */
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hp__spare { flex-wrap:wrap !important; row-gap:0 !important; }
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hp__spare-stat { flex:1 0 100% !important; }
+  /* the "N of 8 fitted" engraving sat under the two-row foot; it rides just above it */
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { bottom:228px !important; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
