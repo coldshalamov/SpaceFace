@@ -40,8 +40,8 @@ function fixture(stamped = true) {
   // Use the installed Three version's real parameter/key generation, not a guessed key shape.
   const nativePrograms = WebGLPrograms(renderer, { get: () => null }, { has: () => false },
     { precision: 'highp', logarithmicDepthBuffer: false }, {}, { numPlanes: 0, numIntersection: 0 });
-  const lights = { directional: [], point: [], spot: [], spotLightMap: [], rectArea: [], hemi: [],
-    directionalShadowMap: [], pointShadowMap: [], spotShadowMap: [], numSpotLightShadowsWithMaps: 0,
+  const lights = { sun: [], directional: [], point: [], spot: [], spotLightMap: [], rectArea: [], hemi: [],
+    sunShadowMap: [], directionalShadowMap: [], pointShadowMap: [], spotShadowMap: [], numSpotLightShadowsWithMaps: 0,
     numLightProbes: 0 };
   const keyFor = (object) => nativePrograms.getProgramCacheKey(
     nativePrograms.getParameters(material, lights, [], scene, object, []));
