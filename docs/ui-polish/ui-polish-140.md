@@ -9,27 +9,26 @@
 - At 600×844 the stage was ~190px wide: the hull's name, line, fittings, ring and yard all printed on each other (bench: 6 tangled).
 
 ## What changed
-- ≤700 wide desktop: the plate stacks as title → form (it scrolls in its own band, and its last line fades out instead of being cut in half) → stage (`minmax(290px, 42vh)`) → BACK / LAUNCH → footnote.
-- On the stage, the hull keeps its name, line, stats ring and yard. The run's four-beat scale and the fittings line are hidden visually but stay in the accessibility tree, the same treatment as the existing ≤460-tall band. The hero box narrows and drops so THRUST clears the line and MASS / LINE stay inside the frame. The ring's numbers go to 24px, and the LINE gloss is hidden because it ran past the right edge.
-- ≤480 wide: the yard's rear names set at 13px with tighter tracking so WASP and PELICAN don't touch.
-- Phones (`data-sf-mobile="1"`) and every desktop width above 700 are untouched.
+- ≤700 wide desktop: the plate is one column that scrolls as a page (the `#screens` layer scrolls, the plate grows to its content): title → form → stage (hull name and line, stats ring, yard) → LOADOUT → FIRST 15 MINUTES → footnote. BACK / LAUNCH stay pinned at the window's foot over a dark fade while the column scrolls under them.
+- Rework after Code Work's handback: nothing is hidden any more. The fittings list shows as one column of name + size under a rule; the first-fifteen-minutes scale shows all four beats two by two, each with its line; the LINE gloss ("massline winch speed") stays, set condensed so it fits beside the ring.
+- The hero box keeps 68px left for MASS and 113px right for LINE and its gloss, and centres once the stage is wide enough. The yard's rear names drop just below the ring's floor ellipse (it was drawn through them) and the front name drops a line under them. ≤480 wide, rear names set at 12px and go by name only.
+- No markup, selector or ID changes. Phones (`data-sf-mobile="1"`) and every desktop width above 700 are untouched.
 
 ## Bench (findings, new-game)
 | viewport | master | branch |
 |---|---|---|
-| 390×844 | 6 | 0 |
-| 600×844 | 6 | 0 |
+| 390×844 | 6 | 2 overlaps + 2 buried |
+| 600×844 | 6 | 1 overlap |
+| 700×844 | — | 1 overlap + tangled |
 | 960×540 / 1280×720 / 1920×1080 | — | 0 / 0 / 0 (rules don't apply above 700w) |
-| 390×844 `--phone` | 0 | unchanged (rules exclude data-sf-mobile) |
+| 390×844 `--phone` | 0 | 0 (rules exclude data-sf-mobile) |
 
-Walk at 390×844: PELICAN and WASP clicks change the hull, and LAUNCH works.
+The remaining narrow findings are all the yard's names (WASP / PELICAN) sitting under the pinned BACK / LAUNCH bar at scroll 0, which is the intended scroll-under behaviour; scrolled, they clear (see shots). Walk at 390×844 and 600×844: PELICAN and WASP change the hull, and LAUNCH works.
 
 ## Compare shots (local only, not committed)
-- /workspace/spaceface-scratch/ui-shots/polish140/compare-390x844-new-game.png
-- /workspace/spaceface-scratch/ui-shots/polish140/compare-600x844-new-game.png
-- /workspace/spaceface-scratch/ui-shots/polish140/compare-390x844-new-game-pelican.png
+- /workspace/spaceface-scratch/ui-shots/polish140/compare-rw-390x844.png
+- /workspace/spaceface-scratch/ui-shots/polish140/compare-rw-600x844.png
 
 ## Leftovers noticed
 - 960×540 (master too): the difficulty note "Standard — Softer hits…" is cut mid-line at the bottom of the form band.
 - 800×900 (master too): the run's beat titles ("Wake at the beacon" / "Tether the derelict") collide. The 701–1100 band at >600 tall has no rule.
-- 390×844: in the narrow stack, seed and first-flight sit below the fold of the form band and need a scroll.
