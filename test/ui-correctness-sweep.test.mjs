@@ -168,6 +168,37 @@ test('T / K / F1 close the matching instrument instead of no-op while it is open
   ui.dispose();
 });
 
+test('time-trial restart leaves the shared F8 travel key available outside its race context', () => {
+  const listeners = installDomHarness();
+  const state = { mode: 'flight', ui: {}, settings: {}, missions: { active: [] } };
+  const emitted = [];
+  const ui = createUiInput({ state, bus: { on: () => () => {}, emit: (name) => emitted.push(name) } }, {
+    isOpen: () => false,
+    getActiveScreenDef: () => null,
+    pushScreen() {},
+  });
+  const key = () => press(listeners, 'F8', 'F8');
+  try {
+    for (const mission of [null,
+      { type: 'race', status: 'completed', params: { racingContractId: 'trial', raceMode: 'time-trial' } },
+      { type: 'race', status: 'active', params: { racingContractId: 'pack', raceMode: 'race' } },
+      { type: 'haul', status: 'active', params: { racingContractId: 'cargo', raceMode: 'time-trial' } },
+    ]) {
+      state.missions.active = mission ? [mission] : [];
+      let stopped = false;
+      const ev = press(listeners, 'F8', 'F8', { stopPropagation() { stopped = true; } });
+      assert.equal(ev.defaultPrevented, false, 'ordinary flight keeps the travel-drive key');
+      assert.equal(stopped, false, 'the event can reach the flight input owner');
+      assert.equal(emitted.includes('race:restart'), false);
+    }
+    state.missions.active = [{ type: 'race', status: 'active', params: { racingContractId: 'trial', raceMode: 'time-trial' } }];
+    assert.equal(key().defaultPrevented, true);
+    assert.deepEqual(emitted.filter(name => name === 'race:restart'), ['race:restart']);
+    press(listeners, 'F8', 'F8', { repeat: true });
+    assert.equal(emitted.filter(name => name === 'race:restart').length, 1, 'one intentional restart per press');
+  } finally { ui.dispose(); }
+});
+
 test('gamepad A/B own an open confirm instead of falling through to the screen', () => {
   assert.match(
     INPUT_SRC,

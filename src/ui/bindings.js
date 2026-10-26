@@ -54,6 +54,9 @@ export const BINDINGS = Object.freeze({
   voiceDismiss: { key: 'F6', code: 'F6', label: 'F6' },
   // Every letter already owns a flight verb; backslash is the camera-only shortcut.
   steeringView: { key: '\\', code: 'Backslash', label: '\\' },
+  // Time trials own F8 only while their authored mission is active. In ordinary flight
+  // the key continues to reach the travel-drive owner; missions still decides restart eligibility.
+  raceRestart: { key: 'F8', code: 'F8', label: 'F8' },
   // FB-085: photo mode is a sub-state of the pause screen, so the pause route owns P the same
   // way the UI router owns dock/localmap only where the verb lives. No flight verb claims P
   // (VERB_BINDINGS moved the deploy row to digits precisely because P is the pause key).
