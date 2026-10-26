@@ -432,6 +432,7 @@ ${C} .orr-cr-body.is-current text { fill:rgb(${HOT}); }
 ${C} .orr-cr-body.is-current text.orr-cr-body__name { opacity:1; }
 ${C} .orr-cr-orrery__hand path, ${C} .orr-cr-orrery__hand circle { stroke-linecap:round; }
 @media (min-width:1501px) { ${C} .orr-cr-orrery__svg text { paint-order:stroke; stroke:rgb(5 7 10 / .9); stroke-width:6px; stroke-linejoin:round; } }
+}
 /* ------------------------------------------------ credits: the section ladder + progress -------- */
 ${C} > .k-hang { overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
 ${ladder(C, '.k-hang > .k-words', '.k-word', '[aria-current="true"]', { numbered: true })}
@@ -648,6 +649,13 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
   ${CD} .orr-cr-reel { padding-top:1vh !important; padding-bottom:18vh !important; }
   ${CD} > .k-stage { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 4%, #000 86%, transparent 100%) !important;
     mask-image:linear-gradient(180deg, transparent 0, #000 4%, #000 86%, transparent 100%) !important; }
+}
+/* a wide window: body 04 at 3 o'clock stays inside the window (it was cut by the edge), and the reel and the
+   SPACEFACE wordmark end short of the ring's outer rim instead of running onto it */
+@media (min-width:1501px) {
+  ${C} > .orr-cr-orrery { --orr-cr-d:min(70vh, 760px); width:var(--orr-cr-d); height:var(--orr-cr-d); margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.04); }
+  ${C} .orr-cr-reel { max-width:min(540px, 100%); }
+  ${C} .of-credits-name { font-size:clamp(56px, 7vh, 80px) !important; }
 }
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${C} { zoom:1.12; }
