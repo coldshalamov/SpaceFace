@@ -55,12 +55,14 @@ export const palletJack = {
     owners.set(ctx.state, this);
     const on = (event, fn) => this._subs.push(ctx.bus.on(event, fn));
     on('palletJack:drop', p => this.demandDrop(p));
-    on('palletJack:trail', p => { if (p?.incidentId === this._row.incident?.id) this.plotTrail(); });
+    on('palletJack:trail', p => { if (p?.incidentId != null && p.incidentId === this._row.incident?.id) this.plotTrail(); });
     on('scan:pulse', p => { if (p?.source === 'player-scanner' && p.scannerId === this.state.playerId) this.offer(); });
+    // A pickup payload without pickupId (uniqueWrecks' salvage grant emits none) must never
+    // match the incident's cargo entity — undefined === undefined would slip the guard open.
     on('pickup:collected', p => { const cargo = this._find('cargo');
-      if (cargo?.id === p?.pickupId) this._pendingCollection = { p, cargo, life: cargo.occupantGeneration }; });
+      if (p?.pickupId != null && cargo?.id === p.pickupId) this._pendingCollection = { p, cargo, life: cargo.occupantGeneration }; });
     on('combat:damage', p => { const actor = this._find('actor');
-      if (actor?.id === p?.targetId && actor.hull <= 0) this._lost(actor.id, actor); });
+      if (p?.targetId != null && actor?.id === p.targetId && actor.hull <= 0) this._lost(actor.id, actor); });
     on('entity:killed', p => this._lost(p?.targetId ?? p?.entityId ?? p?.id, p?.entity));
     on('entity:destroyed', p => this._lost(p?.id, p?.entity));
     on('sector:exit', () => this._shelve());
