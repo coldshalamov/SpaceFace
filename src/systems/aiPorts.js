@@ -1412,6 +1412,11 @@ function fillSensorContact(out, base, confidence, threat, hostile) {
   return out;
 }
 
+function hasActiveCloakRuntime(state, other) {
+  const rt = cloakRuntimeFor(state, other);
+  return !!rt && rt.active === true;
+}
+
 function entityContacts(state, self, range, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null, candidateOverride = null, contactRecords = null) {
   const out = outScratch || [];
   out.length = 0;
@@ -1432,14 +1437,18 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
     if (!other || other === self || !other.alive) continue;
     const kind = contactKindFor(other);
     if (!kind) continue;
-    if (cloakLive && cloakHidesEntityFrom(state, self, other)) {
-      emitCloakFadeContact(state, self, other, kind, cloakNow, attachmentIndex, freeze, out, records, cacheOwner);
-      continue;
-    }
+    // oc1v9: range first. Shared superset spatial results hand every observer many out-of-range
+    // candidates; only a target with a live cloak runtime can still yield a (ghost) contact there,
+    // so the cloak gate runs for in-range targets and for actively cloaked ones only. Same result.
     const dx = finite(self.pos && self.pos.x) - finite(other.pos && other.pos.x);
     const dz = finite(self.pos && self.pos.z) - finite(other.pos && other.pos.z);
     const distanceSq = dx * dx + dz * dz;
-    if (distanceSq > rangeSq) continue;
+    const outOfRange = distanceSq > rangeSq;
+    if (cloakLive && (!outOfRange || hasActiveCloakRuntime(state, other)) && cloakHidesEntityFrom(state, self, other)) {
+      emitCloakFadeContact(state, self, other, kind, cloakNow, attachmentIndex, freeze, out, records, cacheOwner);
+      continue;
+    }
+    if (outOfRange) continue;
     const distance = Math.sqrt(distanceSq);
     const runtime = combatRuntimeFor(state, other.id);
     const hostile = isHostileForAI(state, self, other);

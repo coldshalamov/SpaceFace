@@ -45,11 +45,11 @@ export function frameSimStepCap({
 // catch-up frame there stalls 400+ ms. For a short window after the lift the catch-up ceiling
 // drops to POST_LIFT_CATCHUP_STEPS; surplus whole ticks are shed as on a hitch (sub-tick phase
 // kept). Only the first POST_LIFT_WINDOW_MS of flight are affected.
-// oc1v8: the window covers the first 10 s of flight. Early flight still pays deferred loading work
+// oc1v9: back to 2 s (oc1v8 10 s window measured no effect on the +6-9 s stalls or GC). oc1v8 note: Early flight still pays deferred loading work
 // (old-space GC of composition garbage, first scripted callouts); a 4-step catch-up stacked on one
 // of those frames made the 195-262 ms stalls in oc1v7. A 30 fps frame owes 2 ticks and still gets 2.
 export const POST_LIFT_CATCHUP_STEPS = 2;
-export const POST_LIFT_WINDOW_MS = 10000;
+export const POST_LIFT_WINDOW_MS = 2000;
 
 /** Step cap for a frame `sinceLiftMs` after the veil lift (null/negative = no lift seen). */
 export function postLiftStepCap(stepCap, sinceLiftMs) {
