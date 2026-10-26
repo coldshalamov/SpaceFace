@@ -1179,7 +1179,7 @@ production units, and never build what they write.
 | 530 | W-DRIFT | Drift — claim pylons, the Claim Jump, the Breaker Derby (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
 | 531 | W-REACH | Reach — the Nest Carrier, the Trophy Wall, chained gate camps (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
 | 532 | W-FRONTIER | Frontier — homestead modules, Barn Raising, Weld Head (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
-| 533 | W-BOOKS-0-2 | Books 0–2 play per `design/expansion/06_CAMPAIGN_SCRIPT.md` (§34.7) | BUILD | OPEN |
+| 533 | W-BOOKS-0-2 | Books 0–2 play per `design/expansion/06_CAMPAIGN_SCRIPT.md` (§34.7) | BUILD | DONE devin-w533 (b212aefc40) |
 | 534 | W-BOOKS-3-4 | Books 3–4 play — VARIANCE ADJUSTMENT, the three doors, the doubled contract (§34.7) | BUILD | OPEN — after 533 |
 | 535 | W-BOOKS-5-7 | Books 5–7 play — heists, the Empire Seed, the Iron Maw dismantle, the Witness (§34.7) | BUILD | OPEN — after 534 |
 | 536 | W-DOORS | The Five Doors, each with one playable act (§34.7) | BUILD | OPEN — after 535 |
