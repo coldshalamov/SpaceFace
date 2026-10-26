@@ -181,6 +181,8 @@ ${CX} .sf-codex-entry { ${PLAIN} position:relative; display:block !important; ma
 ${CX}[data-plate="on"] .sf-codex-entry { margin-top:auto !important; margin-bottom:0 !important; }
 ${CX} > .k-stage > .sf-codex-entry { flex:0 1 auto; min-height:0 !important; overflow:hidden auto; scrollbar-width:none; padding-left:14px !important; margin-left:-14px !important; }
 ${CX} > .k-stage > .sf-codex-entry::-webkit-scrollbar { display:none; }
+/* the scroll-extent thumb rides the 14px left gutter at every desktop size, not through the reading's first letters (960x540) */
+${CX} > .k-stage > .sf-codex-entry > .orr-extent::before { left:-10px; }
 ${CX} > .k-stage > .sf-codex-entry[data-overflow="1"]:not(.is-at-end) { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 44px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 44px), transparent); }
 ${CX} > .k-stage > .cx-reader__turn { flex:none; }
 /* the Ledger on the plate: the hull it is kept aboard, one ring, no blade */
@@ -601,6 +603,11 @@ ${CX_PHONE} .cx-index__n { font-size:12px !important; padding-top:0; }
 ${CX_PHONE} .cx-index__of { font-size:12px; }
 ${CX_PHONE} .cx-index__w { margin-top:2px !important; font-size:12px !important; letter-spacing:.02em !important; line-height:1.15 !important; white-space:normal !important; overflow-wrap:anywhere; }
 @media (max-width:379px) { ${CX_PHONE} .cx-index__w { font-size:12px !important; letter-spacing:0 !important; } }
+/* The 48px cells broke the words mid-letter (STOR / Y, GRAF / FITI). Cells now size to their word at a condensed 76 width
+ *  on one line, still 12px; the seven share the row by content, so the dial row stays one row tall. */
+${CX_PHONE} .cx-index__list { flex-wrap:nowrap !important; gap:0 4px !important; }
+${CX_PHONE} .cx-index__item { width:auto; flex:1 1 auto; min-width:0; }
+${CX_PHONE} .cx-index__w { white-space:nowrap !important; overflow-wrap:normal; font-stretch:76% !important; font-variation-settings:"wdth" 76, "wght" 650 !important; letter-spacing:0 !important; }
 ${CX_PHONE} > .cx-plate-host { flex:none; order:2; position:relative !important; inset:auto !important; right:auto !important; top:auto !important;
   width:var(--cx-plate) !important; height:var(--cx-plate) !important; margin:2px auto 0 !important; }
 ${CX_PHONE} > .cx-plate-host[hidden] { display:none !important; }
@@ -611,7 +618,8 @@ ${CX_PHONE} > .k-hang { flex:1 1 0; order:3; min-height:150px !important; overfl
 ${CX_PHONE} > .k-hang > .cx-wedge { display:none !important; }
 ${CX_PHONE} > .k-hang > .sf-tabbar { margin-bottom:0 !important; }
 ${CX_PHONE}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:0 !important; }
-${CX_PHONE} .sf-tabbar .sf-tab { height:24px !important; font-size:12px !important; letter-spacing:.1em !important; padding-right:16px !important; }
+/* .06em tracking (was .1em) so DISCOVERIES fits the 118px section column instead of running past its left edge */
+${CX_PHONE} .sf-tabbar .sf-tab { height:24px !important; font-size:12px !important; letter-spacing:.06em !important; padding-right:16px !important; }
 /* Shorter leaders on phone (rest 8 / hover 10 / current 12px) so the current tick no longer strikes the label's last letter. */
 ${CX_PHONE} .sf-tabbar .sf-tab::after { width:8px !important; }
 ${CX_PHONE} .sf-tabbar .sf-tab:is(:hover, :focus-visible)::after { width:10px !important; }
@@ -655,11 +663,15 @@ ${CX_PHONE} > .k-foot .sf-back.k-word { padding:8px 0 10px !important; min-heigh
   ${CX_PHONE} .cx-index__n { font-size:12px !important; }
   ${CX_PHONE} .cx-index__list { gap:2px 14px !important; justify-content:flex-start !important; }
   ${CX_PHONE} > .k-hang { grid-column:1; grid-row:2; order:unset; flex:unset; max-height:none !important; min-height:0 !important;
-    --cx-sections:104px; --cx-gap:8px; }
+    --cx-sections:116px; --cx-gap:8px; }
+  /* the portrait one-row dial rule (flex:1 1 auto, nowrap) would spread these side-by-side pairs across the row; keep them packed */
+  ${CX_PHONE} .cx-index__list { flex-wrap:wrap !important; }
+  ${CX_PHONE} .cx-index__item { flex:none; }
   ${CX_PHONE} > .k-stage { grid-column:2; grid-row:2; order:unset; flex:unset; max-height:none !important; min-height:0 !important; }
   ${CX_PHONE} > .k-foot { grid-column:1 / -1; grid-row:3; order:unset; flex:unset;
     padding-top:6px !important; padding-bottom:calc(6px + env(safe-area-inset-bottom, 0px)) !important; }
-  ${CX_PHONE} .sf-tabbar .sf-tab { height:18px !important; font-size:12px !important; letter-spacing:.08em !important; padding-right:15px !important; }
+  /* 116px column (was 104) and .06em tracking so DISCOVERIES no longer loses its first letters */
+  ${CX_PHONE} .sf-tabbar .sf-tab { height:18px !important; font-size:12px !important; letter-spacing:.06em !important; padding-right:15px !important; }
   ${CX_PHONE} .cx-ladder .orr-arc-hand { --orr-hand-from:1px; --orr-hand-x:4px; }
   ${CX_PHONE} .cx-ladder .k-row { padding:3px 2px 3px 30px !important; }
   ${CX_PHONE} .cx-ladder .k-row .k-row__name { font-size:12px !important; }
