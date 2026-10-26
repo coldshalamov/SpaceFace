@@ -171,7 +171,7 @@ export function observeStuntWitnesses(state) {
         if(relevantFlight)v.flight=true;
         tracked++;
       }
-      for(const [id,v] of Object.entries(row.targets))if(!v||typeof v!=='object'||(!v.flight&&tick-v.last>6))delete row.targets[id];
+      for(const [id,v] of Object.entries(row.targets))if(!v||typeof v!=='object'||!Number.isFinite(v.last)||(!v.flight&&tick-v.last>6))delete row.targets[id];
       if(root.escape?.completed&&tick-root.escape.completedTick<=1) {
         const ids=[...(root.escape.threatIds||[]),...(root.escape.boundaryIds||[])];
         row.escapeVerified=seesSource&&ids.length>0&&ids.every(id=>Object.values(row.targets).some(v=>v&&v.id===id&&v.max>=6));
