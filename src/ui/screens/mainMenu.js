@@ -349,9 +349,12 @@ export function leftoverVersionDisplay(payload) {
   const version = leftoverVersionToken(payload);
   if (!version) return 'SpaceFace';
   // O23/BETA identity: a prerelease version wears its tag on the player-facing line so a
-  // beta screenshot or clip can never pass for a retail build in a bug report.
-  const betaTag = /-(beta|alpha|rc)\b/i.test(version) ? ' · BETA' : '';
-  return 'SpaceFace v' + version + betaTag;
+  // beta screenshot or clip can never pass for a retail build in a bug report. The tag rides
+  // the version string itself ("0.2.0-beta.1"), which this line prints verbatim, so the word
+  // is already on the wall; this used to append a second "· BETA" after it and the title foot
+  // stuttered ("SPACEFACE V0.2.0-BETA.1 · BETA"). Every -beta/-alpha/-rc version says so here;
+  // a release version says nothing — both already correct without a suffix.
+  return 'SpaceFace v' + version;
 }
 
 export function applyLeftoverVersionText(target, payload) {
@@ -485,6 +488,9 @@ export const mainMenuScreen = {
     rootEl.dataset.kReady = '0';
 
     const { backdrop, title, stage, status } = createTitleFrame(rootEl);
+    // The eyebrow's standing line (the localized contract line). The gloss writer below restores
+    // exactly this when no verb is awake, and _render may replace it with the Continue summary.
+    this._statusDefault = status.textContent;
 
     // The words. Visible words follow the sheet; the accessible names keep the game's core copy
     // (coreText) so every route that finds "New Game" / "Continue" / "Quit Game" still does.
@@ -667,7 +673,7 @@ export const mainMenuScreen = {
     rootEl.appendChild(version);
 
     refs = {
-      root: rootEl, backdrop, title, list, version, versionText, bCredits, bAchievements, saveSummary, status,
+      root: rootEl, backdrop, title, stage, aside, list, version, versionText, bCredits, bAchievements, saveSummary, status,
       bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits, bHelp, bPhysics,
       titleContinueFailure: null,
       buttons: [bContinue, bNew, bLoad, bCrucible, bHelp, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
@@ -696,6 +702,54 @@ export const mainMenuScreen = {
       try { next.focus({ preventScroll: true }); } catch (_) { next.focus(); }
     };
     rootEl.addEventListener('keydown', this._onTabKey);
+
+    // SEED-ST-01 follow-through: on the dial the kit's sub note is visually hidden — it stays for
+    // the accessibility tree only, because the arc rail's contract is "the dial shows the fact
+    // elsewhere (the eyebrow)" (src/ui/orrery/arcRail.js). The mode glosses rode along invisibly,
+    // so a sighted stranger never saw them. While a glossed verb is AWAKE — hover or focus, the
+    // same wake the Hand answers — the eyebrow names it with its gloss; on leave it returns to
+    // the standing line, or the Continue summary when a save is present. A presented Continue
+    // failure owns the line until it is cleared.
+    if (this._glossDetach) this._glossDetach();
+    this._glossAwake = null;
+    let glossOutTimer = null;
+    const glossOf = (b) => { const a = b && b.dataset ? b.dataset.action : null; return (a && MENU_MODE_GLOSSES[a]) || null; };
+    const writeGloss = (b) => {
+      if (!refs || !refs.status || refs.titleContinueFailure) return;
+      const gloss = glossOf(b);
+      if (!gloss) return;
+      this._glossAwake = b;
+      refs.status.textContent = (b.textContent || '').trim() + ' · ' + gloss;
+    };
+    const writeRest = () => {
+      this._glossAwake = null;
+      if (!refs || !refs.status || refs.titleContinueFailure) return;
+      const rest = this._titleStatusRest();
+      if (rest != null && refs.status.textContent !== rest) refs.status.textContent = rest;
+    };
+    const onAwake = (ev) => {
+      const b = ev.target && typeof ev.target.closest === 'function' ? ev.target.closest('button[data-action]') : null;
+      if (glossOutTimer) { clearTimeout(glossOutTimer); glossOutTimer = null; }
+      if (b && glossOf(b)) writeGloss(b); else writeRest();
+    };
+    // A focusout fires before the focusin of the verb focus is moving TO (the arc rail defers its
+    // leave the same way), so the restore waits a task and the next awake cancels it.
+    const onGlossOut = () => {
+      if (glossOutTimer) clearTimeout(glossOutTimer);
+      glossOutTimer = setTimeout(() => { glossOutTimer = null; writeRest(); }, 0);
+    };
+    rootEl.addEventListener('pointerover', onAwake);
+    rootEl.addEventListener('focusin', onAwake);
+    rootEl.addEventListener('pointerleave', writeRest);
+    rootEl.addEventListener('focusout', onGlossOut);
+    this._glossDetach = () => {
+      if (glossOutTimer) clearTimeout(glossOutTimer);
+      glossOutTimer = null;
+      rootEl.removeEventListener('pointerover', onAwake);
+      rootEl.removeEventListener('focusin', onAwake);
+      rootEl.removeEventListener('pointerleave', writeRest);
+      rootEl.removeEventListener('focusout', onGlossOut);
+    };
 
     // data-k-ready is owned by the screen manager once `stage` is declared: live, plate, or
     // unavailable. The still is already in the tree as `.k-world--plate`.
@@ -849,6 +903,13 @@ export const mainMenuScreen = {
           : refs.bNew);
     this._syncCurrent();
     reapplyTitleContinueLoadFailure(refs);
+    // With the failure state settled, the eyebrow returns to its rest line — the re-render that
+    // clears a stale failure must not leave the error words standing on the calmest screen in
+    // the game. A live gloss (the pointer is on a verb right now) keeps its line instead.
+    if (!this._glossAwake) {
+      const rest = this._titleStatusRest();
+      if (rest != null) refs.status.textContent = rest;
+    }
   },
 
   /** The one lit verb. Exactly one item carries the primary treatment at any time. */
@@ -872,6 +933,15 @@ export const mainMenuScreen = {
     const lit = refs.root && refs.root.querySelector('.dp-lit__item--primary');
     if (lit) return lit;
     return refs.buttons.find((b) => !isDisabled(b)) || null;
+  },
+
+  /** What the eyebrow says when no verb is awake: the Continue summary when a save is present,
+   *  else the frame's standing contract line. null means leave the line exactly as it is — a
+   *  presented Continue failure owns it until cleared. */
+  _titleStatusRest() {
+    if (!refs || refs.titleContinueFailure) return null;
+    const latest = this._latestSave;
+    return latest ? coreText('continue') + ' · ' + saveSummaryText(latest.slot, latest.meta) : this._statusDefault;
   },
 
   _syncCurrent() {
@@ -1018,6 +1088,8 @@ export const mainMenuScreen = {
     if (arcRail) { arcRail.dispose(); arcRail = null; }
     if (this._onTabKey && refs && refs.root) refs.root.removeEventListener('keydown', this._onTabKey);
     this._onTabKey = null;
+    if (this._glossDetach) { this._glossDetach(); this._glossDetach = null; }
+    this._glossAwake = null;
     for (const off of this._offBus || []) { try { off(); } catch (_) {} }
     this._offBus = [];
     refs = null;
@@ -1114,24 +1186,32 @@ export const mainMenuScreen = {
   },
 
   // Arrival (sheet: "the menu arrives after the hull"): the title settles from the top, then the
-  // words stamp in 60 ms apart. Once per show; reduced motion shows everything at once (kit motion).
+  // words stamp in 60 ms apart — the verb ladder first, the reference line closing the cascade —
+  // and the fine foot settles once the words are seated. Once per show; reduced motion shows
+  // everything at once (kit motion). Stamp budget: 10 items x 60 ms keeps the sequence inside
+  // the kit's 1 s delay cap.
   _arrive() {
     if (this._arrived || !refs) return;
     this._arrived = true;
     try {
       settle(refs.title, { from: 'top', state: 'title:arrive' });
-      stamp(refs.list.children, { gap: 60, state: 'title:arrive' });
+      const words = [...refs.list.children, ...(refs.aside ? refs.aside.children : [])];
+      stamp(words, { gap: 60, state: 'title:arrive' });
+      if (refs.version) settle(refs.version, { from: 'top', delay: 60 * Math.max(0, words.length - 1) + 120, state: 'title:arrive' });
     } catch (e) {
       console.warn('[mainMenu] arrival motion skipped', e);
     }
   },
 
   // The pre-arrival state (the kit's own `.k-in` start pose, which settle/stamp then release).
-  // Reduced motion never holds: everything is simply there.
+  // The title, the verb words, the reference line and the fine foot all hold — nothing on this
+  // screen just appears (ORRERY.md §3.5). Reduced motion never holds: everything is simply there.
   _hold() {
     if (!refs || reducedMotion()) return;
     refs.title.classList.add('k-in', 'k-in--top');
     for (const li of refs.list.children) li.classList.add('k-in', 'k-in--stamp');
+    if (refs.aside) for (const li of refs.aside.children) li.classList.add('k-in', 'k-in--stamp');
+    if (refs.version) refs.version.classList.add('k-in', 'k-in--top');
   },
 
   // Version in fine print. The leftover payload is bundled credits; pause paints the same string.
