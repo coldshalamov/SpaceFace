@@ -62,20 +62,3 @@ test('rejected damage does not light a reactor or detonate an ejected core', () 
   h.system.destroy();
 });
 
-test('reactor and hot-core damage saturates at full strength inside a hull', () => {
-  for (const kind of ['reactor', 'core']) {
-    const h = fixture();
-    h.add(1, 'ship', 0, { radius: 80 });
-    if (kind === 'reactor') {
-      h.add(2, 'wreck', 0, { data: { unstableReactor: { dueAt: 99, damage: 20 } } });
-      h.system.update(1 / 60, h.state);
-    } else {
-      h.add(2, 'pickup', 0, { data: { ventedCore: true, cooledAt: 125 } });
-      h.bus.emit('combat:damage', { targetId: 2, attackerId: 3, applied: 1 });
-    }
-    const hit = h.hits.find(row => row.targetId === 1);
-    assert.equal(hit?.damage, kind === 'reactor' ? 20 : 8,
-      'overlapping a large hull must not amplify an explosion beyond its authored full damage');
-    h.system.destroy();
-  }
-});

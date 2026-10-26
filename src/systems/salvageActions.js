@@ -607,7 +607,7 @@ export const salvageActions = {
       if (!victim.pos) continue;
       const dist = Math.hypot(victim.pos.x - pos.x, victim.pos.z - pos.z)
         - (victim.radius || 0);
-      const falloff = 1 - dist / REACTOR_CORE_BURST_RADIUS;
+      const falloff = Math.min(1, 1 - dist / REACTOR_CORE_BURST_RADIUS);
       if (!(falloff > 0)) continue;
       const payload = {
         targetId: victim.id,
@@ -698,7 +698,7 @@ export const salvageActions = {
       if (!victim.pos) continue;
       const dist = Math.hypot(victim.pos.x - pos.x, victim.pos.z - pos.z)
         - (victim.radius || 0);
-      const falloff = 1 - dist / REACTOR_BURST_RADIUS;
+      const falloff = Math.min(1, 1 - dist / REACTOR_BURST_RADIUS);
       if (!(falloff > 0)) continue;
       const payload = {
         targetId: victim.id,
