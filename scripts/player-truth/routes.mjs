@@ -14,7 +14,7 @@ export function isFirstLightPrompt(title, cancelLabel, confirmLabel = '') {
 }
 
 // First light is scheduled after the title is painted. On a busy renderer it can appear
-// after the initial 1.5s check, while a real New Game click is waiting for actionability.
+// after the menu is ready, while a real New Game click is waiting for actionability.
 // Playwright's public locator handler answers that one known settings choice; all other
 // dialogs retain normal input ownership. No force click or settings mutation is involved.
 export async function installFirstLightPromptHandler(page, step) {
@@ -65,22 +65,26 @@ export async function bootToMenu(page, baseUrl, step) {
 // A fresh profile can be asked a first-run question on the menu (the shared confirm surface, e.g.
 // "First light", the accessibility preset offer). A measured run keeps the shipped settings, so it
 // chooses the actual "Play" control (legacy "keep" cancel) and records the answer; nothing else is
-// dismissed. `.sf-confirm` / `__cancel` / `#sf-confirm-title` are the surface's documented hooks.
+// dismissed. The dialog and its choices are selected by their public accessible names.
 async function answerFirstRunPrompt(page, step) {
-  const open = page.locator('#sf-confirm-root .sf-confirm .sf-confirm__cancel:visible').first();
-  try {
-    await open.waitFor({ state: 'visible', timeout: 1500 });
-  } catch {
-    return; // no question asked
+  const heading = page.locator('#sf-confirm-title').first();
+  if (!await heading.isVisible()) return;
+  const title = norm(await heading.textContent());
+  if (title !== 'First light') return;
+  const dialog = page.getByRole('dialog', { name: 'First light', exact: true });
+  const play = dialog.getByRole('button', { name: /^Play$/i });
+  const keep = dialog.getByRole('button', { name: /^Keep my settings$/i });
+  const playCount = await play.count();
+  const keepCount = await keep.count();
+  const choice = playCount === 1 ? { control: play, name: 'Play' }
+    : playCount === 0 && keepCount === 1 ? { control: keep, name: 'Keep my settings' } : null;
+  if (!choice) {
+    const labels = await dialog.getByRole('button').allTextContents();
+    throw new Error(`First light has no uniquely supported settings choice (expected Play or Keep my settings); controls: ${JSON.stringify(labels.map(norm))}`);
   }
-  const title = await page.locator('#sf-confirm-title').first().textContent().catch(() => '');
-  const cancelLabel = await open.textContent().catch(() => '');
-  const confirm = page.locator('#sf-confirm-root .sf-confirm .sf-confirm__ok:visible').first();
-  const confirmLabel = await confirm.textContent().catch(() => '');
-  if (!isFirstLightPrompt(title, cancelLabel, confirmLabel)) return;
-  const playIsPrimary = norm(confirmLabel).toUpperCase() === 'PLAY';
-  await (playIsPrimary ? confirm : open).click();
-  step('first-run prompt', true, `answered "${String(title || '').trim()}" with ${playIsPrimary ? 'Play' : 'keep'} (shipped settings)`);
+  // A disabled/covered control must still fail the gate normally; never force it or choose a preset.
+  await choice.control.click();
+  step('first-run prompt', true, `answered "${title}" with ${choice.name} (shipped settings)`);
 }
 
 /** Flight, or a quoted load error. `active` also requires the run phase to be active. */
