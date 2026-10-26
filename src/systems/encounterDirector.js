@@ -66,6 +66,7 @@ import {
   ENCOUNTER_SHAPE_HOUR_SECONDS,
   encounterGrammarKey,
   emitPredationStalkTelegraph,
+  captureFreightCustodyControl,
 } from './encounterScripts.js';
 import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptTextWithFallback } from '../data/encounters.js';
 import { ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
@@ -315,6 +316,7 @@ export const encounterDirector = {
     this._saveRestoring = false;
     this._freightCustodyRebindPasses = 0;
     ensureDirectorState(this.state);
+    this.helpers.captureEncounterFreightControl = (entity) => captureFreightCustodyControl(this.state, entity);
 
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
@@ -4573,6 +4575,7 @@ function normalizePersistedFreightCustodyEnvelope(raw) {
 function normalizeFreightPredation(raw) {
   return {
     enabled: raw.enabled === true,
+    engagementOwner: raw.engagementOwner === 'encounter' ? 'encounter' : 'predation',
     carrierRole: boundedFreightString(raw.carrierRole) || 'hauler',
     raiderRole: boundedFreightString(raw.raiderRole) || 'raider',
     motive: boundedFreightString(raw.motive) || 'cargo_raid',
@@ -4749,7 +4752,11 @@ function clearPredationBindingOnEntity(state, entity, encounterId, reason) {
   }
   const persistedCarrier = persistedFreightCarrierBinding(entity);
   const ai = data.ai;
-  if (data.predationRole === 'raider' && ai) {
+  const authoredOwner = data.predationEngagementOwner;
+  const playerOwnsActor = (entity.id === state.playerId
+    || (typeof data.vesselId === 'string' && data.vesselId.length > 0
+      && state.player?.ownedShips?.some(ship => ship.vesselId === data.vesselId)));
+  if (data.predationRole === 'raider' && ai && authoredOwner !== 'encounter' && !playerOwnsActor) {
     ai.passive = true;
     ai.motiveSatisfied = true;
     ai.pirateDisengaged = true;
@@ -4772,6 +4779,7 @@ function clearPredationBindingOnEntity(state, entity, encounterId, reason) {
     });
   }
   delete data.predationEncounterId;
+  delete data.predationEngagementOwner;
   // A disabled civilian recovery is persisted independently of the transient encounter. Preserve
   // only its stable carrier key so save rematerialization can rebind the numeric entity id; every
   // raider/spilled/malformed state still loses predation identity and cannot revive authority.

@@ -81,10 +81,14 @@ export function admitCapturedVessel(owner, request = {}) {
   const plan = planAdmission(owner, to, request.vesselId);
   if (!plan.ok) return plan;
   if (plan.admitted) {
+    const releaseFreightControl = owner.helpers?.captureEncounterFreightControl?.(to);
+    const releaseActivityControl = owner.helpers?.aiManeuver?.captureActivity?.(to);
     p.ownedShips.push(plan.owned);
     to.data.fittedInstances = plan.owned.fittedInstances;
     if (plan.owned.cargo) to.data.cargo = plan.owned.cargo;
     to.flags ||= {}; to.flags.persistent = true;
+    releaseFreightControl?.();
+    releaseActivityControl?.();
     owner.bus.emit('ship:captured', { operationId: request.operationId, vesselId: request.vesselId, index: plan.index, targetId: to.id });
   }
   return { ok: true, vesselId: request.vesselId, index: plan.index, admitted: plan.admitted };
@@ -140,6 +144,14 @@ export function captureAndTransfer(owner, request = {}) {
     return fail(swap.refused || 'cargo_owner_unavailable');
   }
   // All fallible guards are above this synchronous commit. No spawn/destroy/pose writes occur.
+  const releaseFromFreightControl = owner.helpers?.captureEncounterFreightControl?.(from);
+  const releaseToFreightControl = owner.helpers?.captureEncounterFreightControl?.(to);
+  const releaseFromActivity = owner.helpers?.aiManeuver?.captureActivity?.(from);
+  const releaseToActivity = owner.helpers?.aiManeuver?.captureActivity?.(to);
+  releaseFromFreightControl?.();
+  releaseToFreightControl?.();
+  releaseFromActivity?.();
+  releaseToActivity?.();
   owner.bus.emit('ship:controlChanging', { operationId, fromId: from.id, toId: to.id });
   previous.vesselId ||= from.data.vesselId;
   from.isPlayer = false;
