@@ -69,10 +69,22 @@ export function racingCorridorPlan(sectorId) {
     x: first.a.x - (first.b.x - first.a.x) / length * 240,
     z: first.a.z - (first.b.z - first.a.z) / length * 240,
   };
+  const halfWidthWU = (Number(course.gateRadiusWU) || 90) + (Number(layout.hullRadiusWU) || 32);
   return {
     sectorId, courseId: course.courseId, layout, origin, gates, segments,
-    keepouts: [...segments, { a: grid, b: gates[0] }],
-    halfWidthWU: (Number(course.gateRadiusWU) || 90) + (Number(layout.hullRadiusWU) || 32),
+    // The corridor's own checks read only a/b, but these rows also surface as
+    // the arranger's `keepouts` member — the campaign arranger's documented
+    // shape is a capsule row with kind/id/halfWidth. A generic consumer (an id
+    // lookup, clearsKeepouts) must see that schema, not bare segments whose
+    // missing halfWidth would silently clear every check.
+    keepouts: [
+      ...segments.map((segment, i) => ({
+        kind: 'capsule', id: `corridor:leg:${i}`,
+        a: segment.a, b: segment.b, halfWidth: halfWidthWU,
+      })),
+      { kind: 'capsule', id: 'corridor:grid', a: grid, b: gates[0], halfWidth: halfWidthWU },
+    ],
+    halfWidthWU,
     // One reservation-ordered peer list for the whole sector pass — arranger seeds
     // (stations, authored POIs, reservations), banked rocks, restored bodies, and every
     // scenery body this membrane examined or moved. Without it a shifted POI could land
@@ -404,12 +416,18 @@ export function createRacingCorridorArranger(sector, options = {}) {
   for (const mark of nativeRacingStatics(sector, plan)) {
     notePeer(plan, mark.pos, mark.radius, undefined, 'resv', true);
   }
-  const stats = { placed: 0, moved: 0, skirts: 0 };
+  const stats = { placed: 0, moved: 0, skirts: 0, pinned: 0, fields: 0 };
   const peerClear = (pos, radius, key) => !peerBlocked(plan, pos, radius, key);
   const reserve = (pos, radius, key, cls, placed) => notePeer(plan, pos, radius, key, cls, placed);
+  // The documented interface members a generic consumer may read: the start
+  // grid is the anchor `focus` names in the campaign arranger, and `fields`
+  // is the per-field roster createField appends its info record to.
+  const fields = [];
   return {
     profile: plan.layout,
+    focus: { x: plan.grid.x, z: plan.grid.z },
     keepouts: plan.keepouts,
+    fields,
     createField(fdef) {
       // A layout may skip a field id, carry an empty leg list, or lack the fields
       // map entirely — every one of those banks all legs rather than indexing
@@ -419,6 +437,8 @@ export function createRacingCorridorArranger(sector, options = {}) {
       const inRange = (leg) => Number.isInteger(leg) && leg >= 0 && leg < plan.segments.length;
       const authored = Array.isArray(authoredLegs) ? authoredLegs.filter(inRange) : [];
       const legs = authored.length ? authored : plan.segments.map((_, i) => i);
+      const info = { id: fdef.id, legs: legs.slice(), stats: { placed: 0, moved: 0, pinned: 0, skirts: 0 } };
+      fields.push(info); stats.fields++;
       return {
         place(original, bodyRadius, slotIndex, pinned = false) {
           const radius = asteroidColliderRadius(fdef.type, bodyRadius);
@@ -437,8 +457,10 @@ export function createRacingCorridorArranger(sector, options = {}) {
           // wherever a leg seat opened.
           if (pinned && finitePoint(original)) {
             const pos = outsidePoint(plan, original, radius, `pinned|${seed}`, 'rock');
-            stats.placed++;
-            if (pos.x !== original.x || pos.z !== original.z) stats.moved++;
+            stats.placed++; info.stats.placed++; stats.pinned++; info.stats.pinned++;
+            if (pos.x !== original.x || pos.z !== original.z) {
+              stats.moved++; info.stats.moved++;
+            }
             return pos;
           }
           // slotIndex | 0 guards non-integer callers but a negative still indexes
@@ -459,7 +481,8 @@ export function createRacingCorridorArranger(sector, options = {}) {
             const pos = { x: a.x + (b.x - a.x) * t - (b.z - a.z) / length * offset,
               z: a.z + (b.z - a.z) * t + (b.x - a.x) / length * offset };
             if (!clearsRacingCorridor(plan, pos, radius) || !peerClear(pos, radius, bodyKey)) continue;
-            reserve(pos, radius, bodyKey, 'rock', true); stats.placed++; stats.moved++;
+            reserve(pos, radius, bodyKey, 'rock', true);
+            stats.placed++; stats.moved++; info.stats.placed++; info.stats.moved++;
             return pos;
           }
           // Preserve the existing object budget. Unusually crowded banks use the safe
@@ -475,9 +498,11 @@ export function createRacingCorridorArranger(sector, options = {}) {
             const reach = 3000 + attempt * (radius * 2 + 12);
             pos = { x: plan.origin.x + Math.cos(angle) * reach, z: plan.origin.z + Math.sin(angle) * reach };
           }
-          reserve(pos, radius, bodyKey, 'rock', true); stats.placed++; stats.skirts++;
+          reserve(pos, radius, bodyKey, 'rock', true);
+          stats.placed++; stats.skirts++; info.stats.placed++; info.stats.skirts++;
           return pos;
         },
+        info,
         reserveRestored: (pos, radius) => reserve(pos, radius, undefined, 'resv', true),
       };
     },
@@ -485,6 +510,8 @@ export function createRacingCorridorArranger(sector, options = {}) {
       return { pos: outsidePoint(plan, pos, radius, placeId), rot };
     },
     reserve: (pos, radius) => notePeer(plan, pos, radius, undefined, 'resv', true),
-    summary: () => ({ ...stats }),
+    // The peer list is the corridor's occupancy index: `seats` is the honest
+    // analog of the campaign summary's peerChecks/saturatedQueries report.
+    summary: () => ({ ...stats, seats: plan.peers.length }),
   };
 }

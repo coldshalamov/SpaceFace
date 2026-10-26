@@ -56,6 +56,10 @@ function attachMissionEvents(h) {
     ensureBoard() {},
     _onDockedObjectives() {},
     _onContract47aB3Docked() {},
+    // W-BOOKS-0-2 added this dock-side call on the real handler; delegate like the
+    // authored-race hooks so the fixture exercises its real no-op guard instead of
+    // pretending the method does not exist.
+    _resolveContract47aSkimForDock(stationId) { return missions._resolveContract47aSkimForDock.call(this, stationId); },
     _storyTrigger() {},
     _refreshNavigation() {},
   });
