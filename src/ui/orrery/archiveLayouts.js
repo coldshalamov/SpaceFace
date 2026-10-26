@@ -58,7 +58,7 @@ const CODEX_CSS = `
 /* ================================ CODEX ===================================================== */
 ${CX} { --cx-sections:134px; --cx-gap:44px; row-gap:clamp(24px, 4.4vh, 52px) !important; }
 /* the title band: the name and its line on the left, the archive's fill as dials on the right */
-${CX} > .k-title { display:grid !important; grid-template-columns:minmax(0, auto) minmax(0, 1fr); grid-template-rows:auto auto; column-gap:48px; align-items:end; }
+${CX} > .k-title { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:48px; align-items:end; }
 ${CX} > .k-title > :not(.cx-index) { grid-column:1; }
 ${CX} > .k-title > p { margin:10px 0 0 !important; font-size:15px !important; color:rgb(${BONE} / .86) !important; ${BODY} }
 ${CX} > .k-title > .cx-index { grid-column:2; grid-row:1 / span 2; justify-self:end; align-self:end; }
