@@ -608,6 +608,7 @@ ${CX_PHONE} .cx-index__w { margin-top:2px !important; font-size:12px !important;
 ${CX_PHONE} .cx-index__list { flex-wrap:nowrap !important; gap:0 4px !important; }
 ${CX_PHONE} .cx-index__item { width:auto; flex:1 1 auto; min-width:0; }
 ${CX_PHONE} .cx-index__w { white-space:nowrap !important; overflow-wrap:normal; font-stretch:76% !important; font-variation-settings:"wdth" 76, "wght" 650 !important; letter-spacing:0 !important; }
+@media (max-width:339px) { ${CX_PHONE} .cx-index__list { flex-wrap:wrap !important; justify-content:center !important; row-gap:2px !important; } ${CX_PHONE} .cx-index__item { flex:0 0 auto; } }
 ${CX_PHONE} > .cx-plate-host { flex:none; order:2; position:relative !important; inset:auto !important; right:auto !important; top:auto !important;
   width:var(--cx-plate) !important; height:var(--cx-plate) !important; margin:2px auto 0 !important; }
 ${CX_PHONE} > .cx-plate-host[hidden] { display:none !important; }
