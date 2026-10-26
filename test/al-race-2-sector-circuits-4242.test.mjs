@@ -35,7 +35,7 @@ import { createRacingOpponents } from '../src/missions/racingOpponents.js';
 import { observeRacingGhost, readRacingGhost } from '../src/systems/racingGhosts.js';
 import {
   configureRacingCorridorSession, isRacingCorridorSession,
-  racingCorridorPlan, clearsRacingCorridor,
+  racingCorridorPlan, clearsRacingCorridor, racingCorridorSceneryShift,
 } from '../src/world/racingCorridor.js';
 import {
   PALLAS_REEF_MINES, PALLAS_REEF_GLOBAL_POS, PALLAS_REEF_FIELD, pallasReefPhase,
@@ -655,6 +655,39 @@ test('corridor arranger honors authored activity reservations before any rock sp
     assert.ok(Math.hypot(moved.x - target.x, moved.z - target.z) >= 18 + 60 + 8 - 0.01,
       'a banked rock never lands on a reserved authored mark');
     assert.ok(clearsRacingCorridor(plan, moved, 18), 'the relocated body stays off-corridor');
+  } finally { f.dispose(); }
+});
+
+test('corridor membrane: moved bodies never stack, and re-materialization re-settles', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const sector = f.state.world.sectors['sector_ceres_belt'];
+    const plan = racingCorridorPlan(sector.id);
+    const seg = plan.keepouts[0];
+    // Two solids stacked along one leg's normal share a closest corridor point: the
+    // un-peered membrane pushed each to its own minimal-clearance locus — |r1 − r2|
+    // apart, an overlap. Reservation order makes the second body clear the first.
+    const length = Math.hypot(seg.b.x - seg.a.x, seg.b.z - seg.a.z);
+    const nx = -(seg.b.z - seg.a.z) / length, nz = (seg.b.x - seg.a.x) / length;
+    const mid = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    const r1 = 20, r2 = 60;
+    const orig1 = { x: mid.x + nx * 10, z: mid.z + nz * 10 };
+    const orig2 = { x: mid.x + nx * 40, z: mid.z + nz * 40 };
+    const s1 = racingCorridorSceneryShift(f.state, sector.id, orig1, r1);
+    const s2 = racingCorridorSceneryShift(f.state, sector.id, orig2, r2);
+    assert.ok(s1 && s2, 'both stacked bodies start on the corridor');
+    const p1 = { x: orig1.x + s1.x, z: orig1.z + s1.z };
+    const p2 = { x: orig2.x + s2.x, z: orig2.z + s2.z };
+    assert.ok(clearsRacingCorridor(plan, p1, r1), 'the first body still lands off-corridor');
+    assert.ok(clearsRacingCorridor(plan, p2, r2), 'the second body still lands off-corridor');
+    assert.ok(Math.hypot(p2.x - p1.x, p2.z - p1.z) >= r1 + r2 + 8 - 0.01,
+      'the second moved body never collapses onto the first');
+    // A re-materializing body skips its own stale seat: the same shift call returns
+    // the same offset instead of drifting further out every pass.
+    const again1 = racingCorridorSceneryShift(f.state, sector.id, orig1, r1);
+    const again2 = racingCorridorSceneryShift(f.state, sector.id, orig2, r2);
+    assert.deepEqual(again1, s1, 'the first body re-settles its own seat');
+    assert.deepEqual(again2, s2, 'the second body re-settles its own seat');
   } finally { f.dispose(); }
 });
 
