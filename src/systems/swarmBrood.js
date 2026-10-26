@@ -118,6 +118,7 @@ import {
   swarmBroodPlan,
   swarmBroodSacReserve,
 } from '../data/swarmBrood.js';
+import { circleHitRadius, corridorHalfWidth } from '../combat/telegraphFootprint.js';
 import {
   SWARM_BROOD_LATE_FAMILIES,
   foldBroodLatePlan,
@@ -224,6 +225,9 @@ export function createBroodEngine(deps = {}) {
   const primeUntil = new Float64Array(CAP);
   // W-BLOOM-LOW remains: a leech body stuck to a cell pins it until this clock lets go.
   const gluedUntil = new Float64Array(CAP);
+  // Hazard-grip dedupe: a hazard family's tell fires once per hold on the signature — set
+  // when the drag actually bites, cleared when the body loses the signature's radius.
+  const dragTold = new Uint8Array(CAP);
 
   // spatial hash
   const gridHead = new Int32Array(GRID_TABLE);
@@ -596,6 +600,7 @@ export function createBroodEngine(deps = {}) {
     swellUntil[slot] = 0;
     primeUntil[slot] = 0;
     gluedUntil[slot] = 0;
+    dragTold[slot] = 0;
     aliveCount += 1;
   }
 
@@ -905,7 +910,12 @@ export function createBroodEngine(deps = {}) {
         // primeS later it detonates itself whether or not anything touched it.
         if (def && def.primeRange > 0) {
           if (dp <= def.primeRange) {
-            if (!primeUntil[i]) primeUntil[i] = simTime + (def.primeS || 1.1);
+            // The arming is the prime family's tell — "the glow brightens", "it is alight",
+            // "winding up astern" — spoken once per approach; leaving range re-arms it.
+            if (!primeUntil[i]) {
+              primeUntil[i] = simTime + (def.primeS || 1.1);
+              emitTelegraph(i, def);
+            }
           } else {
             primeUntil[i] = 0;
           }
@@ -919,7 +929,15 @@ export function createBroodEngine(deps = {}) {
             const decel = Math.min(speed, (def.slowAccel || 20) * dt);
             signatureRef.vel.x -= (playerVX / speed) * decel;
             signatureRef.vel.z -= (playerVZ / speed) * decel;
+            // The bite is the hazard family's tell — "it clings", "the drag is on you" —
+            // spoken once per hold; a fresh hold after shedding the radius speaks again.
+            if (!dragTold[i]) {
+              dragTold[i] = 1;
+              emitTelegraph(i, def);
+            }
           }
+        } else if (def && def.hazard) {
+          dragTold[i] = 0;
         }
         // bellows fuse: an armed bellows detonates on its own clock (swells two-hit law).
         if (swellStage[i] === 1 && simTime >= swellUntil[i]) {
@@ -990,9 +1008,9 @@ export function createBroodEngine(deps = {}) {
             else phase[i] = BROOD_PHASE_FLOCK;
           }
         } else if (def && def.id === 'spitter') {
-          stepSpitter(i, dp, dt);
+          stepSpitter(i, def, dp, dt);
         } else if (def && def.id === 'charger') {
-          stepCharger(i, dp);
+          stepCharger(i, def, dp);
         } else if (def && def.id === 'leecher') {
           stepLeecher(i, fam, dp);
         }
@@ -1083,6 +1101,27 @@ export function createBroodEngine(deps = {}) {
     return true;
   }
 
+  // --- the family's tell: one line, once per attack-language beat ----------------------------
+  //
+  // Every family authors {bark,line,cue} (src/data/swarmBrood.js) and the announce subscriber
+  // speaks it rate-limited; the engine's law is one emit per REAL telegraph transition — a
+  // windup arming, a prime, a latch, a swell, a grip — never per tick. Families whose
+  // authored line describes a standing property instead of a transition stay silent: the
+  // mite's dive is the flock itself, the glassback's and keelback's armor never leaves
+  // FLOCK, and the wake eel's authored wrap (wrapRange/wrapS) has no live state behind it.
+  function emitTelegraph(i, def) {
+    if (!bus || !def) return;
+    const tele = def.telegraph;
+    if (!tele || typeof tele.line !== 'string' || !tele.line) return;
+    bus.emit('swarm:broodTelegraph', {
+      familyId: def.id,
+      bark: tele.bark,
+      line: tele.line,
+      cue: tele.cue,
+      pos: { x: px[i], z: pz[i] },
+    });
+  }
+
   // --- the spitter: a marked arc, then a splash that stays a beat ---------------------------
 
   function stepBurrower(i, def, dt) {
@@ -1095,16 +1134,7 @@ export function createBroodEngine(deps = {}) {
       const dz = playerZ - pz[i];
       const range = def.burstRange > 0 ? def.burstRange : 64;
       if (dx * dx + dz * dz > range * range) return;
-      const tele = def.telegraph || {};
-      if (bus) {
-        bus.emit('swarm:broodTelegraph', {
-          familyId: def.id,
-          bark: tele.bark,
-          line: tele.line,
-          cue: tele.cue,
-          pos: { x: px[i], z: pz[i] },
-        });
-      }
+      emitTelegraph(i, def);
       phase[i] = BROOD_PHASE_WINDUP;
       timer[i] = def.windupS > 0 ? def.windupS : 0.5;
       return;
@@ -1139,7 +1169,7 @@ export function createBroodEngine(deps = {}) {
     return true;
   }
 
-  function stepSpitter(i, dp, dt) {
+  function stepSpitter(i, def, dp, dt) {
     if (phase[i] !== BROOD_PHASE_FLOCK) return;
     timer[i] -= dt;
     if (attackClock < attackAfter[i] || timer[i] > 0 || dp > BROOD_SPITTER_LOB_RANGE || dp < 1e-4 || !takeAttackSlot()) return;
@@ -1149,6 +1179,7 @@ export function createBroodEngine(deps = {}) {
     teleZ[i] = playerZ + playerVZ * flightS;
     phase[i] = BROOD_PHASE_WINDUP;
     timer[i] = BROOD_SPITTER_WINDUP_S;
+    emitTelegraph(i, def);
     void dt;
   }
 
@@ -1205,7 +1236,7 @@ export function createBroodEngine(deps = {}) {
     if (routeDamage && signatureRef && signatureRef.alive !== false) {
       const dx = playerX - x;
       const dz = playerZ - z;
-      if (dx * dx + dz * dz <= (BROOD_SPITTER_SPLASH_RADIUS + playerRad * 0.5) ** 2) {
+      if (dx * dx + dz * dz <= circleHitRadius(BROOD_SPITTER_SPLASH_RADIUS, playerRad) ** 2) {
         routePlayerDamage(BROOD_SPITTER_SPLASH_DAMAGE, x, z, 'brood_acid');
       }
     }
@@ -1240,7 +1271,7 @@ export function createBroodEngine(deps = {}) {
       if (signatureRef && signatureRef.alive !== false) {
         const dx = playerX - poolX[i];
         const dz = playerZ - poolZ[i];
-        if (dx * dx + dz * dz <= (BROOD_SPITTER_POOL_RADIUS + playerRad * 0.5) ** 2) playerIn = true;
+        if (dx * dx + dz * dz <= circleHitRadius(BROOD_SPITTER_POOL_RADIUS, playerRad) ** 2) playerIn = true;
       }
     }
     poolCount = live;
@@ -1275,7 +1306,7 @@ export function createBroodEngine(deps = {}) {
   // --- the charger: a line telegraph, then a committed pass ---------------------------------
 
   /** Arms the pass when the pilot is inside its read: the line draws for the whole windup. */
-  function stepCharger(i, dp) {
+  function stepCharger(i, def, dp) {
     // The recover beat: the pass is spent and the body is exposed until it re-arms.
     if (phase[i] === BROOD_PHASE_RECOVER) {
       timer[i] -= DT;
@@ -1290,6 +1321,7 @@ export function createBroodEngine(deps = {}) {
     teleDir[i] = Math.atan2(teleZ[i] - pz[i], teleX[i] - px[i]);
     phase[i] = BROOD_PHASE_WINDUP;
     timer[i] = BROOD_CHARGER_WINDUP_S;
+    emitTelegraph(i, def);
   }
 
   /** One tick of a live pass: the hull takes it and the shove it carries, once per dash. */
@@ -1298,7 +1330,7 @@ export function createBroodEngine(deps = {}) {
     if (signatureRef && signatureRef.alive !== false) {
       const sx = playerX - px[i];
       const sz = playerZ - pz[i];
-      const rr = playerRad + rad;
+      const rr = corridorHalfWidth(rad, playerRad);
       if (sx * sx + sz * sz <= rr * rr) {
         routePlayerDamage(BROOD_CHARGER_SLAM_DAMAGE, px[i], pz[i], 'brood_charger');
         const d = Math.sqrt(sx * sx + sz * sz) || 1;
@@ -1340,6 +1372,9 @@ export function createBroodEngine(deps = {}) {
       phase[i] = BROOD_PHASE_LATCHED;
       timer[i] = 0;
       teleDir[i] = seedPhase[i];
+      // The latch is the leecher's beat — the line promises the drag that is now on the
+      // hull, and shedding it is the answer the tell carries.
+      emitTelegraph(i, liveFamilyDef[fam]);
       stepLatched(i, fam, DT, null);
     }
   }
@@ -1761,6 +1796,10 @@ export function createBroodEngine(deps = {}) {
       // First strike inflates: the fuse starts, the second strike (or the clock) detonates.
       swellStage[i] = 1;
       swellUntil[i] = finite(getState()?.simTime) + (Number.isFinite(def.swellS) ? def.swellS : 2.6);
+      // The swell is the bellows' authored beat ("it is swelling — strike it again"). A
+      // burrowing sweller already spoke its own line cracking out of the rock — that tell
+      // names the eruption, not the fuse — so it does not speak twice.
+      if (!def.burrows) emitTelegraph(i, def);
       return;
     }
     alive[i] = 0;
@@ -1862,15 +1901,8 @@ export function createBroodEngine(deps = {}) {
     if (birthLeft[i] <= 0 || motherReserve <= 0) return;
     timer[i] -= dt;
     if (timer[i] > 0) return;
-    const tele = def.telegraph || {};
-    if (bus && !birthTold[i]) {
-      bus.emit('swarm:broodTelegraph', {
-        familyId: def.id,
-        bark: tele.bark,
-        line: tele.line,
-        cue: tele.cue,
-        pos: { x: px[i], z: pz[i] },
-      });
+    if (!birthTold[i]) {
+      emitTelegraph(i, def);
       birthTold[i] = 1;
     }
     timer[i] = def.birthEveryS > 0 ? def.birthEveryS : 1.2;
@@ -1891,16 +1923,7 @@ export function createBroodEngine(deps = {}) {
   }
 
   function releaseSplit(i, def) {
-    const tele = def.telegraph || {};
-    if (bus) {
-      bus.emit('swarm:broodTelegraph', {
-        familyId: def.id,
-        bark: tele.bark,
-        line: tele.line,
-        cue: tele.cue,
-        pos: { x: px[i], z: pz[i] },
-      });
-    }
+    emitTelegraph(i, def);
     const miteIdx = familyIndexOf('mite');
     if (miteIdx < 0) return;
     const ox = px[i];
@@ -2049,6 +2072,9 @@ export function createBroodEngine(deps = {}) {
     view.segAliveCount = segAliveCount;
     view.hive = hiveMode;
     view.sacBudget = sacBudget;
+    // The radius the damage queries add the victim's reach to, so the drawn footprints can use the
+    // SAME number (telegraphFootprint.js). Runtime mirror, never serialized.
+    view.victimRadius = playerRad;
     const state = getState();
     if (state && state[SWARM_BROOD_STATE_KEY] !== view) {
       // Assign once; the view identity is stable for the engine's whole life.
