@@ -691,10 +691,17 @@ function ensureHeliosMinerBeam(entity) {
   return data.miningBeam;
 }
 
+// Optic lattice cells are not ore — the lattice marker is opticStructureId. Ordinary ore also
+// carries an opticMaterial surface tag ('metal'/'diamond') from environmentSurfaceData; refusing
+// on the tag made metallic/crystalline seam faces invisible to the shift cutter (D227, see mining.js).
+function isOpticLatticeCellData(data) {
+  return !!(data && typeof data.opticStructureId === 'string' && data.opticStructureId);
+}
+
 function starterRockMineable(rock) {
   if (!rock || rock.alive === false || rock.type !== 'asteroid' || !rock.pos || !rock.data) return false;
   if (rock.data.fieldId !== HELIOS_STARTER_FIELD_ID) return false;
-  if (rock.data.siteAnchored || rock.data.opticMaterial || rock.data.respawnAt != null) return false;
+  if (rock.data.siteAnchored || isOpticLatticeCellData(rock.data) || rock.data.respawnAt != null) return false;
   if (rock.data.isChunk) return false;
   // A face knocked loose and tumbling away is no longer a seam; a cutter chasing it leaves the claim.
   if (rock.vel && Math.hypot(rock.vel.x || 0, rock.vel.z || 0) > HELIOS_STARTER_ROCK_MAX_DRIFT) return false;

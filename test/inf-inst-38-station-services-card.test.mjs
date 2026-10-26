@@ -28,7 +28,10 @@ test('INST-38 seed 4242: locking Helios and the Vesta depot names each authored 
       assert.equal(h.state.ui.docked, false, 'no dock event or station screen needed');
       assert.equal(card.el.style.display, 'block');
       assert.equal(card.el.querySelector('.sf-target__object').style.display, 'block');
-      assert.equal(card.el.querySelector('.sf-target__object').textContent, expected);
+      const facts = card.el.querySelector('.sf-target__object').textContent.split(' · Mass ');
+      assert.equal(facts[0], expected, 'the service list still names exactly the public services');
+      assert.equal(facts.length, 2, 'the station also exposes its physical mass');
+      assert.equal(Number(facts[1]), contact.mass, 'the mass read names the actual station body');
       assert.equal(expected, `Services: ${station.services.map(stationServiceLabel).join(' · ')}`);
       assert.equal(JSON.stringify(contact.data), before, 'the renderer only reads station data');
     }

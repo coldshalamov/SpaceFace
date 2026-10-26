@@ -463,7 +463,14 @@ function baseServiceQuote(type, state, entity) {
       };
     }
     if (credits < cost) {
-      const repairable = Math.max(1, Math.floor(credits / repairUnit));
+      // The yard welds totalMiss * credits / cost. Name the change in the same
+      // rounded hull and armor this card already prints.
+      const frac = cost > 0 ? credits / cost : 0;
+      const hullNow = Number(entity && entity.hull) || 0;
+      const armorNow = Number(entity && entity.armorHp) || 0;
+      const hullGain = Math.round(hullNow + missing.hull * frac) - Math.round(hullNow);
+      const armorGain = Math.round(armorNow + missing.armor * frac) - Math.round(armorNow);
+      const repairable = Math.max(0, hullGain + armorGain);
       return {
         amount: missing.total,
         cost: credits,
