@@ -971,7 +971,7 @@ const RC459_COPY = {
     aReceipt: 'The round trip is logged — three separate ring entries at ${placeLabel}.',
   },
   sides: {
-    instruction: '${voice}: Circle us — start one side, cross a hundred-twenty through to the other, inside the hundred-sixty band.',
+    instruction: '${voice}: Circle us — start one side, cross a hundred-twenty through to the other, between a hundred and a hundred-sixty of us.',
     aLabel: 'Circle to the far side of the hull',
     aLine: 'I cross a hundred-twenty of your flank to the far side, inside the band at ${placeLabel}.',
     aReceipt: 'You crossed to the hull\'s far side inside the band at ${placeLabel}.',
@@ -989,7 +989,7 @@ const RC459_COPY = {
     aReceipt: 'The ${noun} rode real line load at ${placeLabel} before you cut it free.',
   },
   toll: {
-    instruction: '${voice}: ${aCost} cr clears the count — then pass the hull on the far side, inside the band. Or tow our ${noun} a hundred-twenty clear.',
+    instruction: '${voice}: ${aCost} cr clears the count — then pass the hull on the far side, between a hundred and a hundred-sixty of us. Or tow our ${noun} a hundred-twenty clear.',
     aLabel: 'Pay the count — 36 cr',
     aLine: 'Take thirty-six, ${voice} — my hull passes the marker on the far side at ${placeLabel}.',
     aReceipt: 'Thirty-six paid, and your hull passed the marker on the far side at ${placeLabel}.',

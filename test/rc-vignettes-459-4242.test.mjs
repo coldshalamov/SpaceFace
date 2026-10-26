@@ -15,7 +15,7 @@ import { createAttachmentService } from '../src/combat/attachments.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { ensurePhysicsBodySpec, writePhysicsControl } from '../src/core/physicsAuthority.js';
-import { makeEntity, allocateEntityId } from '../src/core/entity.js';
+import { makeEntity, allocateEntityId, stampOccupantGeneration } from '../src/core/entity.js';
 import { save } from '../src/save/saveSystem.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { SECTORS } from '../src/data/sectors.js';
@@ -65,6 +65,7 @@ function boot(seed = 4242) {
       data: opts.data || {},
     };
     state.entities.set(e.id, e);
+    stampOccupantGeneration(state, e);
     return e;
   };
   let player = state.entities.get(state.playerId);
@@ -272,6 +273,43 @@ for (const [label, corrupt] of [
   });
 }
 
+// Entity ids recycle through freeIds — a prop destroyed mid-await can have its numeric id
+// reissued to a different body before the next evaluation. The generation stamp is what
+// keeps the await bound to the occupant it was promised, not just the slot.
+test('physical gate: a recycled prop id aborts the strain scene (order 417)', async () => {
+  const mods = await loadCurated();
+  const row = mods.find((m) => m.order === 417);
+  const t = boot();
+  const resolved = [];
+  t.sim.bus.on('encounter:resolved', (p) => resolved.push(p && p.outcome));
+  const { live } = fire(t, row.mod.spec.id);
+  for (let i = 0; i < 900 && live.vars.vPhase !== 'offer'; i += 1) ticks(t, 1);
+  assert.equal(live.vars.vPhase, 'offer');
+  t.director.emit('encounter:choose', { encounterId: live.id, choiceId: 'a' });
+  const prop = entOf(t, live, 'prop');
+  assert.ok(prop, 'the strain scene spawns its line-work prop');
+  t.state.player.tether = { active: true, targetId: prop.id, phase: 'loaded', load: 0.5 };
+  for (let i = 0; i < 60 * 6 && live.phase !== 'done'; i += 1) {
+    if (i === 90) {
+      // The prop dies and its id is immediately reissued to an unrelated body — the
+      // occupant changed, so every prop-dependent step must see 'gone', not the impostor.
+      const impostor = {
+        id: prop.id, type: 'ship', alive: true,
+        pos: { x: prop.pos.x + 5, z: prop.pos.z }, vel: { x: 0, z: 0 },
+        rot: 0, radius: 8, mass: 50, data: {},
+      };
+      t.state.entities.delete(prop.id);
+      t.state.entities.set(impostor.id, impostor);
+      stampOccupantGeneration(t.state, impostor);
+    }
+    ticks(t, 1);
+  }
+  assert.equal(live.phase, 'done', 'a recycled prop id still closes the scene');
+  assert.equal(live.outcome, 'aborted:physical_subject_gone',
+    'the reissued id names a different occupant — the await aborts, never satisfies');
+  assert.ok(resolved.includes('aborted:physical_subject_gone'));
+});
+
 // gapCross belongs to the player's own path: reference geometry sliding under a parked
 // player rewrites the line, not the crossing — the old prev-line compare counted it.
 test('physical gate: moving escort hulls cannot cross the gap for a parked player (order 410)', async () => {
@@ -345,6 +383,7 @@ async function bootPhysics() {
     const e = makeEntity({ ...opts, pos: opts.pos, vel: opts.vel });
     e.id = allocateEntityId(state);
     state.entities.set(e.id, e);
+    stampOccupantGeneration(state, e);
     state.entityList.push(e);
     return e;
   };
