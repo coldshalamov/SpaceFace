@@ -396,7 +396,7 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
       // nudged clear at materialization; their own migration owns them after.
       if (species.physicsBody) {
         const sceneryShift = racingCorridorSceneryShift(state, sector.id, pos, species.radius,
-          member.faunaKey);
+          `fauna:${member.faunaKey}`);
         if (sceneryShift) { pos.x += sceneryShift.x; pos.z += sceneryShift.z; }
       }
       // Migration route: members of migrates species walk the waypoint loop. AE-165:

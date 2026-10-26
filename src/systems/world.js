@@ -3128,7 +3128,7 @@ export const world = {
       // move. Only a session-registered sector object answers the shift.
       if (solidPlan || poi.collides === true || fleetCount > 0) {
         const sceneryShift = racingCorridorSceneryShift(this.state, sector.id, pos,
-          Math.max(spawnRadius, fleetCount > 0 ? 280 : 0), poi.id);
+          Math.max(spawnRadius, fleetCount > 0 ? 280 : 0), `poi:${poi.id}`);
         if (sceneryShift) pos = { x: pos.x + sceneryShift.x, z: pos.z + sceneryShift.z };
       }
       const keepLive = fullPresence

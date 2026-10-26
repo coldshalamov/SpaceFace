@@ -26,7 +26,7 @@ export function configureRacingCorridorSession(state, enabled) {
   if (previous) for (const sector of previous.sectors) registeredSectors.delete(sector);
   sessions.delete(state);
   if (enabled !== true) return;
-  const session = { state, sectors: [], plans: new Map(), opticOffsets: new Map() };
+  const session = { state, sectors: [], plans: new Map() };
   for (const sector of Object.values(state.world?.sectors || {})) {
     if (!sector || !levels.has(sector.id)) continue;
     session.sectors.push(sector);
@@ -76,7 +76,12 @@ export function racingCorridorPlan(sectorId) {
     // The materialization bag these peers describe. world.js builds each pass into a
     // fresh bag and publishes it only at the end, so its identity marks the pass;
     // peers registered against a discarded bag must never bias the next build.
+    // The optic motif cache shares that lifetime: a cached offset only stays valid
+    // while the seat outsidePoint minted for it is still in the peer list. Letting
+    // it outlive a pass left the motif's whole volume unregistered on re-entry —
+    // a later mover could be seated inside a lattice it could not see.
     contentsBag: null,
+    opticOffsets: new Map(),
     grid,
   };
 }
@@ -88,21 +93,27 @@ export function clearsRacingCorridor(plan, pos, radius = 0) {
   return plan.keepouts.every(({ a, b }) => closestOnSegment(pos, a, b).distance >= clearance - 1e-6);
 }
 
-// Peer rows are { pos:{x,z}, radius, key?, cls }. A keyed row belongs to one named
-// body — the same authored slot on a re-materialization — so the body skips its own
-// stale seat instead of being pushed further out every pass. Row classes:
+// Peer rows are { pos:{x,z}, radius, key?, cls, placed }. A keyed row belongs to one
+// named body — the same authored slot on a re-materialization — so the body skips its
+// own stale seat instead of being pushed further out every pass. Row classes:
 //   'resv' — authored reservations and restored bodies.
 //   'seed' — stations and authored POI sites.
 //   'rock' — every settled scatter rock (arranger or membrane).
 //   'solid'— scenery this membrane placed or moved.
+// placed marks a pos this pass CHOSE — a mover's seat, a bank placement, a restored
+// pose, a reserved runtime slot — as opposed to an authored point. Only placed rows
+// can occupy space no author saw, so every mover class clears them, and a
+// corridor-clear body yields to them on the keep path: overlapping an authored row
+// is the author's own geometry, but landing on a moved body is a membrane-made stack.
 // Movers check against their own contract:
 //   'rock' movers (arranger banking) honor seeds, reservations and the earlier
 //        pile — exactly what the arranger's per-instance reservation set always
 //        held — so the seeded bank stays bitwise what the courses were tuned
 //        around.
-//   'memrock' movers (membrane re-seats of intruding scatter) honor only
-//        reservations — the old membrane was corridor-only, and anything wider
-//        reshuffles authored/bound rocks the courses were tuned against.
+//   'memrock' movers (membrane re-seats of intruding scatter) honor reservations,
+//        fixed seeds, and placed seats — never the authored pile, so the tuned bank
+//        is not reshuffled, but two shifted rocks can no longer collapse onto each
+//        other or onto a station's hull.
 //   'solid' movers (POI shifts, dressing, props) honor the whole list — that is
 //        the defect this list exists for: a shifted unique body can never again
 //        collapse onto a moved or settled one.
@@ -113,21 +124,45 @@ function peerBlocked(plan, pos, radius, key, cls) {
   if (!peers) return false;
   for (const row of peers) {
     if (!row || (key != null && row.key === key)) continue;
-    if (cls === 'memrock' && row.cls !== 'resv') continue;
-    if (cls === 'rock' && row.cls === 'solid') continue;
+    if (row.placed !== true) {
+      if (cls === 'memrock' && row.cls !== 'resv' && row.cls !== 'seed') continue;
+      if (cls === 'rock' && row.cls === 'solid') continue;
+    }
     if (Math.hypot(pos.x - row.pos.x, pos.z - row.pos.z) < radius + row.radius + 8) return true;
   }
   return false;
 }
 
-function notePeer(plan, pos, radius, key, cls) {
+// The keep-path twin of peerBlocked: only a seat this pass computed can force an
+// already-clear body off its authored pos. A row at the body's own pos is its own
+// seat re-registered under another salt (the shift→dressing double pass) — never a
+// blocker. The 1e-3 colocated tolerance covers the add-then-subtract ulp drift
+// between a shift delta and its recorded seat — two genuinely different bodies are
+// never authored closer than that.
+function placedSeatBlocked(plan, pos, radius, key) {
+  const peers = plan.peers;
+  if (!peers) return false;
+  for (const row of peers) {
+    if (!row || row.placed !== true) continue;
+    if (key != null && row.key === key) continue;
+    if (Math.abs(row.pos.x - pos.x) < 1e-3 && Math.abs(row.pos.z - pos.z) < 1e-3) continue;
+    if (Math.hypot(pos.x - row.pos.x, pos.z - row.pos.z) < radius + row.radius + 8) return true;
+  }
+  return false;
+}
+
+function notePeer(plan, pos, radius, key, cls, placed = false) {
   const peers = plan.peers;
   if (!peers || !finitePoint(pos) || !Number.isFinite(radius)) return;
   for (let i = 0; i < peers.length; i++) {
     const row = peers[i];
     if (!row) continue;
     // A keyed row refreshes in place: the body re-settles its own seat each pass.
-    if (key != null && row.key === key) { row.pos = { x: pos.x, z: pos.z }; row.radius = radius; return; }
+    if (key != null && row.key === key) {
+      row.pos = { x: pos.x, z: pos.z }; row.radius = radius;
+      row.placed = row.placed === true || placed === true;
+      return;
+    }
     if (key != null && row.key != null && row.pos.x === pos.x && row.pos.z === pos.z) {
       // Two registration paths salt the same body differently — the arranger keys a
       // banked rock by its seed slot, the spec membrane by fieldId — so the seat
@@ -142,7 +177,7 @@ function notePeer(plan, pos, radius, key, cls) {
     if (key == null && row.key == null && row.pos.x === pos.x && row.pos.z === pos.z) return;
   }
   if (peers.length >= PEER_CAP) return;
-  peers.push({ pos: { x: pos.x, z: pos.z }, radius, key, cls: cls || 'solid' });
+  peers.push({ pos: { x: pos.x, z: pos.z }, radius, key, cls: cls || 'solid', placed: placed === true });
 }
 
 function outsidePoint(plan, original, radius, salt, cls) {
@@ -157,10 +192,13 @@ function outsidePoint(plan, original, radius, salt, cls) {
   // registers as a 'rock' row so unique movers keep clear of it like any other.
   const rowCls = cls === 'memrock' ? 'rock' : cls;
   if (clearsRacingCorridor(plan, original, radius)) {
-    // An already-clear body keeps its seat — only its reservation is refreshed so a
-    // later moved body avoids it.
-    notePeer(plan, original, radius, key, rowCls);
-    return { ...original };
+    // An already-clear body keeps its seat — unless a seat this pass already
+    // computed overlaps it: a body shifted earlier could not foresee a later
+    // materialization, so the later body yields instead of stacking on it.
+    if (!placedSeatBlocked(plan, original, radius, key)) {
+      notePeer(plan, original, radius, key, rowCls);
+      return { ...original };
+    }
   }
   let closest = null;
   for (const segment of plan.keepouts) {
@@ -176,7 +214,7 @@ function outsidePoint(plan, original, radius, salt, cls) {
     const offset = plan.halfWidthWU + radius + plan.layout.shoulderWU + Math.floor(attempt / 2) * 36;
     const pos = { x: closest.x + nx * offset * sign, z: closest.z + nz * offset * sign };
     if (clearsRacingCorridor(plan, pos, radius) && !peerBlocked(plan, pos, radius, key, cls)) {
-      notePeer(plan, pos, radius, key, rowCls);
+      notePeer(plan, pos, radius, key, rowCls, true);
       return pos;
     }
   }
@@ -192,14 +230,14 @@ function outsidePoint(plan, original, radius, salt, cls) {
     const angle = baseAngle + attempt * 2.399963229728653;
     const pos = { x: plan.origin.x + Math.cos(angle) * reach, z: plan.origin.z + Math.sin(angle) * reach };
     if (!peerBlocked(plan, pos, radius, key, cls)) {
-      notePeer(plan, pos, radius, key, rowCls);
+      notePeer(plan, pos, radius, key, rowCls, true);
       return pos;
     }
   }
   // A peer ring dense enough to block every skirt angle cannot trap the point either;
   // fall back to the same deterministic exterior the un-peered path returned.
   const pos = { x: plan.origin.x + Math.cos(baseAngle) * baseReach, z: plan.origin.z + Math.sin(baseAngle) * baseReach };
-  notePeer(plan, pos, radius, key, rowCls);
+  notePeer(plan, pos, radius, key, rowCls, true);
   return pos;
 }
 
@@ -248,13 +286,13 @@ export function racingAsteroidSpec(state, spec) {
   if (!plan) return spec;
   const group = spec.data?.opticStructureId;
   if (typeof group === 'string' && group.startsWith('scatter:')) {
-    let offset = session.opticOffsets.get(group);
+    let offset = plan.opticOffsets.get(group);
     if (!offset) {
       // The source scatter recipes are at most four wick cells plus one cap,
       // on a 64-WU lattice. Six spacings contain every cell and its stone skin.
       const placed = outsidePoint(plan, spec.pos, 6 * 64, group, 'memrock');
       offset = { x: placed.x - spec.pos.x, z: placed.z - spec.pos.z };
-      session.opticOffsets.set(group, offset);
+      plan.opticOffsets.set(group, offset);
     }
     return offset.x === 0 && offset.z === 0 ? spec
       : { ...spec, pos: { x: spec.pos.x + offset.x, z: spec.pos.z + offset.z } };
@@ -277,6 +315,7 @@ export function createRacingCorridorArranger(sector, options = {}) {
   if (plan.contentsBag !== options.active) {
     plan.contentsBag = options.active;
     plan.peers.length = 0;
+    plan.opticOffsets.clear();
   }
   // The arranger and the scenery membrane share the plan's reservation list: a banked
   // rock blocks a shifted POI exactly as a shifted POI blocks the next banked rock.
@@ -292,12 +331,14 @@ export function createRacingCorridorArranger(sector, options = {}) {
   // Already-global authored activity marks enter as reservations BEFORE the first
   // movable rock — same contract as the campaign arranger. Ceres is a racing
   // sector now: without this a banked scatter rock could land on a bound mark.
+  // A reserved slot is placed occupancy — an object will sit there — so a
+  // corridor-clear body overlapping it yields rather than stacking on the mark.
   for (const r of options.reservations || []) {
-    if (finitePoint(r?.pos) && Number.isFinite(r.radius)) notePeer(plan, r.pos, r.radius, undefined, 'resv');
+    if (finitePoint(r?.pos) && Number.isFinite(r.radius)) notePeer(plan, r.pos, r.radius, undefined, 'resv', true);
   }
   const stats = { placed: 0, moved: 0, skirts: 0 };
   const peerClear = (pos, radius, key, cls) => !peerBlocked(plan, pos, radius, key, cls);
-  const reserve = (pos, radius, key, cls) => notePeer(plan, pos, radius, key, cls);
+  const reserve = (pos, radius, key, cls, placed) => notePeer(plan, pos, radius, key, cls, placed);
   return {
     profile: plan.layout,
     keepouts: plan.keepouts,
@@ -336,7 +377,7 @@ export function createRacingCorridorArranger(sector, options = {}) {
             const pos = { x: a.x + (b.x - a.x) * t - (b.z - a.z) / length * offset,
               z: a.z + (b.z - a.z) * t + (b.x - a.x) / length * offset };
             if (!clearsRacingCorridor(plan, pos, radius) || !peerClear(pos, radius, bodyKey, 'rock')) continue;
-            reserve(pos, radius, bodyKey, 'rock'); stats.placed++; stats.moved++;
+            reserve(pos, radius, bodyKey, 'rock', true); stats.placed++; stats.moved++;
             return pos;
           }
           // Preserve the existing object budget. Unusually crowded banks use the safe
@@ -352,16 +393,16 @@ export function createRacingCorridorArranger(sector, options = {}) {
             const reach = 3000 + attempt * (radius * 2 + 12);
             pos = { x: plan.origin.x + Math.cos(angle) * reach, z: plan.origin.z + Math.sin(angle) * reach };
           }
-          reserve(pos, radius, bodyKey, 'rock'); stats.placed++; stats.skirts++;
+          reserve(pos, radius, bodyKey, 'rock', true); stats.placed++; stats.skirts++;
           return pos;
         },
-        reserveRestored: (pos, radius) => reserve(pos, radius, undefined, 'resv'),
+        reserveRestored: (pos, radius) => reserve(pos, radius, undefined, 'resv', true),
       };
     },
     placeProp(placeId, pos, radius, rot = 0) {
       return { pos: outsidePoint(plan, pos, radius, placeId), rot };
     },
-    reserve,
+    reserve: (pos, radius) => notePeer(plan, pos, radius, undefined, 'resv', true),
     summary: () => ({ ...stats }),
   };
 }
