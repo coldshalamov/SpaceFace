@@ -475,7 +475,11 @@ export const recoveryEncounter = {
   },
 
   _armHazard(record, wreck) {
-    record.hazardDueAt = Number(this.state.simTime || 0) + HAZARD_WINDOW_S;
+    // A restored record already owns its fuse deadline. Materializing a new body
+    // must resume that hazard rather than granting another twelve seconds.
+    if (!Number.isFinite(record.hazardDueAt)) {
+      record.hazardDueAt = Number(this.state.simTime || 0) + HAZARD_WINDOW_S;
+    }
     const actions = this.registry && this.registry.get && this.registry.get('salvageActions');
     if (wreck.data) wreck.data.unstableReactor = true;
     if (actions && typeof actions._annotate === 'function') actions._annotate(wreck);
@@ -732,6 +736,11 @@ export const recoveryEncounter = {
     data.recoveryClosed = record.phase === 'completed' || record.phase === 'failed';
     data.salvagePool = {};
     data.salvageTimeLeft = 0;
+    // Continue rebuilds physical bodies from the semantic sidecar. Reinstall the
+    // live salvage reactor so the saved hazard can still be vented or detonate.
+    if (record.phase === 'hazard' && (!data.unstableReactor || typeof data.unstableReactor !== 'object')) {
+      this._armHazard(record, wreck);
+    }
     if (record.phase === 'completed') data.scanLabel = `Recovered Derelict - ${String(record.outcome || 'closed').replace(/_/g, ' ')}`;
     else if (record.phase === 'failed') data.scanLabel = 'Burned Derelict - recovery closed';
     else data.scanLabel = record.scanned ? record.conditionLabel : 'Unidentified Derelict';
