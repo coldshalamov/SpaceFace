@@ -249,10 +249,18 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-dossier .k-hero--hero { flex-wrap:wrap !important; margin:0 0 4px !important; }
   ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:24px !important; }
   ${D} .sx-dossier .k-hero--hero .k-hero__w { letter-spacing:.08em !important; overflow-wrap:normal !important; }
-  ${D} .orr-ct-scales { display:none !important; }
+  ${D} .sx-dossier > .orr-ct-scales { position:static !important; inset:auto !important; transform:none !important; width:auto !important; max-width:100% !important; margin:8px 0 0 !important; }
   ${D} .sx-dossier__terms > li { grid-template-columns:minmax(0, 1fr) !important; row-gap:1px !important; }
   ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
   ${D} .sx-dossier > .k-caps { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:.1em !important; line-height:1.3 !important; }
+  /* YOURS: the title stands over its objective line, each in its own row, TRACK beside them */
+  ${D} .sx-ct__jobs .sx-job { display:grid !important; grid-template-columns:minmax(0, 1fr) auto !important; grid-template-rows:auto auto !important;
+    grid-template-areas:"title track" "meta track" !important; column-gap:8px !important; row-gap:1px !important; align-items:center !important; height:auto !important; }
+  ${D} .sx-ct__jobs .sx-job > .sx-job__title { grid-area:title !important; }
+  ${D} .sx-ct__jobs .sx-job > .sx-job__meta { grid-area:meta !important; }
+  ${D} .sx-ct__jobs .sx-job > :is(.sx-job__title, .sx-job__meta) { position:static !important; display:block !important; max-width:none !important; height:auto !important; min-width:0 !important;
+    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; -webkit-line-clamp:unset !important; line-height:1.3 !important; margin:0 !important; transform:none !important; }
+  ${D} .sx-ct__jobs .sx-job > .sx-job__track { grid-area:track !important; position:static !important; margin:0 !important; }
 }
 /* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
 @media (max-width:480px) and (min-height:801px) {
