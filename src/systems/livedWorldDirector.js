@@ -8,6 +8,7 @@ import { ENCOUNTERS } from '../data/encounters.js';
 import { livedOverlayFor } from '../data/livedSectorOverlays.js';
 import { zoneAt } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
 const SCAN_S = 6;
 const GAP_S = 90;
@@ -162,6 +163,7 @@ function worldAlreadyFighting(state) {
 export function tickLivedVignettes(runtime) {
   const state = runtime && runtime.state;
   if (!state || state.mode !== 'flight') return;
+  if (isRacingCorridorSession(state)) return;
   if (state.ui && state.ui.docked) return;
   if (state.player && state.player.flags && state.player.flags.docked) return;
   if (state.onboarding && state.onboarding.active && !state.onboarding.finished) return;

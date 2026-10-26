@@ -50,6 +50,16 @@ export function createStationEffects({ root, app, body, dock, credits, getState 
     animation.addEventListener('finish', cleanup, { once: true });
     animation.addEventListener('cancel', cleanup, { once: true });
   }
+  // A tab or the berth does not blink in as one slab: its regions rise in reading order, the
+  // way an instrument powers on. Capped, interruptible (animate() cancels per element), and
+  // silent under reduced motion. fill:'backwards' holds the entry pose through the stagger
+  // delay so a later region never flashes in early.
+  function stagedRise(pane) {
+    if (!pane || !allowed()) return;
+    [...pane.children].slice(0, 6).forEach((el, i) => animate(el,
+      [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'translateY(0)' }],
+      { duration: 240, delay: 60 + i * 45, fill: 'backwards' }));
+  }
   function updateIndicator() {
     if (!visible || disposed) return;
     const active = dock.querySelector('[role=tab][aria-selected=true]');
@@ -159,10 +169,15 @@ export function createStationEffects({ root, app, body, dock, credits, getState 
     navigate() {
       syncPolicy(); updateIndicator(); enhance();
       animate(body.firstElementChild, [{ opacity: .25, transform: 'translateY(8px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 260 });
+      stagedRise(body.firstElementChild);
       const beam = body.querySelector('.sx-mkt-line');
       if (beam && allowed() && typeof beam.getTotalLength === 'function') { const n = beam.getTotalLength(); animate(beam, [{ strokeDasharray: `${n}`, strokeDashoffset: n }, { strokeDasharray: `${n}`, strokeDashoffset: 0 }], { duration: 650 }); }
     },
-    arrive() { syncPolicy(); animate(app, [{ opacity: .3, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 360 }); updateIndicator(); },
+    arrive() {
+      syncPolicy(); updateIndicator();
+      animate(app, [{ opacity: .3, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 360 });
+      stagedRise(body.firstElementChild);
+    },
     credits(value) {
       const next = Math.max(0, Math.round(Number(value) || 0));
       if (creditValue === next) return;

@@ -724,6 +724,13 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-ops .orr-stationrow__rule, ${D} .sxb-ops .so-dock-indicator { display:none !important; }
   ${D} .sxb-ops .sx-comms { margin:0 !important; align-self:center !important; }
   ${D} .sxb-ops .sxb-launch-seat { margin:0 0 0 auto !important; align-self:center !important; }
+  /* A live receipt needs its own measured row: anchoring it above COMMS put it across the
+     destination's explanation. Flow allocates its wrapped height without covering a choice. */
+  ${D} .sxb-ops:has(> .sx-comms > .sx-receipt:not([hidden])) > .sx-comms { display:contents !important; }
+  ${D} .sxb-ops > .sx-comms > .sx-receipt:not([hidden]) { position:static !important; order:-1 !important;
+    flex:1 0 100% !important; width:100% !important; max-width:100% !important; box-sizing:border-box;
+    flex-wrap:wrap !important; white-space:normal !important; gap:2px 10px !important; }
+  ${D} .sxb-ops > .sx-comms > .sx-receipt:not([hidden]) > * { min-width:0; overflow-wrap:anywhere; }
 }
 /* …and under 481 wide the five dials' verbs wrap to two lines each, so the head scrolls its services past 40% of the frame
    and the next step keeps its title, not its sentence, leaving the tab a real body */

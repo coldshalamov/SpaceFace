@@ -1,5 +1,6 @@
 // src/ui/encounterChoicePrompt.js — adapter from the sim's authored encounter events to the
-// flight decision deck (src/ui/promptDeck.js).
+// flight decision deck (src/ui/promptDeck.js), plus the claim-defense and swarm-event wager
+// offers that share its exact shape.
 //
 // The sim owns timing and outcome; this adapter only normalizes `encounter:choiceOffered` into a
 // deck decision and emits exactly one `encounter:choose` back through the deck's onChoose verb.
@@ -123,6 +124,53 @@ export function createEncounterChoicePrompt(ctx = {}) {
     return !!(deck && deck.resolveDecision('claim-defense:' + defenseId));
   };
 
+  // ── Swarm event wagers — the telegraph IS the bet ───────────────────────────────────────────
+  // src/systems/swarmEvents.js arms each seeded card and publishes its wager on
+  // `swarm:eventTelegraphed`: ENGAGE fires the event as authored and pays the stated bounty,
+  // REFUSE stands the room down — pressure and payout both forfeit. The card's deadline is the
+  // director's own fire line, and the unanswered default stays authored (the payload's
+  // `wager.timeout`) — this adapter renders the offer and returns exactly one
+  // `swarm:eventVerdict`, never a second clock and never a guess at the stakes.
+  const SWARM_WAGER_DECK_ID = 'swarm:event-wager';
+
+  const swarmWagerOffered = (payload) => {
+    if (!payload || !payload.eventId || !payload.wager) return false;
+    const deck = getPromptDeck();
+    if (!deck) return false;
+    const bounty = Number(payload.wager.score) > 0
+      ? ` +${Math.round(payload.wager.score)} score if it lands.`
+      : '';
+    return deck.offerDecision({
+      id: SWARM_WAGER_DECK_ID,
+      kind: 'warn',
+      sender: 'ARENA EVENT',
+      statusFlag: 'WAGER',
+      headline: String(payload.name || payload.eventId).toUpperCase(),
+      detail: `${String(payload.telegraph || 'The room is about to move.')}${bounty}`,
+      deadlineAt: Number.isFinite(payload.deadlineAt) ? Number(payload.deadlineAt) : null,
+      choices: [
+        { id: 'accept', label: 'ENGAGE' },
+        { id: 'refuse', label: 'REFUSE', danger: true, cancel: true },
+      ],
+      onChoose: (choiceId, source) => {
+        deck.resolveDecision(SWARM_WAGER_DECK_ID);
+        bus.emit('swarm:eventVerdict', {
+          wave: payload.wave,
+          eventId: payload.eventId,
+          accept: choiceId === 'accept',
+          source,
+        });
+      },
+    });
+  };
+
+  // Any settlement the room reports — spend, decline, calm — retires the offer; the deadline
+  // on the spec is the same fire line the sim enforces, so the card never outlives its wager.
+  const swarmWagerSettled = () => {
+    const deck = getPromptDeck();
+    return !!(deck && deck.resolveDecision(SWARM_WAGER_DECK_ID));
+  };
+
   bus.on('encounter:choiceOffered', offered);
   bus.on('encounter:resolved', resolved);
   bus.on('encounter:waitStarted', waitStarted);
@@ -131,6 +179,8 @@ export function createEncounterChoicePrompt(ctx = {}) {
   // window is over and the card retires.
   bus.on('claim:defenseStarted', defenseSettled);
   bus.on('claim:defenseResolved', defenseSettled);
+  bus.on('swarm:eventTelegraphed', swarmWagerOffered);
+  bus.on('swarm:event', swarmWagerSettled);
   // Sector/run transitions are the deck's own subscriptions now; the old per-card
   // hide-on-sector:exit / game:new / game:load sets are retired with the cards.
 
@@ -149,6 +199,8 @@ export function createEncounterChoicePrompt(ctx = {}) {
       try { bus.off && bus.off('claim:defenseWarning', defenseWarning); } catch (_) {}
       try { bus.off && bus.off('claim:defenseStarted', defenseSettled); } catch (_) {}
       try { bus.off && bus.off('claim:defenseResolved', defenseSettled); } catch (_) {}
+      try { bus.off && bus.off('swarm:eventTelegraphed', swarmWagerOffered); } catch (_) {}
+      try { bus.off && bus.off('swarm:event', swarmWagerSettled); } catch (_) {}
     },
   };
 }

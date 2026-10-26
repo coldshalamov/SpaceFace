@@ -17461,7 +17461,11 @@ export const render = {
         const finalOpeningStarted = prepareNow();
         finalOpening = await waitForOpeningCompositionSettled(state, {
           stale: cookStale,
-          timeoutMs: Math.min(12000, remainingMs()),
+          // The broad cook's allowance can already be spent. This handoff still requires
+          // two fresh observations across a presented frame; its 400ms residual floor
+          // rejected fully authored pictures when that frame alone took longer. Keep the
+          // bounded composition window, under the unchanged outer current-sector deadline.
+          timeoutMs: loadPolicy.compositionSettleMs,
           yieldToMain: yieldAndFlushLiveSectorGpu,
           renderer,
           scene,

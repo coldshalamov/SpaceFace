@@ -262,6 +262,34 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
     white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; -webkit-line-clamp:unset !important; line-height:1.3 !important; margin:0 !important; transform:none !important; }
   ${D} .sx-ct__jobs .sx-job > .sx-job__track { grid-area:track !important; position:static !important; margin:0 !important; }
 }
+/* BAR in the same narrow, tall desktop window: the 360px rail left the reading a ~190px strip, so the contact's
+   name set one syllable a line ("Capt / ain") and the reply and questions fell out of sight. The rail and the reading
+   share the width, each contact's role stands under the name, and the portrait sits beside the name. */
+@media (max-width:650px) and (min-height:801px) {
+  ${D} .k-panel.sx-bar { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; column-gap:16px !important; }
+  ${D} .sx-bar__rows .sx-bar-row { display:block !important; }
+  ${D} .sx-bar-row__role { display:block !important; margin-top:1px !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; max-width:100% !important; }
+  ${D} .sx-bar__stage .sx-talk { padding-left:0 !important; }
+  ${D} .sx-talk__head { display:grid !important; grid-template-columns:minmax(0, 1fr) 56px !important; column-gap:10px !important; align-items:start !important; }
+  ${D} .sx-talk__head > .sx-talk__id { display:contents !important; }
+  ${D} .sx-talk__head .sx-talk__role { grid-column:1 !important; grid-row:1 !important; margin:0 0 4px !important; }
+  ${D} .sx-talk__name { grid-column:1 !important; grid-row:2 !important; margin:0 !important; font-size:20px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; hyphens:none !important; }
+  ${D} .sx-talk__head .sx-talk__memory { grid-column:1 / -1 !important; grid-row:3 !important; font-size:13.5px !important; line-height:1.4 !important; max-width:none !important; margin-top:8px !important; }
+  ${D} .sx-talk__reply, ${D} .sx-talk__reply.is-said { font-size:14px !important; line-height:1.45 !important; max-width:none !important; margin-top:10px !important; }
+  ${D} .sx-talk__head > .sx-talk__avatar { grid-column:2 !important; grid-row:1 / span 2 !important; align-self:center !important; position:relative !important; inset:auto !important; width:56px !important; height:56px !important; max-height:none !important; }
+  ${D} .sx-talk__avatar::after { display:none !important; }
+}
+/* …and under 481 two halves cut the roles and the questions: the contacts stand over the reading, each scrolling */
+@media (max-width:480px) and (min-height:801px) {
+  ${D} .k-panel.sx-bar { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 2fr) minmax(0, 3fr) !important; row-gap:10px !important; }
+  ${D} .k-panel.sx-bar > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
+  ${D} .sx-bar__hang { overflow-y:auto !important; overscroll-behavior:contain; padding-top:0 !important; }
+  ${D} .sx-bar__rows .sx-bar-row { padding-top:3px !important; padding-bottom:3px !important; }
+  ${D} .sx-bar__stage { padding-top:0 !important; }
+  ${D} .sx-bar__stage .sx-talk > * + * { margin-top:6px !important; }
+  ${D} .sx-talk__head .sx-talk__memory { margin-top:4px !important; }
+  ${D} .sx-talk__head > .sx-talk__avatar { width:44px !important; height:44px !important; }
+}
 /* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
 @media (max-width:480px) and (min-height:801px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
@@ -2129,6 +2157,61 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
    board window at 960x540. Rows without a tag are unchanged. */
 ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge:has(.sx-ct-row__dest) { white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
 ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge .sx-ct-row__dest { letter-spacing:.02em; }
+
+/* ===================== craft-critic journey2 — appended last to win ties ===================== */
+/* F2 — a missing market quote is a state, not a numeral. The em dash at display weight painted
+   a solid slab beside "YOU PAY · ONE UNIT NOW"; the slot now carries "SOLD OUT" at label size
+   (or a thin dim dash for a sell-side no-quote), and the caption dims with it. */
+html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero .k-hero__n .sx-mkt__hero-na {
+  display: inline-block; font: 650 15px/1.15 var(--dp-face-label, "Archivo") !important;
+  font-variation-settings: "wdth" 100, "wght" 650 !important; letter-spacing: .22em !important;
+  text-transform: uppercase !important; color: rgb(${BONE} / .62) !important; text-shadow: none !important;
+}
+html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero.sx-mkt__hero--na .k-hero__w { color: rgb(${BONE} / .42) !important; }
+/* F3 — the contacts ladder ran single-line rows inside a 360px column and the "· NEW ARRIVAL"
+   badge hard-clipped mid-word (a width defect the critic photographed at 1280×720, but it bit
+   at every height in the 1101–1499px band). The rail widens to 400px across the band, and the
+   role dissolves to an ellipsis rather than ever cutting a glyph. */
+@media (min-width:1101px) and (max-width:1499px) {
+  ${T} .sx-bar { grid-template-columns: 400px minmax(0, 1fr) !important; }
+}
+@media (max-width:1499px) {
+  ${T} .sx-bar__rows .sx-bar-row .sx-bar-row__role { min-width: 0 !important; max-width: 100% !important; overflow: hidden !important; white-space: nowrap !important; text-overflow: ellipsis !important; }
+}
+@media (max-height:800px) {
+  /* F4 — the board verb used to sit under the hang's fold with the third lead. At ≤800px the
+     hang's rhythm shortens (shallower leads margin, tighter row pitch, the keys hint stands
+     down) so the whole column — three leads and the foot — clears at rest, and the fade mask
+     that was eating the foot is retired. */
+  ${T} .sx-bar__hang { -webkit-mask-image: none !important; mask-image: none !important; }
+  ${T} .sx-bar__leads { margin-top: 10px !important; }
+  ${T} .sx-bar__leads > .k-caps { margin-top: 0 !important; }
+  ${T} .sx-bar__rail > .k-caps + .k-words, ${T} .sx-bar__leads > .k-caps + .k-rows { margin-top: 6px !important; }
+  ${T} .sx-bar__rows { row-gap: 0 !important; }
+  ${T} .sx-bar__rows .sx-bar-row { padding-top: 2px !important; padding-bottom: 2px !important; line-height: 1.3 !important; }
+  ${T} .sx-bar__keys { display: none !important; }
+  ${T} .sx-lead { padding-top: 2px !important; padding-bottom: 2px !important; }
+  ${T} .sx-bar__foot { margin-top: 8px !important; padding-top: 7px !important; padding-bottom: 4px !important;
+    background: linear-gradient(0deg, rgb(${BONE} / .14), rgb(${BONE} / .14)) 0 0 / 100% 1px no-repeat !important; }
+}
+/* Ledger — the empty book used to leave ~70% of the panel void. An empty ledger page still
+   carries its rules: the empty state stretches and stands on ruled lines with the margin
+   column, so the void reads as a page waiting for its first entry, not dead glass. */
+${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows: auto auto auto minmax(0, 1fr) auto !important; }
+${T} .sx-ledger .st-ledger-empty:not([hidden]) {
+  align-self: stretch !important; min-height: 120px !important; padding-top: 12px !important; padding-left: 40px !important;
+  background:
+    linear-gradient(90deg, transparent 24px, rgb(${BONE} / .13) 24px, rgb(${BONE} / .13) 25px, transparent 25px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, transparent 0 32px, rgb(${BONE} / .09) 32px 33px) !important;
+}
+/* F9 — the FIND A SERVICE trigger wore a bordered kbd pill; it stands as a bare caps word with
+   a quiet field rule instead. The market search answers focus with a tick on its underline. */
+${T} .so-command-trigger { border: 0 !important; border-radius: 0 !important; background: none !important; background-image: none !important; box-shadow: inset 0 -1px 0 rgb(${BONE} / .16) !important; clip-path: none !important; padding: 0 0 4px !important; min-height: 0 !important; }
+${T} .so-command-trigger .dp-kbd { border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; }
+${T} .so-command-trigger:is(:hover, :focus-visible) { box-shadow: inset 0 -1px 0 rgb(${BONE} / .45) !important; color: rgb(252 249 240) !important; outline: none !important; }
+${T} .sx-mkt-search { box-shadow: inset 0 -1px 0 rgb(${BONE} / .28) !important; }
+${T} .sx-mkt-search:focus { outline: none !important; box-shadow: inset 0 -1.5px 0 rgb(${BONE} / .72) !important;
+  background: linear-gradient(90deg, rgb(${BONE} / .9) 0 9px, transparent 9px) 0 100% / 100% 2px no-repeat !important; }
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {

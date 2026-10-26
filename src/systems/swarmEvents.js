@@ -7,6 +7,13 @@
 // the bound), and one helpers.spawnEntity pickup for the supply pod. No entity writes, no
 // direct state mutation — the room stays the writer.
 //
+// The telegraph is a WAGER, not ambient pressure. While the windup runs, the card's own
+// `wager` terms ride `swarm:eventTelegraphed` (deadlineAt is the fire line — one clock);
+// the deck adapter answers on `swarm:eventVerdict`. ENGAGE fires the event as authored and
+// pays the stated bounty score; REFUSE stands the room down — pressure and payout both
+// forfeit. An unanswered card resolves to its authored `wager.timeout` — every shipped
+// telegraph declares the event as already inbound, so they all read 'accept' (opt-out).
+//
 // This file deliberately registers no manifest slot of its own. The director is hosted by
 // survivalArena — it already ticks at the exact slot this work needs ("Arena toys intercept
 // shots and update field strengths before fields and physics resolve this tick"), and
@@ -22,8 +29,25 @@ export const SWARM_EVENT_MINE_OWNER = 'survival-arena';
 export const SWARM_EVENT_POD_KIND = 'swarm_supply_pod';
 /** Seconds a pod rides before the ordinary despawn sweep takes it — matches the repair cell. */
 export const SWARM_EVENT_POD_TTL_S = 18;
+/** The award reason the bounty score pays under — one receipt the earn line can read. */
+export const SWARM_EVENT_BOUNTY_REASON = 'swarm:eventBounty';
 
 const TAU = Math.PI * 2;
+
+/**
+ * The wager terms a card lays, normalized. `timeout` is the default an unanswered wager
+ * resolves to at the fire line — read off the card's own data so the framing stays authored.
+ * A malformed/missing timeout reads 'refuse': an event that cannot state its default must
+ * not impose itself on the player.
+ */
+export function swarmEventWager(event) {
+  const wager = event && event.wager;
+  if (!wager || typeof wager !== 'object') return null;
+  return {
+    score: Number.isFinite(wager.score) ? Math.round(wager.score) : 0,
+    timeout: wager.timeout === 'accept' ? 'accept' : 'refuse',
+  };
+}
 
 function simTimeOf(state) {
   return state && Number.isFinite(state.simTime) ? state.simTime : 0;
@@ -74,7 +98,7 @@ export function bearingPoint(frame, bearing, dist) {
 export function createSwarmEventDirector(ctx) {
   const api = {
     name: 'swarmEvents',
-    _armed: null,     // { event, fireAt } — telegraphed, waiting to spend
+    _armed: null,     // { event, fireAt, wave, verdict } — telegraphed, waiting to spend
     _live: null,      // { event, until, restores:[{id, strength}], fieldId, podId }
     /** Live supply pods: pickupId -> the credits stamped on it at spawn. */
     _pods: new Map(),
@@ -90,6 +114,7 @@ export function createSwarmEventDirector(ctx) {
         this._unsubs.push(this._bus.on('run:waveCleared', () => this.teardown('wave_cleared')));
         this._unsubs.push(this._bus.on('run:ended', () => this.teardown('run_ended')));
         this._unsubs.push(this._bus.on('pickup:collected', (p) => this._onPodCollected(p)));
+        this._unsubs.push(this._bus.on('swarm:eventVerdict', (p) => this._onVerdict(p)));
       }
     },
 
@@ -124,9 +149,11 @@ export function createSwarmEventDirector(ctx) {
       const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
       const event = swarmEventFor({ arenaId: run.arenaId, wave, seed: run.seed });
       if (!event) return;
-      // Telegraph first, spend later — the player reads the card before the room plays it.
+      // Telegraph first, spend later — the player reads the card's wager before the room
+      // plays it. deadlineAt IS the fire line: the deck and the director share one clock.
       const now = simTimeOf(state);
-      this._armed = { event, fireAt: now + event.windupS };
+      const fireAt = now + event.windupS;
+      this._armed = { event, fireAt, wave, verdict: null };
       if (this._bus) {
         this._bus.emit('alert', {
           key: `swarm-event-${event.id}`,
@@ -136,7 +163,30 @@ export function createSwarmEventDirector(ctx) {
         });
         this._bus.emit('swarm:eventTelegraphed', {
           wave, eventId: event.id, windupS: event.windupS,
+          deadlineAt: fireAt,
+          name: event.name,
+          telegraph: event.telegraph,
+          kind: event.kind,
+          wager: swarmEventWager(event),
         });
+      }
+    },
+
+    /**
+     * The player's answer to an armed wager. First verdict wins (the deck resolves its card
+     * on choose, so a second can only arrive from a stale adapter). REFUSE stands the room
+     * down immediately — the event never fires and the bounty never pays. ENGAGE just keeps
+     * the arm: the event still fires on its authored line, never early.
+     */
+    _onVerdict(payload) {
+      const armed = this._armed;
+      if (!armed || !payload || armed.verdict != null) return;
+      if (payload.eventId !== armed.event.id) return;
+      if (Number.isInteger(payload.wave) && payload.wave !== armed.wave) return;
+      armed.verdict = payload.accept === true ? 'accepted' : 'refused';
+      if (armed.verdict === 'refused') {
+        this._armed = null;
+        this._emitEvent('declined', this._state, armed.event, {});
       }
     },
 
@@ -144,11 +194,27 @@ export function createSwarmEventDirector(ctx) {
       const st = state || this._state;
       const now = simTimeOf(st);
       if (this._armed && now >= this._armed.fireAt) {
-        const event = this._armed.event;
+        const armed = this._armed;
         this._armed = null;
-        this._live = { event, until: event.windowS > 0 ? now + event.windowS : now, restores: [] };
-        this._spend(event, st);
-        if (event.windowS <= 0) this._finishLive(st);
+        const event = armed.event;
+        const wager = swarmEventWager(event);
+        // The wager resolves at the fire line: a refused arm is already dropped, so the
+        // only question left is an UNANSWERED card's authored default. A card with no wager
+        // at all fires as it always did — pre-wager tables degrade to ambient, not silence.
+        const declined = armed.verdict === 'refused'
+          || (armed.verdict == null && wager != null && wager.timeout === 'refuse');
+        if (declined) {
+          this._emitEvent('declined', st, event, {});
+        } else {
+          this._live = { event, until: event.windowS > 0 ? now + event.windowS : now, restores: [] };
+          if (wager && wager.score > 0 && this._bus) {
+            this._bus.emit('run:awardRequested', {
+              score: wager.score, reason: SWARM_EVENT_BOUNTY_REASON, wave: armed.wave,
+            });
+          }
+          this._spend(event, st);
+          if (event.windowS <= 0) this._finishLive(st);
+        }
       }
       if (this._live && this._live.until != null && now >= this._live.until) this._finishLive(st);
     },
@@ -278,7 +344,13 @@ export function createSwarmEventDirector(ctx) {
     teardown(reason) {
       // A wave that cleared mid-surge must calm the room, not leave it running hot.
       if (this._live) this._finishLive(this._state);
-      this._armed = null;
+      // A wave ending mid-windup stands the wager down — the deck retires its card on the
+      // same 'declined' receipt a refuse emits, instead of lingering to its deadline.
+      if (this._armed) {
+        const armed = this._armed;
+        this._armed = null;
+        this._emitEvent('declined', this._state, armed.event, {});
+      }
       // Pods outlive the wave ledger on purpose: a spawned pod still on the board (18 s TTL)
       // and scooped after the clear must still pay. Entries die on collect or with the director.
       this._lastTeardown = reason;

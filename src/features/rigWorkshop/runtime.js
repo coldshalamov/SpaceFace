@@ -5,6 +5,7 @@ import { createRigPhysicsAdapter, connectedPartIds } from './physics.js';
 import { createWorkshopJobs, RIG_JOB_DEFS } from './jobs.js';
 import { captureRigWorkshop, restoreRigWorkshop } from './persistence.js';
 import { explainWorkshopReason, PART_BUTTONS } from './text.js';
+import { isRacingCorridorSession } from '../../world/racingCorridor.js';
 
 const owners = new WeakMap();
 const dist = (a, b) => Math.hypot((a?.x || 0) - (b?.x || 0), (a?.z || 0) - (b?.z || 0));
@@ -28,7 +29,7 @@ export function isWorkshopAdventure(state) {
     && !state.survival?.active && !state.racing?.active && !state.race?.active
     && !state.orbitalGallery?.active && !state.kineticLeague?.active
     && !state.tutorial?.active && !state.replay?.active && !state._ephemeralRacing
-    && !state.physicsVenueSession && !state.physicsVenue?.active;
+    && !state.physicsVenueSession && !state.physicsVenue?.active && !isRacingCorridorSession(state);
 }
 
 /** The director and guaranteed ordinary-flight approach use the same owner, never duplicate yards. */

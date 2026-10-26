@@ -549,12 +549,57 @@ export function bossRoomNote(room) {
   return BOSS_ROOM_NOTES[room] || null;
 }
 
+/**
+ * A WRAPPED CHAMPION READS AS AN ESCALATION, NOT A REPRINT.
+ *
+ * Past wave 140 the rotation lands on a row the player already beat — and wave 150 used to be
+ * the wave-10 fight verbatim. HP inflation is the one lever this mode refuses (rule 1), so the
+ * wrap escalates through the mode's own currency, BODIES: the champion returns wearing a cycle
+ * numeral ("Iron Maw II") and an honor guard of wardens on its own gate, folded into `packages`
+ * through the exact multi-package contract the wing rows already use. Every guard body is
+ * `champion: true`, so requireBoss owes it, the boss bar counts it, the affix pass can trick
+ * it, and its seats come out of the opening chaff — the room stays exactly as full.
+ */
+export const SWARM_WRAP_ESCORT_ENEMY = 'warden_escort';
+/** A guard, not a second wing — deeper cycles harden the same escort rather than flooding it. */
+export const SWARM_WRAP_ESCORT_MAX = 4;
+
+/** The numeral a wrapped champion wears: cycle 1 (the second pass) reads 'II'. */
+export function swarmCycleNumeral(cycle) {
+  let n = Math.max(1, Math.trunc(Number(cycle) || 0) + 1);
+  let out = '';
+  for (const [v, glyph] of [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]) {
+    while (n >= v) { out += glyph; n -= v; }
+  }
+  return out;
+}
+
+/** The escalated row a wrap wears: same id, score, room and line — plus numeral and guard. */
+function swarmEscalatedBoss(row, cycle) {
+  return {
+    ...row,
+    cycle,
+    label: `${row.label} ${swarmCycleNumeral(cycle)}`,
+    packages: [
+      ...bossPackagesFor(row),
+      {
+        enemyId: SWARM_WRAP_ESCORT_ENEMY,
+        count: Math.min(cycle, SWARM_WRAP_ESCORT_MAX),
+        role: 'support',
+        sameGate: true,
+      },
+    ],
+  };
+}
+
 /** Which champion a boss wave fields. Non-boss waves have none. */
 export function swarmBossFor(wave) {
   const w = swarmWaveOf(wave);
   if (!isSwarmBossWave(w)) return null;
   const step = Math.max(0, Math.floor(w / SWARM_BOSS_EVERY) - 1);
-  return SWARM_BOSS_ROTATION[step % SWARM_BOSS_ROTATION.length];
+  const row = SWARM_BOSS_ROTATION[step % SWARM_BOSS_ROTATION.length];
+  const cycle = Math.floor(step / SWARM_BOSS_ROTATION.length);
+  return cycle > 0 ? swarmEscalatedBoss(row, cycle) : row;
 }
 
 /**
@@ -1193,6 +1238,9 @@ export function swarmPlanBlock(wave, bossOverride) {
     bossEnemyId: boss && typeof boss.enemyId === 'string' ? boss.enemyId : null,
     bossScoreId: boss && typeof boss.scoreId === 'string' ? boss.scoreId : null,
     bossTrickId: boss && typeof boss.trickId === 'string' ? boss.trickId : null,
+    // The wrap pass this champion is on: 0 inside the first 140 waves, then 1, 2… each time
+    // the rotation re-lands on the same base row (the label already wears the numeral).
+    bossCycle: boss && Number.isInteger(boss.cycle) ? boss.cycle : 0,
     draftAfter: isSwarmDraftWave(w),
     refitAfter: isSwarmRefitWave(w),
     reinforceGapTicks: SWARM_REINFORCE_GAP_TICKS,

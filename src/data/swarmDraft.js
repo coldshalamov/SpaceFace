@@ -546,6 +546,55 @@ export function swarmCallinCount(run, callinId) {
   return total;
 }
 
+// ── the hull patch ──
+//
+// The weld sells the whole hull back at one flat price and throws the armor in. The patch
+// sells a piece of it: a bounded mend priced by the scar it closes, so a hurt pilot whose
+// wallet cannot reach the weld still has a "pay to live" row on the counter between waves.
+// The price reads off the hull's own MAXIMUM — a Hornet's patch and a Bastion's patch cost
+// the same share of a wallet, where a flat per-point rate would be free healing on a
+// capital hull and robbery on a fighter.
+//
+// The mend bound sits one step above the repair cell's free 22% (src/systems/swarmSupply.js):
+// the counter's answer is a little better because it is paid for and takes no risks, and a
+// lot thinner than the weld's all-the-way because the weld is the yard's wholesale rate.
+
+/** The most one patch mends, as a share of max hull. A top-up, never a reset. */
+export const SWARM_HULL_PATCH_FRACTION = 0.30;
+/** The wallet price if a patch could restore the whole hull — a full-size mend lands at 30. */
+export const SWARM_HULL_PATCH_PRICE_FULL = 100;
+/** A scratch still pays the house call. */
+export const SWARM_HULL_PATCH_MIN_PRICE = 2;
+
+export const SWARM_HULL_PATCH = Object.freeze({
+  offerId: 'svc_hull_patch',
+  service: 'hull_patch',
+  verb: 'Patch',
+  name: 'Hull patch',
+  category: 'Service',
+  slotLabel: 'Hull only — armor stays the weld\'s job',
+  blurb: 'A plate over the worst of it, priced by the scar. The weld still does the whole hull.',
+});
+
+/**
+ * The patch's live quote: how much hull it restores and what that mend costs, computed against
+ * the hull as it stands right now. `restored` caps at the patch's reach (a share of max hull);
+ * `price` is the same share of PRICE_FULL — charging for the mend delivered is the same
+ * arithmetic as charging on missing hull, bounded so deep damage can never price the row out
+ * of a dying pilot's reach. A sound hull quotes nothing. Pure.
+ */
+export function swarmHullPatchQuote(hull, hullMax) {
+  const max = Number.isFinite(hullMax) && hullMax > 0 ? hullMax : 0;
+  if (max <= 0) return { restored: 0, price: 0 };
+  const current = Number.isFinite(hull) ? hull : max;
+  const missing = Math.max(0, max - Math.min(max, current));
+  const restored = Math.min(missing, Math.max(1, Math.round(max * SWARM_HULL_PATCH_FRACTION)));
+  if (restored <= 0) return { restored: 0, price: 0 };
+  const price = Math.max(SWARM_HULL_PATCH_MIN_PRICE,
+    Math.round((restored / max) * SWARM_HULL_PATCH_PRICE_FULL));
+  return { restored, price };
+}
+
 /**
  * Spend one charge of `callinId` from the run's own ledger: rows are consumed FIFO (a restock
  * never short-changes an older row), and the row that reaches zero is removed. Returns the count

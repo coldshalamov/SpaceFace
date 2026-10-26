@@ -68,10 +68,11 @@ import { gateBearing } from './waveMaterialization.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 import { compileSwarmOptic } from '../data/swarmOpticArenas.js';
-import { CINDER_ARENA_ID } from './cinderSluiceArena.js';
+import { CINDER_ARENA_ID, stepCinderMachinery } from './cinderSluiceArena.js';
 import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { LAGRANGE_ARENA_ID } from './lagrangeCrucible.js';
 import { STORM_ARENA_ID } from './stormLatticeArena.js';
+import { crusherPhase, shutterPhase } from '../data/arenaModuleLibrary.js';
 import {
   MILL_ARENA_ID,
   MILL_ORE_CREDITS,
@@ -104,6 +105,49 @@ export const SWARM_DEBRIS_TAG = 'swarmArenaDebris';
 export const SWARM_OPTIC_TAG = 'swarmArenaOptic';
 
 const WELL_SOLID_TYPES = new Set(['asteroid', 'wreck', 'station']);
+
+// ── Arena-law voice ─────────────────────────────────────────────────────────
+// The room's law flips twice a player can feel: per wave, when the phase machine installs a
+// new arenaPhase, and mid-wave, when the installed law's own machinery cycles (the sluice's
+// warning/surge/calm, shutter slides, crusher jaws). survivalArena owns the install and emits
+// the `survivalArena:installed` receipt — phase, authored note, installedAtSim, toySpecs — which
+// is the one public seam this voice needs. The mid-wave flips reach no bus at all, so they are
+// read back off the SAME pure clocks the room owner drives, keyed to the receipt's simTime.
+// One `alert` line per change, on the same one-voice floor the pressure telegraph uses.
+
+/** survivalArena's private machinery gate, mirrored: the sluice cycle only runs on these phases. */
+const LAW_MACHINERY_CINDER_PHASES = new Set(['idle', 'shutter_slow', 'furnace_active', 'shutter_alternating']);
+
+/** The install receipt's inert marker — a lawless room says nothing. */
+const LAW_NOTE_INERT = 'inert room';
+
+/** One world-terms line per machinery state. Warn on the bite, quiet on the rest. */
+const LAW_PHASE_VOICE = Object.freeze({
+  sluice: Object.freeze({
+    warning: 'The sluice is winding up — the current is about to run',
+    surge: 'THE SLUICE FIRES — downstream carries, upstream costs',
+    calm: 'The sluice rests — the lane runs quiet',
+  }),
+  shutter: Object.freeze({
+    warning: 'A shutter shudders — the lane is about to cut',
+    surge: 'A SHUTTER SLIDES — the lane is cut',
+    calm: 'The shutter eases back — the lane opens',
+  }),
+  crusher: Object.freeze({
+    warning: 'The crusher arms — clear the jaws',
+    surge: 'THE CRUSHER BITES — nothing between the jaws survives',
+    calm: 'The crusher rests — the jaws hang open',
+  }),
+});
+
+/** The law's internal phase at `elapsedS` — the same pure clock the room owner ticks. */
+function lawPhaseOf(source, elapsedS) {
+  const clock = source.kind === 'sluice' ? stepCinderMachinery(elapsedS)
+    : source.kind === 'shutter' ? shutterPhase(source.toy, elapsedS)
+      : source.kind === 'crusher' ? crusherPhase(source.toy, elapsedS)
+        : null;
+  return clock && typeof clock.phase === 'string' ? clock.phase : null;
+}
 
 /**
  * The teaching well is planted where it pulls nothing at rest. A well dropped over the optic
@@ -606,6 +650,9 @@ export const swarmArena = {
     // geometry ({ ring, nextGrowAt, sacs } while the wave's room is alive).
     this._millOres = new Map();
     this._hive = null;
+    // The live law-room receipt and the last room signature this voice already named.
+    this._law = null;
+    this._lawAnnounced = null;
     resetSwarmPressureState();
     // SWARM-07 B1 — the room's second population. The arena hosts the Brood engine: it reads the
     // live field kernel through the fields owner's read seam, and its kill/wave receipts leave
@@ -645,11 +692,17 @@ export const swarmArena = {
     this._unsubs.push(this.bus.on('run:ended', () => {
       this._broodHeldUntil = null;
       this._lessonHoldS = null;
+      this._law = null;
+      this._lawAnnounced = null;
       if (this._brood) this._brood.clear('run_ended');
       this._hiveRelease('run_ended');
       this._millOres.clear();
       this._release('run_ended');
     }));
+    // The room owner's install/release pair is the law-phase seam: the receipt carries the
+    // wave's arenaPhase, its authored note, the install simTime and the live toy specs.
+    this._unsubs.push(this.bus.on('survivalArena:installed', (p) => this._onLawInstalled(p)));
+    this._unsubs.push(this.bus.on('survivalArena:released', () => { this._law = null; }));
     // B4 — the Mill's ore settles into the run wallet through the same collect seam the
     // supply pod uses: whoever scoops it claims it, but only the pilot's scoop pays.
     this._unsubs.push(this.bus.on('pickup:collected', (p) => this._onPickupCollected(p)));
@@ -661,6 +714,8 @@ export const swarmArena = {
   destroy() {
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
+    this._law = null;
+    this._lawAnnounced = null;
     bindSwarmPressureContext(null);
     resetSwarmPressureState();
     this._pressureAlive = null;
@@ -681,6 +736,8 @@ export const swarmArena = {
     this._wallWave = 0;
     this._broodHeldUntil = null;
     this._lessonHoldS = null;
+    this._law = null;
+    this._lawAnnounced = null;
     if (this._brood) this._brood.clear('new_game');
     this._hiveRelease('new_game');
     if (this._millOres) this._millOres.clear();
@@ -707,6 +764,8 @@ export const swarmArena = {
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return;
     // B4 — the Hive breathes on the same fixed tick: walls grow, sacs pulse, acid drips.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveTick(state, run);
+    // The law's own machinery flips mid-wave off the same pure clocks — name each new state once.
+    this._lawPhaseTick(state);
     this._holdInViewReleases(state);
     if ((state.simTime || 0) < (this._nextTerrainCheck || 0)) return;
     this._nextTerrainCheck = (state.simTime || 0) + 2;
@@ -1892,6 +1951,83 @@ export const swarmArena = {
       }
     }
     void reason;
+  },
+
+  /**
+   * The room-law receipt doubles as this voice's seam. The wave opener names the bodies and the
+   * objective; it never names the space — so a new phase installs its authored `note` verbatim,
+   * once per distinct room. A re-plan of the same phase is not a change and stays quiet, and an
+   * inert room has nothing to say at all. Mid-wave machinery is read back in update() off the
+   * receipt's own installedAtSim + toySpecs.
+   */
+  _onLawInstalled(payload) {
+    const run = liveSwarmRun(this.state);
+    if (!run || !payload || typeof payload !== 'object') return;
+    const phase = typeof payload.arenaPhase === 'string' ? payload.arenaPhase : '';
+    const note = typeof payload.note === 'string' ? payload.note : '';
+    const wave = Number.isInteger(payload.wave) ? payload.wave
+      : (Number.isInteger(run.wave) ? run.wave : 0);
+    const at = Number.isFinite(payload.installedAtSim) ? payload.installedAtSim
+      : (Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0);
+    const sources = [];
+    if (payload.arenaId === CINDER_ARENA_ID && LAW_MACHINERY_CINDER_PHASES.has(phase)) {
+      sources.push({ key: 'sluice', kind: 'sluice', toy: null });
+    }
+    const toys = Array.isArray(payload.toySpecs) ? payload.toySpecs : [];
+    for (const toy of toys) {
+      if (!toy || (toy.kind !== 'shutter' && toy.kind !== 'crusher')) continue;
+      sources.push({ key: `${toy.kind}:${toy.id != null ? toy.id : sources.length}`, kind: toy.kind, toy });
+    }
+    const law = { wave, arenaId: payload.arenaId || null, phase, note, at, sources, last: new Map(), told: new Set() };
+    this._law = law;
+    // The baseline is the phase each source holds at install: the install line already named
+    // the room, so the first tick never re-announces the state the room opened in.
+    for (const src of sources) law.last.set(src.key, lawPhaseOf(src, 0));
+    // survivalAnnounce already speaks the cryo note verbatim when it names north/south — that
+    // compass line IS this announce there; emitting again would be two voices on one fact.
+    const compassSpoken = payload.arenaId === CRYO_ARENA_ID && /\b(north|south)\b/.test(note);
+    const signature = `${law.arenaId}:${phase}:${note}`;
+    if (note && note !== LAW_NOTE_INERT && !compassSpoken && this._lawAnnounced !== signature) {
+      this._lawAnnounced = signature;
+      this._emit('swarmArena:lawPhase', { verb: 'install', wave, arenaId: law.arenaId, phase, note });
+      this._emit('alert', { key: `swarm-law-room-w${wave}`, sev: 'info', text: note, ttl: 5 });
+    }
+  },
+
+  /**
+   * Mid-wave law flips. The room owner drives its machinery on pure clocks keyed to the
+   * install's simTime — recompute the same clocks and name each state ONCE per wave, so the
+   * room's surge is a named event the first time it happens, not a metronome line forever.
+   */
+  _lawPhaseTick(state) {
+    const law = this._law;
+    if (!law || law.sources.length === 0) return;
+    if (Number.isInteger(state && state.run && state.run.wave) && state.run.wave !== law.wave) {
+      this._law = null;
+      return;
+    }
+    const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+    const elapsed = now - law.at;
+    if (!Number.isFinite(elapsed) || elapsed < 0) return;
+    for (const src of law.sources) {
+      const phase = lawPhaseOf(src, elapsed);
+      if (!phase || law.last.get(src.key) === phase) continue;
+      law.last.set(src.key, phase);
+      const toldKey = `${src.kind}:${phase}`;
+      if (law.told.has(toldKey)) continue;
+      law.told.add(toldKey);
+      const line = LAW_PHASE_VOICE[src.kind] && LAW_PHASE_VOICE[src.kind][phase];
+      if (!line) continue;
+      this._emit('swarmArena:lawPhase', {
+        verb: 'phase', wave: law.wave, arenaId: law.arenaId, phase, source: src.kind,
+      });
+      this._emit('alert', {
+        key: `swarm-law-w${law.wave}-${toldKey}`,
+        sev: phase === 'calm' ? 'info' : 'warn',
+        text: line,
+        ttl: 4,
+      });
+    }
   },
 
   _release(reason) {

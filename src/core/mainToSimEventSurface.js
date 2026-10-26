@@ -128,6 +128,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'siteEvidence:action',
   'spectrum:focus',
   'survivorPod:choose',
+  'swarm:eventVerdict',
   'toast',
   'touch:guide',
   'ui:abandonMission',
@@ -272,6 +273,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'ui:cycleTarget',
   'ui:endgameConfirm',
   'ui:endingArchiveOpen',
+  'ui:entityDrawer',
   'ui:globalFind',
   'ui:heliosBay7Scan',
   'ui:loadingHidden',
@@ -296,4 +298,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=154 dynamic=30 legacy=7 excluded=6 total=179 knownUnforwarded=84
+// provenance: census=154 dynamic=30 legacy=7 excluded=6 total=180 knownUnforwarded=85

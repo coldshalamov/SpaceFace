@@ -248,7 +248,7 @@ export function buildChart(history, average, gradientId, label, extras = {}) {
   </div>
 </figure>`;
 }
-export function marketRowHtml({ id, name, category = '', buy, sell, stock, held = 0, hist = [], demandWord = 'normal', driversSummary = '', selected = false, tracked = false, profitPct = null, presentation = null, soldOut = false, restockSeconds = null }) {
+export function marketRowHtml({ id, name, category = '', buy, sell, stock, held = 0, hist = [], demandWord = 'normal', driversSummary = '', selected = false, tracked = false, profitPct = null, presentation = null, soldOut = false, restockSeconds = null, order = 0 }) {
   const family = marketFamily(category);
   const presentationId = presentation && typeof presentation.id === 'string' ? presentation.id.trim() : '';
   const presentationColor = presentation && typeof presentation.color === 'string'
@@ -256,15 +256,22 @@ export function marketRowHtml({ id, name, category = '', buy, sell, stock, held 
   const icon = presentationId && presentationColor
     ? `<span class="sx-mkt-row__commodity" data-commodity-presentation="${escapeHtml(presentationId)}" style="color:${escapeHtml(presentationColor)}">${commodityGlyphHtml(category, 'of-commodity-icon')}</span>`
     : commodityGlyphHtml(category, 'of-commodity-icon');
+  // The badge is an atomic inline chip after the name on a nowrap, ellipsizing cell: when the
+  // full "N% PROFIT" chip did not fit (held cargo at a fat margin), the ellipsis replaced the
+  // whole chip — the row read as a truncated name with no mark at all. The bare percentage
+  // fits every register width; the title and the row's aria-label keep the words.
   const profitBadge = Number.isFinite(profitPct) && profitPct >= 15 && held > 0
-    ? `<span class="sx-mkt-row__profit" title="Local sell price beats your cost basis by ${Math.round(profitPct)}%">+${Math.round(profitPct)}% PROFIT</span>`
+    ? `<span class="sx-mkt-row__profit" title="Local sell price beats your cost basis by ${Math.round(profitPct)}%">+${Math.round(profitPct)}%</span>`
     : '';
   // Seconds up to two minutes, whole minutes after: a long wait reads as a span, not a countdown.
   const restockAfter = Number.isFinite(restockSeconds) ? Math.max(1, Math.ceil(restockSeconds)) : null;
   const restockAbout = restockAfter === null ? null : (restockAfter > 120 ? Math.ceil(restockAfter / 60) + 'm' : restockAfter + 's');
   const restock = soldOut ? (restockAbout ? `Restock ~${restockAbout}` : 'Restock pending') : '';
   const restockSpoken = soldOut ? (restockAbout ? `restock in about ${restockAbout}` : 'restock pending') : '';
-  return `<tr id="sx-market-tab-${escapeHtml(id)}" class="sx-mkt-row${selected ? ' is-active' : ''}${tracked ? ' is-tracked' : ''}" data-cmdty="${escapeHtml(id)}" role="tab" aria-selected="${!!selected}" tabindex="${selected ? '0' : '-1'}" aria-controls="sx-market-instrument" data-family="${family}"
+  // --sf-i is the rung's place on the ladder, read by station-marketLayouts.js to stagger the
+  // row's arrival (reduced motion skips it); the attribute stays inert for AT and the tests.
+  const stagger = ` style="--sf-i:${Math.max(0, Math.floor(Number(order) || 0))}"`;
+  return `<tr id="sx-market-tab-${escapeHtml(id)}" class="sx-mkt-row${selected ? ' is-active' : ''}${tracked ? ' is-tracked' : ''}" data-cmdty="${escapeHtml(id)}" role="tab" aria-selected="${!!selected}" tabindex="${selected ? '0' : '-1'}" aria-controls="sx-market-instrument" data-family="${family}"${stagger}
     aria-label="${escapeHtml(name)}, ${quoteFmt(buy)} credits, ${escapeHtml(demandWord)} demand${soldOut ? `, sold out, ${restockSpoken}` : ''}${held ? `, ${fmt(held)} units held` : ''}${profitBadge ? `, ${Math.round(profitPct)} percent over your cost basis` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(driversSummary)}">
     <td class="k-name sx-mkt-row__name">${icon}${tracked ? '<span class="sx-mkt-row__flag k-t-fine k-signal" aria-hidden="true">◆ </span>' : ''}${escapeHtml(name)}${profitBadge}${soldOut ? `<br><span class="sx-mkt-row__none" style="white-space:normal">SOLD OUT · ${escapeHtml(restock)}</span>` : ''}</td>
     <td class="k-num sx-mkt-row__price">${quoteFmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${quoteFmt(sell)}</td><td class="k-num sx-mkt-row__stock">${soldOut ? '0u' : held > 0 ? `<span class="sx-mkt-row__heldtag">held ${fmt(held)}u</span>` : (stock > 0 ? `${fmt(stock)}u` : '<span class="sx-mkt-row__none">\u2014</span>')}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' u' : '—'}</td></tr>`;
@@ -466,11 +473,19 @@ export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml
     ? Number(forecast.statedRate)
     : (forecastPts.find((point) => Number.isFinite(point.statedRate)) || {}).statedRate;
   const origins = historyOrigins(historySamples(hist));
+  // A missing quote is a state, not a numeral: at display weight the em dash photographs as a
+  // solid slab (critic F2). In buy mode "SOLD OUT" names it at label size; any other missing
+  // side keeps the dash, but styled down to a thin dim rule — never the giant glyph.
+  const heroQuote = mode === 'sell' ? sell : buy;
+  const heroNa = heroQuote == null || !Number.isFinite(Number(heroQuote));
+  const heroNumHtml = heroNa
+    ? `<span class="sx-mkt__hero-na">${mode === 'buy' ? 'SOLD OUT' : '—'}</span>`
+    : quoteFmt(heroQuote);
   // titleHtml is a trusted entityResolver fragment generated by the production controller, never user input.
   return (trackedGuidance ? `<p class="k-sentence k-signal sx-mkt-tracked" data-tracked-state="${escapeHtml(trackedGuidance.state)}"><b>Tracked contract</b> — ${escapeHtml(trackedGuidance.text)}</p>` : '') +
     `<p class="k-caps sx-mkt-cat-inline">${escapeHtml(category || 'goods')} · <span class="${legal === 'contraband' ? 'k-bad' : legal === 'restricted' ? 'k-signal' : ''}">${escapeHtml(legalText)}</span></p>
     <h2 class="k-display k-t-title sx-mkt-title">${titleHtml || escapeHtml(name)}</h2>
-    <div class="k-hero k-hero--hero k-hero--signal sx-mkt__hero"><div class="k-hero__n">${quoteFmt(mode === 'sell' ? sell : buy)}</div><div class="k-hero__w">${mode === 'sell' ? 'station pays' : 'you pay'} · one unit now</div></div>
+    <div class="k-hero k-hero--hero k-hero--signal sx-mkt__hero${heroNa ? ' sx-mkt__hero--na' : ''}"><div class="k-hero__n">${heroNumHtml}</div><div class="k-hero__w">${mode === 'sell' ? 'station pays' : 'you pay'} · one unit now</div></div>
     ${driverLineHtml(drivers)}
     <p class="k-sentence sx-mkt-essay" id="sx-market-driver-summary">${escapeHtml(driversSummary)}</p>
     ${chainHtml}

@@ -259,99 +259,102 @@ test('a specialist cuts a player bridle and a heavy NPC takes the throw', () => 
   assert.deepEqual(
     heavies.map((row) => row.id),
     ['dreadnought_boss', 'field_anchor_controller', 'mirrorjaw_foreman', 'forge_regent',
-      'brood_queen', 'brood_tendril', 'last_argument', 'kilnback'],
+      'brood_queen', 'brood_tendril', 'nest_carrier', 'casket_worm',
+      'furnace_maw', 'yardmaster', 'adjudicator_44c', 'hive_hulk', 'last_argument', 'kilnback'],
   );
-  assert.ok(heavies.every((row) => ['brood_tendril', 'kilnback'].includes(row.id) || Number(row.mass) >= ANCHOR.mass),
+  assert.ok(heavies.every((row) => ['brood_tendril', 'casket_worm', 'kilnback'].includes(row.id) || Number(row.mass) >= ANCHOR.mass),
     'the shrug is proven at the Anchor mass; a lighter live heavy would sit outside that proof');
-  {
-    const TENDRIL = ENEMY_TYPES.find((row) => row.id === 'brood_tendril');
+  // Each sub-Anchor colossus must exercise its own live mass through the catch law.
+  for (const id of ['brood_tendril', 'casket_worm']) {
+    const heavyDef = ENEMY_TYPES.find((row) => row.id === id);
     const QUEEN = ENEMY_TYPES.find((row) => row.id === 'brood_queen');
     const previousImpulse = COMBAT_FLAGS.weaponImpulseConsequences;
     COMBAT_FLAGS.weaponImpulseConsequences = true;
     assert.equal(QUEEN.mass, 520, 'the Queen stays heavier than the Anchor she inherits the proof from');
-    // The Tendril sits below the Anchor mass, so it is proven at its own live mass through the
-    // same live owners: a 300 kg hull bridled against a 16 kg light keeps the helm (its catch
+    // Each hull sits below the Anchor mass, so it is proven at its own live mass through the
+    // same live owners: a hull bridled against a 16 kg light keeps the helm (its catch
     // share sits under the hitstun floor) while the light is yanked. No mass/thrust/weapon
     // number is retuned; this only reads the live law at the live mass.
-    const tendrilHarness = harness();
-    tendrilHarness.source.vel = { x: 80, z: 0 };
-    tendrilHarness.source.mass = 16;
-    tendrilHarness.source.physicsBody = { dynamic: true, mass: 16 };
-    tendrilHarness.source.data.role = 'fighter';
-    const tendril = entity(13, 'ship', 200, 0, {
+    const heavyHarness = harness();
+    heavyHarness.source.vel = { x: 80, z: 0 };
+    heavyHarness.source.mass = 16;
+    heavyHarness.source.physicsBody = { dynamic: true, mass: 16 };
+    heavyHarness.source.data.role = 'fighter';
+    const heavy = entity(13, 'ship', 200, 0, {
       team: 1,
-      mass: TENDRIL.mass,
-      radius: TENDRIL.collisionRadius,
-      physicsBody: { dynamic: true, mass: TENDRIL.mass },
+      mass: heavyDef.mass,
+      radius: heavyDef.collisionRadius,
+      maxSpeed: heavyDef.maxSpeed,
+      physicsBody: { dynamic: true, mass: heavyDef.mass },
       data: {
-        name: TENDRIL.name,
-        lootTableId: TENDRIL.id,
-        ai: { combatDoctrineId: TENDRIL.combatDoctrineId },
+        name: heavyDef.name,
+        lootTableId: heavyDef.id,
+        ai: { combatDoctrineId: heavyDef.combatDoctrineId },
       },
     });
     assert.equal(
       validateTwinBridlePair(
-        tendrilHarness.system, tendrilHarness.state, tendrilHarness.player,
-        tendrilHarness.source, tendril, BRIDLE_DEF,
+        heavyHarness.system, heavyHarness.state, heavyHarness.player,
+        heavyHarness.source, heavy, BRIDLE_DEF,
       ),
       null,
       'a sub-Anchor heavy is still a legal endpoint; ignore is mass, not an admission flag',
     );
-    tendrilHarness.state.entities.set(tendril.id, tendril);
-    tendrilHarness.state.entityList.push(tendril);
-    const tendrilStatuses = createStatusService({
-      state: tendrilHarness.state,
-      catalog: tendrilHarness.catalog,
-      bus: tendrilHarness.bus,
-      helpers: { combatPhysics: tendrilHarness.physics },
+    heavyHarness.state.entities.set(heavy.id, heavy);
+    heavyHarness.state.entityList.push(heavy);
+    const heavyStatuses = createStatusService({
+      state: heavyHarness.state,
+      catalog: heavyHarness.catalog,
+      bus: heavyHarness.bus,
+      helpers: { combatPhysics: heavyHarness.physics },
     });
-    tendrilHarness.system.registry = {
+    heavyHarness.system.registry = {
       get(id) {
         return id === 'actions' || id === 'combat'
-          ? { kernel: { attachments: tendrilHarness.attachments, catalog: tendrilHarness.catalog, statuses: tendrilStatuses } }
+          ? { kernel: { attachments: heavyHarness.attachments, catalog: heavyHarness.catalog, statuses: heavyStatuses } }
           : null;
       },
     };
-    const tendrilTumble = Object.create(tumbleStates);
-    tendrilTumble.init({
-      state: tendrilHarness.state,
-      bus: tendrilHarness.bus,
-      helpers: { combatPhysics: tendrilHarness.physics },
-      registry: tendrilHarness.system.registry,
+    const heavyTumble = Object.create(tumbleStates);
+    heavyTumble.init({
+      state: heavyHarness.state,
+      bus: heavyHarness.bus,
+      helpers: { combatPhysics: heavyHarness.physics },
+      registry: heavyHarness.system.registry,
     });
     try {
       const impulses = [];
-      const offHitstun = tendrilHarness.bus.on(HITSTUN_IMPULSE_EVENT, (payload) => {
+      const offHitstun = heavyHarness.bus.on(HITSTUN_IMPULSE_EVENT, (payload) => {
         impulses.push(payload);
       });
       try {
-        step(tendrilHarness, { aim: tendrilHarness.source.pos });
-        step(tendrilHarness, { aim: tendrilHarness.source.pos, latch: true });
-        step(tendrilHarness, { aim: tendril.pos, dt: 0.1 });
-        step(tendrilHarness, { aim: tendril.pos, latch: true });
+        step(heavyHarness, { aim: heavyHarness.source.pos });
+        step(heavyHarness, { aim: heavyHarness.source.pos, latch: true });
+        step(heavyHarness, { aim: heavy.pos, dt: 0.1 });
+        step(heavyHarness, { aim: heavy.pos, latch: true });
       } finally {
         offHitstun();
       }
-      const tendrilLine = Object.values(tendrilHarness.state.combat.attachments.byId)
+      const heavyLine = Object.values(heavyHarness.state.combat.attachments.byId)
         .find((entry) => entry.state === 'active');
-      assert.ok(tendrilLine, 'a second press on the Tendril becomes a rope');
-      assert.ok(readTumbleStatus(tendrilHarness.state, tendrilHarness.source), 'the light is yanked');
-      assert.equal(readTumbleStatus(tendrilHarness.state, tendril), null,
-        'the Tendril keeps the helm: its catch share sits under the hitstun floor');
-      const tendrilShare = impulses.find((entry) => entry.victimId === tendril.id);
-      assert.ok(tendrilShare, 'the rope published the Tendril catch share through the live bridle owner');
-      assert.equal(tendrilShare.victimMass, TENDRIL.mass,
-        'the share is computed at the live Tendril mass, not a fixture');
-      const tendrilLaw = resolveHitstunLaw({
-        deltaV: tendrilShare.deltaV,
-        victimCruise: resolveGovernedCombatSpeed(tendril, tendrilHarness.state, 0),
-        attackerMass: tendrilShare.attackerMass,
-        victimMass: tendrilShare.victimMass,
+      assert.ok(heavyLine, `${heavyDef.name} accepts the second latch`);
+      assert.ok(readTumbleStatus(heavyHarness.state, heavyHarness.source), 'the light is yanked');
+      assert.equal(readTumbleStatus(heavyHarness.state, heavy), null,
+        `${heavyDef.name} keeps the helm at its live mass`);
+      const heavyShare = impulses.find((entry) => entry.victimId === heavy.id);
+      assert.ok(heavyShare, `${heavyDef.name} publishes its catch share through the live bridle owner`);
+      assert.equal(heavyShare.victimMass, heavyDef.mass,
+        `${heavyDef.name} uses its live mass`);
+      const heavyLaw = resolveHitstunLaw({
+        deltaV: heavyShare.deltaV,
+        victimCruise: resolveGovernedCombatSpeed(heavy, heavyHarness.state, 0),
+        attackerMass: heavyShare.attackerMass,
+        victimMass: heavyShare.victimMass,
       });
-      assert.ok(!(tendrilLaw.durationS > 0),
-        `the Tendril share must sit under the hitstun floor at its own mass, got ${tendrilLaw.durationS}s`);
+      assert.ok(!(heavyLaw.durationS > 0),
+        `the ${heavyDef.name} share must sit under the hitstun floor at its own mass, got ${heavyLaw.durationS}s`);
     } finally {
-      tendrilTumble.destroy();
+      heavyTumble.destroy();
       COMBAT_FLAGS.weaponImpulseConsequences = previousImpulse;
     }
   }

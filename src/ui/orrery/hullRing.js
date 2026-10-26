@@ -13,6 +13,9 @@ import { injectOrrery } from './tokens.js';
 
 const STYLE_ID = 'sf-orrery-hullring-style';
 const BONE = '232 226 212';
+// widest side numeral the starters produce ("5.5k" + " wu/s") — reserved so the fit never
+// measures the per-frame reading.
+const NUM_RESERVE = 92;
 const CSS = `
 .orr-hullring { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .orr-hullring__track { fill:none; stroke:rgb(${BONE} / .26); stroke-width:1.2; }
@@ -204,6 +207,23 @@ export function createHullRing({ host, anchor } = {}) {
       setText(seg.labelText, String(s.name).toUpperCase());
       setText(seg.glossText, s.gloss || '');
       shown(seg, 'gloss', !!s.gloss);
+      // A side datum starts 20px out from the ring and flows outward, so on the bands where the
+      // hero box stands near the stage's edge the words ran off the window (LINE's gloss at
+      // 1280×720). Key the fit on the stable strings -- never the per-frame reading -- so a
+      // spin still makes no layout reads; the numeral's reserve covers its widest shape.
+      if (def.side !== 'top') {
+        const fitKey = `${key}|${seg.labelText.data}|${seg.glossText.data}`;
+        if (seg.fitKey !== fitKey) {
+          seg.fitKey = fitKey;
+          let width = NUM_RESERVE;
+          for (const node of [seg.label, seg.gloss]) {
+            try { width = Math.max(width, node.getComputedTextLength ? node.getComputedTextLength() : 0); } catch { /* unrendered host: keep the reserve */ }
+          }
+          const x0 = parseFloat(seg.num.getAttribute('x'));
+          const nx = def.side === 'right' ? Math.min(x0, box.w - 8 - width) : Math.max(x0, width + 8);
+          if (nx !== x0) for (const node of [seg.num, seg.label, seg.gloss]) setAttr(node, 'x', f(nx));
+        }
+      }
     });
   }
 
