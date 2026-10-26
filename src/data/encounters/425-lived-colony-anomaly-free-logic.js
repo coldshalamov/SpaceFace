@@ -122,7 +122,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "NELL: Circle us — start one side, cross a hundred-twenty through to the other, inside the hundred-sixty band. — SLED ON THE COLONY.",
+      "line": "NELL: Circle us — start one side, cross a hundred-twenty through to the other, between a hundred and a hundred-sixty of us. — SLED ON THE COLONY.",
       "channel": "info",
       "next": "offer"
     },

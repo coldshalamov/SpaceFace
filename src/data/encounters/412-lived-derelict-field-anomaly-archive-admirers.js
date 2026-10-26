@@ -122,7 +122,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "ARCHIVIST: Circle us — start one side, cross a hundred-twenty through to the other, inside the hundred-sixty band. — MANIFEST ON THE DERELICT FIELD.",
+      "line": "ARCHIVIST: Circle us — start one side, cross a hundred-twenty through to the other, between a hundred and a hundred-sixty of us. — MANIFEST ON THE DERELICT FIELD.",
       "channel": "info",
       "next": "offer"
     },
