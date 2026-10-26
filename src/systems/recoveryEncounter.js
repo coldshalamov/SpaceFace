@@ -796,7 +796,11 @@ export const recoveryEncounter = {
 
   _recordByEntity(entityId) {
     if (entityId == null) return null;
-    return Object.values(ensureState(this.state).records).find((record) => record && record.entityId === entityId) || null;
+    const own = ensureState(this.state);
+    // Entity ids recycle. Historical receipts keep their old body id, but must
+    // never intercept destruction, salvage or hazard events for a later wreck.
+    return Object.values(own.records).find((record) => record && record.entityId === entityId
+      && !own.outcomes[record.id]) || null;
   },
 
   _wreck(record) {
