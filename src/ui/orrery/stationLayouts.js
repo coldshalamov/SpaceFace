@@ -666,6 +666,71 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D}:has(:is(.sx-sw, .sx-ct)) .sxb-berth.dp-frame__head { min-height:0 !important; max-height:100px !important; overflow-y:auto !important; overflow-x:hidden !important; }
   ${D}:has(.sx-sw) { grid-template-rows:max-content minmax(200px,1fr) max-content !important; }
 }
+/* A narrow, tall desktop window (≤650 wide, 801+ tall, e.g. 600×844): the head stacked five dials one under another
+   with both ad boards below them, 607px of a 844px frame, so the tab body got 0px and the Missions dossier's ACCEPT
+   could not be reached; the foot's destination words sat in a 182px side-scroller with their glosses printed under them.
+   Here the dials share one row, the ad boards and the shift note step aside, and the destinations wrap above COMMS / UNDOCK. */
+@media (max-width:650px) and (min-height:801px) {
+  ${D} { grid-template-rows:max-content minmax(0, 1fr) max-content !important; }
+  ${D} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:none !important;
+    grid-template-areas:"trigger" "title" "crown" "handoff" "tape" "signs" !important; row-gap:6px !important; padding-bottom:6px !important; }
+  ${D} .sxb-berth.dp-frame__head > .so-command-trigger { grid-area:trigger !important; justify-self:end !important; position:static !important; }
+  ${D} .sxb-berth.dp-frame__head > .so-station-title { grid-area:title !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown { grid-area:crown !important; position:relative !important; inset:auto !important; width:100% !important; margin:0 !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-handoff { grid-area:handoff !important; max-width:none !important; margin:0 !important; padding:0 !important;
+    display:grid !important; grid-template-columns:minmax(0, 1fr) auto !important; align-items:baseline !important; column-gap:12px !important; }
+  ${D} .sxb-handoff > .sxb-next { grid-column:1 / -1; grid-row:1; flex-wrap:wrap !important; align-items:baseline !important; row-gap:2px !important;
+    padding-block:0 !important; padding-right:72px !important; min-width:0 !important; }
+  ${D} .sxb-handoff > .sxb-next__x { grid-column:2; grid-row:1; position:relative; z-index:1; margin:0 !important; padding:0 !important; }
+  ${D} .sxb-next__n { order:2; margin-left:10px !important; white-space:nowrap !important; }
+  ${D} .sxb-next__w { order:3; flex:1 0 calc(100% + 72px) !important; margin-right:-72px; white-space:normal !important; }
+  /* the mechanic's note, berth and station news stay, under the next step, two lines at most */
+  ${D} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; grid-column:auto !important; min-width:0 !important; max-width:100% !important;
+    margin:0 !important; padding-left:0 !important; }
+  ${D} .sxb-tape .sxb-event:not([hidden]) { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden !important;
+    width:auto !important; max-width:100% !important; min-width:0 !important; margin:0 !important; padding:0 !important; line-height:16px !important; }
+  ${D} .sxb-tape .sxb-event :is(.sxb-event__badge, .sxb-event__title, .sxb-event__body) { display:inline !important; margin:0 8px 0 0 !important; }
+  /* the Bay screen and the Station wire run as one-line signs side by side */
+  ${D} .sxb-berth.dp-frame__head > .sxb-signs { grid-area:signs !important; grid-column:auto !important; display:flex !important; gap:0 20px !important;
+    align-items:flex-start !important; min-width:0 !important; }
+  ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding:2px 0 !important;
+    white-space:nowrap !important; overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:none; overscroll-behavior-x:contain;
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 24px), transparent) !important; mask-image:linear-gradient(90deg, #000 calc(100% - 24px), transparent) !important; }
+  ${D} .sxb-signs > .sx-adboard::-webkit-scrollbar { display:none; }
+  ${D} .sxb-signs .sx-adboard__text { display:inline !important; margin:0 0 0 8px !important; }
+  ${D} .sxb-purse { justify-content:flex-start !important; }
+  ${D} .sxb-vitals { display:flex !important; flex-wrap:nowrap !important; justify-content:space-between !important; gap:0 4px !important; max-width:none !important; width:100% !important; }
+  ${D} .sxb-vital { min-width:0 !important; width:auto !important; flex:1 1 0 !important; }
+  ${D} .sxb-vital [data-vital-act] { white-space:normal !important; flex-wrap:wrap !important; justify-content:center !important; column-gap:5px !important; letter-spacing:.04em !important; text-align:center; }
+  ${D} .sxb-vital [data-vital-act]::before { display:none !important; }
+  ${D} .sxb-vital [data-vital-act] .orr-act__cost { letter-spacing:.04em !important; }
+  ${D} .sxb-vital:has(.orr-vnum.is-word) .sxb-vital__value { top:4px !important; }
+  ${D} .sxb-next__t { white-space:nowrap !important; flex:none !important; }
+  ${D} .sxb-vital .orr-vnum.is-word { white-space:normal !important; text-align:center; letter-spacing:.1em !important; line-height:1.25 !important; }
+  ${D} .sxb-ops { flex-wrap:wrap !important; row-gap:6px !important; column-gap:12px !important; padding-top:4px !important; }
+  ${D} .sxb-ops .of-facility-rail { flex:1 1 100% !important; max-width:none !important; width:100% !important; }
+  ${D} .sxb-ops :is(.sxb-ops__dock, .sx-dock) { width:100% !important; overflow:visible !important; }
+  ${D} .sxb-ops .sx-dock__group--nav { flex-wrap:wrap !important; gap:0 18px !important; padding-left:0 !important; width:100% !important; transform:none !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li { flex:none !important; }
+  ${D} .sxb-ops :is(.sxb-ops__dock, .sx-dock, .sx-dock__group--nav) { min-height:0 !important; height:auto !important; padding-bottom:0 !important; margin-bottom:0 !important; }
+  /* only the open destination keeps its line, on one row under the words */
+  ${D} .sxb-ops .sx-dock__group--nav { position:relative !important; padding-bottom:18px !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li:not(:has(> .sx-tile:is(.is-active, :focus-visible))) > .sx-tile__gloss { display:none !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li:has(> .sx-tile:focus-visible) ~ li > .sx-tile__gloss { display:none !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li > .sx-tile__gloss { position:absolute !important; left:0 !important; right:0 !important; bottom:0 !important; top:auto !important;
+    width:auto !important; max-width:none !important; margin:0 !important; padding:0 !important; transform:none !important; text-align:left !important;
+    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; line-height:16px !important; }
+  ${D} .sxb-ops .sx-tile { min-height:36px !important; }
+  ${D} .sxb-ops .orr-stationrow__rule, ${D} .sxb-ops .so-dock-indicator { display:none !important; }
+  ${D} .sxb-ops .sx-comms { margin:0 !important; align-self:center !important; }
+  ${D} .sxb-ops .sxb-launch-seat { margin:0 0 0 auto !important; align-self:center !important; }
+}
+/* …and under 481 wide the five dials' verbs wrap to two lines each, so the head scrolls its services past 40% of the frame
+   and the next step keeps its title, not its sentence, leaving the tab a real body */
+@media (max-width:480px) and (min-height:801px) {
+  ${D} .sxb-berth.dp-frame__head { max-height:40vh !important; overflow-y:auto !important; overflow-x:hidden !important; overscroll-behavior:contain; }
+  ${D} .sxb-crown::before { content:none !important; }
+}
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom, so nothing scales twice) */
 @media (min-width:2200px) and (min-height:1200px) {
   ${S} { zoom:1.25; --k-s:1; }
