@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-25",
+  "updated": "2026-10-26",
   "runs": [
     {
       "date": "2026-08-12",
@@ -113,45 +113,6 @@
     }
   ],
   "units": [
-    {
-      "id": "seed-se-14-death-clip-once",
-      "date": "2026-10-23",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Your death files one Death clip. A hit that does not kill you files none.",
-      "fingerprint": "verb=clip,subject=player-death,sector=any,layer=reel,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "869dd46a8e",
-      "verification": "focused_green"
-    },
-    {
-      "id": "al-lg-12-verb-ladder-hour-15-cut",
-      "date": "2026-10-23",
-      "wf": "WF-07",
-      "mode": "repair",
-      "verdict": "cut",
-      "reason": "Only capital weapons opens in that stretch, once, at hour 12.31. Stamping earlier and later doors as hours 11-15 made the research screen lie. Those labels are off.",
-      "rootReason": "existing late nodes do not open one new verb in each of hours 11-15",
-      "fingerprint": "verb=research,subject=false-hour-labels,sector=any,layer=progression,domain=wf-07",
-      "references": [],
-      "integration": "cut",
-      "commit": "71414d060f"
-    },
-    {
-      "id": "seed-wl-01-captain-dossier",
-      "date": "2026-10-23",
-      "wf": "WF-09",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A captain link for a roster id names the captain, their home station, and one thing already lived with them.",
-      "fingerprint": "verb=read,subject=captain-roster,sector=any,layer=dossier,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "0ed563b744",
-      "verification": "focused_green"
-    },
     {
       "id": "seed-wl-02-liner-last-leg",
       "date": "2026-10-23",
@@ -1671,6 +1632,45 @@
       "references": [],
       "integration": "live",
       "commit": "daf38fa41dcfb9dfe01a6444837787ac3ef20276",
+      "verification": "focused_green"
+    },
+    {
+      "id": "al-lg-10-deed-resale",
+      "date": "2026-10-26",
+      "wf": "WF-07",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The resale quote names the hull's deeds: renown adds a capped premium, scars a capped discount; twin hulls quote differently and never above the buy price.",
+      "fingerprint": "verb=quote,subject=hull-resale,sector=any,layer=economy,domain=wf-07",
+      "references": [],
+      "integration": "live",
+      "commit": "24134c54af",
+      "verification": "focused_green"
+    },
+    {
+      "id": "al-lg-11-scarred-ram-plate",
+      "date": "2026-10-26",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Three committed player-caused rams mint one Scarred Ram Plate bound to the hull that did them; the twin hull lacks it and every purchase, grant, preset and keepsake path refuses a wrong-bound copy.",
+      "fingerprint": "verb=earn,subject=scarred-ram-plate,sector=any,layer=fitting,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "24134c54af",
+      "verification": "focused_green"
+    },
+    {
+      "id": "seed-st-01-dial-gloss-visible",
+      "date": "2026-10-26",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "On the dial the five mode-verb subs were aria-only; while a glossed verb is awake the title eyebrow now prints 'Verb · gloss', restoring on leave.",
+      "fingerprint": "verb=read,subject=menu-mode-gloss,sector=title,layer=visibility,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "299346d578",
       "verification": "focused_green"
     }
   ],
