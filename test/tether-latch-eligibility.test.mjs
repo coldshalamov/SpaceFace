@@ -852,6 +852,11 @@ test('T04 §5: two identical runs produce byte-equal observed event streams', ()
     h.state.input.aimIntentActive = true;
     fireLatch(h);
     assert.equal(h.events.latched.length, 1, 'run should latch once');
+    // Which context made the pick matters as much as which body won: without aim intent
+    // this same fixture STILL latches 50 — through 'closing-hostile' at 0.558 vs the
+    // station's 0.431 — so targetId alone cannot catch a regression that stops scoring
+    // the cursor axis. The acquisition receipt's intent.source records the decider.
+    const intentSource = h.state.masslineAcquisition?.intent?.source ?? null;
 
     // Break authority + mirror so adoptExisting cannot re-bind, then press under cooldown.
     const attId = h.system._active.attachmentId;
@@ -866,6 +871,7 @@ test('T04 §5: two identical runs produce byte-equal observed event streams', ()
     return {
       latched: h.events.latched,
       denied: h.events.denied,
+      intentSource,
       stream: JSON.stringify({ latched: h.events.latched, denied: h.events.denied }),
     };
   }
@@ -879,6 +885,8 @@ test('T04 §5: two identical runs produce byte-equal observed event streams', ()
   // test's own subject — that two identical runs produce byte-equal streams — is asserted above and
   // still holds; only the expected pick moved.
   assert.equal(a.latched[0].targetId, 50, 'the scored latch takes the aimed-at hostile, not the marginally nearer station');
+  assert.equal(a.intentSource, 'cursor-paint',
+    'the pick must be decided by the painted cursor — an aim-blind ranking still lands on 50 via closing-hostile');
   assert.equal(a.denied.length, 1);
   assert.equal(a.denied[0].reason, 'cooldown');
 });
