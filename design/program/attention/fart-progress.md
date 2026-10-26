@@ -42,7 +42,7 @@ Preserve their dirty work; pathspec-commit only my paths.
 
 | Row | Status | Landed sha / gap |
 |---|---|---|
-| 495 24-body rock family | PARTIAL — landed <sha> | gap: instanced field-rock pool still procedural (render-lane reroute); authored family owns debris/hero/claim bodies |
+| 495 24-body rock family | PARTIAL — landed 1ae25fa430 | gap: instanced field-rock pool still procedural (render-lane reroute); authored family owns debris/hero/claim bodies |
 | 512 fourteen station kits | OPEN | — |
 | 514 hull kits + Overgrowth/junk | OPEN | — |
 | 543 portrait pools | OPEN | — |
