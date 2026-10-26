@@ -2058,6 +2058,84 @@ html body #screens #sf-ship .sx-sw-preset--save:disabled::before {
 html body #screens #sf-ship .sx-sw-preset--save:disabled::after { display: none; }
 html body #screens #sf-ship .sx-sw-preset--save:disabled .sx-sw-preset__label,
 html body #screens #sf-ship .sx-sw-preset--save:disabled .sx-sw-preset__sub { color: rgb(236 230 216 / .55); }
+/* The DOCK shipworks mounts the same .sx-sw classes under .sx-berth, where the #sf-ship rules
+   never reach — and shipworksLayouts' preset recipe (PLAIN + "›" chevron) flattened SAVE FIT
+   to a text row there (critic F6). Same key, berth scope: always drawn — lit amber with a fit
+   to save, a dim amber lamp when there is none. The .k-panel.sx-sw ancestor keeps this above
+   the injected ${W} selectors' specificity. */
+html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save {
+  position: relative !important; isolation: isolate; display: inline-flex !important; align-items: center !important;
+  min-height: 38px !important; height: auto !important; padding: 0 22px 0 18px !important; border: 0 !important;
+  background: none !important; background-image: none !important; box-shadow: none !important;
+  font-size: 13px !important; letter-spacing: .14em !important; text-transform: uppercase !important; text-shadow: none !important;
+  color: #1c1406 !important;
+}
+html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save::before {
+  all: unset !important;
+  content: "" !important; display: block !important; position: absolute !important; inset: 0 !important; z-index: -1 !important;
+  background: var(--dp-lamp, #f2b950) !important;
+  clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 0 100%) !important;
+}
+html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save:not(:disabled):is(:hover, :focus-visible)::before { background: var(--dp-lamp-hot, #ffd98c) !important; }
+html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save:not(:disabled)::after {
+  all: unset !important;
+  content: "" !important; display: block !important; position: absolute !important; inset: 0 !important; z-index: 0 !important; pointer-events: none !important;
+  clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 0 100%) !important;
+  background: linear-gradient(105deg, transparent 42%, rgb(255 255 255 / .38) 50%, transparent 58%) 0 0 / 250% 100% no-repeat !important;
+  animation: sf-ship-lamp-sheen 6s linear infinite !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save::after { animation: none !important; }
+}
+html.sf-reduce-motion body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save::after { animation: none !important; }
+html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save .sx-sw-preset__label,
+html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save .sx-sw-preset__sub { color: #1c1406 !important; position: relative; z-index: 1; }
+/* The unlit lamp: same cut key in dim amber with dark ink — a lamp you could wake, not a link. */
+html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save:disabled { color: rgb(26 20 8) !important; }
+html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save:disabled::before { background: var(--dp-lamp-dim, #8a6b3a) !important; box-shadow: none !important; }
+html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save:disabled::after { display: none !important; }
+html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save:disabled .sx-sw-preset__label,
+html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-preset--save:disabled .sx-sw-preset__sub { color: rgb(26 20 8) !important; }
+/* Critic F5 — at ≤800px the injected sheet drops .sx-sw-band--presets outright, so the dock's
+   only build verb vanished (not just below the fold). Bring it back and pin it to the stats
+   window's foot so BUILDS + SAVE FIT stand at rest while the readings scroll under it; the
+   drawer gets end room so its last rows can still scroll clear. The verbs row pins to the main
+   column's foot the same way, and the rail's rhythm tightens so Inertia and Brake stand above
+   the fold beside it. */
+@media (max-height:800px) {
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw__stats .sx-sw-band--presets {
+    display: block !important; position: sticky !important; bottom: 0 !important; z-index: 3 !important;
+    margin-top: 4px !important; margin-bottom: 0 !important; padding: 4px 0 5px !important;
+    background: linear-gradient(0deg, rgb(236 230 216 / .14), rgb(236 230 216 / .14)) 0 0 / 100% 1px no-repeat,
+      linear-gradient(180deg, rgb(9 11 15 / .88), rgb(9 11 15 / .97) 34%) !important;
+  }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw__stats { min-height: 190px !important; padding-top: 12px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-presetdrawer { margin-bottom: 50px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw:not(.orr-sw--jig) .sx-sw__stage { flex-basis: 180px !important; min-height: 180px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw:not(.orr-sw--jig) .sx-sw-bars { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 0 20px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw:not(.orr-sw--jig) .sx-sw-verbs {
+    position: sticky !important; bottom: 0 !important; z-index: 3 !important; padding: 9px 0 !important; margin-top: 6px !important;
+    background: linear-gradient(0deg, rgb(236 230 216 / .14), rgb(236 230 216 / .14)) 0 0 / 100% 1px no-repeat,
+      linear-gradient(180deg, rgb(9 11 15 / .88), rgb(9 11 15 / .97) 34%) !important;
+  }
+  /* tighter rhythm so Inertia and Brake stand above the pinned key at rest */
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-band { margin-top: 6px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-bar { padding: 2px 0 !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-hero { padding-bottom: 3px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-band--handling > .sx-sw-band__label { display: none !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-hero[data-band='handling'] .k-hero__n { font-size: 28px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-band--presets > .sx-sw-band__label { display: none !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-bands { gap: 3px 14px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-hero .k-hero__w { margin-top: 2px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw .sx-sw-band--handling { margin-top: 2px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw.orr-sw--jig .sx-sw-hero .k-hero__n { font-size: 18px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw.orr-sw--jig .sx-sw-hero[data-band='handling'] .k-hero__n { font-size: 26px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw.orr-sw--jig .sx-sw__stats { top: 112px !important; max-height: calc(100% - 118px) !important; }
+  /* the jig's narrow rail folds the three handling scales two-up so Brake stands with Inertia */
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw.orr-sw--jig .sx-sw-bars { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 0 12px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw.orr-sw--jig .sx-sw-bar { grid-template-columns: 40px minmax(0, 1fr) auto !important; column-gap: 6px !important; }
+  html body #screens > .sx-berth.orr-station .k-panel.sx-sw.orr-sw--jig .sx-sw-bar .k-row__name { font-size: 12px !important; white-space: nowrap !important; }
+}
 /* S5: every other amber on the screen stands down to bone. */
 html body #screens #sf-ship .sx-sw-row__flag { color: rgb(236 230 216 / .85); }
 html body #screens #sf-ship .sx-sw-hero:is([aria-pressed="true"], .is-selected) {

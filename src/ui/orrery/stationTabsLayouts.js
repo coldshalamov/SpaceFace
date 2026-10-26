@@ -2157,6 +2157,61 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
    board window at 960x540. Rows without a tag are unchanged. */
 ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge:has(.sx-ct-row__dest) { white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
 ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge .sx-ct-row__dest { letter-spacing:.02em; }
+
+/* ===================== craft-critic journey2 — appended last to win ties ===================== */
+/* F2 — a missing market quote is a state, not a numeral. The em dash at display weight painted
+   a solid slab beside "YOU PAY · ONE UNIT NOW"; the slot now carries "SOLD OUT" at label size
+   (or a thin dim dash for a sell-side no-quote), and the caption dims with it. */
+html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero .k-hero__n .sx-mkt__hero-na {
+  display: inline-block; font: 650 15px/1.15 var(--dp-face-label, "Archivo") !important;
+  font-variation-settings: "wdth" 100, "wght" 650 !important; letter-spacing: .22em !important;
+  text-transform: uppercase !important; color: rgb(${BONE} / .62) !important; text-shadow: none !important;
+}
+html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero.sx-mkt__hero--na .k-hero__w { color: rgb(${BONE} / .42) !important; }
+/* F3 — the contacts ladder ran single-line rows inside a 360px column and the "· NEW ARRIVAL"
+   badge hard-clipped mid-word (a width defect the critic photographed at 1280×720, but it bit
+   at every height in the 1101–1499px band). The rail widens to 400px across the band, and the
+   role dissolves to an ellipsis rather than ever cutting a glyph. */
+@media (min-width:1101px) and (max-width:1499px) {
+  ${T} .sx-bar { grid-template-columns: 400px minmax(0, 1fr) !important; }
+}
+@media (max-width:1499px) {
+  ${T} .sx-bar__rows .sx-bar-row .sx-bar-row__role { min-width: 0 !important; max-width: 100% !important; overflow: hidden !important; white-space: nowrap !important; text-overflow: ellipsis !important; }
+}
+@media (max-height:800px) {
+  /* F4 — the board verb used to sit under the hang's fold with the third lead. At ≤800px the
+     hang's rhythm shortens (shallower leads margin, tighter row pitch, the keys hint stands
+     down) so the whole column — three leads and the foot — clears at rest, and the fade mask
+     that was eating the foot is retired. */
+  ${T} .sx-bar__hang { -webkit-mask-image: none !important; mask-image: none !important; }
+  ${T} .sx-bar__leads { margin-top: 10px !important; }
+  ${T} .sx-bar__leads > .k-caps { margin-top: 0 !important; }
+  ${T} .sx-bar__rail > .k-caps + .k-words, ${T} .sx-bar__leads > .k-caps + .k-rows { margin-top: 6px !important; }
+  ${T} .sx-bar__rows { row-gap: 0 !important; }
+  ${T} .sx-bar__rows .sx-bar-row { padding-top: 2px !important; padding-bottom: 2px !important; line-height: 1.3 !important; }
+  ${T} .sx-bar__keys { display: none !important; }
+  ${T} .sx-lead { padding-top: 2px !important; padding-bottom: 2px !important; }
+  ${T} .sx-bar__foot { margin-top: 8px !important; padding-top: 7px !important; padding-bottom: 4px !important;
+    background: linear-gradient(0deg, rgb(${BONE} / .14), rgb(${BONE} / .14)) 0 0 / 100% 1px no-repeat !important; }
+}
+/* Ledger — the empty book used to leave ~70% of the panel void. An empty ledger page still
+   carries its rules: the empty state stretches and stands on ruled lines with the margin
+   column, so the void reads as a page waiting for its first entry, not dead glass. */
+${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows: auto auto auto minmax(0, 1fr) auto !important; }
+${T} .sx-ledger .st-ledger-empty:not([hidden]) {
+  align-self: stretch !important; min-height: 120px !important; padding-top: 12px !important; padding-left: 40px !important;
+  background:
+    linear-gradient(90deg, transparent 24px, rgb(${BONE} / .13) 24px, rgb(${BONE} / .13) 25px, transparent 25px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, transparent 0 32px, rgb(${BONE} / .09) 32px 33px) !important;
+}
+/* F9 — the FIND A SERVICE trigger wore a bordered kbd pill; it stands as a bare caps word with
+   a quiet field rule instead. The market search answers focus with a tick on its underline. */
+${T} .so-command-trigger { border: 0 !important; border-radius: 0 !important; background: none !important; background-image: none !important; box-shadow: inset 0 -1px 0 rgb(${BONE} / .16) !important; clip-path: none !important; padding: 0 0 4px !important; min-height: 0 !important; }
+${T} .so-command-trigger .dp-kbd { border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; }
+${T} .so-command-trigger:is(:hover, :focus-visible) { box-shadow: inset 0 -1px 0 rgb(${BONE} / .45) !important; color: rgb(252 249 240) !important; outline: none !important; }
+${T} .sx-mkt-search { box-shadow: inset 0 -1px 0 rgb(${BONE} / .28) !important; }
+${T} .sx-mkt-search:focus { outline: none !important; box-shadow: inset 0 -1.5px 0 rgb(${BONE} / .72) !important;
+  background: linear-gradient(90deg, rgb(${BONE} / .9) 0 9px, transparent 9px) 0 100% / 100% 2px no-repeat !important; }
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {

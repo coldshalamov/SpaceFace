@@ -230,17 +230,39 @@
 :is(#screens .sx-observatory, .sx-observatory) .sx-pop .sx-btn-primary { margin-top: 18px; width: 100%; min-height: 42px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-holdrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; width: 100%; border: 0; background: transparent; border-bottom: 1px solid var(--so-line); text-align: left; padding: 12px 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-holdrow__quote { font-size: 14px; }:is(#screens .sx-observatory, .sx-observatory) .sx-holdrow__quote .k-t-data { display: block; font-size: 12px; }:is(#screens .sx-observatory, .sx-observatory) .sx-holdrow__go { justify-self: end; color: var(--so-accent); }
-/* Command access: native modal focus, semantic options, type-to-filter; zero React runtime. */
-:is(#screens .sx-observatory, .sx-observatory) .so-command-palette { position: fixed; inset: 13vh 0 auto; width: min(600px,calc(100vw - 28px)); max-height: min(660px,80dvh); padding: 24px; margin: 0 auto; border: 1px solid #616c7b; border-radius: 10px; background: linear-gradient(130deg,#23272d,#17191d); color: var(--so-ink); box-shadow: 0 28px 100px #000b; overflow: auto; }
+/* Command access: native modal focus, semantic options, type-to-filter; zero React runtime.
+   ORRERY Unfold layer (critic F1): borderless glass with an etched edge-light, the search a
+   field on a scale, results a ladder of tick rows, the Hand the only amber on the current
+   choice — never a rounded, shadowed card with a bordered input. */
+:is(#screens .sx-observatory, .sx-observatory) .so-command-palette {
+  position: fixed; inset: 13vh 0 auto; width: min(600px,calc(100vw - 28px)); max-height: min(660px,80dvh);
+  padding: 24px 28px; margin: 0 auto; border: 0; border-radius: 0; color: var(--so-ink); box-shadow: none; overflow: auto;
+  background:
+    linear-gradient(90deg, rgb(236 230 216 / .55), rgb(236 230 216 / .16) 26%, rgb(236 230 216 / .16) 74%, rgb(236 230 216 / .55)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(90deg, rgb(236 230 216 / .1), rgb(236 230 216 / .1)) 0 100% / 100% 1px no-repeat,
+    linear-gradient(90deg, rgb(236 230 216 / .14), rgb(236 230 216 / .14)) 0 0 / 1px 100% no-repeat,
+    linear-gradient(90deg, rgb(236 230 216 / .14), rgb(236 230 216 / .14)) 100% 0 / 1px 100% no-repeat,
+    linear-gradient(160deg, rgb(15 18 23 / .94), rgb(9 11 15 / .9));
+}
 :is(#screens .sx-observatory, .sx-observatory) .so-command-palette::backdrop { background: rgb(7 8 9 / .78); }
 :is(#screens .sx-observatory, .sx-observatory) .so-command-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }:is(#screens .sx-observatory, .sx-observatory) .so-command-head h2 { font: 550 29px/1.15 var(--so-display); margin: 5px 0 0; letter-spacing: -.04em; }:is(#screens .sx-observatory, .sx-observatory) .so-command-head button { padding: 7px; min-height: 30px; background: transparent; }
-:is(#screens .sx-observatory, .sx-observatory) .so-command-search { display: flex; align-items: center; gap: 12px; border: 1px solid #545e6b; border-radius: 5px; background: #121417; padding: 0 12px; color: var(--so-accent); }:is(#screens .sx-observatory, .sx-observatory) .so-command-search input { flex: 1; min-width: 0; border: 0; background: none; height: 47px; font-size: 14px; padding-left: 0; box-shadow: none; }:is(#screens .sx-observatory, .sx-observatory) .so-command-search:focus-within { outline: 2px solid #a5adb933; }
-:is(#screens .sx-observatory, .sx-observatory) #so-command-results { list-style: none; margin: 14px -8px 0; padding: 0 8px; max-height: 365px; overflow: auto; }
-:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li { display: flex; align-items: center; gap: 14px; padding: 12px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
-:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li[aria-selected=true] { border-color: #555f6d; background: #31363e77; }:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li[aria-disabled=true] { opacity: .5; cursor: not-allowed; }
-:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li>svg:first-child { color: var(--so-accent); }:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li>svg:last-child { margin-left: auto; width: 15px; color: var(--so-muted); }
+:is(#screens .sx-observatory, .sx-observatory) .so-command-search { position: relative; display: flex; align-items: center; gap: 12px; padding: 0 0 0 26px; border: 0; border-radius: 0; background: none; box-shadow: inset 0 -1px 0 0 rgb(236 230 216 / .3); color: rgb(236 230 216 / .6); }
+:is(#screens .sx-observatory, .sx-observatory) .so-command-search::before { content: ""; position: absolute; left: 3px; top: 50%; width: 10px; height: 13px; margin-top: -6.5px; clip-path: polygon(0 0, 100% 50%, 0 100%, 28% 50%); background: rgb(236 230 216 / .38); transition: background .14s var(--so-ease, ease); }
+:is(#screens .sx-observatory, .sx-observatory) .so-command-search input { flex: 1; min-width: 0; border: 0; background: none; height: 46px; font-size: 14px; padding-left: 0; box-shadow: none; outline: 0 !important; } /* the container's lit underline + tick are the focus signal — kit.css's !important bone ring would re-draw the boxed input the critic flagged */
+:is(#screens .sx-observatory, .sx-observatory) .so-command-search:focus-within { box-shadow: inset 0 -1.5px 0 0 rgb(236 230 216 / .68); }
+:is(#screens .sx-observatory, .sx-observatory) .so-command-search:focus-within::before { background: rgb(236 230 216 / .85); }
+:is(#screens .sx-observatory, .sx-observatory) #so-command-results { list-style: none; margin: 14px -8px 0; padding: 0 8px; max-height: 365px; overflow: auto; background: linear-gradient(90deg, transparent 6.75px, rgb(236 230 216 / .3) 6.75px, rgb(236 230 216 / .3) 8.25px, transparent 8.25px); }
+:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li { position: relative; display: flex; align-items: center; gap: 14px; padding: 11px 10px 11px 26px; border: 0; border-radius: 0; cursor: pointer; }
+:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li::before { content: ""; position: absolute; left: 3px; top: 50%; width: 9px; height: 1.5px; margin-top: -.75px; background: rgb(236 230 216 / .45); }
+:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li:is(:hover, :focus-visible) { background: linear-gradient(90deg, rgb(236 230 216 / .05), transparent 62%); }
+:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li:is(:hover, :focus-visible)::before { width: 12px; background: rgb(236 230 216 / .85); }
+:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li[aria-selected=true] { background: none; }
+:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li[aria-selected=true]::before { left: 2px; width: 11px; height: 15px; margin-top: -7.5px; clip-path: polygon(0 0, 100% 50%, 0 100%, 24% 50%); background: var(--so-accent); box-shadow: 0 0 8px rgb(242 185 80 / .45); }
+:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li[aria-selected=true] .so-command-copy strong { color: rgb(252 249 240); }
+:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li[aria-disabled=true] { opacity: .45; cursor: default; }
+:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li>svg:first-child { flex: 0 0 auto; color: rgb(236 230 216 / .66); }:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li[aria-selected=true]>svg:first-child { color: rgb(236 230 216 / .9); }:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li>svg:last-child { margin-left: auto; width: 15px; color: rgb(236 230 216 / .4); }
 :is(#screens .sx-observatory, .sx-observatory) .so-command-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }:is(#screens .sx-observatory, .sx-observatory) .so-command-copy strong { font-size: 14px; font-weight: 550; }:is(#screens .sx-observatory, .sx-observatory) .so-command-copy small { font-size: 12px; line-height: 1.45; color: var(--so-muted); }
-:is(#screens .sx-observatory, .sx-observatory) .so-command-palette footer { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--so-line); color: var(--so-muted); font-size: 12px; }:is(#screens .sx-observatory, .sx-observatory) .so-command-palette kbd { display: inline-block; margin-right: 4px; }
+:is(#screens .sx-observatory, .sx-observatory) .so-command-palette footer { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgb(236 230 216 / .12); color: var(--so-muted); font-size: 12px; }:is(#screens .sx-observatory, .sx-observatory) .so-command-palette kbd { display: inline-block; margin-right: 4px; border: 0; border-radius: 0; background: none; padding: 0; color: rgb(236 230 216 / .8); font: inherit; letter-spacing: .08em; }
 /* Laptop and touch geometry: never shrink labels to manufacture a passing screenshot. */
 @media (min-width:1800px) {
   :is(#screens .sx-observatory, .sx-observatory) .sx-app { padding-inline: 48px; }:is(#screens .sx-observatory, .sx-observatory) .sx-screen__body>.sx-mkt { grid-template-columns: minmax(500px,39%) minmax(0,1fr); }

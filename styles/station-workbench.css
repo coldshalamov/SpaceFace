@@ -12,7 +12,10 @@
   --k-signal: var(--sf-station-accent);
 }
 
-#screens .sx-berth :is(.sx-pop, .sx-comms__history, .so-command-palette) {
+/* The command palette is deliberately NOT flattened here: station-orbital.css skins it as an
+   ORRERY Unfold layer (etched edge-light, ladder rows, Hand tick). Flattening it to a bare
+   --dp-field slab is what the critic photographed as the generic modal (F1). */
+#screens .sx-berth :is(.sx-pop, .sx-comms__history) {
   border: 14px solid transparent;
   border-image: none;
   border-radius: 0;
