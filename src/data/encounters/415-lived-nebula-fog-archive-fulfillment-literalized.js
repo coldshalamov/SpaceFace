@@ -122,7 +122,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "DISPATCH: Ours, theirs, ours again. Three separate ring entries — the record needs the round trip. — SPAR ON THE NEBULA FOG.",
+      "line": "DISPATCH: Ours, theirs, ours again. Three separate seventy-ring entries — the record needs the round trip. — SPAR ON THE NEBULA FOG.",
       "channel": "info",
       "next": "offer"
     },

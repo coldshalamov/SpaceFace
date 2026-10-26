@@ -122,7 +122,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "SABLE: Ours, theirs, ours again. Three separate ring entries — the record needs the round trip. — ADDENDUM ON THE PLANETARY MASS.",
+      "line": "SABLE: Ours, theirs, ours again. Three separate seventy-ring entries — the record needs the round trip. — ADDENDUM ON THE PLANETARY MASS.",
       "channel": "info",
       "next": "offer"
     },
