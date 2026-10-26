@@ -58,6 +58,7 @@ import {
   weaponLevelOf,
 } from '../data/swarmWeaponLevels.js';
 import { CIRCUIT_EVENT, CIRCUIT_MYSTERY, CIRCUIT_SERVICES, CIRCUIT_STAGE_COUNT, circuitChoicesFor, circuitFor, circuitMysteryOffer, circuitStateError, parseCircuitChoiceId } from './survivalCircuit.js';
+import { compileChallenge } from './survivalMutators.js';
 import {
   runModifierRecord,
   summarizeRunBuild,
@@ -477,6 +478,18 @@ export const survivalDraft = {
     if (!run) return;
     this._armoryGeneration = (this._armoryGeneration || 0) + 1;
     this._preparationReceipt = null;
+    // A contract that strikes the draft — the Draftless wager, the one-gun mutators — does not
+    // open a smaller armory; there is no armory. The phase machine is already auto-resolving the
+    // stop, and what must not stand is a dealt shelf inside that pass-through: a pick, demo, hold,
+    // purchase or re-roll could otherwise land in the window. So nothing is dealt, no screen
+    // opens, and _resolved never goes false while the phase runs out.
+    if (compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft) {
+      this._offers = null;
+      this._wave = run.wave;
+      this._resolved = false;
+      this._finish({ picked: null, applied: false, reason: 'draftless' });
+      return;
+    }
     // A swarm run passes THROUGH `draft` between every wave, because cleanup has no legal edge
     // straight back to wave_intro. On the four waves in five that are not upgrade waves, that
     // pass-through must be invisible: resolve it here rather than opening a surface for one frame.
@@ -600,6 +613,22 @@ export const survivalDraft = {
    */
   rerollState() {
     const run = liveSurvivalRun(this.state);
+    // A wager or mutator that forbids re-deals (the No Re-rolls threat, the no_reroll mutator)
+    // is law, not a price: it stands ahead of the Hangar's free draws and Gambler's bench alike.
+    // The row still answers — dead, with the contract named — so the button can be drawn honestly
+    // unavailable instead of looking live and doing nothing.
+    if (run && compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipReroll) {
+      const info = {
+        open: run.phase === 'draft' && !this._resolved,
+        wave: this._wave,
+        rerolls: this._rerolls || 0,
+        price: 0,
+        credits: Number.isFinite(run.credits) ? run.credits : 0,
+        available: false,
+        reason: 'no_reroll',
+      };
+      return { ...info, note: this._rerollRefusalText(info) };
+    }
     if (run && isSwarmRuleset(run.ruleset)) {
       const hangarInfo = hangarRerollState(run);
       const drafting = run.phase === 'draft' && !this._resolved;
@@ -833,6 +862,9 @@ export const survivalDraft = {
   },
 
   _rerollRefusalText(info) {
+    if (info && info.reason === 'no_reroll') {
+      return 'No re-rolls — the shelf deals once. What it says is what you fly.';
+    }
     if (info && info.reason === 'pool_exhausted') {
       return 'Nothing else in the pool fits this hull — a re-roll would deal the same three.';
     }
@@ -1898,6 +1930,16 @@ export const survivalDraft = {
     const run = liveSurvivalRun(this.state);
     if (!run || !isSwarmRuleset(run.ruleset)) return false;
     if (run.phase !== 'refit' && run.phase !== 'draft') return false;
+    // The armory the wager struck has no counter either: selling a part back is priced off the
+    // shelf and pays the wallet, so a no-draft contract refuses it in every shop phase.
+    if (compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft) {
+      this._notice = 'The armory is closed — nothing here buys.';
+      this._emit('run:refitChanged', {
+        wave: run.wave, slotIndex: Number.isInteger(request && request.slotIndex) ? request.slotIndex : null,
+        action: 'sell', ok: false, reason: this._notice,
+      });
+      return false;
+    }
     const ships = this._ships();
     if (!ships) return false;
     const slotIndex = request && request.slotIndex;
