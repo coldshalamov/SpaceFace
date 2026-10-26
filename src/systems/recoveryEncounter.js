@@ -145,6 +145,12 @@ function normalizeState(data) {
   return normalized;
 }
 
+function committedRecoveryChoice(record) {
+  const choice = record && record.rewardPlan && record.rewardPlan.choice;
+  return CHOICE[choice] && Object.values(record.recoveredCargo || {}).some(amount => amount > 0)
+    ? choice : null;
+}
+
 function publicReadout(record, state) {
   if (!record) return null;
   return {
@@ -167,6 +173,7 @@ function publicReadout(record, state) {
     stabilizationMode: record.stabilizationMode || null,
     stabilizeRequired_s: STABILIZE_S,
     retryReason: record.retryReason || null,
+    committedChoice: committedRecoveryChoice(record),
     towClear_wu: TOW_CLEAR_WU,
   };
 }
@@ -540,6 +547,14 @@ export const recoveryEncounter = {
     const record = this._recordFromPayload(payload);
     const choice = String(payload.choice || payload.optionId || '');
     if (!record || record.phase !== 'decision' || !CHOICE[choice]) return false;
+    const committedChoice = committedRecoveryChoice(record);
+    if (committedChoice && choice !== committedChoice) {
+      // Cargo already removed belongs to the chosen outcome. A full-hold retry
+      // cannot turn partial stripping into a rescue payout plus free components.
+      record.retryReason = 'cargo_full';
+      this._emit('recovery:retryAvailable', publicReadout(record, this.state));
+      return false;
+    }
     if (choice === 'rescue' && !record.hasSurvivor) {
       record.retryReason = 'no_life_signs';
       this._emit('recovery:retryAvailable', publicReadout(record, this.state));

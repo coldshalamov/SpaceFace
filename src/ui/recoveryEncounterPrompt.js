@@ -308,7 +308,9 @@ export function createRecoveryEncounterPrompt(ctx = {}) {
       ...base,
       kind: 'info',
       statusFlag: 'STABLE · CHOOSE',
-      detail: readout.retryReason === 'cargo_full'
+      detail: readout.committedChoice
+        ? `Extraction started. Make cargo space, then finish ${readout.committedChoice === 'blackbox' ? 'BLACK BOX' : 'STRIP'}.`
+        : readout.retryReason === 'cargo_full'
         ? 'Hold full. Make cargo space, then choose again.'
         : readout.retryReason === 'no_life_signs'
           ? 'No life signs. Recover the box or strip components.'
@@ -317,7 +319,9 @@ export function createRecoveryEncounterPrompt(ctx = {}) {
         { id: 'rescue', label: 'RESCUE', disabled: !readout.hasSurvivor, reason: readout.hasSurvivor ? 'Recover the survivor and earn claimant goodwill.' : 'No life signs detected.' },
         { id: 'blackbox', label: 'BLACK BOX', cancel: true, title: 'Recover the flight record and return registered evidence.' },
         { id: 'strip', label: 'STRIP', danger: true, title: 'Take components; claimed or restricted wrecks carry reputation consequences.' },
-      ],
+      ].map(choice => readout.committedChoice && choice.id !== readout.committedChoice
+        ? { ...choice, disabled: true, reason: 'Extraction has started. Finish the selected recovery method.' }
+        : choice),
       onChoose: (choiceId, source) => bus.emit('recovery:choose', { recoveryId: readout.recoveryId, choice: choiceId, source }),
     });
   }
