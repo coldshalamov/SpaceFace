@@ -539,6 +539,118 @@
       "part_id": "var_station_trade_hub_scn_overlay_v01",
       "note": "Forge rebuild of the Concord claim on the Helios hub: armoured cladding band with a blue rail, four diagonal bastion keeps, six masts, terminal docking-boom gate."
     },
+    "var_station_kit_concord_v01": {
+      "layout": "place",
+      "file": "var_station_kit_concord_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_CONCORD",
+      "part_id": "var_station_kit_concord_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: pale enamel claim band + Concord-blue rail, four watch keeps, beacon crown. Envelope-fit onto any of the seven station archetypes."
+    },
+    "var_station_kit_meridian_v01": {
+      "layout": "place",
+      "file": "var_station_kit_meridian_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_MERIDIAN",
+      "part_id": "var_station_kit_meridian_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: gold ticker dash band, pylon halo ring, gate arch over +X."
+    },
+    "var_station_kit_drift_v01": {
+      "layout": "place",
+      "file": "var_station_kit_drift_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_DRIFT",
+      "part_id": "var_station_kit_drift_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: ochre claim band, two polar cage ribs, hazard-striped pylon fins, ore-cage crown."
+    },
+    "var_station_kit_reach_v01": {
+      "layout": "place",
+      "file": "var_station_kit_reach_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_REACH",
+      "part_id": "var_station_kit_reach_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: war band, three ram-prow blades, trophy spike rack with kill tokens, red war lamps."
+    },
+    "var_station_kit_quiet_v01": {
+      "layout": "place",
+      "file": "var_station_kit_quiet_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_QUIET",
+      "part_id": "var_station_kit_quiet_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: matte dead shroud band, leaning baffle plates, dead antenna thicket; signature is no lights."
+    },
+    "var_station_kit_vael_v01": {
+      "layout": "place",
+      "file": "var_station_kit_vael_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_VAEL",
+      "part_id": "var_station_kit_vael_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: nacre tile scales, etched glyph strips, pearl lien seal on the crown, teal lamp pairs."
+    },
+    "var_station_kit_frontier_v01": {
+      "layout": "place",
+      "file": "var_station_kit_frontier_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_FRONTIER",
+      "part_id": "var_station_kit_frontier_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: patch-quilt salvage plates, lash trusses, strapped tank crown, warm porch lamps + cyan claim lights."
+    },
+    "var_station_kit_choir_v01": {
+      "layout": "place",
+      "file": "var_station_kit_choir_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_CHOIR",
+      "part_id": "var_station_kit_choir_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: consecrated band, three spiral ribbons, belfry crown with three rung bells, votive lamps."
+    },
+    "var_station_kit_helix_v01": {
+      "layout": "place",
+      "file": "var_station_kit_helix_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_HELIX",
+      "part_id": "var_station_kit_helix_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: pale audit band, white-glass seal panes with red audit ticks, directorate seal ring crown."
+    },
+    "var_station_kit_understory_v01": {
+      "layout": "place",
+      "file": "var_station_kit_understory_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_UNDERSTORY",
+      "part_id": "var_station_kit_understory_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit (the Overgrowth): root-mat band, moss mats, vine runs, spore pods, moss crown with fronds, bio-lamps."
+    },
+    "var_station_kit_fulfillment_v01": {
+      "layout": "place",
+      "file": "var_station_kit_fulfillment_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_FULFILLMENT",
+      "part_id": "var_station_kit_fulfillment_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: hospital-white consignment band, barcode stripe rows, red seal stamps, dispatch crown."
+    },
+    "var_station_kit_archive_v01": {
+      "layout": "place",
+      "file": "var_station_kit_archive_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_ARCHIVE",
+      "part_id": "var_station_kit_archive_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: indigo vellum band, stacked scroll courses, pressed glyph tiles, catalogue crown with one gilt lamp."
+    },
+    "var_station_kit_pitborn_v01": {
+      "layout": "place",
+      "file": "var_station_kit_pitborn_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_PITBORN",
+      "part_id": "var_station_kit_pitborn_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: rust scab band, welded scrap plates, amber string-light catenaries on scrap towers, rust offcut crown."
+    },
+    "var_station_kit_verge_v01": {
+      "layout": "place",
+      "file": "var_station_kit_verge_v01",
+      "asset_id": "SF_PLACE_STATION_KIT_VERGE",
+      "part_id": "var_station_kit_verge_v01",
+      "no_collision": true,
+      "note": "Row 512 canonical-shell kit: measured grey band, nacre lattice rings through the poles, datum ticks, witness panels, plumb crown."
+    },
     "place_dead_hulk": {
       "layout": "place",
       "file": "place_dead_hulk",

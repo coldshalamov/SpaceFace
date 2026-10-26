@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "234d0cd83dd6dfe195530ff0c82f85ef618d5224132c0404819fcb97b6a3f502",
+  "contentHash": "a64ccdd5ab81df8527e9b83908eefd83c501440d2feed4c305fb6fcfa6fddb04",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1878,8 +1878,8 @@
       "uri": "place_rock_reef_metal_boulder.glb"
     },
     "sourceManifest": {
-      "bytes": 307707,
-      "sha256": "6f2278df60560e6b8ffac9ea5d7f3df816951bb08252171b81e759230549f8a6",
+      "bytes": 320050,
+      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
       "uri": "pilots.json"
     }
   },
@@ -3028,7 +3028,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_reef_metal_boulder.glb"
   },
-  "runtimeHash": "f76699fbd890f69b5eba3573215914768d4a485b68e15c3a536da657acdf23a3",
+  "runtimeHash": "e439c8a8983be84042f47702cf833ca04517b178b4310def9a7f6b64ad3fd8e3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

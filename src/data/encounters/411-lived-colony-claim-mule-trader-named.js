@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "MOSS: Tow the bell over — a hundred-twenty of drag — and park it inside twenty of the receiver, dead slow for a four-count. — BELL ON THE COLONY.",
+      "line": "MOSS: Tow the bell over — a hundred-twenty of drag — and park it inside twenty of the receiver, under two for a four-count. — BELL ON THE COLONY.",
       "channel": "info",
       "next": "offer"
     },

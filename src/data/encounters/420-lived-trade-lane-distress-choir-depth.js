@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Line on the kettle. Drag it past the hundred-twenty mark, then cut it quiet — dead slow when the line comes off. — KETTLE ON THE TRADE LANE.",
+      "line": "CANTOR: Line on the kettle. Drag it past the hundred-twenty mark, then cut it quiet — under five, held a two-count, when the line comes off. — KETTLE ON THE TRADE LANE.",
       "channel": "info",
       "next": "offer"
     },

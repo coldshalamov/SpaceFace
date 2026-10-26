@@ -122,7 +122,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "HX-12: Hold station sixty to a hundred-eighty off our bow while we make a hundred on the lead. — BOOT ON THE REFINERY APPROACH.",
+      "line": "HX-12: Hold station sixty to a hundred-eighty off our bow, an eight-count, while we make a hundred on the lead. — BOOT ON THE REFINERY APPROACH.",
       "channel": "info",
       "next": "offer"
     },

@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "VAEL: The hymn goes to the second hull, not ours — a hundred-twenty of haul. Tow it there, release, park it inside thirty. — HYMN ON THE DERELICT FIELD.",
+      "line": "VAEL: The hymn goes to the second hull, not ours — a hundred-twenty of haul. Tow it there, release, park it inside thirty, under three for a three-count. — HYMN ON THE DERELICT FIELD.",
       "channel": "info",
       "next": "offer"
     },

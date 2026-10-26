@@ -308,7 +308,11 @@ function enterAwait(d, live, state, phase) {
     const e = state.entities && state.entities.get ? state.entities.get(id) : null;
     if (subjectEnt(e)) {
       v.roleIds[role] = id;
-      v.roleGenerations[role] = occupantGenerationOf(e);
+      // Prefer the spawn-time stamp: an entity recycled between the hail and the
+      // player's choice keeps the ORIGINAL generation as the role's baseline, so the
+      // replacement fails roleEnt instead of silently becoming the cast member.
+      const spawnGen = live.spawnGenerations && live.spawnGenerations[id];
+      v.roleGenerations[role] = spawnGen != null ? spawnGen : occupantGenerationOf(e);
       v.entityStarts[id] = { x: e.pos.x, z: e.pos.z };
     }
   }
@@ -331,6 +335,11 @@ function stepAwait(d, live, state, spec, phase, byId, now) {
     for (const id of live.ids || []) {
       const e = state.entities && state.entities.get ? state.entities.get(id) : null;
       const start = v.entityStarts[id];
+      // Never steer a recycled occupant — the generation guard resolves BEFORE the
+      // write, not after the eval step would have aborted on it.
+      const role = live.roles && live.roles[id];
+      const gen = role && v.roleGenerations && v.roleGenerations[role];
+      if (e && gen != null && occupantGenerationOf(e) !== gen) continue;
       if (e && e.type === 'ship' && start) steerToward(e, start.x, start.z, 40);
     }
   }
@@ -555,6 +564,14 @@ function runVerb(d, live, state, spec, phase) {
       d.abort(live, 'spawn_failed');
       return false;
     }
+    // Entity ids recycle. Bind each spawn's occupant generation NOW — the await's role
+    // guard later compares against this spawn-time stamp, so a hull replaced between
+    // the hail and the player's choice can never pass as the original cast member.
+    live.spawnGenerations = live.spawnGenerations || {};
+    for (const id of ids) {
+      const e = state.entities && state.entities.get ? state.entities.get(id) : null;
+      if (e) live.spawnGenerations[id] = occupantGenerationOf(e);
+    }
     return true;
   }
   if (verb === 'prop') {
@@ -582,6 +599,8 @@ function runVerb(d, live, state, spec, phase) {
     live.roles = live.roles || {};
     live.ids.push(prop.id);
     live.roles[prop.id] = phase.role || 'prop';
+    live.spawnGenerations = live.spawnGenerations || {};
+    live.spawnGenerations[prop.id] = occupantGenerationOf(prop);
     if (prop.data) {
       prop.data.masslineTetherable = true;
       // Payload already resolves to combat_profile_tether_payload by entity-type default;

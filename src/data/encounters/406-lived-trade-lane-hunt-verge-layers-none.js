@@ -122,7 +122,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "VERGE: Fall in behind our wake — sixty to a hundred-eighty, matched speed, six-count. — LAMP ON THE TRADE LANE.",
+      "line": "VERGE: Fall in behind our wake — sixty to a hundred-eighty, within eight of our pace, a six-count, while the lead makes its hundred. — LAMP ON THE TRADE LANE.",
       "channel": "info",
       "next": "offer"
     },

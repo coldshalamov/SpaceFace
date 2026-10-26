@@ -122,7 +122,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "BUOY: Hold station sixty to a hundred-eighty off our bow while we make a hundred on the lead. — VISOR ON THE ANOMALY DEEP.",
+      "line": "BUOY: Hold station sixty to a hundred-eighty off our bow, an eight-count, while we make a hundred on the lead. — VISOR ON THE ANOMALY DEEP.",
       "channel": "info",
       "next": "offer"
     },

@@ -5,8 +5,10 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import { parseStrictEmbeddedGlb } from '../tools/art/lib/strictGlbValidation.mjs';
+import { modelTruthRow } from '../src/data/modelTruth.js';
 import {
   isPackagedLiveWholeShipFile,
+  stationOverlayFileForEntity,
   tradeHubOverlayFileForEntity,
   wholeShipVisualForEntity,
 } from '../src/render/partsLibrary.js';
@@ -115,16 +117,22 @@ test('the three trade-hub overlays on disk bind to Free/MTS/SCN hubs and stay ga
   assert.equal(helios, 'places/var_station_trade_hub_scn_overlay_v01.glb');
   assert.equal(tethys, 'places/var_station_trade_hub_mts_overlay_v01.glb');
   assert.equal(reach, 'places/var_station_trade_hub_free_overlay_v01.glb');
-  assert.equal(refinery, null);
+  // Row 512: off-hub archetypes take the faction's canonical-shell kit — Ceres' Drift
+  // refinery wears the cage, not a bare body.
+  assert.equal(refinery, 'places/var_station_kit_drift_v01.glb');
 
+  // The overlay bodies were reforged under generic material-slot node names; the
+  // behavioral contract is the faction overlay root plus its authored faction lights.
   const scnNames = names('places/var_station_trade_hub_scn_overlay_v01.glb');
   assert.ok(scnNames.has('SF_TRADE_HUB_SCN_OVERLAY_ROOT'));
-  assert.ok(scnNames.has('LOD0_VAR_SCN_cladding_band'));
-  assert.ok(scnNames.has('LOD0_VAR_SCN_boom_n'));
+  assert.ok(scnNames.has('LOD0_Lights_Cyan_scn'), 'SCN overlay keeps its authored cyan claim lights');
+  assert.ok([...scnNames].some((n) => /^LOD0_/.test(n)), 'SCN overlay still carries cladding geometry');
   const freeNames = names('places/var_station_trade_hub_free_overlay_v01.glb');
-  assert.ok(freeNames.has('LOD0_VAR_FREE_pod00'));
+  assert.ok(freeNames.has('SF_TRADE_HUB_FREE_OVERLAY_ROOT'));
+  assert.ok(freeNames.has('LOD0_Lights_Cyan_free'), 'Free overlay keeps its authored cyan claim lights');
   const mtsNames = names('places/var_station_trade_hub_mts_overlay_v01.glb');
-  assert.ok(mtsNames.has('LOD0_VAR_MTS_ring_outer'));
+  assert.ok(mtsNames.has('SF_TRADE_HUB_MTS_OVERLAY_ROOT'));
+  assert.ok(mtsNames.has('LOD0_Lights_Warm'), 'MTS overlay keeps its authored warm marquee lights');
 });
 
 test('Row 514: Helix/Fulfillment/Archive/Pitborn/Understory/Verge kits dress the hulls those factions field', () => {
@@ -172,6 +180,109 @@ test('Row 514: Helix/Fulfillment/Archive/Pitborn/Understory/Verge kits dress the
   assert.equal(player.file, 'wholeships/kestrel.glb', 'the player Kestrel stays the Hitch, never garden');
 });
 
+// Row 512: fourteen canonical-shell kits — one authored dressing set per expansion faction,
+// envelope-fit at compose onto whichever of the seven station archetypes the entity resolves.
+const STATION_KIT_CASES = [
+  ['faction_scn', 'places/var_station_kit_concord_v01.glb', 'SF_PLACE_STATION_KIT_CONCORD'],
+  ['faction_mts', 'places/var_station_kit_meridian_v01.glb', 'SF_PLACE_STATION_KIT_MERIDIAN'],
+  ['faction_dmc', 'places/var_station_kit_drift_v01.glb', 'SF_PLACE_STATION_KIT_DRIFT'],
+  ['faction_reach', 'places/var_station_kit_reach_v01.glb', 'SF_PLACE_STATION_KIT_REACH'],
+  ['faction_quiet', 'places/var_station_kit_quiet_v01.glb', 'SF_PLACE_STATION_KIT_QUIET'],
+  ['faction_vael', 'places/var_station_kit_vael_v01.glb', 'SF_PLACE_STATION_KIT_VAEL'],
+  ['faction_free', 'places/var_station_kit_frontier_v01.glb', 'SF_PLACE_STATION_KIT_FRONTIER'],
+  ['faction_choir', 'places/var_station_kit_choir_v01.glb', 'SF_PLACE_STATION_KIT_CHOIR'],
+  ['faction_helix', 'places/var_station_kit_helix_v01.glb', 'SF_PLACE_STATION_KIT_HELIX'],
+  ['faction_understory', 'places/var_station_kit_understory_v01.glb', 'SF_PLACE_STATION_KIT_UNDERSTORY'],
+  ['faction_fulfillment', 'places/var_station_kit_fulfillment_v01.glb', 'SF_PLACE_STATION_KIT_FULFILLMENT'],
+  ['faction_archive', 'places/var_station_kit_archive_v01.glb', 'SF_PLACE_STATION_KIT_ARCHIVE'],
+  ['faction_pitborn', 'places/var_station_kit_pitborn_v01.glb', 'SF_PLACE_STATION_KIT_PITBORN'],
+  ['faction_verge_layers', 'places/var_station_kit_verge_v01.glb', 'SF_PLACE_STATION_KIT_VERGE'],
+];
+
+const SEVEN_ARCHETYPES = [
+  'trade_hub', 'refinery', 'military', 'blackmarket', 'fab', 'mining', 'research',
+];
+
+function stationEntity(stationTypeId, factionId) {
+  return {
+    type: 'station',
+    factionId,
+    data: { archetypeGlb: `place_station_${stationTypeId}`, stationTypeId },
+  };
+}
+
+test('Row 512: every faction kit dresses all seven station archetypes; authored hub overlays keep precedence', () => {
+  for (const [factionId, file] of STATION_KIT_CASES) {
+    for (const typeId of SEVEN_ARCHETYPES) {
+      const resolved = stationOverlayFileForEntity(stationEntity(typeId, factionId));
+      if (typeId === 'trade_hub'
+        && { faction_scn: 1, faction_mts: 1, faction_free: 1 }[factionId]) {
+        // The three authored Helios overlays still win on the hub they were built for.
+        assert.equal(resolved, `places/var_station_trade_hub_${factionId.slice(8)}_overlay_v01.glb`,
+          `${factionId} trade_hub keeps its authored overlay`);
+      } else {
+        assert.equal(resolved, file, `${factionId} on ${typeId} must wear its kit`);
+      }
+    }
+  }
+  // A faction with no kit row leaves every archetype bare rather than borrowing one.
+  assert.equal(stationOverlayFileForEntity(stationEntity('refinery', 'faction_bloom')), null);
+  assert.equal(stationOverlayFileForEntity(stationEntity('mining', 'faction_free_agent_x')), null);
+  // Non-station entities and non-archetype places never take a kit.
+  assert.equal(stationOverlayFileForEntity({ type: 'ship', factionId: 'faction_scn', data: {} }), null);
+  const gate = stationOverlayFileForEntity({
+    type: 'station',
+    factionId: 'faction_scn',
+    data: { isGate: true, archetypeGlb: 'place_gate_jump_ring' },
+  });
+  assert.equal(gate, null, 'the jump ring keeps its bare authored body');
+});
+
+test('Row 512: kit GLBs are forge-built dressing sets with measured canonical shells', () => {
+  for (const [, file] of STATION_KIT_CASES) {
+    const parsed = parseStrictEmbeddedGlb(
+      readFileSync(resolve(ROOT, 'assets/ships/parts', file)),
+      file,
+    );
+    assert.equal(parsed.gltf.asset?.extras?.spacefaceAsset?.surfaceGeometryRemaster,
+      'forge-v1', `${file} must be a forge body`);
+    const nodeNames = new Set((parsed.gltf.nodes || []).map((n) => n.name));
+    assert.ok(!nodeNames.has('COLLISION_HULL'), `${file} is garnish — no collision hull`);
+    assert.ok([...nodeNames].some((n) => /^SF_VAR_STATION_KIT_.*_ROOT$/.test(n)),
+      `${file} carries its kit root`);
+    // Every kit is a multi-material dressing set with a faction read — a cladding band
+    // plus emissive or accent marks, never a blank shell.
+    const mats = new Set((parsed.gltf.materials || []).map((m) => m.name));
+    assert.ok(mats.size >= 4, `${file} is a layered dressing set, not a flat repaint`);
+    assert.ok([...mats].some((m) => /Hull|Armor|Mechanical/.test(m)),
+      `${file} keeps a cladding band material`);
+    assert.ok([...mats].some((m) => /Emissive|Accent|Ceramic|Stone|Warning/.test(m)),
+      `${file} carries a faction read`);
+  }
+});
+
+test('Row 512: every kit x archetype census pair carries positive bounds, so the envelope fit is computable', () => {
+  // StationKitEnvelopeFit divides measured bounds per-axis; a zero or missing row would
+  // produce a degenerate or NaN transform. Prove every kit and every dressed archetype
+  // reports finite, positive measured bounds and a finite centre.
+  const finite3 = (v) => Array.isArray(v) && v.length === 3 && v.every((x) => Number.isFinite(Number(x)));
+  for (const typeId of SEVEN_ARCHETYPES) {
+    const base = modelTruthRow(`place_station_${typeId}`);
+    assert.ok(base && base.bounds, `census row for place_station_${typeId}`);
+    assert.ok(finite3(base.bounds.size) && base.bounds.size.every((x) => x > 0),
+      `place_station_${typeId} measured bounds`);
+    assert.ok(finite3(base.bounds.center), `place_station_${typeId} authored centre`);
+  }
+  for (const [, file] of STATION_KIT_CASES) {
+    const stem = file.slice(file.lastIndexOf('/') + 1).replace(/\.glb$/, '');
+    const kit = modelTruthRow(stem);
+    assert.ok(kit && kit.bounds, `census row for ${stem}`);
+    assert.ok(finite3(kit.bounds.size) && kit.bounds.size.every((x) => x > 0),
+      `${stem} measured bounds`);
+    assert.ok(finite3(kit.bounds.center), `${stem} authored centre`);
+  }
+});
+
 test('faction kit bodies have render-package pilots after release packaging', () => {
   const files = [
     ['wholeships/helios_span_dmc.glb', 'SF_WHOLESHIP_HELIOS_SPAN_DMC'],
@@ -183,6 +294,7 @@ test('faction kit bodies have render-package pilots after release packaging', ()
     ['places/var_station_trade_hub_free_overlay_v01.glb', 'SF_PLACE_STATION_TRADE_HUB_FREE_OVERLAY'],
     ['places/var_station_trade_hub_mts_overlay_v01.glb', 'SF_PLACE_STATION_TRADE_HUB_MTS_OVERLAY'],
     ['places/var_station_trade_hub_scn_overlay_v01.glb', 'SF_PLACE_STATION_TRADE_HUB_SCN_OVERLAY'],
+    ...STATION_KIT_CASES.map(([, file, assetId]) => [file, assetId]),
   ];
   for (const [file, assetId] of files) {
     const pilot = renderPackagePilotForSourceUrl(`${PART_ROOT}${file}`);

@@ -1,8 +1,8 @@
 {
   "counts": {
     "green": 16,
-    "red": 234,
-    "rows": 250
+    "red": 248,
+    "rows": 264
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -33213,7 +33213,7 @@
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
-              "sha256": "05a45c2ccbe6707ba7a095edf69c5c3cb392b2e0cadbfa294979800efded1b90"
+              "sha256": "cd326dca2e3448d0eb33358a5baa78ef7ccaf64d6ea143637cac0cdded14d6f9"
             },
             {
               "path": "src/render/ceresShipbreakVisuals.js",
@@ -33221,23 +33221,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "5b18e707e26c8832788550fbad8f0ab2a74cf6f5f1663b76d35cbc0be5a8006c"
+              "sha256": "2928ac7185bd2a5ed4d91b633a716d8eef14d1a5003bfd1246e1b66d061e0633"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "83af2cc7283278ce3108a4379a7aa75003fbc026f92bd9929836d84b8943753b"
+              "sha256": "681261526fd37442426c1a87cf6b611431f4f0ce1f92a7e8887d9ca34ea3cb1a"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "84871cb8fdaed3c3e1b5ee4fe52a04af68402b5692a288fce66610c8760a1bfb"
+              "sha256": "848aa696bb11456098a0cf8e64ab21ff0ce79f0682c612d519ebc8d16a7a128d"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "6f2278df60560e6b8ffac9ea5d7f3df816951bb08252171b81e759230549f8a6"
+              "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
-              "sha256": "f9003addf2864198909e411399c6070102c462cd749b748dc18eb9356447595a"
+              "sha256": "681098f3228b5a5c4299d916d2f0f45c4b184e13b1dc44061de5168c69ab1749"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -33765,7 +33765,7 @@
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
-              "sha256": "05a45c2ccbe6707ba7a095edf69c5c3cb392b2e0cadbfa294979800efded1b90"
+              "sha256": "cd326dca2e3448d0eb33358a5baa78ef7ccaf64d6ea143637cac0cdded14d6f9"
             },
             {
               "path": "src/render/ceresShipbreakVisuals.js",
@@ -33773,23 +33773,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "5b18e707e26c8832788550fbad8f0ab2a74cf6f5f1663b76d35cbc0be5a8006c"
+              "sha256": "2928ac7185bd2a5ed4d91b633a716d8eef14d1a5003bfd1246e1b66d061e0633"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "83af2cc7283278ce3108a4379a7aa75003fbc026f92bd9929836d84b8943753b"
+              "sha256": "681261526fd37442426c1a87cf6b611431f4f0ce1f92a7e8887d9ca34ea3cb1a"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "84871cb8fdaed3c3e1b5ee4fe52a04af68402b5692a288fce66610c8760a1bfb"
+              "sha256": "848aa696bb11456098a0cf8e64ab21ff0ce79f0682c612d519ebc8d16a7a128d"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "6f2278df60560e6b8ffac9ea5d7f3df816951bb08252171b81e759230549f8a6"
+              "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
-              "sha256": "84bc5c5d065e51db92664b55d55d85eb8b986e30e0373bd4a1c398a5ff9f778b"
+              "sha256": "e188af75d989e455c0305647dc7532136d8ea63659a3f53330bc0c3b904ee139"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -34233,7 +34233,7 @@
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
-              "sha256": "05a45c2ccbe6707ba7a095edf69c5c3cb392b2e0cadbfa294979800efded1b90"
+              "sha256": "cd326dca2e3448d0eb33358a5baa78ef7ccaf64d6ea143637cac0cdded14d6f9"
             },
             {
               "path": "src/render/ceresShipbreakVisuals.js",
@@ -34241,23 +34241,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "5b18e707e26c8832788550fbad8f0ab2a74cf6f5f1663b76d35cbc0be5a8006c"
+              "sha256": "2928ac7185bd2a5ed4d91b633a716d8eef14d1a5003bfd1246e1b66d061e0633"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "83af2cc7283278ce3108a4379a7aa75003fbc026f92bd9929836d84b8943753b"
+              "sha256": "681261526fd37442426c1a87cf6b611431f4f0ce1f92a7e8887d9ca34ea3cb1a"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "84871cb8fdaed3c3e1b5ee4fe52a04af68402b5692a288fce66610c8760a1bfb"
+              "sha256": "848aa696bb11456098a0cf8e64ab21ff0ce79f0682c612d519ebc8d16a7a128d"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "6f2278df60560e6b8ffac9ea5d7f3df816951bb08252171b81e759230549f8a6"
+              "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
-              "sha256": "3d9e2b4da38f063a4ab81ded01178b2521f773072c81afb4e900cb73f0d06955"
+              "sha256": "2252112dddd9069a92997f6c787a287ee6b7813d6f56129c02cfaa3cbfeb81c0"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -34737,7 +34737,7 @@
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
-              "sha256": "05a45c2ccbe6707ba7a095edf69c5c3cb392b2e0cadbfa294979800efded1b90"
+              "sha256": "cd326dca2e3448d0eb33358a5baa78ef7ccaf64d6ea143637cac0cdded14d6f9"
             },
             {
               "path": "src/render/ceresShipbreakVisuals.js",
@@ -34745,23 +34745,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "5b18e707e26c8832788550fbad8f0ab2a74cf6f5f1663b76d35cbc0be5a8006c"
+              "sha256": "2928ac7185bd2a5ed4d91b633a716d8eef14d1a5003bfd1246e1b66d061e0633"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "83af2cc7283278ce3108a4379a7aa75003fbc026f92bd9929836d84b8943753b"
+              "sha256": "681261526fd37442426c1a87cf6b611431f4f0ce1f92a7e8887d9ca34ea3cb1a"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "84871cb8fdaed3c3e1b5ee4fe52a04af68402b5692a288fce66610c8760a1bfb"
+              "sha256": "848aa696bb11456098a0cf8e64ab21ff0ce79f0682c612d519ebc8d16a7a128d"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "6f2278df60560e6b8ffac9ea5d7f3df816951bb08252171b81e759230549f8a6"
+              "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
-              "sha256": "5104faf50228e1c95f8f290c73e79169309b6737d04594583f0122495283a300"
+              "sha256": "57911af8158aca94ab757d1988d803c6af0b349e8b47ded2c3ec19863c801196"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -55494,6 +55494,6199 @@
         3.000609,
         15.656,
         3.000609
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0,
+          25.440568,
+          -0.000002
+        ],
+        "max": [
+          53.900005,
+          41.880012,
+          53.968563
+        ],
+        "min": [
+          -53.900005,
+          9.001123,
+          -53.968567
+        ],
+        "size": [
+          107.800011,
+          32.878888,
+          107.93713
+        ]
+      },
+      "bytes": 1280788,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_archive_v01",
+        "kind": "proxy",
+        "outline": [
+          53.102663,
+          53.10134,
+          53.104055,
+          53.104054,
+          53.101339,
+          53.102661,
+          53.102661,
+          53.101339,
+          53.104054,
+          53.104055,
+          53.10134,
+          53.102663,
+          53.102664,
+          53.101342,
+          53.104057,
+          53.104058,
+          53.101343,
+          53.102665,
+          53.102665,
+          53.101343,
+          53.104058,
+          53.104057,
+          53.101342,
+          53.102664
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.372487,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0.000002
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_archive_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_archive_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.248325
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Ceramic",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber_arc",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm_arc",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 20,
+      "nodes": 33,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        25.440568,
+        -0.000002
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 6.372487,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.370839,
+            "bz": -0.575432,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.072872,
+            "bz": -1.687039,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.497634,
+            "bz": -2.683829,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.683829,
+            "bz": -3.497634,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.687039,
+            "bz": -4.072872,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.575432,
+            "bz": -4.370839,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.575432,
+            "bz": -4.370839,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.687039,
+            "bz": -4.072872,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.683829,
+            "bz": -3.497634,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.497634,
+            "bz": -2.683829,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.072872,
+            "bz": -1.687039,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.370839,
+            "bz": -0.575432,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.370839,
+            "bz": 0.575432,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.072872,
+            "bz": 1.687039,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.497634,
+            "bz": 2.683829,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.683829,
+            "bz": 3.497634,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.687039,
+            "bz": 4.072872,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.575432,
+            "bz": 4.37084,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.575432,
+            "bz": 4.37084,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.687039,
+            "bz": 4.072872,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.683829,
+            "bz": 3.497634,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.497634,
+            "bz": 2.683829,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.072872,
+            "bz": 1.687039,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.370839,
+            "bz": 0.575432,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 53.104058,
+        "toleranceWu": 6.372487
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 138,
+        "inwardFaceFraction": 0.46975,
+        "silhouetteRadius": 53.104058,
+        "sliceY": 9.001123
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            8.624001,
+            25.439999,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0,
+            9.05,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -53.700001,
+            25.439999,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            53.400002,
+            25.289999,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0,
+            25.439999,
+            -32.381142
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0,
+            25.439999,
+            32.381142
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -23.716002,
+            20.939999,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -54,
+            25.439999,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -54,
+            25.439999,
+            -13.492142
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -54,
+            25.439999,
+            13.492142
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0,
+            41.829998,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            53.5,
+            25.439999,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 62634,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_archive_v01.glb",
+      "worldSize": [
+        107.800011,
+        32.878888,
+        107.93713
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          -0.737753,
+          19.600558,
+          0.393079
+        ],
+        "max": [
+          54.867489,
+          45.589142,
+          55.992593
+        ],
+        "min": [
+          -56.342995,
+          -6.388026,
+          -55.206436
+        ],
+        "size": [
+          111.210484,
+          51.977168,
+          111.19903
+        ]
+      },
+      "bytes": 479352,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_choir_v01",
+        "kind": "proxy",
+        "outline": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          55.413967,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          55.50531,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          54.203873,
+          0,
+          0
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.660637,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0.737753,
+        0,
+        -0.393079
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_choir_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_choir_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.440425
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber_choir",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 20,
+      "nodes": 33,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        -0.737753,
+        19.600558,
+        0.393079
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 6.660637,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 3,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.526793,
+            "bz": -4.001388,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.602748
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.734815,
+            "bz": 1.547011,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.603741
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.132347,
+            "bz": 2.403535,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.589585
+          }
+        ],
+        "silhouetteRadius": 55.50531,
+        "toleranceWu": 6.660637
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 308,
+        "inwardFaceFraction": 0.43275,
+        "silhouetteRadius": 55.50531,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            7.937549,
+            19.602081,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            -0.855299,
+            -6.33834,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -55.6106,
+            19.602081,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            53.600002,
+            19.452082,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            -0.855299,
+            19.602081,
+            -33.123863
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            -0.855299,
+            19.602081,
+            33.123863
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -25.035631,
+            22.796251,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -55.910599,
+            19.602081,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -55.910599,
+            19.602081,
+            -13.801609
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -55.910599,
+            19.602081,
+            13.801609
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            -0.855299,
+            45.542503,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            53.700001,
+            19.602081,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 21804,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_choir_v01.glb",
+      "worldSize": [
+        111.210484,
+        51.977168,
+        111.19903
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          1.817085,
+          29.410808,
+          0.643879
+        ],
+        "max": [
+          61.254169,
+          50.825124,
+          58.907757
+        ],
+        "min": [
+          -57.619999,
+          7.996492,
+          -57.619999
+        ],
+        "size": [
+          118.874168,
+          42.828631,
+          116.527756
+        ]
+      },
+      "bytes": 781872,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_concord_v01",
+        "kind": "proxy",
+        "outline": [
+          55.212704,
+          55.229138,
+          55.185574,
+          54.945353,
+          54.687809,
+          54.358648,
+          53.772016,
+          53.341888,
+          52.914752,
+          52.305999,
+          51.96269,
+          51.679489,
+          51.422414,
+          51.387023,
+          51.483426,
+          51.804721,
+          52.118763,
+          52.486937,
+          53.112096,
+          53.545043,
+          53.962354,
+          54.519829,
+          54.816732,
+          55.038356
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.627497,
+        "worstSize": null
+      },
+      "drawOffset": [
+        -1.817085,
+        0,
+        -0.643879
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_concord_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_concord_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.418331
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_scn",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 15,
+      "nodes": 28,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        1.817085,
+        29.410808,
+        0.643879
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 6.627497,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.545172,
+            "bz": -0.598383,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.236691,
+            "bz": -1.754895,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.635249,
+            "bz": -2.789425,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.777238,
+            "bz": -3.619367,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.737632,
+            "bz": -4.195014,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.589094,
+            "bz": -4.474609,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.582713,
+            "bz": -4.426142,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.69471,
+            "bz": -4.091392,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.674226,
+            "bz": -3.485119,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.444872,
+            "bz": -2.643344,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.985208,
+            "bz": -1.650727,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.253256,
+            "bz": -0.559952,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.232017,
+            "bz": 0.557156,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.940887,
+            "bz": 1.632369,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.39049,
+            "bz": 2.601614,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.617914,
+            "bz": 3.411731,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.655704,
+            "bz": 3.997224,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.568735,
+            "bz": 4.319968,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.575535,
+            "bz": 4.371619,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.701189,
+            "bz": 4.107033,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.727371,
+            "bz": 3.554379,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.591235,
+            "bz": 2.755651,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.20494,
+            "bz": 1.741743,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.530767,
+            "bz": 0.596487,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 55.229138,
+        "toleranceWu": 6.627497
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 524,
+        "inwardFaceFraction": 0.52375,
+        "silhouetteRadius": 55.229138,
+        "sliceY": 7.996492
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            9.2192,
+            29.412251,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0,
+            8.05,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -57.419998,
+            29.412251,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            57.119999,
+            29.262251,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0,
+            29.412251,
+            -34.571999
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0,
+            29.412251,
+            34.571999
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -25.3528,
+            25.412251,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -57.719997,
+            29.412251,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -57.719997,
+            29.412251,
+            -14.405
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -57.719997,
+            29.412251,
+            14.405
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0,
+            50.774502,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            57.219997,
+            29.412251,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 36744,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_concord_v01.glb",
+      "worldSize": [
+        118.874168,
+        42.828631,
+        116.527756
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0,
+          17.468316,
+          0
+        ],
+        "max": [
+          54.400005,
+          42.012992,
+          54.400005
+        ],
+        "min": [
+          -54.400005,
+          -7.07636,
+          -54.400005
+        ],
+        "size": [
+          108.800011,
+          49.089352,
+          108.800011
+        ]
+      },
+      "bytes": 599416,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_drift_v01",
+        "kind": "proxy",
+        "outline": [
+          0,
+          0,
+          52.602498,
+          0.700696,
+          0,
+          0,
+          0,
+          52.601919,
+          36.690301,
+          36.690301,
+          0,
+          0,
+          0,
+          0,
+          0.700696,
+          0.700696,
+          52.601012,
+          0,
+          0,
+          0,
+          36.690301,
+          52.601937,
+          0,
+          0
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.3123,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_drift_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_drift_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.2082
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber_dmc",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 21,
+      "nodes": 34,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        17.468316,
+        0
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 6.3123,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 10,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.464475,
+            "bz": -2.658385,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.0254,
+            "bz": -0.033102,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.613132,
+            "bz": -3.894445,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.18901
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.851157,
+            "bz": -2.412475,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.412475,
+            "bz": -1.851157,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.033102,
+            "bz": 0.0254,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.0254,
+            "bz": 0.033102,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.663817,
+            "bz": 4.01681,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.056487
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.851157,
+            "bz": 2.412475,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.464438,
+            "bz": 2.658357,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 52.602498,
+        "toleranceWu": 6.3123
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 32,
+        "inwardFaceFraction": 0.429,
+        "silhouetteRadius": 52.602498,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            8.704,
+            18.756117,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0,
+            -4.447765,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -54.200001,
+            18.756117,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            53.900002,
+            18.606117,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0,
+            18.756117,
+            -32.639999
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0,
+            18.756117,
+            32.639999
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -23.936001,
+            21.004999,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -54.5,
+            18.756117,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -54.5,
+            18.756117,
+            -13.6
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -54.5,
+            18.756117,
+            13.6
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0,
+            41.959999,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            54,
+            18.756117,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 31067,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_drift_v01.glb",
+      "worldSize": [
+        108.800011,
+        49.089352,
+        108.800011
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0,
+          25.073263,
+          0
+        ],
+        "max": [
+          54.25,
+          43.304222,
+          54.25
+        ],
+        "min": [
+          -54.25,
+          6.842305,
+          -54.25
+        ],
+        "size": [
+          108.5,
+          36.461917,
+          108.5
+        ]
+      },
+      "bytes": 591040,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_frontier_v01",
+        "kind": "proxy",
+        "outline": [
+          53.825461,
+          53.888233,
+          53.918263,
+          53.908498,
+          53.681809,
+          53.860767,
+          53.860767,
+          53.681809,
+          53.908498,
+          53.918263,
+          53.888233,
+          53.825461,
+          53.825461,
+          53.888233,
+          53.918263,
+          53.908498,
+          53.792746,
+          53.860767,
+          53.860767,
+          53.792746,
+          53.908498,
+          53.918263,
+          53.888233,
+          53.825461
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.470192,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_frontier_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_frontier_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.313461
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_free",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_patch",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_rust",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 24,
+      "nodes": 37,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        25.073263,
+        0
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 6.470192,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.430557,
+            "bz": -0.583294,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.133455,
+            "bz": -1.712133,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.551464,
+            "bz": -2.725134,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.724639,
+            "bz": -3.550818,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.70555,
+            "bz": -4.117562,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.583678,
+            "bz": -4.433474,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.583678,
+            "bz": -4.433474,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.70555,
+            "bz": -4.117562,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.724639,
+            "bz": -3.550818,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.551464,
+            "bz": -2.725134,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.133455,
+            "bz": -1.712133,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.430557,
+            "bz": -0.583294,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.430557,
+            "bz": 0.583294,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.133455,
+            "bz": 1.712133,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.551464,
+            "bz": 2.725134,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.724639,
+            "bz": 3.550818,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.709088,
+            "bz": 4.126103,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.583678,
+            "bz": 4.433474,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.583678,
+            "bz": 4.433474,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.709088,
+            "bz": 4.126103,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.724639,
+            "bz": 3.550818,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.551464,
+            "bz": 2.725134,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.133455,
+            "bz": 1.712133,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.430557,
+            "bz": 0.583294,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 53.918263,
+        "toleranceWu": 6.470192
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 434,
+        "inwardFaceFraction": 0.48075,
+        "silhouetteRadius": 53.918263,
+        "sliceY": 6.842305
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            8.68,
+            23.930656,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0,
+            6.8925,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -54.049999,
+            23.930656,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            53.75,
+            23.780657,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0,
+            23.930656,
+            -32.549999
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0,
+            23.930656,
+            32.549999
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -23.870001,
+            20.509407,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -54.349998,
+            23.930656,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -54.349998,
+            23.930656,
+            -13.5625
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -54.349998,
+            23.930656,
+            13.5625
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0,
+            40.968815,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            53.849998,
+            23.930656,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 23970,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_frontier_v01.glb",
+      "worldSize": [
+        108.5,
+        36.461917,
+        108.5
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0,
+          25.299184,
+          0
+        ],
+        "max": [
+          53.799999,
+          40.600138,
+          53.799999
+        ],
+        "min": [
+          -53.799999,
+          9.99823,
+          -53.799999
+        ],
+        "size": [
+          107.599998,
+          30.601907,
+          107.599998
+        ]
+      },
+      "bytes": 805500,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_fulfillment_v01",
+        "kind": "proxy",
+        "outline": [
+          53.003062,
+          53.004209,
+          53.00405,
+          53.00405,
+          53.003475,
+          53.003073,
+          53.003073,
+          53.003475,
+          53.00405,
+          53.00405,
+          53.004209,
+          53.003062,
+          53.002889,
+          53.003433,
+          53.00405,
+          53.005456,
+          53.003015,
+          53.003362,
+          53.003362,
+          53.003015,
+          53.005456,
+          53.00405,
+          53.003433,
+          53.002889
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.360655,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_fulfillment_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_fulfillment_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.240436
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm_ff",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 13,
+      "nodes": 26,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        25.299184,
+        0
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 6.360655,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.36261,
+            "bz": -0.574349,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.065394,
+            "bz": -1.683941,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.491022,
+            "bz": -2.678756,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.678756,
+            "bz": -3.491022,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.683918,
+            "bz": -4.065337,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.574349,
+            "bz": -4.362611,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.574349,
+            "bz": -4.362611,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.683918,
+            "bz": -4.065337,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.678756,
+            "bz": -3.491022,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.491022,
+            "bz": -2.678756,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.065394,
+            "bz": -1.683941,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.36261,
+            "bz": -0.574349,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.362596,
+            "bz": 0.574347,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.065334,
+            "bz": 1.683917,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.491022,
+            "bz": 2.678756,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.678827,
+            "bz": 3.491115,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.683903,
+            "bz": 4.065302,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.574352,
+            "bz": 4.362635,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.574352,
+            "bz": 4.362635,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.683903,
+            "bz": 4.065302,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.678827,
+            "bz": 3.491115,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.491022,
+            "bz": 2.678756,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.065334,
+            "bz": 1.683917,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.362596,
+            "bz": 0.574347,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 53.005456,
+        "toleranceWu": 6.360655
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 21,
+        "inwardFaceFraction": 0.45275,
+        "silhouetteRadius": 53.005456,
+        "sliceY": 9.99823
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            8.608,
+            25.300001,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0,
+            10.05,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -53.599998,
+            25.300001,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            53.299999,
+            25.150002,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0,
+            25.300001,
+            -32.279999
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0,
+            25.300001,
+            32.279999
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -23.671999,
+            20.300001,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -53.899998,
+            25.300001,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -53.899998,
+            25.300001,
+            -13.45
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -53.899998,
+            25.300001,
+            13.45
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0,
+            40.550003,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            53.399998,
+            25.300001,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 37723,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_fulfillment_v01.glb",
+      "worldSize": [
+        107.599998,
+        30.601907,
+        107.599998
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0,
+          25.421383,
+          0
+        ],
+        "max": [
+          55.900002,
+          40.845514,
+          55.900002
+        ],
+        "min": [
+          -55.900002,
+          9.997253,
+          -55.900002
+        ],
+        "size": [
+          111.800003,
+          30.84826,
+          111.800003
+        ]
+      },
+      "bytes": 578552,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_helix_v01",
+        "kind": "proxy",
+        "outline": [
+          55.562677,
+          53.00134,
+          55.563286,
+          55.563286,
+          53.00134,
+          55.562677,
+          55.562677,
+          53.00134,
+          55.563286,
+          55.563286,
+          53.00134,
+          55.562677,
+          55.562677,
+          53.00134,
+          55.563286,
+          55.563286,
+          53.00134,
+          55.562677,
+          55.562677,
+          53.00134,
+          55.563286,
+          55.563286,
+          53.00134,
+          55.562677
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.667594,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_helix_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_helix_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.445063
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
+          "role": "glass"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_helix",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed_helix",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 19,
+      "nodes": 32,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        25.421383,
+        0
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 6.667594,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.574087,
+            "bz": -0.60219,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.065173,
+            "bz": -1.68385,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.660221,
+            "bz": -2.808586,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.808586,
+            "bz": -3.660221,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.68385,
+            "bz": -4.065173,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.60219,
+            "bz": -4.574087,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.60219,
+            "bz": -4.574087,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.68385,
+            "bz": -4.065173,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.808586,
+            "bz": -3.660221,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.660221,
+            "bz": -2.808586,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.065173,
+            "bz": -1.68385,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.574087,
+            "bz": -0.60219,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.574087,
+            "bz": 0.60219,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.065173,
+            "bz": 1.68385,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.660221,
+            "bz": 2.808586,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.808586,
+            "bz": 3.660221,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.68385,
+            "bz": 4.065173,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.60219,
+            "bz": 4.574087,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.60219,
+            "bz": 4.574087,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.68385,
+            "bz": 4.065173,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.808586,
+            "bz": 3.660221,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.660221,
+            "bz": 2.808586,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.065173,
+            "bz": 1.68385,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.574087,
+            "bz": 0.60219,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 55.563286,
+        "toleranceWu": 6.667594
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 20,
+        "inwardFaceFraction": 0.453,
+        "silhouetteRadius": 55.563286,
+        "sliceY": 9.997253
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            8.944,
+            25.422499,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0,
+            10.05,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -55.700001,
+            25.422499,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            55.400002,
+            25.272499,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0,
+            25.422499,
+            -33.540001
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0,
+            25.422499,
+            33.540001
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -24.596001,
+            20.422499,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -56,
+            25.422499,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -56,
+            25.422499,
+            -13.975
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -56,
+            25.422499,
+            13.975
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0,
+            40.794998,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            55.5,
+            25.422499,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 29803,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_helix_v01.glb",
+      "worldSize": [
+        111.800003,
+        30.84826,
+        111.800003
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0.653959,
+          23.618166,
+          0.441228
+        ],
+        "max": [
+          58.20792,
+          39.374763,
+          58.459284
+        ],
+        "min": [
+          -56.900002,
+          7.861568,
+          -57.576828
+        ],
+        "size": [
+          115.107922,
+          31.513195,
+          116.036112
+        ]
+      },
+      "bytes": 550292,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_meridian_v01",
+        "kind": "proxy",
+        "outline": [
+          54.657695,
+          54.8228,
+          54.868886,
+          54.787818,
+          0,
+          54.583905,
+          54.354864,
+          54.136938,
+          0,
+          53.872604,
+          53.59821,
+          53.349868,
+          0,
+          53.291133,
+          53.299804,
+          0,
+          53.368708,
+          53.484471,
+          53.717223,
+          0,
+          54.028845,
+          54.306595,
+          54.522621,
+          0
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.584266,
+        "worstSize": null
+      },
+      "drawOffset": [
+        -0.653959,
+        0,
+        -0.441228
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_meridian_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_meridian_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.389511
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber_mts",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 17,
+      "nodes": 30,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0.653959,
+        23.618166,
+        0.441228
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 6.584266,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 18,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.94706,
+            "bz": -0.51964,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.594522
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.205407,
+            "bz": -1.741937,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.614312,
+            "bz": -2.773359,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.429292,
+            "bz": -3.165914,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.595937
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.591544,
+            "bz": -4.49322,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.589052,
+            "bz": -4.474297,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.509069,
+            "bz": -3.643215,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.588857
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.548445,
+            "bz": -2.722818,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.111126,
+            "bz": -1.702884,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.853111,
+            "bz": -0.507272,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.580296
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.087484,
+            "bz": 1.693091,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.510576,
+            "bz": 2.693759,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.487768,
+            "bz": 3.591789,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.580501
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.579585,
+            "bz": 4.402385,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.582117,
+            "bz": 4.421615,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.395814,
+            "bz": 3.122286,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.587682
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.577137,
+            "bz": 2.744834,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.182296,
+            "bz": 1.732364,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 54.868886,
+        "toleranceWu": 6.584266
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 611,
+        "inwardFaceFraction": 0.4815,
+        "silhouetteRadius": 54.868886,
+        "sliceY": 7.861568
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            9.104,
+            23.6175,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0,
+            7.91,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -56.700001,
+            23.6175,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            56.400002,
+            23.467501,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0,
+            23.6175,
+            -34.380001
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0,
+            23.6175,
+            34.380001
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -25.036001,
+            19.6875,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -57,
+            23.6175,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -57,
+            23.6175,
+            -14.325
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -57,
+            23.6175,
+            14.325
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0,
+            39.325001,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            56.5,
+            23.6175,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 22528,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_meridian_v01.glb",
+      "worldSize": [
+        115.107922,
+        31.513195,
+        116.036112
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          -0.027172,
+          26.208795,
+          0.302597
+        ],
+        "max": [
+          54.366321,
+          43.878181,
+          54.971504
+        ],
+        "min": [
+          -54.420664,
+          8.53941,
+          -54.36631
+        ],
+        "size": [
+          108.786986,
+          35.338771,
+          109.337814
+        ]
+      },
+      "bytes": 605664,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_pitborn_v01",
+        "kind": "proxy",
+        "outline": [
+          52.744351,
+          54.448107,
+          54.46906,
+          53.81544,
+          52.974268,
+          52.994411,
+          54.634074,
+          52.992118,
+          52.974882,
+          53.793328,
+          52.857746,
+          54.41461,
+          52.690724,
+          53.534636,
+          52.566744,
+          52.481803,
+          54.081072,
+          52.413766,
+          52.401605,
+          53.354339,
+          52.447769,
+          54.120383,
+          52.57262,
+          52.636688
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.556089,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0.027172,
+        0,
+        -0.302597
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_pitborn_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_pitborn_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.370726
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber_pit",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_scrap",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_scrapb",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 26,
+      "nodes": 39,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        -0.027172,
+        26.208795,
+        0.302597
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 6.556089,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.341236,
+            "bz": -0.571535,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.17656,
+            "bz": -1.729988,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.587878,
+            "bz": -2.753076,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.719918,
+            "bz": -3.544666,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.682987,
+            "bz": -4.063089,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.574254,
+            "bz": -4.361896,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.592089,
+            "bz": -4.497365,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.683556,
+            "bz": -4.064463,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.677276,
+            "bz": -3.489094,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.543204,
+            "bz": -2.718796,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.054118,
+            "bz": -1.679271,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.479233,
+            "bz": -0.589702,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.336805,
+            "bz": 0.570951,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.106232,
+            "bz": 1.700857,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.462111,
+            "bz": 2.656571,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.652262,
+            "bz": 3.456495,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.718283,
+            "bz": 4.148302,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.567939,
+            "bz": 4.313923,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.567806,
+            "bz": 4.312918,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.695107,
+            "bz": 4.092351,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.650536,
+            "bz": 3.454245,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.564826,
+            "bz": 2.735387,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.032166,
+            "bz": 1.670178,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.33234,
+            "bz": 0.570363,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 54.634074,
+        "toleranceWu": 6.556089
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 51,
+        "inwardFaceFraction": 0.46475,
+        "silhouetteRadius": 54.634074,
+        "sliceY": 8.53941
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            8.484844,
+            26.419998,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            -0.19187,
+            9.01,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -54.221329,
+            26.419998,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            53.53759,
+            26.269999,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            -0.19187,
+            26.419998,
+            -32.619785
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            -0.19187,
+            26.419998,
+            32.619785
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -24.052832,
+            21.939999,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -54.521328,
+            26.419998,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -54.521328,
+            26.419998,
+            -13.591577
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -54.521328,
+            26.419998,
+            13.591577
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            -0.19187,
+            43.829998,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            53.637589,
+            26.419998,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 29492,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_pitborn_v01.glb",
+      "worldSize": [
+        108.786986,
+        35.338771,
+        109.337814
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0.579718,
+          27.366132,
+          0.000002
+        ],
+        "max": [
+          55.885991,
+          48.002048,
+          55.886166
+        ],
+        "min": [
+          -54.726556,
+          6.730215,
+          -55.886162
+        ],
+        "size": [
+          110.612547,
+          41.271833,
+          111.772327
+        ]
+      },
+      "bytes": 404164,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_quiet_v01",
+        "kind": "proxy",
+        "outline": [
+          54.129575,
+          53.44817,
+          53.39352,
+          53.263984,
+          53.157542,
+          53.03215,
+          53.997115,
+          53.819984,
+          52.594497,
+          52.44837,
+          53.310661,
+          53.271609,
+          52.335198,
+          52.38152,
+          52.449134,
+          52.595529,
+          53.316755,
+          52.841252,
+          54.118604,
+          54.29101,
+          53.264215,
+          53.393601,
+          54.364797,
+          54.413847
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.529662,
+        "worstSize": null
+      },
+      "drawOffset": [
+        -0.579718,
+        0,
+        -0.000002
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_quiet_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_quiet_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.353108
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_quiet",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 14,
+      "nodes": 27,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0.579718,
+        27.366132,
+        0.000002
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 6.529662,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.455683,
+            "bz": -0.586602,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.099575,
+            "bz": -1.698099,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.516771,
+            "bz": -2.698514,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.691942,
+            "bz": -3.508207,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.688831,
+            "bz": -4.077199,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.574665,
+            "bz": -4.365014,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.585161,
+            "bz": -4.444739,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.709957,
+            "bz": -4.1282,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.657979,
+            "bz": -3.463946,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.454285,
+            "bz": -2.650566,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.088988,
+            "bz": -1.693714,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.384798,
+            "bz": -0.57727,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.307431,
+            "bz": 0.567084,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.017453,
+            "bz": 1.664084,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.454335,
+            "bz": 2.650605,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.658031,
+            "bz": 3.464014,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.693909,
+            "bz": 4.089457,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.572589,
+            "bz": 4.349242,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.586483,
+            "bz": 4.454777,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.724978,
+            "bz": 4.164465,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.691954,
+            "bz": 3.508223,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.516777,
+            "bz": 2.698518,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.170146,
+            "bz": 1.727331,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.47917,
+            "bz": 0.589694,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 54.413847,
+        "toleranceWu": 6.529662
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 6,
+        "inwardFaceFraction": 0.408,
+        "silhouetteRadius": 54.413847,
+        "sliceY": 6.730215
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            9.428749,
+            27.4475,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0.579718,
+            6.945,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -54.526726,
+            27.4475,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            55.386162,
+            27.297501,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0.579718,
+            27.4475,
+            -33.531696
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0.579718,
+            27.4475,
+            33.531696
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -23.755117,
+            24,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -54.826725,
+            27.4475,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -54.826725,
+            27.4475,
+            -13.97154
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -54.826725,
+            27.4475,
+            13.97154
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0.579718,
+            47.950001,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            55.48616,
+            27.4475,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 18055,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_quiet_v01.glb",
+      "worldSize": [
+        110.612547,
+        41.271833,
+        111.772327
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          2.721798,
+          23.489579,
+          0
+        ],
+        "max": [
+          59.693596,
+          43.58781,
+          54.252205
+        ],
+        "min": [
+          -54.25,
+          3.391348,
+          -54.252205
+        ],
+        "size": [
+          113.943596,
+          40.196463,
+          108.504409
+        ]
+      },
+      "bytes": 617032,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_reach_v01",
+        "kind": "proxy",
+        "outline": [
+          0,
+          0,
+          0,
+          59.707626,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          55.5777,
+          54.805401,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          59.703004,
+          0,
+          0,
+          0
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 7.164915,
+        "worstSize": null
+      },
+      "drawOffset": [
+        -2.721798,
+        0,
+        0
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_reach_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_reach_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.77661
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed_reach",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 17,
+      "nodes": 30,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        2.721798,
+        23.489579,
+        0
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 7.164915,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 4,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.646297,
+            "bz": -3.448721,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.649451
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.01315,
+            "bz": -0.528341,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.604529
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.957671,
+            "bz": 0.521037,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.596128
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.646093,
+            "bz": 3.448456,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.6494
+          }
+        ],
+        "silhouetteRadius": 59.707626,
+        "toleranceWu": 7.164915
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 252,
+        "inwardFaceFraction": 0.4635,
+        "silhouetteRadius": 59.707626,
+        "sliceY": 3.391348
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            11.837286,
+            23.753189,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            2.721798,
+            4.05,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -54.049999,
+            23.753189,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            59.193596,
+            23.603189,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            2.721798,
+            23.753189,
+            -32.549999
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            2.721798,
+            23.753189,
+            32.549999
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -22.345793,
+            21.753189,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -54.349998,
+            23.753189,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -54.349998,
+            23.753189,
+            -13.5625
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -54.349998,
+            23.753189,
+            13.5625
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            2.721798,
+            43.456379,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            59.293594,
+            23.753189,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 24267,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_reach_v01.glb",
+      "worldSize": [
+        113.943596,
+        40.196463,
+        108.504409
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          -1.160478,
+          21.412399,
+          0.423529
+        ],
+        "max": [
+          55.298546,
+          47.079437,
+          57.140411
+        ],
+        "min": [
+          -57.619502,
+          -4.254639,
+          -56.293354
+        ],
+        "size": [
+          112.918048,
+          51.334076,
+          113.433765
+        ]
+      },
+      "bytes": 498428,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_understory_v01",
+        "kind": "proxy",
+        "outline": [
+          0,
+          0,
+          0,
+          56.277035,
+          53.751046,
+          0,
+          0,
+          0,
+          0,
+          0,
+          59.380202,
+          57.374868,
+          0,
+          0,
+          0,
+          58.703322,
+          55.77181,
+          0,
+          0,
+          0,
+          0,
+          56.86976,
+          53.510078,
+          0
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 7.125624,
+        "worstSize": null
+      },
+      "drawOffset": [
+        1.160478,
+        0,
+        -0.423529
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_understory_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_understory_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.750416
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber_spore",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm_grow",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_soil",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Stone",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 18,
+      "nodes": 31,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        -1.160478,
+        21.412399,
+        0.423529
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 7.125624,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 8,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.844795,
+            "bz": -3.707409,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.707758,
+            "bz": -4.122893,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.556281,
+            "bz": -1.887274,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.142252,
+            "bz": -0.545338,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.624077
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.96788,
+            "bz": 3.867817,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.772201,
+            "bz": 4.278471,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.285591,
+            "bz": 2.521123,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.618583
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.104341,
+            "bz": 1.700074,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 59.380202,
+        "toleranceWu": 7.125624
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 45,
+        "inwardFaceFraction": 0.44975,
+        "silhouetteRadius": 59.380202,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            8.94578,
+            21.393833,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0.116682,
+            -4.202433,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -54.865181,
+            21.393833,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            54.798546,
+            21.243834,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0.116682,
+            21.393833,
+            -32.615395
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0.116682,
+            21.393833,
+            32.615395
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -24.163338,
+            23.52005,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -55.16518,
+            21.393833,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -55.16518,
+            21.393833,
+            -13.589748
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -55.16518,
+            21.393833,
+            13.589748
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0.116682,
+            46.990101,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            54.898544,
+            21.393833,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 25863,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_understory_v01.glb",
+      "worldSize": [
+        112.918048,
+        51.334076,
+        113.433765
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0.152489,
+          27.349964,
+          0
+        ],
+        "max": [
+          53.926182,
+          44.699752,
+          53.993626
+        ],
+        "min": [
+          -53.621204,
+          10.000177,
+          -53.993626
+        ],
+        "size": [
+          107.547386,
+          34.699575,
+          107.987251
+        ]
+      },
+      "bytes": 573812,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_vael_v01",
+        "kind": "proxy",
+        "outline": [
+          54.095584,
+          53.897596,
+          52.933213,
+          52.896233,
+          52.867673,
+          53.954229,
+          53.737405,
+          52.747304,
+          52.723065,
+          52.681889,
+          53.801323,
+          53.600772,
+          52.653995,
+          52.663987,
+          53.823258,
+          52.723065,
+          52.747304,
+          52.779862,
+          52.836791,
+          54.006505,
+          53.824025,
+          52.933213,
+          52.941424,
+          52.952488
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.49147,
+        "worstSize": null
+      },
+      "drawOffset": [
+        -0.152489,
+        0,
+        0
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_vael_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_vael_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.327647
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Ceramic",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_vael",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 17,
+      "nodes": 30,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0.152489,
+        27.349964,
+        0
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 6.49147,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.452875,
+            "bz": -0.586232,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.134176,
+            "bz": -1.712432,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.486339,
+            "bz": -2.675162,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.673286,
+            "bz": -3.483894,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.679587,
+            "bz": -4.054882,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.584695,
+            "bz": -4.441196,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.582336,
+            "bz": -4.423282,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.675749,
+            "bz": -4.045615,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.664501,
+            "bz": -3.472446,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.469724,
+            "bz": -2.662412,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.126764,
+            "bz": -1.709362,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.411993,
+            "bz": -0.58085,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.33377,
+            "bz": 0.570552,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 4.0392,
+            "bz": 1.673092,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 3.545183,
+            "bz": 2.720314,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.664501,
+            "bz": 3.472446,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.675749,
+            "bz": 4.045615,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.571921,
+            "bz": 4.344169,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.57254,
+            "bz": 4.348873,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.715905,
+            "bz": 4.142561,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.720353,
+            "bz": 3.545233,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -3.486339,
+            "bz": 2.675162,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.06056,
+            "bz": 1.681939,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -4.358432,
+            "bz": 0.573798,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 54.095584,
+        "toleranceWu": 6.49147
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 228,
+        "inwardFaceFraction": 0.472,
+        "silhouetteRadius": 54.095584,
+        "sliceY": 10.000177
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            8.866767,
+            27.35,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0.284004,
+            10.05,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -53.15826,
+            27.35,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            53.42627,
+            27.200001,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0.284004,
+            27.35,
+            -32.396175
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0.284004,
+            27.35,
+            32.396175
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -23.318592,
+            22.35,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -53.45826,
+            27.35,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -53.45826,
+            27.35,
+            -13.498406
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -53.45826,
+            27.35,
+            13.498406
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0.284004,
+            44.650002,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            53.526268,
+            27.35,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 25000,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_vael_v01.glb",
+      "worldSize": [
+        107.547386,
+        34.699575,
+        107.987251
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0.240452,
+          17.032276,
+          0.748892
+        ],
+        "max": [
+          55.596129,
+          42.081419,
+          56.158684
+        ],
+        "min": [
+          -55.115226,
+          -8.016866,
+          -54.6609
+        ],
+        "size": [
+          110.711355,
+          50.098285,
+          110.819584
+        ]
+      },
+      "bytes": 531024,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:var_station_kit_verge_v01",
+        "kind": "proxy",
+        "outline": [
+          33.769396,
+          0,
+          0,
+          0.98927,
+          0.497117,
+          34.261183,
+          34.256317,
+          0,
+          0,
+          0,
+          0,
+          33.288744,
+          0,
+          0,
+          0,
+          0,
+          0,
+          32.760359,
+          32.765251,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 4.111342,
+        "worstSize": null
+      },
+      "drawOffset": [
+        -0.240452,
+        0,
+        -0.748892
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:var_station_kit_verge_v01",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "var_station_kit_verge_v01",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Ceramic",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber_verge",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_verge",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 19,
+      "nodes": 32,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0.240452,
+        17.032276,
+        0.748892
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 4.111342,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 8,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.68602,
+            "bz": -0.353621,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.125752
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.04004,
+            "bz": -0.052181,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.009475,
+            "bz": -0.022875,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.37049,
+            "bz": -2.814149,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.370437,
+            "bz": -2.813747,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 2.631926,
+            "bz": -0.3465,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.140259
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.354165,
+            "bz": 2.69015,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.354218,
+            "bz": 2.690554,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 34.261183,
+        "toleranceWu": 4.111342
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 120,
+        "inwardFaceFraction": 0.4595,
+        "silhouetteRadius": 34.261183,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            8.728901,
+            19.765537,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0,
+            -2.298924,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -54.355629,
+            19.765537,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            54.05563,
+            19.615538,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0,
+            19.765537,
+            -32.763412
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0,
+            19.765537,
+            32.763412
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -24.004477,
+            20.939999,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -54.655628,
+            19.765537,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -54.655628,
+            19.765537,
+            -13.651423
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -54.655628,
+            19.765537,
+            13.651423
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0,
+            41.829998,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            54.155628,
+            19.765537,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 21796,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/var_station_kit_verge_v01.glb",
+      "worldSize": [
+        110.711355,
+        50.098285,
+        110.819584
       ]
     },
     {

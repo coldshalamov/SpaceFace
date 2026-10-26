@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CLERK: Tether the tag and haul it to the receiver hull — a hundred-twenty of drag before you let go — then cut it quiet, dead slow, inside thirty. — TAG ON THE BORDER CHECKPOINT.",
+      "line": "CLERK: Tether the tag and haul it to the receiver hull — a hundred-twenty of drag before you let go — then cut it quiet, under three, held a three-count, inside thirty. — TAG ON THE BORDER CHECKPOINT.",
       "channel": "info",
       "next": "offer"
     },

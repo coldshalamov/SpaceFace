@@ -314,6 +314,44 @@ const TRADE_HUB_OVERLAY_FILE_BY_FACTION = Object.freeze({
   faction_scn: 'places/var_station_trade_hub_scn_overlay_v01.glb',
 });
 const TRADE_HUB_OVERLAY_FILES = Object.freeze(Object.values(TRADE_HUB_OVERLAY_FILE_BY_FACTION));
+// Row 512: faction station kits. One authored garnish set per expansion faction in a
+// canonical station-envelope shell (tools/blender/forge/station_kit.py); at compose the
+// kit's measured bounds are stretched per-axis onto the resolved archetype's authored
+// bounds x STATION_KIT_FIT_MARGIN, so the same refinery reads Drift orange in Ceres and
+// Vael nacre in the Veil without a body per faction x archetype. The three authored Helios
+// overlays keep precedence on the hub they were built for.
+const STATION_KIT_OVERLAY_FILE_BY_FACTION = Object.freeze({
+  faction_scn: 'places/var_station_kit_concord_v01.glb',
+  faction_mts: 'places/var_station_kit_meridian_v01.glb',
+  faction_dmc: 'places/var_station_kit_drift_v01.glb',
+  faction_reach: 'places/var_station_kit_reach_v01.glb',
+  faction_quiet: 'places/var_station_kit_quiet_v01.glb',
+  faction_vael: 'places/var_station_kit_vael_v01.glb',
+  faction_free: 'places/var_station_kit_frontier_v01.glb',
+  faction_choir: 'places/var_station_kit_choir_v01.glb',
+  faction_helix: 'places/var_station_kit_helix_v01.glb',
+  faction_understory: 'places/var_station_kit_understory_v01.glb',
+  faction_fulfillment: 'places/var_station_kit_fulfillment_v01.glb',
+  faction_archive: 'places/var_station_kit_archive_v01.glb',
+  faction_pitborn: 'places/var_station_kit_pitborn_v01.glb',
+  faction_verge_layers: 'places/var_station_kit_verge_v01.glb',
+});
+const STATION_KIT_OVERLAY_FILES = Object.freeze(Object.values(STATION_KIT_OVERLAY_FILE_BY_FACTION));
+const STATION_KIT_OVERLAY_FILE_SET = new Set(STATION_KIT_OVERLAY_FILES);
+// The kit's own measured bounds are the canonical shell: garnish authored at the shell
+// lands at the station's authored bounds x this margin — just proud of the silhouette.
+const STATION_KIT_FIT_MARGIN = 1.05;
+// The seven station archetypes the kits dress (05 §5). The jump ring and the billboard
+// prop are not stations in this sense — they keep their bare authored body.
+const STATION_KIT_ARCHETYPE_FILE_SET = new Set([
+  'places/place_station_trade_hub.glb',
+  'places/place_station_refinery.glb',
+  'places/place_station_military.glb',
+  'places/place_station_blackmarket.glb',
+  'places/place_station_fab.glb',
+  'places/place_station_mining.glb',
+  'places/place_station_research.glb',
+]);
 const CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID = Object.freeze({
   spec_refinery: 'places/place_claim_outpost_refinery.glb',
   spec_relay: 'places/place_claim_outpost_relay.glb',
@@ -438,6 +476,7 @@ const PLACE_FILES = Object.freeze([
   ...Object.values(CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID),
   ...STATION_ARCHETYPE_FILES,
   ...TRADE_HUB_OVERLAY_FILES,
+  ...STATION_KIT_OVERLAY_FILES,
 ]);
 const PLACE_FILE_BY_ID = Object.freeze(Object.fromEntries(PLACE_FILES.map((file) => [
   file.replace(/^places\//, '').replace(/\.glb$/, ''),
@@ -1611,7 +1650,7 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
       const censusFile = resolve19305CensusAEntityPackagedFile(entity);
       const placeFile = censusFile || placeFileForEntity(entity);
       if (placeFile) {
-        const overlay = censusFile ? null : tradeHubOverlayFileForEntity(entity);
+        const overlay = censusFile ? null : stationOverlayFileForEntity(entity);
         plan = { place: overlay ? [placeFile, overlay] : [placeFile] };
       }
     }
@@ -2123,6 +2162,20 @@ const FACTION_KIT_RELEASE_URLS = Object.freeze([
   'assets/ships/release/parts/places/var_station_trade_hub_free_overlay_v01.glb',
   'assets/ships/release/parts/places/var_station_trade_hub_mts_overlay_v01.glb',
   'assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_concord_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_meridian_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_drift_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_reach_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_quiet_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_vael_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_frontier_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_choir_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_helix_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_understory_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_fulfillment_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_archive_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_pitborn_v01.glb',
+  'assets/ships/release/parts/places/var_station_kit_verge_v01.glb',
 ]);
 void FACTION_KIT_RELEASE_URLS;
 const isWholeShipUrl = (url) => WHOLE_SHIP_URLS.some((w) => String(url || '').endsWith(w));
@@ -2212,20 +2265,41 @@ function applyFactionWholeShipKit(entity, selection) {
   return selection;
 }
 
-export function tradeHubOverlayFileForEntity(entity) {
+// Row 512: any of the seven station archetypes can carry its faction's dressing kit.
+// Authored Helios overlays keep precedence on the trade hub they were built against; a
+// canonical-shell kit answers every other faction x archetype combination. Garnish on the
+// resolved body, never a replacement station and never a new faction system.
+export function stationOverlayFileForEntity(entity) {
   if (!entity || entity.type !== 'station') return null;
   const placeFile = placeFileForEntity(entity);
-  if (placeFile !== LIVE_TRADE_HUB_FILE) return null;
-  const overlay = TRADE_HUB_OVERLAY_FILE_BY_FACTION[factionIdForVisual(entity)];
-  return overlay || null;
+  if (placeFile === LIVE_TRADE_HUB_FILE) {
+    const authored = TRADE_HUB_OVERLAY_FILE_BY_FACTION[factionIdForVisual(entity)];
+    if (authored) return authored;
+  }
+  if (!STATION_KIT_ARCHETYPE_FILE_SET.has(placeFile)) return null;
+  const kit = STATION_KIT_OVERLAY_FILE_BY_FACTION[factionIdForVisual(entity)];
+  return kit || null;
+}
+
+// Back-compat name — the trade-hub overlays are the authored-space branch of the general
+// station overlay path now.
+export function tradeHubOverlayFileForEntity(entity) {
+  return stationOverlayFileForEntity(entity);
+}
+
+// True when the overlay file is a canonical-shell kit that must be envelope-fit onto the
+// resolved station body at compose (the three authored Helios overlays already share the
+// hub's authored space and instantiate unscaled-relative like any second record).
+function stationOverlayIsEnvelopeFit(overlayFile) {
+  return !!overlayFile && STATION_KIT_OVERLAY_FILE_SET.has(overlayFile);
 }
 
 // The faction garnish instantiates at the same draw scale as the base body, so its measured
 // census row unions into every envelope stamp that claims the boundary's drawn extent —
 // without it, multi-part hubs classify ~3x narrower than their composed silhouette.
 function tradeHubOverlayCensusRowForEntity(entity) {
-  const overlayFile = tradeHubOverlayFileForEntity(entity);
-  if (!overlayFile) return null;
+  const overlayFile = stationOverlayFileForEntity(entity);
+  if (!overlayFile || stationOverlayIsEnvelopeFit(overlayFile)) return null;
   const stem = overlayFile.slice(overlayFile.lastIndexOf('/') + 1).replace(/\.glb$/i, '');
   return modelTruthRow(stem);
 }
@@ -2242,6 +2316,17 @@ function placeFileStem(url) {
 // not the origin, so the stamp must carry the union center to claim it honestly.
 function placeVisualUnionWithOverlay(entity, size, center) {
   if (!Array.isArray(size)) return null;
+  const overlayFile = stationOverlayFileForEntity(entity);
+  if (stationOverlayIsEnvelopeFit(overlayFile)) {
+    // The kit's canonical shell is stretched per-axis to exactly the base authored bounds
+    // x the fit margin at compose — the drawn garnish box IS that box, centred on the
+    // base centre, so the union is the base envelope widened by the margin.
+    const baseCenter = Array.isArray(center) ? center : [0, 0, 0];
+    return {
+      size: size.map((value) => (Number(value) || 0) * STATION_KIT_FIT_MARGIN),
+      center: baseCenter,
+    };
+  }
   const overlayRow = tradeHubOverlayCensusRowForEntity(entity);
   const overlaySize = overlayRow && overlayRow.bounds && overlayRow.bounds.size;
   if (!Array.isArray(overlaySize)) {
@@ -4573,7 +4658,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   }
 
   let overlayRecord = null;
-  const overlayFile = tradeHubOverlayFileForEntity(options.admissionEntity || entity);
+  const overlayFile = stationOverlayFileForEntity(options.admissionEntity || entity);
   if (overlayFile) {
     try {
       overlayRecord = await waitForAuthoredAdmission(loadPart(`${partRoot}${overlayFile}`, {
@@ -5284,7 +5369,36 @@ export function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, o
       overlayRecord.bounds && overlayRecord.bounds.size && overlayRecord.bounds.size[0] || 1,
       1e-6,
     );
-    yield* instantiatePartSteps(overlayRecord, root, {
+    // Row 512: canonical-shell kits are authored inside a station-envelope box. Wrap the
+    // instantiate in a fit group that stretches the kit's measured bounds per-axis onto
+    // this resolved archetype's authored bounds x the fit margin, centred on the same
+    // authored centre — so one kit dresses all seven archetypes and still orbits proud
+    // of each one's silhouette. Authored Helios overlays share the hub's authored space
+    // already and instantiate flat like any second record.
+    const overlayFile = stationOverlayFileForEntity(options.admissionEntity || entity);
+    let overlayParent = root;
+    if (stationOverlayIsEnvelopeFit(overlayFile)) {
+      const b = record.bounds;
+      const o = overlayRecord.bounds;
+      if (b && Array.isArray(b.size) && Array.isArray(b.center)
+        && o && Array.isArray(o.size) && Array.isArray(o.center)
+        && o.size.every((v) => (Number(v) || 0) > 1e-6)) {
+        const fitGroup = new THREE.Group();
+        fitGroup.name = 'StationKitEnvelopeFit';
+        const fx = (Number(b.size[0]) || 0) / Number(o.size[0]) * STATION_KIT_FIT_MARGIN;
+        const fy = (Number(b.size[1]) || 0) / Number(o.size[1]) * STATION_KIT_FIT_MARGIN;
+        const fz = (Number(b.size[2]) || 0) / Number(o.size[2]) * STATION_KIT_FIT_MARGIN;
+        fitGroup.scale.set(fx, fy, fz);
+        fitGroup.position.set(
+          scale * ((Number(b.center[0]) || 0) - (Number(o.center[0]) || 0) * fx),
+          scale * ((Number(b.center[1]) || 0) - (Number(o.center[1]) || 0) * fy),
+          scale * ((Number(b.center[2]) || 0) - (Number(o.center[2]) || 0) * fz),
+        );
+        root.add(fitGroup);
+        overlayParent = fitGroup;
+      }
+    }
+    yield* instantiatePartSteps(overlayRecord, overlayParent, {
       position: [0, 0, 0],
       rotation: [0, 0, 0],
       targetLength: overlayLength * scale,
@@ -7898,7 +8012,7 @@ function authoredUpgradeAssetRequests(job) {
   for (const [slot, files] of Object.entries(authoredUpgradePlan(job))) {
     for (const file of files || []) push(slot, `${partRoot}${file}`);
   }
-  const overlay = entity ? tradeHubOverlayFileForEntity(entity) : null;
+  const overlay = entity ? stationOverlayFileForEntity(entity) : null;
   if (overlay) push('place', `${partRoot}${overlay}`);
   return requests;
 }

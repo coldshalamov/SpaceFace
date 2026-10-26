@@ -1,0 +1,4363 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.484844207763672,
+        26.419998168945312,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.484844207763672,
+        26.419998168945312,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19186973571777344,
+        9.010000228881836,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19186973571777344,
+        9.010000228881836,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -54.22132873535156,
+        26.419998168945312,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -54.22132873535156,
+        26.419998168945312,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        53.53759002685547,
+        26.26999855041504,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        53.53759002685547,
+        26.26999855041504,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19186973571777344,
+        26.419998168945312,
+        -32.61978530883789,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19186973571777344,
+        26.419998168945312,
+        -32.61978530883789,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19186973571777344,
+        26.419998168945312,
+        32.61978530883789,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19186973571777344,
+        26.419998168945312,
+        32.61978530883789,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -24.052831649780273,
+        21.939998626708984,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -24.052831649780273,
+        21.939998626708984,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -54.52132797241211,
+        26.419998168945312,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -54.52132797241211,
+        26.419998168945312,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -54.52132797241211,
+        26.419998168945312,
+        -13.59157657623291,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -54.52132797241211,
+        26.419998168945312,
+        -13.59157657623291,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -54.52132797241211,
+        26.419998168945312,
+        13.59157657623291,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -54.52132797241211,
+        26.419998168945312,
+        13.59157657623291,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19186973571777344,
+        43.82999801635742,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.19186973571777344,
+        43.82999801635742,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        53.63758850097656,
+        26.419998168945312,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentNodeId": "sf.render.var-station-kit-pitborn-v01.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        53.63758850097656,
+        26.419998168945312,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.var-station-kit-pitborn-v01",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "2d1719a9d025cd054d25e784d4944249ec23b754973541616b3c85b19a1bd48c",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          52.82780075073242,
+          38.99819564819336,
+          52.92489242553711
+        ],
+        "min": [
+          -53.02288818359375,
+          8.961804389953613,
+          -53.11997985839844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cefa2cbf75e946c641061e5e0d73e35c8181dcaf4e1974a7366f8ec1ae655cb9",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-armor.primitive.0",
+      "indexCount": 6204,
+      "indexed": true,
+      "materialHash": "159339aead07efa1e551a5785cadb5020f0a7347a2f9bd107d5fcdeab43af9a2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1932
+    },
+    {
+      "bounds": {
+        "max": [
+          53.12964630126953,
+          43.87818145751953,
+          53.368125915527344
+        ],
+        "min": [
+          -54.42066192626953,
+          21.24431610107422,
+          -54.36630630493164
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dde0d650a052ea6557a9db5dba578de7ac5c972522dc40e3ee71ac910ca419bd",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-beacon-amber-pit.primitive.0",
+      "indexCount": 1116,
+      "indexed": true,
+      "materialHash": "f7ca6eac4073b60a74d2da312f07b6ad0dd97cd89abcf5b8fcfb027b6ca68755",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber_pit",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-beacon-amber-pit",
+      "primitiveIndex": 0,
+      "vertexCount": 744
+    },
+    {
+      "bounds": {
+        "max": [
+          52.82734680175781,
+          38.998619079589844,
+          53.022979736328125
+        ],
+        "min": [
+          -53.11997985839844,
+          12.821380615234375,
+          -52.7303466796875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "56b0645d01f05ec6c9c68070fcb25a94b9551a84d10bb57b82d88a677439ebc8",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrap.primitive.0",
+      "indexCount": 6204,
+      "indexed": true,
+      "materialHash": "9a15f2fe9613f779c53f31b96237525a6a618bf1bfc9ec4cbf8dfbf397512959",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_scrap",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrap",
+      "primitiveIndex": 0,
+      "vertexCount": 1936
+    },
+    {
+      "bounds": {
+        "max": [
+          54.03759002685547,
+          30.999433517456055,
+          53.54685974121094
+        ],
+        "min": [
+          -53.55000305175781,
+          9.000566482543945,
+          -53.80432891845703
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "142a3f5219bbcf23ab9f8e8880a07d04f4a39bda507da662afdc46bb74f3972d",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrapb.primitive.0",
+      "indexCount": 7332,
+      "indexed": true,
+      "materialHash": "32993b504a0ea05a1a73782748716f8987c7d63a0f73c4ffc1c3c1e7c3d342d1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_scrapb",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrapb",
+      "primitiveIndex": 0,
+      "vertexCount": 2350
+    },
+    {
+      "bounds": {
+        "max": [
+          52.70000076293945,
+          24.99659538269043,
+          52.70000076293945
+        ],
+        "min": [
+          -52.70000076293945,
+          9.003405570983887,
+          -52.70000076293945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "206bf64e01a6c3ed81406303a956f7969c121006f6101df96d67b72d5b42036b",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull.primitive.0",
+      "indexCount": 7728,
+      "indexed": true,
+      "materialHash": "6020f8ea4ae401fd1d77d4fb4efeff1b49f55183d52a86e5f5f644da0f710bea",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 3808
+    },
+    {
+      "bounds": {
+        "max": [
+          52.95000076293945,
+          25.99771499633789,
+          52.95000076293945
+        ],
+        "min": [
+          -52.95000076293945,
+          25.00228500366211,
+          -52.95000076293945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4c51c6b60ba15fd8da87eb41310703fb1dfc5d41b57636c3f60fbf7d797507af",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-livery.primitive.0",
+      "indexCount": 7728,
+      "indexed": true,
+      "materialHash": "0fa8ccee1983c94475058953e2f689f72aa3ebb8afd05db1e14a63945f7bddcb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 3808
+    },
+    {
+      "bounds": {
+        "max": [
+          50.647552490234375,
+          42.997676849365234,
+          50.65061950683594
+        ],
+        "min": [
+          -50.264862060546875,
+          10.372323989868164,
+          -50.45927810668945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "025fc5fcb28c4ffe4a7d57ed190e03dfe83b7ae7248da67e4c119535374e2900",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanical.primitive.0",
+      "indexCount": 5940,
+      "indexed": true,
+      "materialHash": "a0b2e7a03fafafc1005506ccaf5996a55787e811a3bb47b30fec0669803a6050",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1812
+    },
+    {
+      "bounds": {
+        "max": [
+          53.7650032043457,
+          29.083219528198242,
+          54.16123962402344
+        ],
+        "min": [
+          -54.28466033935547,
+          21.91144371032715,
+          -54.232460021972656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "932d25e185d2a2bd0bdf918d42817d2fd1655865b9490a4f3996935348333c52",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanicaldark.primitive.0",
+      "indexCount": 780,
+      "indexed": true,
+      "materialHash": "716b537ff8330bd52247c037987d718348b67b9cd8ceda34ab0ccb21db99fd08",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 328
+    },
+    {
+      "bounds": {
+        "max": [
+          53.41135025024414,
+          22.79863739013672,
+          53.41135025024414
+        ],
+        "min": [
+          -53.41135025024414,
+          11.701360702514648,
+          -53.41135025024414
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8928a848e550512fa4544c9f3e107a3a23410281c9acc99e265521c1232044a6",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-warning.primitive.0",
+      "indexCount": 9024,
+      "indexed": true,
+      "materialHash": "d1c632199c69508c52f0fed2f44150755e84202064108077f65e5458a24f3c44",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 2816
+    },
+    {
+      "bounds": {
+        "max": [
+          52.822322845458984,
+          38.99247741699219,
+          52.91939926147461
+        ],
+        "min": [
+          -53.01741027832031,
+          8.972139358520508,
+          -53.1144905090332
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bc1f158e85d72cc12fa71544aa9ba20c3249cc1d995c35bdb033a5f937ee9492",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-armor.primitive.0",
+      "indexCount": 720,
+      "indexed": true,
+      "materialHash": "159339aead07efa1e551a5785cadb5020f0a7347a2f9bd107d5fcdeab43af9a2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 370
+    },
+    {
+      "bounds": {
+        "max": [
+          53.12964630126953,
+          43.87818145751953,
+          53.368125915527344
+        ],
+        "min": [
+          -54.42066192626953,
+          21.24431610107422,
+          -54.36630630493164
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e1f1e5ac0e08cfa17c79bb57d6404b82c76e1ae304975db89c30913d72b9e0e3",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-beacon-amber-pit.primitive.0",
+      "indexCount": 1116,
+      "indexed": true,
+      "materialHash": "f7ca6eac4073b60a74d2da312f07b6ad0dd97cd89abcf5b8fcfb027b6ca68755",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber_pit",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-beacon-amber-pit",
+      "primitiveIndex": 0,
+      "vertexCount": 744
+    },
+    {
+      "bounds": {
+        "max": [
+          52.82185745239258,
+          38.99340057373047,
+          53.01749801635742
+        ],
+        "min": [
+          -53.1144905090332,
+          12.831806182861328,
+          -52.7248649597168
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d114d1f77f43de41bb498373e3883e2cd57ee4e14aeacf786d61a54223d80d1",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrap.primitive.0",
+      "indexCount": 744,
+      "indexed": true,
+      "materialHash": "9a15f2fe9613f779c53f31b96237525a6a618bf1bfc9ec4cbf8dfbf397512959",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_scrap",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrap",
+      "primitiveIndex": 0,
+      "vertexCount": 380
+    },
+    {
+      "bounds": {
+        "max": [
+          54.03396224975586,
+          30.99321174621582,
+          53.537445068359375
+        ],
+        "min": [
+          -53.54050064086914,
+          9.010160446166992,
+          -53.80064392089844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "330177cd93768af91defeac21ad7107b29c9b7fc6ad4576f4d8752dfbcdea201",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrapb.primitive.0",
+      "indexCount": 960,
+      "indexed": true,
+      "materialHash": "32993b504a0ea05a1a73782748716f8987c7d63a0f73c4ffc1c3c1e7c3d342d1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_scrapb",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrapb",
+      "primitiveIndex": 0,
+      "vertexCount": 460
+    },
+    {
+      "bounds": {
+        "max": [
+          52.70000076293945,
+          24.99659538269043,
+          52.70000076293945
+        ],
+        "min": [
+          -52.70000076293945,
+          9.003405570983887,
+          -52.70000076293945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "893bf7d03b261ae7545d897e5795700d0ff7ad8b3ee34d40a67bfb2da4a33715",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull.primitive.0",
+      "indexCount": 7728,
+      "indexed": true,
+      "materialHash": "6020f8ea4ae401fd1d77d4fb4efeff1b49f55183d52a86e5f5f644da0f710bea",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 3808
+    },
+    {
+      "bounds": {
+        "max": [
+          52.95000076293945,
+          25.99771499633789,
+          52.95000076293945
+        ],
+        "min": [
+          -52.95000076293945,
+          25.00228500366211,
+          -52.95000076293945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a22befa5b1e9b98fa0e83170e26d5e0729ba8b4cb559c5e299e2b2f371866d4d",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-livery.primitive.0",
+      "indexCount": 7728,
+      "indexed": true,
+      "materialHash": "0fa8ccee1983c94475058953e2f689f72aa3ebb8afd05db1e14a63945f7bddcb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 3808
+    },
+    {
+      "bounds": {
+        "max": [
+          50.64426040649414,
+          42.993282318115234,
+          50.64731979370117
+        ],
+        "min": [
+          -50.261566162109375,
+          10.382403373718262,
+          -50.45597839355469
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a4b1ba087bb310e2c8cc2f4ab9ebebe1d01d4ccce2b20d7f0226b19cb49146a8",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanical.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "a0b2e7a03fafafc1005506ccaf5996a55787e811a3bb47b30fec0669803a6050",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 264
+    },
+    {
+      "bounds": {
+        "max": [
+          53.7650032043457,
+          29.083219528198242,
+          54.16123962402344
+        ],
+        "min": [
+          -54.28466033935547,
+          21.91144371032715,
+          -54.232460021972656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cece8bc88bf60aef2a92cde15cc60b3e27cb910e81112fe643b155a7e9d18613",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanicaldark.primitive.0",
+      "indexCount": 780,
+      "indexed": true,
+      "materialHash": "716b537ff8330bd52247c037987d718348b67b9cd8ceda34ab0ccb21db99fd08",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 328
+    },
+    {
+      "bounds": {
+        "max": [
+          53.406341552734375,
+          22.79159927368164,
+          53.40642166137695
+        ],
+        "min": [
+          -53.406341552734375,
+          11.708401679992676,
+          -53.40626525878906
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6348718d94ae352a9dcc085db46daa220825b1f2ba7995036af3d8e18cde2c8d",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-warning.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "d1c632199c69508c52f0fed2f44150755e84202064108077f65e5458a24f3c44",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 384
+    },
+    {
+      "bounds": {
+        "max": [
+          7.565311908721924,
+          38.021331787109375,
+          7.817330360412598
+        ],
+        "min": [
+          -5.5877251625061035,
+          35.978668212890625,
+          -7.436097145080566
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e7bff9a2c0f108c23fc2a810d25b365ea4fe16a9ff55f0557328496c7f11725a",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-armor.primitive.0",
+      "indexCount": 9,
+      "indexed": true,
+      "materialHash": "159339aead07efa1e551a5785cadb5020f0a7347a2f9bd107d5fcdeab43af9a2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 9
+    },
+    {
+      "bounds": {
+        "max": [
+          53.1296501159668,
+          43.69268035888672,
+          53.368125915527344
+        ],
+        "min": [
+          -54.4206657409668,
+          21.3481502532959,
+          -54.366310119628906
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "77bc5f9b540f07974e6b1594d8ddfdda4e95787a47f4edb35c7794f18272a884",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-beacon-amber-pit.primitive.0",
+      "indexCount": 93,
+      "indexed": true,
+      "materialHash": "f7ca6eac4073b60a74d2da312f07b6ad0dd97cd89abcf5b8fcfb027b6ca68755",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber_pit",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-beacon-amber-pit",
+      "primitiveIndex": 0,
+      "vertexCount": 93
+    },
+    {
+      "bounds": {
+        "max": [
+          5.662387847900391,
+          38.020851135253906,
+          5.805008411407471
+        ],
+        "min": [
+          -8.25755500793457,
+          36.00042724609375,
+          -7.542283058166504
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e5618b805976a421205433d7c528956ddc600cca9a6e056a489c9f4d293ffd42",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrap.primitive.0",
+      "indexCount": 9,
+      "indexed": true,
+      "materialHash": "9a15f2fe9613f779c53f31b96237525a6a618bf1bfc9ec4cbf8dfbf397512959",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_scrap",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrap",
+      "primitiveIndex": 0,
+      "vertexCount": 9
+    },
+    {
+      "bounds": {
+        "max": [
+          52.66316223144531,
+          32.476768493652344,
+          48.57489013671875
+        ],
+        "min": [
+          -46.9412727355957,
+          8.539409637451172,
+          -52.39774703979492
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b77c5cc9212d7fb80b93788daafc3f93a13f5a2f0249463845424c59b91ccd6",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrapb.primitive.0",
+      "indexCount": 15,
+      "indexed": true,
+      "materialHash": "32993b504a0ea05a1a73782748716f8987c7d63a0f73c4ffc1c3c1e7c3d342d1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_scrapb",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrapb",
+      "primitiveIndex": 0,
+      "vertexCount": 15
+    },
+    {
+      "bounds": {
+        "max": [
+          52.70000076293945,
+          24.99659538269043,
+          52.70000076293945
+        ],
+        "min": [
+          -52.70000076293945,
+          9.003405570983887,
+          -52.70000076293945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "893bf7d03b261ae7545d897e5795700d0ff7ad8b3ee34d40a67bfb2da4a33715",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull.primitive.0",
+      "indexCount": 7728,
+      "indexed": true,
+      "materialHash": "6020f8ea4ae401fd1d77d4fb4efeff1b49f55183d52a86e5f5f644da0f710bea",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 3808
+    },
+    {
+      "bounds": {
+        "max": [
+          52.95000076293945,
+          25.99771499633789,
+          52.95000076293945
+        ],
+        "min": [
+          -52.95000076293945,
+          25.00228500366211,
+          -52.95000076293945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a22befa5b1e9b98fa0e83170e26d5e0729ba8b4cb559c5e299e2b2f371866d4d",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-livery.primitive.0",
+      "indexCount": 7728,
+      "indexed": true,
+      "materialHash": "0fa8ccee1983c94475058953e2f689f72aa3ebb8afd05db1e14a63945f7bddcb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 3808
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1012922525405884,
+          43.40986251831055,
+          0.33964893221855164
+        ],
+        "min": [
+          -1.096266269683838,
+          35.81174087524414,
+          -0.3411605954170227
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e863a53be0ee016997d1a1b15fd4aa7aa2442e8d82205d422d17eefdfcf59c1d",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanical.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "a0b2e7a03fafafc1005506ccaf5996a55787e811a3bb47b30fec0669803a6050",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          54.3663215637207,
+          28.006107330322266,
+          54.97150421142578
+        ],
+        "min": [
+          -53.84135055541992,
+          21.97882843017578,
+          -54.262939453125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f2e88394b0e9c338b696b4d405097a5b27b177e8aeab788102c9348b4dd04e62",
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanicaldark.primitive.0",
+      "indexCount": 15,
+      "indexed": true,
+      "materialHash": "716b537ff8330bd52247c037987d718348b67b9cd8ceda34ab0ccb21db99fd08",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 15
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0fa8ccee1983c94475058953e2f689f72aa3ebb8afd05db1e14a63945f7bddcb",
+      "id": "material:0fa8ccee1983c94475058953",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "159339aead07efa1e551a5785cadb5020f0a7347a2f9bd107d5fcdeab43af9a2",
+      "id": "material:159339aead07efa1e551a578",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "32993b504a0ea05a1a73782748716f8987c7d63a0f73c4ffc1c3c1e7c3d342d1",
+      "id": "material:32993b504a0ea05a1a737827",
+      "name": "Material_Hull_scrapb",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6020f8ea4ae401fd1d77d4fb4efeff1b49f55183d52a86e5f5f644da0f710bea",
+      "id": "material:6020f8ea4ae401fd1d77d4fb",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "716b537ff8330bd52247c037987d718348b67b9cd8ceda34ab0ccb21db99fd08",
+      "id": "material:716b537ff8330bd52247c037",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9a15f2fe9613f779c53f31b96237525a6a618bf1bfc9ec4cbf8dfbf397512959",
+      "id": "material:9a15f2fe9613f779c53f31b9",
+      "name": "Material_Hull_scrap",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a0b2e7a03fafafc1005506ccaf5996a55787e811a3bb47b30fec0669803a6050",
+      "id": "material:a0b2e7a03fafafc1005506cc",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d1c632199c69508c52f0fed2f44150755e84202064108077f65e5458a24f3c44",
+      "id": "material:d1c632199c69508c52f0fed2",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f7ca6eac4073b60a74d2da312f07b6ad0dd97cd89abcf5b8fcfb027b6ca68755",
+      "id": "material:f7ca6eac4073b60a74d2da31",
+      "name": "Material_Emissive_Amber_pit",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-beacon-amber-pit",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber_pit",
+      "nodeName": "LOD0_Beacon_Amber_pit",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrap",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_scrap",
+      "nodeName": "LOD0_Hull_scrap",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrapb",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_scrapb",
+      "nodeName": "LOD0_Hull_scrapb",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-beacon-amber-pit",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber_pit",
+      "nodeName": "LOD1_Beacon_Amber_pit",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrap",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_scrap",
+      "nodeName": "LOD1_Hull_scrap",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrapb",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_scrapb",
+      "nodeName": "LOD1_Hull_scrapb",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-beacon-amber-pit",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber_pit",
+      "nodeName": "LOD2_Beacon_Amber_pit",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrap",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_scrap",
+      "nodeName": "LOD2_Hull_scrap",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrapb",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_scrapb",
+      "nodeName": "LOD2_Hull_scrapb",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.var-station-kit-pitborn-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-kit-pitborn-v01.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_VAR_STATION_KIT_PITBORN_V01_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "f95c6c9a08a6044ebbca384e7cba1fc3e07e0995dc72c585cdaf499e655c5a36"
+    },
+    "sourceGlb": {
+      "bytes": 605664,
+      "sha256": "9409ead7079e9c72e43001e97780c94306a9e87f84dc59bf5d7d872e7623ed6a",
+      "uri": "var_station_kit_pitborn_v01.glb"
+    },
+    "sourceManifest": {
+      "bytes": 320050,
+      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 1288896,
+    "sha256": "38ef7f1afedc7ba189529415b7c7a827a6e863d9ddc78e693e2eea3fb53b79ce",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.027172088623046875,
+        26.20879554748535,
+        0.3025970458984375
+      ],
+      "max": [
+        54.3663215637207,
+        43.87818145751953,
+        54.97150421142578
+      ],
+      "min": [
+        -54.4206657409668,
+        8.539409637451172,
+        -54.366310119628906
+      ],
+      "size": [
+        108.7869873046875,
+        35.33877182006836,
+        109.33781433105469
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          8.484844207763672,
+          26.419998168945312,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 28,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.19186973571777344,
+          9.010000228881836,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 29,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -54.22132873535156,
+          26.419998168945312,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 30,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          53.53759002685547,
+          26.26999855041504,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 31,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.19186973571777344,
+          26.419998168945312,
+          -32.61978530883789,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 32,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.19186973571777344,
+          26.419998168945312,
+          32.61978530883789,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 33,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -24.052831649780273,
+          21.939998626708984,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 34,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -54.52132797241211,
+          26.419998168945312,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 35,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -54.52132797241211,
+          26.419998168945312,
+          -13.59157657623291,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 36,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -54.52132797241211,
+          26.419998168945312,
+          13.59157657623291,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 37,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.19186973571777344,
+          43.82999801635742,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 38,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          53.63758850097656,
+          26.419998168945312,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 39,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.var-station-kit-pitborn-v01.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "hull": 12,
+      "mechanical": 6,
+      "signal": 3,
+      "warning": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 40,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber_pit",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_scrap",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_scrapb",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber_pit",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_scrap",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_scrapb",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber_pit",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull_scrap",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull_scrapb",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Livery",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/var_station_kit_pitborn_v01.glb"
+  },
+  "runtimeHash": "712c517a4db02ded19a525ce49bbfde5c5147838b3224ef9137b364507b17f71",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          54.3663215637207,
+          43.87818145751953,
+          54.97150421142578
+        ],
+        "min": [
+          -54.4206657409668,
+          8.539409637451172,
+          -54.366310119628906
+        ]
+      },
+      "id": "sf.render.var-station-kit-pitborn-v01.body",
+      "nodeIds": [
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod0-armor",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod0-beacon-amber-pit",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrap",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrapb",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod0-livery",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanical",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanicaldark",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod0-warning",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod1-armor",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod1-beacon-amber-pit",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrap",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrapb",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod1-livery",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanical",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanicaldark",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod1-warning",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod2-armor",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod2-beacon-amber-pit",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrap",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrapb",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod2-livery",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanical",
+        "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanicaldark",
+        "sf.render.var-station-kit-pitborn-v01.root"
+      ]
+    }
+  ]
+}

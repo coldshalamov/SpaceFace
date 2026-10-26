@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "DESK: The shade sits inside the scavengers' ring. Drag it a hundred-eighty clear of both their hulls — a hundred-twenty of line work at least — release, settle. — SHADE ON THE OUTLAW ZONE.",
+      "line": "DESK: The shade sits inside the scavengers' ring. Drag it a hundred-eighty clear of both their hulls — a hundred-twenty of line work at least — release, settle under five for a two-count. — SHADE ON THE OUTLAW ZONE.",
       "channel": "info",
       "next": "offer"
     },
