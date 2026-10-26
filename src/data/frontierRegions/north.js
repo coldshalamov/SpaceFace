@@ -503,7 +503,7 @@ export const NORTH_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_rhea_slag',
         pos: Object.freeze({ x: 1180, z: 640 }),
-        landmarkGlb: 'place_dead_hulk',
+        landmarkGlb: 'place_rhea_slag_hauler',
         landmark: true,
       }),
       Object.freeze({

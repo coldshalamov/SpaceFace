@@ -86,7 +86,7 @@ import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drif
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { isPlayerWanted } from './heat.js';            // WANTED threshold is heat-owned — never restate it
 import { adventureMaterialFor, environmentSurfaceData } from '../data/environmentMaterials.js';
-import { applyRockSubstance, rockSubstanceForSlot, rockTierForRadius, ROCK_LADDER_RADII, ROCK_LADDER_MIN_PER_TIER } from '../data/rockSubstances.js';
+import { applyRockSubstance, rockSubstanceForSlot, rockTierForRadius, ROCK_LADDER_RADII, ROCK_LADDER_MIN_PER_TIER, ROCK_SUBSTANCES } from '../data/rockSubstances.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import {
@@ -469,6 +469,8 @@ const DRESSING_RADIUS = Object.freeze({
   place_station_billboard: 28,
   place_conveyor_barge: 48,
   place_dead_hulk: 42,
+  place_rhea_slag_hauler: 42,
+  place_proteus_funnel: 40,
   place_debris_chunk: 26,
   place_ceres_bait_wreck: 48,
   place_ceres_grave_shard: 28,
@@ -482,6 +484,17 @@ function authoredGeologyPlaceForField(fieldDef) {
   if (!fieldDef) return null;
   const asteroidDef = AST_BY_ID.get(fieldDef.type);
   return asteroidDef && asteroidDef.authoredPlaceId || null;
+}
+
+// Row 495: the 24-body rock family — the authored body for a stamped substance at a spawn
+// radius, or null so the caller can keep its legacy authoredPlaceId.
+const AUTHORED_ROCK_SIZE_CLASSES = Object.freeze({ pebble: 14, boulder: 24 });
+function authoredRockPlaceId(substanceId, radius) {
+  if (!ROCK_SUBSTANCES[substanceId]) return null;
+  const r = Number(radius) || 0;
+  const sizeClass = r < AUTHORED_ROCK_SIZE_CLASSES.pebble ? 'pebble'
+    : r < AUTHORED_ROCK_SIZE_CLASSES.boulder ? 'boulder' : 'monolith';
+  return `place_rock_${substanceId}_${sizeClass}`;
 }
 
 const CERES_ACTIVITY_OBJECT_SLOTS = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
@@ -2755,7 +2768,12 @@ export const world = {
       asteroidSlotId: String(slotIndex),
       ...(authoredGeologyPlaceId ? {
         authoredGeologySkin: true,
-        placeId: authoredGeologyPlaceId,
+        // Row 495: the field's hero rock wears the same hand-made family body the arena
+        // throws — picked by the deterministic substance roll stamped below, so the authored
+        // body and the substance physics never disagree.
+        placeId: authoredRockPlaceId(
+          rockSubstanceForSlot(this.state.meta.seed, fdef.id, slotIndex), size)
+          || authoredGeologyPlaceId,
         placeTargetRadius: size,
       } : {}),
       ...(activityBinding && activityBinding.id

@@ -2932,6 +2932,86 @@
       }
     },
     {
+      "id": "place_rhea_slag_hauler",
+      "assetId": "SF_PLACE_RHEA_SLAG_HAULER",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rhea_slag_hauler.glb",
+      "tris": 15897,
+      "bytes": 1265012,
+      "textureSize": 512,
+      "note": "Rhea Cinder postcard (new place): a burned pot-line slag hauler — open keel spine with crucible pots upright, tipped mid-pour, missing and sheared; bent hoist gantry, collapsed cab, slag-fused nozzle, one ember. SEED-SC-08.",
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Hazard_Core",
+        "SOCKET_Salvage_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -26.520559310913086,
+          -3.450000047683716,
+          -5.036535739898682
+        ],
+        "max": [
+          28,
+          6.144848823547363,
+          6.1163530349731445
+        ],
+        "dimensionsM": [
+          54.520559310913086,
+          9.594848871231079,
+          11.152888774871826
+        ]
+      }
+    },
+    {
+      "id": "place_proteus_funnel",
+      "assetId": "SF_PLACE_PROTEUS_FUNNEL",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_proteus_funnel.glb",
+      "tris": 8352,
+      "bytes": 863812,
+      "textureSize": 512,
+      "note": "Proteus Well postcard (new place): the Funnel — a civilian freighter cut into a single-file throat, ivory flanks folded outward, violet guide strips running the corridor to the debris floor and the sealed bow pit. SEED-SC-15.",
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Hazard_Core",
+        "SOCKET_Salvage_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -26.149999618530273,
+          -3.8499999046325684,
+          -6.534221172332764
+        ],
+        "max": [
+          17.87136459350586,
+          8.69150161743164,
+          6.534221172332764
+        ],
+        "dimensionsM": [
+          44.02136421203613,
+          12.541501522064209,
+          13.068442344665527
+        ]
+      }
+    },
+    {
       "id": "place_debris_chunk",
       "category": "places",
       "priority": "P1",
@@ -3864,6 +3944,990 @@
         ]
       },
       "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_rock_cooked_rock_boulder",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_cooked_rock_boulder.glb",
+      "note": "Row 495 rock family (cooked_rock/boulder): black body with green fissures.",
+      "bytes": 798260,
+      "tris": 7886,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.5779948234558105,
+          -5.1378912925720215,
+          -5.221395492553711
+        ],
+        "max": [
+          5.06365966796875,
+          5.434409141540527,
+          4.741090774536133
+        ],
+        "dimensionsM": [
+          10.64165449142456,
+          10.572300434112549,
+          9.962486267089844
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_cooked_rock_monolith",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_cooked_rock_monolith.glb",
+      "note": "Row 495 rock family (cooked_rock/monolith): black body with green fissures.",
+      "bytes": 1068440,
+      "tris": 10504,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.127397537231445,
+          -8.116166114807129,
+          -8.204690933227539
+        ],
+        "max": [
+          8.004270553588867,
+          7.865319728851318,
+          8.588773727416992
+        ],
+        "dimensionsM": [
+          16.131668090820312,
+          15.981485843658447,
+          16.79346466064453
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_cooked_rock_pebble",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_cooked_rock_pebble.glb",
+      "note": "Row 495 rock family (cooked_rock/pebble): black body with green fissures.",
+      "bytes": 336688,
+      "tris": 3546,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -3.1004176139831543,
+          -3.0985615253448486,
+          -2.602156639099121
+        ],
+        "max": [
+          2.7586910724639893,
+          3.002016067504883,
+          2.6775765419006348
+        ],
+        "dimensionsM": [
+          5.8591086864471436,
+          6.1005775928497314,
+          5.279733180999756
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_crystal_boulder",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_crystal_boulder.glb",
+      "note": "Row 495 rock family (crystal/boulder): violet stone with glass spike cluster.",
+      "bytes": 802176,
+      "tris": 7780,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.531134605407715,
+          -5.89739465713501,
+          -5.017067909240723
+        ],
+        "max": [
+          5.000545024871826,
+          6.402617454528809,
+          5.212049961090088
+        ],
+        "dimensionsM": [
+          10.531679630279541,
+          12.300012111663818,
+          10.22911787033081
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_crystal_monolith",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_crystal_monolith.glb",
+      "note": "Row 495 rock family (crystal/monolith): violet stone with glass spike cluster.",
+      "bytes": 1073784,
+      "tris": 10472,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.335774421691895,
+          -7.875936985015869,
+          -7.456848621368408
+        ],
+        "max": [
+          7.444406986236572,
+          9.375258445739746,
+          8.949264526367188
+        ],
+        "dimensionsM": [
+          15.780181407928467,
+          17.251195430755615,
+          16.406113147735596
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_crystal_pebble",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_crystal_pebble.glb",
+      "note": "Row 495 rock family (crystal/pebble): violet stone with glass spike cluster.",
+      "bytes": 332244,
+      "tris": 3341,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -3.0451605319976807,
+          -3.4928174018859863,
+          -2.8272407054901123
+        ],
+        "max": [
+          2.7795369625091553,
+          3.6586387157440186,
+          3.191035747528076
+        ],
+        "dimensionsM": [
+          5.824697494506836,
+          7.151456117630005,
+          6.0182764530181885
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_ice_boulder",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_ice_boulder.glb",
+      "note": "Row 495 rock family (ice/boulder): cold grey rock with rime caps and glass ice veins.",
+      "bytes": 981704,
+      "tris": 9310,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.633477687835693,
+          -5.43382453918457,
+          -5.282007217407227
+        ],
+        "max": [
+          4.7671709060668945,
+          6.402617454528809,
+          4.728884220123291
+        ],
+        "dimensionsM": [
+          10.400648593902588,
+          11.836441993713379,
+          10.010891437530518
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_ice_monolith",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_ice_monolith.glb",
+      "note": "Row 495 rock family (ice/monolith): cold grey rock with rime caps and glass ice veins.",
+      "bytes": 1237896,
+      "tris": 11928,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.062832832336426,
+          -8.645158767700195,
+          -7.517139434814453
+        ],
+        "max": [
+          7.376745223999023,
+          9.375260353088379,
+          8.466833114624023
+        ],
+        "dimensionsM": [
+          15.43957805633545,
+          18.020419120788574,
+          15.983972549438477
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_ice_pebble",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_ice_pebble.glb",
+      "note": "Row 495 rock family (ice/pebble): cold grey rock with rime caps and glass ice veins.",
+      "bytes": 507616,
+      "tris": 4866,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -2.8336069583892822,
+          -2.9273955821990967,
+          -2.9506332874298096
+        ],
+        "max": [
+          2.7015891075134277,
+          2.5535998344421387,
+          2.771838426589966
+        ],
+        "dimensionsM": [
+          5.53519606590271,
+          5.480995416641235,
+          5.722471714019775
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_junk_boulder",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_junk_boulder.glb",
+      "note": "Row 495 rock family (junk/boulder): compacted scrap ball with welded plates and hazard band.",
+      "bytes": 1136892,
+      "tris": 9135,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.565989971160889,
+          -6.155575275421143,
+          -5.820272922515869
+        ],
+        "max": [
+          5.269308090209961,
+          5.409103870391846,
+          5.364845275878906
+        ],
+        "dimensionsM": [
+          10.83529806137085,
+          11.564679145812988,
+          11.185118198394775
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_junk_monolith",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_junk_monolith.glb",
+      "note": "Row 495 rock family (junk/monolith): compacted scrap ball with welded plates and hazard band.",
+      "bytes": 1356616,
+      "tris": 11163,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.218371391296387,
+          -8.043285369873047,
+          -8.524568557739258
+        ],
+        "max": [
+          6.9840922355651855,
+          7.832736015319824,
+          8.634613990783691
+        ],
+        "dimensionsM": [
+          15.202463626861572,
+          15.876021385192871,
+          17.15918254852295
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_junk_pebble",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_junk_pebble.glb",
+      "note": "Row 495 rock family (junk/pebble): compacted scrap ball with welded plates and hazard band.",
+      "bytes": 699248,
+      "tris": 5073,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -2.8478622436523438,
+          -3.189026355743408,
+          -3.360175609588623
+        ],
+        "max": [
+          2.838991403579712,
+          2.9997167587280273,
+          3.0648653507232666
+        ],
+        "dimensionsM": [
+          5.686853647232056,
+          6.1887431144714355,
+          6.42504096031189
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_metallic_ore_boulder",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_metallic_ore_boulder.glb",
+      "note": "Row 495 rock family (metallic_ore/boulder): dark metal-tinged stone, bare-metal veins, cyan ore glints.",
+      "bytes": 1054384,
+      "tris": 8704,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.600812911987305,
+          -5.691307067871094,
+          -5.343352317810059
+        ],
+        "max": [
+          4.8622822761535645,
+          5.497027397155762,
+          5.032576560974121
+        ],
+        "dimensionsM": [
+          10.46309518814087,
+          11.188334465026855,
+          10.37592887878418
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_metallic_ore_monolith",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_metallic_ore_monolith.glb",
+      "note": "Row 495 rock family (metallic_ore/monolith): dark metal-tinged stone, bare-metal veins, cyan ore glints.",
+      "bytes": 1311872,
+      "tris": 11344,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.016401290893555,
+          -9.039227485656738,
+          -7.464834213256836
+        ],
+        "max": [
+          7.505988121032715,
+          7.915277004241943,
+          8.454992294311523
+        ],
+        "dimensionsM": [
+          15.52238941192627,
+          16.95450448989868,
+          15.91982650756836
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_metallic_ore_pebble",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_metallic_ore_pebble.glb",
+      "note": "Row 495 rock family (metallic_ore/pebble): dark metal-tinged stone, bare-metal veins, cyan ore glints.",
+      "bytes": 590724,
+      "tris": 4350,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -2.794935703277588,
+          -3.406928062438965,
+          -2.6587281227111816
+        ],
+        "max": [
+          2.7815911769866943,
+          2.346635341644287,
+          3.042862892150879
+        ],
+        "dimensionsM": [
+          5.576526880264282,
+          5.753563404083252,
+          5.7015910148620605
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_reef_metal_boulder",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_reef_metal_boulder.glb",
+      "note": "Row 495 rock family (reef_metal/boulder): rusted ore with teal sheen pockets.",
+      "bytes": 1057564,
+      "tris": 8711,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.666110992431641,
+          -5.18466329574585,
+          -5.175099849700928
+        ],
+        "max": [
+          5.173095226287842,
+          5.677186965942383,
+          5.015931606292725
+        ],
+        "dimensionsM": [
+          10.839206218719482,
+          10.861850261688232,
+          10.191031455993652
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_reef_metal_monolith",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_reef_metal_monolith.glb",
+      "note": "Row 495 rock family (reef_metal/monolith): rusted ore with teal sheen pockets.",
+      "bytes": 1311824,
+      "tris": 11329,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.195816993713379,
+          -8.282783508300781,
+          -7.566740989685059
+        ],
+        "max": [
+          7.688157558441162,
+          8.044045448303223,
+          8.63105297088623
+        ],
+        "dimensionsM": [
+          15.883974552154541,
+          16.326828956604004,
+          16.19779396057129
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_reef_metal_pebble",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_reef_metal_pebble.glb",
+      "note": "Row 495 rock family (reef_metal/pebble): rusted ore with teal sheen pockets.",
+      "bytes": 595724,
+      "tris": 4365,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -2.7894701957702637,
+          -3.035508632659912,
+          -3.149723768234253
+        ],
+        "max": [
+          2.7433998584747314,
+          2.8285322189331055,
+          2.7716779708862305
+        ],
+        "dimensionsM": [
+          5.532870054244995,
+          5.864040851593018,
+          5.921401739120483
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_silicate_boulder",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_silicate_boulder.glb",
+      "note": "Row 495 rock family (silicate/boulder): warm grey boulder with strata bands.",
+      "bytes": 798164,
+      "tris": 7482,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.552769660949707,
+          -5.4052934646606445,
+          -4.76971435546875
+        ],
+        "max": [
+          4.829315662384033,
+          5.580593585968018,
+          4.628922939300537
+        ],
+        "dimensionsM": [
+          10.38208532333374,
+          10.985887050628662,
+          9.398637294769287
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_silicate_monolith",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_silicate_monolith.glb",
+      "note": "Row 495 rock family (silicate/monolith): warm grey boulder with strata bands.",
+      "bytes": 1022608,
+      "tris": 9500,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.004537582397461,
+          -8.383933067321777,
+          -7.671247959136963
+        ],
+        "max": [
+          7.062006950378418,
+          8.048246383666992,
+          8.431778907775879
+        ],
+        "dimensionsM": [
+          15.066544532775879,
+          16.43217945098877,
+          16.103026866912842
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_silicate_pebble",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_silicate_pebble.glb",
+      "note": "Row 495 rock family (silicate/pebble): warm grey boulder with strata bands.",
+      "bytes": 362280,
+      "tris": 3444,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -2.817936897277832,
+          -2.9843978881835938,
+          -2.7264349460601807
+        ],
+        "max": [
+          2.8354854583740234,
+          2.366088628768921,
+          3.0442075729370117
+        ],
+        "dimensionsM": [
+          5.6534223556518555,
+          5.350486516952515,
+          5.770642518997192
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_slag_boulder",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_slag_boulder.glb",
+      "note": "Row 495 rock family (slag/boulder): near-black crust with ember fissures.",
+      "bytes": 863828,
+      "tris": 8434,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.569284915924072,
+          -5.62886905670166,
+          -5.431934356689453
+        ],
+        "max": [
+          4.868289470672607,
+          5.311239719390869,
+          4.690876007080078
+        ],
+        "dimensionsM": [
+          10.43757438659668,
+          10.94010877609253,
+          10.122810363769531
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_slag_monolith",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_slag_monolith.glb",
+      "note": "Row 495 rock family (slag/monolith): near-black crust with ember fissures.",
+      "bytes": 1126332,
+      "tris": 11072,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.124619483947754,
+          -7.975598335266113,
+          -7.7822723388671875
+        ],
+        "max": [
+          6.658470153808594,
+          7.927863597869873,
+          8.548635482788086
+        ],
+        "dimensionsM": [
+          14.783089637756348,
+          15.903461933135986,
+          16.330907821655273
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_rock_slag_pebble",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_rock_slag_pebble.glb",
+      "note": "Row 495 rock family (slag/pebble): near-black crust with ember fissures.",
+      "bytes": 403836,
+      "tris": 4100,
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -3.158572196960449,
+          -3.554853677749634,
+          -3.1891839504241943
+        ],
+        "max": [
+          2.798607349395752,
+          3.0227086544036865,
+          3.111812114715576
+        ],
+        "dimensionsM": [
+          5.957179546356201,
+          6.57756233215332,
+          6.3009960651397705
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
     },
     {
       "id": "place_scrap_cage",

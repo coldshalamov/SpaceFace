@@ -150,6 +150,8 @@ export const POSTCARD_LANDMARK_PLACE_FILE_BY_ID = Object.freeze({
   place_nyx_false_gate: 'places/place_nyx_false_gate.glb',
   place_orcus_signal_plinth: 'places/place_orcus_signal_plinth.glb',
   place_phoebe_shard_sphere: 'places/place_phoebe_shard_sphere.glb',
+  place_proteus_funnel: 'places/place_proteus_funnel.glb',
+  place_rhea_slag_hauler: 'places/place_rhea_slag_hauler.glb',
   place_sedna_ringworld_arc: 'places/place_sedna_ringworld_arc.glb',
   place_triton_aperture_monolith: 'places/place_triton_aperture_monolith.glb',
 });
@@ -162,6 +164,8 @@ export const POSTCARD_LANDMARK_RELEASE_URL_BY_ID = Object.freeze({
   place_nyx_false_gate: 'assets/ships/release/parts/places/place_nyx_false_gate.glb',
   place_orcus_signal_plinth: 'assets/ships/release/parts/places/place_orcus_signal_plinth.glb',
   place_phoebe_shard_sphere: 'assets/ships/release/parts/places/place_phoebe_shard_sphere.glb',
+  place_proteus_funnel: 'assets/ships/release/parts/places/place_proteus_funnel.glb',
+  place_rhea_slag_hauler: 'assets/ships/release/parts/places/place_rhea_slag_hauler.glb',
   place_sedna_ringworld_arc: 'assets/ships/release/parts/places/place_sedna_ringworld_arc.glb',
   place_triton_aperture_monolith: 'assets/ships/release/parts/places/place_triton_aperture_monolith.glb',
 });

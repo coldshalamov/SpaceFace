@@ -1,0 +1,4613 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.proteus-funnel.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4,
+        4.199999809265137,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentNodeId": "sf.render.proteus-funnel.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4,
+        4.199999809265137,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.anchor.socket-hazard-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        2.5999999046325684,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Hazard_Core",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentNodeId": "sf.render.proteus-funnel.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        2.5999999046325684,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.anchor.socket-salvage-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -11,
+        2,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Core",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentNodeId": "sf.render.proteus-funnel.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -11,
+        2,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.proteus-funnel",
+  "collisions": [
+    {
+      "id": "sf.render.proteus-funnel.collision",
+      "nodeId": "sf.render.proteus-funnel.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "f07c859ae7f66f07f681fa9590ee59f3a4b3cfbdced4edac29bffbb50e938d69",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          17.869646072387695,
+          8.692479133605957,
+          6.535037040710449
+        ],
+        "min": [
+          -26.149999618530273,
+          -3.8509774208068848,
+          -6.535037040710449
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "52648cd0b073e354b98f61ac9db45976d7d204ed12af6c004707b93c151955ae",
+      "id": "sf.render.proteus-funnel.mesh.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.proteus-funnel.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 850
+    },
+    {
+      "bounds": {
+        "max": [
+          17.64237403869629,
+          5.629849433898926,
+          4.150487422943115
+        ],
+        "min": [
+          -18.649999618530273,
+          0.30013033747673035,
+          -3.230487108230591
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5fad372daab5f6a46d97db9fc1ee02a31f029d98f64ae5c61732a883ce521f17",
+      "id": "sf.render.proteus-funnel.mesh.lod0-brushedmetal.primitive.0",
+      "indexCount": 972,
+      "indexed": true,
+      "materialHash": "4fde330edaca6a54f3f7322a71d31a52f8f4307debbecff6fb90bd20219a5a5d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 648
+    },
+    {
+      "bounds": {
+        "max": [
+          10.399999618530273,
+          5.600031852722168,
+          3.599893093109131
+        ],
+        "min": [
+          -16.200000762939453,
+          5.099967956542969,
+          -3.599893093109131
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b6aee9cf90c79a8cb5f789f6acf3e70ceb87bc8682f9486c21938b10dd519145",
+      "id": "sf.render.proteus-funnel.mesh.lod0-ceramic.primitive.0",
+      "indexCount": 504,
+      "indexed": true,
+      "materialHash": "db9a3a2bd6a82bb541655764ced6dcb0342e91c04f36a02faf6ab2e19f40d15b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Ceramic",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          14.25,
+          5.494383335113525,
+          4.296197414398193
+        ],
+        "min": [
+          -19.814973831176758,
+          -2.094785690307617,
+          -4.296197414398193
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cd31041a4adc90884a50601846d534329dd06ea0a8b2fc057dd9c00e1c497fb2",
+      "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-deep.primitive.0",
+      "indexCount": 1842,
+      "indexed": true,
+      "materialHash": "217a33aaf1ae89643cc6a3c0f368c9843ec26e4be843ba9fef11b4acf6ac8414",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal_deep",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 564
+    },
+    {
+      "bounds": {
+        "max": [
+          14.75,
+          8.692448616027832,
+          6.534649848937988
+        ],
+        "min": [
+          -26,
+          -2.098522186279297,
+          -6.534649848937988
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "21c171afa80eca88e4e049470d2320e7fcca3fc7b634589ae84b40542aeac37f",
+      "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded.primitive.0",
+      "indexCount": 2994,
+      "indexed": true,
+      "materialHash": "6ddd2cd60ccce7a8d696bc0597567b2af51076259b6dfb12e1cd9bc1cd39b0f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal_faded",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded",
+      "primitiveIndex": 0,
+      "vertexCount": 908
+    },
+    {
+      "bounds": {
+        "max": [
+          17.870521545410156,
+          6.030165195465088,
+          4.1106953620910645
+        ],
+        "min": [
+          12.32947826385498,
+          0.7698350548744202,
+          3.0893046855926514
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a32cb3594d13b1db210ee9e1f10dd6dd3c8d51218ae5fac0f8bc4b4252df4aac",
+      "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded2.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "efb144e6e296446663cb8c4178b01e3a498ad6e35dcbf8fbf54d2df6c89cc4db",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal_faded2",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded2",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          15.199999809265137,
+          3.742609739303589,
+          4.200149059295654
+        ],
+        "min": [
+          -12.98766803741455,
+          -0.5999101996421814,
+          -4.200149059295654
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6ca659c39799cf729d03cab559ba88df67c9e61fdcac750dfba808cedbaf178e",
+      "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-rust.primitive.0",
+      "indexCount": 948,
+      "indexed": true,
+      "materialHash": "535b48d973a48bb8bf580e838af6611e7ea42ce1e88f7538245d8d834d2c8927",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal_rust",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-deadmetal-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 442
+    },
+    {
+      "bounds": {
+        "max": [
+          15,
+          5.498725414276123,
+          3.7988219261169434
+        ],
+        "min": [
+          -19.5,
+          -3.1991870403289795,
+          -3.7988219261169434
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4416fd892fd6b91302c21b594d0f20dd15533792be620106ecf042077d40891c",
+      "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal.primitive.0",
+      "indexCount": 4236,
+      "indexed": true,
+      "materialHash": "5ca51a37e258b69abbfdc43d24e322c714fd8135c7e0670646950622a9e6e658",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 1328
+    },
+    {
+      "bounds": {
+        "max": [
+          13.649999618530273,
+          3.9496235847473145,
+          2.619594097137451
+        ],
+        "min": [
+          -10.680000305175781,
+          0.7003762722015381,
+          -2.619594097137451
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "786b2674d95b39c5e424272681e27b8e237454fd7d208d6234bcbbd43524de7f",
+      "id": "sf.render.proteus-funnel.mesh.lod0-lights-cyan-violet.primitive.0",
+      "indexCount": 1512,
+      "indexed": true,
+      "materialHash": "672537751c9ea1a7cc56a0b7fc20e94daf705922363802f5376e9b05ed1c7e25",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan_violet",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-lights-cyan-violet",
+      "primitiveIndex": 0,
+      "vertexCount": 1008
+    },
+    {
+      "bounds": {
+        "max": [
+          -22.124576568603516,
+          5.849999904632568,
+          4.849999904632568
+        ],
+        "min": [
+          -23.075424194335938,
+          -3.8499999046325684,
+          -4.849999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1ae31aaa85453a69a8c065d97d36794c959634b0bce49c3dec53acb236ebc1e2",
+      "id": "sf.render.proteus-funnel.mesh.lod0-livery.primitive.0",
+      "indexCount": 480,
+      "indexed": true,
+      "materialHash": "dd25e59e37549eee49aa5ab588b8e4b19abe1a68b435d06c99103fefac464638",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 164
+    },
+    {
+      "bounds": {
+        "max": [
+          16.07631492614746,
+          4.458658218383789,
+          3.6500000953674316
+        ],
+        "min": [
+          15.123685836791992,
+          -2.658658027648926,
+          -3.6500000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bd44cf02d3c7715ec43d7e987f57a73400452bd0aa5bc750ec51129349b6f943",
+      "id": "sf.render.proteus-funnel.mesh.lod0-mechanical.primitive.0",
+      "indexCount": 504,
+      "indexed": true,
+      "materialHash": "d88bd160b126df2b719960c20503b01e41eea2f31201a61c4aed632f8b5266f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 164
+    },
+    {
+      "bounds": {
+        "max": [
+          -14.000000953674316,
+          2.67496919631958,
+          2.3000829219818115
+        ],
+        "min": [
+          -26.149999618530273,
+          0.33003097772598267,
+          -2.0000829696655273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a478e1ca1b46fc48b53f908becf55e95f0dc3f7e85dee3797bf5d7a77806bd4b",
+      "id": "sf.render.proteus-funnel.mesh.lod0-mechanicaldark.primitive.0",
+      "indexCount": 744,
+      "indexed": true,
+      "materialHash": "82fd07a883cdb51fbba4096021d0d5493861eede69bff5e32820333796260acf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 296
+    },
+    {
+      "bounds": {
+        "max": [
+          -11.19544506072998,
+          2.5797195434570312,
+          2.392768383026123
+        ],
+        "min": [
+          -13.968029022216797,
+          -0.7742611169815063,
+          -0.22750656306743622
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f9c21128af44f1e91a1b37c8f55caa97397c8327ef55f4bd0eb058254894ef89",
+      "id": "sf.render.proteus-funnel.mesh.lod0-stone.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "f4b001e12c0f71a843c2f4927b7dee5e982d5d2a694dfc2954dda515ac9b23d1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod0-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 182
+    },
+    {
+      "bounds": {
+        "max": [
+          17.64237403869629,
+          5.629849433898926,
+          4.150487422943115
+        ],
+        "min": [
+          -18.649999618530273,
+          0.30013033747673035,
+          -3.230487108230591
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "778e34e877411ef4720580997d7e93da80401fa98d0ebf8bfaa251b9f4ecf66a",
+      "id": "sf.render.proteus-funnel.mesh.lod1-brushedmetal.primitive.0",
+      "indexCount": 972,
+      "indexed": true,
+      "materialHash": "4fde330edaca6a54f3f7322a71d31a52f8f4307debbecff6fb90bd20219a5a5d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 648
+    },
+    {
+      "bounds": {
+        "max": [
+          10.399999618530273,
+          5.600031852722168,
+          3.599893093109131
+        ],
+        "min": [
+          -16.200000762939453,
+          5.099967956542969,
+          -3.599893093109131
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "11785d6a7203ac063a3e18909652604b038b7fd5408cb512d992c185591398db",
+      "id": "sf.render.proteus-funnel.mesh.lod1-ceramic.primitive.0",
+      "indexCount": 504,
+      "indexed": true,
+      "materialHash": "db9a3a2bd6a82bb541655764ced6dcb0342e91c04f36a02faf6ab2e19f40d15b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Ceramic",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          14.237325668334961,
+          5.489800453186035,
+          4.285399436950684
+        ],
+        "min": [
+          -19.80831527709961,
+          -2.0909056663513184,
+          -4.285494804382324
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ea2c12e764932b88d1c70583e54372c612442303326f55cd62f40f558b567140",
+      "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-deep.primitive.0",
+      "indexCount": 165,
+      "indexed": true,
+      "materialHash": "217a33aaf1ae89643cc6a3c0f368c9843ec26e4be843ba9fef11b4acf6ac8414",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_deep",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 81
+    },
+    {
+      "bounds": {
+        "max": [
+          14.730988502502441,
+          8.689563751220703,
+          6.53350305557251
+        ],
+        "min": [
+          -25.996356964111328,
+          -2.0904366970062256,
+          -6.533503532409668
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dba9f4b1fe2a6e4d273bddfd7261fef87e1c80decae84625e49dfa19f75ab2da",
+      "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded.primitive.0",
+      "indexCount": 465,
+      "indexed": true,
+      "materialHash": "6ddd2cd60ccce7a8d696bc0597567b2af51076259b6dfb12e1cd9bc1cd39b0f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_faded",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          17.87136459350586,
+          6.0278520584106445,
+          4.103158950805664
+        ],
+        "min": [
+          12.328348159790039,
+          0.7717390060424805,
+          3.097644567489624
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bf335d4403a7865fef504215f260d8a151f8bf1b046739fa410574c324fac247",
+      "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "efb144e6e296446663cb8c4178b01e3a498ad6e35dcbf8fbf54d2df6c89cc4db",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_faded2",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          15.191903114318848,
+          3.742506504058838,
+          4.192062854766846
+        ],
+        "min": [
+          -12.98766803741455,
+          -0.5918859243392944,
+          -4.192062854766846
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5f9bc371cd98ac7c5f08ee73c33297a8b6531e76544ba1cf444cf4358ea6a84e",
+      "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-rust.primitive.0",
+      "indexCount": 420,
+      "indexed": true,
+      "materialHash": "535b48d973a48bb8bf580e838af6611e7ea42ce1e88f7538245d8d834d2c8927",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_rust",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-deadmetal-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 268
+    },
+    {
+      "bounds": {
+        "max": [
+          14.996133804321289,
+          5.492064476013184,
+          3.793701171875
+        ],
+        "min": [
+          -19.496932983398438,
+          -3.1872575283050537,
+          -3.793994903564453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9d1687de067272df755dba782166c52eae33242df8d82bc543f5396b89a6a168",
+      "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal.primitive.0",
+      "indexCount": 816,
+      "indexed": true,
+      "materialHash": "5ca51a37e258b69abbfdc43d24e322c714fd8135c7e0670646950622a9e6e658",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 382
+    },
+    {
+      "bounds": {
+        "max": [
+          13.649999618530273,
+          3.9496235847473145,
+          2.619594097137451
+        ],
+        "min": [
+          -10.680000305175781,
+          0.7003762722015381,
+          -2.619594097137451
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7ec470f74d49707f77b52670aebad9532662938bc4347ae0d9988620c2ebd6c4",
+      "id": "sf.render.proteus-funnel.mesh.lod1-lights-cyan-violet.primitive.0",
+      "indexCount": 1398,
+      "indexed": true,
+      "materialHash": "672537751c9ea1a7cc56a0b7fc20e94daf705922363802f5376e9b05ed1c7e25",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Cyan_violet",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-lights-cyan-violet",
+      "primitiveIndex": 0,
+      "vertexCount": 952
+    },
+    {
+      "bounds": {
+        "max": [
+          -22.124576568603516,
+          5.849999904632568,
+          4.849999904632568
+        ],
+        "min": [
+          -23.075424194335938,
+          -3.8499999046325684,
+          -4.849999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "57e8c07632b9a19bad2181165e5960ca16bb248312c49b62ac0dbcefc1c41efe",
+      "id": "sf.render.proteus-funnel.mesh.lod1-livery.primitive.0",
+      "indexCount": 480,
+      "indexed": true,
+      "materialHash": "dd25e59e37549eee49aa5ab588b8e4b19abe1a68b435d06c99103fefac464638",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 164
+    },
+    {
+      "bounds": {
+        "max": [
+          16.07631492614746,
+          4.458658218383789,
+          3.6500000953674316
+        ],
+        "min": [
+          15.123685836791992,
+          -2.658658027648926,
+          -3.6500000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8788431456259012485cc1ae309e5876b73cc6f9230f656384cace67fd117e85",
+      "id": "sf.render.proteus-funnel.mesh.lod1-mechanical.primitive.0",
+      "indexCount": 504,
+      "indexed": true,
+      "materialHash": "d88bd160b126df2b719960c20503b01e41eea2f31201a61c4aed632f8b5266f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 164
+    },
+    {
+      "bounds": {
+        "max": [
+          -14.006339073181152,
+          2.674631118774414,
+          2.299976110458374
+        ],
+        "min": [
+          -26.149999618530273,
+          0.3368458151817322,
+          -1.9934992790222168
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8d1a37f550836964449ee14e73284f22d2959e83798ae0d035eaa32b96c7890c",
+      "id": "sf.render.proteus-funnel.mesh.lod1-mechanicaldark.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "82fd07a883cdb51fbba4096021d0d5493861eede69bff5e32820333796260acf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          -11.19544506072998,
+          2.5797195434570312,
+          2.392768383026123
+        ],
+        "min": [
+          -13.968029022216797,
+          -0.7742611169815063,
+          -0.22750656306743622
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f9c21128af44f1e91a1b37c8f55caa97397c8327ef55f4bd0eb058254894ef89",
+      "id": "sf.render.proteus-funnel.mesh.lod1-stone.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "f4b001e12c0f71a843c2f4927b7dee5e982d5d2a694dfc2954dda515ac9b23d1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 182
+    },
+    {
+      "bounds": {
+        "max": [
+          17.64237403869629,
+          5.530294895172119,
+          3.2296674251556396
+        ],
+        "min": [
+          -18.55000114440918,
+          0.40082380175590515,
+          -3.2296674251556396
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c583243f2d0c8b298571e70845825adac8178bd81bfe0ce05c4dad23172447d3",
+      "id": "sf.render.proteus-funnel.mesh.lod2-brushedmetal.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "4fde330edaca6a54f3f7322a71d31a52f8f4307debbecff6fb90bd20219a5a5d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 108
+    },
+    {
+      "bounds": {
+        "max": [
+          14.237325668334961,
+          5.4889397621154785,
+          4.246037483215332
+        ],
+        "min": [
+          -19.807567596435547,
+          -2.0625078678131104,
+          -4.270640850067139
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d415adabd5896a4c51333809be4857e0fdaafa3b911f68295ef8522192e58c54",
+      "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-deep.primitive.0",
+      "indexCount": 117,
+      "indexed": true,
+      "materialHash": "217a33aaf1ae89643cc6a3c0f368c9843ec26e4be843ba9fef11b4acf6ac8414",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_deep",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod2-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 65
+    },
+    {
+      "bounds": {
+        "max": [
+          14.730988502502441,
+          8.688809394836426,
+          6.533980369567871
+        ],
+        "min": [
+          -25.999332427978516,
+          -2.062145471572876,
+          -6.533980846405029
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5f49f71ee038e2e036a3178b1962f5276c63e8a7fab82d33ffc9a706ffa2006a",
+      "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded.primitive.0",
+      "indexCount": 279,
+      "indexed": true,
+      "materialHash": "6ddd2cd60ccce7a8d696bc0597567b2af51076259b6dfb12e1cd9bc1cd39b0f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_faded",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded",
+      "primitiveIndex": 0,
+      "vertexCount": 117
+    },
+    {
+      "bounds": {
+        "max": [
+          17.87136459350586,
+          6.0278520584106445,
+          4.103158950805664
+        ],
+        "min": [
+          12.328348159790039,
+          0.7717390060424805,
+          3.097644567489624
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bf335d4403a7865fef504215f260d8a151f8bf1b046739fa410574c324fac247",
+      "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "efb144e6e296446663cb8c4178b01e3a498ad6e35dcbf8fbf54d2df6c89cc4db",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_faded2",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          15.191903114318848,
+          3.742506504058838,
+          4.192062854766846
+        ],
+        "min": [
+          -12.98766803741455,
+          -0.5918859243392944,
+          -4.192062854766846
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7e6be59d85942a79cf9f7ccbf75a48d2b93e7e680456286cd5948f71e3d65fbd",
+      "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-rust.primitive.0",
+      "indexCount": 234,
+      "indexed": true,
+      "materialHash": "535b48d973a48bb8bf580e838af6611e7ea42ce1e88f7538245d8d834d2c8927",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_rust",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod2-deadmetal-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 161
+    },
+    {
+      "bounds": {
+        "max": [
+          14.995162963867188,
+          5.4918622970581055,
+          3.7942864894866943
+        ],
+        "min": [
+          -19.494882583618164,
+          -3.216171979904175,
+          -3.805375576019287
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7c53b9022b11ff4c965b8165fffe44bd56502a63962d97433691f6642bef55e0",
+      "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal.primitive.0",
+      "indexCount": 480,
+      "indexed": true,
+      "materialHash": "5ca51a37e258b69abbfdc43d24e322c714fd8135c7e0670646950622a9e6e658",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod2-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 271
+    },
+    {
+      "bounds": {
+        "max": [
+          13.649999618530273,
+          3.950507402420044,
+          2.579770803451538
+        ],
+        "min": [
+          -10.626667022705078,
+          0.6994923949241638,
+          -2.579770803451538
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a050e7630cf975abb5ad93ec19286d872da5081baf655fb78312d073ce4b289",
+      "id": "sf.render.proteus-funnel.mesh.lod2-lights-cyan-violet.primitive.0",
+      "indexCount": 126,
+      "indexed": true,
+      "materialHash": "672537751c9ea1a7cc56a0b7fc20e94daf705922363802f5376e9b05ed1c7e25",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Cyan_violet",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod2-lights-cyan-violet",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          -22.116289138793945,
+          5.849999904632568,
+          4.849999904632568
+        ],
+        "min": [
+          -23.08371353149414,
+          -3.8499999046325684,
+          -4.849999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4083ab4628f58e4ee04dfe9437802674c71e8c680708a60a9be2038ea6bdaa13",
+      "id": "sf.render.proteus-funnel.mesh.lod2-livery.primitive.0",
+      "indexCount": 426,
+      "indexed": true,
+      "materialHash": "dd25e59e37549eee49aa5ab588b8e4b19abe1a68b435d06c99103fefac464638",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 146
+    },
+    {
+      "bounds": {
+        "max": [
+          16.080326080322266,
+          4.458658218383789,
+          3.6500000953674316
+        ],
+        "min": [
+          15.11967658996582,
+          -2.658658027648926,
+          -3.6500000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c1eff20abf92296c6f4e76bfdd567a7d0ede35a8edc3fb51dbb6fb02a1736155",
+      "id": "sf.render.proteus-funnel.mesh.lod2-mechanical.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "d88bd160b126df2b719960c20503b01e41eea2f31201a61c4aed632f8b5266f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 121
+    },
+    {
+      "bounds": {
+        "max": [
+          -14.006339073181152,
+          0.823420524597168,
+          1.9936244487762451
+        ],
+        "min": [
+          -18.393665313720703,
+          0.3365795612335205,
+          -1.9936244487762451
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15ddd14830d1c3314abdb8d01dd4e27b27cf9e03a93d46568e1ab32699e1c221",
+      "id": "sf.render.proteus-funnel.mesh.lod2-mechanicaldark.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "82fd07a883cdb51fbba4096021d0d5493861eede69bff5e32820333796260acf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -11.19544506072998,
+          2.5797195434570312,
+          2.396510124206543
+        ],
+        "min": [
+          -13.968029022216797,
+          -0.7742611169815063,
+          -0.22744981944561005
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "015b4b629f932ee8e972f21392e33658c0f22867f2ea8cc2b6ea378b50ba9a05",
+      "id": "sf.render.proteus-funnel.mesh.lod2-stone.primitive.0",
+      "indexCount": 162,
+      "indexed": true,
+      "materialHash": "f4b001e12c0f71a843c2f4927b7dee5e982d5d2a694dfc2954dda515ac9b23d1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone",
+      "nodeId": "sf.render.proteus-funnel.mesh.lod2-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "217a33aaf1ae89643cc6a3c0f368c9843ec26e4be843ba9fef11b4acf6ac8414",
+      "id": "material:217a33aaf1ae89643cc6a3c0",
+      "name": "Material_Hull_deep",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4fde330edaca6a54f3f7322a71d31a52f8f4307debbecff6fb90bd20219a5a5d",
+      "id": "material:4fde330edaca6a54f3f7322a",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "535b48d973a48bb8bf580e838af6611e7ea42ce1e88f7538245d8d834d2c8927",
+      "id": "material:535b48d973a48bb8bf580e83",
+      "name": "Material_Hull_rust",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "5ca51a37e258b69abbfdc43d24e322c714fd8135c7e0670646950622a9e6e658",
+      "id": "material:5ca51a37e258b69abbfdc43d",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "672537751c9ea1a7cc56a0b7fc20e94daf705922363802f5376e9b05ed1c7e25",
+      "id": "material:672537751c9ea1a7cc56a0b7",
+      "name": "Material_Emissive_Cyan_violet",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6ddd2cd60ccce7a8d696bc0597567b2af51076259b6dfb12e1cd9bc1cd39b0f1",
+      "id": "material:6ddd2cd60ccce7a8d696bc05",
+      "name": "Material_Hull_faded",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "82fd07a883cdb51fbba4096021d0d5493861eede69bff5e32820333796260acf",
+      "id": "material:82fd07a883cdb51fbba40960",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d88bd160b126df2b719960c20503b01e41eea2f31201a61c4aed632f8b5266f3",
+      "id": "material:d88bd160b126df2b719960c2",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "db9a3a2bd6a82bb541655764ced6dcb0342e91c04f36a02faf6ab2e19f40d15b",
+      "id": "material:db9a3a2bd6a82bb541655764",
+      "name": "Material_Ceramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "dd25e59e37549eee49aa5ab588b8e4b19abe1a68b435d06c99103fefac464638",
+      "id": "material:dd25e59e37549eee49aa5ab5",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "efb144e6e296446663cb8c4178b01e3a498ad6e35dcbf8fbf54d2df6c89cc4db",
+      "id": "material:efb144e6e296446663cb8c41",
+      "name": "Material_Hull_faded2",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f4b001e12c0f71a843c2f4927b7dee5e982d5d2a694dfc2954dda515ac9b23d1",
+      "id": "material:f4b001e12c0f71a843c2f492",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.proteus-funnel.mesh.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Ceramic",
+      "nodeName": "LOD0_Ceramic",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal",
+      "nodeName": "LOD0_deadmetal",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal_deep",
+      "nodeName": "LOD0_deadmetal_deep",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal_faded",
+      "nodeName": "LOD0_deadmetal_faded",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal_faded2",
+      "nodeName": "LOD0_deadmetal_faded2",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-rust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal_rust",
+      "nodeName": "LOD0_deadmetal_rust",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-lights-cyan-violet",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan_violet",
+      "nodeName": "LOD0_Lights_Cyan_violet",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod0-stone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone",
+      "nodeName": "LOD0_Stone",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Ceramic",
+      "nodeName": "LOD1_Ceramic",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal",
+      "nodeName": "LOD1_deadmetal",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_deep",
+      "nodeName": "LOD1_deadmetal_deep",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_faded",
+      "nodeName": "LOD1_deadmetal_faded",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_faded2",
+      "nodeName": "LOD1_deadmetal_faded2",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-rust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_rust",
+      "nodeName": "LOD1_deadmetal_rust",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-lights-cyan-violet",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Cyan_violet",
+      "nodeName": "LOD1_Lights_Cyan_violet",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod1-stone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone",
+      "nodeName": "LOD1_Stone",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod2-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal",
+      "nodeName": "LOD2_deadmetal",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_deep",
+      "nodeName": "LOD2_deadmetal_deep",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_faded",
+      "nodeName": "LOD2_deadmetal_faded",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_faded2",
+      "nodeName": "LOD2_deadmetal_faded2",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-rust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_rust",
+      "nodeName": "LOD2_deadmetal_rust",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod2-lights-cyan-violet",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Cyan_violet",
+      "nodeName": "LOD2_Lights_Cyan_violet",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod2-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.mesh.lod2-stone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone",
+      "nodeName": "LOD2_Stone",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.proteus-funnel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.proteus-funnel.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_PROTEUS_FUNNEL_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.proteus-funnel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "ec3356d5940d395659a36a68fc1dd1f681b0eab828d47afea0523060f46cfff6"
+    },
+    "sourceGlb": {
+      "bytes": 355176,
+      "sha256": "9afec20d1b7c23ff291ed97907e3b4f0fde6df597587f4bc86ba69d45595751d",
+      "uri": "place_proteus_funnel.glb"
+    },
+    "sourceManifest": {
+      "bytes": 298035,
+      "sha256": "bb1e5f1e68df7b18569ed4651057b19d63d56332c37065fcfbf46eeac98ad574",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 531460,
+    "sha256": "bf860d3d86912e9c3792cb2b64bdc69a270a7d1cb3f5ef85e2ba0dcda4ed2499",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -4.139317512512207,
+        2.420750856399536,
+        0
+      ],
+      "max": [
+        17.87136459350586,
+        8.692479133605957,
+        6.535037040710449
+      ],
+      "min": [
+        -26.149999618530273,
+        -3.8509774208068848,
+        -6.535037040710449
+      ],
+      "size": [
+        44.02136421203613,
+        12.543456554412842,
+        13.070074081420898
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4,
+          4.199999809265137,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 38,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.proteus-funnel.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2,
+          2.5999999046325684,
+          0,
+          1
+        ],
+        "name": "SOCKET_Hazard_Core",
+        "planIndex": 39,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Hazard_Core",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Hazard_Core",
+            "recordIds": [
+              "sf.render.proteus-funnel.anchor.socket-hazard-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -11,
+          2,
+          0,
+          1
+        ],
+        "name": "SOCKET_Salvage_Core",
+        "planIndex": 40,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Core",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Core",
+            "recordIds": [
+              "sf.render.proteus-funnel.anchor.socket-salvage-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "ceramic": 2,
+      "geology": 3,
+      "hull": 16,
+      "mechanical": 9,
+      "signal": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 41,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Ceramic",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal_deep",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal_faded",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal_faded2",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal_rust",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Lights_Cyan_violet",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Stone",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Ceramic",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_deep",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_faded",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_faded2",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_rust",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Cyan_violet",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Stone",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal_deep",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal_faded",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal_faded2",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal_rust",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Lights_Cyan_violet",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Livery",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Stone",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_proteus_funnel.glb"
+  },
+  "runtimeHash": "cd760dacd4598803f0ecab5a929bde7430976591e3ef9168ada343459a0d0da9",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          17.87136459350586,
+          8.692479133605957,
+          6.535037040710449
+        ],
+        "min": [
+          -26.149999618530273,
+          -3.8509774208068848,
+          -6.535037040710449
+        ]
+      },
+      "id": "sf.render.proteus-funnel.body",
+      "nodeIds": [
+        "sf.render.proteus-funnel.mesh.collision-hull",
+        "sf.render.proteus-funnel.mesh.lod0-brushedmetal",
+        "sf.render.proteus-funnel.mesh.lod0-ceramic",
+        "sf.render.proteus-funnel.mesh.lod0-deadmetal",
+        "sf.render.proteus-funnel.mesh.lod0-deadmetal-deep",
+        "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded",
+        "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded2",
+        "sf.render.proteus-funnel.mesh.lod0-deadmetal-rust",
+        "sf.render.proteus-funnel.mesh.lod0-lights-cyan-violet",
+        "sf.render.proteus-funnel.mesh.lod0-livery",
+        "sf.render.proteus-funnel.mesh.lod0-mechanical",
+        "sf.render.proteus-funnel.mesh.lod0-mechanicaldark",
+        "sf.render.proteus-funnel.mesh.lod0-stone",
+        "sf.render.proteus-funnel.mesh.lod1-brushedmetal",
+        "sf.render.proteus-funnel.mesh.lod1-ceramic",
+        "sf.render.proteus-funnel.mesh.lod1-deadmetal",
+        "sf.render.proteus-funnel.mesh.lod1-deadmetal-deep",
+        "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded",
+        "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded2",
+        "sf.render.proteus-funnel.mesh.lod1-deadmetal-rust",
+        "sf.render.proteus-funnel.mesh.lod1-lights-cyan-violet",
+        "sf.render.proteus-funnel.mesh.lod1-livery",
+        "sf.render.proteus-funnel.mesh.lod1-mechanical",
+        "sf.render.proteus-funnel.mesh.lod1-mechanicaldark",
+        "sf.render.proteus-funnel.mesh.lod1-stone",
+        "sf.render.proteus-funnel.mesh.lod2-brushedmetal",
+        "sf.render.proteus-funnel.mesh.lod2-deadmetal",
+        "sf.render.proteus-funnel.mesh.lod2-deadmetal-deep",
+        "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded",
+        "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded2",
+        "sf.render.proteus-funnel.mesh.lod2-deadmetal-rust",
+        "sf.render.proteus-funnel.mesh.lod2-lights-cyan-violet",
+        "sf.render.proteus-funnel.mesh.lod2-livery",
+        "sf.render.proteus-funnel.mesh.lod2-mechanical",
+        "sf.render.proteus-funnel.mesh.lod2-mechanicaldark",
+        "sf.render.proteus-funnel.mesh.lod2-stone",
+        "sf.render.proteus-funnel.root"
+      ]
+    }
+  ]
+}

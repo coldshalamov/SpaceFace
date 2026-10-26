@@ -384,6 +384,32 @@ const PLACE_FILES = Object.freeze([
   'places/place_asteroid_rock_b.glb',
   'places/place_asteroid_rock_c.glb',
   'places/place_asteroid_graffiti.glb',
+  // Row 495: the 24-body rock family (05 §2 — three sizes x eight substances). The swarm
+  // ladder throws these; each reads its substance from silhouette and surface language.
+  'places/place_rock_cooked_rock_boulder.glb',
+  'places/place_rock_cooked_rock_monolith.glb',
+  'places/place_rock_cooked_rock_pebble.glb',
+  'places/place_rock_crystal_boulder.glb',
+  'places/place_rock_crystal_monolith.glb',
+  'places/place_rock_crystal_pebble.glb',
+  'places/place_rock_ice_boulder.glb',
+  'places/place_rock_ice_monolith.glb',
+  'places/place_rock_ice_pebble.glb',
+  'places/place_rock_junk_boulder.glb',
+  'places/place_rock_junk_monolith.glb',
+  'places/place_rock_junk_pebble.glb',
+  'places/place_rock_metallic_ore_boulder.glb',
+  'places/place_rock_metallic_ore_monolith.glb',
+  'places/place_rock_metallic_ore_pebble.glb',
+  'places/place_rock_reef_metal_boulder.glb',
+  'places/place_rock_reef_metal_monolith.glb',
+  'places/place_rock_reef_metal_pebble.glb',
+  'places/place_rock_silicate_boulder.glb',
+  'places/place_rock_silicate_monolith.glb',
+  'places/place_rock_silicate_pebble.glb',
+  'places/place_rock_slag_boulder.glb',
+  'places/place_rock_slag_monolith.glb',
+  'places/place_rock_slag_pebble.glb',
   'places/place_claim_outpost_base.glb',
   // PQ-022.heist-receivers-promote: the Tethys heist catcher/fence wear their own KEEP re-authored
   // bodies; the shared base/refinery files above stay with the World Site stages.
@@ -405,6 +431,10 @@ const PLACE_FILES = Object.freeze([
   'places/place_quiessence_freighter_a.glb',
   'places/place_quiessence_freighter_b.glb',
   'places/place_quiessence_freighter_c.glb',
+  // SEED-SC-08 / SEED-SC-15's postcard wrecks (place_rhea_slag_hauler /
+  // place_proteus_funnel) are deliberately NOT in this list: they resolve through
+  // POSTCARD_LANDMARK_PLACE_FILE_BY_ID's authored-set-piece gate like the other
+  // postcards, so ordinary dressing can never borrow them.
   ...Object.values(CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID),
   ...STATION_ARCHETYPE_FILES,
   ...TRADE_HUB_OVERLAY_FILES,

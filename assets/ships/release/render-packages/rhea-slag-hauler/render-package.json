@@ -1,0 +1,4723 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.rhea-slag-hauler.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        4.400000095367432,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentNodeId": "sf.render.rhea-slag-hauler.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        4.400000095367432,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.anchor.socket-hazard-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Hazard_Core",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentNodeId": "sf.render.rhea-slag-hauler.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.anchor.socket-salvage-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7,
+        1.600000023841858,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Core",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentNodeId": "sf.render.rhea-slag-hauler.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7,
+        1.600000023841858,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.rhea-slag-hauler",
+  "collisions": [
+    {
+      "id": "sf.render.rhea-slag-hauler.collision",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "76ba9eebc6f8fb978cd8aa3f83ae566cba7b4bb94008de4160e8b285dba8a82c",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          28,
+          6.1460723876953125,
+          6.114864349365234
+        ],
+        "min": [
+          -26.520559310913086,
+          -3.451223611831665,
+          -5.033173561096191
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bbec072a99237b3f3bc741fc53664d0910f4e3715e7c160d4e8bac2ab3b1174e",
+      "id": "sf.render.rhea-slag-hauler.mesh.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 806
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.549999237060547,
+          5.240006923675537,
+          -0.7999992370605469
+        ],
+        "min": [
+          -21.950000762939453,
+          4.9599928855896,
+          -1.2000007629394531
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b43f50dea0f8317cc45513d345868f427c2db38f618cad43e087ee595de5d3d3",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          26.73301124572754,
+          5.195945739746094,
+          4.944291114807129
+        ],
+        "min": [
+          -17.314754486083984,
+          -3.4504127502441406,
+          -4.5408935546875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5fa825b107edd8d3c0694ed9580e08e27629cfccf4b1ef91a4ad8840461198d7",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-brushedmetal.primitive.0",
+      "indexCount": 7110,
+      "indexed": true,
+      "materialHash": "4fde330edaca6a54f3f7322a71d31a52f8f4307debbecff6fb90bd20219a5a5d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 2494
+    },
+    {
+      "bounds": {
+        "max": [
+          27.80000114440918,
+          2.4198334217071533,
+          3.250560998916626
+        ],
+        "min": [
+          -17.350000381469727,
+          -3.3398332595825195,
+          -3.9531567096710205
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "25e41626c4a32deaf77cbead9655c65d6c32386f523cd1dc073a6f7a4d0c194f",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-ceramic.primitive.0",
+      "indexCount": 4092,
+      "indexed": true,
+      "materialHash": "db9a3a2bd6a82bb541655764ced6dcb0342e91c04f36a02faf6ab2e19f40d15b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Ceramic",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 1346
+    },
+    {
+      "bounds": {
+        "max": [
+          26.5,
+          6.144746780395508,
+          4.435120582580566
+        ],
+        "min": [
+          -25.80000114440918,
+          -2.799898624420166,
+          -4.701059818267822
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3f4168039beb6a1d92135aca4ce0d6f51bc7aeccfcf4407f3c291fc0ea767233",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-deep.primitive.0",
+      "indexCount": 4212,
+      "indexed": true,
+      "materialHash": "f12d5d1d7c75ebaac322ee3188dcd8a242414362bce0078711101fb3082e1f07",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal_deep",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 1850
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.183241367340088,
+          3.7986671924591064,
+          2.047574281692505
+        ],
+        "min": [
+          -25.419578552246094,
+          0.07871470600366592,
+          -2.2890307903289795
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b645687e2d804ce0afc0c8998b1fe6992b9db5bff80afd3989afb5c30b5f1e51",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-faded.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "482e8dc1656d3352952bea630a1c2cd70a5f3deab24e1c9307673938e868ebc8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal_faded",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-faded",
+      "primitiveIndex": 0,
+      "vertexCount": 348
+    },
+    {
+      "bounds": {
+        "max": [
+          21.73515510559082,
+          5.261556148529053,
+          6.116835594177246
+        ],
+        "min": [
+          -9.463581085205078,
+          -1.3234364986419678,
+          -3.900618314743042
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b607eeefc41cb59751b676cdaba4641f8060aea5814facb30cbe5bfe82ecf675",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-rust.primitive.0",
+      "indexCount": 732,
+      "indexed": true,
+      "materialHash": "535b48d973a48bb8bf580e838af6611e7ea42ce1e88f7538245d8d834d2c8927",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal_rust",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 268
+    },
+    {
+      "bounds": {
+        "max": [
+          19.132305145263672,
+          3.561706304550171,
+          2.850123882293701
+        ],
+        "min": [
+          -26.520559310913086,
+          -0.36170634627342224,
+          -3.1910400390625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d17397dc5cd2d4240020636caca743365489e59bfe109988cf6266c3c4194d77",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal.primitive.0",
+      "indexCount": 816,
+      "indexed": true,
+      "materialHash": "d3c7b75b228c98b944b4d7a5f66fd41218489cbe53094f0d523ce406758f74ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 280
+    },
+    {
+      "bounds": {
+        "max": [
+          2,
+          1.0700033903121948,
+          -2.2599997520446777
+        ],
+        "min": [
+          1.7999999523162842,
+          0.92999666929245,
+          -2.4600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b4f827f1360fafdfaaa074598bbd46033a0bf46919eb0fa7c3bc3c72e3819749",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e50885d48893fb4dc64a02a0141146e28e6b95304d3e0682eb494efaa62453c9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.5,
+          -0.5000854134559631,
+          1.4092227220535278
+        ],
+        "min": [
+          -12.5,
+          -1.2999144792556763,
+          -1.4092227220535278
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "04c2d28538a47cdedb17bca7f17bd7fd07e66ccfcfa960d285d11076214374c6",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-livery.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "362c6f18eb83f883d0fcbdd527466711594aa3dd9c777d2d7a0dad6862d539b8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          27.600000381469727,
+          5.40672492980957,
+          4.730752468109131
+        ],
+        "min": [
+          -22.48462677001953,
+          -3.281315326690674,
+          -3.419252872467041
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "55d3f8202f1c592e5dda6d9fcd98c608025cf873d57a7db85ec4bfaabe169747",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-mechanical.primitive.0",
+      "indexCount": 8880,
+      "indexed": true,
+      "materialHash": "d88bd160b126df2b719960c20503b01e41eea2f31201a61c4aed632f8b5266f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 2901
+    },
+    {
+      "bounds": {
+        "max": [
+          28,
+          4.352627754211426,
+          4.700363636016846
+        ],
+        "min": [
+          -26.399999618530273,
+          -2.899155855178833,
+          -3.4545726776123047
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d9fd71e728534314d71120712f494348ccec7b51572c397d0a3340a6bd9bb383",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-mechanicaldark.primitive.0",
+      "indexCount": 1284,
+      "indexed": true,
+      "materialHash": "a56ae37649e01f5a10e6cdebea49d4c91f15c0c857e49197b0e59f15837d1ea8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 586
+    },
+    {
+      "bounds": {
+        "max": [
+          4.041774749755859,
+          1.6258668899536133,
+          3.119816780090332
+        ],
+        "min": [
+          -17.04177474975586,
+          0.44966134428977966,
+          -5.034479141235352
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f332c3f7da8614a1fff43e93af6f38e961497b45d058bfb0c1f5cc202a149447",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-warning.primitive.0",
+      "indexCount": 1404,
+      "indexed": true,
+      "materialHash": "a22d8222fad039e1c778a2cf66acc6648b0a64a4a6f010e5d88631e0a7d68e65",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 489
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.549999237060547,
+          5.240006923675537,
+          -0.7999992370605469
+        ],
+        "min": [
+          -21.950000762939453,
+          4.9599928855896,
+          -1.2000007629394531
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3e0db741a8b888b4031d02cee60834d08caba6a46a15e331525533b123d790ad",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          26.73301124572754,
+          5.195945739746094,
+          4.942757606506348
+        ],
+        "min": [
+          -17.314754486083984,
+          -3.4504127502441406,
+          -4.520918369293213
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "54e2f912d7106fc778a9c4038092d7f692a13f5131b0c058a6b2d9fce8db138f",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-brushedmetal.primitive.0",
+      "indexCount": 5952,
+      "indexed": true,
+      "materialHash": "4fde330edaca6a54f3f7322a71d31a52f8f4307debbecff6fb90bd20219a5a5d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 2034
+    },
+    {
+      "bounds": {
+        "max": [
+          27.80000114440918,
+          2.4154560565948486,
+          3.250021457672119
+        ],
+        "min": [
+          -17.350000381469727,
+          -3.3386993408203125,
+          -3.9536960124969482
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "241900da802c12e4332524580379c1226e3fc344779bf9cc90ce3f13f2ea23c3",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-ceramic.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "db9a3a2bd6a82bb541655764ced6dcb0342e91c04f36a02faf6ab2e19f40d15b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Ceramic",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 324
+    },
+    {
+      "bounds": {
+        "max": [
+          26.47587776184082,
+          6.143312931060791,
+          4.431398868560791
+        ],
+        "min": [
+          -25.76831817626953,
+          -2.7790334224700928,
+          -4.701410293579102
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "21e46985c3ad023a9567c6618cf886f6986d1469583bf7b8370f7312390972e8",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-deep.primitive.0",
+      "indexCount": 1212,
+      "indexed": true,
+      "materialHash": "f12d5d1d7c75ebaac322ee3188dcd8a242414362bce0078711101fb3082e1f07",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_deep",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 864
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.193073272705078,
+          3.7860915660858154,
+          2.0475151538848877
+        ],
+        "min": [
+          -25.40856170654297,
+          0.08151014894247055,
+          -2.2752373218536377
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "58500c93b5b994d74ba7a5fbdfbd8120206174452605140cfec9e520987ada94",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-faded.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "482e8dc1656d3352952bea630a1c2cd70a5f3deab24e1c9307673938e868ebc8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_faded",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-faded",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          21.73515510559082,
+          5.261556148529053,
+          6.116835594177246
+        ],
+        "min": [
+          -9.463581085205078,
+          -1.3234364986419678,
+          -3.900618314743042
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "db2e2ac33108799ac9a8b75a0a685b3d486d36e6a9d3d0e57ca5b1d2c2ad9c35",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-rust.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": "535b48d973a48bb8bf580e838af6611e7ea42ce1e88f7538245d8d834d2c8927",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_rust",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 100
+    },
+    {
+      "bounds": {
+        "max": [
+          19.132305145263672,
+          3.526965379714966,
+          2.850452423095703
+        ],
+        "min": [
+          -26.489709854125977,
+          -0.32696494460105896,
+          -3.1532139778137207
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d43bdbbb35619657d220f175a4e3b196ab982ec84e2515ead485db1fe7fdb5f4",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "d3c7b75b228c98b944b4d7a5f66fd41218489cbe53094f0d523ce406758f74ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 132
+    },
+    {
+      "bounds": {
+        "max": [
+          2,
+          1.0233283042907715,
+          -2.2599997520446777
+        ],
+        "min": [
+          1.7999999523162842,
+          0.9766716361045837,
+          -2.4600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f545e26aa4cfdff40701741a911ad8500ce9bf72686a8d87711f57a6572a9efd",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-hook-nav-port.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "e50885d48893fb4dc64a02a0141146e28e6b95304d3e0682eb494efaa62453c9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          11.5,
+          -0.5000854134559631,
+          1.3638112545013428
+        ],
+        "min": [
+          -12.5,
+          -1.2999144792556763,
+          -1.3638112545013428
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6a2323eccf5484969c6a9dc849f60d950f63d1b6e5745ba344bdf096206b795f",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-livery.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": "362c6f18eb83f883d0fcbdd527466711594aa3dd9c777d2d7a0dad6862d539b8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 16
+    },
+    {
+      "bounds": {
+        "max": [
+          27.587478637695312,
+          5.401758670806885,
+          4.725832939147949
+        ],
+        "min": [
+          -22.485692977905273,
+          -3.284294366836548,
+          -3.410083293914795
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f2233bba4961784125afab27efb72bd9d330cde95f4d2ee1c40b0a2f28f51a24",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-mechanical.primitive.0",
+      "indexCount": 1233,
+      "indexed": true,
+      "materialHash": "d88bd160b126df2b719960c20503b01e41eea2f31201a61c4aed632f8b5266f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 735
+    },
+    {
+      "bounds": {
+        "max": [
+          28,
+          4.352627754211426,
+          4.700363636016846
+        ],
+        "min": [
+          -26.399999618530273,
+          -2.899155855178833,
+          -3.4545726776123047
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "46af76a7829269fe70b1e51670738a05bc5e6628fd498f5fa68b1ba90ee1bbaa",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-mechanicaldark.primitive.0",
+      "indexCount": 1260,
+      "indexed": true,
+      "materialHash": "a56ae37649e01f5a10e6cdebea49d4c91f15c0c857e49197b0e59f15837d1ea8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 570
+    },
+    {
+      "bounds": {
+        "max": [
+          4.041774749755859,
+          1.6254246234893799,
+          3.1201670169830322
+        ],
+        "min": [
+          -17.04177474975586,
+          0.4543665647506714,
+          -5.036702632904053
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fda764de5126cee10c3e8c72955e5a97430e2fb4cd3eef5804ed9aa38a3af6c0",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-warning.primitive.0",
+      "indexCount": 972,
+      "indexed": true,
+      "materialHash": "a22d8222fad039e1c778a2cf66acc6648b0a64a4a6f010e5d88631e0a7d68e65",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 348
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.549999237060547,
+          5.1466569900512695,
+          -0.7999983429908752
+        ],
+        "min": [
+          -21.950002670288086,
+          5.053342819213867,
+          -1.2000017166137695
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fe82392fe75cdfcc67441ec8ccfc4167d10c6a9ecd1443fae90b3b06c6803537",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-beacon-amber.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          26.73688316345215,
+          5.026674747467041,
+          5.028735637664795
+        ],
+        "min": [
+          -17.12479019165039,
+          -3.44929575920105,
+          -4.443147659301758
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "24d8aad2cbd4219629e41ee42e6b873e6d94da0ee7cd5af68fa7fc59ea587629",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-brushedmetal.primitive.0",
+      "indexCount": 2358,
+      "indexed": true,
+      "materialHash": "4fde330edaca6a54f3f7322a71d31a52f8f4307debbecff6fb90bd20219a5a5d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 1766
+    },
+    {
+      "bounds": {
+        "max": [
+          27.785293579101562,
+          2.417847156524658,
+          3.032834768295288
+        ],
+        "min": [
+          -16.41497802734375,
+          -2.886131525039673,
+          -3.954604387283325
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a7d195b4ddbd6ddd93b725ba3525215fdbc40b2dde58b0292241237597384f2c",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-ceramic.primitive.0",
+      "indexCount": 402,
+      "indexed": true,
+      "materialHash": "db9a3a2bd6a82bb541655764ced6dcb0342e91c04f36a02faf6ab2e19f40d15b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Ceramic",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 182
+    },
+    {
+      "bounds": {
+        "max": [
+          26.47587776184082,
+          6.025923728942871,
+          4.440900802612305
+        ],
+        "min": [
+          -25.76831817626953,
+          -2.7816243171691895,
+          -4.532466888427734
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e69750083e8b5e0fc0b2b5f9b1f8de64837edf38ce124237d133bd83c72111d6",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-deep.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "f12d5d1d7c75ebaac322ee3188dcd8a242414362bce0078711101fb3082e1f07",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_deep",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 288
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.1576056480407715,
+          3.7869420051574707,
+          2.009291410446167
+        ],
+        "min": [
+          -25.40856170654297,
+          0.14644241333007812,
+          -2.2750906944274902
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "044269a12318c272073dd6f539fd0d69655151860ace48c59cef8758732eb1c8",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-faded.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "482e8dc1656d3352952bea630a1c2cd70a5f3deab24e1c9307673938e868ebc8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_faded",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-faded",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          21.81251335144043,
+          5.256119251251221,
+          6.018630027770996
+        ],
+        "min": [
+          -9.543190956115723,
+          -1.323727011680603,
+          -3.919081926345825
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9c33f16ba2a25a1b60139aa0bbbbd12b007eb22cfa37a7556aebf3f3ee3b722e",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-rust.primitive.0",
+      "indexCount": 102,
+      "indexed": true,
+      "materialHash": "535b48d973a48bb8bf580e838af6611e7ea42ce1e88f7538245d8d834d2c8927",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_rust",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          19.218645095825195,
+          3.527822494506836,
+          2.850553512573242
+        ],
+        "min": [
+          -26.489709854125977,
+          -0.3278219401836395,
+          -3.1533150672912598
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bcbc67d44d655e5065370a1f4a695801cbd444b1954849462f711a90d8f69af0",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "d3c7b75b228c98b944b4d7a5f66fd41218489cbe53094f0d523ce406758f74ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          2,
+          1.0233283042907715,
+          -2.2599997520446777
+        ],
+        "min": [
+          1.7999999523162842,
+          0.9766716361045837,
+          -2.4600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "afa50b86ec15d144ed8999b252901565741e28dd21cb03fec32e4b8bc73b9fad",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-hook-nav-port.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "e50885d48893fb4dc64a02a0141146e28e6b95304d3e0682eb494efaa62453c9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_PORT",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          11.5,
+          -0.5000854134559631,
+          1.3638112545013428
+        ],
+        "min": [
+          -12.5,
+          -1.2999144792556763,
+          -1.3638112545013428
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6a2323eccf5484969c6a9dc849f60d950f63d1b6e5745ba344bdf096206b795f",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-livery.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": "362c6f18eb83f883d0fcbdd527466711594aa3dd9c777d2d7a0dad6862d539b8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 16
+    },
+    {
+      "bounds": {
+        "max": [
+          27.587478637695312,
+          5.4019269943237305,
+          4.7259907722473145
+        ],
+        "min": [
+          -22.487632751464844,
+          -3.2844626903533936,
+          -3.410240888595581
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2227e7cecf37c5c8e1206a574ae1d96bda3621fc47686300f0c14ae3c3b26275",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-mechanical.primitive.0",
+      "indexCount": 609,
+      "indexed": true,
+      "materialHash": "d88bd160b126df2b719960c20503b01e41eea2f31201a61c4aed632f8b5266f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 337
+    },
+    {
+      "bounds": {
+        "max": [
+          28,
+          4.401869297027588,
+          4.533470153808594
+        ],
+        "min": [
+          -16.5,
+          -2.888270616531372,
+          -3.4139771461486816
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d099bb578f84c6552caf49e9f236962f874f19478e2b6357097033583ccfc006",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-mechanicaldark.primitive.0",
+      "indexCount": 489,
+      "indexed": true,
+      "materialHash": "a56ae37649e01f5a10e6cdebea49d4c91f15c0c857e49197b0e59f15837d1ea8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 248
+    },
+    {
+      "bounds": {
+        "max": [
+          4.041774749755859,
+          1.6323776245117188,
+          3.111672878265381
+        ],
+        "min": [
+          -16.925125122070312,
+          0.44476306438446045,
+          -5.0307817459106445
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f03055321548ec834fbcf112a00579880756313e7f3a12560363bb663b4fee9a",
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-warning.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "a22d8222fad039e1c778a2cf66acc6648b0a64a4a6f010e5d88631e0a7d68e65",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.rhea-slag-hauler.mesh.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 198
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "362c6f18eb83f883d0fcbdd527466711594aa3dd9c777d2d7a0dad6862d539b8",
+      "id": "material:362c6f18eb83f883d0fcbdd5",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "482e8dc1656d3352952bea630a1c2cd70a5f3deab24e1c9307673938e868ebc8",
+      "id": "material:482e8dc1656d3352952bea63",
+      "name": "Material_Hull_faded",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4fde330edaca6a54f3f7322a71d31a52f8f4307debbecff6fb90bd20219a5a5d",
+      "id": "material:4fde330edaca6a54f3f7322a",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "535b48d973a48bb8bf580e838af6611e7ea42ce1e88f7538245d8d834d2c8927",
+      "id": "material:535b48d973a48bb8bf580e83",
+      "name": "Material_Hull_rust",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a22d8222fad039e1c778a2cf66acc6648b0a64a4a6f010e5d88631e0a7d68e65",
+      "id": "material:a22d8222fad039e1c778a2cf",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a56ae37649e01f5a10e6cdebea49d4c91f15c0c857e49197b0e59f15837d1ea8",
+      "id": "material:a56ae37649e01f5a10e6cdeb",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d3c7b75b228c98b944b4d7a5f66fd41218489cbe53094f0d523ce406758f74ae",
+      "id": "material:d3c7b75b228c98b944b4d7a5",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d88bd160b126df2b719960c20503b01e41eea2f31201a61c4aed632f8b5266f3",
+      "id": "material:d88bd160b126df2b719960c2",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "db9a3a2bd6a82bb541655764ced6dcb0342e91c04f36a02faf6ab2e19f40d15b",
+      "id": "material:db9a3a2bd6a82bb541655764",
+      "name": "Material_Ceramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e50885d48893fb4dc64a02a0141146e28e6b95304d3e0682eb494efaa62453c9",
+      "id": "material:e50885d48893fb4dc64a02a0",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f12d5d1d7c75ebaac322ee3188dcd8a242414362bce0078711101fb3082e1f07",
+      "id": "material:f12d5d1d7c75ebaac322ee31",
+      "name": "Material_Hull_deep",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
+      "id": "material:fab3eefb927c4e588f15130e",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Ceramic",
+      "nodeName": "LOD0_Ceramic",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal",
+      "nodeName": "LOD0_deadmetal",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal_deep",
+      "nodeName": "LOD0_deadmetal_deep",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-faded",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal_faded",
+      "nodeName": "LOD0_deadmetal_faded",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-rust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal_rust",
+      "nodeName": "LOD0_deadmetal_rust",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-hook-nav-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Ceramic",
+      "nodeName": "LOD1_Ceramic",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal",
+      "nodeName": "LOD1_deadmetal",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_deep",
+      "nodeName": "LOD1_deadmetal_deep",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-faded",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_faded",
+      "nodeName": "LOD1_deadmetal_faded",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-rust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_rust",
+      "nodeName": "LOD1_deadmetal_rust",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-hook-nav-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Ceramic",
+      "nodeName": "LOD2_Ceramic",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal",
+      "nodeName": "LOD2_deadmetal",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_deep",
+      "nodeName": "LOD2_deadmetal_deep",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-faded",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_faded",
+      "nodeName": "LOD2_deadmetal_faded",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-rust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_rust",
+      "nodeName": "LOD2_deadmetal_rust",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-hook-nav-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+      "nodeName": "LOD2_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.mesh.lod2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.rhea-slag-hauler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rhea-slag-hauler.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_RHEA_SLAG_HAULER_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rhea-slag-hauler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "0f2d0cd8d26244533d050e4abcb97a6961e4f31393a03b8b419197c35894fa74"
+    },
+    "sourceGlb": {
+      "bytes": 496032,
+      "sha256": "c38d15f8bb2e5a0f206faa2322a8742ac2a6a0ce3dc33957e026a8787ddfef83",
+      "uri": "place_rhea_slag_hauler.glb"
+    },
+    "sourceManifest": {
+      "bytes": 298035,
+      "sha256": "bb1e5f1e68df7b18569ed4651057b19d63d56332c37065fcfbf46eeac98ad574",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 860804,
+    "sha256": "a5794fb16ddf18605dd34289132ecc6b1682b4f1cd7b8e8cfd81e5316edb191d",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.739720344543457,
+        1.3474243879318237,
+        0.5400664806365967
+      ],
+      "max": [
+        28,
+        6.1460723876953125,
+        6.116835594177246
+      ],
+      "min": [
+        -26.520559310913086,
+        -3.451223611831665,
+        -5.036702632904053
+      ],
+      "size": [
+        54.520559310913086,
+        9.597295999526978,
+        11.153538227081299
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2,
+          4.400000095367432,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 39,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.rhea-slag-hauler.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Hazard_Core",
+        "planIndex": 40,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Hazard_Core",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Hazard_Core",
+            "recordIds": [
+              "sf.render.rhea-slag-hauler.anchor.socket-hazard-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          7,
+          1.600000023841858,
+          0,
+          1
+        ],
+        "name": "SOCKET_Salvage_Core",
+        "planIndex": 41,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Core",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Core",
+            "recordIds": [
+              "sf.render.rhea-slag-hauler.anchor.socket-salvage-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "ceramic": 3,
+      "hull": 13,
+      "mechanical": 9,
+      "signal": 6,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "warning"
+      }
+    ],
+    "nodeCount": 42,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Ceramic",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal_deep",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal_faded",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal_rust",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Ceramic",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_deep",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_faded",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_rust",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Ceramic",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal_deep",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal_faded",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal_rust",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Livery",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_rhea_slag_hauler.glb"
+  },
+  "runtimeHash": "de62be14abbf3acc2679d7f6fb5d6df5b8428fce9c92304341757b34b6eec251",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          28,
+          6.1460723876953125,
+          6.116835594177246
+        ],
+        "min": [
+          -26.520559310913086,
+          -3.451223611831665,
+          -5.036702632904053
+        ]
+      },
+      "id": "sf.render.rhea-slag-hauler.body",
+      "nodeIds": [
+        "sf.render.rhea-slag-hauler.mesh.collision-hull",
+        "sf.render.rhea-slag-hauler.mesh.lod0-beacon-amber",
+        "sf.render.rhea-slag-hauler.mesh.lod0-brushedmetal",
+        "sf.render.rhea-slag-hauler.mesh.lod0-ceramic",
+        "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal",
+        "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-deep",
+        "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-faded",
+        "sf.render.rhea-slag-hauler.mesh.lod0-deadmetal-rust",
+        "sf.render.rhea-slag-hauler.mesh.lod0-hook-nav-port",
+        "sf.render.rhea-slag-hauler.mesh.lod0-livery",
+        "sf.render.rhea-slag-hauler.mesh.lod0-mechanical",
+        "sf.render.rhea-slag-hauler.mesh.lod0-mechanicaldark",
+        "sf.render.rhea-slag-hauler.mesh.lod0-warning",
+        "sf.render.rhea-slag-hauler.mesh.lod1-beacon-amber",
+        "sf.render.rhea-slag-hauler.mesh.lod1-brushedmetal",
+        "sf.render.rhea-slag-hauler.mesh.lod1-ceramic",
+        "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal",
+        "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-deep",
+        "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-faded",
+        "sf.render.rhea-slag-hauler.mesh.lod1-deadmetal-rust",
+        "sf.render.rhea-slag-hauler.mesh.lod1-hook-nav-port",
+        "sf.render.rhea-slag-hauler.mesh.lod1-livery",
+        "sf.render.rhea-slag-hauler.mesh.lod1-mechanical",
+        "sf.render.rhea-slag-hauler.mesh.lod1-mechanicaldark",
+        "sf.render.rhea-slag-hauler.mesh.lod1-warning",
+        "sf.render.rhea-slag-hauler.mesh.lod2-beacon-amber",
+        "sf.render.rhea-slag-hauler.mesh.lod2-brushedmetal",
+        "sf.render.rhea-slag-hauler.mesh.lod2-ceramic",
+        "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal",
+        "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-deep",
+        "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-faded",
+        "sf.render.rhea-slag-hauler.mesh.lod2-deadmetal-rust",
+        "sf.render.rhea-slag-hauler.mesh.lod2-hook-nav-port",
+        "sf.render.rhea-slag-hauler.mesh.lod2-livery",
+        "sf.render.rhea-slag-hauler.mesh.lod2-mechanical",
+        "sf.render.rhea-slag-hauler.mesh.lod2-mechanicaldark",
+        "sf.render.rhea-slag-hauler.mesh.lod2-warning",
+        "sf.render.rhea-slag-hauler.root"
+      ]
+    }
+  ]
+}
