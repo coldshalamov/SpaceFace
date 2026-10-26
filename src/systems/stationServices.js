@@ -650,6 +650,11 @@ export const stationServices = {
     }
 
     if (active) {
+      // Continue can park a paid job while the pilot flies and the station's strike
+      // expires. Work at today's pool/standing/crew rate, rather than preserving a
+      // temporary slowdown from the original booking forever. Its paid price stays fixed.
+      active.ratePerS = serviceRatePerS(active.type, this._jobPoolMax(state, active), rep)
+        * stationYardRateMult(state, stationId);
       active.applied = Math.min(active.total, active.applied + active.ratePerS * dt);
       this._applyJobDelta(state, active, active.applied - active.lastApplied);
       active.lastApplied = active.applied;
