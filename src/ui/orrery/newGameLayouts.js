@@ -177,6 +177,42 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} > .k-stage > .orr-ng-hero-box { left:25% !important; width:50% !important; top:51% !important; height:23% !important; }
   ${NGD} > .k-stage::before { left:25%; width:50%; top:72%; }
 }
+
+/* a narrow desktop window (≤700 wide, no data-sf-mobile; 390×844, 600×844): the two columns kept the
+   340px form column, so the stage had 0px (it sat off the right edge) and the yard piled HITCH, PELICAN and
+   WASP on the frame's top-left corner, with no way to see or pick a hull. The plate stacks instead: the form
+   (which scrolls on its own), then the stage, then BACK / LAUNCH and the footnote. The stage keeps the hull,
+   its name and line, its ring and the yard; the run's scale and the fittings stand down to the
+   accessibility tree, as in the ≤460-tall band. Phones keep their own layout. */
+@media (max-width:700px) {
+  ${NGD} { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:auto minmax(0, 1fr) minmax(290px, 42vh) auto auto !important;
+    grid-template-areas:"title" "hang" "stage" "foot" "note" !important; column-gap:0 !important; row-gap:14px !important; }
+  /* the form scrolls in its own band: its last line fades into the stage instead of being cut in half,
+     and a bottom pad lets the final field scroll clear of the fade */
+  ${NGD} > .sf-ng-body { padding-bottom:28px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 32px), transparent);
+    mask-image:linear-gradient(180deg, #000 calc(100% - 32px), transparent); }
+  ${NGD} .orr-ng-caption > .sf-ng-route,
+  ${NGD} .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) {
+    position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important;
+    clip-path:inset(50%) !important; white-space:nowrap !important; }
+  ${NGD} .orr-ng-caption > .sf-slot-card-title { font-size:28px !important; }
+  ${NGD} .orr-ng-caption > .k-sentence { top:38px !important; max-width:min(300px, 80%) !important; font-size:13px !important; line-height:1.4 !important; }
+  ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
+  ${NGD} > .k-stage > .orr-ng-hero-box { left:25% !important; width:50% !important; top:42% !important; height:26% !important; }
+  ${NGD} > .k-stage::before { left:25%; width:50%; top:64%; }
+  /* the ring's side readings keep their number and name inside the frame; the one-line gloss under LINE
+     (it ran past the right edge) stands down here */
+  ${NGD} .orr-hullring text.orr-hullring__num { font-size:24px !important; }
+  ${NGD} .orr-hullring text.orr-hullring__num tspan { font-size:12px !important; }
+  ${NGD} .orr-hullring text.orr-hullring__gloss { display:none !important; }
+}
+/* at phone width the yard's rear ends sit ~180px apart, so the rear names (WASP, PELICAN) set tighter */
+@media (max-width:480px) {
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word { font-size:13px !important; letter-spacing:.06em !important; }
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { letter-spacing:.08em !important; }
+}
 `;
 
 // phone: the three hull names share one row in thirds; keep the wide ones (PELICAN) inside theirs
