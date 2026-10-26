@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "FOREMAN: Tether the scoop and haul it to the receiver hull — a hundred-twenty of drag before you let go — then let it drift to rest within thirty. — SCOOP ON THE NEBULA FOG.",
+      "line": "FOREMAN: Tether the scoop and haul it to the receiver hull — a hundred-twenty of drag before you let go — then cut it quiet, dead slow, inside thirty. — SCOOP ON THE NEBULA FOG.",
       "channel": "info",
       "next": "offer"
     },

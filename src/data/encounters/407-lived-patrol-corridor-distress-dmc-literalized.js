@@ -29,7 +29,7 @@ export const spec = {
     {
       "id": "a",
       "label": "Drag the puck clear of the lane",
-      "playerLine": "Line on the puck — I pull it a hundred-twenty out of the Patrol Corridor lane and let it settle."
+      "playerLine": "Line on the puck — I pull it a hundred-twenty out of the Patrol Corridor lane and cut it quiet."
     },
     {
       "id": "b",
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "FOREMAN: Line on the puck. Drag it past the hundred-twenty mark, drop the line, let it settle. — PUCK ON THE PATROL CORRIDOR.",
+      "line": "FOREMAN: Line on the puck. Drag it past the hundred-twenty mark, then cut it quiet — dead slow when the line comes off. — PUCK ON THE PATROL CORRIDOR.",
       "channel": "info",
       "next": "offer"
     },
@@ -313,7 +313,7 @@ export default defineEncounter(trigger, {
     {
       "id": "a",
       "label": "Drag the puck clear of the lane",
-      "playerLine": "Line on the puck — I pull it a hundred-twenty out of the Patrol Corridor lane and let it settle."
+      "playerLine": "Line on the puck — I pull it a hundred-twenty out of the Patrol Corridor lane and cut it quiet."
     },
     {
       "id": "b",

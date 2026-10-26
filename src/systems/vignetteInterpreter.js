@@ -13,6 +13,7 @@
 // stays open so the scene can still leave. This reads fittings and cargo; it never writes them.
 
 import { hasFittedModule } from '../core/fittedModules.js';
+import { occupantGenerationOf } from '../core/entity.js';
 
 const HOP_CAP = 12;
 const MOTIONS = new Set(['hold', 'orbit', 'creep', 'ring', 'weave', 'depart', 'face', 'chase', 'tow', 'column', 'vulture']);
@@ -34,7 +35,10 @@ function entPos(e) {
 function roleEnt(d, live, state, v, role) {
   const id = v.roleIds && v.roleIds[role];
   if (id == null) return null;
-  return (state.entities && typeof state.entities.get === 'function' && state.entities.get(id)) || null;
+  const e = (state.entities && typeof state.entities.get === 'function' && state.entities.get(id)) || null;
+  const gen = v.roleGenerations && v.roleGenerations[role];
+  if (e && gen != null && occupantGenerationOf(e) !== gen) return null;
+  return e;
 }
 
 function distBetween(a, b) {
@@ -291,6 +295,7 @@ function enterAwait(d, live, state, phase) {
     playerTravel: 0,
     latchedPropId: null,
     roleIds: {},
+    roleGenerations: {},
   };
   const player = playerOf(d, state);
   if (player) {
@@ -303,6 +308,7 @@ function enterAwait(d, live, state, phase) {
     const e = state.entities && state.entities.get ? state.entities.get(id) : null;
     if (subjectEnt(e)) {
       v.roleIds[role] = id;
+      v.roleGenerations[role] = occupantGenerationOf(e);
       v.entityStarts[id] = { x: e.pos.x, z: e.pos.z };
     }
   }

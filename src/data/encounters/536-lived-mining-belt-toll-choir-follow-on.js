@@ -34,7 +34,7 @@ export const spec = {
     {
       "id": "b",
       "label": "Tow the dent clear of the lane",
-      "playerLine": "No coin — I tow your dent a hundred-twenty clear of the Mining Belt lane and let it settle."
+      "playerLine": "No coin — I tow your dent a hundred-twenty clear of the Mining Belt lane and cut it quiet."
     },
     {
       "id": "c",
@@ -318,7 +318,7 @@ export default defineEncounter(trigger, {
     {
       "id": "b",
       "label": "Tow the dent clear of the lane",
-      "playerLine": "No coin — I tow your dent a hundred-twenty clear of the Mining Belt lane and let it settle."
+      "playerLine": "No coin — I tow your dent a hundred-twenty clear of the Mining Belt lane and cut it quiet."
     },
     {
       "id": "c",

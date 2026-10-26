@@ -905,21 +905,21 @@ const RC459_RECIPES = {
 // so no two curated vignettes transmit the same line.
 const RC459_COPY = {
   tow_settle: {
-    instruction: '${voice}: Tether the ${noun} and haul it to the receiver hull — a hundred-twenty of drag before you let go — then let it drift to rest within thirty.',
+    instruction: '${voice}: Tether the ${noun} and haul it to the receiver hull — a hundred-twenty of drag before you let go — then cut it quiet, dead slow, inside thirty.',
     aLabel: 'Tow the ${noun} to the receiver',
     aLine: 'I will put my line on the ${noun} and settle it at the receiver hull myself.',
     aReceipt: 'The ${noun} came in on your line and rests inside thirty of the receiver at ${placeLabel}.',
   },
   tow_clear: {
-    instruction: '${voice}: Line on the ${noun}. Drag it past the hundred-twenty mark, drop the line, let it settle.',
+    instruction: '${voice}: Line on the ${noun}. Drag it past the hundred-twenty mark, then cut it quiet — dead slow when the line comes off.',
     aLabel: 'Drag the ${noun} clear of the lane',
-    aLine: 'Line on the ${noun} — I pull it a hundred-twenty out of the ${placeLabel} lane and let it settle.',
+    aLine: 'Line on the ${noun} — I pull it a hundred-twenty out of the ${placeLabel} lane and cut it quiet.',
     aReceipt: 'The ${noun} drifted a hundred-twenty clear of its berth at ${placeLabel} and settled on its own.',
   },
   relay: {
-    instruction: '${voice}: Carry the ${noun} a hundred-twenty on the line — past our hull first, then the far hull, in that order. Release and let it rest.',
+    instruction: '${voice}: Carry the ${noun} a hundred-twenty on the line — past our hull first, then the far hull, in that order. Let go dead slow.',
     aLabel: 'Relay the ${noun} past both hulls',
-    aLine: 'I carry the ${noun} past your hull, then the far one — in that order — and let it rest.',
+    aLine: 'I carry the ${noun} past your hull, then the far one — in that order — and let go dead slow.',
     aReceipt: 'The ${noun} passed both hulls in order and rests loose at ${placeLabel}.',
   },
   park_tight: {
@@ -994,7 +994,7 @@ const RC459_COPY = {
     aLine: 'Take thirty-six, ${voice} — my hull passes the marker on the far side at ${placeLabel}.',
     aReceipt: 'Thirty-six paid, and your hull passed the marker on the far side at ${placeLabel}.',
     bLabel: 'Tow the ${noun} clear of the lane',
-    bLine: 'No coin — I tow your ${noun} a hundred-twenty clear of the ${placeLabel} lane and let it settle.',
+    bLine: 'No coin — I tow your ${noun} a hundred-twenty clear of the ${placeLabel} lane and cut it quiet.',
     bReceipt: 'The ${noun} moved a hundred-twenty clear of the ${placeLabel} lane — no coin moved.',
   },
 };

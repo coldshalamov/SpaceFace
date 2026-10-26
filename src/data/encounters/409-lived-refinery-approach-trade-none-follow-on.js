@@ -29,7 +29,7 @@ export const spec = {
     {
       "id": "a",
       "label": "Relay the can past both hulls",
-      "playerLine": "I carry the can past your hull, then the far one — in that order — and let it rest."
+      "playerLine": "I carry the can past your hull, then the far one — in that order — and let go dead slow."
     },
     {
       "id": "b",
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "BUOY: Carry the can a hundred-twenty on the line — past our hull first, then the far hull, in that order. Release and let it rest. — CAN ON THE REFINERY APPROACH.",
+      "line": "BUOY: Carry the can a hundred-twenty on the line — past our hull first, then the far hull, in that order. Let go dead slow. — CAN ON THE REFINERY APPROACH.",
       "channel": "info",
       "next": "offer"
     },
@@ -325,7 +325,7 @@ export default defineEncounter(trigger, {
     {
       "id": "a",
       "label": "Relay the can past both hulls",
-      "playerLine": "I carry the can past your hull, then the far one — in that order — and let it rest."
+      "playerLine": "I carry the can past your hull, then the far one — in that order — and let go dead slow."
     },
     {
       "id": "b",

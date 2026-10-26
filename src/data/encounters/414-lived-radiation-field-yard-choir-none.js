@@ -29,7 +29,7 @@ export const spec = {
     {
       "id": "a",
       "label": "Relay the slot past both hulls",
-      "playerLine": "I carry the slot past your hull, then the far one — in that order — and let it rest."
+      "playerLine": "I carry the slot past your hull, then the far one — in that order — and let go dead slow."
     },
     {
       "id": "b",
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Carry the slot a hundred-twenty on the line — past our hull first, then the far hull, in that order. Release and let it rest. — SLOT ON THE RADIATION FIELD.",
+      "line": "CANTOR: Carry the slot a hundred-twenty on the line — past our hull first, then the far hull, in that order. Let go dead slow. — SLOT ON THE RADIATION FIELD.",
       "channel": "info",
       "next": "offer"
     },
@@ -325,7 +325,7 @@ export default defineEncounter(trigger, {
     {
       "id": "a",
       "label": "Relay the slot past both hulls",
-      "playerLine": "I carry the slot past your hull, then the far one — in that order — and let it rest."
+      "playerLine": "I carry the slot past your hull, then the far one — in that order — and let go dead slow."
     },
     {
       "id": "b",

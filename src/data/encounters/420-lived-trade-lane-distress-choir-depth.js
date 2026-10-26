@@ -29,7 +29,7 @@ export const spec = {
     {
       "id": "a",
       "label": "Drag the kettle clear of the lane",
-      "playerLine": "Line on the kettle — I pull it a hundred-twenty out of the Trade Lane lane and let it settle."
+      "playerLine": "Line on the kettle — I pull it a hundred-twenty out of the Trade Lane lane and cut it quiet."
     },
     {
       "id": "b",
@@ -132,7 +132,7 @@ export const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Line on the kettle. Drag it past the hundred-twenty mark, drop the line, let it settle. — KETTLE ON THE TRADE LANE.",
+      "line": "CANTOR: Line on the kettle. Drag it past the hundred-twenty mark, then cut it quiet — dead slow when the line comes off. — KETTLE ON THE TRADE LANE.",
       "channel": "info",
       "next": "offer"
     },
@@ -313,7 +313,7 @@ export default defineEncounter(trigger, {
     {
       "id": "a",
       "label": "Drag the kettle clear of the lane",
-      "playerLine": "Line on the kettle — I pull it a hundred-twenty out of the Trade Lane lane and let it settle."
+      "playerLine": "Line on the kettle — I pull it a hundred-twenty out of the Trade Lane lane and cut it quiet."
     },
     {
       "id": "b",
