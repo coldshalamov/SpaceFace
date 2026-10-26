@@ -336,9 +336,12 @@ export const salvageActions = {
     for (const entity of list) {
       if (!isWreck(entity) || entity.alive === false) continue;
       const unstable = entity.data && entity.data.unstableReactor;
-      if (!unstable || unstable.vented || unstable.burst || unstable.towedClear) continue;
+      if (!unstable || unstable.vented || unstable.burst) continue;
+      // Tow-clear disarms the original hazard. Shooting or chaining that recovered
+      // hull rearms it as ordnance; its shortened fuse still needs a live tick.
+      if (unstable.towedClear && unstable.triggeredBy == null) continue;
       liveUnstable++;
-      if (this._isTowedClear(entity, state)) {
+      if (!unstable.towedClear && this._isTowedClear(entity, state)) {
         unstable.towedClear = true;
         if (this._bus && this._bus.emit) {
           this._bus.emit('salvage:reactorTowedClear', { wreckId: entity.id, targetId: entity.id, t: state.simTime || 0 });
@@ -348,7 +351,7 @@ export const salvageActions = {
       if ((state.simTime || 0) >= unstable.dueAt) this._burst(entity, unstable, state);
       // INF-U19 v1: a cooked fuse — or a virgin timer inside the warning window —
       // is a cooker. Towed bombs stay out: the tow is the player's weapon.
-      if (!unstable.burst && entity.pos
+      if (!unstable.burst && !unstable.towedClear && entity.pos
         && (unstable.triggeredBy != null || (unstable.dueAt - now) <= COOKER_WARN_S)) {
         cookers.push({ id: `wreck:${entity.id}`, x: entity.pos.x, z: entity.pos.z, until: unstable.dueAt, ent: entity });
       }
@@ -561,6 +564,7 @@ export const salvageActions = {
     const now = state.simTime || 0;
     unstable.dueAt = (Number.isFinite(unstable.dueAt) ? unstable.dueAt : now + 8)
       - dmg * REACTOR_COOK_S_PER_DMG;
+    this.noteUnstableWake();
     if (dmg >= REACTOR_CRACK_DMG || now >= unstable.dueAt) {
       this._burst(entity, unstable, state);
       return;
