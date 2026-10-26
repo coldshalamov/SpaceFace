@@ -187,6 +187,30 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
     text-wrap:balance; overflow-wrap:break-word; line-height:1.25 !important; }
 }
 
+/* 701–800 wide desktop, 860+ tall (760×900, 800×900): the stage is ~340–380px wide, so the fittings'
+   two columns ran off the right edge (SHIELD BOOSTER, MINING LASER), the hero render and the ring's THRUST
+   reading sat on top of them, and the ring's right reading (5.5k LINE) ran off the frame. The fittings wrap as
+   one flowing list under the hull's sentence, and the hero box (which the yard and the stats ring both measure)
+   narrows, centres and drops below them, so MASS and LINE stand inside the stage. */
+@media (min-width:701px) and (max-width:800px) and (min-height:860px) {
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] {
+    display:flex !important; flex-direction:row !important; flex-wrap:wrap !important; gap:6px 18px !important;
+    width:auto !important; max-width:100% !important; }
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] > li + li::before { display:none !important; }
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label {
+    display:inline-flex !important; grid-template-columns:none !important; column-gap:6px !important; font-size:12px !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 620 !important; letter-spacing:.06em !important; }
+  ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
+  ${NGD} > .k-stage > .orr-ng-hero-box { left:21% !important; width:52% !important; top:45% !important; height:17% !important; }
+  ${NGD} > .k-stage::before { left:21%; width:52%; top:59%; }
+  /* the ring's side names at normal width and the LINE gloss condensed (as in the one-column layout) */
+  ${NGD} .orr-hullring text.orr-hullring__label { font-variation-settings:"wght" 600, "wdth" 100 !important; letter-spacing:.16em !important; }
+  ${NGD} .orr-hullring text.orr-hullring__gloss { font-stretch:75% !important; font-variation-settings:"wght" 500, "wdth" 75 !important; letter-spacing:.02em !important; }
+  /* the yard's rear ends sit ~150px apart here, so the rear names (WASP, PELICAN) set tighter */
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word { font-size:12px !important; letter-spacing:.04em !important; }
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { letter-spacing:.08em !important; }
+}
+
 /* a narrow desktop window (≤700 wide, no data-sf-mobile; 390×844, 600×844): the two columns kept the
    340px form column, so the stage had 0px (it sat off the right edge) and the yard piled HITCH, PELICAN and
    WASP on the frame's top-left corner, with no way to see or pick a hull. The plate becomes one column that
