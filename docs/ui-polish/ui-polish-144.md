@@ -19,16 +19,18 @@ screen is pixel-identical to master.
   (Hitch, Pelican, Wasp) is clear at 701×860, 720×900, 760×900 and 800×900 (smallest text gap 4.3px, at 701×860).
 - The hull render floated above the ring over THRUST's "100" at 701×860 and 720×900 (not only under 860 tall, as this
   doc said before). Cause: the run's hidden hover beats (opacity 0 but still laid out) made the run ~230–340px tall, so
-  the yard, which stays above the run's top, was pulled ~120px up off the hero box and the render with it. The run
-  shows each beat's line in one full-width slot under the scale instead (three lines tall; the first beat's line shows
-  until another beat is hovered), so the run stands ~58px taller rather than ~230px and the yard and the render stay
-  in the ring at every size. (An earlier push hid the lines here; Code Work asked for them back.)
+  the yard, which stays above the run's top, was pulled ~120px up off the hero box and the render with it. The titles
+  keep their four columns on the scale, and all four beat lines stand beneath them as one full-width list in beat
+  order, each led by a small ring like the beads (the step and its wrapper become grid cells, CSS only), so the run
+  stands ~36–53px taller rather than ~230px and the yard and the render stay in the ring at every size.
+- (Code Work hold at 6124402553) The previous push showed one line at a time on hover, so keyboard and touch players
+  could read only step 1. Every line now shows at once; nothing depends on hover or focus.
 - The hero box keeps 44px left of it for MASS and 90px right for LINE and its gloss
   (`--ng-hero-w:min(52%, 100% - 134px)`, `--ng-hero-x:max(44px, min(21%, 100% - w - 90px))`): at 701–760 it narrows
   and slides left, so "5.5k" and "massline winch speed" end inside the window (gloss right edge 697/715/753 at
   701/720/760, was 719/732/761). 800×900 is unchanged (the formula gives the old 21%/52%).
 
-**Checked:** 701×860, 720×900, 760×900, 800×900 with each hull in front: no text collisions, each beat's line inside the stage when hovered (lowest: 720×900, 1px above the stage foot), loadout, ring readings and
+**Checked:** 701×860, 720×900, 760×900, 800×900 with each hull in front: no text collisions, all four beat lines inside the stage (lowest: 720×900, at the stage foot), "FIRST 15 MINUTES" 18px+ clear of the yard's front class (701×860), no horizontal overflow; ui-bench new-game --walk 0 findings at 701×860, 760×900, 800×900, 960×540, 1280×720, 1920×1080, loadout, ring readings and
 render inside the window and the ring. Type floor OK.
 
 **Leftover:** at 701–800px and under 860 tall (720×800) the hull render still doesn't follow the hero box (outside

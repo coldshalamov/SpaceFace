@@ -206,18 +206,34 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
   ${NGD} > .k-stage > .orr-ng-hero-box { left:var(--ng-hero-x) !important; width:var(--ng-hero-w) !important; top:45% !important; height:17% !important; }
   ${NGD} > .k-stage::before { left:var(--ng-hero-x); width:var(--ng-hero-w); top:59%; }
-  /* the run's beats share one line under the scale: each beat's line wrapped to ~70px under its title (the run
-     stood ~230–340px tall and pulled the yard, and the hull render on it, up out of the ring and over THRUST at
-     701–720), so every line sits in one full-width slot of three lines instead, the first beat's line showing until
-     another beat is hovered. The four steps are equal flex columns 16px apart, so each line steps back by its
-     column's offset. */
-  ${NGD} .sf-ng-route .sf-ng-route__steps { padding-bottom:58px !important; }
-  ${NGD} .sf-ng-route .sf-ng-route__step .k-row__sub { position:absolute !important; top:calc(100% + 8px) !important; left:0;
-    width:calc(400% + 48px) !important; margin:0 !important; pointer-events:none; }
-  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(2) .k-row__sub { left:calc(-100% - 16px) !important; }
-  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(3) .k-row__sub { left:calc(-200% - 32px) !important; }
-  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(4) .k-row__sub { left:calc(-300% - 48px) !important; }
-  ${NGD} .sf-ng-route .sf-ng-route__steps:not(:hover) .sf-ng-route__step:first-child .k-row__sub { opacity:1 !important; }
+  /* the run's beats: each beat's line wrapped to ~70px under its title (the run stood ~230–340px tall and pulled
+     the yard, and the hull render on it, up out of the ring and over THRUST at 701–720). The titles keep their
+     four columns on the scale, and all four lines stand beneath them as one full-width list in beat order, each
+     led by a small ring like the beads (the step and its wrapper become grid cells so the lines flow at their own
+     height). Every line shows at once, so they read without a mouse (keyboard, touch). */
+  ${NGD} .sf-ng-route .sf-ng-route__steps { display:grid !important; grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+    column-gap:16px !important; row-gap:3px !important; padding-bottom:0 !important; align-items:start; }
+  ${NGD} .sf-ng-route .sf-ng-route__step,
+  ${NGD} .sf-ng-route .sf-ng-route__step > div { display:contents !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step .k-row__name { grid-row:1; margin-bottom:4px; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:first-child .k-row__name { grid-column:1; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(2) .k-row__name { grid-column:2; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(3) .k-row__name { grid-column:3; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(4) .k-row__name { grid-column:4; }
+  /* the beads now sit in the list's box: on the titles' row (so they keep their height on the scale), each
+     stepped over to its column */
+  ${NGD} .sf-ng-route .sf-ng-route__step::before { grid-row:1; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(2)::before { left:calc((100% - 48px) / 4 + 16px - 1px) !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(3)::before { left:calc((100% - 48px) / 2 + 32px - 1px) !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(4)::before { left:calc((100% - 48px) * 3 / 4 + 48px - 1px) !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step .k-row__sub { position:relative !important; grid-column:1 / -1; opacity:1 !important;
+    margin:0 !important; padding-left:10px !important; line-height:1.3 !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(2) .k-row__sub { grid-row:3; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(3) .k-row__sub { grid-row:4; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:nth-child(4) .k-row__sub { grid-row:5; }
+  ${NGD} .sf-ng-route .sf-ng-route__step:first-child .k-row__sub { grid-row:2; }
+  ${NGD} .sf-ng-route .sf-ng-route__step .k-row__sub::before { content:""; position:absolute; left:0; top:.5em; width:4px; height:4px;
+    border-radius:50%; box-shadow:inset 0 0 0 1px currentColor; }
   /* the ring's side names at normal width and the LINE gloss condensed (as in the one-column layout) */
   ${NGD} .orr-hullring text.orr-hullring__label { font-variation-settings:"wght" 600, "wdth" 100 !important; letter-spacing:.16em !important; }
   ${NGD} .orr-hullring text.orr-hullring__gloss { font-stretch:75% !important; font-variation-settings:"wght" 500, "wdth" 75 !important; letter-spacing:.02em !important; }
