@@ -1183,7 +1183,7 @@ production units, and never build what they write.
 | 534 | W-BOOKS-3-4 | Books 3–4 play — VARIANCE ADJUSTMENT, the three doors, the doubled contract (§34.7) | BUILD | OPEN — after 533 |
 | 535 | W-BOOKS-5-7 | Books 5–7 play — heists, the Empire Seed, the Iron Maw dismantle, the Witness (§34.7) | BUILD | OPEN — after 534 |
 | 536 | W-DOORS | The Five Doors, each with one playable act (§34.7) | BUILD | OPEN — after 535 |
-| 537 | W-CANON | Interludes as quiet scenes; PROPOSED CANON folded into `docs/worldbuilding/` or rejected in one sentence (§34.7) | BUILD | OPEN |
+| 537 | W-CANON | Interludes as quiet scenes; PROPOSED CANON folded into `docs/worldbuilding/` or rejected in one sentence (§34.7) | BUILD | DONE devin-w537 (f65046d4) |
 | 538 | W-ARCS | Fourteen faction arcs, three missions each (§34.7) | BUILD | OPEN — each arc after its faction row |
 | 539 | W-CULL | The Cull ladder — ten leagues, Ma Sprocket, Clatter (§34.7) | BUILD | OPEN — after 519 and 541 |
 | 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | DONE devin-ten-oct22 (0749dfe36e) |
@@ -1193,7 +1193,7 @@ production units, and never build what they write.
 | 544 | W-ECONOMY | Economy re-pace — travel ≤50 %, a play-changing purchase every 15–25 minutes, pay by the tonne (§34.9) | BUILD | OPEN |
 | 545 | W-CAMERA | The camera follows the weight (§34.9) | BUILD | OPEN |
 | 546 | W-TEACH | Teach by situation; First Light keeps its offer with Play as the primary action (§34.9) | BUILD | OPEN |
-| 547 | W-COLOSSI | The Colossus roster on row 448's framework; the bar is the parts (§34.9) | BUILD | OPEN — after 448 |
+| 547 | W-COLOSSI | The Colossus roster on row 448's framework; the bar is the parts (§34.9) | BUILD | DONE devin-w547 |
 | 548 | W-AUDIT | The fifty-point A-list audit, repeated after each phase (§34.9) | FIX | OPEN |
 | 549 | W-RECEIPTS | Receipts within a budget; save migrations; flat save growth (§34.9) | BUILD | DONE devin-25-oct22 |
 | 550 | W-ARSENAL | The arsenal: keep, merge or move ~20 physics tools (`design/expansion/05_ASSET_ROSTER.md` §7.3) (§34.9) | BUILD | OPEN — story-mode table applied 2026-10-22 (7 tools + the concussion bomb carry `retiredInto`, off the shop and research, owned copies keep working; final homes in 05 §7.3); remaining: the Crucible draft (swarm seam) and the Line-head moves (wait on §7.1 heads) |

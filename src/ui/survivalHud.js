@@ -412,12 +412,19 @@ export const survivalHud = {
           ? bossVitals.name
           : (bossVitals.count > 1 ? `BOSS ×${bossVitals.count}` : 'BOSS');
         this._setText(dom.bossWord, bossLabel);
-        this._setText(dom.bossFig, pct == null ? '—' : `${Math.round(pct * 100)}%`);
+        // W-COLOSSI (row 547): the bar is the parts — a score-backed colossus reads
+        // "parts remaining" (figure N/M, no percent), never its hull.
+        const parts = bossVitals.parts || null;
+        this._setText(dom.bossFig, parts
+          ? `${parts.attached}/${parts.total}`
+          : (pct == null ? '—' : `${Math.round(pct * 100)}%`));
         this._setStyle(dom.bossFill, 'width', `${pct == null ? 0 : Math.round(pct * 100)}%`);
         const hullWord = bossVitals.name || 'Boss';
-        this._setAttr(dom.boss, 'aria-label', pct == null
-          ? `${hullWord} hull`
-          : `${hullWord} hull ${Math.round(pct * 100)} percent`);
+        this._setAttr(dom.boss, 'aria-label', parts
+          ? `${hullWord} parts remaining ${parts.attached} of ${parts.total}`
+          : (pct == null
+            ? `${hullWord} hull`
+            : `${hullWord} hull ${Math.round(pct * 100)} percent`));
         this._setAttr(dom.boss, 'aria-valuenow', String(pct == null ? 0 : Math.round(pct * 100)));
       }
     }
@@ -651,6 +658,26 @@ export const survivalHud = {
       }
     }
     if (count === 0) return null;
+    // W-COLOSSI (row 547): a Colossus carries no HP bar — the bar is its parts. When a live
+    // capital-score fight backs this wave's champion, the meter reads attached-plate parts
+    // instead of hull: it drains as the player tears the boss apart, and a fully stripped
+    // colossus reads empty while its bare hull still fights. Compositional boss rounds keep
+    // the shipped hull meter — only score-backed champions have parts to count.
+    const fights = state.capitalBossEncounters && state.capitalBossEncounters.fights;
+    if (fights && typeof fights === 'object') {
+      for (const key in fights) {
+        const r = fights[key];
+        if (!r || r.terminal != null || !Array.isArray(r.plates) || !r.plates.length) continue;
+        const bossEntity = entities.get && entities.get(r.bossId);
+        const bossData = bossEntity && bossEntity.data;
+        if (!bossData || (bossData.swarmChampion !== true && bossData.circuitCommander !== true)) continue;
+        const total = r.plates.length;
+        let attached = 0;
+        for (const rec of r.plates) if (rec && rec.attached === true) attached += 1;
+        return { count, pct: total > 0 ? attached / total : null,
+          name: name || null, parts: { attached, total } };
+      }
+    }
     return { count, pct: max > 0 ? hull / max : null, name };
   },
 
@@ -854,13 +881,15 @@ export const survivalHud = {
     color:var(--dp-ink-mute, var(--sf-calm)); text-shadow:var(--dp-etch-shadow, none); }
   .sf-crun__row { display:flex; align-items:baseline; gap:9px; }
   .sf-crun__row--figs { flex-wrap:wrap; gap:4px 10px; }
+  /* The round figure is a READING — the world's count — so it reads phos, not lamp: the amber
+     leader in this panel is the chain (the one figure watched while flying), never two. */
   .sf-crun__wave { font-family:var(--dp-face-etch, var(--sf-data-face)); font-variation-settings:"wght" 820, "wdth" 80;
     font-weight:700; font-size:20px; font-variant-numeric:tabular-nums; letter-spacing:.04em;
-    color:var(--dp-lamp-hot, var(--sf-goal)); text-shadow:var(--dp-emit-lamp, none); }
+    color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
   .sf-crun__phase { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 720, "wdth" 68;
     font-weight:700; font-size:12px; letter-spacing:.16em; text-transform:uppercase;
     color:var(--dp-ink-mute, var(--sf-calm)); margin-left:auto; }
-  .sf-crun__phase--hot { color:var(--dp-danger-hot, var(--sf-foe)); text-shadow:0 0 10px var(--dp-danger-bloom, transparent); }
+  .sf-crun__phase--hot { color:var(--dp-danger-hot, var(--sf-foe)); }
   /* FB-025: the intro window's opening line — a full-width sentence in the paper ink, not a
      figure and not a word-pair, so it cannot be mistaken for a live gauge. */
   .sf-crun__intro { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
@@ -876,15 +905,15 @@ export const survivalHud = {
     border-radius:1px; background:var(--dp-rule-hi, rgb(232 226 212 / .22));
     box-shadow:none; }
   .sf-crun__track--xp { height:5px; }
+  /* Bloom is geometry, not a filter: the printed track + the full-saturation fill carry the lit
+     reading; no live glow shadow rides a bar whose width changes every frame. */
   .sf-crun__fill { position:absolute; inset:0 auto 0 0; width:0; }
-  .sf-crun__fill--foe { background:var(--dp-danger, #ff5038);
-    box-shadow:0 0 6px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
-  .sf-crun__fill--you { background:var(--dp-lamp, #f2b950);
-    box-shadow:0 0 6px var(--dp-lamp-bloom, rgb(242 185 80 / .34)); }
+  .sf-crun__fill--foe { background:var(--dp-danger, #ff5038); }
+  .sf-crun__fill--you { background:var(--dp-lamp, #f2b950); }
   .sf-crun__fig { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:13px;
     font-variant-numeric:tabular-nums; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
   .sf-crun__fig--you { color:var(--dp-ink, var(--sf-you)); }
-  .sf-crun__fig--goal { color:var(--dp-lamp-hot, var(--sf-goal, #e3a13d)); text-shadow:var(--dp-emit-lamp, none); }
+  .sf-crun__fig--goal { color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
   /* The chain. Three channels as always — the word, the figure and its colour — so a forced-colors
      or colour-blind reader loses nothing. No animation, so reduced-motion needs no variant. */
   .sf-crun__chain { display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 8px; }
@@ -894,15 +923,14 @@ export const survivalHud = {
     font-weight:700; font-size:26px; line-height:1.05; font-variant-numeric:tabular-nums;
     color:var(--dp-lamp-hot, var(--sf-you)); text-shadow:var(--dp-emit-lamp, none); }
   .sf-crun__chain[data-tier="hot"] .sf-crun__chainfig { color:var(--dp-lamp-hot, var(--sf-goal, #e3a13d)); }
-  .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig { color:var(--dp-danger-hot, var(--sf-foe));
-    text-shadow:0 0 10px var(--dp-danger-bloom, transparent); }
+  .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig { color:var(--dp-danger-hot, var(--sf-foe)); }
   .sf-crun__chainbest { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
   .sf-crun__chaincause { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-weight:700; font-size:12px;
     letter-spacing:.12em; text-transform:uppercase; font-variant-numeric:tabular-nums;
-    color:var(--dp-lamp-hot, var(--sf-goal, #e3a13d)); }
+    color:var(--dp-ink-dim, var(--sf-calm)); }
   .sf-crun__earn { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:12px;
-    font-variant-numeric:tabular-nums; color:var(--dp-lamp-hot, var(--sf-you)); text-shadow:var(--dp-emit-lamp, none); }
+    font-variant-numeric:tabular-nums; color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
   .sf-crun__death { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-danger-hot, var(--sf-foe)); }
   /* forced-colors strips the fills; the figure beside each bar is the surviving channel. */

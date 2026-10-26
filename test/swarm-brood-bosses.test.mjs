@@ -116,14 +116,15 @@ function named(h, event) {
   return h.emitted.filter((e) => e.event === event);
 }
 
-test('the rotation walks eight champions — the brood champions land at waves 70 and 80', () => {
+test('the rotation walks the champions — the brood champions land at waves 70 and 80', () => {
   const order = ['iron_maw', 'mirrorjaw_foreman', 'forge_regent', 'corsair_wing', 'the_anvil',
-    'quiet_choir', 'brood_queen', 'brood_tendril'];
-  for (const [i, wave] of [10, 20, 30, 40, 50, 60, 70, 80].entries()) {
+    'quiet_choir', 'brood_queen', 'brood_tendril', 'nest_carrier', 'casket_worm',
+    'furnace_maw', 'yardmaster', 'adjudicator_44c', 'hive_hulk'];
+  for (const [i, wave] of [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140].entries()) {
     const boss = swarmBossFor(wave);
     assert.equal(boss && boss.id, order[i], `wave ${wave}`);
   }
-  assert.equal(swarmBossFor(90).id, 'iron_maw', 'the rotation wraps after the eighth');
+  assert.equal(swarmBossFor(150).id, 'iron_maw', 'the rotation wraps after the fourteenth');
   const w70 = planFor(70).swarm;
   assert.equal(w70.bossScoreId, 'capital_boss_brood_queen');
   assert.equal(w70.bossEnemyId, 'brood_queen');

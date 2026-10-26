@@ -443,7 +443,13 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     if (showHealth) {
       if (group.scaleHost.style.display !== 'block') group.scaleHost.style.display = 'block';
       if (group.gauge.style.display === 'none') group.gauge.style.display = 'block';
-      const frac = readout.hullFraction;
+      // W-COLOSSI (row 547): the bar is the parts. A colossus with live plates reads its
+      // attached-parts fraction — the instrument drains as the player tears the body apart —
+      // and only a plate-less fight (the Last Argument's data-only parts) still shows hull.
+      const partsLive = readout.partsLive === true && readout.partsTotal > 0;
+      const frac = partsLive && readout.partsTotal > 0
+        ? Math.max(0, Math.min(1, readout.partsAttached / readout.partsTotal))
+        : readout.hullFraction;
       if (group.frac !== frac) {
         group.frac = frac;
         group.scaleInst.set(frac, INSTANT);
@@ -453,11 +459,14 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
         group.pct = pct;
         group.gauge.setAttribute('aria-valuenow', String(pct));
       }
-      // The accessible name rides the boss identity, not the percentage — a reused group
-      // re-labels even when the new boss's hull reads the same number.
-      if (group.gaugeName !== readout.name) {
-        group.gaugeName = readout.name;
-        group.gauge.setAttribute('aria-label', `${readout.name} hull`);
+      // The accessible name rides the boss identity AND the instrument's meaning — a reused
+      // group re-labels when either changes.
+      const gaugeName = `${readout.name}|${partsLive ? 'parts' : 'hull'}`;
+      if (group.gaugeName !== gaugeName) {
+        group.gaugeName = gaugeName;
+        group.gauge.setAttribute('aria-label', partsLive
+          ? `${readout.name} parts remaining`
+          : `${readout.name} hull`);
       }
     } else {
       // Swarm owns its champion bar; the adapter adds no second one — and the semantic

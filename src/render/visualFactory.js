@@ -3770,8 +3770,18 @@ const WRECK_PACKAGED_FILES = Object.freeze([
 ]);
 
 // Wreck bodies that name one authored part (data.fractureVisual.partId) instead of a hull.
+// Row 547 W-COLOSSI widened the whitelist past the armor slab: a colossus plate names the
+// piece its silhouette actually reads as — a door is a cargo module, an emitter is a turret,
+// a coupling node is an engine section — never a hash-picked aftermath piece.
 const WRECK_PART_FILES = Object.freeze({
   place_aftermath_aft_armor_slab: 'places/place_aftermath_aft_armor_slab.glb',
+  place_aftermath_aft_cargo_module: 'places/place_aftermath_aft_cargo_module.glb',
+  place_aftermath_aft_cockpit_section: 'places/place_aftermath_aft_cockpit_section.glb',
+  place_aftermath_aft_engine_section: 'places/place_aftermath_aft_engine_section.glb',
+  place_aftermath_aft_pressure_tank: 'places/place_aftermath_aft_pressure_tank.glb',
+  place_aftermath_aft_radiator_panel: 'places/place_aftermath_aft_radiator_panel.glb',
+  place_aftermath_aft_weapon_spar: 'places/place_aftermath_aft_weapon_spar.glb',
+  place_aftermath_wreck_corvette_turret: 'places/place_aftermath_wreck_corvette_turret.glb',
 });
 
 function packagedPartUrl(relativeFile) {

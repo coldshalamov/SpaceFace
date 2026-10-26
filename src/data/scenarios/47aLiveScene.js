@@ -82,7 +82,11 @@ export function makeEvidenceSpindleSpec({ pos, rot = 0 } = {}) {
     hullMax: 180,
     armorHp: 120,
     armorMax: 120,
-    armorFlat: 6,
+    // armorFlat 6 was legal when the starter Pulse hit for 8; since ROCK-GUN (row 482) it
+    // hits for 5 and 6 ≥ 5 made the payload literally unkillable by the starter gun — the
+    // defect `enemy-armor-flat-contract` exists to ban. 3 matches Iron Maw's heavy plate:
+    // Pulse still chews through, slowly.
+    armorFlat: 3,
     shield: 0,
     shieldMax: 0,
     cap: 0,

@@ -252,11 +252,14 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       }
     },
     // GOLD-COLOSSI: a plate is fight data until it tears — no per-tick pose, no new joint.
-    // Swarm champions and the Last Argument keep their own lifecycles: their authored
+    // Row 547 W-COLOSSI opened the gate to swarm champions: their authored plates are live
+    // exactly like a contract boss's — rope tears and act sheds leave tetherable slabs, and
+    // the swarm mass-hit router still lands its subsystem damage on whatever the remaining
+    // plates do not cover. Only the Last Argument keeps its own lifecycle — its authored
     // plates are data-only and never spawn bodies here.
     _platesLive(r) {
       return !!(r && !r.terminal && Array.isArray(r.plates) && r.plates.length
-        && typeof r.fightId === 'string' && !r.fightId.startsWith('swarm:')
+        && typeof r.fightId === 'string'
         && r.encounterId !== LAST_ARGUMENT.scoreId);
     },
     _plateSpec(r, plateId) {
@@ -341,9 +344,11 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
           kind: 'wreck', label: spec.label, scanLabel: spec.label, name: spec.label,
           masslineTetherable: true,
           capitalPlate: { fightId: r.fightId, bossId: r.bossId, plateId: spec.id, covers: spec.covers },
-          // The aftermath armor-slab package keeps a torn plate reading as boss armor,
-          // not generic debris — the same render path fracture pieces use.
-          fractureVisual: { partId: 'place_aftermath_aft_armor_slab', label: spec.label },
+          // The aftermath package keeps a torn plate reading as a boss part, not generic
+          // debris — the same render path fracture pieces use. Row 547 lets a plate name its
+          // own authored piece (a door reads as a cargo module, an emitter as a turret); the
+          // armor slab stays the default.
+          fractureVisual: { partId: spec.partId || 'place_aftermath_aft_armor_slab', label: spec.label },
           fractureVictimRadius: Number(boss.radius) || null,
           loot: [], salvagePool: { cmdty_scrap_metal: 2 }, salvageTimeLeft: 8,
         },
