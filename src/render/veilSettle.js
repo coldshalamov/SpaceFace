@@ -45,7 +45,8 @@ export function createVeilSettle(render, options = {}) {
   let streak = 0;
   let settled = false;
   let armed = false;
-  const reset = () => { since = null; streak = 0; settled = false; armed = false; lastDrain = -Infinity; drained = 0; };
+  let generation = 0;
+  const reset = () => { generation += 1; since = null; streak = 0; settled = false; armed = false; lastDrain = -Infinity; drained = 0; };
   // One forced first use per frame-ish gap; returns 1 while unused programs remain (within the cap).
   const drainStep = (t, elapsed) => {
     if (elapsed >= drainCapMs) return 0;
@@ -63,8 +64,12 @@ export function createVeilSettle(render, options = {}) {
   };
   const watchIdle = () => {
     if (!ric || settled || since === null) return;
+    const owner = generation;
     armed = true;
     ric((deadline) => {
+      // A previous launch's queued idle callback cannot count toward a new veil or
+      // disarm its watcher after a retry/Continue replaces the presentation owner.
+      if (owner !== generation) return;
       armed = false;
       if (settled || since === null) return;
       let left = 0;

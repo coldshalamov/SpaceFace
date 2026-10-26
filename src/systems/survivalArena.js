@@ -750,6 +750,161 @@ function planArenaInstallBody({
         });
         break;
       }
+      // W-COLOSSI (row 547) — the Nest Carrier's berth. The nest's own draught pulls the fight
+      // toward the belly side of the room (the wasps launch off the flanks, so the pull is the
+      // same direction the doors want you) while a slow vent-breeze rakes the lane sideways —
+      // ride the draught or fight it, and the cover rocks are ammunition.
+      if (bossRoom === 'nest_berth') {
+        out.note = 'the berth pulls toward the belly — a vent-breeze rakes the launch lanes';
+        out.cover = true;
+        out.fields.push({
+          kind: 'well',
+          center: alongBearing(at, lane, -180),
+          radius: 460,
+          strength: 70,
+          damping: 0.8,
+          falloff: 1.2,
+        });
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, 40),
+          dir: { x: across.x, z: across.z },
+          radius: 520,
+          strength: 64,
+          falloff: 1.15,
+          halfAngleRad: 0.58,
+          edgeSoftRad: 0.15,
+        });
+        break;
+      }
+      // W-COLOSSI (row 547) — the Casket Worm's grave. Two counter-breezes rake the derelict
+      // field in opposite drifts: the weave lanes slide under you one way and back the other,
+      // and the drifting cover is the ammunition the middle cut is asking for.
+      if (bossRoom === 'casket_field') {
+        out.note = 'the grave drifts two ways — rocks to feed the middle cut';
+        out.cover = true;
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, -80),
+          dir: { x: across.x, z: across.z },
+          radius: 540,
+          strength: 70,
+          falloff: 1.15,
+          halfAngleRad: 0.6,
+          edgeSoftRad: 0.16,
+        });
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, 180),
+          dir: { x: -across.x, z: -across.z },
+          radius: 540,
+          strength: 70,
+          falloff: 1.15,
+          halfAngleRad: 0.6,
+          edgeSoftRad: 0.16,
+        });
+        break;
+      }
+      // W-COLOSSI (row 547) — the Furnace Maw's feeding rim. One repulsor bank shoves the
+      // whole face outward — nobody stands in the mouth for free — and the mouth arc behind
+      // it is salted, so the only cheap way in is the rim orbit the radiators open when they
+      // come off. Cover rocks are what the cavity gets fed.
+      if (bossRoom === 'maw_feed') {
+        out.note = 'the mouth shoves — the rim orbit is free, and the cavity eats what you feed it';
+        out.cover = true;
+        out.fields.push({
+          kind: 'repulsor',
+          center: alongBearing(at, lane, 170),
+          radius: 300,
+          strength: 165,
+          falloff: 1.3,
+        });
+        const mouth = alongBearing(at, lane, 260);
+        for (let i = 0; i < ARENA_MINE_MAX; i++) {
+          const offset = (i - (ARENA_MINE_MAX - 1) / 2) * 56;
+          out.mines.push(point(mouth, across.x * offset, across.z * offset));
+        }
+        break;
+      }
+      // W-COLOSSI (row 547) — the Yardmaster's yard. The magnet core drags the whole room
+      // inward through a ring of floating scrap: riding the pull is free, fighting it costs,
+      // and the cover rocks are the same ammunition the ball is wearing.
+      if (bossRoom === 'wreck_magnet') {
+        out.note = 'the magnet drags the whole yard inward — everything loose ends up inside the pile';
+        out.cover = true;
+        out.fields.push({
+          kind: 'well',
+          center: { x: at.x, z: at.z },
+          radius: 520,
+          strength: 88,
+          damping: 0.9,
+          falloff: 1.2,
+        });
+        for (let i = 0; i < ARENA_MINE_MAX; i++) {
+          const angle = spin + (i / ARENA_MINE_MAX) * TAU;
+          out.mines.push(point(at, Math.cos(angle) * 240, Math.sin(angle) * 240));
+        }
+        break;
+      }
+      // W-COLOSSI (row 547) — the Adjudicator's gate. Two repulsor berms stand off either
+      // flank of the arrival lane like seal rails coming down, and the mouth of the corridor
+      // between them is salted — the gate literally closes behind you, and the corridor it
+      // leaves is the honest way in.
+      if (bossRoom === 'seal_gate') {
+        out.note = 'the gate is welding shut — rails on the flanks, mines at the mouth, one honest corridor';
+        out.cover = true;
+        out.fields.push({
+          kind: 'repulsor',
+          center: point(alongBearing(at, lane, 230), across.x * 190, across.z * 190),
+          radius: 240,
+          strength: 155,
+          falloff: 1.3,
+        });
+        out.fields.push({
+          kind: 'repulsor',
+          center: point(alongBearing(at, lane, 230), -across.x * 190, -across.z * 190),
+          radius: 240,
+          strength: 155,
+          falloff: 1.3,
+        });
+        const mouth = alongBearing(at, lane, 300);
+        for (let i = 0; i < ARENA_MINE_MAX; i++) {
+          const offset = (i - (ARENA_MINE_MAX - 1) / 2) * 60;
+          out.mines.push(point(mouth, across.x * offset, across.z * offset));
+        }
+        break;
+      }
+      // W-COLOSSI (row 547) — the Hive-hulk's shaft. A long pull runs down the shaft on the
+      // lane axis and a slow cross-breeze rakes it, mines seeding the far mouth — the shaft
+      // is a clean kill-lane with no cover but the hulk itself, and every coupling node that
+      // comes off is something to throw down it.
+      if (bossRoom === 'hive_shaft') {
+        out.note = 'the shaft pulls long and rakes crosswise — the hulk is the only cover';
+        out.fields.push({
+          kind: 'well',
+          center: alongBearing(at, lane, 240),
+          radius: 540,
+          strength: 82,
+          damping: 0.8,
+          falloff: 1.25,
+        });
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, 20),
+          dir: { x: across.x, z: across.z },
+          radius: 500,
+          strength: 58,
+          falloff: 1.15,
+          halfAngleRad: 0.55,
+          edgeSoftRad: 0.15,
+        });
+        const throat = alongBearing(at, lane, 380);
+        for (let i = 0; i < ARENA_MINE_MAX; i++) {
+          const offset = (i - (ARENA_MINE_MAX - 1) / 2) * 60;
+          out.mines.push(point(throat, across.x * offset, across.z * offset));
+        }
+        break;
+      }
       out.note = 'a heavy central pull, a berm on one flank, a mined ring and cover';
       out.cover = true;
       out.fields.push({

@@ -77,9 +77,12 @@ ${W} .sf-wradial__hub:focus-visible::before { border-color:var(--dp-hand, #f2b95
 ${W} .sf-wradial__hub-title { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-size:12px; line-height:1.2; letter-spacing:.14em; color:rgb(${BONE} / .88); text-shadow:none; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 ${W} .sf-wradial__hub-count { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 300; font-size:14px !important; line-height:1.15 !important; letter-spacing:.04em; color:var(--dp-phos, #dfeeff); text-shadow:none; max-width:100%; }
 ${W} .sf-wradial__hub-scope { font-size:12px !important; line-height:1.1 !important; letter-spacing:.14em; margin-top:1px; }
-${W} .sf-wradial__hub-pips { min-height:6px; gap:4px; }
-${W} .sf-wradial__hub-pips i { width:6px; height:6px; background:rgb(${BONE} / .3); box-shadow:none; }
-${W} .sf-wradial__hub-pips i.is-on { background:rgb(248 244 234); box-shadow:0 0 6px rgb(255 240 214 / .5); }
+/* the scope pips are datum separators, not round lamps — at middot scale two lit pips read as
+   the "·" divider the rest of the HUD uses between a scope word and its count, while lit-vs-dim
+   still says which craft take the order (critic 2026-10-26) */
+${W} .sf-wradial__hub-pips { min-height:4px; gap:3.5px; }
+${W} .sf-wradial__hub-pips i { width:3.5px; height:3.5px; background:rgb(${BONE} / .3); box-shadow:none; }
+${W} .sf-wradial__hub-pips i.is-on { background:rgb(248 244 234); box-shadow:0 0 5px rgb(255 240 214 / .45); }
 
 @media (forced-colors:active) { ${W}::before, ${W}::after, ${W} .sf-wradial__hub::before { display:none; } }
 `;

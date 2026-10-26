@@ -43,10 +43,11 @@ test('a boss wave fields its champion at tick 0 and owes it as a real kill', () 
   assert.ok(plan.schedule.some((e) => e.champion === true));
 });
 
-test('the champion rotation walks the roster clock — eight shapes, capital rows are the exceptions', () => {
+test('the champion rotation walks the roster clock — capital rows are the exceptions', () => {
   const expected = ['iron_maw', 'mirrorjaw_foreman', 'forge_regent', 'corsair_wing', 'the_anvil',
-    'quiet_choir', 'brood_queen', 'brood_tendril'];
-  for (const [i, wave] of [10, 20, 30, 40, 50, 60, 70, 80].entries()) {
+    'quiet_choir', 'brood_queen', 'brood_tendril', 'nest_carrier', 'casket_worm',
+    'furnace_maw', 'yardmaster', 'adjudicator_44c', 'hive_hulk'];
+  for (const [i, wave] of [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140].entries()) {
     const plan = swarmPlan(wave);
     assert.equal(plan.swarm.bossId, expected[i], `wave ${wave}`);
     assert.equal(plan.swarm.bossRoom, SWARM_BOSS_ROTATION[i].room);
@@ -56,13 +57,15 @@ test('the champion rotation walks the roster clock — eight shapes, capital row
       assert.ok(
         rosterIds.has(id) || id === 'dreadnought_boss'
           || id === 'mirrorjaw_foreman' || id === 'forge_regent'
-          || id === 'brood_queen' || id === 'brood_tendril',
+          || id === 'brood_queen' || id === 'brood_tendril'
+          || id === 'nest_carrier' || id === 'casket_worm' || id === 'furnace_maw'
+          || id === 'yardmaster' || id === 'adjudicator_44c' || id === 'hive_hulk',
         `wave ${wave} champion ${id} must be an archetype the player already met — or an authored capital debut`,
       );
     }
   }
-  const plan = swarmPlan(90);
-  assert.equal(plan.swarm.bossId, 'iron_maw', 'the rotation loops after the eighth');
+  const plan = swarmPlan(150);
+  assert.equal(plan.swarm.bossId, 'iron_maw', 'the rotation loops after the fourteenth');
 });
 
 test('the opening chaff is pure ammunition — light pursuer roles only', () => {

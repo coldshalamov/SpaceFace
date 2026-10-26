@@ -23,7 +23,9 @@ import { snapshotWorkingBattlefield } from './workingBattlefieldRuntime.js';
 import { snapshotReckoning } from '../missions/reckoningRuntime.js';
 import { CAMPAIGN_BEATS } from '../story/campaign47a/campaignData.js';
 import { buildMissionBoardContract, completeBeatStepsForLegacy, getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
-import { CONTRACT_47A_B0_BODY, THREAD_B_FRAGMENT_ID } from '../data/narrative.js';
+import { CAMPAIGN_INTERLUDES, CAMPAIGN_INTERLUDE_ENCOUNTER_PREFIX, interludeByEncounterId, interludeEligible, interludeSeen } from '../story/campaign47a/interludes.js';
+import { pushCampaignHistory, pushChoiceLog } from '../story/campaign47a/index.js';
+import { CONTRACT_47A_B0_BODY, THREAD_B_FRAGMENT_ID, GRAFFITI } from '../data/narrative.js';
 import { forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { ensureCampaign47aState, failEncounter, initCampaignSidecar, syncObservedBeat } from '../story/campaign47a/index.js';
 import { resetRacingGhostSession } from './racingGhosts.js';
@@ -33,6 +35,18 @@ import { steerIntentToward } from './missions.js';
 // feed and the 12.4 t strain read fire this long after the sample is recovered aboard.
 const CONTRACT_47A_SKIM_DELAY_S = 8;
 const CONTRACT_47A_SKIM_MASS_T = 12.4;
+
+// W-BOOKS-3-4 (§34.7 Books 3–4): VARIANCE ADJUSTMENT's Hawser seam reads honest — three
+// strain spikes hold, the fourth lets go. The counter runs on the live tether:strain
+// envelope while the delivered hull is under load: an excursion above SPIKE latches one
+// spike; the line must drop back under RESET before the next one counts.
+const VARIANCE_SEAM_SPIKE_RATIO = 0.5;
+const VARIANCE_SEAM_RESET_RATIO = 0.15;
+const VARIANCE_SEAM_FAIL_AT = 4;
+// The doubled interdiction contract (Book 4's free choice) is a plain board tag —
+// its consequence arrives six days later on the airlock wall.
+export const CONTRACT_47A_B4_DOUBLED_TAG = 'campaign47a:b4:doubled';
+export const CONTRACT_47A_DOUBLED_WALL_S = 6 * 600; // six sim-days
 
 export const missionStoryOps = {
   // =========================================================================================
@@ -1565,7 +1579,7 @@ export const missionStoryOps = {
     }
   },
 
-  /** Complete B1–B3 only through the authored 47-A contracts. Sidecar observes first;
+  /** Complete B1–B4 only through the authored 47-A contracts. Sidecar observes first;
    * missions remains the sole cursor and reward authority.
    *
    * W-BOOKS-0-2 (§34.7): each Book beat is an ordered script list. A posted book contract
@@ -1574,11 +1588,15 @@ export const missionStoryOps = {
    * pod-rescue set piece, the B3 tow — still settles the entire beat at once: it fills the
    * step log through completeBeatStepsForLegacy. B2's register contract shares the legacy
    * elroy tag, so the legacy set piece is distinguished by mission type
-   * (rescue_under_fire / pod_rescue), never by tag alone. */
+   * (rescue_under_fire / pod_rescue), never by tag alone.
+   *
+   * W-BOOKS-3-4 (§34.7): B4 joins the same machinery — the door's operation contract
+   * (`campaign47a:b4:operation`) is the step that closes Pick a Side after the branch
+   * intro settled the door through _settleContract47aB4Branch. */
   _advanceEmbodiedStoryMission(m) {
     const story = this.state && this.state.story;
     const beat = story && STORY_BEATS[story.beatIndex];
-    if (!beat || beat.beat < 1 || beat.beat > 3 || !m || !m.storyTag) return false;
+    if (!beat || beat.beat < 1 || beat.beat > 4 || !m || !m.storyTag) return false;
     const canon = CAMPAIGN_BEATS[beat.beat];
     const bookTags = new Set();
     for (const step of (canon && canon.steps) || []) {
@@ -1642,6 +1660,48 @@ export const missionStoryOps = {
       });
       m.params.silentRecatDone = true;
     }
+    // W-BOOKS-3-4: the book scenes land their canon consequences on completion —
+    // VARIANCE ADJUSTMENT's delivery arms the seam counter; the maw and the Foreman
+    // close their legs; the B4 door operations file their receipts.
+    const bookScene = m.params && m.params.bookScene;
+    if (bookScene === 'variance_delivery') {
+      story.flags.variance_delivered = true;
+      story.flags.variance_seam_spikes = story.flags.variance_seam_spikes | 0;
+      this.bus.emit('comms:popup', {
+        id: `b3_variance_berth_${m.id}`, sender: 'SLATE', category: 'story', ttl: 9, persist: true,
+        text: 'VARIANCE ADJUSTMENT, Hawser class. Double-pass seam, mine, hand-set. The line reads honest: three spikes she holds — the fourth, she lets go.',
+      });
+    } else if (bookScene === 'feed_the_maw') {
+      story.flags.maw_fed = true;
+      this.bus.emit('comms:popup', {
+        id: `b3_maw_${m.id}`, sender: 'LANE TRAFFIC', category: 'story', ttl: 7, persist: true,
+        text: 'The maw leaves the reactor approach stunned and off the lane. It will den somewhere it can afford to be hungry.',
+      });
+    } else if (bookScene === 'foreman_feud') {
+      story.flags.foreman_settled = true;
+      this.bus.emit('comms:popup', {
+        id: `b3_foreman_${m.id}`, sender: 'YARD FEED', category: 'story', ttl: 7, persist: true,
+        text: 'FOREMAN DOWN. The yard ledger closes the feud; the lane is yours by claim and by weld.',
+      });
+    } else if (bookScene === 'spine_break') {
+      story.flags.spine_break_done = true;
+      this.bus.emit('comms:popup', {
+        id: `b4_spine_${m.id}`, sender: 'MERIDIAN TICKER', category: 'story', ttl: 7, persist: true,
+        text: 'The spine holds. The board moves the price: your door keeps its entry. Coupler Head rating posted to your record.',
+      });
+    } else if (bookScene === 'too_perfect_pack') {
+      story.flags.helix_unmasked = true;
+      this.bus.emit('comms:popup', {
+        id: `b4_pack_${m.id}`, sender: 'IFF REGISTER', category: 'story', ttl: 8, persist: true,
+        text: 'IFF RESOLVES: HELIX PROVISIONING — NOT REACH. The pack was flawless; flawless is a signature too.',
+      });
+    } else if (bookScene === 'barn_raising') {
+      story.flags.barn_raised = true;
+      this.bus.emit('comms:popup', {
+        id: `b4_barn_${m.id}`, sender: 'IO HOMESTEAD', category: 'story', ttl: 7, persist: true,
+        text: 'The frame holds six modules and a name. Before the weld cooled the gate was already behind you. Weld Head rating posted.',
+      });
+    }
     if (!isBeatStepsComplete(this.state, beat.beat)) {
       // A mid-list contract settled — the beat stays open and the board may post the next
       // book job (or nothing, when world work is next).
@@ -1665,7 +1725,8 @@ export const missionStoryOps = {
     const story = this.state && this.state.story;
     if (!story) return false;
     const beat = STORY_BEATS[story.beatIndex];
-    if (!beat || beat.beat < 0 || beat.beat > 3) return false;
+    // W-BOOKS-3-4: beat 4 also records (the door's operation + the Nereid audit step).
+    if (!beat || beat.beat < 0 || beat.beat > 4) return false;
     this._ensureCampaignSidecar();
     const res = recordBeatStep(this.state, signal, p || {}, deferredEnterNow(this.state) || 0);
     if (!res || !res.ok) return false;
@@ -1677,6 +1738,118 @@ export const missionStoryOps = {
       this._refreshEmbodiedStoryBoards();
       this._refreshNavigation({ forceStory: true, silent: true });
     }
+    return true;
+  },
+
+  // =========================================================================================
+  // W-CANON (§34.7 row 537) — THE SIX INTERLUDES AS QUIET SCENES.
+  // The interludes in docs/worldbuilding/story/THE-STORYLINE.md are authored vignette
+  // encounters (src/data/encounters/926–931, gates.externalOnly) that the day planner
+  // never rolls. This stepper is their only caller: once the book cursor has crossed an
+  // interlude's boundary and the player is in flight in the authored sector, it requests
+  // the scene through encounterDirector.requestAuthoredEncounter — the same deterministic
+  // authored-forcing seam the campaign already uses, not a parallel system. A scene that
+  // aborts unseen retries; a scene the player stood in marks story.flags[def.flag] forever.
+  // =========================================================================================
+
+  _stepCampaign47aInterludes(state) {
+    const story = state && state.story;
+    if (!story || !Array.isArray(CAMPAIGN_INTERLUDES)) return false;
+    const now = state.simTime || 0;
+    this._interludeScanAt = this._interludeScanAt || 0;
+    if (now < this._interludeScanAt) return false;
+    this._interludeScanAt = now + 4;
+    const director = this.registry && this.registry.get && this.registry.get('encounterDirector');
+    if (!director || typeof director.requestAuthoredEncounter !== 'function') return false;
+    // The quiet stage holds one interlude at a time — but lane violence never blocks a
+    // log object: it waits off to the side for the pilot to come read it, and a cadence
+    // backstop or ambient scene must not starve the route's owed quiet.
+    const dirState = state.encounterDirector;
+    if (dirState && dirState.live) {
+      for (const liveId of Object.keys(dirState.live)) {
+        if (liveId.startsWith(CAMPAIGN_INTERLUDE_ENCOUNTER_PREFIX)) return false;
+      }
+    }
+    const sectorId = state.world && state.world.currentSectorId;
+    if (!sectorId) return false;
+    const player = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos) return false;
+    this._interludeRetryAt = this._interludeRetryAt || {};
+    for (const def of CAMPAIGN_INTERLUDES) {
+      const eligible = interludeEligible(state, def);
+      if (!eligible.ok) continue;
+      // The scene lands beside the authored station when the pilot is in its home
+      // sector; otherwise it rides the lane a quiet distance off the player's bow —
+      // the log object is lane furniture, and the lane is wherever the pilot is.
+      let anchor = null;
+      if (!eligible.roaming && def.stationId) {
+        const station = this._liveStation(def.stationId);
+        if (station && station.pos && eligible.ok) {
+          anchor = { x: station.pos.x + def.anchorOffset.x, z: station.pos.z + def.anchorOffset.z };
+        }
+      }
+      if (!anchor) anchor = { x: player.pos.x + def.anchorOffset.x, z: player.pos.z + def.anchorOffset.z };
+      const requestAt = this._interludeRetryAt[def.id] || 0;
+      if (now < requestAt) continue;
+      const res = director.requestAuthoredEncounter({
+        shapeId: def.shapeId,
+        encounterId: `${CAMPAIGN_INTERLUDE_ENCOUNTER_PREFIX}${def.id}`,
+        sectorId,
+        anchor,
+        zoneType: 'trade_lane',
+        zoneName: 'INTERLUDE',
+        force: true,
+        data: { interlude: def.id, citation: def.citation },
+      });
+      if (!res || !res.ok) {
+        this._interludeRetryAt[def.id] = now + 45;
+        continue;
+      }
+      if (res.reused !== true) {
+        this.bus.emit('comms:popup', {
+          id: `interlude_ping_${def.id}`,
+          sender: 'LANE RECORD',
+          category: 'story',
+          ttl: 9,
+          persist: true,
+          text: `Something quiet broadcasts off the lane. ${def.citation ? `[${def.citation.split('·')[1] ? def.citation.split('·')[1].trim() : def.citation}]` : ''}`.trim(),
+        });
+      }
+      return true; // one quiet scene at a time — the stage stays empty until this one closes
+    }
+    return false;
+  },
+
+  /** Durable receipt: standing in the scene marks the story flag + the sidecar ledger.
+   *  Aborted resolutions (the pilot burned past, the prop died) mark nothing — the
+   *  scene stays owed and the stepper re-requests it on a later quiet pass. */
+  _observeCampaign47aInterludeResolved(p) {
+    const def = p && p.encounterId ? interludeByEncounterId(p.encounterId) : null;
+    if (!def) return false;
+    const outcome = String(p.outcome || '');
+    if (outcome.startsWith('aborted')) return false;
+    if (interludeSeen(this.state, def)) return true;
+    const story = this.state.story;
+    if (!story) return false;
+    story.flags = story.flags || {};
+    story.flags[def.flag] = true;
+    this._ensureCampaignSidecar();
+    const own = ensureCampaign47aState(this.state);
+    const simTime = this.state.simTime || 0;
+    pushChoiceLog(own, {
+      kind: 'campaign_interlude',
+      id: def.id,
+      encounterId: p.encounterId,
+      outcome,
+      sectorId: p.sectorId || null,
+      citation: def.citation,
+    }, simTime);
+    pushCampaignHistory(own, {
+      kind: 'campaign_interlude_seen',
+      id: def.id,
+      outcome,
+      citation: def.citation,
+    }, simTime);
     return true;
   },
 
@@ -1859,7 +2032,9 @@ export const missionStoryOps = {
       storyBranch: branch,
       physicalVerb: inst.params && inst.params.physicalVerb || null,
     }, this.state.simTime || 0);
-    if (!observed || !observed.ok || !isBeatStepsComplete(this.state, 4)) return;
+    // W-BOOKS-3-4: the intro step is the only gate here — the door's operation stays
+    // pending behind it, so isBeatStepsComplete(4) is intentionally NOT the check.
+    if (!observed || !observed.ok || observed.stepId !== 'branch_intro_accept') return;
     inst.storyTag = STORY_BRANCH_INTRO_TAG;
     inst.storyBranch = branch;
     if (kind === 'legacy') {
@@ -1899,7 +2074,22 @@ export const missionStoryOps = {
     this.bus.emit('faction:repDelta', { factionId: m.factionId, delta: 15, reason: 'story_branch' });
     const opposing = branch === 'patrol' ? 'faction_free' : (branch === 'free' ? 'faction_scn' : 'faction_dmc');
     this.bus.emit('faction:repDelta', { factionId: opposing, delta: -10, reason: 'story_branch_opposing' });
-    this._advanceStory(beat);
+    if (legacy) {
+      // Pre-operation saves settle the whole book at the door. Fill the step log so the
+      // sidecar reads the played verb — then keep the old instant advance.
+      completeBeatStepsForLegacy(this.state, 4, this.state.simTime || 0, 'legacy:branch_intro', {
+        physicalVerb: m.params && m.params.physicalVerb || null,
+        completionMethod: m.params && m.params.completionMethod || null,
+      });
+      this._advanceStory(beat);
+      return true;
+    }
+    // W-BOOKS-3-4 (§34.7 Book 4): the door is settled, the book is not — the door's own
+    // operation (Spine Break / the Weighing / Barn Raising) posts next and the book
+    // closes on its completion through _advanceEmbodiedStoryMission.
+    this._refreshEmbodiedStoryBoards();
+    this._refreshNavigation({ forceStory: true, silent: true });
+    this._sayStoryLine('The door is yours. Its operation is on the board.', 6);
     return true;
   },
 
@@ -2154,6 +2344,147 @@ export const missionStoryOps = {
     this.bus.emit('mission:updated', { missionId: mission.id, tracked: true, source: CONTRACT_47A_B0_TAG });
   },
 
+  // =========================================================================================
+  // W-BOOKS-3-4 — VARIANCE ADJUSTMENT, the doubled contract, the wall line (§34.7).
+  //
+  // The Hawser-class tug Slate delivers in Book 3 reads honest: her double-pass seam
+  // holds three strain spikes and lets go at the fourth. The counter runs on the live
+  // tether:strain envelope — a player-actionable physical signal, not a script timer —
+  // armed by variance_delivered and laid to rest when Slate welds the column entry.
+  // =========================================================================================
+  _onBookVarianceStrain(p) {
+    const story = this.state && this.state.story;
+    const flags = story && story.flags;
+    if (!flags || flags.variance_delivered !== true) return false;
+    if (flags.slate_column_entry === true) return false;
+    const ratio = Number(p && p.ratio) || 0;
+    if (ratio < VARIANCE_SEAM_RESET_RATIO) {
+      this._varianceStrainArmed = false;
+      return false;
+    }
+    if (ratio < VARIANCE_SEAM_SPIKE_RATIO || this._varianceStrainArmed === true) return false;
+    this._varianceStrainArmed = true;
+    const spikes = (flags.variance_seam_spikes | 0) + 1;
+    flags.variance_seam_spikes = spikes;
+    const lines = [
+      null,
+      'STRAIN SPIKE 1 — the Hawser seam holds. Slate\u2019s double pass reads true.',
+      'STRAIN SPIKE 2 — the seam groans. The gauge still reads true.',
+      'STRAIN SPIKE 3 — the seam sings. One more and the weld is a rumor.',
+    ];
+    if (spikes < VARIANCE_SEAM_FAIL_AT) {
+      this.bus.emit('comms:popup', {
+        id: `b3_seam_${spikes}`, sender: 'LINE STRAIN', category: 'story', ttl: 6, persist: true,
+        text: lines[spikes] || `STRAIN SPIKE ${spikes} — the seam holds.`,
+      });
+      return true;
+    }
+    flags.variance_seam_failed = true;
+    flags.variance_seam_spikes = 0;
+    this._varianceStrainArmed = false;
+    this.bus.emit('comms:popup', {
+      id: 'b3_seam_fail', sender: 'LINE STRAIN', category: 'story', ttl: 10, persist: true,
+      text: 'FOURTH SPIKE — VARIANCE ADJUSTMENT\u2019S SEAM LETS GO. The weld opens like a mouth. Slate welds it at the yard — second pass, narrower.',
+    });
+    this.bus.emit('story:varianceSeamFailed', { spikes: VARIANCE_SEAM_FAIL_AT });
+    return true;
+  },
+
+  /** Slate's column entry: dock at the yard with the blown seam and the weld fixes it —
+   *  the second pass is narrower, and the column keeps its mark. */
+  _resolveVarianceSeamWeld(stationId) {
+    const story = this.state && this.state.story;
+    const flags = story && story.flags;
+    if (!flags || flags.variance_seam_failed !== true) return false;
+    if (stationId !== 'station_tethys' && stationId !== 'station_forge') return false;
+    flags.variance_seam_failed = false;
+    flags.variance_seam_spikes = 0;
+    flags.slate_column_entry = true;
+    this.bus.emit('comms:popup', {
+      id: 'b3_seam_weld', sender: 'SLATE', category: 'story', ttl: 9, persist: true,
+      text: 'Second pass, narrower — it holds because it has to. Your mark goes in the column with the rest of them.',
+    });
+    return true;
+  },
+
+  /**
+   * The doubled interdiction contract (06: "in plain type on the board: DOUBLED") is a
+   * free player choice beside the door — never a book step. Completion pays double now
+   * and files the wall line for six days later, canon only when the job was taken.
+   */
+  _resolveContract47aB4Doubled(m) {
+    if (!m || m.storyTag !== CONTRACT_47A_B4_DOUBLED_TAG) return false;
+    const story = this.state && this.state.story;
+    if (!story) return false;
+    story.flags = story.flags || {};
+    story.flags.doubled_contract_taken = true;
+    story.flags.doubled_wall_at = (this.state.simTime || 0) + CONTRACT_47A_DOUBLED_WALL_S;
+    this.bus.emit('comms:popup', {
+      id: `b4_doubled_paid_${m.id}`, sender: 'BOUNTY REGISTER', category: 'story', ttl: 7, persist: true,
+      text: 'BOUNTY COLLECTED — FEE PAID DOUBLE. The register closes the tag without a remark.',
+    });
+    return true;
+  },
+
+  /** Six days after the doubled job the airlock answers: the canon wall line, only
+   *  when the doubled contract was actually taken. Runs in missions.update. */
+  _stepBookDoubledWall(state) {
+    const story = this.state && this.state.story;
+    const flags = story && story.flags;
+    const at = flags && flags.doubled_wall_at;
+    if (!at || (state.simTime || 0) < at) return false;
+    delete flags.doubled_wall_at;
+    flags.doubled_wall_shown = true;
+    // Aimed a little less steady for a while: the wall reads you back.
+    this.bus.emit('graffiti:show', {
+      line: GRAFFITI.YOU_READ_THE_TAG, where: 'airlock', author: 'unknown',
+    });
+    this.bus.emit('comms:popup', {
+      id: 'b4_doubled_wall', sender: 'AIRLOCK', category: 'story', ttl: 10, persist: true,
+      text: `Airlock wall, fresh weld paint, hand-lettered: ${GRAFFITI.YOU_READ_THE_TAG} Nobody logged the write.`,
+    });
+    return true;
+  },
+
+  /** Accept-time flavor for the Books 3–4 board rows — Slate's handover, the maw's
+   *  appetite, the Foreman's claim, the doubled tag's plain type. */
+  _onBookContractAccepted(inst) {
+    const scene = inst && inst.params && inst.params.bookScene;
+    if (!scene) return false;
+    const popup = (sender, text, ttl = 7) => this.bus.emit('comms:popup', {
+      id: `b34_accept_${scene}_${inst.id}`, sender, category: 'story', ttl, persist: true, text,
+    });
+    if (scene === 'variance_delivery') {
+      popup('SLATE', 'She is called VARIANCE ADJUSTMENT. Hawser class, mine — two passes on the seam, hand-set. Tow the core in and fly her like you mean it.', 8);
+      return true;
+    }
+    if (scene === 'feed_the_maw') {
+      popup('CERES TRAFFIC', 'A Furnace maw is working the reactor approach. Hot slag knocks it stupid — three solid hits — then drag it off the lane.', 7);
+      return true;
+    }
+    if (scene === 'foreman_feud') {
+      popup('YARD FEED', 'The Mirrorjaw Foreman is calling every weld on the lane an unpaid debt. The yard wants the feud settled — one way reads louder.', 7);
+      return true;
+    }
+    if (scene === 'spine_break') {
+      popup('MERIDIAN TICKER', 'The spine is already bleeding containers. Re-couple the train under fire or hold it long enough to count.', 7);
+      return true;
+    }
+    if (scene === 'too_perfect_pack') {
+      popup('CONCORD WEIR', 'The pack on the weir flies Reach colors with no slag on the welds. Run the Weighing honest; the pattern will tell on itself.', 7);
+      return true;
+    }
+    if (scene === 'barn_raising') {
+      popup('IO HOMESTEAD', 'Six modules and a frame before the Nereid gate welds. Whatever you tow becomes the wall.', 7);
+      return true;
+    }
+    if (scene === 'doubled_interdiction') {
+      popup('BOUNTY REGISTER', 'TAG: HOSTILE (REGISTERED CIVILIAN — FILED AS HOSTILE). Fee paid double. The board asks no questions in plain type.', 7);
+      return true;
+    }
+    return false;
+  },
+
   /**
    * W-BOOKS-0-2: the departure rail hands the player the beat's NEXT posted job — the
    * book's pending contract is resolved from the sidecar step log (so an active legacy
@@ -2196,17 +2527,16 @@ export const missionStoryOps = {
   },
 
   _activateContract47aB3OnDeparture() {
-    const story = this.state && this.state.story;
-    if (!story || story.beatIndex !== 3) return false;
-    const active = (this.state.missions.active || []).find((m) => m && m.status === 'active' && m.storyTag === CONTRACT_47A_B3_TAG);
-    if (active) {
-      this.trackMission(active.id, { silent: true });
-      return true;
-    }
-    const board = this.ensureBoard('station_tethys');
-    const offer = board && board.slots && board.slots.find((row) => row && row.storyTag === CONTRACT_47A_B3_TAG);
-    if (!offer) return false;
-    return this.acceptMission(offer.id);
+    // W-BOOKS-3-4: the Book 3 list resolves through the same pending-step rail as
+    // B1/B2 — an active legacy `campaign47a:b3:*` contract still tracks first.
+    return this._activateBookContractOnDeparture(3);
+  },
+
+  _activateContract47aB4OnDeparture() {
+    // W-BOOKS-3-4: once the door is settled the operation contract posts like any
+    // book job; while the intro is still open the intro-kind marker has no
+    // stationId, so this is a safe no-op on the door's own board flow.
+    return this._activateBookContractOnDeparture(4);
   },
 
   newGame() {

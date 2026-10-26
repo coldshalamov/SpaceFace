@@ -549,6 +549,15 @@ function mergeSims(parts) {
   };
 }
 
+// Gun horizon — "eventually", not a budget. Since ROCK-GUN (row 482) cut the starter Pulse
+// to dmg 5 at 5.5 rps, the catalog's tankiest hull (Iron Maw: 2400 shield + 2200 armor +
+// 6000 hull behind armorFlat 3) takes ~833 s of pulse fire to finish. The old 600 s window
+// ran out first and reported dead:false — a harness artifact, not real immunity: the law is
+// "guns the slow way, never the only way". Twenty minutes covers the slowest legal
+// starter-gun kill in the catalog; a weapon that truly cannot finish (flat DR ≥ dmg) still
+// returns dead:false no matter how wide the window.
+const GUN_KILL_HORIZON_S = 1200;
+
 /**
  * Kill the champion with thrown mass (or the same slam used as machinery payoff).
  * Guns use the named weapon. No invuln flag, catalog hull, fixed seed.
@@ -574,7 +583,7 @@ export function simulateBossKill({ wave, weaponId = 'wpn_pulse_laser_s', seed = 
       combatant,
       damagePerHit: gunDamage(weaponId),
       intervalS: gunInterval(weaponId),
-      maxS: 600,
+      maxS: GUN_KILL_HORIZON_S,
       count: pkg.count,
     }));
   }

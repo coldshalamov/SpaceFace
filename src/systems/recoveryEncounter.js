@@ -145,6 +145,12 @@ function normalizeState(data) {
   return normalized;
 }
 
+function committedRecoveryChoice(record) {
+  const choice = record && record.rewardPlan && record.rewardPlan.choice;
+  return CHOICE[choice] && Object.values(record.recoveredCargo || {}).some(amount => amount > 0)
+    ? choice : null;
+}
+
 function publicReadout(record, state) {
   if (!record) return null;
   return {
@@ -167,6 +173,7 @@ function publicReadout(record, state) {
     stabilizationMode: record.stabilizationMode || null,
     stabilizeRequired_s: STABILIZE_S,
     retryReason: record.retryReason || null,
+    committedChoice: committedRecoveryChoice(record),
     towClear_wu: TOW_CLEAR_WU,
   };
 }
@@ -475,7 +482,11 @@ export const recoveryEncounter = {
   },
 
   _armHazard(record, wreck) {
-    record.hazardDueAt = Number(this.state.simTime || 0) + HAZARD_WINDOW_S;
+    // A restored record already owns its fuse deadline. Materializing a new body
+    // must resume that hazard rather than granting another twelve seconds.
+    if (!Number.isFinite(record.hazardDueAt)) {
+      record.hazardDueAt = Number(this.state.simTime || 0) + HAZARD_WINDOW_S;
+    }
     const actions = this.registry && this.registry.get && this.registry.get('salvageActions');
     if (wreck.data) wreck.data.unstableReactor = true;
     if (actions && typeof actions._annotate === 'function') actions._annotate(wreck);
@@ -536,6 +547,14 @@ export const recoveryEncounter = {
     const record = this._recordFromPayload(payload);
     const choice = String(payload.choice || payload.optionId || '');
     if (!record || record.phase !== 'decision' || !CHOICE[choice]) return false;
+    const committedChoice = committedRecoveryChoice(record);
+    if (committedChoice && choice !== committedChoice) {
+      // Cargo already removed belongs to the chosen outcome. A full-hold retry
+      // cannot turn partial stripping into a rescue payout plus free components.
+      record.retryReason = 'cargo_full';
+      this._emit('recovery:retryAvailable', publicReadout(record, this.state));
+      return false;
+    }
     if (choice === 'rescue' && !record.hasSurvivor) {
       record.retryReason = 'no_life_signs';
       this._emit('recovery:retryAvailable', publicReadout(record, this.state));
@@ -616,7 +635,9 @@ export const recoveryEncounter = {
     own.outcomes[record.id] = receipt;
     own.receipts.push(receipt);
     while (own.receipts.length > RECEIPT_CAP) own.receipts.shift();
-    own.activeId = null;
+    // A background wreck can be destroyed or beam-stripped after another signal
+    // became active. Retire this call without hiding the player's current rescue.
+    if (own.activeId === record.id) own.activeId = null;
     const wreck = this._wreck(record);
     if (wreck) this._applyRecordToWreck(record, wreck);
     this._emit('recovery:completed', receiptClone(receipt));
@@ -730,6 +751,11 @@ export const recoveryEncounter = {
     data.recoveryClosed = record.phase === 'completed' || record.phase === 'failed';
     data.salvagePool = {};
     data.salvageTimeLeft = 0;
+    // Continue rebuilds physical bodies from the semantic sidecar. Reinstall the
+    // live salvage reactor so the saved hazard can still be vented or detonate.
+    if (record.phase === 'hazard' && (!data.unstableReactor || typeof data.unstableReactor !== 'object')) {
+      this._armHazard(record, wreck);
+    }
     if (record.phase === 'completed') data.scanLabel = `Recovered Derelict - ${String(record.outcome || 'closed').replace(/_/g, ' ')}`;
     else if (record.phase === 'failed') data.scanLabel = 'Burned Derelict - recovery closed';
     else data.scanLabel = record.scanned ? record.conditionLabel : 'Unidentified Derelict';
@@ -770,7 +796,11 @@ export const recoveryEncounter = {
 
   _recordByEntity(entityId) {
     if (entityId == null) return null;
-    return Object.values(ensureState(this.state).records).find((record) => record && record.entityId === entityId) || null;
+    const own = ensureState(this.state);
+    // Entity ids recycle. Historical receipts keep their old body id, but must
+    // never intercept destruction, salvage or hazard events for a later wreck.
+    return Object.values(own.records).find((record) => record && record.entityId === entityId
+      && !own.outcomes[record.id]) || null;
   },
 
   _wreck(record) {

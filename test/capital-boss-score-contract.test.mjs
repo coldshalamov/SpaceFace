@@ -55,7 +55,8 @@ const VOCABULARY = Object.freeze({
 
 test('every shipped capital score satisfies the authored telegraph contract', () => {
   const rows = Object.values(CAPITAL_BOSS_ENCOUNTERS);
-  assert.equal(rows.length, 8, 'the seven established capitals and Last Argument remain catalogued');
+  assert.equal(rows.length, 14,
+    'the seven established capitals, the six W-COLOSSI additions (row 547), and Last Argument remain catalogued');
   const failures = [];
   for (const encounter of rows) {
     try {

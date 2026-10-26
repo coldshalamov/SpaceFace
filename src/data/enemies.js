@@ -687,6 +687,214 @@ export const ENEMY_TYPES = [
     behavior: 'light engineered cutter; locks one crossing, misses when displaced, exposes its side in recovery',
     loot: { creditsRange: [80, 180], drops: [{ id: 'cmdty_electronics', chance: 0.45, qtyRange: [1, 2] }] },
   },
+  // ── W-COLOSSI (build_map row 547, expansion 07 §5) ─────────────────────────────────────
+  // Six more named set-piece hulls the wave owner hands to an authored capital score. The law
+  // they share: no health bar — the boss IS its physical parts. The score's plates tear off on
+  // a held line and leave tetherable slabs; the mounts below are destructible turret
+  // subsystems through the ordinary machinery; and the weak arc is authored where the body
+  // says it should be. Zero pay and no loot for the same reason the other survival champions
+  // carry none: combat pays d.bountyCr/d.loot without a run-ownership gate.
+  //
+  // NEST CARRIER — a Reach freighter gutted into a wasp nest (Charon custom: two belly doors,
+  // the launch bays behind them, then the drive). Ponderous hauler; its guns are gunwale
+  // mounts between the door tracks, and its "flood" is the score's wasp wing. The belly is
+  // the soft arc: the doors and the bays behind them all live underneath.
+  {
+    id: 'nest_carrier', name: 'Nest Carrier', shipId: 'ship_atlas',
+    silhouette: 'trader_haul', factionId: 'faction_reach',
+    aiArchetype: 'miniboss_capital', levelRange: [8, 12],
+    combatDoctrineId: 'capital_broadside',
+    hull: 460, armor: 110, armorFlat: 2, shield: 0, shieldRegen: 0,
+    cap: 260, capRegen: 24,
+    maxSpeed: 58, accel: 22, turnRate: 0.45, collisionRadius: 30, mass: 520,
+    weapons: [
+      // Gunwale mounts between the door tracks — destructible through the ordinary turret
+      // subsystem machinery. Kill a mount and that flank of the launch wash goes quiet.
+      { id: 'wpn_autocannon_m', count: 2, turret: true },
+    ],
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 240, leashRadius: 2600 },
+    subsystems: { turretHp: 180 },
+    weakPoint: {
+      label: 'BELLY DOORS', arcCenter: -Math.PI / 2, arcHalfWidth: 0.55,
+      bonusMult: 1.45, hint: 'The nest is under the hull — work the doors off and the bays are open.',
+    },
+    physicalClass: 'terrain',
+    telegraph: {
+      bark: 'warn', cue: 'pd_curtain',
+      line: 'A Reach gut-job is birthing wasps. The belly doors are the nest — tear them and take the fight inside.',
+    },
+    counterHint: 'Latch a belly door and pull it free, then feed the nest its own wasps — every door and every wasp is ammunition.',
+    behavior: 'gutted freighter nursery: belly launch washes, gunwale mounts, wasp wing; the belly is the soft arc',
+    bountyCr: 0, shipClass: 'capital',
+    loot: null,
+  },
+  // CASKET WORM — the segmented derelict-worm first sighted at the Ceres wreck (07 §5: "cut
+  // the middle for the pain loop"). A real hull that fights like the Tendril's grave-bred
+  // cousin: committed slither passes, a trailing rake, and three armored segment plates —
+  // fore, mid, aft — that tear free one at a time as ammunition. The mid segment covers the
+  // drive, so cutting the middle literally slows the thing.
+  {
+    id: 'casket_worm', name: 'Casket Worm', shipId: 'ship_ironback',
+    silhouette: 'dreadnought_enemy', factionId: 'faction_reach',
+    aiArchetype: 'brawler', levelRange: [4, 6],
+    combatDoctrineId: 'brawler_commit',
+    hull: 560, armor: 100, armorFlat: 1, shield: 0, shieldRegen: 0,
+    cap: 280, capRegen: 26,
+    maxSpeed: 88, accel: 55, turnRate: 1.1, collisionRadius: 28, mass: 380,
+    weapons: [
+      // The head's bite-maw: a light spit so it is never free to ignore you between passes —
+      // the body raking behind the head is the real weapon.
+      { id: 'wpn_plasma_cannon_m', dmgOverride: 8, rofOverride: 0.8 },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 190, leashRadius: 2600 },
+    weakPoint: {
+      label: 'MID SEGMENT', arcCenter: Math.PI, arcHalfWidth: 0.5,
+      bonusMult: 1.35, hint: 'Cut the middle — the tail half keeps the pain loop.',
+    },
+    physicalClass: 'specialist',
+    telegraph: {
+      bark: 'warn', cue: 'engine_flare',
+      line: 'A derelict worm works the grave. The segments are separate — cut the middle and feed the rest to itself.',
+    },
+    counterHint: 'Every segment plate is ammunition — tear the middle out from under it and throw it back at the head.',
+    behavior: 'segmented derelict worm: committed slither passes, trailing rake, three tearable segment plates',
+    bountyCr: 0, shipClass: 'capital',
+    loot: null,
+  },
+  // FURNACE MAW — the Vesta furnace that learned to eat ships (07 §5: "radiator plates,
+  // the feeding cavity — the hot plates ignite spores"). A squat industrial eater that
+  // opens its belly cavity to feed; the radiator plates hanging off its flanks are the
+  // armor you rip, and the cavity behind them is the weak arc you feed.
+  {
+    id: 'furnace_maw', name: 'Furnace Maw', shipId: 'ship_ironback',
+    silhouette: 'bruiser_armor', factionId: 'faction_pitborn',
+    aiArchetype: 'miniboss_capital', levelRange: [8, 12],
+    combatDoctrineId: 'capital_broadside',
+    hull: 680, armor: 150, armorFlat: 3, shield: 80, shieldRegen: 0,
+    cap: 300, capRegen: 28,
+    maxSpeed: 62, accel: 26, turnRate: 0.5, collisionRadius: 34, mass: 560,
+    weapons: [
+      // Jaw-mount chew guns — three destructible turrets ringing the mouth.
+      { id: 'wpn_plasma_cannon_m', count: 3, turret: true, dmgOverride: 9, rofOverride: 0.7 },
+      { id: 'wpn_flak_turret_s', defensiveOnly: true },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 220, leashRadius: 2600 },
+    subsystems: { turretHp: 200 },
+    weakPoint: {
+      label: 'FEEDING CAVITY', arcCenter: 0, arcHalfWidth: 0.5,
+      bonusMult: 1.5, hint: 'The maw is the way in — a hot plate fed back to it is the best ammunition in the room.',
+    },
+    physicalClass: 'terrain',
+    telegraph: {
+      bark: 'warn', cue: 'broadside_charge',
+      line: 'The furnace is eating. Its radiator plates glow — rip them loose and feed them back.',
+    },
+    counterHint: 'Rip a radiator plate and feed it to the maw — the cavity only opens to feed, and the hot plates are the best ammunition in the room.',
+    behavior: 'industrial furnace eater: thermal blooms, committed feeding passes, tearable radiator plates and a mouth weak arc',
+    bountyCr: 0, shipClass: 'capital',
+    loot: null,
+  },
+  // YARDMASTER — the Pitborn's Katamari colossus: a magnet core wearing a ball of accreted
+  // wreck (07 §5: "accreted wreck pieces, piece by piece — the magnet core last"). The
+  // score's plates are the biggest accreted chunks; the core is the deepest tear. Its flak
+  // mounts are junk guns bolted into the pile — destructible like everything it wears.
+  {
+    id: 'yardmaster', name: 'The Yardmaster', shipId: 'ship_colossus',
+    silhouette: 'bruiser_armor', factionId: 'faction_pitborn',
+    aiArchetype: 'miniboss_capital', levelRange: [10, 14],
+    combatDoctrineId: 'capital_broadside',
+    hull: 980, armor: 160, armorFlat: 2, shield: 0, shieldRegen: 0,
+    cap: 340, capRegen: 30,
+    maxSpeed: 70, accel: 40, turnRate: 0.7, collisionRadius: 40, mass: 680,
+    weapons: [
+      // Junk guns bolted into the pile — each mount is a destructible turret subsystem.
+      { id: 'wpn_flak_turret_s', count: 3, turret: true },
+      { id: 'wpn_concussion_cannon_m' },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 210, leashRadius: 2800 },
+    subsystems: { turretHp: 200 },
+    weakPoint: {
+      label: 'MAGNET CORE', arcCenter: Math.PI, arcHalfWidth: 0.42,
+      bonusMult: 1.5, hint: 'The core is the heart under the pile — strip it piece by piece.',
+    },
+    physicalClass: 'terrain',
+    telegraph: {
+      bark: 'warn', cue: 'broadside_charge',
+      line: 'The Yardmaster is rolling wreckage. Every piece of it is ammunition — take it apart.',
+    },
+    counterHint: 'The ball is held together by one magnet core — rip the accreted pieces, throw them back, and take the core last.',
+    behavior: 'accreted wreck ball: committed rolling passes, magnet sweeps, piece-by-piece teardown with the core deepest',
+    bountyCr: 0, shipClass: 'capital',
+    loot: null,
+  },
+  // ADJUDICATOR 44-C — a Helix paperwork capital that fights by closing the room around you
+  // (07 §5: "seal emitters, the seizure clamp, the gate weld"). Ref-file voice, interdict
+  // geometry: seal emitters on the flanks, a bow seizure clamp, and the last act literally
+  // welds the exit. The clamp and the emitters are the parts — the torn clamp slab is the
+  // best thing in the room to throw.
+  {
+    id: 'adjudicator_44c', name: 'Adjudicator 44-C', shipId: 'ship_warden',
+    silhouette: 'patrol_interdict', factionId: 'faction_helix',
+    aiArchetype: 'miniboss_capital', levelRange: [10, 14],
+    combatDoctrineId: 'capital_broadside',
+    hull: 640, armor: 140, armorFlat: 2, shield: 200, shieldRegen: 12,
+    cap: 320, capRegen: 30,
+    maxSpeed: 74, accel: 30, turnRate: 0.6, collisionRadius: 30, mass: 420,
+    weapons: [
+      // Seal emitters — ion lances on destructible mounts; a dead emitter loses its rail.
+      { id: 'wpn_emp_disruptor_m', count: 2, turret: true },
+      { id: 'wpn_pulse_laser_m' },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 230, leashRadius: 2800 },
+    subsystems: { turretHp: 170 },
+    weakPoint: {
+      label: 'SEAL HOUSING', arcCenter: Math.PI, arcHalfWidth: 0.5,
+      bonusMult: 1.4, hint: 'The emitters sit in the stern housing — the audit papers are thin back there.',
+    },
+    physicalClass: 'terrain',
+    telegraph: {
+      bark: 'warn', cue: 'lawful_interdict',
+      line: 'Adjudicator 44-C declares the lane closed for audit. The seal emitters and the clamp are detachable — the paperwork is not.',
+    },
+    counterHint: 'Tear the seal emitters to kill the rails, then pull the seizure clamp — its own clamp is the best thing in the room to throw.',
+    behavior: 'gate official: rail lanes, committed seizure runs, clamp that welds the room shut; all its hardware detaches',
+    bountyCr: 0, shipClass: 'capital',
+    loot: null,
+  },
+  // HIVE-HULK — the deep-tide capital the bloom moved into (07 §5: "coupling nodes, armour
+  // plates, bay doors, the core node — nodes kill a panic cascade, bays are full of mites,
+  // the armour is T4 ammunition"). The largest parts pile outside the Iron Maw: four tearable
+  // plates including two coupling nodes that share the line-tether cover — both must come
+  // free before the hulk's spool is bare — plus the bay doors, which are rope-only: the
+  // hulk never sheds its own hoard.
+  {
+    id: 'hive_hulk', name: 'Hive-Hulk', shipId: 'ship_leviathan',
+    silhouette: 'dreadnought_enemy', factionId: 'faction_reach',
+    aiArchetype: 'miniboss_capital', levelRange: [12, 16],
+    combatDoctrineId: 'capital_broadside',
+    hull: 1100, armor: 180, armorFlat: 3, shield: 0, shieldRegen: 0,
+    cap: 380, capRegen: 32,
+    maxSpeed: 52, accel: 18, turnRate: 0.4, collisionRadius: 44, mass: 720,
+    weapons: [
+      // Mite-spitters grown over four old mounts — destructible turret subsystems.
+      { id: 'wpn_plasma_cannon_m', count: 4, turret: true, dmgOverride: 10, rofOverride: 0.6 },
+    ],
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 260, leashRadius: 3000 },
+    subsystems: { turretHp: 240 },
+    weakPoint: {
+      label: 'CORE NODE', arcCenter: -Math.PI / 2, arcHalfWidth: 0.45,
+      bonusMult: 1.5, hint: 'The bloom keeps its heart amidships under the bays — strip to it.',
+    },
+    physicalClass: 'terrain',
+    telegraph: {
+      bark: 'warn', cue: 'pd_curtain',
+      line: 'Something moved into that hulk. Coupling nodes, armour, bay doors — it is all parts, and it is all ammunition.',
+    },
+    counterHint: 'Cut the coupling nodes to panic the hoard, tear the armour belt, and rope the bay doors — the hulk never gives a part up on its own.',
+    behavior: 'bloom-colonized capital: ion node cascades, armour plates, mite bays, the deepest parts pile in the roster',
+    bountyCr: 0, shipClass: 'capital',
+    loot: null,
+  },
   LAST_ARGUMENT_ENEMY,
   KILNBACK_ENEMY,
   MOTH_ENEMY,

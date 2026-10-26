@@ -167,7 +167,7 @@ export const spec = {
       "verb": "await",
       "timeoutS": 120,
       "timeoutLine": "HX-12: The 24 cr stays spent — the relief still runs on your credit at Refinery Approach; the close-in just never came — BOOT ON THE REFINERY APPROACH.",
-      "keepMotion": true,
+      "keepMotion": false,
       "steps": [
         {
           "kind": "meet",

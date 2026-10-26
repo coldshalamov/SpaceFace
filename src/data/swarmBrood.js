@@ -94,6 +94,12 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     score: 12,
     telegraph: { bark: 'warn', line: 'The mites flock and dive. The room is full of ammunition.', cue: 'engine_flare' },
     counter: 'They flock and dive. Sweep them with the room.',
+    deathLeaves: 'husk shards (throwable)',
+    // W-BLOOM-LOW remains: `kind` names the authored throwable; `splashRadius`>0 bursts and
+    // spends on impact, `glueS`>0 sticks and slows instead of killing, `whipMult` widens the
+    // player's swing while the body is held on the line. Bare `{kind,mass,radius}` is plain
+    // thrown mass that keeps flying until it despawns.
+    remains: { kind: 'husk_shards', name: 'Husk shards', mass: 6, radius: 2.6 },
     bodyColor: [0.62, 0.30, 0.16],
     bodyEmissive: [0.55, 0.14, 0.05],
   },
@@ -112,8 +118,36 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     score: 25,
     telegraph: { bark: 'warn', line: 'A spitter arcs acid — the marker is where it lands.', cue: 'weapon_charge' },
     counter: 'It lobs acid. Dodge the marker, work the throw.',
+    deathLeaves: 'acid sac (a thrown sac splashes)',
+    remains: { kind: 'acid_sac', name: 'Acid sac', mass: 14, radius: 4, splashRadius: 30 },
     bodyColor: [0.18, 0.46, 0.22],
     bodyEmissive: [0.10, 0.34, 0.10],
+  },
+  {
+    id: 'spore_drift',
+    name: 'Spore Drift',
+    role: 'hazard',
+    fromWave: 5,
+    weight: 2,
+    radius: 7.0,
+    mass: 4,
+    hull: 1,
+    speed: 14,
+    turn: 0.9,
+    credits: 1,
+    score: 8,
+    telegraph: { bark: 'warn', line: 'A green haze drifts across the field — it clings to a warm hull.', cue: 'engine_flare' },
+    counter: 'It is only a cloud. Burn it or blow it apart — never fly through it slow.',
+    // W-BLOOM-LOW T0: a sticky cloud, not a hunter. `hazard` marks it out of the attack
+    // language; `blastOnly` means only an explosion cause kills it — whips, plows and
+    // terrain just blow it around, which is the counter the spec authors.
+    hazard: true,
+    blastOnly: true,
+    slowRadius: 26,
+    slowAccel: 34,
+    deathLeaves: 'nothing; it clears',
+    bodyColor: [0.16, 0.52, 0.22],
+    bodyEmissive: [0.06, 0.34, 0.10],
   },
   {
     id: 'charger',
@@ -130,8 +164,37 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     score: 30,
     telegraph: { bark: 'warn', line: 'The charger squares up — the line is its committed pass.', cue: 'engine_flare' },
     counter: 'It lines a dash. Sidestep — feed it a rock.',
+    deathLeaves: 'horn plate (heavy throwable)',
+    remains: { kind: 'horn_plate', name: 'Horn plate', mass: 60, radius: 6 },
     bodyColor: [0.50, 0.16, 0.16],
     bodyEmissive: [0.40, 0.06, 0.04],
+  },
+  {
+    id: 'lantern_cyst',
+    name: 'Lantern Cyst',
+    role: 'bomb',
+    fromWave: 9,
+    weight: 2,
+    radius: 4.4,
+    mass: 22,
+    hull: 6,
+    speed: 18,
+    turn: 1.4,
+    credits: 3,
+    score: 34,
+    telegraph: { bark: 'warn', line: 'The cyst\'s glow brightens as it closes — it is about to burst.', cue: 'weapon_charge' },
+    counter: 'It is a bomb drifting to your heat. Grab it, throw it into the pack.',
+    // W-BLOOM-LOW T1: seeks the hot signature; PRIME (its glow) telegraphs the burst that
+    // fires whenever it dies — thrown into a pack it is the player's bomb, untouched it is
+    // the pack's. `deathShove` is the spore burst that shoves everything near the kill.
+    seeksHeat: true,
+    primeRange: 70,
+    primeS: 1.1,
+    burstRadius: 90,
+    burstDv: 120,
+    deathLeaves: 'spore burst (shoves everything)',
+    bodyColor: [0.55, 0.62, 0.14],
+    bodyEmissive: [0.55, 0.50, 0.08],
   },
   {
     id: 'leecher',
@@ -148,8 +211,88 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     score: 22,
     telegraph: { bark: 'warn', line: 'The leecher wants your hull — it drags until you shed it.', cue: 'pd_curtain' },
     counter: 'It latches and slows you. Scrape a wall to shed it.',
+    deathLeaves: 'the leech, still sticky (glue ammunition)',
+    remains: { kind: 'leech_glue', name: 'Still leech', mass: 9, radius: 3.2, glueS: 3 },
     bodyColor: [0.36, 0.20, 0.52],
     bodyEmissive: [0.22, 0.10, 0.38],
+  },
+  {
+    id: 'glassback',
+    name: 'Glassback',
+    role: 'armor',
+    fromWave: 13,
+    weight: 2,
+    radius: 6.2,
+    mass: 80,
+    hull: 60,
+    speed: 16,
+    turn: 1.1,
+    credits: 4,
+    score: 42,
+    telegraph: { bark: 'warn', line: 'The grazer\'s shell glints — your guns will only sing off it.', cue: 'pd_curtain' },
+    counter: 'Guns ping off. Only mass kills it — smash it with the room.',
+    // W-BLOOM-LOW T2: the silicate grazer. `massOnly` is the reflect-gunfire law — it dies
+    // by collision/terrain (mass), never by explosive or direct causes. `deathShards` is
+    // the shatter: the shell becomes a splash that takes nearby bodies with it.
+    massOnly: true,
+    shardRadius: 40,
+    shardDamage: 14,
+    deathLeaves: 'glass shards (they shatter on impact, splash damage)',
+    remains: { kind: 'glass_shards', name: 'Glass shards', mass: 20, radius: 5, splashRadius: 40 },
+    bodyColor: [0.55, 0.62, 0.58],
+    bodyEmissive: [0.20, 0.30, 0.26],
+  },
+  {
+    id: 'wake_eel',
+    name: 'Wake Eel',
+    role: 'trail',
+    fromWave: 15,
+    weight: 2,
+    radius: 4.8,
+    mass: 120,
+    hull: 34,
+    speed: 62,
+    turn: 3.0,
+    credits: 4,
+    score: 46,
+    telegraph: { bark: 'warn', line: 'A ribbon rides your wake — it is wrapping the hull.', cue: 'engine_flare' },
+    counter: 'It trails you. Turn hard and grab its tail — held, it is a whip.',
+    // W-BLOOM-LOW T2: `trails` steers to a point astern of the signature's velocity, and a
+    // whip bat WRAPS it onto the line — held, the eel widens the swing's kill width, which
+    // is exactly the "a whip while held" the ladder promises.
+    trails: true,
+    wrapRange: 14,
+    wrapS: 6,
+    deathLeaves: 'the eel body — a whip while held',
+    remains: { kind: 'eel_body', name: 'Eel body', mass: 30, radius: 5, whipMult: 1.9 },
+    bodyColor: [0.22, 0.44, 0.50],
+    bodyEmissive: [0.08, 0.24, 0.30],
+  },
+  {
+    id: 'bellows',
+    name: 'Bellows',
+    role: 'bomb',
+    fromWave: 17,
+    weight: 2,
+    radius: 5.6,
+    mass: 160,
+    hull: 46,
+    speed: 12,
+    turn: 0.8,
+    credits: 5,
+    score: 52,
+    telegraph: { bark: 'warn', line: 'The bellows is swelling — strike it again and it bursts.', cue: 'weapon_charge' },
+    counter: 'It inflates on a hit. Grab it before it bursts and fling it into a pack.',
+    // W-BLOOM-LOW T2: `swells` is the two-hit rule — a strike that does not kill inflates
+    // it (the readable tell); a second strike while swollen, or the timer running out,
+    // detonates a shockwave that shoves the whole pack.
+    swells: true,
+    swellS: 2.6,
+    burstRadius: 110,
+    burstDv: 150,
+    deathLeaves: 'a shockwave that shoves the pack',
+    bodyColor: [0.42, 0.30, 0.14],
+    bodyEmissive: [0.34, 0.20, 0.06],
   },
 ]);
 
@@ -248,6 +391,25 @@ export function swarmBroodIssues() {
     }
     if (!Array.isArray(family.bodyColor) || family.bodyColor.length !== 3) {
       issues.push({ path, message: `${family.id} has no body colour recipe` });
+    }
+    const rem = family.remains;
+    if (rem != null) {
+      if (typeof rem !== 'object' || typeof rem.kind !== 'string' || !rem.kind) {
+        issues.push({ path, message: `${family.id} remains has no kind` });
+      } else {
+        if (!(rem.mass > 0) || !(rem.radius > 0)) {
+          issues.push({ path, message: `${family.id} remains has no physical size` });
+        }
+        if (rem.splashRadius != null && !(rem.splashRadius > 0)) {
+          issues.push({ path, message: `${family.id} remains splashRadius is not positive` });
+        }
+        if (rem.glueS != null && !(rem.glueS > 0)) {
+          issues.push({ path, message: `${family.id} remains glueS is not positive` });
+        }
+        if (rem.whipMult != null && !(rem.whipMult > 1)) {
+          issues.push({ path, message: `${family.id} remains whipMult does not widen the whip` });
+        }
+      }
     }
   });
   // The roster clock must be monotonic and the first family must own wave one: the Brood tier
@@ -402,6 +564,102 @@ export const TENDRIL_SEG_CONTACT_COOLDOWN_S = 0.9;
 export const TENDRIL_SEG_CONTACT_SHOVE_DV = 30;
 /** Kill pay for one segment — brood fodder rates, keyed off the mite's family row. */
 export const TENDRIL_SEG_PAY_FAMILY = 'mite';
+
+// --- W-COUPLING (build_map row 503): the Bloom's pathologies, arena-side ------------------
+//
+// The Bloom couples nervous systems (bible 03 §1.1–1.2): linked members draw faint green
+// coupling filaments, a node's death flares and snaps them, and the pack breaks like one
+// animal through three authored pathologies. These constants are the engine's half of the
+// shared timings in src/data/bloomLadder.js — the adventure runtime reads the same numbers
+// so a mite in the Crucible and a needle pack on the tide flinch on the same clock.
+//
+//   * Panic cascade: a mass kill above BLOOM_PANIC_KILL_MASS inside the pack scatters it for
+//     1.5–2.5 s (fixed-seed per body), then re-forms it into a tight knot — the best throw
+//     of the fight.
+//   * Aggression cascade: the Queen (or a relay) taking a hit turns every linked member on
+//     the player at once; the filaments flush red.
+//   * Grief loop: the Mother or a Hive node dying clusters linked members around the body.
+//
+// Each cascade REPLACES the ordinary jitter for its window — the pack reads as one
+// coordinated animal, which is the row-491 legibility answer the spec demands.
+
+/** Entity `data.lootTableId` the Brood Queen champion carries — the cascade's relay node. */
+export const BROOD_QUEEN_LOOT_ID = 'brood_queen';
+
+/** Linked members within this radius draw coupling filaments (the flock's link radius). */
+export const BROOD_FILAMENT_RADIUS = BROOD_LINK_RADIUS;
+/** Filaments flare this long after a linked node dies — the pack's visible flinch. */
+export const BROOD_FILAMENT_FLARE_S = 0.7;
+/** The flinch: a node's death pushes linked members outward this hard (wu/s of Δv). */
+export const BROOD_FILAMENT_FLINCH_DV = 26;
+
+/** A mass kill above this total mass (wu) inside the pack triggers the panic cascade. */
+export const BROOD_PANIC_KILL_MASS = 90;
+/** The scatter band — per-body fixed-seed, authored 1.5–2.5 s. */
+export const BROOD_PANIC_SCATTER_MIN_S = 1.5;
+export const BROOD_PANIC_SCATTER_MAX_S = 2.5;
+/** Then the knot: members re-form tight for this long (the throw window the spec promises). */
+export const BROOD_PANIC_REFORM_S = 1.3;
+/** Members inside this radius of the trigger join the pathology. */
+export const BROOD_CASCADE_RADIUS = 220;
+/** Scatter speed: how hard the pack bolts during the panic window (wu/s² accel). */
+export const BROOD_PANIC_SCATTER_ACCEL = 260;
+/** Knot accel: how hard the pack converges when the knot reforms. */
+export const BROOD_PANIC_REFORM_ACCEL = 220;
+/** The knot's target radius around the panic centroid — tight enough to read as one ball. */
+export const BROOD_PANIC_KNOT_RADIUS = 26;
+
+/** Aggression cascade: the relay/Queen hit turns linked members on the player this long. */
+export const BROOD_AGGRESSION_S = 4.0;
+/** Rush speed multiplier over family cruise during the aggression window. */
+export const BROOD_AGGRESSION_ACCEL = 300;
+
+/** Grief loop: cluster around the corpse for this long. */
+export const BROOD_GRIEF_S = 5.0;
+/** The mourning ring the members orbit/crowd around the corpse. */
+export const BROOD_GRIEF_RING = 30;
+export const BROOD_GRIEF_ACCEL = 140;
+
+/** Cascade kinds (published on the view; the renderer flushes the filaments on them). */
+export const BROOD_CASCADE_NONE = 0;
+export const BROOD_CASCADE_PANIC = 1;
+export const BROOD_CASCADE_AGGRESSION = 2;
+export const BROOD_CASCADE_GRIEF = 3;
+
+/** Events the arena wires to the engine's cascade seams (queen hits, node deaths). */
+export const BROOD_CASCADE_EVENTS = Object.freeze(['entity:killed', 'swarm:hiveSacKilled']);
+
+// --- W-PATHOLOGY pain loop (row 504): a cut long body thrashes a fixed arc ---------------
+//
+// Killing a middle Tendril link frees the chain behind it; the freed lead is the stump and
+// its first act is the pain loop — a fixed arc around the cut point (constant angular
+// speed, constant radius, duration below), readable as the body flailing before it hunts.
+// The thrash is a hazard: it sweeps pack bodies it touches, so the player can aim the
+// stump into the swarm — the opening the spec sells.
+
+/** Thrash duration after a cut frees a chain lead (fixed-seed jitter, ±20%). */
+export const TENDRIL_THRASH_S = 2.2;
+/** The arc's radius around the cut point (wu). */
+export const TENDRIL_THRASH_RADIUS = 14;
+/** Fixed angular speed of the arc (rad/s), seeded direction per segment. */
+export const TENDRIL_THRASH_OMEGA = 4.2;
+/** A thrashing stump sweeps pack bodies in its path — kills them on contact. */
+export const TENDRIL_THRASH_SWEEP = true;
+
+// --- W-BLOOM-LOW family tuning (row 507), kept beside the families that feel them ---------
+
+/** Lantern cyst: prime range/seconds, burst radius and shove (the spore burst). */
+export const BROOD_CYST_PRIME_DAMAGE = 8;
+export const BROOD_CYST_BURST_DAMAGE = 16;
+
+/** Glassback: the shatter — glass shards splash this far and this hard on its death. */
+export const BROOD_GLASS_SHARD_DAMAGE = 14;
+
+/** Spore drift: the sticky cloud's brake on a slow hull inside its reach. */
+export const BROOD_SPORE_SLOW_BUDGET_MULT = 1.0;
+
+/** Bellows: the swell's burst damages the hull it lands on, not just shoves it. */
+export const BROOD_BELLOWS_BURST_DAMAGE = 18;
 
 /** The state subtree the engine publishes its live buffers under (never saved, never snapshotted). */
 export const SWARM_BROOD_STATE_KEY = 'swarmBrood';

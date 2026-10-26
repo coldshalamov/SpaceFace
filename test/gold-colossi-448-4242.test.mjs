@@ -30,6 +30,11 @@ const BOSS_IDS = [
   'capital_boss_hulk', 'capital_boss_regent', 'capital_boss_tendril',
   'capital_boss_tollman',
 ];
+// W-COLOSSI (row 547): the six additions run the same framework with deeper ladders (2–4 plates).
+const COLOSSI_IDS = [
+  'capital_boss_nest_carrier', 'capital_boss_casket_worm', 'capital_boss_furnace_maw',
+  'capital_boss_yardmaster', 'capital_boss_adjudicator', 'capital_boss_hive_hulk',
+];
 
 function bootScoreFight(encounterId, { attachmentService = null } = {}) {
   const state = createGameState(SEED);
@@ -110,12 +115,23 @@ const bossSubsystemHp = (h, id) => {
   return row ? row.health : NaN;
 };
 
-test('validator law: all authored capital bosses carry two lawful plates', () => {
+test('validator law: all authored capital bosses carry two to four lawful plates', () => {
   for (const id of [...BOSS_IDS, 'capital_boss_last_argument']) {
     const spec = requireCapitalBossEncounter(id);
     const result = validateCapitalBossEncounter(spec, {});
     assert.equal(result.ok, true, `${id}: ${result.errors.join('; ')}`);
     assert.equal(spec.plates.length, 2, `${id} authors two plates`);
+    assert.ok(spec.plates.some((p) => p.shedOnAct != null), `${id} has an act-shed plate`);
+    assert.ok(spec.plates.every((p) => /^[a-z][a-z ]+$/.test(p.label)), `${id} labels are plain words`);
+  }
+  // The six colossi (row 547) may run deeper part ladders — two to four plates — under the
+  // same cover/shed/tear contract.
+  for (const id of COLOSSI_IDS) {
+    const spec = requireCapitalBossEncounter(id);
+    const result = validateCapitalBossEncounter(spec, {});
+    assert.equal(result.ok, true, `${id}: ${result.errors.join('; ')}`);
+    assert.ok(spec.plates.length >= 2 && spec.plates.length <= 4,
+      `${id} authors two to four plates, got ${spec.plates.length}`);
     assert.ok(spec.plates.some((p) => p.shedOnAct != null), `${id} has an act-shed plate`);
     assert.ok(spec.plates.every((p) => /^[a-z][a-z ]+$/.test(p.label)), `${id} labels are plain words`);
   }
@@ -296,8 +312,13 @@ test('a mid-fight save keeps torn/attached state and restore spawns nothing', ()
   assert.ok(rec3.plates.every((p) => p.attached === true), 'v1 restores all plates attached');
 });
 
-test('a swarm champion fight spawns no plates', () => {
+// Row 547 inverted this law: swarm champions carry LIVE authored plates — rope tears and act
+// sheds leave tetherable slabs exactly like a contract boss. Only the Last Argument keeps
+// data-only plates.
+test('a swarm champion fight tears live plates into tetherable slabs', () => {
   const h = bootScoreFight(TOLLMAN);
+  // A swarm champion has no mission row — the active run is its owner (observe()'s gate).
+  h.state.run = { kind: 'survival', phase: 'active' };
   const rec = fightRec(h);
   rec.fightId = 'swarm:champion:test';
   delete h.state.capitalBossEncounters.fights[h.fightId];
@@ -306,8 +327,12 @@ test('a swarm champion fight spawns no plates', () => {
   const anchor = plateAnchorLocal(h, 'battery_housing');
   latchAt(h, anchor, 0.9);
   tick(h, 60);
-  assert.equal(plateSpawns(h).length, 0, 'swarm fights never spawn plates');
-  assert.equal(h.boss.data.capitalPlateCover || null, null);
+  assert.equal(plateRec(h, 'battery_housing').attached, false, 'the swarm champion\'s plate tears');
+  assert.equal(plateSpawns(h).length, 1, 'the torn slab spawns as ammunition');
+  assert.equal(plateSpawns(h)[0].data.masslineTetherable, true, 'the slab is throwable');
+  assert.equal(h.boss.data.capitalPlateCover == null
+    || h.boss.data.capitalPlateCover.subsystem_weapon === undefined, true,
+    'the bared subsystem loses its cover');
 });
 
 test('two runs on the same seed tear on the same tick', () => {

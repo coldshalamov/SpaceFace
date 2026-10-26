@@ -24,6 +24,7 @@ import { createMorphLabel } from './effects/morphLabel.js';
 import { factionIcon, icon as stationIcon } from './station/icons.js';
 import { dpIcon } from './deckplate/icons.js';
 import { injectCommsLayouts } from './orrery/commsLayouts.js';
+import { injectFlightRadialsLayouts } from './orrery/flight-radialsLayouts.js';
 import { FACTION_META } from '../data/factions.js';
 import { tierFor, factionStandingGuidance } from './factionStanding.js';
 import { resolveEntity } from './entityResolver.js';
@@ -235,7 +236,10 @@ function actionReason(actionId, availability, state, target) {
 // Deckplate (FRONTEND_PROGRAM Wave 1): comms verbs draw from the kit's filled family, like every
 // other command in the game; the line glyphs below remain only as the fallback for a new verb.
 const DP_ACTION_ICON = Object.freeze({
-  status: 'info', identify: 'scan', route: 'route', manifest: 'cargo', heave_to: 'brake', help: 'help',
+  // route → the solid course line between two waypoints (icon-route's dotted scatter read as a
+  // spark); heave_to → the stand-down slash (brake's pause-bars read as media pause). Critic
+  // 2026-10-26 finding 7.
+  status: 'info', identify: 'scan', route: 'line', manifest: 'cargo', heave_to: 'offline', help: 'help',
   escort: 'patrol', recover: 'pod', steal: 'pirate', abandon: 'abandon', assist: 'repair',
 });
 
@@ -250,11 +254,14 @@ function wedgeIconSvg(actionId) {
 // The verbs ride a curved selector track (FRONTEND_PROGRAM, critic 2026-09-19): every key keeps its
 // own row, so labels never collide, but the rows bow along one arc and each key's lamp sits on the
 // track as a detent. Keys have a fixed height, so the arc needs no layout read.
-const FAN_KEY_H = 38;
+const FAN_KEY_H = 40; // --dp-key-h-2: the CSS side reads --fan-key-h, written in layoutSelectorArc
 const FAN_KEY_GAP = 5;
 function layoutSelectorArc(host, buttons) {
   const n = buttons.length;
   if (!host || !n) return;
+  // One source of truth for the key height: the arc rail's geometry is computed here, so the CSS
+  // height is published as a component var instead of a second number that can drift from it.
+  host.style.setProperty('--fan-key-h', `${FAN_KEY_H}px`);
   const total = n * FAN_KEY_H + (n - 1) * FAN_KEY_GAP;
   const bow = n > 1 ? Math.min(26, 10 + 5 * (n - 1)) : 0;
   const half = total / 2;
@@ -273,11 +280,14 @@ function layoutSelectorArc(host, buttons) {
   rail.setAttribute('viewBox', `0 0 ${bow + 24} ${total}`);
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   const railD = `M${bow + 11} 0Q${11 - bow} ${half} ${bow + 11} ${total}`;
+  // pathLength=1 lets the arrival choreography draw the spine with a plain dashoffset animation
+  path.setAttribute('pathLength', '1');
   path.setAttribute('d', railD);
   rail.appendChild(path);
   // the spine is a band (the path) under a crisp edge (this twin), as every structure in the interface is
   const edge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   edge.setAttribute('class', 'sf-commsfan__edge');
+  edge.setAttribute('pathLength', '1');
   edge.setAttribute('d', railD);
   rail.appendChild(edge);
   host.insertBefore(rail, host.firstChild);
@@ -348,6 +358,7 @@ export function createCommsRadial(ctx) {
   if (!root) return { tick() {}, destroy() {} };
 
   injectCommsLayouts();
+  injectFlightRadialsLayouts();
   const fan = document.createElement('div');
   fan.id = 'sf-commsfan';
   fan.className = 'sf-commsfan';
@@ -363,8 +374,8 @@ export function createCommsRadial(ctx) {
         <span class="sf-commsfan__class" data-k="classword">HOLD ALT</span>
         <span class="sf-commsfan__freq" data-k="freq"></span>
         <svg class="sf-commsfan__ribbon" viewBox="0 0 152 24" aria-hidden="true" focusable="false">
-          <path class="sf-commsfan__bloom" data-k="ribbon-bloom"></path>
-          <path data-k="ribbon"></path>
+          <path class="sf-commsfan__bloom" data-k="ribbon-bloom" pathLength="1"></path>
+          <path data-k="ribbon" pathLength="1"></path>
         </svg>
       </button>
       <div class="sf-commsfan__wedgehost" data-k="wedgehost"></div>
@@ -389,7 +400,8 @@ export function createCommsRadial(ctx) {
         </span>
       </div>
       <svg class="sf-haildeck__ribbon" viewBox="0 0 152 24" aria-hidden="true" focusable="false">
-        <path data-k="deck-ribbon"></path>
+        <path class="sf-haildeck__ribbon-bloom" data-k="deck-ribbon-bloom" pathLength="1"></path>
+        <path data-k="deck-ribbon" pathLength="1"></path>
       </svg>
       <div class="sf-drawer__facts sf-haildeck__facts" data-k="deck-facts"></div>
       <div class="sf-deck">
@@ -424,6 +436,13 @@ export function createCommsRadial(ctx) {
   const ribbonBloom = fan.querySelector('[data-k="ribbon-bloom"]');
   const freqHost = fan.querySelector('[data-k="freq"]');
   const freqMorph = createMorphLabel(freqHost, { text: 'FREQ IDLE' });
+  // The plate is also a button (it opens the tactical hail deck); a quiet hint in the frequency
+  // row names that, so the affordance is legible before the first hover, never overlapping.
+  const deckHintEl = document.createElement('span');
+  deckHintEl.className = 'sf-commsfan__deckhint';
+  deckHintEl.setAttribute('aria-hidden', 'true'); // the hub's aria-label already names the action
+  deckHintEl.textContent = 'HAIL DECK';
+  freqHost.appendChild(deckHintEl);
 
   const deckCrestEl = deck.querySelector('[data-k="deck-crest"]');
   const deckTitleEl = deck.querySelector('[data-k="deck-title"]');
@@ -435,6 +454,7 @@ export function createCommsRadial(ctx) {
   const deckReceiptsEl = deck.querySelector('[data-k="deck-receipts"]');
   const deckLinksEl = deck.querySelector('[data-k="deck-links"]');
   const deckRibbonPath = deck.querySelector('[data-k="deck-ribbon"]');
+  const deckRibbonBloom = deck.querySelector('[data-k="deck-ribbon-bloom"]');
   const closeXBtn = deck.querySelector('[data-k="close-x"]');
   const closeDeckBtn = deck.querySelector('[data-k="close-btn"]');
 
@@ -447,7 +467,6 @@ export function createCommsRadial(ctx) {
   let currentAvailability = null;
   let activeOffer = null;
   let activePayload = null;
-  let previousFreq = '';
   let nextUiUpdateAt = 0;
   let wedgeButtons = [];
   let lastWedgeSig = '';
@@ -482,11 +501,12 @@ export function createCommsRadial(ctx) {
     ribbonPath.setAttribute('d', d);
     if (ribbonBloom) ribbonBloom.setAttribute('d', d);
     const freq = hailFrequencyText(amplitude, visual.density);
-    const dir = previousFreq && freq > previousFreq ? 'up' : previousFreq && freq < previousFreq ? 'down' : 'flat';
-    freqMorph.set(freq, { dir });
-    previousFreq = freq;
+    // A plain crossfade: the frequency is a channel reading, not a gain or a loss, so the morph
+    // carries no direction colour — red stays threat-only, mint stays gain-only (ORRERY §3.3).
+    freqMorph.set(freq);
     if (deckOpen) {
       deckRibbonPath.setAttribute('d', d);
+      if (deckRibbonBloom) deckRibbonBloom.setAttribute('d', d);
     }
   }
 
@@ -589,7 +609,14 @@ export function createCommsRadial(ctx) {
   function openFan() {
     if (open || isFlightBlocked(state)) return false;
     const info = buildTargetAvailability();
-    if (!info) return false;
+    if (!info) {
+      // The empty state answers: holding hail with nobody in range is not a dead key — one
+      // line per press, the same contract as the wingman radial's no-fleet toast (ORRERY P6:
+      // an empty control says what would be here).
+      bus.emit('toast', { text: 'No contact in hail range — close with a ship to hail', kind: 'info', ttl: 2.5 });
+      bus.emit('audio:cue', { id: 'ui_deny' });
+      return false;
+    }
     const { availability, probe } = info;
     open = true;
     currentTargetId = availability.targetId;
@@ -676,18 +703,26 @@ export function createCommsRadial(ctx) {
     deckCrestEl.innerHTML = factionId ? factionIcon(factionId, 22) : stationIcon('target', 22);
     deckTitleEl.textContent = visual.pilot;
     deckKickerEl.textContent = visual.classWord;
-    deckSubEl.textContent = payload && payload.lines && payload.lines[0] ? payload.lines[0] : 'Channel active';
+    // lines[0] is "CALLSIGN · CLASS" — the title and kicker directly above already say it, so the
+    // sub carries the contact's own words (lines[1]) instead of repeating the nameplate.
+    const hailLines = payload && Array.isArray(payload.lines) ? payload.lines.filter(Boolean) : [];
+    deckSubEl.textContent = hailLines[1] || 'Channel active';
+    // Colour stays information-quiet in the register: red only on the hostile tier (threat), bone
+    // otherwise — the words and numbers carry the rest (ORRERY §3.3: red is threat only).
+    const hostile = repValue < -149;
     const rows = [
-      { k: 'Standing', v: `${tier.name} (${Math.round(repValue)})`, tone: repValue < -149 ? 'foe' : repValue > 149 ? 'you' : 'calm', num: true },
-      { k: 'Next Tier', v: guidance.next, tone: 'goal' },
-      { k: 'Risk', v: guidance.risk, tone: repValue < 0 ? 'foe' : 'calm' },
+      { k: 'Standing', v: `${tier.name} (${Math.round(repValue)})`, tone: hostile ? 'foe' : 'calm', num: true },
+      { k: 'Next Tier', v: guidance.next, tone: 'calm' },
+      { k: 'Risk', v: guidance.risk, tone: hostile ? 'foe' : 'calm' },
       { k: 'Range', v: availability && Number.isFinite(availability.distance) ? `${Math.round(availability.distance)} m` : '—', tone: 'calm', num: true },
     ];
     setDeckFacts(rows);
     if (payload && Array.isArray(payload.actions) && payload.actions.length) {
       const labels = payload.actions.map((row) => String(row && row.label || '').trim()).filter(Boolean);
-      const lines = Array.isArray(payload.lines) ? payload.lines.filter(Boolean) : [];
-      deckTermsEl.textContent = `${lines.join(' · ')} · ACTIONS: ${labels.join(' / ')}`;
+      // Same no-duplicate-copy rule: lines[0] is the nameplate; the terms quote the voice and the verbs.
+      const voiceLines = hailLines.slice(1);
+      const body = voiceLines.length ? voiceLines : hailLines;
+      deckTermsEl.textContent = `${body.join(' · ')} · ACTIONS: ${labels.join(' / ')}`;
     } else {
       deckTermsEl.textContent = 'No active offer.';
     }
@@ -738,7 +773,9 @@ export function createCommsRadial(ctx) {
     const now = Number(state.simTime) || 0;
     const ttl = payload && payload.choice ? CONTACT_HAIL_RECEIPT_TTL_S : CONTACT_HAIL_REQUEST_TTL_S;
     const amplitude = payload ? clamp01((Number(payload.expiresAt) - now) / Math.max(1, ttl)) : 0.2;
-    deckRibbonPath.setAttribute('d', buildHailRibbonPath(visual.seed, amplitude, visual.density));
+    const deckD = buildHailRibbonPath(visual.seed, amplitude, visual.density);
+    deckRibbonPath.setAttribute('d', deckD);
+    if (deckRibbonBloom) deckRibbonBloom.setAttribute('d', deckD);
     return true;
   }
 

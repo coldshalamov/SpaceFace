@@ -43,6 +43,22 @@ test('veil settle re-arms for the next veil', () => {
   render.flightVeilHoldsSim = true; assert.equal(p(), 1);
 });
 
+test('a replaced veil does not inherit queued idle periods from the previous launch', () => {
+  const h = harness(); const render = { flightVeilHoldsSim: true, firstPlayableFrameAt: 1 };
+  const p = createVeilSettle(render, { host: h.host, now: h.now });
+  assert.equal(p(), 1);
+  render.flightVeilHoldsSim = false;
+  assert.equal(p(), 0);
+  render.flightVeilHoldsSim = true;
+  render.firstPlayableFrameAt = 2;
+  assert.equal(p(), 1);
+  h.advance(1300);
+  h.idle(40); h.idle(40);
+  assert.equal(p(), 1, 'only two idle periods belong to the new launch');
+  h.idle(40);
+  assert.equal(p(), 0, 'the new launch releases after its own third idle period');
+});
+
 test('veil drains unused programs one per frame behind the veil, even after settling (oc1v7)', () => {
   const h = harness(); const render = { flightVeilHoldsSim: true, firstPlayableFrameAt: 1 };
   let unused = 2; const pool = { get size() { return unused; }, drain: (n) => { unused = Math.max(0, unused - n); return unused; } };

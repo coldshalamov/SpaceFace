@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { installShaderLinkReporter } from '../src/render/shaderLinkReporter.js';
+import { createVeilSettle } from '../src/render/veilSettle.js';
 
 const LINK_STATUS = 0x8b82;
 
@@ -203,6 +204,90 @@ test('a still-linking program is queried once on the draw path, then polled off 
   assert.ok(completionQueries() >= 2);
   assert.deepEqual(calls.filter((c) => c[1] === LINK_STATUS), [['getProgramParameter', LINK_STATUS]]);
   assert.equal(program.getUniforms.name, 'getUniforms');
+});
+
+test('unused admission never forces a linking program and services ready siblings within the budget', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const COMPLETION_STATUS_KHR = 0x82cf;
+  const gl = fakeGl();
+  const complete = new Map();
+  const queries = [];
+  gl.getExtension = () => ({ COMPLETION_STATUS_KHR });
+  gl.getProgramParameter = (handle, pname) => {
+    queries.push([handle, pname]);
+    return pname === COMPLETION_STATUS_KHR ? complete.get(handle) === true : true;
+  };
+  const renderer = fakeRenderer(gl);
+  installShaderLinkReporter(renderer);
+  const linking = fakeProgram();
+  const ready = fakeProgram();
+  complete.set(ready.program, true);
+  renderer.info.programs.push(linking, ready);
+  const pool = renderer.userData.spacefaceUnusedPrograms;
+
+  assert.equal(pool.drain(1), 2, 'an incomplete link stays pending');
+  assert.equal(linking.firstUses, 0, 'uniform introspection would block on this link');
+  assert.equal(ready.firstUses, 0, 'one drain probes at most one program');
+  assert.deepEqual(queries, [[linking.program, COMPLETION_STATUS_KHR]]);
+
+  assert.equal(pool.drain(1), 1, 'a ready sibling must not starve behind the linking program');
+  assert.equal(ready.firstUses, 1);
+  assert.equal(linking.firstUses, 0);
+  complete.set(linking.program, true);
+  t.mock.timers.tick(16);
+  assert.equal(pool.drain(1), 0);
+  assert.equal(linking.firstUses, 1, 'the same program is introspected once it is ready');
+  assert.equal(queries.filter(([handle, pname]) => handle === linking.program && pname === LINK_STATUS).length, 1);
+});
+
+test('unused admission follows the rebuilt program list after context restoration', () => {
+  const renderer = fakeRenderer(fakeGl());
+  installShaderLinkReporter(renderer);
+  const old = fakeProgram();
+  renderer.info.programs.push(old);
+  const pool = renderer.userData.spacefaceUnusedPrograms;
+  renderer.domElement.dispatch('webglcontextlost');
+  renderer.info.programs = [];
+  renderer.domElement.dispatch('webglcontextrestored');
+  const rebuilt = fakeProgram();
+  renderer.info.programs.push(rebuilt);
+  assert.equal(pool.size, 1, 'the restored context owns its new program list');
+  assert.equal(pool.drain(1), 0);
+  assert.equal(rebuilt.firstUses, 1, 'restored programs receive first-use admission');
+  assert.equal(old.firstUses, 0, 'dead-generation programs are never queried');
+});
+
+test('veil admission remains pending until a KHR program is ready, then performs its first use', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const COMPLETION_STATUS_KHR = 0x82cf;
+  let complete = false;
+  const gl = fakeGl();
+  gl.getExtension = () => ({ COMPLETION_STATUS_KHR });
+  gl.getProgramParameter = (handle, pname) => pname === COMPLETION_STATUS_KHR ? complete : true;
+  const renderer = fakeRenderer(gl);
+  installShaderLinkReporter(renderer);
+  const program = fakeProgram();
+  renderer.info.programs.push(program);
+  let now = 0;
+  const idle = [];
+  const render = { flightVeilHoldsSim: true, firstPlayableFrameAt: 1 };
+  const pending = createVeilSettle(render, {
+    now: () => now,
+    host: { requestIdleCallback: (cb) => idle.push(cb) },
+    unusedPrograms: () => renderer.userData.spacefaceUnusedPrograms,
+  });
+  assert.equal(pending(), 1);
+  assert.equal(program.firstUses, 0);
+  for (let i = 0; i < 3; i += 1) idle.shift()({ didTimeout: false, timeRemaining: () => 40 });
+  now = 1300;
+  assert.equal(pending(), 1, 'idle settle does not admit an unfinished link');
+  assert.equal(program.firstUses, 0, 'the loading presenter stays responsive while the link is pending');
+  complete = true;
+  t.mock.timers.tick(16);
+  now += 10;
+  assert.equal(pending(), 0);
+  assert.equal(program.firstUses, 1);
+  assert.equal(render.veilDrain.drained, 1);
 });
 
 test('the vendored three still has the program internals the reporter relies on', () => {

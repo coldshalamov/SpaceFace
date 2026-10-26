@@ -440,6 +440,60 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
     enemyId: 'brood_tendril',
     scoreId: 'capital_boss_tendril',
   },
+  // W-COLOSSI (build_map row 547, expansion 07 §5) — the rest of the Colossus roster, appended
+  // past the wave-80 Tendril so every authored wave keeps its number: waves 90–140 field the
+  // Nest Carrier, Casket Worm, Furnace Maw, Yardmaster, Adjudicator 44-C and Hive-hulk in
+  // ascending order of weight. Same `enemyId`+`scoreId` contract: one real hull through the
+  // ordinary package path, handed to its authored score — and on row 547's framework their
+  // plates are live: rope tears and act sheds both leave tetherable slabs as ammunition.
+  {
+    id: 'nest_carrier',
+    label: 'Nest Carrier',
+    line: 'A gutted freighter is birthing wasps. The belly doors are the nest — every door and every wasp is ammunition.',
+    room: 'nest_berth',
+    enemyId: 'nest_carrier',
+    scoreId: 'capital_boss_nest_carrier',
+  },
+  {
+    id: 'casket_worm',
+    label: 'Casket Worm',
+    line: 'A derelict worm works the grave. Cut the middle segment — every piece of it is ammunition.',
+    room: 'casket_field',
+    enemyId: 'casket_worm',
+    scoreId: 'capital_boss_casket_worm',
+  },
+  {
+    id: 'furnace_maw',
+    label: 'Furnace Maw',
+    line: 'The furnace is eating. Rip its radiator plates and feed them back — the cavity only opens to feed.',
+    room: 'maw_feed',
+    enemyId: 'furnace_maw',
+    scoreId: 'capital_boss_furnace_maw',
+  },
+  {
+    id: 'yardmaster',
+    label: 'The Yardmaster',
+    line: 'A ball of accreted wreck is rolling. Every piece of it is ammunition — the magnet core is the last tear.',
+    room: 'wreck_magnet',
+    enemyId: 'yardmaster',
+    scoreId: 'capital_boss_yardmaster',
+  },
+  {
+    id: 'adjudicator_44c',
+    label: 'Adjudicator 44-C',
+    line: 'The lane is closed for audit. Tear the seal emitters and the clamp — the gate welds shut behind you.',
+    room: 'seal_gate',
+    enemyId: 'adjudicator_44c',
+    scoreId: 'capital_boss_adjudicator',
+  },
+  {
+    id: 'hive_hulk',
+    label: 'Hive-Hulk',
+    line: 'Something moved into that hulk. Nodes, armour, bay doors — the largest parts pile outside the Iron Maw.',
+    room: 'hive_shaft',
+    enemyId: 'hive_hulk',
+    scoreId: 'capital_boss_hive_hulk',
+  },
 ]);
 
 /** The one-hull package a capital champion row implies when it carries no explicit packages. */
@@ -460,6 +514,12 @@ const BOSS_ROOM_NOTES = Object.freeze({
   hold_close: 'the room holds you; close on the ghosts',
   brood_nest: 'the nest pulls toward the sacs — cover to break the flood, rocks to throw back',
   coil_field: 'the weave field — a slow cross-breeze, and rocks to feed the committed pass',
+  nest_berth: 'the berth pulls toward the belly — a vent-breeze rakes the launch lanes',
+  casket_field: 'the grave drifts two ways — rocks to feed the middle cut',
+  maw_feed: 'the mouth shoves — the rim orbit is free, and the cavity eats what you feed it',
+  wreck_magnet: 'the magnet drags the whole yard inward — everything loose ends up inside the pile',
+  seal_gate: 'the gate is welding shut — rails on the flanks, mines at the mouth, one honest corridor',
+  hive_shaft: 'the shaft pulls long and rakes crosswise — the hulk is the only cover',
 });
 
 export function bossRoomNote(room) {

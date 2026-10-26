@@ -291,6 +291,8 @@ const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
     toastLive: (document.getElementById('toast-live')?.textContent || '').slice(0, 3000),
     toasts: [...document.querySelectorAll('.sf-toast__text')].slice(-4).map(e => (e.textContent || '').slice(0, 3000)),
     startupObserver: window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.() || null,
+    // Retail deliberately omits SF.bus. Its bounded journal remains read-only and survives reloads.
+    startupJournal: window.__SF_STARTUP__?.snapshot?.() || null,
     simLaneEvents: Array.isArray(window.__SF_LANE_APPLIED)
       ? window.__SF_LANE_APPLIED.slice(-96).filter(type => typeof type === 'string').map(type => type.slice(0, 200)) : null,
     drawErrors: globalThis.__SF_MOBILE_DRAW_ERRORS__?.snapshot?.() || null,

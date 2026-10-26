@@ -1410,7 +1410,13 @@ export function noteRigidOpaqueBatchProgramWarmed(key) {
 }
 export function clearRigidOpaqueBatchWarmedKeys() {
   warmedRigidOpaqueBatchKeys.clear();
-  retainedRigidOpaqueBatchSpecimenMaterials.length = 0;
+  // These specimen materials own retained program references. Release each through three's
+  // normal material-dispose path, which preserves references held by live/shared materials.
+  // Pop before notifying listeners so repeated or reentrant teardown cannot dispose it twice.
+  while (retainedRigidOpaqueBatchSpecimenMaterials.length > 0) {
+    const material = retainedRigidOpaqueBatchSpecimenMaterials.pop();
+    try { material.dispose?.(); } catch (_) { /* continue releasing the remaining owned references */ }
+  }
 }
 
 // A program dies with its last live material: disposing a specimen's material runs

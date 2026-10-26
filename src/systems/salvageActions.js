@@ -557,8 +557,8 @@ export const salvageActions = {
     if (!unstable || unstable.vented || unstable.burst) return;
     const applied = Number(p.applied);
     const amount = Number(p.amount);
-    const dmg = (Number.isFinite(applied) && applied > 0 ? applied : 0)
-      || (Number.isFinite(amount) && amount > 0 ? amount : 0);
+    const dmg = Number.isFinite(applied) ? Math.max(0, applied)
+      : (Number.isFinite(amount) && amount > 0 ? amount : 0);
     if (!(dmg > 0)) return;
     if (p.attackerId != null) unstable.triggeredBy = p.attackerId;
     const now = state.simTime || 0;
@@ -587,8 +587,8 @@ export const salvageActions = {
     if (!(Number.isFinite(cooledAt) ? now < cooledAt : false)) return;
     const applied = Number(p.applied);
     const amount = Number(p.amount);
-    const dmg = (Number.isFinite(applied) && applied > 0 ? applied : 0)
-      || (Number.isFinite(amount) && amount > 0 ? amount : 0);
+    const dmg = Number.isFinite(applied) ? Math.max(0, applied)
+      : (Number.isFinite(amount) && amount > 0 ? amount : 0);
     if (!(dmg > 0)) return;
     this._detonateCore(entity, p.attackerId != null ? p.attackerId : entity.id, state, now);
   },
@@ -607,7 +607,7 @@ export const salvageActions = {
       if (!victim.pos) continue;
       const dist = Math.hypot(victim.pos.x - pos.x, victim.pos.z - pos.z)
         - (victim.radius || 0);
-      const falloff = 1 - dist / REACTOR_CORE_BURST_RADIUS;
+      const falloff = Math.min(1, 1 - dist / REACTOR_CORE_BURST_RADIUS);
       if (!(falloff > 0)) continue;
       const payload = {
         targetId: victim.id,
@@ -698,7 +698,7 @@ export const salvageActions = {
       if (!victim.pos) continue;
       const dist = Math.hypot(victim.pos.x - pos.x, victim.pos.z - pos.z)
         - (victim.radius || 0);
-      const falloff = 1 - dist / REACTOR_BURST_RADIUS;
+      const falloff = Math.min(1, 1 - dist / REACTOR_BURST_RADIUS);
       if (!(falloff > 0)) continue;
       const payload = {
         targetId: victim.id,

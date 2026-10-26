@@ -521,7 +521,11 @@ export const stationServices = {
    */
   decantFuelCells() {
     const state = this.state;
-    if (!state || !isProductionDocked(state)) return { ok: false, reason: 'not_docked', cells: 0, units: 0 };
+    // The dock panel remains live until the undock fade ends. Its late self-service
+    // request must obey the same departed-berth latch as a paid yard booking.
+    if (!state || !isProductionDocked(state) || state.stationServices?._departedLatch === true) {
+      return { ok: false, reason: 'not_docked', cells: 0, units: 0 };
+    }
     const cargo = state.player && state.player.cargo;
     const fuel = state.fuel;
     if (!cargo || !fuel) return { ok: false, reason: 'unavailable', cells: 0, units: 0 };
@@ -646,6 +650,11 @@ export const stationServices = {
     }
 
     if (active) {
+      // Continue can park a paid job while the pilot flies and the station's strike
+      // expires. Work at today's pool/standing/crew rate, rather than preserving a
+      // temporary slowdown from the original booking forever. Its paid price stays fixed.
+      active.ratePerS = serviceRatePerS(active.type, this._jobPoolMax(state, active), rep)
+        * stationYardRateMult(state, stationId);
       active.applied = Math.min(active.total, active.applied + active.ratePerS * dt);
       this._applyJobDelta(state, active, active.applied - active.lastApplied);
       active.lastApplied = active.applied;
@@ -851,9 +860,14 @@ export const stationServices = {
 
   deserialize(data) {
     const s = ensureStationServicesState(this.state);
-    if (Number.isFinite(data && data.dockedElapsed)) {
-      s.dockedElapsed = Math.max(0, Number(data.dockedElapsed));
-    }
+    // Continue replaces this yard's clock. A legacy save predates dockedElapsed and
+    // starts at its own sim time; it must not inherit seconds from the later session.
+    s.dockedElapsed = Number.isFinite(data && data.dockedElapsed)
+      ? Math.max(0, Number(data.dockedElapsed)) : 0;
+    // The view cadence belongs to the discarded session too. A future refresh deadline
+    // would hide all seeded client arrivals until an earlier save catches back up.
+    delete s._viewNextT;
+    s._viewStamp = null;
     if (!data || typeof data !== 'object' || !data.player) {
       s.player = null;
       s.stations = {};

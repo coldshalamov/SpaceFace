@@ -1158,7 +1158,10 @@ function curatedPhases(row, recipe) {
         : !isToll && choiceId === 'b'
           ? `${row.voice}: The ${chargeB} cr stays spent — the relief still runs on your credit at ${placeLabel}; the close-in just never came — ${row.title}.`
           : `${row.voice}: Time ran out on the ${String(row.prop || 'work').toLowerCase()} ask — ${row.title}. Nothing owed either way — the lane forgets it.`,
-      keepMotion: recipe.keepMotion === true,
+      // Relief meets a stopped player under five WU/s for two continuous seconds.
+      // Brake at the captured berth for that handoff; the escort and departure
+      // branches still retain their authored procession.
+      keepMotion: recipe.keepMotion === true && (isToll || choiceId !== 'b'),
       steps: stepsList,
       next: nextPhase,
     });
@@ -1186,6 +1189,20 @@ function stampHardwareChoice(row) {
   choice.requires = { module: gate.requires.module };
 }
 
+// Authored interstitials added on the live scene route. Keep their phase IDs and
+// position between a2 and p2 when regenerating the surrounding baseline modules.
+const AUTHORED_COLOR_INTERSTITIALS = {
+  391: 'The hull ahead is paying in clipped coin and a long apology.',
+  433: 'Someone on the civilian band is already praying for the caller by count, not by name.',
+  448: 'A second pin on the board has been marked sold three times this hour.',
+  466: 'The bench ledger lists a hand that has not clocked in for two seasons.',
+  495: 'Three of the marks on the cradle board share the same careful handwriting.',
+  511: 'The patrol checks its own mirror twice before it checks your hold.',
+  540: 'The wreck still wears paint under the burn. Somebody keeps choosing not to cut there.',
+  555: 'The manifest counts eleven lamps in the convoy. The fog keeps count of twelve.',
+  566: 'DISPATCH counts the hulks aloud, and skips the same one every time.',
+};
+
 function phasesFor(row) {
   const recipe = RC459_RECIPES[row.order];
   if (recipe) return curatedPhases(row, recipe);
@@ -1204,7 +1221,11 @@ function phasesFor(row) {
     const sayId = `a${index}`;
     const pauseId = `p${index}`;
     const next = index === row.color.length - 1 ? 'work' : `a${index + 1}`;
-    phases.push({ id: sayId, verb: 'say', line, channel: 'info', next: pauseId });
+    const interstitial = index === 2 ? AUTHORED_COLOR_INTERSTITIALS[row.order] : null;
+    phases.push({ id: sayId, verb: 'say', line, channel: 'info', next: interstitial ? 'a2x' : pauseId });
+    if (interstitial) {
+      phases.push({ id: 'a2x', verb: 'say', line: interstitial, channel: 'info', next: pauseId });
+    }
     phases.push({ id: pauseId, verb: 'motion', seconds: COLOR_PAUSE_S, motion, next });
   });
   phases.push({

@@ -1,0 +1,148 @@
+// Retail startup observer: no debug bus, scene walk, GPU calls, or gameplay writes.
+// Commit each boundary immediately: a killed mobile page cannot run an unload handler.
+import { sanitizeErrorText } from './errorBoundary.js';
+
+export const STARTUP_JOURNAL_KEY = 'sf:startup-journal:v1';
+const MAX_EVENTS = 16;
+const installed = new WeakMap();
+let currentJournal = null;
+const text = value => typeof value === 'string' ? sanitizeErrorText(value, 240) : undefined;
+const finite = value => Number.isFinite(value) ? value : null;
+
+export function startupJournalSnapshot() {
+  try { return currentJournal?.snapshot() || null; } catch { return null; }
+}
+
+export function installStartupJournal({ bus, state, host = globalThis, document = host.document,
+  storage, now = () => Date.now() } = {}) {
+  if (installed.has(bus)) return installed.get(bus);
+  if (storage === undefined) { try { storage = host.sessionStorage; } catch { storage = null; } }
+  let previous = null;
+  try {
+    const raw = storage?.getItem(STARTUP_JOURNAL_KEY);
+    if (raw && raw.length < 32768) {
+      const saved = JSON.parse(raw);
+      if (saved.schema === 1) previous = saved.current?.status !== 'boot' ? saved.current : saved.previous;
+    }
+  } catch { /* unavailable storage must never prevent launch */ }
+  const current = { startedAt: now(), timeOrigin: finite(host.performance?.timeOrigin),
+    status: 'boot', phase: null, events: [] };
+  const cleanPrevious = value => {
+    if (!value || typeof value !== 'object') return null;
+    return { startedAt: finite(value.startedAt), timeOrigin: finite(value.timeOrigin),
+      status: text(value.status), phase: text(value.phase), sample: cleanSample(value.sample),
+      events: Array.isArray(value.events) ? value.events.slice(-MAX_EVENTS).map(cleanEvent) : [] };
+  };
+  previous = cleanPrevious(previous);
+  let timer = null, disposed = false, lastSample = '', priorPicture = null;
+  const removers = [];
+  const snapshot = () => JSON.parse(JSON.stringify({ schema: 1, previous, current }));
+  function persist() {
+    try { storage?.setItem(STARTUP_JOURNAL_KEY, JSON.stringify({ schema: 1, previous, current })); } catch {}
+  }
+  function record(event, payload = {}) {
+    if (disposed) return;
+    const row = cleanEvent({ event, at: now(), ...payload });
+    const last = current.events.at(-1);
+    // Progress pulses repeat every frame/window; keep their latest value, not an I/O storm.
+    if (last && event === 'game:loadingProgress' && last.event === event && last.id === row.id) return;
+    current.events.push(row);
+    if (current.events.length > MAX_EVENTS) current.events.shift();
+    persist();
+  }
+  function stopSampling() {
+    if (timer !== null) host.clearInterval?.(timer);
+    timer = null;
+  }
+  function startSampling() {
+    if (timer === null) timer = host.setInterval?.(sample, 1000) ?? null;
+  }
+  function sample() {
+    if (disposed) return;
+    try {
+      const render = state?.render;
+      const phase = render?.openingFirstPicturePhase;
+      current.phase = text(phase?.stage) || current.phase;
+      const info = render?.renderer?.info;
+      const value = cleanSample({ mode: state?.mode, tick: state?.tick,
+        phase: phase?.stage, phaseOutcome: phase?.outcome,
+        contextLost: render?.contextLost, firstPlayableFrameAt: render?.firstPlayableFrameAt,
+        veil: render?.flightVeilHoldsSim, geometries: info?.memory?.geometries,
+        textures: info?.memory?.textures, programs: info?.programs?.length });
+      const encoded = JSON.stringify(value);
+      if (lastSample !== encoded) { lastSample = encoded; current.sample = value; persist(); }
+      if (state?.mode === 'flight' && Number.isFinite(render?.firstPlayableFrameAt)
+          && render.firstPlayableFrameAt !== priorPicture
+          && render?.flightVeilHoldsSim !== true) {
+        current.status = 'playing'; record('first-playable-picture'); stopSampling();
+      }
+    } catch { /* a partial renderer is valid diagnostic input */ }
+  }
+  const listen = (target, event, fn, capture = false) => {
+    if (!target?.addEventListener) return;
+    target.addEventListener(event, fn, capture);
+    removers.push(() => target.removeEventListener(event, fn, capture));
+  };
+  for (const event of ['game:new', 'game:load', 'game:loadingProgress', 'mode:changed',
+    'game:startFailed', 'game:exitToMenu', 'ui:loadingHidden']) {
+    removers.push(bus.on(event, (payload = {}) => {
+      if (event === 'game:new' || event === 'game:load') {
+        priorPicture = state?.render?.firstPlayableFrameAt;
+        current.status = 'launch-requested'; current.phase = null; startSampling();
+      } else if (event === 'game:loadingProgress' && !String(payload.id || '').startsWith('boot-')) {
+        current.status = 'loading'; current.phase = text(payload.id); startSampling();
+      } else if (event === 'mode:changed' && payload.mode === 'menu' && payload.previousMode === 'loading') {
+        current.status = 'returned-to-menu'; stopSampling();
+      } else if (event === 'game:startFailed') {
+        current.status = 'failed'; stopSampling();
+      } else if (event === 'game:exitToMenu') {
+        current.status = 'exit-requested'; stopSampling();
+      }
+      record(event, payload);
+      sample();
+    }));
+  }
+  listen(document, 'click', event => {
+    const control = event.target?.closest?.('[data-action], .sf-ng-launch');
+    const action = control?.getAttribute('data-action') || (control?.classList.contains('sf-ng-launch') ? 'launch' : null);
+    if (!['newGame', 'continue', 'launch'].includes(action)) return;
+    if (action === 'newGame') { current.status = 'new-game-setup'; startSampling(); }
+    record('public-control', { id: action });
+  }, true);
+  for (const event of ['webglcontextlost', 'webglcontextrestored', 'webglcontextcreationerror']) {
+    listen(document, event, payload => { record(event, { error: payload.statusMessage }); sample(); }, true);
+  }
+  listen(document, 'visibilitychange', () => record('visibility', { id: document.visibilityState }));
+  listen(host, 'pagehide', event => record('pagehide', { id: event.persisted ? 'cached' : 'leaving' }));
+  listen(host, 'error', event => record('error', { error: event.message }));
+  listen(host, 'unhandledrejection', event => record('unhandledrejection', { error: event.reason?.message }));
+  const journal = Object.freeze({ snapshot, dispose() {
+    if (disposed) return;
+    disposed = true; stopSampling();
+    for (const remove of removers) { try { remove?.(); } catch {} }
+    installed.delete(bus);
+    if (currentJournal === journal) currentJournal = null;
+  } });
+  installed.set(bus, journal); currentJournal = journal;
+  // Read-only copies, deliberately available in retail. Never expose state or the bus.
+  try { host.__SF_STARTUP__ = Object.freeze({ snapshot }); } catch {}
+  record('document-start');
+  return journal;
+}
+
+function cleanEvent(value = {}) {
+  const result = { event: text(value.event)?.slice(0, 80), at: finite(value.at) };
+  for (const key of ['id', 'code', 'stage', 'mode', 'previousMode', 'source', 'error']) {
+    const scalar = text(value[key]);
+    if (scalar) result[key] = scalar.slice(0, key === 'error' ? 240 : 80);
+  }
+  return result;
+}
+
+function cleanSample(value = {}) {
+  const result = {};
+  for (const key of ['mode', 'phase', 'phaseOutcome']) result[key] = text(value?.[key]) || null;
+  for (const key of ['tick', 'firstPlayableFrameAt', 'geometries', 'textures', 'programs']) result[key] = finite(value?.[key]);
+  for (const key of ['contextLost', 'veil']) result[key] = typeof value?.[key] === 'boolean' ? value[key] : null;
+  return result;
+}

@@ -71,8 +71,13 @@ export function validateCapitalBossEncounter(e, vocabulary={}) {
   // GOLD-COLOSSI — rope-detachable plates. A subsystem named in any act's enter.anyDisabled may
   // only be covered by a plate whose shedOnAct is below that act's index: the act shed opens the
   // disabled-route no later than the act that asks for it, so progression never depends on the rope.
+  // Row 547 W-COLOSSI relaxed the count from exactly two to 2–4: the bar is the parts, and a
+  // colossus with a deeper part ladder (coupling nodes → armour plates → bay doors → the core)
+  // needs more than two. The cover, shed, tear and spawn machinery is generic over the count;
+  // several plates may share one covered subsystem — the cover holds until every covering
+  // plate is free — and the four-plate cap keeps every part readable on the overlay at once.
   const plates = Array.isArray(e.plates) ? e.plates : [];
-  check(plates.length === 2, `${e.id}: exactly two authored plates`);
+  check(plates.length >= 2 && plates.length <= 4, `${e.id}: two to four authored plates`);
   const plateIds = new Set();
   let shedCount = 0;
   for (const p of plates) {
@@ -81,9 +86,11 @@ export function validateCapitalBossEncounter(e, vocabulary={}) {
     check(typeof p.label === 'string' && p.label.length >= 3 && p.label.length <= 24, `${e.id}/${p && p.id}: plain-words label`);
     const a = p && p.anchor;
     check(a && Number.isFinite(a.x) && Number.isFinite(a.z), `${e.id}/${p && p.id}: local anchor`);
-    check(finite(p && p.radius, 1) && finite(p && p.mass, 1) && finite(p && p.holdTension, 0),
+    check(finite(p && p.radius, 1) && finite(p && p.mass, 1) && finite(p && p.holdTension, 0) && (p && p.holdTension) <= 1,
       `${e.id}/${p && p.id}: radius/mass/holdTension`);
     check(SUBSYSTEMS.has(p && p.covers), `${e.id}/${p && p.id}: covered subsystem vocabulary`);
+    check(p && (p.partId == null || IDS.test(String(p.partId))),
+      `${e.id}/${p && p.id}: aftermath partId`);
     check(p && (p.shedOnAct == null || (integer(p.shedOnAct, 0) && p.shedOnAct < 3)),
       `${e.id}/${p && p.id}: shedOnAct`);
     if (p && p.shedOnAct != null) shedCount++;

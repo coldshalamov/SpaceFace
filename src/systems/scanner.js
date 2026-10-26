@@ -1067,6 +1067,8 @@ export const scanner = {
     this._cooldownUntil = 0;
     ensureSignalState(this.state);
     this._contactHail = null;
+    this._contactHailBinding = null;
+    this._contactHailSequence = 0;
     this._orchardTowGuidance = null;
     this._contactHailAvailability = null;
     this._contactHailAvailabilitySignature = '';
@@ -1115,6 +1117,8 @@ export const scanner = {
     // so a late-run pulse must not keep scanning locked for the whole old timestamp.
     this._cooldownUntil = 0;
     if (this.state) this.state.signalInvestigation = freshSignalState();
+    const survey = this.registry && this.registry.get && this.registry.get('scanReveal');
+    if (survey && typeof survey.newGame === 'function') survey.newGame();
   },
 
   update(_dt, state) {
@@ -1457,9 +1461,13 @@ export const scanner = {
         }
       }
       const scanCount = (previous && previous.scanCount || 0) + 1;
+      const bestDistance = Math.min(
+        previous && Number.isFinite(Number(previous.bestDistance)) ? Number(previous.bestDistance) : Infinity,
+        candidate.distance,
+      );
       const stage = candidate.noProximityStage
         ? Math.min(3, Math.max(1, Math.floor(scanCount)))
-        : signalClassificationStage(scanCount, candidate.distance);
+        : signalClassificationStage(scanCount, bestDistance);
       const strength = signalStrengthFor(candidate.distance, candidate.range);
       const confidence = Math.min(0.98, 0.24 + (stage - 1) * 0.27 + strength * 0.2);
       const record = {
@@ -1481,10 +1489,7 @@ export const scanner = {
         scanCount,
         firstSeenAt: previous ? previous.firstSeenAt : now,
         lastScanAt: now,
-        bestDistance: Math.min(
-          previous && Number.isFinite(Number(previous.bestDistance)) ? Number(previous.bestDistance) : Infinity,
-          candidate.distance,
-        ),
+        bestDistance,
         status: previous && previous.status === 'tracked' ? 'tracked' : 'detected',
         manualInvestigation: candidate.manualInvestigation === true,
       };
@@ -1639,10 +1644,10 @@ export const scanner = {
       pos: record.pos,
       at: now,
     });
-    if (!result || !result.revised || !result.hypothesis) return result;
+    if (!result || !result.hypothesis || !result.hypothesis.history?.length) return result;
     record.detail = result.playerLine || record.detail;
-    record.clue = result.hypothesis;
-    if (own.trackedId === record.id && record.trackable !== false && !own.completed[record.id]) {
+    record.clue = { ...result.hypothesis, status: 'current', revised: true };
+    if (result.revised && own.trackedId === record.id && record.trackable !== false && !own.completed[record.id]) {
       this._retargetClue(record);
     }
     return result;
@@ -1705,7 +1710,8 @@ export const scanner = {
       return true;
     }
     const now = Number(state.simTime) || 0;
-    const requestId = `contact-hail:${availability.kind}:${String(availability.targetId)}:${state.tick | 0}:${Math.round(now * 1000)}`;
+    this._contactHailSequence += 1;
+    const requestId = `contact-hail:${availability.kind}:${String(availability.targetId)}:${state.tick | 0}:${Math.round(now * 1000)}:${this._contactHailSequence}`;
     const offer = availability.kind==='tally_three'
       ?this.registry.get('tallyThree')?.offer(availability,requestId,now+CONTACT_HAIL_REQUEST_TTL_S)
       :createContactHailOffer(
@@ -1719,6 +1725,10 @@ export const scanner = {
       return false;
     }
     this._contactHail = offer;
+    this._contactHailBinding = {
+      entity: availability.entity,
+      generation: availability.entity?.occupantGeneration ?? null,
+    };
     this.bus.emit('contactHail:offer', cloneContactHailPayload(offer));
     return true;
   },
@@ -1733,7 +1743,8 @@ export const scanner = {
       && payload.targetId === active.targetId
       && availability.enabled
       && availability.targetId === active.targetId
-      && availability.kind === active.kind;
+      && availability.kind === active.kind
+      && this._sameContactHailBody(availability.entity);
     if (!valid) {
       this._clearContactHail('choice_invalid');
       return false;
@@ -1742,7 +1753,7 @@ export const scanner = {
     if(availability.kind==='tally_three'){
       const response=this.registry.get('tallyThree')?.choose(active,String(payload.choice||'').toLowerCase());
       if(!response)return false;
-      this._contactHail=null;this.bus.emit('contactHail:response',cloneContactHailPayload(response));return true;
+      this._contactHail=null;this._contactHailBinding=null;this.bus.emit('contactHail:response',cloneContactHailPayload(response));return true;
     }
     const ai = target && target.data && target.data.ai || {};
     const wanted = isPlayerWanted(state);
@@ -1762,6 +1773,7 @@ export const scanner = {
     });
     if (!response) return false;
     this._contactHail = null;
+    this._contactHailBinding = null;
     this.bus.emit('contactHail:response', cloneContactHailPayload(response));
     return true;
   },
@@ -1914,7 +1926,8 @@ export const scanner = {
     const current = this._contactHail;
     if (current && (!availability.enabled
       || availability.targetId !== current.targetId
-      || availability.kind !== current.kind)) {
+      || availability.kind !== current.kind
+      || !this._sameContactHailBody(availability.entity))) {
       this._clearContactHail('availability_lost');
     }
   },
@@ -1955,10 +1968,17 @@ export const scanner = {
     }
   },
 
+  _sameContactHailBody(entity) {
+    const binding = this._contactHailBinding;
+    return !!binding && binding.entity === entity
+      && binding.generation === (entity?.occupantGeneration ?? null);
+  },
+
   _clearContactHail(reason) {
     if (!this._contactHail) return false;
     const previous = this._contactHail;
     this._contactHail = null;
+    this._contactHailBinding = null;
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('contactHail:clear', {
         requestId: previous.requestId,
@@ -2028,7 +2048,10 @@ export const scanner = {
 
   serialize() {
     const own = ensureSignalState(this.state);
-    return cloneSignalState(own);
+    const snapshot = cloneSignalState(own);
+    const survey = this.registry && this.registry.get && this.registry.get('scanReveal');
+    if (survey && typeof survey.serialize === 'function') snapshot.wreckSurvey = survey.serialize();
+    return snapshot;
   },
 
   deserialize(data) {
@@ -2037,6 +2060,8 @@ export const scanner = {
     // deadline, so carry no lockout across a load.
     this._cooldownUntil = 0;
     this.state.signalInvestigation = normalizeSignalState(data);
+    const survey = this.registry && this.registry.get && this.registry.get('scanReveal');
+    if (survey && typeof survey.deserialize === 'function') survey.deserialize(data && data.wreckSurvey);
   },
 
   destroy() {
@@ -2059,6 +2084,7 @@ export const scanner = {
       if (this._onSensorGhostSwarm) this.bus.off('sensorGhost:swarm', this._onSensorGhostSwarm);
     }
     this._contactHail = null;
+    this._contactHailBinding = null;
     this._contactHailAvailability = null;
     this._contactHailAvailabilitySignature = '';
     this._onSignalTrack = null;

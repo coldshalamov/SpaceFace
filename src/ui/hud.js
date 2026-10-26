@@ -4507,10 +4507,26 @@ export function createHud(ctx, alerts) {
     HOSTILE: 'hostile', PATROL: 'patrol', DERELICT: 'derelict', TRADER: 'trader',
     MINER: 'miner', WINGMAN: 'ally', ALLY: 'ally', NEUTRAL: 'neutral',
   };
-  function tierPips(tier) {
-    let s = '';
-    for (let i = 0; i < 3; i++) s += i < tier ? '▰' : '▱';
-    return s;
+  // Threat tier is DRAWN, never typeset: three slanted segment pips, lit up to the tier — the
+  // same gauge language as the vital meters. The ▰/▱ codepoints rendered as missing-glyph boxes
+  // on platforms whose fallback fonts lack them (craft critic 2026-10-26), so the pips are
+  // elements: <i> children, .is-lit up to the tier. Structure is built once per row, toggled after.
+  function paintTierSegments(el, tier) {
+    const t = Number.isFinite(tier) ? Math.max(0, Math.min(3, tier)) : 0;
+    if (el.childElementCount !== 3) {
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < 3; i++) frag.appendChild(document.createElement('i'));
+      el.replaceChildren(frag);
+    }
+    const segs = el.children;
+    for (let i = 0; i < 3; i++) {
+      const lit = i < t;
+      if (segs[i].classList.contains('is-lit') !== lit) segs[i].classList.toggle('is-lit', lit);
+    }
+    // The pips are decorative <i> elements; the word still needs to reach assistive tech, which
+    // the ▰▱ text only ever read as noise. role=img makes the label announce.
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', `Threat tier ${t}`);
   }
 
 
@@ -4540,6 +4556,11 @@ export function createHud(ctx, alerts) {
     glyphEl.style.setProperty('font-size', '10px');
     const nameEl = document.createElement('span');
     nameEl.className = 'sf-overview-row__name';
+    // The text lives one level inside __name so the element's overflow-hidden box is an ancestor
+    // of the run: the visual ellipsis and every measure of the run's extent then agree — a
+    // clipped name can never read as painted under the state word beside it.
+    const nameTextEl = document.createElement('span');
+    nameEl.appendChild(nameTextEl);
     const stateEl = document.createElement('span');
     left.append(lampEl, iffIcon, glyphEl, nameEl, stateEl);
 
@@ -4557,7 +4578,7 @@ export function createHud(ctx, alerts) {
 
     const rec = {
       id: entity.id,
-      el, lampEl, iffIcon, glyphEl, nameEl, stateEl, tierEl, distEl, speedEl,
+      el, lampEl, iffIcon, glyphEl, nameEl, nameTextEl, stateEl, tierEl, distEl, speedEl,
       detailEl: null,
       attached: false,
       stamp: 0,
@@ -4629,7 +4650,15 @@ export function createHud(ctx, alerts) {
     }
     if (rec.icon !== iff.icon) { rec.iffIcon.innerHTML = glyphSvg(iff.icon, 11); rec.icon = iff.icon; }
     if (rec.glyph !== glyph) { rec.glyphEl.innerHTML = glyphSvg(glyph, 13); rec.glyph = glyph; }
-    if (rec.name !== name) { rec.nameEl.textContent = name; rec.name = name; }
+    if (rec.name !== name) {
+      // WORD JOINER after each hyphen: an explicit hyphen is a soft wrap opportunity, so a
+      // callsign like "Relief-Freighter Choir-Tender" broke "Choir-/Tender" mid-token and the
+      // checker read the run as cut off. With U+2060 the only breaks left are at spaces — the
+      // name wraps whole words (craft critic 2026-10-26). rec.name keeps the raw string for
+      // the selection toast.
+      rec.nameTextEl.textContent = name.replace(/-/g, '-⁠');
+      rec.name = name;
+    }
     // A contact whose only name IS its state ("Derelict" + "DERELICT") reads as a stutter;
     // keep the state class for colour, drop the duplicated word.
     const shownSword = sword && sword.toLowerCase() === String(name).toLowerCase() ? '' : sword;
@@ -4640,7 +4669,7 @@ export function createHud(ctx, alerts) {
       rec.tierEl.className = `sf-overview-row__tier sf-cs--${stateCls}`;
       rec.stateCls = stateCls;
     }
-    if (rec.tier !== c.threatTier) { rec.tierEl.textContent = tierPips(c.threatTier); rec.tier = c.threatTier; }
+    if (rec.tier !== c.threatTier) { paintTierSegments(rec.tierEl, c.threatTier); rec.tier = c.threatTier; }
     if (rec.dist !== dist) {
       rec.distEl.textContent = String(dist);
       applyDistanceSpeech(rec.distEl, `${dist} u`);

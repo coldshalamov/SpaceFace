@@ -1629,6 +1629,9 @@ export const missions = {
       this._resolveContract47aSkimForDock(stationId);
       this._onDockedObjectives(stationId);
       this._onContract47aB3Docked(stationId);
+      // W-BOOKS-3-4: a blown Hawser seam gets Slate's second pass at the yard — the
+      // column keeps its entry once the weld lands.
+      this._resolveVarianceSeamWeld(stationId);
       this._storyTrigger('dock', { stationId });
     });
     bus.on('dock:undocked', () => {
@@ -1636,6 +1639,7 @@ export const missions = {
       this._activateContract47aB1OnDeparture();
       this._activateContract47aB2OnDeparture();
       this._activateContract47aB3OnDeparture();
+      this._activateContract47aB4OnDeparture();
       this._onPassengerUndock();
     });
 
@@ -1647,7 +1651,11 @@ export const missions = {
     bus.on('understory:gardenFed', (p) => this._recordCampaignBookSignal('understory:gardenFed', p));
     bus.on('understory:gardenStage', (p) => this._recordCampaignBookSignal('understory:gardenStage', p));
     bus.on('understory:compostRunComplete', (p) => this._recordCampaignBookSignal('understory:compostRunComplete', p));
-    bus.on('encounter:resolved', (p) => this._recordCampaignBookSignal('encounter:resolved', p));
+    bus.on('encounter:resolved', (p) => {
+      // W-CANON (§34.7 row 537): a quiet interlude scene closing marks its story flag.
+      this._observeCampaign47aInterludeResolved(p);
+      this._recordCampaignBookSignal('encounter:resolved', p);
+    });
     bus.on('rookWreck:delivered', (p) => {
       this._onRookWreckDelivered(p);
       this._recordCampaignBookSignal('rookWreck:delivered', p);
@@ -1656,6 +1664,13 @@ export const missions = {
       this._onFurnaceFed(p);
       this._recordCampaignBookSignal('furnace:fed', p);
     });
+
+    // ── W-BOOKS-3-4 (§34.7 Books 3–4): the Gate Audit welds are world-pressure events
+    // recorded as optional book evidence; VARIANCE ADJUSTMENT's seam counts the live
+    // strain envelope and lets go at the fourth spike while the delivered hull is flown.
+    bus.on('worldPressure:auditAnnounced', (p) => this._recordCampaignBookSignal('worldPressure:auditAnnounced', p));
+    bus.on('worldPressure:gateClosed', (p) => this._recordCampaignBookSignal('worldPressure:gateClosed', p));
+    bus.on('tether:strain', (p) => this._onBookVarianceStrain(p));
     bus.on('pickup:collected', (payload) => onWakePickupCollected(this, payload));
 
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
@@ -1893,10 +1908,17 @@ export const missions = {
     this._racingOpponents?.reconcile(state.missions?.active || []);
     this._racingSetPieces?.reconcile(state.missions?.active || []);
     this._adventureSpeedSetPieces?.reconcile();
+    // W-BOOKS-3-4 (§34.7 Book 4): six days after a taken doubled contract the airlock
+    // wall answers — fires docked or flying, the wall doesn't care where you read it.
+    this._stepBookDoubledWall(state);
     if (state.mode && state.mode !== 'flight') return; // sim frozen while docked/paused
     // W-BOOKS-0-2 (§34.7 Book 0): the Skim fires on the lane once the sample has been
     // aboard long enough — the dock fallback covers a pilot who jumps the lane first.
     this._stepContract47aSkim(state);
+    // W-CANON (§34.7 row 537): quiet interlude scenes request themselves through the
+    // encounter director once their book boundary has passed — one at a time, only
+    // while the pilot is in flight; lane violence never starves an owed quiet scene.
+    this._stepCampaign47aInterludes(state);
     // Flush settlement-detached capital boss fights AFTER the score's own fixed-tick step has run
     // at least once past the terminal observation, so capitalBoss:ended (final voice/telemetry)
     // is emitted before the record is removed.
@@ -2353,6 +2375,9 @@ export const missions = {
 
     // B4 branch: accepting a faction intro contract sets the story branch.
     this._maybeSetBranch(inst);
+    // W-BOOKS-3-4: accepting a Books 3–4 board row speaks its scene — Slate's
+    // handover, the maw's appetite, the Foreman's claim, the doubled tag's plain type.
+    this._onBookContractAccepted(inst);
     this._startLongReadObjective(inst);
     this._startWreckBoundStageObjective(inst);
     return true;
@@ -5252,6 +5277,7 @@ export const missions = {
     try {
       this._advanceEmbodiedStoryMission(m);
       this._completeContract47aB4Intro(m);
+      this._resolveContract47aB4Doubled(m);
       this._advanceStoryChain(m);
       this._completeContract47aB7Operation(m);
     } finally {
@@ -6315,8 +6341,8 @@ export const BEAT_HINT = {
   0: 'Cold Start: mine ore from an asteroid field, then dock to sell or deliver it.',
   1: 'Honest Work: the book posts the alloy run first — the Scale 4 weigh and the furnace detail follow.',
   2: 'First Blood: the cinder board posts first — the Compost Run, the Nest, and the register follow.',
-  3: 'Bigger Boat: tow the slag core the long way into the yard.',
-  4: 'Pick a Side: accept an intro contract from a faction to choose your path.',
+  3: 'Bigger Boat: take delivery of VARIANCE ADJUSTMENT at Slate\u2019s berth — the maw and the Foreman follow.',
+  4: 'Pick a Side: accept an intro contract, then run the door\u2019s operation on the board.',
   5: 'Proving Ground: complete your faction\'s mission chain.',
   6: 'Empire Seed: deploy your first passive asset (drone, trader, or outpost).',
   7: 'The Deep Reach: reach Ashfall and choose through its board, ledger, or wormhole.',

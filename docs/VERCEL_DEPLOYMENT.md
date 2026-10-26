@@ -123,6 +123,12 @@ reproduces the cheap half locally in seconds.
 - **Install:** `installCommand` sets `ELECTRON_SKIP_BINARY_DOWNLOAD=1` and
   `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`. Do not drop them — the build container has no use for
   either binary and they dominate install time/egress.
+- **Lockfile generation platform:** a Windows `npm install --package-lock-only` can emit a lock
+  the Linux build container rejects (`npm ci ... Missing: <pkg> from lock file`, e.g. the
+  `@electron/windows-sign` subtree under `electron-winstaller`). Local `npm ci` passes on Windows
+  while Vercel's npm fails, so a green local install is not proof. Regenerate the lock where the
+  build runs before landing dependency bumps:
+  `docker run --rm -v "$PWD:/w" -w /w node:24-bookworm-slim npm install --package-lock-only`.
 - **Postinstall** runs `scripts/patch-playwright-electron.mjs` — required; do not bypass with
   `--ignore-scripts`.
 - **Preview branches:** with git disconnected there are no preview deployments. If previews are

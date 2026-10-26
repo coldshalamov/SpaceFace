@@ -277,6 +277,28 @@ never ends. The wall does not answer.
 
 ---
 
+## 9. THE CYCLE'S THREE PRESSURES (canon, row 537 — 2026-10-26)
+
+*Adopted from `design/expansion/01_TONE_AND_WORLD.md` §3 under the PROPOSED CANON rule. Each one is
+physical, persistent and visible on the chart — never a menu number.*
+
+1. **The Bloom tide.** Infestation spreads along lanes where wrecks are left to rot. Cleared wrecks
+   and fed Understory gardens push it back; a neglected sector greys over. The tide map is canon in
+   `sheets/species/bloom.md`.
+2. **The Gate Audits.** The Directorate's closures began Year 16 — outer gates shut "for fiscal
+   consolidation," one per Book through the campaign: **Kepler, Io, Eris** named on the route.
+   Each closure strands a community and wakes a little more Verge-Layer law. The player can delay
+   a closure. The player cannot stop the policy.
+3. **The Slow Gray ticker.** The Clear Air Index for Sector 0 falls every Book and never recovers.
+   The Pit's viability review reads CONTINUING. The market prices the dying correctly; that is the
+   horror of it.
+
+Two dated entries behind them, same canon adoption: **Year 13** — Pitborn yard crews turn culling
+into sport; the broadcast blood-league and the Crucible circuit are born (the ten-arena ladder is
+in `sheets/worlds/sector-wonders.md`). **Year 16** — the Gate Audits begin.
+
+---
+
 ## Sheet wiring (entities this document establishes or advances)
 
 | type | id | role |

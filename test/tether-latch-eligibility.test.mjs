@@ -842,10 +842,21 @@ test('T04 §5: two identical runs produce byte-equal observed event streams', ()
   function runOnce() {
     const foe = hostileShip(50, { pos: { x: 190, z: 0 }, vel: { x: 0, z: 55 } });
     const rock = asteroid(51, { pos: { x: 200, z: 10 } });
-    const stn = station(52, { pos: { x: 180, z: -5 } });
+    // 177 wu — still nearer than the hostile's 190, but its 40-radius body sits 50 wu off the
+    // aim line. A station ON the line physically blocks the latch and the pick cannot be scored
+    // on aim at all, which is what this fixture used to build by accident.
+    const stn = station(52, { pos: { x: 170, z: -50 } });
     const h = buildHarness([stn, rock, foe], { aimWorld: { x: 190, z: 0 }, simTime: 2, tick: 120 });
+    // Live input stamps aimIntentActive every tick alongside aimWorld (input.js:2029/2076);
+    // without it the cursor axis contributes 0 and this fixture models stale reticle, not aim.
+    h.state.input.aimIntentActive = true;
     fireLatch(h);
     assert.equal(h.events.latched.length, 1, 'run should latch once');
+    // Which context made the pick matters as much as which body won: without aim intent
+    // this same fixture STILL latches 50 — through 'closing-hostile' at 0.558 vs the
+    // station's 0.431 — so targetId alone cannot catch a regression that stops scoring
+    // the cursor axis. The acquisition receipt's intent.source records the decider.
+    const intentSource = h.state.masslineAcquisition?.intent?.source ?? null;
 
     // Break authority + mirror so adoptExisting cannot re-bind, then press under cooldown.
     const attId = h.system._active.attachmentId;
@@ -860,6 +871,7 @@ test('T04 §5: two identical runs produce byte-equal observed event streams', ()
     return {
       latched: h.events.latched,
       denied: h.events.denied,
+      intentSource,
       stream: JSON.stringify({ latched: h.events.latched, denied: h.events.denied }),
     };
   }
@@ -867,12 +879,14 @@ test('T04 §5: two identical runs produce byte-equal observed event streams', ()
   const b = runOnce();
   assert.equal(a.stream, b.stream, 'byte-equal event streams');
   // The aim is (190,0) — exactly the hostile ship. Under the old nearest-body-by-distance latch the
-  // station at 180.07 wu won purely on being 10 wu closer, which is the headline defect this chunk
+  // station at ~177 wu won purely on being ~13 wu closer, which is the headline defect this chunk
   // exists to fix: what the Massline grabs is now what the player meant, not what happened to be
   // nearest. The scored path picks the hostile the player is aiming at and swinging past. This
   // test's own subject — that two identical runs produce byte-equal streams — is asserted above and
   // still holds; only the expected pick moved.
   assert.equal(a.latched[0].targetId, 50, 'the scored latch takes the aimed-at hostile, not the marginally nearer station');
+  assert.equal(a.intentSource, 'cursor-paint',
+    'the pick must be decided by the painted cursor — an aim-blind ranking still lands on 50 via closing-hostile');
   assert.equal(a.denied.length, 1);
   assert.equal(a.denied[0].reason, 'cooldown');
 });

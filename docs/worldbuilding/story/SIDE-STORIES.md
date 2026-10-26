@@ -265,3 +265,28 @@ Programmers: optional threads must not gate B0–B7; they reweight.
 
 > **Canon refs:** `CREATIVE-DIRECTION.md`, `STORY-STRUCTURE.md`, `STORY-SPINE-NARRATIVE-OVERLAY.md`,
 > `NPCs-CANONICAL.md`, `SHOP-FLOOR-CAPERS.md`, `ENDGAME-B7-REDESIGN.md`, `CONTEMPORARY-HISTORY.md`.
+
+---
+
+## 12. THE SIX INTERLUDES PLAY ON THE LIVE ROUTE (canon, row 537 — 2026-10-26)
+
+The interludes in `THE-STORYLINE.md` are quiet scenes the player can stand in, between books, on
+the real lanes — not codex text. Each one is a physical log object you fly up to and read: the
+scene waits, the world keeps it. They are authored encounters in
+`src/data/encounters/926–931-interlude-*.js`, requested by the campaign's interlude stepper through
+the encounter director — the same machinery as every other quiet scene, never a parallel system.
+Nothing in an interlude asks for anything. They are what the pilot sees when the book gives back
+the wheel.
+
+| Interlude | The object | Where it waits | Chapter |
+|---|---|---|---|
+| THE UNKNOWN VESSEL | `HULL-SPOTTER BUOY — S4` | the 47-A lane off the Pit | after B0 |
+| THE HAND | a maintenance skiff painting `BULKHEAD 4` | the Pit aprons | after B1 |
+| THE SECOND CLIENT | `BROKER'S TALLY BUOY` | the drift off Cinder | after B2 |
+| THE TICKER | `EXCHANGE RELAY PYLON` | the lane edge off Tycho | after B3 |
+| THE DRAWER | `RECORDS CRATE — UNLOCKED` | the annex drift off Meridian | after B4 |
+| THE SMELL TICKET | `RECYCLER CATALYST GRID — 12.4 T — RACKED` | the bay apron, tag on | after B5 |
+
+Receipt law holds: standing in the scene marks `story.flags.interlude_<id>` and a sidecar ledger
+row; an unread scene stays owed and finds the pilot on a later quiet pass — the log object is lane
+furniture, and the lane is wherever the pilot is.

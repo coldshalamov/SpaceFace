@@ -1,6 +1,7 @@
 // Renderer-only adapter: no simulation writes, private animation loop, or Three.js dependency.
 // A transparent overlay canvas and the host camera's XZ->pixel projection are the only ports.
 import {requireCapitalBossEncounter} from '../data/encounters/capital-boss.js';
+import {LAST_ARGUMENT} from '../data/lastArgument.js';
 import {capitalPlatePull,capitalPlateUnderLine} from '../combat/capitalPlates.js';
 const TAU=Math.PI*2;
 /** Closed outlines, error <= 0.5 WU for authored dimensions. Lane ends remain rounded. */
@@ -71,7 +72,8 @@ export function capitalBossReadouts(state,out) {
    let readout=list[n];
    if(!readout||typeof readout!=='object'){
     readout={fightId:null,encounterId:null,bossId:null,name:'',actId:null,actTitle:'',
-     hull:0,hullMax:0,hullFraction:0,phase:null,clock:0,move:null,plates:null,plateHold:null};
+     hull:0,hullMax:0,hullFraction:0,phase:null,clock:0,move:null,plates:null,plateHold:null,
+     partsAttached:0,partsTotal:0,partsLive:false};
     // The pooled move record rides a hidden slot so a readout still reads as plain data.
     Object.defineProperty(readout,'_move',{value:null,writable:true,enumerable:false});
     list[n]=readout;
@@ -127,6 +129,13 @@ export function capitalBossReadouts(state,out) {
    }
    platesOut.length=cellN;
    readout.plates=platesOut;
+   // W-COLOSSI (row 547): the bar is the parts. When this fight carries live plates — every
+   // score boss except the Last Argument, whose authored parts are data-only — the mount's
+   // gauge reads attached-parts fraction instead of hull. `cellN` counts attached plates,
+   // so a fully stripped colossus reads 0 while its bare hull still fights.
+   readout.partsTotal=plateSpecs?plateSpecs.length:0;
+   readout.partsAttached=cellN;
+   readout.partsLive=!!(plateSpecs&&plateSpecs.length&&r.encounterId!==LAST_ARGUMENT.scoreId);
    const cast=r.cast;
    if(cast&&score&&Array.isArray(score.beats)){
     let beat=null;

@@ -81,6 +81,8 @@ export function installShaderLinkReporter(renderer, options = {}) {
 // renderer.info.programs is three's program cache list (WebGLPrograms pushes every new program).
 function guardProgramList(renderer, context) {
   const programs = renderer.info && renderer.info.programs;
+  // Context restoration replaces three's cache array; pruning must follow the current owner.
+  context.programs = programs;
   if (!Array.isArray(programs) || Object.prototype.hasOwnProperty.call(programs, 'push')) return;
   for (const program of programs) guardFirstUse(program, context);
   const push = Array.prototype.push;
@@ -136,20 +138,28 @@ function pruneUnused(context) {
   return context.unused.size;
 }
 
-// Force the first use (uniform discovery, which waits for the driver link) of up to `max` programs
-// that were created but never drawn. Returns how many remain unused.
+// Admit up to `max` unused programs to first use. KHR links must settle before uniform discovery:
+// a first-use query on an incomplete link blocks the loading presenter until the driver finishes.
+// Incomplete programs stay pending under the veil's existing deadline and rotate behind siblings.
 function drainUnused(context, max) {
-  let left = Math.max(0, Number(max) || 0);
   if (pruneUnused(context) === 0) return 0;
+  // Bound probes as well as admissions. Iterating this Set avoids a per-frame snapshot allocation;
+  // limiting attempts to its starting size also prevents revisiting a rotated pending program.
+  let left = Math.min(context.unused.size, Math.max(0, Math.floor(Number(max) || 0)));
   try {
     if (typeof context.gl.isContextLost === 'function' && context.gl.isContextLost()) {
       context.unused.clear();
       return 0;
     }
   } catch (_) { return 0; }
-  for (const program of [...context.unused]) {
+  for (const program of context.unused) {
     if (left <= 0) break;
     left -= 1;
+    if (!programSettled(program, context)) {
+      context.unused.delete(program);
+      context.unused.add(program);
+      continue;
+    }
     context.unused.delete(program);
     try { program.getUniforms(); } catch (_) { /* a failed discovery reports through the draw path */ }
   }

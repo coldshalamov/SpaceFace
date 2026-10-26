@@ -870,6 +870,17 @@ export function installAchievements({
     }
   }
 
+  function reconcileCareerTotals() {
+    // Shared-store merges can advance a career beyond this shell's samplers.
+    // Preserve local fractions while adopting the merged counters as their floor.
+    odometerTotal = Math.max(odometerTotal, cleanCount(bag.counters[CAREER_KEY_DISTANCE_FLOWN]));
+    for (const key of Object.keys(bag.counters)) {
+      if (!key.startsWith(SECTOR_TIME_PREFIX)) continue;
+      const sectorId = key.slice(SECTOR_TIME_PREFIX.length);
+      sectorTotals.set(sectorId, Math.max(sectorTotals.get(sectorId) || 0, cleanCount(bag.counters[key])));
+    }
+  }
+
   function livePlayerPos() {
     let player = null;
     const entities = state && state.entities;
@@ -958,7 +969,10 @@ export function installAchievements({
     }
     checkpointSectorStamp();
     const merged = saveAchievementBag(bag, store, synced ? {} : { savedAt: preSyncSavedAt, push: false });
-    if (merged) bag = merged;
+    if (merged) {
+      bag = merged;
+      reconcileCareerTotals();
+    }
   }
 
   function scheduleSave() {
@@ -1124,6 +1138,7 @@ export function installAchievements({
     }
     const stored = loadAchievementBag(store);
     bag = mergeAchievementBags(bag, stored);
+    reconcileCareerTotals();
     refreshCrucible();
     const fresh = evaluate('save:store-synced', { announce: false });
     if (!fresh.length && !sameJson(bag, stored)) saveNow();
@@ -1201,13 +1216,18 @@ export function installAchievements({
   const api = {
     name: 'achievements',
     rows: () => achievementRows(bag, crucible),
-    snapshot: () => ({
-      unlocked: cloneJson(bag.unlocked) || {},
-      counters: { ...bag.counters },
-      crucible: { ...crucible },
-      unlockedCount: ACHIEVEMENTS.filter((def) => bag.unlocked[def.id]).length,
-      total: ACHIEVEMENTS.length,
-    }),
+    snapshot: () => {
+      // Statistics can open before any save or sector exit. Include the current
+      // residence at this sim instant; checkpointing is idempotent at a held clock.
+      if (!disposed) checkpointSectorStamp();
+      return {
+        unlocked: cloneJson(bag.unlocked) || {},
+        counters: { ...bag.counters },
+        crucible: { ...crucible },
+        unlockedCount: ACHIEVEMENTS.filter((def) => bag.unlocked[def.id]).length,
+        total: ACHIEVEMENTS.length,
+      };
+    },
     isUnlocked: (id) => !!(bag && bag.unlocked[id]),
     pendingNoticeCount: () => pendingNotice.length,
     flush: () => { if (!disposed) saveNow(); },
