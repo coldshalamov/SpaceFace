@@ -93,6 +93,176 @@ export const SWARM_BROOD_LATE_FAMILIES = Object.freeze([
     birthEveryS: 1,
     birthBudget: 12,
   },
+  // ── The deep band: waves 31–55 ────────────────────────────────────────────────────────
+  // Ship silhouettes stop arriving at 22 and this table's own clock stopped at 23; the rows
+  // below keep the late clock moving inside the same mite share, so the room reads different
+  // instead of simply fuller. The ship catalog holds no legal late body (the only unfielded
+  // silhouette, the scissorwake, outruns every starter at stock stats — the handling law
+  // forbids it), so the band lives here: five veteran variants through flag recipes the
+  // engine already runs — no new kill math, no stat scaling, same population band.
+  {
+    id: 'remora',
+    name: 'Remora',
+    role: 'wake-mine',
+    fromWave: 31,
+    weight: 2,
+    cohort: 5,
+    radius: 2.6,
+    mass: 10,
+    hull: 12,
+    speed: 66,
+    turn: 3.6,
+    credits: 3,
+    score: 30,
+    telegraph: {
+      bark: 'warn',
+      line: 'A remora rides your wake — it is winding up astern.',
+      cue: 'weapon_charge',
+    },
+    counter: 'It swims your own wake and bursts at your stern. Turn hard to shed it, or pop it far out.',
+    deathLeaves: 'a spent charge',
+    bodyColor: [0.60, 0.26, 0.10],
+    bodyEmissive: [0.50, 0.14, 0.04],
+    // A dart, not a boulder: low and long like the burrower, hot like the cyst.
+    stretch: Object.freeze([0.72, 0.50, 1.30]),
+    // `trails` rides astern of the signature; `primeRange` arms the fuse once it has your
+    // stern — the escape line feeds the bomb to you. Shed the trail or pop it far out.
+    trails: true,
+    primeRange: 46,
+    primeS: 1.5,
+    burstRadius: 78,
+    burstDv: 135,
+  },
+  {
+    id: 'gloomcap',
+    name: 'Gloomcap',
+    role: 'armed-sac',
+    fromWave: 37,
+    weight: 2,
+    cohort: 3,
+    radius: 4.5,
+    mass: 20,
+    hull: 22,
+    speed: 30,
+    turn: 1.6,
+    credits: 4,
+    score: 38,
+    telegraph: {
+      bark: 'warn',
+      line: 'The rock splits — a gloomcap swells out.',
+      cue: 'weapon_charge',
+    },
+    counter: 'Your hit arms it; the fuse finishes it. Strike it twice far from you — or not at all.',
+    deathLeaves: 'a burst on the pack',
+    bodyColor: [0.30, 0.26, 0.34],
+    bodyEmissive: [0.26, 0.10, 0.30],
+    stretch: Object.freeze([1.15, 1.05, 1.15]),
+    // The burrower's ambush carrying the bellows' law: `burrows` sleeps it in a rock
+    // silhouette until the pilot is inside `burstRange` — the eruption IS its debut tell —
+    // and `swells` means the first strike only arms the fuse. Your fire, not the room, turns
+    // it into the bomb; where it floats when the fuse ends is the placement the pilot owns.
+    burrows: true,
+    burstRange: 72,
+    windupS: 0.6,
+    swells: true,
+    swellS: 2.8,
+    burstRadius: 88,
+    burstDv: 110,
+  },
+  {
+    id: 'ashwisp',
+    name: 'Ash Wisp',
+    role: 'fused-seeker',
+    fromWave: 43,
+    weight: 2,
+    cohort: 4,
+    radius: 2.0,
+    mass: 5,
+    hull: 9,
+    speed: 46,
+    turn: 4.0,
+    credits: 3,
+    score: 34,
+    telegraph: {
+      bark: 'warn',
+      line: 'An ash wisp is alight — your shots pass through the glow.',
+      cue: 'weapon_charge',
+    },
+    counter: 'No shot stops it. It bursts on its own fuse — run the fuse out, or feed it a blast.',
+    deathLeaves: 'grey ash',
+    bodyColor: [0.42, 0.40, 0.38],
+    bodyEmissive: [0.48, 0.20, 0.05],
+    // `blastOnly` refuses every cause but 'explosive' — guns, whips and walls all ping off.
+    // It still seeks the signature and still primes in range, so the body is a deadline the
+    // pilot answers by moving, not by shooting; a blast (or a long carry) pops it early.
+    blastOnly: true,
+    primeRange: 60,
+    primeS: 1.7,
+    burstRadius: 80,
+    burstDv: 125,
+  },
+  {
+    id: 'keelback',
+    name: 'Keelback',
+    role: 'armored-tail',
+    fromWave: 49,
+    weight: 2,
+    cohort: 3,
+    radius: 5.0,
+    mass: 70,
+    hull: 40,
+    speed: 58,
+    turn: 2.2,
+    credits: 4,
+    score: 44,
+    telegraph: {
+      bark: 'warn',
+      line: 'A keelback has your wake — guns will only sing off the shell.',
+      cue: 'pd_curtain',
+    },
+    counter: 'Armor on your six. Only mass cracks it — turn and feed it, and it shatters its own pack.',
+    deathLeaves: 'a shatter on the pack',
+    bodyColor: [0.34, 0.30, 0.30],
+    bodyEmissive: [0.30, 0.12, 0.08],
+    stretch: Object.freeze([1.20, 0.90, 1.25]),
+    // The glassback's law moved to a pursuit body: `massOnly` means no shot moves it off
+    // your tail, `trails` keeps it astern, and its `shardRadius` pays the feed by shattering
+    // the pack around it when it finally cracks.
+    trails: true,
+    massOnly: true,
+    shardRadius: 44,
+  },
+  {
+    id: 'undertow',
+    name: 'Undertow',
+    role: 'drag-field',
+    fromWave: 55,
+    weight: 2,
+    cohort: 4,
+    radius: 3.0,
+    mass: 12,
+    hull: 14,
+    speed: 58,
+    turn: 3.8,
+    credits: 3,
+    score: 36,
+    telegraph: {
+      bark: 'warn',
+      line: 'The undertow holds your wake — the drag is on you until you shed it.',
+      cue: 'engine_flare',
+    },
+    counter: 'A brake that follows your escape line. Cut hard across your own wake to shed it, or burn it down.',
+    deathLeaves: 'a slack eddy',
+    bodyColor: [0.16, 0.30, 0.40],
+    bodyEmissive: [0.06, 0.20, 0.30],
+    // The drift's hazard law made mobile: `trails` keeps it on the pilot's escape line while
+    // `hazard`+`slowRadius` brakes the signature inside it. A leech brakes by latching; the
+    // undertow brakes by outrunning you along your own trail — shedding the wake sheds it.
+    trails: true,
+    hazard: true,
+    slowRadius: 84,
+    slowAccel: 18,
+  },
 ]);
 
 /** The late family def for an id, or null. Pure. */
