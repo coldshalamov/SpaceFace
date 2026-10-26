@@ -1084,8 +1084,7 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
    end wraps between place names instead, and both ends hang from their labels */
 @media (min-width:1101px) {
   ${ML} .ml-route__ends { align-items:start; }
-  ${ML} .ml-route__from, ${ML} .ml-route__to { white-space:normal; text-overflow:clip; line-height:1.3; }
-  ${ML} .ml-route__to .sf-entity-link { white-space:nowrap; }
+  ${ML} .ml-route__from, ${ML} .ml-route__to { white-space:normal; text-overflow:clip; line-height:1.3; text-wrap:balance; }
 }
 
 /* narrow desktop window (640–760): hang|stage stayed two equal columns, so the dial sat on the
