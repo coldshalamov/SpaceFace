@@ -36,6 +36,7 @@ import { observeRacingGhost, readRacingGhost } from '../src/systems/racingGhosts
 import {
   configureRacingCorridorSession, isRacingCorridorSession,
   racingCorridorPlan, clearsRacingCorridor, racingCorridorSceneryShift,
+  racingDressingSpec,
 } from '../src/world/racingCorridor.js';
 import {
   PALLAS_REEF_MINES, PALLAS_REEF_GLOBAL_POS, PALLAS_REEF_FIELD, pallasReefPhase,
@@ -45,7 +46,7 @@ import {
   weatherVolumesForSector, weatherPhase,
 } from '../src/data/environmentalMachinery.js';
 import { SECTORS } from '../src/data/sectors.js';
-import { sectorLocalToGlobalForSector, globalToSectorLocalForSector } from '../src/data/sectorCoordinates.js';
+import { sectorLocalToGlobalForSector, globalToSectorLocalForSector, RESIDENCY_TIER } from '../src/data/sectorCoordinates.js';
 import { segmentDistanceSquared, createSectorArranger } from '../src/world/arranger.js';
 import { asteroidColliderRadius } from '../src/data/asteroidColliders.js';
 import { stageRacingLaunch, armRacingContract, takeRacingLaunch } from '../src/ui/racingLaunch.js';
@@ -688,6 +689,90 @@ test('corridor membrane: moved bodies never stack, and re-materialization re-set
     const again2 = racingCorridorSceneryShift(f.state, sector.id, orig2, r2);
     assert.deepEqual(again1, s1, 'the first body re-settles its own seat');
     assert.deepEqual(again2, s2, 'the second body re-settles its own seat');
+  } finally { f.dispose(); }
+});
+
+test('corridor membrane: co-located bodies keep separate seats by authored identity', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const sector = f.state.world.sectors['sector_ceres_belt'];
+    const plan = racingCorridorPlan(sector.id);
+    const seg = plan.keepouts[0];
+    const length = Math.hypot(seg.b.x - seg.a.x, seg.b.z - seg.a.z);
+    const nx = -(seg.b.z - seg.a.z) / length, nz = (seg.b.x - seg.a.x) / length;
+    const mid = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    // Two different bodies authored onto the same corridor point: a position-keyed
+    // seat map would alias them, so the second body's self-skip would let it stack
+    // onto the first. Stable seat ids (poi.id / faunaKey) reserve two seats.
+    const pos = { x: mid.x + nx * 10, z: mid.z + nz * 10 };
+    const s1 = racingCorridorSceneryShift(f.state, sector.id, pos, 20, 'poi:alpha');
+    const s2 = racingCorridorSceneryShift(f.state, sector.id, pos, 60, 'poi:beta');
+    assert.ok(s1 && s2, 'both co-located bodies start on the corridor');
+    const p1 = { x: pos.x + s1.x, z: pos.z + s1.z };
+    const p2 = { x: pos.x + s2.x, z: pos.z + s2.z };
+    assert.ok(clearsRacingCorridor(plan, p1, 20) && clearsRacingCorridor(plan, p2, 60));
+    assert.ok(Math.hypot(p2.x - p1.x, p2.z - p1.z) >= 20 + 60 + 8 - 0.01,
+      'co-located bodies reserve two seats, never alias one row and stack');
+    // The same authored slot re-settles its own seat on the next pass.
+    const again = racingCorridorSceneryShift(f.state, sector.id, pos, 20, 'poi:alpha');
+    assert.deepEqual(again, s1, 'the named body keeps its own seat');
+  } finally { f.dispose(); }
+});
+
+test('corridor membranes fail closed on a malformed radius', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const sector = f.state.world.sectors['sector_ceres_belt'];
+    const plan = racingCorridorPlan(sector.id);
+    const seg = plan.keepouts[0];
+    const onCorridor = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    // The scenery shift already validates; the spec membrane's radius clamp let
+    // Infinity through, and the unguarded mover minted a non-finite seat the
+    // dressing table then collapsed to (0,0). Now the spec returns untouched.
+    const spec = { collides: true, pos: { ...onCorridor }, radius: Infinity,
+      homeSectorId: sector.id, data: { placeId: 'probe_bad_radius' } };
+    assert.equal(racingDressingSpec(f.state, spec), spec,
+      'an Infinity radius leaves the authored spec alone');
+    assert.equal(racingCorridorSceneryShift(f.state, sector.id, onCorridor, Infinity), null);
+    assert.equal(racingCorridorSceneryShift(f.state, sector.id, { x: NaN, z: 0 }, 20), null);
+    void plan;
+  } finally { f.dispose(); }
+});
+
+test('a fieldless sector still resets corridor peers at the head of the pass', async () => {
+  const f = await sectorFixture('sector_pallas_drift');
+  try {
+    const sector = f.state.world.sectors['sector_pallas_drift'];
+    const plan = racingCorridorPlan(sector.id);
+    const seg = plan.keepouts[0];
+    const length = Math.hypot(seg.b.x - seg.a.x, seg.b.z - seg.a.z);
+    const nx = -(seg.b.z - seg.a.z) / length, nz = (seg.b.x - seg.a.x) / length;
+    const mid = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    // Swap the sector for a fieldless copy and re-register the new object: the
+    // fields pass then returned before its arranger ran, so the POI membrane
+    // worked against last pass's seats and the dressing pass's arranger wiped
+    // every seat the POIs had just reserved.
+    const fieldless = { ...sector, fields: [] };
+    f.state.world.sectors[sector.id] = fieldless;
+    configureRacingCorridorSession(f.state, true);
+    delete f.state.world.sectorContents[sector.id];
+    f.world._ensureSectorMaterialized(sector.id, RESIDENCY_TIER.REDUCED);
+    const bag = f.state.world.sectorContents[sector.id];
+    assert.ok(bag, 'the fieldless pass still materializes');
+    // A shifted solid from the POI phase holds a seat...
+    const orig1 = { x: mid.x + nx * 10, z: mid.z + nz * 10 };
+    const s1 = racingCorridorSceneryShift(f.state, sector.id, orig1, 20, 'poi:head');
+    assert.ok(s1, 'the corridor-blocking body shifts');
+    const p1 = { x: orig1.x + s1.x, z: orig1.z + s1.z };
+    // ...and the dressing phase's arranger creation over the same published bag
+    // must not wipe it before the next body settles.
+    createSectorArranger(f.state.world.sectors[sector.id], { active: bag });
+    const orig2 = { x: mid.x + nx * 40, z: mid.z + nz * 40 };
+    const s2 = racingCorridorSceneryShift(f.state, sector.id, orig2, 60, 'poi:tail');
+    assert.ok(s2);
+    const p2 = { x: orig2.x + s2.x, z: orig2.z + s2.z };
+    assert.ok(Math.hypot(p2.x - p1.x, p2.z - p1.z) >= 20 + 60 + 8 - 0.01,
+      'seats the POI pass reserved survive into the dressing pass');
   } finally { f.dispose(); }
 });
 

@@ -2616,8 +2616,12 @@ export const world = {
       _ecologyFingerprint: ecology && ecology.fingerprint || null,
     };
     const fieldDefs = sector.fields || [];
-    if (!fieldDefs.length) return;
+    // The corridor peer list resets on this pass's first arranger. A fieldless sector
+    // still owns that reset — the POI/dressing membranes run after this phase and must
+    // neither consult last pass's seats nor lose the seats they register to a later
+    // arranger creation inside the same pass.
     const arranger = this._arrangerForSector(sector, active);
+    if (!fieldDefs.length) return;
 
     // Split the sector's asteroid budget across its declared fields, weighted by countWeight.
     const totalWeight = fieldDefs.reduce((s, f) => s + (f.countWeight || 1), 0) || 1;
@@ -3124,7 +3128,7 @@ export const world = {
       // move. Only a session-registered sector object answers the shift.
       if (solidPlan || poi.collides === true || fleetCount > 0) {
         const sceneryShift = racingCorridorSceneryShift(this.state, sector.id, pos,
-          Math.max(spawnRadius, fleetCount > 0 ? 280 : 0));
+          Math.max(spawnRadius, fleetCount > 0 ? 280 : 0), poi.id);
         if (sceneryShift) pos = { x: pos.x + sceneryShift.x, z: pos.z + sceneryShift.z };
       }
       const keepLive = fullPresence

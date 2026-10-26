@@ -146,6 +146,10 @@ function notePeer(plan, pos, radius, key, cls) {
 }
 
 function outsidePoint(plan, original, radius, salt, cls) {
+  // Fail closed on malformed input: a non-finite point or a negative/non-finite
+  // radius returns the input untouched, so each caller's unchanged fast-path keeps
+  // the authored position instead of minting a NaN/Infinity seat into the world.
+  if (!finitePoint(original) || !Number.isFinite(radius) || radius < 0) return { ...original };
   // The body's identity is its authored slot + the caller's salt; materialization is
   // deterministic, so the same body re-derives the same key on every pass.
   const key = `${salt}|${original.x}|${original.z}`;
@@ -203,15 +207,18 @@ function outsidePoint(plan, original, radius, salt, cls) {
  * fleets (e.g. the Quiessence ring) translate as one body so their formation survives;
  * authored positions and runtime-owned native sites never pass through here. Returns
  * the {x,z} offset that takes the point clear of the corridor, or null when no session
- * covers this sector object or the point already clears. */
-export function racingCorridorSceneryShift(state, sectorId, pos, radius = 0) {
+ * covers this sector object or the point already clears. `seatId` is the body's stable
+ * authored identity (poi.id, faunaKey): two different bodies authored onto the same
+ * point must reserve two seats, never alias one row and stack. */
+export function racingCorridorSceneryShift(state, sectorId, pos, radius = 0, seatId = null) {
   if (!finitePoint(pos) || !Number.isFinite(radius) || radius < 0) return null;
   const session = sessions.get(state);
   const sector = state.world?.sectors?.[sectorId];
   if (!session || registeredSectors.get(sector) !== session) return null;
   const plan = session.plans.get(sectorId);
   if (!plan) return null;
-  const moved = outsidePoint(plan, pos, radius, `${sectorId}:scenery`);
+  const moved = outsidePoint(plan, pos, radius,
+    seatId == null ? `${sectorId}:scenery` : `${sectorId}:scenery:${seatId}`);
   if (moved.x === pos.x && moved.z === pos.z) return null;
   return { x: moved.x - pos.x, z: moved.z - pos.z };
 }
@@ -335,7 +342,12 @@ export function createRacingCorridorArranger(sector, options = {}) {
           // Preserve the existing object budget. Unusually crowded banks use the safe
           // exterior; the centerline and start grid never inherit scatter as a fallback.
           let pos = outsidePoint(plan, original, radius + 80, seed, 'rock');
-          for (let attempt = 0; !peerClear(pos, radius, bodyKey, 'rock') && attempt < 64; attempt++) {
+          // A saturated peer ring falls through to the unchecked exterior above; the
+          // retry ring then walks raw reaches, so it must re-prove corridor clearance
+          // as well as peer space — a 3000-WU circle still crosses a big course's legs.
+          for (let attempt = 0;
+            (!peerClear(pos, radius, bodyKey, 'rock') || !clearsRacingCorridor(plan, pos, radius))
+            && attempt < 64; attempt++) {
             const angle = (seed / 4294967296 + attempt * 0.381966) * Math.PI * 2;
             const reach = 3000 + attempt * (radius * 2 + 12);
             pos = { x: plan.origin.x + Math.cos(angle) * reach, z: plan.origin.z + Math.sin(angle) * reach };
