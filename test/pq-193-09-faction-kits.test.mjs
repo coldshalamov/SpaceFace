@@ -127,6 +127,51 @@ test('the three trade-hub overlays on disk bind to Free/MTS/SCN hubs and stay ga
   assert.ok(mtsNames.has('LOD0_VAR_MTS_ring_outer'));
 });
 
+test('Row 514: Helix/Fulfillment/Archive/Pitborn/Understory/Verge kits dress the hulls those factions field', () => {
+  // The player entity is faction_free: kit maps are factionId-keyed, so these never touch
+  // the production hulls the player flies.
+  const cases = [
+    ['faction_helix', 'ship_drifter', 'wholeships/drifter_helix_courier.glb', 'SF_DRIFTER_HELIX_COURIER'],
+    ['faction_archive', 'ship_drifter', 'wholeships/drifter_archive_censor.glb', 'SF_DRIFTER_ARCHIVE_CENSOR'],
+    ['faction_archive', 'ship_ranger', 'wholeships/ranger_archive_censor.glb', 'SF_RANGER_ARCHIVE_CENSOR'],
+    ['faction_fulfillment', 'ship_mule', 'wholeships/mule_fulfillment_hauler.glb', 'SF_MULE_FULFILLMENT_HAULER'],
+    ['faction_pitborn', 'ship_mule', 'wholeships/mule_pitborn_junk.glb', 'SF_MULE_PITBORN_JUNK'],
+    ['faction_pitborn', 'ship_ironback', 'wholeships/ironback_pitborn_junk.glb', 'SF_IRONBACK_PITBORN_JUNK'],
+    ['faction_understory', 'ship_kestrel', 'wholeships/kestrel_understory_growth.glb', 'SF_KESTREL_UNDERSTORY_GROWTH'],
+    ['faction_verge_layers', 'ship_ranger', 'wholeships/ranger_verge_surveyor.glb', 'SF_RANGER_VERGE_SURVEYOR'],
+  ];
+  const BASE_BY_DEF = {
+    ship_drifter: 'wholeships/drifter_production_v1.glb',
+    ship_ranger: 'wholeships/ranger_production_v1.glb',
+    ship_mule: 'wholeships/mule_production_v1.glb',
+    ship_ironback: 'wholeships/ironback_production_v1.glb',
+    ship_kestrel: 'wholeships/kestrel.glb',
+  };
+  for (const [factionId, defId, file, assetId] of cases) {
+    const selection = visual({ defId }, factionId);
+    assert.equal(selection && selection.file, file, `${factionId} ${defId} must wear its kit`);
+    assert.equal(selection && selection.assetId, assetId);
+    assert.equal(isPackagedLiveWholeShipFile(file), true, `${file} must be packaged live`);
+    assert.ok(isForgeVariantOf(file, BASE_BY_DEF[defId], 'Material_Hull'),
+      `${file} carries its operator's paint on the ${defId} hull`);
+    const pilot = renderPackagePilotForSourceUrl(`${PART_ROOT}${file}`);
+    assert.ok(pilot, `${file} must have a render-package pilot`);
+    assert.equal(pilot.runtimeAssetId, assetId);
+  }
+  // Off-kit combinations keep the production hulls.
+  assert.equal(visual({ defId: 'ship_drifter' }, 'faction_quiet').file, 'wholeships/drifter_production_v1.glb');
+  assert.equal(visual({ defId: 'ship_mule' }, 'faction_helix').file, 'wholeships/mule_production_v1.glb');
+  assert.equal(visual({ defId: 'ship_kestrel' }, 'faction_pitborn').file, 'wholeships/kestrel.glb');
+  assert.equal(visual({ defId: 'ship_ironback' }, 'faction_understory').file, 'wholeships/ironback_production_v1.glb');
+  // The player entity carries faction_free (newGameBoot): that faction has no kit, so the
+  // player's own hulls stay production paint on every kit-covered family.
+  const player = wholeShipVisualForEntity(
+    { type: 'ship', isPlayer: true, factionId: 'faction_free', data: { defId: 'ship_kestrel' } },
+    { requiredWholeShip: true },
+  );
+  assert.equal(player.file, 'wholeships/kestrel.glb', 'the player Kestrel stays the Hitch, never garden');
+});
+
 test('faction kit bodies have render-package pilots after release packaging', () => {
   const files = [
     ['wholeships/helios_span_dmc.glb', 'SF_WHOLESHIP_HELIOS_SPAN_DMC'],

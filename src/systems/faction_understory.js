@@ -188,14 +188,17 @@ export const understoryGardens = {
   /** E-26 the Compost Run: player-fed mass accrues until the run closes. */
   _creditCompost(e, rec, fedMass) {
     const s = this.state, u = ensureUnderstoryState(s);
+    // The run ledger is session-only (state.understory is not serialized), but the completed
+    // stamp rides the garden's persistent entity data — a save/continue cannot re-mint the reward.
     const run = u.compost[e.data.gardenId] || (u.compost[e.data.gardenId] = {
-      gardenId: e.data.gardenId, fedMass: 0, complete: false,
+      gardenId: e.data.gardenId, fedMass: 0, complete: e.data.compostRunComplete === true,
     });
     if (run.complete) return;
     run.fedMass += fedMass;
     if (run.fedMass >= UNDERSTORY_COMPOST_RUN.targetMass) {
       run.complete = true;
       run.completedAt = s.simTime;
+      e.data.compostRunComplete = true;
       this.bus.emit('understory:compostRunComplete', {
         gardenId: e.data.gardenId, entityId: e.id, fedMass: run.fedMass, tick: s.tick,
       });

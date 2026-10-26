@@ -7082,6 +7082,174 @@
       ],
       "outputDir": "assets/ships/release/render-packages/rock-slag-pebble",
       "metadataUrl": "assets/ships/release/render-packages/rock-slag-pebble/render-package.json"
+    },
+    {
+      "key": "drifter-helix-courier",
+      "assetId": "sf.render.drifter-helix-courier",
+      "runtimeAssetId": "SF_DRIFTER_HELIX_COURIER",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_drifter_helix_courier",
+      "sourceUrl": "assets/ships/release/parts/wholeships/drifter_helix_courier.glb",
+      "releaseSha256": "15811bf9c11e39977372007bcad203eaed8a585a60ffac3d43b2d4378bf181f8",
+      "releaseBytes": 1231588,
+      "rootNode": "DRIFTER_HELIX_COURIER_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/drifter-helix-courier",
+      "metadataUrl": "assets/ships/release/render-packages/drifter-helix-courier/render-package.json"
+    },
+    {
+      "key": "drifter-archive-censor",
+      "assetId": "sf.render.drifter-archive-censor",
+      "runtimeAssetId": "SF_DRIFTER_ARCHIVE_CENSOR",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_drifter_archive_censor",
+      "sourceUrl": "assets/ships/release/parts/wholeships/drifter_archive_censor.glb",
+      "releaseSha256": "0ae75752ee3771ca547fb6bc20d13980d61067d1295945b99397690fa5df760c",
+      "releaseBytes": 1231676,
+      "rootNode": "DRIFTER_ARCHIVE_CENSOR_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/drifter-archive-censor",
+      "metadataUrl": "assets/ships/release/render-packages/drifter-archive-censor/render-package.json"
+    },
+    {
+      "key": "mule-fulfillment-hauler",
+      "assetId": "sf.render.mule-fulfillment-hauler",
+      "runtimeAssetId": "SF_MULE_FULFILLMENT_HAULER",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_mule_fulfillment_hauler",
+      "sourceUrl": "assets/ships/release/parts/wholeships/mule_fulfillment_hauler.glb",
+      "releaseSha256": "6e9e16f173f1b43b3a196005fedc5edc11fb15fe61f61875341f1cf71d7f2a8d",
+      "releaseBytes": 1343468,
+      "rootNode": "MULE_FULFILLMENT_HAULER_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/mule-fulfillment-hauler",
+      "metadataUrl": "assets/ships/release/render-packages/mule-fulfillment-hauler/render-package.json"
+    },
+    {
+      "key": "mule-pitborn-junk",
+      "assetId": "sf.render.mule-pitborn-junk",
+      "runtimeAssetId": "SF_MULE_PITBORN_JUNK",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_mule_pitborn_junk",
+      "sourceUrl": "assets/ships/release/parts/wholeships/mule_pitborn_junk.glb",
+      "releaseSha256": "5db2242bc86a1d0de0f3d82dc8d5b7d78d5f03303839735a665d62aefb466286",
+      "releaseBytes": 1097460,
+      "rootNode": "MULE_PITBORN_JUNK_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/mule-pitborn-junk",
+      "metadataUrl": "assets/ships/release/render-packages/mule-pitborn-junk/render-package.json"
+    },
+    {
+      "key": "ironback-pitborn-junk",
+      "assetId": "sf.render.ironback-pitborn-junk",
+      "runtimeAssetId": "SF_IRONBACK_PITBORN_JUNK",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ironback_pitborn_junk",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ironback_pitborn_junk.glb",
+      "releaseSha256": "3d071fb77059acc5be308b692907ad00bdfaf5d60785e62ab1880c48495125ed",
+      "releaseBytes": 1421252,
+      "rootNode": "IRONBACK_PITBORN_JUNK_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/ironback-pitborn-junk",
+      "metadataUrl": "assets/ships/release/render-packages/ironback-pitborn-junk/render-package.json"
+    },
+    {
+      "key": "ranger-archive-censor",
+      "assetId": "sf.render.ranger-archive-censor",
+      "runtimeAssetId": "SF_RANGER_ARCHIVE_CENSOR",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ranger_archive_censor",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ranger_archive_censor.glb",
+      "releaseSha256": "1a14d4a1b215e4a61064a02d7b0968ded8ab8b72abc2ee7636102866f34bd50d",
+      "releaseBytes": 1093688,
+      "rootNode": "RANGER_ARCHIVE_CENSOR_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/ranger-archive-censor",
+      "metadataUrl": "assets/ships/release/render-packages/ranger-archive-censor/render-package.json"
+    },
+    {
+      "key": "ranger-verge-surveyor",
+      "assetId": "sf.render.ranger-verge-surveyor",
+      "runtimeAssetId": "SF_RANGER_VERGE_SURVEYOR",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ranger_verge_surveyor",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ranger_verge_surveyor.glb",
+      "releaseSha256": "585dbc210a2e1355e08f84d9354200cabe7f05e366f632b559372c83e9ac235f",
+      "releaseBytes": 1127320,
+      "rootNode": "RANGER_VERGE_SURVEYOR_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/ranger-verge-surveyor",
+      "metadataUrl": "assets/ships/release/render-packages/ranger-verge-surveyor/render-package.json"
+    },
+    {
+      "key": "kestrel-understory-growth",
+      "assetId": "sf.render.kestrel-understory-growth",
+      "runtimeAssetId": "SF_KESTREL_UNDERSTORY_GROWTH",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_kestrel_understory_growth",
+      "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_understory_growth.glb",
+      "releaseSha256": "a5ed27ef2cb13640d69d21a2eb15e33d317d39bf0b82c9bac5346dc42c7356e6",
+      "releaseBytes": 1429980,
+      "rootNode": "KESTREL_UNDERSTORY_GROWTH_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/kestrel-understory-growth",
+      "metadataUrl": "assets/ships/release/render-packages/kestrel-understory-growth/render-package.json"
     }
   ]
 }

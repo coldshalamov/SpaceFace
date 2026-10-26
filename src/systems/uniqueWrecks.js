@@ -1039,14 +1039,20 @@ export const uniqueWrecks = {
     };
     if (eventName === 'barkDirector:voice') {
       const voice = this.helpers && this.helpers.voice;
-      if (voice && typeof voice.say === 'function') voice.say({
-        channel: 'bark',
-        text,
-        kind: 'uniqueWreckRumor',
-        ttl: 4,
-        id: payload.receiptId,
-        factionId: payload.factionId || def.factionId,
-      });
+      if (voice && typeof voice.say === 'function') {
+        voice.say({
+          channel: 'bark',
+          text,
+          kind: 'uniqueWreckRumor',
+          ttl: 4,
+          id: payload.receiptId,
+          factionId: payload.factionId || def.factionId,
+        });
+        // Arbiter-bound, same as every barkDirector:voice receipt: the voice waits for the
+        // real floor surface keyed by this id (and a refused line stays silent) instead of
+        // scheduling immediately and bypassing serialization.
+        payload.voiceId = payload.receiptId;
+      }
     }
     this.bus.emit(eventName, payload);
     // Some public surfaces (news:publish and campaign dialogue via comms) relay through UI

@@ -2033,10 +2033,42 @@ const RIG_FACTION_KIT_BY_FACTION = Object.freeze({
 const CRADLE_FACTION_KIT_BY_FACTION = Object.freeze({
   faction_dmc: Object.freeze({ file: 'wholeships/helios_cradle_dmc.glb', assetId: 'SF_WHOLESHIP_HELIOS_CRADLE_DMC' }),
 });
+// Row 514: the factions whose live ships still drew undressed player hulls get their kit
+// on the hulls they actually field (src/data/factionPresence.js plans + the shipRoles in
+// src/data/factions/*.js): Helix directorate couriers and the Archive reading courier ride
+// Drifters; Fulfillment route haulers and the Pitborn salvage tenders/cull announcers run
+// Mules; Archive censor frigates and the Verge observer prisms ride Rangers; Understory
+// gardener skiffs ride the same Kestrel hull the player borrows; the Pitborn yard tender
+// seen at Ashfall/Vesta/Ceres is an Ironback. The kit claims only entities carrying that
+// factionId — the player entity is faction_free, so the player's own hulls stay
+// production paint.
+const DRIFTER_FACTION_KIT_BY_FACTION = Object.freeze({
+  faction_helix: Object.freeze({ file: 'wholeships/drifter_helix_courier.glb', assetId: 'SF_DRIFTER_HELIX_COURIER' }),
+  faction_archive: Object.freeze({ file: 'wholeships/drifter_archive_censor.glb', assetId: 'SF_DRIFTER_ARCHIVE_CENSOR' }),
+});
+const MULE_FACTION_KIT_BY_FACTION = Object.freeze({
+  faction_fulfillment: Object.freeze({ file: 'wholeships/mule_fulfillment_hauler.glb', assetId: 'SF_MULE_FULFILLMENT_HAULER' }),
+  faction_pitborn: Object.freeze({ file: 'wholeships/mule_pitborn_junk.glb', assetId: 'SF_MULE_PITBORN_JUNK' }),
+});
+const RANGER_FACTION_KIT_BY_FACTION = Object.freeze({
+  faction_archive: Object.freeze({ file: 'wholeships/ranger_archive_censor.glb', assetId: 'SF_RANGER_ARCHIVE_CENSOR' }),
+  faction_verge_layers: Object.freeze({ file: 'wholeships/ranger_verge_surveyor.glb', assetId: 'SF_RANGER_VERGE_SURVEYOR' }),
+});
+const KESTREL_FACTION_KIT_BY_FACTION = Object.freeze({
+  faction_understory: Object.freeze({ file: 'wholeships/kestrel_understory_growth.glb', assetId: 'SF_KESTREL_UNDERSTORY_GROWTH' }),
+});
+const IRONBACK_FACTION_KIT_BY_FACTION = Object.freeze({
+  faction_pitborn: Object.freeze({ file: 'wholeships/ironback_pitborn_junk.glb', assetId: 'SF_IRONBACK_PITBORN_JUNK' }),
+});
 const LIVE_SPAN_FILE = 'wholeships/helios_span.glb';
 const LIVE_WASP_FILE = 'wholeships/wasp_production_v1.glb';
 const LIVE_RIG_FILE = 'wholeships/ashline_rig.glb';
 const LIVE_CRADLE_FILE = 'wholeships/helios_cradle.glb';
+const LIVE_DRIFTER_FILE = 'wholeships/drifter_production_v1.glb';
+const LIVE_MULE_FILE = 'wholeships/mule_production_v1.glb';
+const LIVE_RANGER_FILE = 'wholeships/ranger_production_v1.glb';
+const LIVE_KESTREL_FILE = 'wholeships/kestrel.glb';
+const LIVE_IRONBACK_FILE = 'wholeships/ironback_production_v1.glb';
 const LIVE_TRADE_HUB_FILE = 'places/place_station_trade_hub.glb';
 /** Helios / Kessler opening-flyby NPC slots. Each must resolve a packaged complete hull. */
 export const OPENING_FLYBY_NPC_SLOTS = Object.freeze([
@@ -2060,6 +2092,11 @@ const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
   ...Object.values(RIG_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
   ...Object.values(CRADLE_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+  ...Object.values(DRIFTER_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+  ...Object.values(MULE_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+  ...Object.values(RANGER_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+  ...Object.values(KESTREL_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+  ...Object.values(IRONBACK_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
 ]);
 // Retail-routable release paths so check:asset-reachability counts the kits as live.
 const FACTION_KIT_RELEASE_URLS = Object.freeze([
@@ -2075,6 +2112,14 @@ const FACTION_KIT_RELEASE_URLS = Object.freeze([
   'assets/ships/release/parts/wholeships/ashline_lode_vael.glb',
   'assets/ships/release/parts/wholeships/ashline_rig_quiet.glb',
   'assets/ships/release/parts/wholeships/helios_cradle_dmc.glb',
+  'assets/ships/release/parts/wholeships/drifter_helix_courier.glb',
+  'assets/ships/release/parts/wholeships/drifter_archive_censor.glb',
+  'assets/ships/release/parts/wholeships/mule_fulfillment_hauler.glb',
+  'assets/ships/release/parts/wholeships/ranger_archive_censor.glb',
+  'assets/ships/release/parts/wholeships/mule_pitborn_junk.glb',
+  'assets/ships/release/parts/wholeships/ironback_pitborn_junk.glb',
+  'assets/ships/release/parts/wholeships/kestrel_understory_growth.glb',
+  'assets/ships/release/parts/wholeships/ranger_verge_surveyor.glb',
   'assets/ships/release/parts/places/var_station_trade_hub_free_overlay_v01.glb',
   'assets/ships/release/parts/places/var_station_trade_hub_mts_overlay_v01.glb',
   'assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb',
@@ -2142,6 +2187,26 @@ function applyFactionWholeShipKit(entity, selection) {
   }
   if (selection.file === LIVE_CRADLE_FILE) {
     const kit = CRADLE_FACTION_KIT_BY_FACTION[factionId];
+    if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
+  }
+  if (selection.file === LIVE_DRIFTER_FILE) {
+    const kit = DRIFTER_FACTION_KIT_BY_FACTION[factionId];
+    if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
+  }
+  if (selection.file === LIVE_MULE_FILE) {
+    const kit = MULE_FACTION_KIT_BY_FACTION[factionId];
+    if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
+  }
+  if (selection.file === LIVE_RANGER_FILE) {
+    const kit = RANGER_FACTION_KIT_BY_FACTION[factionId];
+    if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
+  }
+  if (selection.file === LIVE_KESTREL_FILE) {
+    const kit = KESTREL_FACTION_KIT_BY_FACTION[factionId];
+    if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
+  }
+  if (selection.file === LIVE_IRONBACK_FILE) {
+    const kit = IRONBACK_FACTION_KIT_BY_FACTION[factionId];
     if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
   }
   return selection;
@@ -2538,6 +2603,71 @@ export function liveSolidGlbCatalog() {
       packagedLive: isPackagedLiveWholeShipFile(kit.file),
     });
   }
+  for (const [faction, kit] of Object.entries(DRIFTER_FACTION_KIT_BY_FACTION)) {
+    add({
+      id: `drifter:${faction}`,
+      family: 'faction-hull',
+      file: kit.file,
+      fit: 'ship',
+      entityRadius: 18,
+      colliderKind: 'capsule',
+      proportionsKey: 'ship_drifter',
+      solid: true,
+      packagedLive: isPackagedLiveWholeShipFile(kit.file),
+    });
+  }
+  for (const [faction, kit] of Object.entries(MULE_FACTION_KIT_BY_FACTION)) {
+    add({
+      id: `mule:${faction}`,
+      family: 'faction-hull',
+      file: kit.file,
+      fit: 'ship',
+      entityRadius: 18,
+      colliderKind: 'capsule',
+      proportionsKey: 'ship_mule',
+      solid: true,
+      packagedLive: isPackagedLiveWholeShipFile(kit.file),
+    });
+  }
+  for (const [faction, kit] of Object.entries(RANGER_FACTION_KIT_BY_FACTION)) {
+    add({
+      id: `ranger:${faction}`,
+      family: 'faction-hull',
+      file: kit.file,
+      fit: 'ship',
+      entityRadius: 18,
+      colliderKind: 'capsule',
+      proportionsKey: 'ship_ranger',
+      solid: true,
+      packagedLive: isPackagedLiveWholeShipFile(kit.file),
+    });
+  }
+  for (const [faction, kit] of Object.entries(KESTREL_FACTION_KIT_BY_FACTION)) {
+    add({
+      id: `kestrel:${faction}`,
+      family: 'faction-hull',
+      file: kit.file,
+      fit: 'ship',
+      entityRadius: 14,
+      colliderKind: 'capsule',
+      proportionsKey: 'ship_kestrel',
+      solid: true,
+      packagedLive: isPackagedLiveWholeShipFile(kit.file),
+    });
+  }
+  for (const [faction, kit] of Object.entries(IRONBACK_FACTION_KIT_BY_FACTION)) {
+    add({
+      id: `ironback:${faction}`,
+      family: 'faction-hull',
+      file: kit.file,
+      fit: 'ship',
+      entityRadius: 24,
+      colliderKind: 'capsule',
+      proportionsKey: 'ship_ironback',
+      solid: true,
+      packagedLive: isPackagedLiveWholeShipFile(kit.file),
+    });
+  }
 
   for (const file of PLACE_FILES) {
     if (file===LATCH_PLACE_FILE || STATION_ARCHETYPE_FILES.includes(file)) continue;
@@ -2692,6 +2822,11 @@ export function spawnableShipArchetypePrewarmUrls() {
     ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     ...Object.values(RIG_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     ...Object.values(CRADLE_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+    ...Object.values(DRIFTER_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+    ...Object.values(MULE_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+    ...Object.values(RANGER_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+    ...Object.values(KESTREL_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+    ...Object.values(IRONBACK_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp,
     // Separate-file LOD siblings load lazily on distance demotion — a far spawn's lod1/lod2
     // body is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp

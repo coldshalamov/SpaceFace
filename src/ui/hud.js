@@ -2662,7 +2662,11 @@ export function createHud(ctx, alerts) {
     caption.classList.toggle('assertive', !!p.assertive);
     caption.classList.remove('show'); void caption.offsetWidth; // restart fade-in
     caption.classList.add('show');
-    const ttl = p.assertive ? 3200 : 2400;
+    // A voice body carries its real duration — the caption outlives a long slow-register bark
+    // instead of dying mid-word (assertive/polite defaults stand for non-voice captions).
+    const ttl = Number.isFinite(p.durationMs) && p.durationMs > 0
+      ? Math.max(2400, p.durationMs)
+      : (p.assertive ? 3200 : 2400);
     captionHideTimer = setTimeout(() => {
       caption.classList.remove('show');
       captionFadeTimer = setTimeout(() => {

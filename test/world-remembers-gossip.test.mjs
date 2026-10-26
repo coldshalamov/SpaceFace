@@ -14,6 +14,7 @@ import { barkDirector } from '../src/systems/barkDirector.js';
 import { createMarketNews } from '../src/ui/marketNews.js';
 import { recordDeed, peekDeedRecord, deedsFor, standingWith, markTold } from '../src/systems/deedRecord.js';
 import { deedLine, deedPlaceName } from '../src/data/deedPhrases.js';
+import { playerCallsign } from '../src/ui/playerIdentity.js';
 import { DOCK_DEED_BARKS, dockDeedBarkFor } from '../src/data/barks.js';
 
 const SEEDS = [4242, 8008];
@@ -118,7 +119,8 @@ for (const seed of SEEDS) {
     h.bus.emit('dock:docked', { stationId: 'station_ceres' });
     const log = newsLog(h);
     assert.equal(log.length, 1);
-    assert.equal(log[0].text, deedLine(loud, { voice: 'neutral' }));
+    // PULSE-SIGNS: the wire runs the third-person deed body under the pilot's callsign.
+    assert.equal(log[0].text, `${playerCallsign(h.state)} — ${deedLine(loud, { voice: 'neutral' })}`);
     assert.equal(log[0].eventId, `deed:news:${loud.id}`);
     assert.equal(log[0].sectorId, 'sector_ceres_belt');
     assert.equal(loud.told, 0, 'news is not a speaker');

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "18eb20255e7c289f17714db9fbebb62165b5b9f9910a28e64a970a8e29db237c",
+  "contentHash": "0beaab222f9ef10bb28cbbaaa350de8a78527619f365c944fbb6d5ce91fdef10",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1959,8 +1959,8 @@
       "uri": "place_rock_metallic_ore_boulder.glb"
     },
     "sourceManifest": {
-      "bytes": 300891,
-      "sha256": "50dce1990827c217ea558e306d2fd95a0b8c63660e437c5595127100ce1f8393",
+      "bytes": 307707,
+      "sha256": "6f2278df60560e6b8ffac9ea5d7f3df816951bb08252171b81e759230549f8a6",
       "uri": "pilots.json"
     }
   },
@@ -3141,7 +3141,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_metallic_ore_boulder.glb"
   },
-  "runtimeHash": "f642f617bc1264f5cfe16cabc9e78dcfe651322a027053ab5ea6831ff7da54fc",
+  "runtimeHash": "d3bb5debefe8556452e380f512ad29698aa67b1e567c63fe7ebd963cc632a8b9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

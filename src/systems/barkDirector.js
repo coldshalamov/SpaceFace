@@ -108,6 +108,7 @@ export function admitNpcCounterplayBark(host, payload, now) {
   host._npcCounterplaySpokenAt = engagement;
   if (!Array.isArray(host._npcCounterplayBarks)) host._npcCounterplayBarks = [];
   host._npcCounterplayBarks.push(bark);
+  while (host._npcCounterplayBarks.length > 32) host._npcCounterplayBarks.shift();
   return bark;
 }
 
@@ -347,6 +348,13 @@ export function minerSeamWorkedOutKey(payload) {
 
 export const AMBIENT_QUIET_STEP_S = 60.0;
 export const AMBIENT_MAX_GAP_S = 60.0;
+// The patrol lattice takes notice one hull at a time — sector scans serialize on this gap
+// instead of every lawful hull keying the mic on the same first think tick.
+export const SCAN_AMBIENT_GAP_S = 18.0;
+// A scan hail only lands from a hull plausibly on scope — beyond this it scans silently.
+export const SCAN_BARK_RANGE_WU = 900;
+// A hull at or below this fraction calls for help instead of barking its flee.
+export const DISTRESS_HULL_FRACTION = 0.35;
 export const BODY_NEAR_MISS_RADIUS_WU = 70;
 export const BODY_NEAR_MISS_EXIT_WU = 90;
 export const BODY_NEAR_MISS_WINDOW_TICKS = 480;
@@ -426,7 +434,7 @@ export function spillNoticeBarkText(seed, hullId) {
 }
 
 /** Nearest living ship inside the watch, never the player and never a hull that missed the spill. */
-export function noticingHullForSpill(state, payload) {
+export function noticingHullForSpill(state, payload, exclude = null) {
   if (!state || !payload) return null;
   const pods = [];
   const ids = Array.isArray(payload.podIds) ? payload.podIds : [];
@@ -443,6 +451,7 @@ export function noticingHullForSpill(state, payload) {
   for (const entity of indexedShipLikeOrEntitiesScan(state)) {
     if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
     if (entity.id === state.playerId) continue;
+    if (exclude && exclude(entity)) continue;
     let nearest = Infinity;
     for (let i = 0; i < pods.length; i++) {
       const dx = entity.pos.x - pods[i].pos.x;
@@ -875,13 +884,15 @@ export const barkDirector = {
         const engagement = this._npcCounterplayEngagement != null
           ? this._npcCounterplayEngagement
           : 0;
+        const voiceId = `barkDirector:${admitted.actorId}:npc-counterplay:${engagement}`;
         const accepted = voice.say({
           channel: 'bark',
           text: admitted.text,
           kind: admitted.role,
           ttl: BARK_VOICE_TTL_S,
-          id: `barkDirector:${admitted.actorId}:npc-counterplay:${engagement}`,
+          id: voiceId,
           register: admitted.role,
+          valid: () => speakerStillLive(this.state, admitted.actorId),
         });
         if (!accepted) return;
         if (!entity) return;
@@ -900,6 +911,7 @@ export const barkDirector = {
             reason: 'massline:npcCounterplay',
             text: admitted.text,
             factionId: factionFor(entity),
+            voiceId,
             t: rec.lastSpokenAt,
           });
         }
@@ -914,6 +926,7 @@ export const barkDirector = {
         if (!bark) return;
         if (!Array.isArray(this._harasserDepartures)) this._harasserDepartures = [];
         this._harasserDepartures.push(bark);
+        while (this._harasserDepartures.length > 32) this._harasserDepartures.shift();
       };
       this.bus.on('harasser:disengaged', this._onHarasserDepartureRecord);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
@@ -1065,6 +1078,9 @@ export const barkDirector = {
 
   _speak(entity, situation, reason, extra = null) {
     if (!BARK_SET.has(situation) || !entity || !this.state) return false;
+    // Dead hulls don't hail. 'distress' is the one intentional posthumous path — a reaped
+    // victim's last transmission still lands.
+    if (entity.alive === false && situation !== 'distress') return false;
     const state = this.state;
     const own = ensureState(state);
     const entityId = String(entity.id);
@@ -1084,28 +1100,40 @@ export const barkDirector = {
       ? factionHistoryFromMemory(state.aceMemory, factionId, identity.name)
       : { hasHistory: false };
     const trophy = situation === 'scan' && !history.hasHistory ? liveTrophyFromState(state) : null;
-    const text = history.hasHistory
-      ? historyBarkFor(factionId, history, index)
+    const lineFor = (i) => history.hasHistory
+      ? historyBarkFor(factionId, history, i)
       : trophy
-        ? aceTrophyBarkFor(factionId, index, { ace: trophy.aceName, head: trophy.name })
+        ? aceTrophyBarkFor(factionId, i, { ace: trophy.aceName, head: trophy.name })
         : (situation === 'patrol-greeting'
-            ? sectorGreetingBarkFor(currentSectorId(state), index)
+            ? sectorGreetingBarkFor(currentSectorId(state), i)
             : null)
-          || barkFor(factionId, situation, index);
+          || barkFor(factionId, situation, i);
+    const text = pickBarkText(own, factionId, situation, index, lineFor);
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
 
     // A refused voice request must not consume the situation — mark the slot only
     // after acceptance, the same carve-out _speakEventLine already uses.
+    const voiceId = `barkDirector:${entityId}:${situation}`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'barkDirector',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${entityId}:${situation}`,
+      id: voiceId,
       factionId,
+      // A queued line whose speaker reaped before it surfaced must not posthumously pill —
+      // 'distress' is the one intentionally posthumous situation.
+      valid: () => {
+        if (situation === 'distress') return true;
+        // Raw entity.id — the entity map is keyed by the id itself, not the string form.
+        const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(entity.id) : null;
+        return !!e && e.alive !== false;
+      },
     });
     if (!accepted) return false;
+    this._commitAmbientSlot(entity, situation, rec);
+    noteBarkText(own, factionId, situation, text);
     rec.lastSituation = situation;
     rec.said[situation] = true;
     rec.lastSpokenAt = state.simTime || 0;
@@ -1117,6 +1145,7 @@ export const barkDirector = {
       reason,
       text,
       factionId,
+      voiceId,
       t: rec.lastSpokenAt,
       ...(extra ? { source: extra.sourceEvent || null } : {}),
     });
@@ -1223,13 +1252,15 @@ export const barkDirector = {
     const factionId = (speaker && factionFor(speaker)) || payload.factionId || 'faction_scn';
     // A refused say must not burn the receipt — mark the slot only after acceptance, the same
     // carve-out _speak and _speakEventLine already use.
+    const voiceId = `lawStep:${step.key}`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'barkDirector',
       ttl: VOICE_TTL_S,
-      id: `lawStep:${step.key}`,
+      id: voiceId,
       factionId,
+      ...(speaker ? { valid: () => speakerStillLive(state, speaker.id) } : {}),
     });
     if (!accepted) return false;
     // Truthy record: simTime can legitimately be 0 at sim start, and a falsy value would let
@@ -1252,6 +1283,7 @@ export const barkDirector = {
       reason: eventName,
       text,
       factionId,
+      voiceId,
       t: Number(state.simTime) || 0,
       source: payload.id || payload.incidentId || payload.contractId || payload.stationId || null,
     });
@@ -1418,6 +1450,7 @@ export const barkDirector = {
   // per-entity per-situation so a voice delivers its line once, then goes back to its own chatter.
   _speakEventLine(entity, situation, reason, lineFor, extra = null) {
     if (!entity || !this.state || typeof lineFor !== 'function') return false;
+    if (entity.alive === false) return false;
     const state = this.state;
     const own = ensureState(state);
     const entityId = String(entity.id);
@@ -1426,19 +1459,25 @@ export const barkDirector = {
     const factionId = factionFor(entity);
     const seed = state.meta && state.meta.seed;
     const index = hash32(seed == null ? 0 : seed, 'barkDirector', entityId, situation);
-    const text = lineFor(factionId, index);
+    const text = pickBarkText(own, factionId, situation, index, (i) => lineFor(factionId, i));
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
     // A refused say must not burn the one line. Mark the slot only after acceptance.
+    const voiceId = `barkDirector:${entityId}:${situation}`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'barkDirector',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${entityId}:${situation}`,
+      id: voiceId,
       factionId,
+      valid: () => {
+        const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(entity.id) : null;
+        return !!e && e.alive !== false;
+      },
     });
     if (!accepted) return false;
+    noteBarkText(own, factionId, situation, text);
     rec.said[situation] = true;
     rec.lastSpokenAt = state.simTime || 0;
     rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
@@ -1449,6 +1488,7 @@ export const barkDirector = {
       reason,
       text,
       factionId,
+      voiceId,
       t: rec.lastSpokenAt,
       ...(extra ? { source: extra.sourceEvent || extra.incidentReceiptId || null } : {}),
     });
@@ -1492,6 +1532,7 @@ export const barkDirector = {
       ttl: HULL_RECOGNITION_TTL_S,
       id: `hullRecognition:${witness.id}:${notoriety}`,
       factionId,
+      valid: () => speakerStillLive(state, witness.id),
     });
     if (!accepted) return null;
 
@@ -1597,7 +1638,20 @@ export const barkDirector = {
     }
     const speaker = state.entities?.get?.(queued.speakerId);
     const profile=observerProfile(state,speaker);
-    if (!profile?.canSpeak || profile.lifeId!==queued.speakerLife) return;
+    if (!profile || profile.lifeId !== queued.speakerLife) {
+      // The speaker reaped or rolled to a new life — this bark can never deliver. Dropping it
+      // keeps a dead head from jamming the queue for the whole expiry window.
+      record.pending.shift();
+      const stale = findStuntIncident(state, queued.incidentId);
+      if (stale && !queued.recognition) stale.barkStatus = 'expired';
+      return;
+    }
+    if (!profile.canSpeak) {
+      // Transient silence (jammed sensors, shot comms) — rotate to the tail so a live speaker
+      // is never stuck behind a hull that may heal.
+      if (record.pending.length > 1) { record.pending.shift(); record.pending.push(queued); }
+      return;
+    }
     const audio = state.settings?.audio || {}, accessibility = state.settings?.accessibility || {};
     const voiceOn = audio.muted !== true && audio.master !== 0 && audio.voice !== 0 && audio.comms !== 0;
     const transcriptOn = accessibility.captions !== false;
@@ -1635,7 +1689,17 @@ export const barkDirector = {
     queued.status = 'submitted';
     queued.submittedTick=tick;
     if (incident && !queued.recognition) incident.barkStatus = 'submitted';
-    if (!voice.say({ channel: 'bark', text: queued.text, kind: 'stuntRecognition', priority: 55, ttl: BARK_VOICE_TTL_S, id: queued.id, factionId: queued.factionId })) {
+    if (!voice.say({ channel: 'bark', text: queued.text, kind: 'stuntRecognition', priority: 55, ttl: BARK_VOICE_TTL_S, id: queued.id, factionId: queued.factionId,
+      valid: () => {
+        const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(queued.speakerId) : null;
+        if (!e || e.alive === false) return false;
+        // speakerLife pins the witness's life: an id reused by a fresh spawn is not the witness.
+        if (queued.speakerLife != null) {
+          const p = observerProfile(state, e);
+          if (!p || p.lifeId !== queued.speakerLife) return false;
+        }
+        return true;
+      } })) {
       queued.status = 'queued'; if (incident && !queued.recognition) incident.barkStatus = 'queued';
     }
   },
@@ -1753,13 +1817,15 @@ export const barkDirector = {
     const body = state.entities && state.entities.get && state.entities.get(track.bodyId);
     const text = nearMissBarkText(track.source, body);
     const t = Number(state.simTime) || 0;
+    const voiceId = `bodyNearMiss:${track.bodyId}:${witness.id}:${state.tick | 0}`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'bodyNearMiss',
       ttl: VOICE_TTL_S,
-      id: `bodyNearMiss:${track.bodyId}:${witness.id}:${state.tick | 0}`,
+      id: voiceId,
       factionId,
+      valid: () => speakerStillLive(state, witness.id),
     });
     if (!accepted) return false;
     const receipt = {
@@ -1769,6 +1835,7 @@ export const barkDirector = {
       closestWu,
       text,
       factionId,
+      voiceId,
       t,
     };
     this._emit('barkDirector:voice', receipt);
@@ -1923,6 +1990,7 @@ export const barkDirector = {
   _speakRegisterHail(entity, register, situation, salt) {
     const state = this.state;
     if (!state || !entity) return false;
+    if (entity.alive === false) return false;
     const own = ensureState(state);
     const entityId = String(entity.id);
     const rec = entityRecordFor(own, entityId, entity);
@@ -1930,21 +1998,33 @@ export const barkDirector = {
     if (this._isSuppressed(entity, 'patrol-greeting', rec)) return false;
     const seed = state.meta && state.meta.seed;
     const index = hash32(seed == null ? 0 : seed, salt, entityId);
-    const picked = trafficRoleHail(register, index);
+    const factionId = factionFor(entity);
+    let picked = trafficRoleHail(register, index);
+    if (picked && picked.register === register && picked.text
+      && barkRecentRing(own, `${factionId}|${situation}`).includes(picked.text)) {
+      const retry = trafficRoleHail(register, index + 1);
+      if (retry && retry.register === register && !barkRecentRing(own, `${factionId}|${situation}`).includes(retry.text)) picked = retry;
+    }
     if (!picked || picked.register !== register) return false;
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
-    const factionId = factionFor(entity);
+    const voiceId = `barkDirector:${entityId}:${situation}`;
     const accepted = voice.say({
       channel: 'bark',
       text: picked.text,
       kind: 'barkDirector',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${entityId}:${situation}`,
+      id: voiceId,
       factionId,
       register: picked.register,
+      valid: () => {
+        const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(entity.id) : null;
+        return !!e && e.alive !== false;
+      },
     });
     if (!accepted) return false;
+    this._commitAmbientSlot(entity, 'patrol-greeting', rec);
+    noteBarkText(own, factionId, situation, picked.text);
     const now = state.simTime || 0;
     rec.said[situation] = true;
     rec.lastSituation = situation;
@@ -1953,7 +2033,7 @@ export const barkDirector = {
     if (rec.history.length > 8) rec.history.shift();
     this._emit('barkDirector:voice', {
       entityId: entity.id, situation, reason: 'pass-by',
-      text: picked.text, factionId, register, t: now,
+      text: picked.text, factionId, register, voiceId, t: now,
     });
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('npc:hailed', { entityId: entity.id, simTime: now, register });
@@ -1964,8 +2044,12 @@ export const barkDirector = {
   _markNoticeKey(bagName, key) {
     if (!key) return false;
     if (!this[bagName]) this[bagName] = new Set();
-    if (this[bagName].has(key)) return false;
-    this[bagName].add(key);
+    const bag = this[bagName];
+    if (bag.has(key)) return false;
+    bag.add(key);
+    // Session-scoped dedupe follows the file's own bounded-ledger law (lawStepSaid → 64) —
+    // keys only guard re-emission within the ambient window, so FIFO eviction is safe.
+    while (bag.size > 64) bag.delete(bag.values().next().value);
     return true;
   },
 
@@ -1981,26 +2065,28 @@ export const barkDirector = {
     const window = ambientWindow(ambient, now, payload.t);
     if (!window.ok) return null;
     if (this._spillNoticeKeys && this._spillNoticeKeys.has(key)) return null;
-    const hull = noticingHullForSpill(state, payload);
+    const hull = noticingHullForSpill(state, payload, (e) => speakerRecentlySpoke(own, e, now));
     if (!hull) return null;
     const text = spillNoticeBarkText(state.meta && state.meta.seed, hull.id);
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return null;
     const factionId = factionFor(hull);
+    const voiceId = `barkDirector:${hull.id}:spill-notice`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'spillNotice',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${hull.id}:spill-notice`,
+      id: voiceId,
       factionId,
+      valid: () => speakerStillLive(state, hull.id),
       register: 'spill-notice',
     });
     if (!accepted) return null;
     if (!this._markNoticeKey('_spillNoticeKeys', key)) return null;
     noteAmbientBark(ambient, now, window.gap, hull.id);
     const receipt = {
-      entityId: hull.id, text, noticeKey: key, t: now, gap: window.gap, register: 'spill-notice', factionId,
+      entityId: hull.id, text, noticeKey: key, t: now, gap: window.gap, register: 'spill-notice', factionId, voiceId,
     };
     this._emit('barkDirector:voice', receipt);
     return receipt;
@@ -2024,19 +2110,21 @@ export const barkDirector = {
       ? 'Something\'s pulling us off the lane \u2014 escorts close up!'
       : 'Something\'s pulling us off the lane \u2014 hold on!';
     const factionId = factionFor(hauler);
+    const voiceId = `barkDirector:${hauler.id}:well-drag`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'haulerRegroup',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${hauler.id}:well-drag`,
+      id: voiceId,
       factionId,
       register: 'hauler',
+      valid: () => speakerStillLive(state, hauler.id),
     });
     if (!accepted) return null;
     if (!this._markNoticeKey('_haulerRegroupKeys', key)) return null;
     const now = Number(state.simTime) || 0;
-    const receipt = { entityId: hauler.id, text, dragKey: key, t: now, register: 'hauler', factionId };
+    const receipt = { entityId: hauler.id, text, dragKey: key, t: now, register: 'hauler', factionId, voiceId };
     this._emit('barkDirector:voice', receipt);
     return receipt;
   },
@@ -2076,12 +2164,13 @@ export const barkDirector = {
       faction: FACTION_SHORT_BY_ID.get(factionId),
     });
     if (!text) return null;
+    const voiceId = `barkDirector:dock:${payload.stationId}:deed`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'dockDeed',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:dock:${payload.stationId}:deed`,
+      id: voiceId,
       factionId,
       register: 'dock_control',
     });
@@ -2089,7 +2178,7 @@ export const barkDirector = {
     markTold(state, deed.id, { by: `dock:${payload.stationId}` });
     const receipt = {
       situation: 'dock-deed', text, deedId: deed.id, tone, stationId: payload.stationId,
-      t: Number(state.simTime) || 0, register: 'dock_control', factionId,
+      t: Number(state.simTime) || 0, register: 'dock_control', factionId, voiceId,
     };
     this._emit('barkDirector:voice', receipt);
     return receipt;
@@ -2132,20 +2221,22 @@ export const barkDirector = {
     const index = hash32(seed == null ? 0 : seed, 'oreFlood', String(payload.bodyId));
     const text = oreFloodBarkFor(register, index, CARGO_NAME_BY_ID.get(payload.commodityId));
     const factionId = factionFor(speaker);
+    const voiceId = `barkDirector:${speaker.id}:ore-flood`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'oreFlood',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${speaker.id}:ore-flood`,
+      id: voiceId,
       factionId,
+      valid: () => speakerStillLive(state, speaker.id),
       register,
     });
     if (!accepted) return null;
     if (!this._markNoticeKey('_oreFloodKeys', key)) return null;
     if (hull) noteSpeakerSpoke(own, hull, 'ore-flood', now, text);
     const receipt = {
-      entityId: speaker.id, situation: 'ore-flood', text, floodKey: key, t: now, register, factionId,
+      entityId: speaker.id, situation: 'ore-flood', text, floodKey: key, t: now, register, factionId, voiceId,
     };
     this._emit('barkDirector:voice', receipt);
     return receipt;
@@ -2187,19 +2278,21 @@ export const barkDirector = {
     const text = tumbleRakeBarkFor(hash32(seed == null ? 0 : seed, 'tumbleRake', key));
     if (!text) return null;
     const factionId = factionFor(speaker);
+    const voiceId = `barkDirector:${speaker.id}:tumble-rake`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'tumbleRake',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${speaker.id}:tumble-rake`,
+      id: voiceId,
+      valid: () => speakerStillLive(state, speaker.id),
       factionId,
     });
     if (!accepted) return null;
     if (!this._markNoticeKey('_tumbleRakeKeys', key)) return null;
     noteSpeakerSpoke(own, speaker, 'tumble-rake', now, text);
     const receipt = {
-      entityId: speaker.id, situation: 'tumble-rake', text, rakeKey: key, rakerId: hull.id, t: now, factionId,
+      entityId: speaker.id, situation: 'tumble-rake', text, rakeKey: key, rakerId: hull.id, t: now, factionId, voiceId,
     };
     this._emit('barkDirector:voice', receipt);
     return receipt;
@@ -2226,21 +2319,23 @@ export const barkDirector = {
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return null;
     const factionId = factionFor(hauler);
+    const voiceId = `barkDirector:${hauler.id}:hauler-empty`;
     const accepted = voice.say({
       channel: 'bark',
       text: picked.text,
       kind: 'emptyLoad',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${hauler.id}:hauler-empty`,
+      id: voiceId,
       factionId,
       register: picked.register,
+      valid: () => speakerStillLive(state, hauler.id),
     });
     if (!accepted) return null;
     if (!this._markNoticeKey('_emptyLoadKeys', key)) return null;
     noteAmbientBark(ambient, now, window.gap, hauler.id);
     const receipt = {
       entityId: hauler.id, text: picked.text, loadKey: key, t: now, gap: window.gap,
-      register: 'hauler', factionId,
+      register: 'hauler', factionId, voiceId,
     };
     this._emit('barkDirector:voice', receipt);
     return receipt;
@@ -2262,21 +2357,23 @@ export const barkDirector = {
     if (!voice || typeof voice.say !== 'function') return null;
     const text = richSeamHelpHailText();
     const factionId = factionFor(miner);
+    const voiceId = `barkDirector:${miner.id}:rich-seam-help`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'richSeamHelp',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${miner.id}:rich-seam-help`,
+      id: voiceId,
       factionId,
       register: 'miner',
       to: state.playerId,
+      valid: () => speakerStillLive(state, miner.id),
     });
     if (!accepted) return null;
     if (!this._markNoticeKey('_richSeamHelpKeys', key)) return null;
     const now = Number(state.simTime) || 0;
     const receipt = {
-      entityId: miner.id, text, t: now, factionId, register: 'miner', to: state.playerId,
+      entityId: miner.id, text, t: now, factionId, register: 'miner', to: state.playerId, voiceId,
     };
     this._emit('barkDirector:voice', receipt);
     return receipt;
@@ -2308,21 +2405,23 @@ export const barkDirector = {
     if (!voice || typeof voice.say !== 'function') return null;
     const factionId = factionFor(miner);
     const fromField = payload.fromFieldId != null ? String(payload.fromFieldId) : 'seam';
+    const voiceId = `barkDirector:${miner.id}:seam-worked-out:${fromField}`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'minerSeamWorkedOut',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${miner.id}:seam-worked-out:${fromField}`,
+      id: voiceId,
       factionId,
       register: 'miner',
+      valid: () => speakerStillLive(state, miner.id),
     });
     if (!accepted) return null;
     if (!this._markNoticeKey('_minerSeamWorkedOutKeys', key)) return null;
     noteAmbientBark(ambient, now, window.gap, miner.id);
     const spoken = {
       entityId: miner.id, text, relocationKey: key, t: now, gap: window.gap,
-      register: 'miner', factionId,
+      register: 'miner', factionId, voiceId,
       fromFieldId: payload.fromFieldId != null ? String(payload.fromFieldId) : null,
       toFieldId: payload.toFieldId != null ? String(payload.toFieldId) : null,
     };
@@ -2394,14 +2493,16 @@ export const barkDirector = {
     );
     if (!text) return false;
     const factionId = factionFor(entity);
+    const voiceId = `barkDirector:${entity.id}:hauler-rescue`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'haulerRescue',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${entity.id}:hauler-rescue`,
+      id: voiceId,
       factionId,
       register: 'hauler',
+      valid: () => speakerStillLive(state, entity.id),
     });
     if (!accepted) return false;
     const now = Number(state.simTime) || 0;
@@ -2423,6 +2524,7 @@ export const barkDirector = {
       text,
       factionId,
       register: 'hauler',
+      voiceId,
       t: now,
     });
     return true;
@@ -2441,21 +2543,45 @@ export const barkDirector = {
       rememberSuppressed(own, entity, situation, now, until, 'post-combat-silence');
       return true;
     }
-    if (situation !== 'patrol-greeting') return false;
+    if (situation !== 'patrol-greeting' && situation !== 'scan') return false;
 
     const sectorId = currentSectorId(state);
     const ambient = ambientRecord(own, sectorId);
-    if (Number(ambient.nextAt) > now) {
-      rememberSuppressed(own, entity, situation, now, ambient.nextAt, 'ambient-decay');
+    // Scans serialize per sector like hails — the lattice takes notice one hull at a time
+    // instead of every lawful hull keying the mic on the same first think tick.
+    const gate = situation === 'scan' ? ambient.scanNextAt : ambient.nextAt;
+    if (Number(gate) > now) {
+      rememberSuppressed(own, entity, situation, now, gate, 'ambient-decay');
       return true;
     }
-    const gap = ambientGap(ambient, now);
+    const gap = situation === 'scan' ? SCAN_AMBIENT_GAP_S : ambientGap(ambient, now);
+    // The last speaker waits out a double gap before answering again — an open channel rotates
+    // to a different hull instead of one ship greeting every lull.
+    if (situation === 'patrol-greeting' && ambient.lastEntityId === (entity && entity.id)
+      && now - (Number(ambient.lastAt) || 0) < gap * 2) {
+      rememberSuppressed(own, entity, situation, now, (Number(ambient.lastAt) || 0) + gap * 2, 'speaker-rotation');
+      return true;
+    }
+    // The gate stamps on acceptance, not on the attempt — a refused say did not take the
+    // channel, so it must not close it either (the same contract said[] keeps).
+    return false;
+  },
+
+  // Runs only after the arbiter accepted the line: the sector slot is spent by a delivered
+  // bark, never by a suppressed or refused one.
+  _commitAmbientSlot(entity, situation, rec) {
+    if (situation !== 'patrol-greeting' && situation !== 'scan') return;
+    const state = this.state;
+    const own = ensureState(state);
+    const now = state.simTime || 0;
+    const ambient = ambientRecord(own, currentSectorId(state));
+    const gap = situation === 'scan' ? SCAN_AMBIENT_GAP_S : ambientGap(ambient, now);
     ambient.lastAt = now;
     ambient.lastEntityId = entity && entity.id;
     ambient.lastGap = gap;
-    ambient.nextAt = now + gap;
+    if (situation === 'scan') ambient.scanNextAt = now + gap;
+    else ambient.nextAt = now + gap;
     rec.ambientGap = gap;
-    return false;
   },
 
   _emit(event, payload) {
@@ -2523,13 +2649,15 @@ export const barkDirector = {
     const barkKey = CARGO_OWNER_REACTIONS[reaction].barkKey;
     const voice = this.helpers && this.helpers.voice;
     let accepted = true;
+    let voiceId = null;
     if (voice && typeof voice.say === 'function') {
+      voiceId = `cargoSpill:${resolved.ownerId}:${reaction}:${now}`;
       accepted = voice.say({
         channel: 'bark',
         text: barkText,
         kind: 'cargoSpill',
         ttl: VOICE_TTL_S,
-        id: `cargoSpill:${resolved.ownerId}:${reaction}:${now}`,
+        id: voiceId,
         factionId: resolved.factionId,
       });
     }
@@ -2551,6 +2679,7 @@ export const barkDirector = {
       ownerId: resolved.ownerId,
       ownerName: resolved.ownerName,
       reaction,
+      ...(voiceId ? { voiceId } : {}),
       originId: resolved.originId,
       destinationId: resolved.destinationId,
     };
@@ -2786,6 +2915,13 @@ export function classifyBarkSituation(entity, state) {
   if (explicit) return explicit;
 
   const fsm = String(ai.fsm || ai.state || ai.mode || '').toLowerCase();
+  // A crippled hull calls for help instead of barking its flee — the distress corpus is written
+  // as live maydays, and the death-only emit left that fiction on the floor. `said` dedupes:
+  // a hull that pleaded and then dies does not transmit twice.
+  if (hullCrippled(entity)
+    && (FLEE_FSMS.has(fsm) || ai.forceFlee === true || entity.flags?.disabled === true || data.disabled === true)) {
+    return 'distress';
+  }
   if (FLEE_FSMS.has(fsm) || ai.forceFlee === true) return 'flee';
   if (ai.requestingReinforcement || ai.reinforcing || data.reinforcements) return 'reinforce';
   // Demand: explicit AI flags OR faction contact grammar demand types that open with a tithe/cargo ask.
@@ -2816,6 +2952,7 @@ function freshState() {
     postCombatSilenceUntil: 0,
     ambientBySector: Object.create(null),
     suppressed: [],
+    recentLines: Object.create(null),
     hullRecognition: freshHullRecognition(),
     stuntRecognition: freshStuntRecognition(),
     cargoSpill: freshCargoSpill(),
@@ -2969,7 +3106,7 @@ function nearestEntityWhere(state, pos, radiusWu, predicate) {
     const dx = entity.pos.x - anchor.x;
     const dz = entity.pos.z - anchor.z;
     const d2 = dx * dx + dz * dz;
-    if (d2 > bestD2) return;
+    if (d2 > bestD2 || (d2 === bestD2 && best && String(entity.id) >= String(best.id))) return;
     if (!predicate(entity)) return;
     bestD2 = d2;
     best = entity;
@@ -3350,11 +3487,29 @@ function isAttackingPlayer(entity, state, fsm) {
   return false;
 }
 
+function hullCrippled(entity) {
+  const hull = Number(entity && entity.hull), max = Number(entity && entity.hullMax);
+  return Number.isFinite(hull) && Number.isFinite(max) && max > 0 && hull / max <= DISTRESS_HULL_FRACTION;
+}
+
+function withinBarkHailRange(entity, state) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId) : null;
+  if (!player || !player.pos || !entity || !entity.pos) return true; // cannot prove out-of-range
+  return (entity.pos.x - player.pos.x) ** 2 + (entity.pos.z - player.pos.z) ** 2 <= SCAN_BARK_RANGE_WU ** 2;
+}
+
 function isScanningPlayer(entity, state, fsm) {
   const data = entity.data || {};
   const ai = data.ai || {};
   const targeting = targetsPlayer(entity, state);
-  if (SCAN_FSMS.has(fsm) && (targeting || ai.lawful || isHostileToPlayer(entity, playerTeam(state), state))) return true;
+  if (SCAN_FSMS.has(fsm) && (targeting || ai.lawful || isHostileToPlayer(entity, playerTeam(state), state))) {
+    // A scan hail must come from a hull plausibly on scope — a lawful patrol beyond the watch
+    // radius scans the sector silently instead of hailing the player across the map.
+    if (!targeting && ai.lawful && !isHostileToPlayer(entity, playerTeam(state), state)
+      && !withinBarkHailRange(entity, state)) return false;
+    return true;
+  }
   if (targeting && !isAttackingPlayer(entity, state, fsm)) return true;
   if (isHostileToPlayer(entity, playerTeam(state), state) && !isAttackingPlayer(entity, state, fsm)) return true;
   return false;
@@ -3362,6 +3517,36 @@ function isScanningPlayer(entity, state, fsm) {
 
 function currentSectorId(state) {
   return state && state.world && state.world.currentSectorId || 'unknown';
+}
+
+// A verbatim repeat reads as a broken radio: each faction|situation keeps the last few spoken
+// texts, and an accepted pick that collides re-picks index+1 once. The ring is a pure function
+// of accepted-bark order, so replays stay deterministic; suppressed/refused lines never spend
+// a slot.
+const BARK_RECENT_LINES = 4;
+
+function barkRecentRing(own, key) {
+  if (!own.recentLines || typeof own.recentLines !== 'object' || Object.getPrototypeOf(own.recentLines) !== null) {
+    own.recentLines = Object.assign(Object.create(null), own.recentLines);
+  }
+  let ring = own.recentLines[key];
+  if (!Array.isArray(ring)) ring = own.recentLines[key] = [];
+  return ring;
+}
+
+function noteBarkText(own, factionId, situation, text) {
+  if (typeof text !== 'string' || !text) return;
+  const ring = barkRecentRing(own, `${factionId}|${situation}`);
+  ring.push(text);
+  while (ring.length > BARK_RECENT_LINES) ring.shift();
+}
+
+function pickBarkText(own, factionId, situation, index, lineFor) {
+  const ring = barkRecentRing(own, `${factionId}|${situation}`);
+  const first = lineFor(index);
+  if (!ring.includes(first)) return first;
+  const second = lineFor(index + 1);
+  return ring.includes(second) ? first : second;
 }
 
 function ambientRecord(own, sectorId) {
@@ -3373,6 +3558,7 @@ function ambientRecord(own, sectorId) {
       lastAt: 0,
       nextAt: 0,
       lastGap: AMBIENT_BASE_GAP_S,
+      scanNextAt: 0,
     };
     own.ambientBySector[key] = rec;
   }
@@ -3382,6 +3568,7 @@ function ambientRecord(own, sectorId) {
   if (!Number.isFinite(rec.lastAt)) rec.lastAt = 0;
   if (!Number.isFinite(rec.nextAt)) rec.nextAt = 0;
   if (!Number.isFinite(rec.lastGap)) rec.lastGap = AMBIENT_BASE_GAP_S;
+  if (!Number.isFinite(rec.scanNextAt)) rec.scanNextAt = 0;
   return rec;
 }
 
@@ -3480,6 +3667,13 @@ function isPlayerSideHull(state, entity) {
 function speakerRecentlySpoke(own, entity, now) {
   const rec = own.entities && own.entities[String(entity.id)];
   return !!rec && Number.isFinite(rec.lastSpokenAt) && now - rec.lastSpokenAt < WORLD_ANSWER_SPEAKER_GAP_S;
+}
+
+// The arbiter re-checks `valid` when a queued line surfaces — a speaker that died or was reaped
+// while waiting must not pill posthumously. The id goes in raw: the entity map keys by it.
+function speakerStillLive(state, id) {
+  const e = state && state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+  return !!e && e.alive !== false;
 }
 
 function noteSpeakerSpoke(own, entity, situation, now, text) {

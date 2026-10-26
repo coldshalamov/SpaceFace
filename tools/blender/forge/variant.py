@@ -28,9 +28,11 @@ def main(base_name, ship_id, colors, extra=None):
     ship = build_variant(base_name, ship_id, colors, extra).finish()
     live = '--live' in sys.argv
     written = E.export_ship(ship, E.fleet_spec(ship_id), preview=not live)
-    if live and hasattr(ship, 'ani38_bank'):
+    if live:
         # Variants rebuild the banked hull under their own fleet spec, so the bank's
-        # bindings/rest poses are already theirs — bake it under the variant's key.
+        # bindings/rest poses are already theirs — bake it under the variant's key. Any
+        # bank attribute counts (ships name them ani01_bank, ani38_bank, …); a hull that
+        # authors no bank is a no-op inside bake_ship_banks.
         import ANI_38
         ANI_38.bake_ship_banks(ship, written,
                                bank_key=E.fleet_spec(ship_id)['file'].replace('_', '-'))

@@ -47,7 +47,7 @@ import {
 } from '../src/data/environmentalMachinery.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { sectorLocalToGlobalForSector, globalToSectorLocalForSector, RESIDENCY_TIER } from '../src/data/sectorCoordinates.js';
-import { segmentDistanceSquared, createSectorArranger } from '../src/world/arranger.js';
+import { segmentDistanceSquared, createSectorArranger, clearsKeepouts } from '../src/world/arranger.js';
 import { asteroidColliderRadius } from '../src/data/asteroidColliders.js';
 import { stageRacingLaunch, armRacingContract, takeRacingLaunch } from '../src/ui/racingLaunch.js';
 import {
@@ -693,6 +693,47 @@ test('corridor arranger: pinned slots keep authored marks and yield only to the 
     assert.ok(clearsRacingCorridor(plan, moved, 18),
       'a pinned mark on the lane still yields to the corridor');
     assert.ok(moved.x !== onLane.x || moved.z !== onLane.z, 'the pinned body leaves the lane');
+  } finally { f.dispose(); }
+});
+
+test('corridor arranger honors the documented interface members verbatim', async () => {
+  const f = await sectorFixture('sector_ceres_belt');
+  try {
+    const sector = f.state.world.sectors['sector_ceres_belt'];
+    const plan = racingCorridorPlan(sector.id);
+    const arranger = createSectorArranger(sector, {});
+    assert.ok(arranger, 'a registered sector returns an arranger');
+    // keepouts: the campaign schema is {kind, id, a, b, halfWidth} capsules —
+    // bare segments would read as an unbounded halfWidth and silently clear.
+    assert.ok(arranger.keepouts.length >= 2);
+    for (const row of arranger.keepouts) {
+      assert.equal(row.kind, 'capsule');
+      assert.ok(typeof row.id === 'string' && row.id.length, 'every row is named');
+      assert.equal(row.halfWidth, plan.halfWidthWU);
+      assert.ok(Number.isFinite(row.a.x) && Number.isFinite(row.a.z)
+        && Number.isFinite(row.b.x) && Number.isFinite(row.b.z));
+    }
+    // clearsKeepouts must now agree with the corridor's own clearance check.
+    const seg = plan.segments[0];
+    const onLane = { x: (seg.a.x + seg.b.x) / 2, z: (seg.a.z + seg.b.z) / 2 };
+    const clearMark = { x: plan.origin.x + 8000, z: plan.origin.z + 8000 };
+    assert.equal(clearsKeepouts(onLane, 18, arranger.keepouts), clearsRacingCorridor(plan, onLane, 18));
+    assert.equal(clearsKeepouts(clearMark, 18, arranger.keepouts), clearsRacingCorridor(plan, clearMark, 18));
+    // focus: the corridor's anchor is its start grid.
+    assert.deepEqual(arranger.focus, { x: plan.grid.x, z: plan.grid.z });
+    // fields/info: createField appends its roster row and returns the same record.
+    const arrangement = arranger.createField({ id: 'f_ceres_1', type: 'ast_metallic' });
+    assert.ok(arrangement.info && typeof arrangement.info === 'object');
+    assert.equal(arranger.fields.length, 1);
+    assert.equal(arranger.fields[0], arrangement.info);
+    assert.equal(arrangement.info.id, 'f_ceres_1');
+    arrangement.place({ x: 1, z: 2 }, 18, 0);
+    arrangement.place({ x: 1, z: 2 }, 18, 0, true);
+    const summary = arranger.summary();
+    assert.ok(summary.fields === 1 && summary.pinned === 1 && summary.placed >= 2,
+      'summary counts fields and pinned placements like the campaign contract');
+    assert.ok(Number.isInteger(summary.seats) && summary.seats >= 0);
+    assert.equal(arrangement.info.stats.pinned, 1, 'per-field stats mirror the global counters');
   } finally { f.dispose(); }
 });
 

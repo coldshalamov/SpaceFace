@@ -159,6 +159,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createAttachmentService } from '../src/combat/attachments.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
 import { CURSOR_LATCH_GRACE, tetherGameplay, isAttachable } from '../src/systems/tetherGameplay.js';
+import { isMasslineObstructed } from '../src/world/asteroidField.js';
 
 const DT = 1 / 60;
 const MAX_LENGTH = 390;
@@ -470,7 +471,7 @@ test('a precise cursor paint on the far massive asteroid selects it over closer 
 
 // ── INTENT TRUTH: steering / turn ────────────────────────────────────────────────────────────
 
-test('sustained right turn selects the right-side heavy anchor (id 14), not the left enemy', () => {
+test('sustained right turn selects a clear heavy anchor, not the left enemy', () => {
   const scene = buildClutterScene();
   const h = buildClutterHarness(scene.contacts, {
     player: scene.player,
@@ -479,10 +480,15 @@ test('sustained right turn selects the right-side heavy anchor (id 14), not the 
     aimIntentActive: false,
   });
   const selected = settleReceipt(h, 12);
-  // The right-side heavy asteroid (id 14, 5200 mass at 180,60) is the canonical massive-anchor-sling
-  // target for a right turn. The left enemy (id 16) is off-turn-side.
-  assert.equal(selected, 14,
-    'sustained right turn must select the right-side heavy anchor');
+  // The right-side heavy asteroid (id 14, 5200 mass at 180,60) would be the canonical
+  // massive-anchor-sling target for a right turn — but since b37fea99d8 a live wreck hull
+  // obstructs like rock, and wreck 11 (65,20 r8) sits ~1.6wu off the player->14 chord,
+  // so 14 denies 'blocked'. The sling context must fall through to the next clear massive
+  // anchor (id 18, 8000 mass dead ahead), never the off-turn-side left enemy (id 16).
+  assert.equal(selected, 18,
+    'sustained right turn must select the next clear heavy anchor when 14 is hull-blocked');
+  assert.notEqual(selected, 16,
+    'a right turn must never select the off-turn-side left enemy');
 });
 
 test('sustained left turn selects a left-side candidate, not the right-side anchor', () => {
@@ -701,7 +707,9 @@ test('clutter matrix: each scripted aim case latches the geometrically correct t
     { name: 'cursor on cargo pod 10', aim: { x: 70, z: -15 }, expected: 10, cursor: true },
     { name: 'cursor on wreck 11', aim: { x: 65, z: 20 }, expected: 11, cursor: true },
     { name: 'cursor on enemy 12', aim: { x: 120, z: 5 }, expected: 12, cursor: true },
-    { name: 'cursor on asteroid 14', aim: { x: 180, z: 60 }, expected: 14, cursor: true },
+    // b37fea99d8: wreck 11 sits inside its radius-8 disc ~1.6wu off the player->14 chord,
+    // so 14 denies 'blocked' and the paint falls through to the next ranked clear target.
+    { name: 'cursor on asteroid 14 (hull-blocked by wreck 11)', aim: { x: 180, z: 60 }, expected: 12, cursor: true },
     { name: 'cursor on asteroid 18', aim: { x: 200, z: 0 }, expected: 18, cursor: true },
     { name: 'cursor on cargo pod 17', aim: { x: 160, z: 0 }, expected: 17, cursor: true },
     { name: 'cursor on enemy 16', aim: { x: 175, z: -55 }, expected: 16, cursor: true },
@@ -736,10 +744,36 @@ test('clutter matrix: steering intent (no cursor) selects the turn-side massive 
   settleReceipt(h, 12);
   fireLatch(h);
   const latched = h.events.latched[0]?.targetId;
-  // With a sustained right turn, the massive-anchor-sling context should select the right-side
-  // heavy anchor (id 14, 5200 mass at 180,60). This is the canonical slingshot target.
-  assert.equal(latched, 14,
-    'right turn must latch the right-side massive anchor (id 14)');
+  // With a sustained right turn, the massive-anchor-sling context should select a massive
+  // anchor — but id 14 (5200 mass at 180,60) is hull-blocked by wreck 11 on its chord since
+  // b37fea99d8, so the next clear heavy anchor (id 18, 8000 mass at 200,0) is the latch.
+  assert.equal(latched, 18,
+    'right turn must latch the next clear massive anchor (id 18) when 14 is hull-blocked');
+});
+
+// ── Hull-block rule (b37fea99d8): a live wreck on the chord refuses the latch ────────────────
+//
+// Wreck 11 at (65,20) sits ~1.6wu off the player->asteroid-14 chord, inside its radius-8 disc.
+// The massline obstruction pass treats live wrecks/stations like rock, so 14 denies 'blocked'
+// even under a precise cursor paint; moving the wreck off the chord clears the same line.
+
+test('a wreck hull on the latch chord refuses the pick, and a sidestep clears it', () => {
+  const scene = buildClutterScene();
+  const rock = scene.contacts.find((c) => c.id === 14);
+  const wreck = scene.contacts.find((c) => c.id === 11);
+  const line = {
+    state: { simTime: 1 },
+    player: scene.player,
+    target: rock,
+    sourceWorld: { x: scene.player.pos.x, z: scene.player.pos.z },
+    targetWorld: { x: rock.pos.x, z: rock.pos.z },
+    obstacles: [wreck],
+  };
+  assert.equal(isMasslineObstructed(line), true,
+    'wreck 11 on the player->14 chord must obstruct the latch line');
+  wreck.pos = { x: 65, z: -40 };
+  assert.equal(isMasslineObstructed(line), false,
+    'sidestepping the wreck off the chord must clear the same line');
 });
 
 test('clutter matrix: flyby focus on enemy 16 selects it over all neutrals', () => {

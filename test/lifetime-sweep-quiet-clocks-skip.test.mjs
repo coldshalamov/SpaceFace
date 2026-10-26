@@ -243,3 +243,127 @@ test('genuinely idle scenes keep the fast path: deadline-free wreck/asteroid do 
   assert.ok(!walked || walked.alive === false, 'flag OFF still walks clocks');
   setLifetimeSweepQuietClocksSkipForBench(true);
 });
+
+// Exact spawnProp output for the H4 Kessler buoy, without the director's unrelated systems.
+// Only player + buoy exist: no projectile, timed wreck or NPC can accidentally wake clocks.
+function bootQuietBeacon() {
+  const state = createGameState(47141);
+  state.mode = 'flight';
+  const bus = createBus();
+  const helpers = {};
+  core.init({ state, bus, helpers, registry: null });
+  core._publishPresentation = () => {};
+  const player = helpers.spawnEntity({ type: 'ship' });
+  state.playerId = player.id;
+  const beacon = helpers.spawnEntity({
+    type: 'beacon', pos: { x: 70, z: -30 }, vel: { x: 0, z: 0 },
+    radius: 5, mass: 1e6, hull: 1, hullMax: 1,
+    data: {
+      parentType: 'story_prop', scanLabel: 'Love-letter route buoy', encounterId: 'lifetime',
+      storyPropKind: 'love_letter_buoy', assetRef: 'asset.slice.kessler_handoff_beacon',
+      tetherable: true,
+    },
+  });
+  core.preStep(0, state);
+  assert.deepEqual(state.entityList, [player, beacon]);
+  assert.ok(state.entityIndex.movables.includes(beacon));
+  assert.ok(state.entityIndex.radarContacts.includes(beacon));
+  assert.deepEqual(state.entityIndex.shipLike, [player]);
+  for (const lane of ['projectiles', 'fx', 'bombs', 'charges', 'pickups', 'payloads',
+    'mines', 'vectorMines', 'snares', 'wrecks', 'asteroids']) {
+    assert.equal(state.entityIndex[lane].length, 0, `${lane} cannot wake the clock`);
+  }
+  return { state, bus, helpers, player, beacon };
+}
+
+function withQuietFlag(skip, run) {
+  const previous = getLifetimeSweepQuietClocksSkipForBench();
+  setLifetimeSweepQuietClocksSkipForBench(skip);
+  try { return run(); }
+  finally { setLifetimeSweepQuietClocksSkipForBench(previous); core.destroy(); }
+}
+
+test('only player and Kessler buoy: scheduled retirement matches always-walk at the first due tick', () => {
+  const run = skip => withQuietFlag(skip, () => {
+    const { state, bus, player, beacon } = bootQuietBeacon();
+    const events = [];
+    bus.on('entity:destroyed', event => events.push({ event, time: state.simTime, tick: state.tick }));
+    beacon.data.despawnAt = 45;
+    let firstDueTick = null;
+    for (let n = 0; n < 3600; n++) {
+      core.preStep(1 / 60, state);
+      if (state.simTime >= 45 && firstDueTick == null) firstDueTick = state.tick;
+      core.lifetimeSweep(1 / 60, state);
+      if (state.simTime < 45) assert.equal(state.entities.get(beacon.id), beacon);
+    }
+    assert.equal(beacon.alive, false, 'quiet beacon must retire without unrelated activity');
+    assert.equal(state.entities.has(beacon.id), false);
+    assert.deepEqual(state.entityList, [player]);
+    assert.equal(events.length, 1, 'one original-occupant removal event');
+    assert.equal(events[0].event.entity, beacon);
+    assert.equal(events[0].event.id, beacon.id);
+    assert.equal(events[0].event.type, 'beacon');
+    assert.deepEqual(events[0].event.pos, { x: 70, z: -30 });
+    assert.equal(events[0].tick, firstDueTick);
+    for (const lane of ['movables', 'radarContacts', 'physicsDynamics', 'collidables']) {
+      assert.ok(!state.entityIndex[lane].includes(beacon), `${lane} releases the exact buoy`);
+    }
+    assert.equal(state.freeIds.filter(id => id === beacon.id).length, 1);
+    assert.equal(state.entities.get(player.id), player);
+    return { tick: events[0].tick, time: events[0].time };
+  });
+  assert.deepEqual(run(true), run(false), 'retain the original floating-point deadline semantics');
+});
+
+test('beacon deadline added after quiet ticks expires exactly at the absolute boundary', () => withQuietFlag(true, () => {
+  const { state, beacon, bus } = bootQuietBeacon();
+  const events = [];
+  bus.on('entity:destroyed', event => events.push(event));
+  core.lifetimeSweep(0.25, state);
+  assert.equal(beacon.alive, true);
+  beacon.data.despawnAt = 2;
+  state.simTime = 1.999;
+  core.lifetimeSweep(0.25, state);
+  assert.equal(state.entities.get(beacon.id), beacon, 'not early, regardless of dt');
+  state.simTime = 2;
+  core.lifetimeSweep(0.25, state);
+  assert.equal(state.entities.has(beacon.id), false);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].entity, beacon);
+}));
+
+test('zero beacon deadline removes once and a recycled ID does not inherit its retirement', () => withQuietFlag(true, () => {
+  const { state, beacon, bus, helpers } = bootQuietBeacon();
+  const events = [];
+  bus.on('entity:destroyed', event => events.push(event));
+  beacon.data.despawnAt = 0;
+  core.lifetimeSweep(0, state);
+  assert.equal(state.entities.has(beacon.id), false);
+  const replacement = helpers.spawnEntity({ type: 'beacon' });
+  assert.equal(replacement.id, beacon.id);
+  assert.notEqual(replacement.occupantGeneration, beacon.occupantGeneration);
+  state.simTime = 60;
+  core.lifetimeSweep(1, state);
+  assert.equal(state.entities.get(replacement.id), replacement);
+  assert.equal(replacement.alive, true);
+  assert.deepEqual(events.map(event => event.entity), [beacon]);
+}));
+
+test('untimed and cancelled-deadline beacons preserve quiet skip, not merely survival', () => {
+  for (const cancelled of [false, true]) {
+    const probe = skip => withQuietFlag(skip, () => {
+      const { state, beacon } = bootQuietBeacon();
+      if (cancelled) { beacon.data.despawnAt = 45; delete beacon.data.despawnAt; }
+      // The original clock walker reads ttl; the quiet guard must not start that walker.
+      let ttlReads = 0;
+      Object.defineProperty(beacon, 'ttl', { configurable: true, get() { ttlReads++; return Infinity; } });
+      state.simTime = 60;
+      core.lifetimeSweep(1, state);
+      assert.equal(state.entities.get(beacon.id), beacon);
+      assert.equal(beacon.alive, true);
+      return ttlReads;
+    });
+    assert.equal(probe(true), 0, 'deadline-free buoy keeps the quiet clock skip');
+    assert.ok(probe(false) > 0, 'control really exercises the clocks walk');
+  }
+});

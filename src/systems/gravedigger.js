@@ -230,9 +230,13 @@ export function createGravedigger() {
       if (!robot || !robot.pos) return;
       const flags = this._flags();
       if (!flags) return;
+      // A hull under the client's line or beam is still theirs, even inside
+      // the taught pit. Only a released, settled hull is an offering.
+      const engaged = this._engagedIds(s);
       // The pit: post-teach, an offered hull pays the fee and becomes a bed.
       if (flags[GRAVEDIGGER.taughtFlag] === true) {
-        const offering = (s.entityList || []).find((e) => gravediggerCompostable(e, GRAVEDIGGER.post));
+        const offering = (s.entityList || []).find((e) =>
+          gravediggerCompostable(e, GRAVEDIGGER.post) && !(engaged && engaged.has(e.id)));
         if (offering) {
           const full = this._gardens().length >= GRAVEDIGGER.gardenMax;
           if (this._bury(offering, { pay: true })) {
@@ -243,7 +247,6 @@ export function createGravedigger() {
       }
       // The race: the nearest eligible wreck is the next grave. Towed and
       // beamed hulls are the client's — the shared law plus the live marks.
-      const engaged = this._engagedIds(s);
       const eligible = (e) => gravediggerBuryable(e, robot.pos) && !(engaged && engaged.has(e.id));
       const target = gravediggerTarget(robot.pos, s.entityList, eligible);
       if (target) {

@@ -334,6 +334,70 @@
       "part_id": "wholeship_helios_cradle_dmc",
       "npc_root": "SF_M4_HELIOS_CRADLE_DMC_ROOT"
     },
+    "drifter_helix_courier": {
+      "layout": "npc",
+      "file": "drifter_helix_courier",
+      "asset_id": "SF_DRIFTER_HELIX_COURIER",
+      "part_id": "wholeship_drifter_helix_courier",
+      "npc_root": "DRIFTER_HELIX_COURIER_ROOT",
+      "note": "Row 514 Helix white-glass seal kit (directorate courier). Variant of drifter."
+    },
+    "mule_fulfillment_hauler": {
+      "layout": "npc",
+      "file": "mule_fulfillment_hauler",
+      "asset_id": "SF_MULE_FULFILLMENT_HAULER",
+      "part_id": "wholeship_mule_fulfillment_hauler",
+      "npc_root": "MULE_FULFILLMENT_HAULER_ROOT",
+      "note": "Row 514 Fulfillment hospital-white barcode kit (re-router hauler). Variant of mule."
+    },
+    "ranger_archive_censor": {
+      "layout": "npc",
+      "file": "ranger_archive_censor",
+      "asset_id": "SF_RANGER_ARCHIVE_CENSOR",
+      "part_id": "wholeship_ranger_archive_censor",
+      "npc_root": "RANGER_ARCHIVE_CENSOR_ROOT",
+      "note": "Row 514 Archive indigo scriptorium kit (censor frigate). Variant of ranger."
+    },
+    "drifter_archive_censor": {
+      "layout": "npc",
+      "file": "drifter_archive_censor",
+      "asset_id": "SF_DRIFTER_ARCHIVE_CENSOR",
+      "part_id": "wholeship_drifter_archive_censor",
+      "npc_root": "DRIFTER_ARCHIVE_CENSOR_ROOT",
+      "note": "Row 514 Archive indigo scriptorium kit (reading courier — the hull presence actually fields at Pallas). Variant of drifter."
+    },
+    "mule_pitborn_junk": {
+      "layout": "npc",
+      "file": "mule_pitborn_junk",
+      "asset_id": "SF_MULE_PITBORN_JUNK",
+      "part_id": "wholeship_mule_pitborn_junk",
+      "npc_root": "MULE_PITBORN_JUNK_ROOT",
+      "note": "Row 514 Pitborn junk-and-string-light kit (salvage tender / cull announcer). Variant of mule + welded plates and string lamps."
+    },
+    "ironback_pitborn_junk": {
+      "layout": "npc",
+      "file": "ironback_pitborn_junk",
+      "asset_id": "SF_IRONBACK_PITBORN_JUNK",
+      "part_id": "wholeship_ironback_pitborn_junk",
+      "npc_root": "IRONBACK_PITBORN_JUNK_ROOT",
+      "note": "Row 514 Pitborn junk kit (yard tender — the hull presence fields at Ashfall/Vesta/Ceres). Variant of ironback + skin-seated scrap plates and string lamps."
+    },
+    "kestrel_understory_growth": {
+      "layout": "npc",
+      "file": "kestrel_understory_growth",
+      "asset_id": "SF_KESTREL_UNDERSTORY_GROWTH",
+      "part_id": "wholeship_kestrel_understory_growth",
+      "npc_root": "KESTREL_UNDERSTORY_GROWTH_ROOT",
+      "note": "Row 514 Understory Overgrowth kit (gardener skiff). Variant of kestrel + skin-seated moss/vines."
+    },
+    "ranger_verge_surveyor": {
+      "layout": "npc",
+      "file": "ranger_verge_surveyor",
+      "asset_id": "SF_RANGER_VERGE_SURVEYOR",
+      "part_id": "wholeship_ranger_verge_surveyor",
+      "npc_root": "RANGER_VERGE_SURVEYOR_ROOT",
+      "note": "Row 514 Verge-Layers nacre-lattice kit (surveyor prism). Variant of ranger + skin-seated strut lattice."
+    },
     "massline_express_liner": {
       "layout": "player",
       "file": "massline_express_liner_v1",

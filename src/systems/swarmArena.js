@@ -37,7 +37,7 @@
 // callbacks from swarmReinforceCount (which survivalWave already calls on the sim tick).
 
 import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } from '../data/environmentMaterials.js';
-import { ROCK_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
+import { ROCK_PLACE_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
 import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
 import { mulberry32 } from '../core/rng.js';
 import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
@@ -255,20 +255,23 @@ export const SWARM_DEBRIS_SEPARATION = 34;
 // Row 495 — the rolled environment family picks the matching rock substance, so the stamped
 // body carries its Row 509 physics truth (restitution, break speed, density) and its authored
 // skin at once. Slag rides the everyday-rock slot; a wreck-material slot stays a dead hull.
-const DEBRIS_SUBSTANCE_BY_MATERIAL = Object.freeze({
+export const DEBRIS_SUBSTANCE_BY_MATERIAL = Object.freeze({
   rock: Object.freeze(['silicate', 'slag']),
   metal: Object.freeze(['metallic_ore', 'reef_metal']),
   crystal: Object.freeze(['crystal']),
   volatile: Object.freeze(['cooked_rock']),
   cryo: Object.freeze(['ice']),
 });
-function pickDebrisSubstance(material, rng) {
+export function pickDebrisSubstance(material, rng) {
   const table = DEBRIS_SUBSTANCE_BY_MATERIAL[material] || DEBRIS_SUBSTANCE_BY_MATERIAL.rock;
   const pick = table[Math.floor((rng ? rng() : 0) * table.length) % table.length];
-  return ROCK_SUBSTANCES[pick] ? pick : 'silicate';
+  // Gate on the family-BUILT substance set, not ROCK_SUBSTANCES membership: a valid substance
+  // without a place GLB (vethari_bone, bloom_husk, or a future env-material row) must fall back
+  // to silicate rather than minting a placeId the census has never heard of.
+  return ROCK_PLACE_SUBSTANCES.includes(pick) ? pick : 'silicate';
 }
 /** ROCK_SIZE_CLASSES band for a spawn radius: <14 wu pebble, <24 wu boulder, else monolith. */
-function rockSizeClassForRadius(radius) {
+export function rockSizeClassForRadius(radius) {
   const r = Number(radius) || 0;
   return r < 14 ? 'pebble' : r < 24 ? 'boulder' : 'monolith';
 }

@@ -32,13 +32,13 @@ const EXPECTED_NATIVE_EVENTS = Object.freeze({
   bar: 'uniqueWreck:rumorHeard',
 });
 
-function boot(def, seed = 47022, { rewards = false, director = false } = {}) {
+function boot(def, seed = 47022, { rewards = false, director = false, helpers = null } = {}) {
   const systems = [
     ...(director ? [encounterDirector] : []),
     uniqueWrecks,
     ...(rewards ? [cargo, ships] : []),
   ];
-  const sim = createSimulation({ seed, systems });
+  const sim = createSimulation({ seed, systems, ...(helpers ? { helpers } : {}) });
   const { state, bus } = sim;
   state.mode = 'flight';
   state.world.currentSectorId = def?.sectorId || 'sector_helios_prime';
@@ -314,6 +314,66 @@ test('the non-UI rumor bridges publish their authentic native copy once before r
       off?.();
       t.dispose();
     }
+  }
+});
+
+test('the triton-wake rumor bark is an arbiter-bound receipt carrying its say() id', () => {
+  const def = uniqueWreckById('wreck_choir_bell_aegis');
+  const trigger = {
+    sectorId: 'sector_triton_wake',
+    factionId: 'faction_vael',
+    situation: 'patrol_contact',
+  };
+  const capture = (bus) => {
+    const carriers = [];
+    const off = bus.on('barkDirector:voice', (payload) => {
+      if (payload?.sourceRef === 'bark.singing_bell') carriers.push(payload);
+    });
+    return { carriers, off };
+  };
+
+  // Accepted say: the emitted carrier must carry voiceId === the say() id so the voice
+  // waits for the real floor surface instead of scheduling immediately.
+  const says = [];
+  const t = boot(def, 47022, { helpers: { voice: { say: (req) => { says.push(req); return true; } } } });
+  try {
+    const { carriers, off } = capture(t.bus);
+    t.bus.emit('barkDirector:voice', { ...trigger });
+    off?.();
+    assert.equal(says.length, 1, 'the rumor bark requests a floor line');
+    assert.equal(says[0].id, 'depth-r2:d5:first-read');
+    assert.equal(carriers.length, 1);
+    assert.equal(carriers[0].voiceId, says[0].id,
+      'an arbiter-bound barkDirector:voice must carry voiceId equal to its say() id');
+  } finally {
+    t.dispose();
+  }
+
+  // Refused say: the floor will never surface it — the receipt must still carry the id so
+  // audio parks then sweeps it silently rather than playing an unsurfaced line.
+  const refused = boot(def, 47022, { helpers: { voice: { say: () => false } } });
+  try {
+    const { carriers, off } = capture(refused.bus);
+    refused.bus.emit('barkDirector:voice', { ...trigger });
+    off?.();
+    assert.equal(carriers.length, 1);
+    assert.equal(carriers[0].voiceId, 'depth-r2:d5:first-read',
+      'a refused line is still arbiter-bound — it must not schedule immediately');
+  } finally {
+    refused.dispose();
+  }
+
+  // No voice helper (deterministic/headless lane): the direct payload stays immediate.
+  const bare = boot(def);
+  try {
+    const { carriers, off } = capture(bare.bus);
+    bare.bus.emit('barkDirector:voice', { ...trigger });
+    off?.();
+    assert.equal(carriers.length, 1);
+    assert.equal(carriers[0].voiceId, undefined,
+      'an arbiter-less payload keeps the immediate-schedule path');
+  } finally {
+    bare.dispose();
   }
 });
 

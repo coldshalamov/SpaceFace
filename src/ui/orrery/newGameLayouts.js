@@ -178,6 +178,15 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} > .k-stage::before { left:25%; width:50%; top:72%; }
 }
 
+/* 701–1100 wide desktop: the four beats share a ~380–560px stage, so each title had ~90–120px and
+   ellipsized ("Wake at t…", "Dock and…"). The titles wrap onto a second line under their bead instead. */
+@media (min-width:701px) and (max-width:1100px) {
+  ${NGD} .sf-ng-route .sf-ng-route__steps { gap:16px !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step .k-row__name {
+    white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+    text-wrap:balance; overflow-wrap:break-word; line-height:1.25 !important; }
+}
+
 /* a narrow desktop window (≤700 wide, no data-sf-mobile; 390×844, 600×844): the two columns kept the
    340px form column, so the stage had 0px (it sat off the right edge) and the yard piled HITCH, PELICAN and
    WASP on the frame's top-left corner, with no way to see or pick a hull. The plate becomes one column that
