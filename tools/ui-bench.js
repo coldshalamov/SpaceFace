@@ -1318,7 +1318,10 @@ async function mountFlightHud(opts = {}) {
   // One persistent affordance + one warning through the live event path, so the annunciator is
   // lit in the frame rather than judged empty. In-run swarm is never in a berth — skip the dock cue.
   if (opts.dockCue !== false) bus.emit('dock:range', { inRange: true });
-  bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 80, kind: 'warn', text: 'TAKING FIRE', ttl: 30 });
+  // Mirror alerts.js' real announce path for combat:damage: TAKING FIRE surfaces as a DANGER
+  // voice (kind 'danger', priority 110 — the amber warn dot the fixture used to emit made the
+  // threat line read as an advisory, craft critic 2026-10-26 finding R1).
+  bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 110, kind: 'danger', text: 'TAKING FIRE', ttl: 30 });
   // One marketNews instance per page (a --walk remount would otherwise stack subscriptions and
   // double-commit each headline). In a live Survival run its gate keeps the ticker silent —
   // the crucibleHud shot proves that suppression too.

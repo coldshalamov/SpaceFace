@@ -122,12 +122,12 @@ ${S} #hud .sf-overview-row.selected::before { width:19px; left:-24px; height:3px
 ${S} #hud .sf-overview-row.selected .sf-overview-row__name { color:var(--dp-hand-hot, #ffd98c); text-shadow:none; }
 /* 720p rail discipline (craft critic 2026-10-26): a callsign may take a second line, but only
    at word boundaries — hud.js writes a WORD JOINER after every hyphen so "Choir-Tender" never
-   splits; and the state word is pinned off the name by a fixed datum gap so a wrapped name can
-   never kern into "NEUTRAL". The run sits one level inside __name (hud.js) so this clip box is
-   also the run's own edge. */
+   splits; the state word rides in the right datum cluster beside the tier segments so the name
+   lane is wholly the callsign's and a wrapped name can never kern into "NEUTRAL". The run sits
+   one level inside __name (hud.js) so this clip box is also the run's own edge. */
 ${S} #hud .sf-overview-row__left { flex:1 1 auto; min-width:0; overflow:hidden; }
 ${S} #hud .sf-overview-row__name { flex:0 1 auto; min-width:0; overflow:hidden; overflow-wrap:break-word; }
-${S} #hud .sf-overview-row__state { flex:0 0 auto; margin-left:10px; }
+${S} #hud .sf-overview-row__state { flex:0 0 auto; margin-left:2px; }
 ${S} #hud .sf-overview-row__right { color:rgb(223 238 255 / .92); font-variant-numeric:tabular-nums; }
 ${S} #hud .sf-overview-row__detail { color:rgb(232 226 212 / .7); }
 ${S} #hud .sf-overview-footer { color:rgb(232 226 212 / .7); background:none !important; }
