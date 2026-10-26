@@ -1080,6 +1080,12 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   ${ML} .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.08em !important; font-size:12px !important; }
   ${ML} .sf-mlog-side .sf-mlog-btns .k-word-sub { letter-spacing:.1em !important; font-size:12px !important; }
 }
+/* ui-polish-142: at 1101+ a long berth ("Helios Station (Helios Prime)") was ellipsized mid-word; the
+   end wraps between place names instead, and both ends hang from their labels */
+@media (min-width:1101px) {
+  ${ML} .ml-route__ends { align-items:start; }
+  ${ML} .ml-route__from, ${ML} .ml-route__to { white-space:normal; text-overflow:clip; line-height:1.3; text-wrap:balance; }
+}
 
 /* narrow desktop window (640–760): hang|stage stayed two equal columns, so the dial sat on the
    reading and LOCAL MAP printed through PAYS. A short hang, a stacked card (dial then reading
