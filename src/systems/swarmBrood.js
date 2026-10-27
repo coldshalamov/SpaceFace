@@ -134,6 +134,10 @@ const BROOD_CREDIT_WINDOW_S = 5;
 // W-BLOOM-LOW leech remain: per-tick velocity keep while the glue clock is live — the body
 // fights its own steering and crawls instead of dashing until the timer lets go.
 const BROOD_GLUE_KEEP = 0.82;
+// W-BLOOM-LOW wake eel wrap: the authored fields are the reach (wrapRange) and the coil
+// (wrapS); the grip's own window and the retry delay after a release or a whiff live here.
+const BROOD_WRAP_HOLD_S = 2.4;
+const BROOD_WRAP_RETRY_S = 3;
 export function broodAttackLimit(wave) {
   return Math.min(4, 2 + Math.floor((Math.max(1, finite(wave, 1)) - 1) / 10));
 }
@@ -145,6 +149,7 @@ export const BROOD_PHASE_DASH = 2;
 export const BROOD_PHASE_RECOVER = 3;
 export const BROOD_PHASE_LATCHED = 4;
 export const BROOD_PHASE_BURIED = 5;
+export const BROOD_PHASE_WRAPPED = 6;
 
 // --- spatial hash: open hashing over 16wu cells, chained lists in retained arrays -----------
 const CELL = 16;
@@ -453,6 +458,7 @@ export function createBroodEngine(deps = {}) {
     aliveCount = 0;
     creditUntil.fill(0);
     gluedUntil.fill(0);
+    dragTold.fill(0);
     nextAttackAt = 0;
     spawnRequested = false;
     nextSpawnAttemptAt = 0;
@@ -601,6 +607,10 @@ export function createBroodEngine(deps = {}) {
     primeUntil[slot] = 0;
     gluedUntil[slot] = 0;
     dragTold[slot] = 0;
+    // Per-slot reserve flags die with the body too — a reused slot never inherits a dead
+    // mother's told-flag or an unspent share of her tide.
+    birthLeft[slot] = 0;
+    birthTold[slot] = 0;
     aliveCount += 1;
   }
 
@@ -820,6 +830,12 @@ export function createBroodEngine(deps = {}) {
         continue;
       }
 
+      // -- a wrapped eel rides the host the same way: constrict, shed by the same scrape
+      if (phase[i] === BROOD_PHASE_WRAPPED) {
+        stepWrapped(i, fam, dt);
+        continue;
+      }
+
       // A buried burrower stays inside its rock. Windup holds that same point so the
       // telegraph finishes before the body leaves the silhouette. Rock contact would
       // shove or kill a body parked in the stone, so this path skips it.
@@ -850,7 +866,8 @@ export function createBroodEngine(deps = {}) {
           for (let gz = cz0 - 1; gz <= cz0 + 1; gz++) {
             let j = gridHead[cellKey(gx, gz)];
             while (j !== -1) {
-              if (j !== i && alive[j] && phase[j] !== BROOD_PHASE_LATCHED) {
+              if (j !== i && alive[j] && phase[j] !== BROOD_PHASE_LATCHED
+                  && phase[j] !== BROOD_PHASE_WRAPPED) {
                 const dx = px[j] - bx;
                 const dz = pz[j] - bz;
                 const d2 = dx * dx + dz * dz;
@@ -894,8 +911,9 @@ export function createBroodEngine(deps = {}) {
           az += (dzp / dp) * seek;
         }
         // wake_eel `trails`: the eel does not seek the hull, it rides the wake — steer to
-        // a point astern of the signature's velocity so it wraps from behind.
-        if (def && def.trails) {
+        // a point astern of the signature's velocity so it wraps from behind. A coiling
+        // eel has already committed: it plants with the tell instead of chasing the wake.
+        if (def && def.trails && phase[i] !== BROOD_PHASE_WINDUP) {
           const tx = playerX - playerVX * 0.9;
           const tz = playerZ - playerVZ * 0.9;
           const tdx = tx - bx;
@@ -1001,11 +1019,20 @@ export function createBroodEngine(deps = {}) {
           // hold: the body plants while its marker/line speaks
           vx[i] *= 0.7;
           vz[i] *= 0.7;
-          timer[i] -= dt;
-          if (timer[i] <= 0) {
-            if (def.id === 'spitter') fireLob(i, fam);
-            else if (def.id === 'charger') beginDash(i, fam);
-            else phase[i] = BROOD_PHASE_FLOCK;
+          // The eel's coil is a windup with an out: leave the authored reach and it whiffs.
+          if (def.wrapRange > 0
+              && (dp > def.wrapRange || !signatureRef || signatureRef.alive === false)) {
+            phase[i] = BROOD_PHASE_FLOCK;
+            timer[i] = 0;
+            attackAfter[i] = simTime + BROOD_WRAP_RETRY_S;
+          } else {
+            timer[i] -= dt;
+            if (timer[i] <= 0) {
+              if (def.id === 'spitter') fireLob(i, fam);
+              else if (def.id === 'charger') beginDash(i, fam);
+              else if (def.wrapRange > 0) beginWrap(i, fam);
+              else phase[i] = BROOD_PHASE_FLOCK;
+            }
           }
         } else if (def && def.id === 'spitter') {
           stepSpitter(i, def, dp, dt);
@@ -1013,6 +1040,8 @@ export function createBroodEngine(deps = {}) {
           stepCharger(i, def, dp);
         } else if (def && def.id === 'leecher') {
           stepLeecher(i, fam, dp);
+        } else if (def && def.wrapRange > 0) {
+          stepEelWrap(i, def, dp);
         }
         if (def && def.births) stepMother(i, def, dt, simTime);
       }
@@ -1107,8 +1136,8 @@ export function createBroodEngine(deps = {}) {
   // speaks it rate-limited; the engine's law is one emit per REAL telegraph transition — a
   // windup arming, a prime, a latch, a swell, a grip — never per tick. Families whose
   // authored line describes a standing property instead of a transition stay silent: the
-  // mite's dive is the flock itself, the glassback's and keelback's armor never leaves
-  // FLOCK, and the wake eel's authored wrap (wrapRange/wrapS) has no live state behind it.
+  // mite's dive is the flock itself, and the glassback's and keelback's armor never leaves
+  // FLOCK.
   function emitTelegraph(i, def) {
     if (!bus || !def) return;
     const tele = def.telegraph;
@@ -1416,6 +1445,80 @@ export function createBroodEngine(deps = {}) {
       }
     }
     void state;
+  }
+
+  // --- the wake eel's wrap: trails the wake, coils, then a bounded constricting grip --------
+  //
+  // `wrapRange`/`wrapS` are authored (src/data/swarmBrood.js): inside the reach the eel
+  // commits to the coil — a planted windup that speaks the family's line once — and a
+  // signature still inside when the coil ends takes the grip. The pilot's outs are the
+  // tier's own verbs: leave the reach during the coil, kill the body, or scrape it off on
+  // a wall exactly like a latched leech.
+
+  /** Arms the coil when the signature is inside the authored reach; the line is the tell. */
+  function stepEelWrap(i, def, dp) {
+    if (phase[i] !== BROOD_PHASE_FLOCK) return;
+    if (attackClock < attackAfter[i] || dp > def.wrapRange || dp < 1e-4) return;
+    if (!signatureRef || signatureRef.alive === false) return;
+    phase[i] = BROOD_PHASE_WINDUP;
+    timer[i] = def.wrapS > 0 ? def.wrapS : 1;
+    emitTelegraph(i, def);
+  }
+
+  /** The coil finished with the signature still inside — the wrap lands. */
+  function beginWrap(i, fam) {
+    phase[i] = BROOD_PHASE_WRAPPED;
+    timer[i] = BROOD_WRAP_HOLD_S;
+    void fam;
+  }
+
+  /** One tick of the grip: ride the hull like a latch, brake it, shed by the same scrape. */
+  function stepWrapped(i, fam, dt) {
+    if (!signatureRef || signatureRef.alive === false) {
+      phase[i] = BROOD_PHASE_FLOCK;
+      timer[i] = 0;
+      return;
+    }
+    // Ride the host at a hull offset — the same position glue the latch uses.
+    const rad = liveFamilyRadius[fam];
+    const angle = seedPhase[i];
+    const offset = playerRad + rad * 0.6;
+    px[i] = playerX + Math.cos(angle) * offset;
+    pz[i] = playerZ + Math.sin(angle) * offset;
+    vx[i] = playerVX;
+    vz[i] = playerVZ;
+    heading[i] = angle + Math.PI;
+    // The constriction is the latch's own drag: an additive, budget-capped brake across the
+    // membrane that can never reverse the hull — a squeeze, not a new damage channel.
+    const speed = Math.sqrt(playerVX * playerVX + playerVZ * playerVZ);
+    if (speed > 1) {
+      const dv = Math.min(BROOD_LEECHER_BRAKE_ACCEL * dt, brakeDvBudget);
+      brakeDvBudget -= dv;
+      queuePhysicsImpulse(signatureRef, {
+        x: -(playerVX / speed) * dv * playerMass,
+        y: 0,
+        z: -(playerVZ / speed) * dv * playerMass,
+      });
+    }
+    // The out is the leecher's verb verbatim: scrape a wall fast enough and it kills the grip.
+    if (speed >= BROOD_SHED_SPEED) {
+      for (let r = 0; r < rockCount; r++) {
+        const dx = playerX - rockX[r];
+        const dz = playerZ - rockZ[r];
+        const rr = rockR[r] + playerRad;
+        if (dx * dx + dz * dz <= rr * rr) {
+          kill(i, 'collision', px[i], pz[i]);
+          return;
+        }
+      }
+    }
+    // The grip is bounded — it lets go on its own, then waits before it can coil again.
+    timer[i] -= dt;
+    if (timer[i] <= 0) {
+      phase[i] = BROOD_PHASE_FLOCK;
+      timer[i] = 0;
+      attackAfter[i] = attackClock + BROOD_WRAP_RETRY_S;
+    }
   }
 
   // --- B3: the Tendril's body --------------------------------------------------------------
@@ -2103,7 +2206,7 @@ export function createBroodEngine(deps = {}) {
       return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget };
     },
     // Test seams: direct, read-only unless named as a seam.
-    _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, liveFamilyId },
+    _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId },
     _lobs: { x: lobX, z: lobZ, t: lobT, total: lobTotal, tx: lobTX, tz: lobTZ, alive: lobAlive },
     _pools: { x: poolX, z: poolZ, age: poolAge, ttl: poolTtl },
     // B3 — the Tendril's chain: read-only buffers plus one write seam for the split test.

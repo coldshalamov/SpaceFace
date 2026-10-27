@@ -7,9 +7,9 @@
 // windup, the charger's committed pass, the leecher's latch, the prime families' armed
 // fuse (lantern cyst / remora / ash wisp), the bellows' swell, and the hazard grip
 // (spore drift / undertow) each carry their authored {bark,line,cue} verbatim.
-// Families with no real transition stay silent — the mite's dive is the flock itself, the
-// glassback/keelback shells are standing armor, and the wake eel's authored wrap has no
-// live state behind it — and a family whose def carries no authored line emits nothing.
+// Families with no real transition stay silent — the mite's dive is the flock itself, and
+// the glassback/keelback shells are standing armor — and a family whose def carries no
+// authored line emits nothing.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -319,15 +319,21 @@ test('a family whose def carries no authored line emits nothing', () => {
   assert.equal(telegraphs(h).length, 0, 'no authored line, no tell');
 });
 
-test('families with no real transition never speak: mite, glassback, wake_eel, keelback', () => {
+test('families with no real transition never speak: mite, glassback, keelback', () => {
   const h = boot({ wave: 55 });
   const { engine } = fielded(h, 'mite', 55);
-  for (const id of ['mite', 'glassback', 'wake_eel', 'keelback']) {
+  for (const id of ['mite', 'glassback', 'keelback']) {
     const i = familySlot(engine, id);
     assert.ok(i >= 0, `wave 55 fields ${id}`);
     engine._bodies.px[i] = 12;
     engine._bodies.pz[i] = 0;
   }
+  // The wake eel's wrap IS a real beat now — but only inside its authored reach: parked
+  // beyond wrapRange it has no transition to speak.
+  const eel = familySlot(engine, 'wake_eel');
+  assert.ok(eel >= 0, 'wave 55 fields wake_eel');
+  engine._bodies.px[eel] = 400;
+  engine._bodies.pz[eel] = 0;
   h.player.vel.x = 30;
   stepTicks(engine, h.state, 60);
   for (const id of ['mite', 'glassback', 'wake_eel', 'keelback']) {
