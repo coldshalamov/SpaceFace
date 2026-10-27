@@ -1252,11 +1252,16 @@ test('canonical actor death with immediate numeric-id reuse never mutates the re
     assert.strictEqual(state.entities.get(replacement.id), replacement);
     assert.equal(state.npcJobs.byId[miner.jobId], undefined,
       'the dead canonical actor still releases its job terminally');
-    assert.deepEqual(replacement.data, {
-      jobId: miner.jobId,
-      intent: { brake: true },
-      unrelatedReplacement: true,
-    }, 'release cannot clear brake or delete a marker on the unrelated same-id replacement');
+    // spawnEntity legitimately stamps projectile ordnance provenance (data.attackSource) — the
+    // release path's contract is that it never touches the replacement's own fields.
+    assert.equal(replacement.data.jobId, miner.jobId,
+      'release cannot delete a marker on the unrelated same-id replacement');
+    assert.equal(replacement.data.intent.brake, true,
+      'release cannot clear brake on the unrelated same-id replacement');
+    assert.equal(replacement.data.unrelatedReplacement, true,
+      'release must not mutate the replacement entity at all');
+    assert.equal(replacement.data.jobPhase, undefined);
+    assert.equal(replacement.data.jobProgress, undefined);
   } finally {
     sim.dispose();
   }
@@ -2382,6 +2387,7 @@ test('route braking is transient across stationary, flee, control, and release o
     entities: new Map([[actor.id, actor], [threat.id, threat]]),
     npcJobs: { byId: { 'job:ceres:test:brake': entry } },
   };
+  runtime.helpers = {}; // _drive consults helpers.traffic for bounded work targets; absent = none
 
   runtime._drive(entry, actor);
   assert.equal(actor.data.intent.brake, false, 'stationary kernel phases clear route braking');

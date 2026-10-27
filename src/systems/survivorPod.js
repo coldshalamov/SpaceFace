@@ -830,6 +830,7 @@ export const survivorPod = {
       payloadType: CAUSAL_SURVIVOR_PAYLOAD_TYPE,
       worldRecordId: null,
       transientSector: false,
+      homeSectorId: state.world && state.world.currentSectorId || null,
     }, this.helpers);
     if (!entity) return null;
     entity.flags = Object.assign({}, entity.flags, { persistent: true });
@@ -884,6 +885,7 @@ export const survivorPod = {
       payloadType: 'wreck_squatter',
       worldRecordId: null,
       transientSector: true,
+      homeSectorId: request.sectorId || (state.world && state.world.currentSectorId) || null,
     }, this.helpers);
     if (!entity || !entity.data) return entity;
     entity.data.tetherRole = 'survivor_pod';
@@ -955,6 +957,7 @@ export const survivorPod = {
       payloadType: CAUSAL_SURVIVOR_PAYLOAD_TYPE,
       worldRecordId: null,
       transientSector: false,
+      homeSectorId: sectorId,
     }, this.helpers);
     entity.flags = Object.assign({}, entity.flags, { persistent: true });
     const rec = {

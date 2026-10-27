@@ -222,11 +222,30 @@ export function ensureVaelState(state) {
     r.attachedAt = num(r.attachedAt);
   }
   if (!isObj(v.telegraphs)) v.telegraphs = {};
+  for (const k of Object.keys(v.telegraphs)) {
+    const tg = v.telegraphs[k];
+    // A wind-up the desk never wrote — a torn or hostile bag — can never fire
+    // on a non-finite fireAt yet stays latched, blocking the live tender from
+    // ever arming its own. Only a real countdown may occupy the latch.
+    if (!isObj(tg) || !Number.isFinite(Number(tg.fireAt))) delete v.telegraphs[k];
+  }
   _capKeyed(v.telegraphs, 8);
   if (!isObj(v.writTelegraphs)) v.writTelegraphs = {};
+  for (const k of Object.keys(v.writTelegraphs)) {
+    const tg = v.writTelegraphs[k];
+    // Same shape, plus the writ id the serve path checks as its ownership
+    // token — a row that cannot name its writ proves nothing.
+    if (!isObj(tg) || typeof tg.writId !== 'string'
+      || !Number.isFinite(Number(tg.fireAt))) delete v.writTelegraphs[k];
+  }
   _capKeyed(v.writTelegraphs, 8);
-  if (v.pageNine === undefined || (v.pageNine !== null && typeof v.pageNine !== 'object')) {
-    v.pageNine = null;
+  if (!isObj(v.pageNine)) v.pageNine = null;
+  if (v.pageNine) {
+    // Only a true latch arms the addendum — a truthy bag value must not read
+    // as a live contract job forever.
+    v.pageNine.armed = v.pageNine.armed === true;
+    v.pageNine.armedAt = num(v.pageNine.armedAt);
+    v.pageNine.jobId = v.pageNine.jobId == null ? null : str(v.pageNine.jobId, null);
   }
   if (!Number.isFinite(v.transferredCount)) v.transferredCount = 0;
 
@@ -237,9 +256,16 @@ export function ensureVaelState(state) {
   b.stains = Math.max(0, intOr(b.stains));
   b.forgiven = Math.max(0, intOr(b.forgiven));
   b.settledCr = Math.max(0, intOr(b.settledCr));
-  b.tier = Math.max(0, intOr(b.tier));
+  // Above the top rung the tier can never cross upward again — a forged save
+  // would silence every later paperTier crossing. Clamp it back inside the book.
+  b.tier = Math.max(0, Math.min(VAEL_PAPER_TIERS.length - 1, intOr(b.tier)));
+  // …and never above what the honored clauses actually earned: a forged
+  // high-water mark silences the very crossings it pretends already happened.
+  b.tier = Math.min(b.tier, vaelTierFor(b.clauses).tier);
 
-  v.seq = intOr(v.seq);
+  // Negative seq mints ids that collide with legit low-seq rows once enough
+  // rows post — pull a hostile counter back onto the desk's numbering.
+  v.seq = Math.max(0, intOr(v.seq));
   if (!isObj(v.paid)) v.paid = {};
   for (const k of Object.keys(v.paid)) {
     const t = num(v.paid[k], -1);
@@ -606,7 +632,13 @@ export const vaelLiens = {
         delete v.telegraphs[e.id];
         tg = null;
       }
-      if (!contract || already || !near) { if (tg) delete v.telegraphs[e.id]; continue; }
+      // The clamp serves in open space only — the same flight gate the writ
+      // crew lives under. A docked or loading pilot is not serveable, and a
+      // wind-up armed before the transition dies with it.
+      if (!contract || already || !near || state.mode !== 'flight') {
+        if (tg) delete v.telegraphs[e.id];
+        continue;
+      }
       if (!tg) {
         v.telegraphs[e.id] = {
           tenderId: e.id, targetId: player.id, gen: occupantGenerationOf(e),
@@ -749,6 +781,9 @@ export const vaelLiens = {
       const row = v.liens[k];
       const a = state.entities.get(row.anchorId != null ? row.anchorId : intOr(k, -1));
       if (!a || a.alive === false || a.data?.lienAnchor !== true || a.data.hostId == null) {
+        // A corpse the heal just accounted for must not re-bill or re-strip if
+        // a kill event lands on it late — the metal's paper is already filed.
+        if (a && a.data && a.data.lienAnchor === true) a.data.lienReleased = true;
         delete v.liens[k];
       }
     }
@@ -967,7 +1002,8 @@ export const vaelLiens = {
   _tickInvoices(state) {
     const v = ensureVaelState(state);
     const player = this._player(state);
-    for (const inv of v.invoices) {
+    // A copy — _postWrit's emits can re-enter payInvoice, which gc's this list.
+    for (const inv of [...v.invoices]) {
       if (inv.state !== 'open') continue;
       if (inv.stage === 0 && state.simTime >= num(inv.dueAt)) {
         inv.stage = 1;
@@ -1085,7 +1121,9 @@ export const vaelLiens = {
   _tickWrits(state, dt, scan) {
     const v = ensureVaelState(state);
     const player = scan.player;
-    for (const writ of v.writs) {
+    // A copy — _closeWrit gc's this very list mid-iteration and a splice would
+    // skip the next crew's whole tick. Same discipline as the patrol rows.
+    for (const writ of [...v.writs]) {
       if (writ.state !== 'open') continue;
       const inv = v.invoices.find((r) => r.id === writ.invoiceId);
       const tender = this._boundEnt(state, { entityId: writ.tenderId, gen: writ.tenderGen }, 'vaelWritTender');
@@ -1103,7 +1141,10 @@ export const vaelLiens = {
       const serveR = VAEL_LEDGER.writServeR * (marked ? VAEL_LEDGER.writMarkedMult : 1);
       const d2 = dist2(tender.pos, player.pos);
       const clamped = lienAnchorFor(state, player.id) != null;
-      const tg = v.writTelegraphs[tender.id];
+      let tg = v.writTelegraphs[tender.id];
+      // The wind-up belongs to this writ — a stale row (a recycled tender id, a
+      // hostile save bag) must not fire this crew's serve with no wind-up.
+      if (tg && tg.writId !== writ.id) { delete v.writTelegraphs[tender.id]; tg = null; }
 
       if (!clamped && d2 <= serveR * serveR) {
         if (!tg) {
@@ -1167,6 +1208,15 @@ export const vaelLiens = {
           tender.pos.x + Math.cos(ang) * VAEL_LEDGER.lanceOrbitR,
           tender.pos.z + Math.sin(ang) * VAEL_LEDGER.lanceOrbitR,
           VAEL_LEDGER.lanceSpeed, VAEL_LEDGER.writSteerK, dt);
+      }
+    }
+    // Wind-ups whose writ is no longer open die with their paper — _closeWrit
+    // clears by tender id; this clears by ownership, the same discipline the
+    // contract telegraphs get from their `seen` sweep.
+    for (const k of Object.keys(v.writTelegraphs)) {
+      const tg = v.writTelegraphs[k];
+      if (!isObj(tg) || !v.writs.some((w) => w.state === 'open' && w.id === tg.writId)) {
+        delete v.writTelegraphs[k];
       }
     }
   },
@@ -1380,7 +1430,8 @@ export const vaelLiens = {
       }
     }
 
-    for (const clause of v.clauses) {
+    // A copy — the honor/fail emits below can re-enter and gc this list.
+    for (const clause of [...v.clauses]) {
       if (!CLAUSE_OPEN.has(clause.state)) continue;
       // Deadlines: unsigned offers lapse clean; signed ones fail.
       const deadline = clause.state === 'signed'
@@ -1402,8 +1453,8 @@ export const vaelLiens = {
       }
       // Signed: resolve the work.
       if (clause.kind === 'haul') this._tickHaulClause(state, clause, scan);
-      else if (clause.kind === 'serve') this._tickServeClause(state, clause, scan);
-      else if (clause.kind === 'recovery') this._tickRecoveryClause(state, clause, scan);
+      else if (clause.kind === 'serve') this._tickServeClause(state, clause, scan, dt);
+      else if (clause.kind === 'recovery') this._tickRecoveryClause(state, clause, scan, dt);
     }
     this._gcClosed(v.clauses, 8);
   },
@@ -1618,7 +1669,7 @@ export const vaelLiens = {
     this._clauseCleanup(state, clause);
   },
 
-  _tickServeClause(state, clause, scan) {
+  _tickServeClause(state, clause, scan, dt = 1 / 60) {
     const defaulter = this._clauseSubject(state, clause);
     if (!defaulter) { this._lapseClause(state, clause, 'subject_lost'); return; }
     const player = scan.player;
@@ -1630,7 +1681,7 @@ export const vaelLiens = {
         this._steer(state, defaulter,
           defaulter.pos.x - ((player.pos.x - defaulter.pos.x) / d) * 300,
           defaulter.pos.z - ((player.pos.z - defaulter.pos.z) / d) * 300,
-          VAEL_LEDGER.defaulterSpeed, VAEL_LEDGER.writSteerK, 1 / 60);
+          VAEL_LEDGER.defaulterSpeed, VAEL_LEDGER.writSteerK, dt);
       }
       if (d2p <= VAEL_LEDGER.serveR * VAEL_LEDGER.serveR) {
         // The clamp does the talking — the clause is served on the subject's hull.
@@ -1648,12 +1699,15 @@ export const vaelLiens = {
     }
   },
 
-  _tickRecoveryClause(state, clause, scan) {
+  _tickRecoveryClause(state, clause, scan, dt = 1 / 60) {
     // Resolution lives on the kill wire — here the marked debtor flees tenders.
     const debtor = this._clauseSubject(state, clause);
     if (!debtor) return; // kill wire or lapse path owns the close
     let threat = null, best = Infinity;
     for (const e of scan.writTenders.concat(scan.patrols, scan.authored)) {
+      // The subject's own clamp rides with it — paper, not a pursuer. The named
+      // -debtor loop and the witness count already refuse to count lien metal.
+      if (e.data?.lienAnchor === true) continue;
       const d = dist2(debtor.pos, e.pos);
       if (d < best) { best = d; threat = e; }
     }
@@ -1662,7 +1716,7 @@ export const vaelLiens = {
       this._steer(state, debtor,
         debtor.pos.x - ((threat.pos.x - debtor.pos.x) / d) * 300,
         debtor.pos.z - ((threat.pos.z - debtor.pos.z) / d) * 300,
-        VAEL_LEDGER.defaulterSpeed, VAEL_LEDGER.writSteerK, 1 / 60);
+        VAEL_LEDGER.defaulterSpeed, VAEL_LEDGER.writSteerK, dt);
     }
   },
 
@@ -1680,7 +1734,8 @@ export const vaelLiens = {
       if (open.length < VAEL_LEDGER.debtorMaxLive) this._postDebtor(state);
     }
 
-    for (const row of v.debtors) {
+    // A copy — the skip/transfer emits below can re-enter and gc this list.
+    for (const row of [...v.debtors]) {
       if (row.state !== 'open') continue;
       const e = this._boundEnt(state, row, 'vaelDebtor');
       if (!e) {
@@ -1836,8 +1891,13 @@ export const vaelLiens = {
   _tickBook(state) {
     const v = ensureVaelState(state);
     const earned = Math.floor((v.book.clauses | 0) / VAEL_LEDGER.forgiveEvery);
-    if (earned > (v.book.forgiven | 0)) {
-      v.book.forgiven = Math.min(earned, v.book.stains | 0);
+    // The page turns only when a stain actually closes. Earned pages can outrun
+    // stains forever (a clean book earns pages with nothing to forgive), and a
+    // latch on `earned > forgiven` alone re-fired the bark, the ledger row and
+    // the emit every tick for the rest of the run.
+    const next = Math.min(earned, v.book.stains | 0);
+    if (next > (v.book.forgiven | 0)) {
+      v.book.forgiven = next;
       this._fileLog(state, 'page_turned', `stains ${v.book.stains - v.book.forgiven}`);
       this._log(state, LEDGER_BARKS.pageTurns);
       this.bus.emit('vael:pageTurned', {
@@ -1878,7 +1938,9 @@ export const vaelLiens = {
       const hostId = (lien && lien.hostId) ?? vd.hostId;
       const mass = (lien && lien.mass) ?? vd.clampMass ?? VAEL_LIEN.anchorMass;
       // A replayed kill delivery bills once — the receipt is the anchor's life.
-      if (hostId === state.playerId
+      // lienReleased covers the slower race: the silent-loss heal already filed
+      // the paper and dropped the row before this kill event arrived.
+      if (hostId === state.playerId && vd.lienReleased !== true
           && this._paidOnce(v, `anchor-kill:${p.id}:${occupantGenerationOf(victim) ?? 0}`)) {
         this._fileInvoice(state, {
           amount: Math.round(mass * VAEL_LIEN.payoffPerTonne),
@@ -1928,8 +1990,9 @@ export const vaelLiens = {
     }
 
     // Clause subjects: a destroyed crate breaks the haul; a destroyed defaulter
-    // breaks the service; a collected recovery name pays.
-    for (const clause of v.clauses) {
+    // breaks the service; a collected recovery name pays. A copy — the close
+    // paths emit, and a re-entered gc must not skip the next clause's read.
+    for (const clause of [...v.clauses]) {
       if (!CLAUSE_OPEN.has(clause.state)) continue;
       if (clause.crateId === p.id && vd?.vaelCrate === true
           && (clause.crateGen == null || occupantGenerationOf(victim) === clause.crateGen)) {

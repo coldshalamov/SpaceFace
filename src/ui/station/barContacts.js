@@ -1406,6 +1406,14 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     };
   }
 
+  // A one-shot authored wreck lead outranks a transient rotating ace sighting — the ace
+  // window repeats, the lead does not, so letting the ace answer first can starve the lead
+  // for the entire time a route stands in the sector (Sker opens with one at t=0).
+  const wreckRumor = role === 'barkeep'
+    ? uniqueWreckBarRumor(state, stationId, choiceId)
+    : null;
+  if (wreckRumor) return { text: wreckRumor.text, uniqueWreckRumor: wreckRumor };
+
   const aceRoute = role === 'barkeep' && choiceId === 'rumors'
     ? (() => {
         const info = barStationInfo(stationId, state);
@@ -1414,11 +1422,6 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
       })()
     : null;
   if (aceRoute) return { text: aceRoute.rumorLine, aceRouteRumor: aceRoute };
-
-  const wreckRumor = role === 'barkeep'
-    ? uniqueWreckBarRumor(state, stationId, choiceId)
-    : null;
-  if (wreckRumor) return { text: wreckRumor.text, uniqueWreckRumor: wreckRumor };
 
   const authoredDockRumor = role === 'barkeep' && choiceId === 'rumors'
     ? AUTHORED_DOCK_RUMORS[stationId]

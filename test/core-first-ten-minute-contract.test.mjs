@@ -642,7 +642,10 @@ await check('high-speed flyby enters Focus and permits expanded tether latch', (
   };
   const selectedRock = {
     id: 2, type: 'asteroid', team: null, alive: true,
-    pos: { x: 35, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, mass: 300, data: {},
+    // Off the player→foe latch line: obstruction admission (124c2b3efbb) treats a solid
+    // rock disc on the segment as a hard denial. This fixture's contract is selection
+    // priority, so the nearer UI pick must not also be a physical blocker.
+    pos: { x: 35, z: -25 }, vel: { x: 0, z: 0 }, radius: 10, mass: 300, data: {},
   };
   const state = {
     mode: 'flight',

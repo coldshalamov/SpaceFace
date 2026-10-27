@@ -44,7 +44,13 @@ test('no popup entrance snaps in', () => {
   assert.match(hailSrc, /@keyframes sf-contact-hail-in/, 'hail panel slides in');
   assert.match(deckCss, /@keyframes sf-prompt-in/, 'decisions slide in');
   assert.match(stuntSrc, /@keyframes sf-stuntcall-rise/, 'stunt callouts rise');
-  assert.match(floatSrc, /@keyframes sf-ft-rise/, 'damage numbers rise');
+  // floatingText rises in JS, not CSS — the per-frame transform owns motion outright (a spawn
+  // carries an upward vy in px/s that integrates into translate3d every frame; popScale owns
+  // the entrance and stills under the reduced-motion switches). Pin the live mechanism:
+  // a dead @keyframes pin would pass while the rise itself was gone.
+  assert.match(floatSrc, /n\.vy = -/, 'damage numbers spawn with an upward velocity');
+  assert.match(floatSrc, /const rise = n\.vy \* n\.age/, 'damage numbers rise — vy integrates into the transform');
+  assert.match(floatSrc, /reduced \? 1 : popScale/, 'the snap-pop entrance stills under reduced motion');
 });
 
 test('the alert danger pulse and entrances cut under reduced motion', () => {

@@ -31,6 +31,7 @@ import {
 } from './recipes.js';
 import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE } from '../../data/fields.js';
 import { worldSizeForPixels } from './pixelFloor.js';
+import { readOwnedExceptionalSpeed } from '../velocityLanguage.js';
 
 const _color = new THREE.Color();
 const _local = { x: 0, z: 0 };
@@ -478,6 +479,9 @@ export class WeaponVfxPresenter {
     this.state = context.state || this.state;
     this.helpers = context.helpers || this.helpers;
     if (typeof context.toLocalXZ === 'function') this.toLocalXZ = context.toLocalXZ;
+    // The owner reads the shared exceptional scalar once per update and hands it down;
+    // standalone presenters fall back to reading it themselves in _syncBolts.
+    this._contextExceptionalSpeed = context.exceptionalSpeed;
     // Composite quiet latch: skip residual when every weapon surface is idle.
     // Soft-GPU fps not claimed.
     if (this._presenterQuietEmpty && !this._presenterQuietMaybeAwake()) return;
@@ -621,6 +625,11 @@ export class WeaponVfxPresenter {
       ? state.entities.get(state.playerId)
       : null;
     const ribbonDrawWu = tableVfxDrawWuFromState(state);
+    // Owned exceptional-speed scalar, shared per update: the player's own fire earns a
+    // longer, wider connected wake (the same contract the trail-plan path applies).
+    const exceptionalSpeed = this._contextExceptionalSpeed
+      ?? ((state && state.settings && state.settings.video && state.settings.video.motionReduce)
+        ? 0 : readOwnedExceptionalSpeed(state));
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i];
       if (!entity || !entity.alive || entity.type !== 'projectile') continue;
@@ -657,14 +666,18 @@ export class WeaponVfxPresenter {
             const ribbon = this._ribbonSpec;
             ribbon.entityId = entity.id;
             ribbon.x = currLocal.x; ribbon.y = y; ribbon.z = currLocal.z;
-            ribbon.width = recipe.flight.ribbonWidth;
+            // Exceptional wake: same bounded amplification the trail plan applied —
+            // length on the linger, brightness on the cross-section.
+            const amplify = entity.ownerId === (state && state.playerId)
+              ? exceptionalSpeed : 0;
+            ribbon.width = recipe.flight.ribbonWidth * Math.min(1.15, 1 + amplify * 0.15);
+            ribbon.linger = recipe.flight.ribbonLinger * Math.min(1.4, 1 + amplify * 0.4);
             // Authored wake cross-section. Without this the pool falls back to a width-derived
             // guess, which is right for ten of the twelve families but cannot tell a motor's
             // vapour sheet from a plasma braid, so missile and torpedo wakes read as plasma.
             ribbon.profile = recipe.flight.ribbonProfile;
             ribbon.colorHead = this._flightColors.core;
             ribbon.colorTail = this._flightColors.sheath;
-            ribbon.linger = recipe.flight.ribbonLinger;
             this.ribbons.spawn(ribbon);
           }
           this.ribbons.pushHead(entity.id, currLocal.x, y, currLocal.z);

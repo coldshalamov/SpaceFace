@@ -23,11 +23,11 @@ const LEGACY_RELATIONS = Object.freeze({
 });
 
 const EXACT_CUSTOM_FLAGS = Object.freeze({
-  faction_understory: ['neverFiresFirst', 'scavengesAfterBattles', 'refliesLedgerHullsOnly', 'sporeBloomOnDeath', 'buysWreckageAndAsksNothing'],
-  faction_fulfillment: ['interdictsAndBoards', 'neverFiresFirst', 'fliesFixedRoutesOnly', 'boardingIsAdministrativeRoutingEvent', 'repStartsNeutralCannotImprove'],
-  faction_archive: ['tradesOnlyInSecrets', 'neutralToAll', 'redactionEMP', 'burningAnArchiveUnitesTheGalaxyAgainstYou'],
-  faction_pitborn: ['hostileToConcordAlways', 'alliedWithReachAndQuiet', 'recognizesPlayerAsPitborn', 'repStartsPositiveForPlayer', 'buysWrecksAtFixedRates', 'civilianHullsSacrosanct'],
-  faction_verge_layers: ['hostileOnlyToGateClosers', 'weaponsDisableNotDestroy', 'wakesProgressivelyAsGatesClose', 'neutralToEveryoneElse'],
+  faction_understory: ['neverFiresFirst', 'scavengesAfterBattles', 'refliesLedgerHullsOnly', 'sporeBloomOnDeath', 'buysWreckageAndAsksNothing', 'collisionsAbsorbedLowRestitution', 'flungMassFeedsGardens', 'gardensPushTideLine', 'stickySporeCloudOnAttacked'],
+  faction_fulfillment: ['interdictsAndBoards', 'neverFiresFirst', 'fliesFixedRoutesOnly', 'boardingIsAdministrativeRoutingEvent', 'repStartsNeutralCannotImprove', 'derailSpillsBackordered', 'hitchhikeable', 'repairsInstantlyUntilDerailed'],
+  faction_archive: ['tradesOnlyInSecrets', 'neutralToAll', 'redactionEMP', 'burningAnArchiveUnitesTheGalaxyAgainstYou', 'neverDestroysOnlyRedacts', 'pageDronesCopyLogs', 'recordsYourDeedsAsTradeGoods'],
+  faction_pitborn: ['hostileToConcordAlways', 'alliedWithReachAndQuiet', 'recognizesPlayerAsPitborn', 'repStartsPositiveForPlayer', 'buysWrecksAtFixedRates', 'civilianHullsSacrosanct', 'crowdRatesYourStyle', 'playsKatamariAsSport', 'singsTheCountBack'],
+  faction_verge_layers: ['hostileOnlyToGateClosers', 'weaponsDisableNotDestroy', 'wakesProgressivelyAsGatesClose', 'neutralToEveryoneElse', 'machinesMeasureTrueMass', 'remembersYourAppeals'],
 });
 
 test('K1 installs five complete faction kits without changing a legacy relation value', async () => {

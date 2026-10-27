@@ -415,6 +415,9 @@ export const shipjack = {
           roe:RulesOfEngagement.HOLD_FIRE,activity:normalizeActivity({kind:row.disabled?ActivityKind.LOITER:ActivityKind.TRANSIT,reason:'registry_route',anchor:{x:pos.x+1100,z:pos.z-700},leashRadius:2400,startedTick:state.tick})}});
       spec.data.name=row.name;spec.data.shipjackEncounterId=row.id;spec.data.shipjackUncrewed=['evacuated','automated'].includes(row.crew);spec.flags={...spec.flags,persistent:true};
       spec.data.persistenceOwner='shipjack';
+      // D207: the vessel is sector-owned (park/rematerialize keys on row.sectorId) — stamp the
+      // canonical tag so residency teardown and sector-scoped readers can see the ownership.
+      spec.homeSectorId=row.sectorId;spec.data.homeSectorId=row.sectorId;spec.data.sectorId=row.sectorId;
       if(row.disabled&&row.crew==='evacuated'){spec.data.ai=null;spec.data.intent=null;spec.shieldRegenRate=0;}
       spec.hull*=row.condition;spec.shield=row.disabled?0:spec.shield;spec.vel={x:row.disabled?2:12,z:row.disabled?1:0};
       const e=this.helpers.spawnEntity(spec);
@@ -445,6 +448,7 @@ export const shipjack = {
     const spec=makeShipEntitySpec(v.defId,{team:v.custodian==='player'?0:2,fittings:b.fittings || this.state.player.ownedShips?.find(s=>s.vesselId===v.vesselId)?.fittings || [],pos,rot:v.location.rot});
     Object.assign(spec,{vel:vec(v.location.vel),angVel:v.location.angVel,hull:b.hull ?? spec.hull*v.condition.hull,armorHp:b.armorHp ?? spec.armorHp,shield:b.shield ?? 0,cap:b.cap ?? spec.cap});
     Object.assign(spec.data,{vesselId:v.vesselId,shipjackGeneration:v.generation,persistenceOwner:'shipjack',shipjackParked:v.custodian==='player',name:v.name,shipjackUncrewed:v.crewSafe || v.crew==='evacuated'});spec.flags={...spec.flags,persistent:true};
+    if(v.location.sectorId!=null){spec.homeSectorId=v.location.sectorId;spec.data.homeSectorId=v.location.sectorId;spec.data.sectorId=v.location.sectorId;}
     const e=this.helpers.spawnEntity(spec);v.location.entityId=e.id;v.location.kind='field';
     if(b.subsystems)this.helpers.restoreShipjackSubsystems?.({entityId:e.id,subsystems:b.subsystems});
   },

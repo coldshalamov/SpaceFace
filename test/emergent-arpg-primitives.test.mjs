@@ -112,11 +112,13 @@ async function step(state, owner, n, before) {
 }
 
 test('every primitive compiles to a frozen AttackSpec whose recursion cap is 4', () => {
-  assert.equal(EMERGENT_WEAPON_DEFS.length, 11);
+  assert.equal(EMERGENT_WEAPON_DEFS.length, 12);
   const digests = [];
   for (const def of EMERGENT_WEAPON_DEFS) {
     assert.equal(WEAPONS.some((weapon) => weapon.id === def.id), true, def.id);
-    assert.equal(def.heatPerShot, 0, def.id);
+    // Powers are free; the Arc Caster (SW-17) is the one authored armory gun whose
+    // heatPerShot 6 is the deliberate fit cost, not a free-power leak.
+    assert.equal(def.heatPerShot, def.id === 'wpn_arc_caster' ? 6 : 0, def.id);
     assert.equal(def.energyCost, 0, def.id);
     assert.equal(def.starterSafe, true, def.id);
     assert.ok(def.impulsePerHit > 0, def.id);
@@ -128,7 +130,7 @@ test('every primitive compiles to a frozen AttackSpec whose recursion cap is 4',
     assert.ok(first.spec.constraints.generationMax <= EMERGENT_LIMITS.generationMax, def.id);
     digests.push(first.spec.digest);
   }
-  assert.equal(new Set(digests).size, 11);
+  assert.equal(new Set(digests).size, 12);
   const primer = compileEmergentAttack('wpn_conductive_primer').spec;
   const sympathy = compileEmergentAttack('tool_quantum_sympathy').spec;
   const sticky = compileEmergentAttack('wpn_sticky_detonator').spec;

@@ -203,3 +203,10 @@ The oldest OPEN row is the next second look.
 | 2026-10-27 | e6fd3af2483 | O24: npm run check:retail-boot + retail-smoke workflow (builds the retail bundle, boots it headless on software GL) | Re-check by reading the first real GitHub Actions run: the 30 s error-grace clock starts on ANY console error including the cancelled render.glb requests the script itself expects; browser path was never run end to end locally |
 | 2026-10-27 | d09b7583539 | m3 miner research floor + Line caption + ledger D266 | Re-check D266 options with the owner-visible numbers: a plain mine-and-dock miner earns 2 RP in 90 min since b212aefc40c; pick (a)-(d) and delete the todo in test/m3-career-cohorts.test.mjs |
 | 2026-10-27 | 2634c13cd8b | en-US localization catalog regenerated from a clean export | Re-check node scripts/extract-localization.mjs --check passes on a clean export of master after any further UI string change (any lane edit makes it stale again) |
+
+| R-4a79f7f | 4a79f7fb301 | orchard max-tow acquisition: scripted escape mirrored to the open lane (−0.65); +0.65 was only ever passable via the pre-54c8669c4b8 orbit-assist throttle defect that let the pod deck-grind into the low channel | Re-check the defect classification, not just the green run: bisect to confirm the passing arc at f5f730497d9 really did depend on the tug being throttled ~5 WU/s by the old capture-cone assist (the pocket wedge at +0.65 is authored concave geometry, not a new physics regression), and confirm the sibling authored-tow-pocket +0.65 scenario still documents pods parking near the frame | |
+
+
+| 2026-10-27 | bf5b5c26dbf | EXP-25: faction_vael — patrols/writs/paper tiers (283→1900+, ~6.7×) | Re-check: telegraph wind-up lifecycle (arm→fire→prune) vs orphaned writ rows |
+
+| 2026-10-27 | deb976aea12 | EXP-25: scavengerOccupationSwitch — bonded career arc (330→859+) | Re-check: releaseToOrdinaryBookkeeping clears persistenceOwner/persistent vs hulls still mid-arc |
