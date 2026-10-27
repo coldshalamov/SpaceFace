@@ -182,3 +182,5 @@ The oldest OPEN row is the next second look.
 | 2026-10-27 | 0ef64050303 | EXP-25: borrowedSun — lender w/ sails/charters/collectors (269→1450+, ~5.4×) | Re-check: corpse-reference kill receipts (p.entity fallback) vs deferred destroy delivery |
 
 | 2026-10-27 | ac3117fd959 | EXP-25: faction_pitborn — yard claims/collectors/ballast (245→2150+, ~8.7×) | Re-check: anchor re-bind via _anchorAt when sector regen re-issues ids |
+
+| 2026-10-27 | 9f7ee0633b6 | EXP-25: gravedigger — claims/vigils/grudges (281→1330+, ~4.7×) | Re-check: stale kill-wire guards on mourner vigilId vs mournerId+gen binding |
