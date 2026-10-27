@@ -2437,6 +2437,9 @@ export const npcJobsRuntime = {
       sectorId,
       worldRecordId,
       entityId: entity.id,
+      // Transient exact-actor pin. Numeric entity ids recycle, so cleanup paths must compare the
+      // resolved map value against this object — never mutate a recycled-id replacement.
+      entityRef: entity,
       lastAdvanceSimT: finite(this.state.simTime, 0),
       threatId: null,
       // Transient physical tow sidecar. Numeric entity ids are intentionally not serialized; the
@@ -2568,6 +2571,7 @@ export const npcJobsRuntime = {
       sectorId: PQ019_HEIST_SECTOR_ID,
       worldRecordId,
       entityId: null,
+      entityRef: null,
       lastAdvanceSimT: finite(this.state.simTime, 0),
       threatId: null,
       towAttachmentId: null,
@@ -3150,12 +3154,25 @@ export const npcJobsRuntime = {
     return true;
   },
 
+  // Numeric entity ids recycle: a dead actor's slot can be reoccupied by an unrelated entity
+  // before the job's terminal cleanup runs. Actor mutation (route brake, jobId strip, persistence
+  // release) belongs only to the exact object the entry last bound — anything else at that id is
+  // foreign authority. Entries without a retained ref (hand-rolled fixtures, legacy bags) keep the
+  // legacy id-only resolution.
+  _entryActorForCleanup(entry) {
+    if (!entry || entry.entityId == null || !this.state.entities) return null;
+    const ent = this.state.entities.get(entry.entityId);
+    if (!ent) return null;
+    if (entry.entityRef != null && ent !== entry.entityRef) return null;
+    return ent;
+  },
+
   release(jobId) {
     const byId = this._byId();
     const entry = byId[jobId];
     if (!entry) return false;
     const realTargetJobBinding = this._ceresRealTargetJobBinding(jobId);
-    let ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
+    let ent = this._entryActorForCleanup(entry);
     if (ent && realTargetJobBinding
       && !this._hasRetainedCeresRealTargetReleaseActor(jobId, entry, ent)) {
       // Core may already have recycled the dead actor's numeric id. The job still ends, but cleanup
@@ -6575,6 +6592,7 @@ export const npcJobsRuntime = {
     if (!entry || !entry.job) return;
     virtualize(entry.job);
     entry.entityId = null;
+    entry.entityRef = null;
     entry.threatId = null;
     this._goneIndexDirty = true;
   },
@@ -6599,7 +6617,7 @@ export const npcJobsRuntime = {
       if (entry.orchardAssist) { this._finishTowAssist(entry,jobId,'sector_exit'); continue; }
       // Keep the record; drop the live link. lastAdvanceSimT already holds the last live-advance time,
       // which is (to within a tick) the exit time — the anchor the re-entry catch-up measures from.
-      let ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
+      let ent = this._entryActorForCleanup(entry);
       const realTargetJobBinding = this._ceresRealTargetJobBinding(jobId);
       if (ent && realTargetJobBinding
         && !this._hasRetainedCeresRealTargetReleaseActor(jobId, entry, ent)) {
@@ -6617,6 +6635,7 @@ export const npcJobsRuntime = {
       this._clearTugAttachment(entry, 'npc_tow_sector_exit');
       virtualize(entry.job);
       entry.entityId = null;
+      entry.entityRef = null;
       entry.threatId = null;
       this._goneIndexDirty = true;
       this._clearViolenceStamp(entry);
@@ -6720,6 +6739,7 @@ export const npcJobsRuntime = {
     materialize(entry.job);
     forgetPallasSeamLife(entry);
     entry.entityId = entity.id;
+    entry.entityRef = entity;
     entry.threatId = null;
     this._goneIndexDirty = true;
     clearRouteBrake(entity);
