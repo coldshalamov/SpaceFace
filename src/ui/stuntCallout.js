@@ -47,6 +47,9 @@ export const SPEED_DIAL_SELECTOR = '.orr-speeddial';
 export const SPEED_DIAL_CLEARANCE_PX = 48;
 export const STABLE_LOAD_SELECTOR = '.sf-stableload--visible';
 export const STABLE_LOAD_CLEARANCE_PX = 12;
+/** Under 901 wide (or 621 tall) the prompt deck is a bottom sheet across the same left edge. */
+export const PROMPT_DECK_SELECTOR = '#sf-prompt-deck:not([hidden])';
+export const PROMPT_DECK_CLEARANCE_PX = 12;
 
 const BONE = '236 230 216';
 
@@ -488,6 +491,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       existing.pts.textContent = ptsText;
       existing.until = now + ttl;
       if (rarity) existing.node.setAttribute('data-rarity', calloutRarity(rarity));
+      if (!root.hidden) seatClearOfSpeedDial();
       return;
     }
     const node = mk(doc, 'div', 'sf-stuntcall__line' + (isBank ? ' is-bank' : ''));
@@ -503,6 +507,9 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const storedKey = key ?? `anon-${lineOrder + 1}`;
     lineNodes.set(storedKey, { key: storedKey, node, name, pts, until: now + ttl, order: ++lineOrder });
     pruneLines(now);
+    // A decision card may have risen since the column was seated (e.g. IMPACT LOGGED over a
+    // recovery choice); re-seat on each new or refreshed line, never per frame.
+    if (!root.hidden) seatClearOfSpeedDial();
   }
 
   function dismissLine(key, fallbackName = '') {
@@ -684,7 +691,11 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     if (!view || typeof doc.querySelector !== 'function' || typeof root.getBoundingClientRect !== 'function') return;
     const ownRect = root.getBoundingClientRect();
     let top = Infinity;
-    for (const [selector, gap] of [[SPEED_DIAL_SELECTOR, SPEED_DIAL_CLEARANCE_PX], [STABLE_LOAD_SELECTOR, STABLE_LOAD_CLEARANCE_PX]]) {
+    for (const [selector, gap] of [
+      [SPEED_DIAL_SELECTOR, SPEED_DIAL_CLEARANCE_PX],
+      [STABLE_LOAD_SELECTOR, STABLE_LOAD_CLEARANCE_PX],
+      [PROMPT_DECK_SELECTOR, PROMPT_DECK_CLEARANCE_PX],
+    ]) {
       const node = doc.querySelector(selector);
       if (!node || typeof node.getBoundingClientRect !== 'function') continue;
       const rect = node.getBoundingClientRect();
