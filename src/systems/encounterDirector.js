@@ -132,7 +132,11 @@ import {
   tickLootSweeps,
 } from '../ai/lootSweep.js';
 import { tickTowedLurePursuits } from '../ai/towedLure.js';
-import { tickImpoundGrudge } from './impoundGrudge.js';
+import {
+  tickImpoundGrudge,
+  noteImpoundGrudgeKill,
+  noteImpoundGrudgeSaveLoaded,
+} from './impoundGrudge.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import { clearIneligibleAIFiringIntents } from './aiPorts.js';
 import { sectorScarcityTerm } from './fieldDepletion.js';
@@ -331,14 +335,14 @@ export const encounterDirector = {
         // here would mint loss/news while saveSystem is merely clearing the outgoing entity set.
         clearAllPredationBindings(this.state, 'save_restoring');
       });
-      this.bus.on('save:loaded', () => this._onSaveLoaded());
+      this.bus.on('save:loaded', () => { this._onSaveLoaded(); noteImpoundGrudgeSaveLoaded(this.state); });
       this.bus.on('save:error', () => { this._saveRestoring = false; });
       // Canonical fresh-run boundary. encounterDirector is intentionally not in the central reset
       // list, so its own event owner must clear transient live pairings before numeric IDs recycle.
       this.bus.on('game:new', () => this.newGame());
       // Budget bookkeeping + script event routing.
       this.bus.on('entity:destroyed', (p) => this._onEntityGone(p));
-      this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+      this.bus.on('entity:killed', (p) => { this._onEntityKilled(p); noteImpoundGrudgeKill(this.state, p); });
       this.bus.on('combat:subsystemDisabled', (p) => this._routeToScript('convoy', 'subsystemDisabled', p));
       this.bus.on('pickup:collected', (p) => {
         this._routeToScript('convoy', 'pickupCollected', p);
@@ -523,6 +527,7 @@ export const encounterDirector = {
   _impoundGrudgeCtx() {
     return {
       helpers: this.helpers,
+      bus: this.bus,
       emit: (name, payload) => this.emit(name, payload),
       makeEnemySpec: (archetype, level, pos, opts) => makeEnemySpawnSpec(archetype, level, pos, opts),
     };
