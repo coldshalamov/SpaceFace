@@ -184,3 +184,5 @@ The oldest OPEN row is the next second look.
 | 2026-10-27 | ac3117fd959 | EXP-25: faction_pitborn — yard claims/collectors/ballast (245→2150+, ~8.7×) | Re-check: anchor re-bind via _anchorAt when sector regen re-issues ids |
 
 | 2026-10-27 | 9f7ee0633b6 | EXP-25: gravedigger — claims/vigils/grudges (281→1330+, ~4.7×) | Re-check: stale kill-wire guards on mourner vigilId vs mournerId+gen binding |
+
+| 2026-10-27 | 3c0fb097826 | EXP-25: impoundLot — auctions/ransoms/write-offs (238→1230+, ~5×) | Re-check: markdown floor-progress clamp vs hostile tiny prices |
