@@ -1378,6 +1378,7 @@ export const missionObjectiveOps = {
       (marker && marker.sectorId) || (this.state.world && this.state.world.currentSectorId),
     );
     const active = this.state.missions.active;
+    const survivorClaims = new Map();
     for (let i = active.length - 1; i >= 0; i--) {
       const m = active[i];
       if (!m || m.status !== 'active' || !ONE_LOAD_CARGO_TYPES.has(m.type)) continue;
@@ -1390,7 +1391,14 @@ export const missionObjectiveOps = {
       const lost = losses
         ? Math.max(0, Math.floor(Number((losses.find((l) => l && l.commodityId === cmdtyId) || {}).qty) || 0))
         : Math.floor(have * 0.5);
-      if (lost <= 0 || have - lost >= need) continue;
+      // Survivors cover this manifest only after the sibling contracts of the same good that
+      // already kept their rows have taken their share: two 10-unit manifests cannot both be
+      // backed by the same 10 surviving units.
+      const claimed = survivorClaims.get(cmdtyId) || 0;
+      if (lost <= 0 || have - lost - claimed >= need) {
+        survivorClaims.set(cmdtyId, claimed + need);
+        continue;
+      }
       if (site) {
         m._escorteeSectorId = site.sectorId;
         m._escorteeWreckPos = site.wreckPos;
