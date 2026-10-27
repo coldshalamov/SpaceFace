@@ -88,6 +88,25 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
     telegraph: 'SLING GUST — the slingshot is about to bite',
     wager: { score: 40, timeout: 'accept' },
   }),
+  // Same chord the swing walks, opposite sign: the gather point becomes a throw line.
+  pylon_flip: event({
+    id: 'pylon_flip', name: 'Pylon flip', kind: 'pulse', windupS: 4, windowS: 9,
+    telegraph: 'PYLON FLIP — one anchor is about to shove',
+    wager: { score: 45, timeout: 'accept' },
+    field: { kind: 'repulsor', bearing: 'across', dist: 220, radius: 380, strength: 175, falloff: 1.2 },
+  }),
+  // The sling as river: the wedge apex sits UP-current of the fight (a negative dist on the
+  // across bearing), so the tide enters one rail, pours through the anchor and carries the
+  // pack crosswise — ride it out or be raked across the room.
+  sling_tide: event({
+    id: 'sling_tide', name: 'Sling tide', kind: 'pulse', windupS: 4, windowS: 9,
+    telegraph: 'SLING TIDE — the room pours crosswise. Ride it or be raked.',
+    wager: { score: 45, timeout: 'accept' },
+    field: {
+      kind: 'cone', bearing: 'across', dist: -240, radius: 560, strength: 140,
+      falloff: 1.1, halfAngleRad: 0.55,
+    },
+  }),
 
   // ── cinder_sluice: the lane and its undertow ──
   sluice_surge: event({
@@ -120,6 +139,22 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
       cover: true,
       fields: [{ kind: 'well', bearing: 'spin', dist: 340, radius: 470, strength: 58, damping: 0.85, falloff: 1.15 }],
     },
+  }),
+  // The freeze stores pressure; the thaw lets it all go at once. The middle is the throw.
+  thaw_burst: event({
+    id: 'thaw_burst', name: 'Thaw burst', kind: 'pulse', windupS: 4, windowS: 7,
+    telegraph: 'THAW BURST — the middle is about to let go',
+    wager: { score: 45, timeout: 'accept' },
+    field: { kind: 'repulsor', bearing: 'center', radius: 460, strength: 190, falloff: 1.3 },
+  }),
+  // The front finds the heat: the pocket lands where the player is at the fire line, so the
+  // windup is the bet — drag the grab across the pack and be somewhere else when it bites.
+  // Damping is the freeze here: the snare drinks momentum instead of only pulling.
+  cold_snap: event({
+    id: 'cold_snap', name: 'Cold snap', kind: 'pulse', windupS: 4, windowS: 8,
+    telegraph: 'COLD SNAP — the drift has your scent. Spend it on them.',
+    wager: { score: 40, timeout: 'accept' },
+    field: { kind: 'well', bearing: 'player', radius: 320, strength: 140, damping: 2.2, falloff: 1.15 },
   }),
 
   // ── storm_lattice: the relay graph and the grid ──
@@ -226,9 +261,9 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
 /** The signature cards each arena can draw — its own name for its own tricks. */
 export const SWARM_EVENT_TABLES = Object.freeze({
   helios_core: Object.freeze(['shutter_storm', 'furnace_flare', 'plate_drift', 'sprocket_crate']),
-  lagrange_crucible: Object.freeze(['well_swing', 'sling_gust']),
+  lagrange_crucible: Object.freeze(['well_swing', 'sling_gust', 'pylon_flip', 'sling_tide']),
   cinder_sluice: Object.freeze(['sluice_surge', 'undertow_snap', 'slag_spill']),
-  cryo_drift: Object.freeze(['freeze_front', 'plate_shatter']),
+  cryo_drift: Object.freeze(['freeze_front', 'plate_shatter', 'thaw_burst', 'cold_snap']),
   storm_lattice: Object.freeze(['relay_arc', 'grid_surge', 'reef_surge']),
   asteroid_mill: Object.freeze(['mill_surge', 'seam_burst', 'rock_rain']),
   the_hive: Object.freeze(['spore_breath', 'wall_bloom', 'egg_drift', 'lantern_drift', 'shepherd_pulse']),
