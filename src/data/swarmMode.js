@@ -704,6 +704,19 @@ export function swarmNextBossFor(wave) {
  * The room rotation. Never `idle` — see rule 3. Ordered so the first four waves teach the four
  * things a room can do (drag you, shove you, give you geometry, rake you) before repeating.
  * Boss waves override this with the arc's own `boss` room.
+ *
+ * OWNERSHIP: these entries are room-state TOKENS in the shared SURVIVAL_ARENA_PHASES vocabulary
+ * (src/data/survivalWaves.js), not Helios machinery forced onto every arena. The wave plan is
+ * deliberately arena-blind — survivalArena.planArenaInstallBody dispatches on `run.arenaId`,
+ * and a law arena's own module (lagrangeCrucible, cinderSluiceArena, cryoDriftArena,
+ * stormLatticeArena, asteroidMillArena, theHiveArena) translates each token into its own
+ * machinery, so the same wave plays a DIFFERENT room in every arena: 'furnace_active' is the
+ * Foundry's centre shove, the Crucible's pylon repulse, the Sluice at full push, the Drift's
+ * three hot quadrants, the Lattice gone live, the Mill's lit crusher plate, the Hive's seething
+ * heart. Arenas without a law module (helios_core's generic table plus the catalog's law-less
+ * rooms) read the generic phase table in survivalArena — that fallback is the intent, not an
+ * override. Mid-wave flips (sluice surges, hive growth, shutter slides, crusher bites) are each
+ * module's own clocks and are never scheduled here.
  */
 export const SWARM_ARENA_PHASE_CYCLE = Object.freeze([
   'loose_plate',          // geometry first: cover to throw things into, plus a soft sag
@@ -1135,7 +1148,12 @@ export function swarmActPackages(wave) {
 }
 
 /**
- * The room for this wave. Boss waves get the arc's loudest room; everything else walks the cycle.
+ * The room-state token for this wave. Boss waves get the arc's loudest room; everything else
+ * walks the cycle. This names WHICH state the wave plays, never WHAT gets built — the arena's
+ * own law module owns the translation at install (see SWARM_ARENA_PHASE_CYCLE's ownership note).
+ * The signature stays wave-only on purpose: authored act rounds override the token outright,
+ * and pact mutators wrap it through applyMutators; the arena arrives later, at the install
+ * dispatch in survivalArena.
  */
 export function swarmArenaPhase(wave) {
   const w = swarmWaveOf(wave);
