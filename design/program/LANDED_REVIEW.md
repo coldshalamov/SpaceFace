@@ -186,3 +186,5 @@ The oldest OPEN row is the next second look.
 | 2026-10-27 | 9f7ee0633b6 | EXP-25: gravedigger — claims/vigils/grudges (281→1330+, ~4.7×) | Re-check: stale kill-wire guards on mourner vigilId vs mournerId+gen binding |
 
 | 2026-10-27 | 3c0fb097826 | EXP-25: impoundLot — auctions/ransoms/write-offs (238→1230+, ~5×) | Re-check: markdown floor-progress clamp vs hostile tiny prices |
+
+| 2026-10-27 | eb82bb6b14e | EXP-25: lamplighter — fuel/keeps/grudges (269→1300+, ~4.8×) | Re-check: seatIndex [0,slotCount) bound vs mod-32 shift wraparound on forged stamps |
