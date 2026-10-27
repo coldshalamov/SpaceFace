@@ -39,6 +39,7 @@ import { isSwarmRuleset } from './survivalSwarm.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
 import { swarmBossFor, swarmNewcomerFor, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
 import { swarmBroodNewcomerFor } from '../data/swarmBrood.js';
+import { swarmBroodStrainDebutFor } from '../data/swarmBroodLate.js';
 import {
   SWARM_CHAIN_TIERS,
   SWARM_CLOSE_CALL_HULL,
@@ -391,6 +392,9 @@ export const swarmJuice = {
     const newcomer = swarmNewcomerFor(wave);
     // SWARM-07 B1 — a Brood family debut rides the same slam card when the ship roster is quiet.
     const broodNewcomer = swarmBroodNewcomerFor(wave);
+    // B6 — a brood STRAIN debut rides that same card when no silhouette arrives at all:
+    // the mark is the wave's new thing to learn, and the counter is its one lesson.
+    const strainDebut = broodNewcomer ? null : swarmBroodStrainDebutFor(wave);
     const bossCard = boss ? { name: boss.label, line: boss.line } : null;
     const newcomerCard = newcomer ? {
       enemyId: newcomer.enemyId,
@@ -401,7 +405,12 @@ export const swarmJuice = {
       name: broodNewcomer.name,
       counter: broodNewcomer.counter,
       brood: true,
-    } : null);
+    } : (strainDebut ? {
+      enemyId: strainDebut.id,
+      name: strainDebut.name,
+      counter: strainDebut.counter,
+      brood: true,
+    } : null));
     this._emit('swarm:roundSlam', { wave, boss: bossCard, newcomer: newcomerCard });
     if (bossCard) {
       this._emit('swarm:bossIntro', { name: bossCard.name, line: bossCard.line, wave });

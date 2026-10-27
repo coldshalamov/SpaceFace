@@ -122,9 +122,12 @@ import { circleHitRadius, corridorHalfWidth } from '../combat/telegraphFootprint
 import {
   SWARM_BROOD_LATE_FAMILIES,
   SWARM_BROOD_RESERVE_DELAY_S,
+  SWARM_BROOD_STRAINS,
   foldBroodLatePlan,
   swarmBroodLateFamily,
   swarmBroodLateReserve,
+  swarmBroodStrainFor,
+  swarmBroodStrainMark,
 } from '../data/swarmBroodLate.js';
 
 const DT = 1 / 60;
@@ -235,6 +238,11 @@ export function createBroodEngine(deps = {}) {
   // Hazard-grip dedupe: a hazard family's tell fires once per hold on the signature — set
   // when the drag actually bites, cleared when the body loses the signature's radius.
   const dragTold = new Uint8Array(CAP);
+  // B6 — the strain mark: the ship-affix byte moved onto the brood's own buffer. 0 is
+  // unmarked; 1+n indexes SWARM_BROOD_STRAINS. One honored effect per strain (volatile
+  // pops where it dies), stamped at spawn out of the wave's own mite share — the mark
+  // rides bodies the plan already budgeted, never a new one.
+  const affix = new Uint8Array(CAP);
 
   // spatial hash
   const gridHead = new Int32Array(GRID_TABLE);
@@ -393,6 +401,18 @@ export function createBroodEngine(deps = {}) {
   let reserveReleaseAt = Infinity;
   let reserveTold = false;
 
+  // --- B6: the strain — the plateau's cooked fodder (swarmBroodLate.js §"The strain mark")
+  //
+  // From the strain gate wave, a seeded share of the wave's mite row hatches carrying
+  // the wave's strain: the veteran-affix law (a marked minority carries one trick, not
+  // a bigger number) on the second population. `strainLeft` is the wave's mark budget —
+  // any carrier-family body that spawns while it holds takes the byte, at the open or
+  // born of the wave's own tide. The mark is spent from the SAME plan total — it rides
+  // budgeted bodies, it never mints one.
+  let strainDef = null;
+  let strainMark = 0;
+  let strainLeft = 0;
+
   const view = {
     schema: 'spaceface.swarmBrood.v4',
     cap: CAP,
@@ -420,6 +440,10 @@ export function createBroodEngine(deps = {}) {
     // B5 — the late reserve: the specialist family still held and how many bodies.
     reserveFamily: null,
     reserveBudget: 0,
+    // B6 — the strain: the wave's mark id and the per-slot mark bytes the renderer
+    // tints by. `strain` is null on clean waves; `affix` is 0 on unmarked bodies.
+    strain: null,
+    affix,
   };
 
   // --- family table mirror (numeric fields the hot loop reads, rebuilt on demand) ----------
@@ -473,7 +497,7 @@ export function createBroodEngine(deps = {}) {
   // --- lifecycle --------------------------------------------------------------------------
 
   function clear(reason = 'clear') {
-    if (aliveCount > 0) alive.fill(0);
+    if (aliveCount > 0) { alive.fill(0); affix.fill(0); }
     aliveCount = 0;
     creditUntil.fill(0);
     gluedUntil.fill(0);
@@ -507,6 +531,9 @@ export function createBroodEngine(deps = {}) {
     reserveBudget = 0;
     reserveReleaseAt = Infinity;
     reserveTold = false;
+    strainDef = null;
+    strainMark = 0;
+    strainLeft = 0;
     // The Domino ledger dies with the room: an unflushed death must never shove in the next one.
     deathScratchCount = 0;
     publish();
@@ -592,6 +619,18 @@ export function createBroodEngine(deps = {}) {
         }
       }
     }
+    // B6 — the strain marks a seeded share of the wave's mite row, AFTER every
+    // hold-back has spent out of it, so the share counts the fodder that actually
+    // fields. The marks ride budgeted bodies: population law untouched.
+    {
+      const miteRow = pendingPlan.find((part) => part.id === 'mite');
+      const pick = swarmBroodStrainFor(w, miteRow ? miteRow.count : 0, rng);
+      if (pick) {
+        strainDef = pick.strain;
+        strainMark = swarmBroodStrainMark(pick.strain.id);
+        strainLeft = pick.count;
+      }
+    }
     liveWave = w;
     view.wave = liveWave;
     view.tendril = tendrilMode;
@@ -667,6 +706,16 @@ export function createBroodEngine(deps = {}) {
     // mother's told-flag or an unspent share of her tide.
     birthLeft[slot] = 0;
     birthTold[slot] = 0;
+    // B6 — the strain stamp: a carrier-family body takes the wave's mark while the
+    // budget holds. The mark is a STANDING property — like the glassback's shell it
+    // never speaks a telegraph line: its debut rides the slam card (the strain's own
+    // counter) and its read is the mark's tint, not a per-wave bark that would starve
+    // the two-line telegraph budget for the rest of the run.
+    affix[slot] = 0;
+    if (strainLeft > 0 && strainDef && liveFamilyId[famIdx] === strainDef.familyId) {
+      affix[slot] = strainMark;
+      strainLeft -= 1;
+    }
     aliveCount += 1;
   }
 
@@ -1883,6 +1932,55 @@ export function createBroodEngine(deps = {}) {
     publish();
   }
 
+  // B6 — the strain's one honored effect: a marked body POPS where it dies. The pack
+  // feels only a shove (a pop that killed the flock would be free crowd-clearing, not
+  // the pilot's problem); the signature inside the radius takes the authored chip of
+  // damage and the same mass-shared shove the family's own bursts land. The ordinary
+  // broodBurst receipt carries the blast — juice/VFX read it like any other burst.
+  function broodStrainBurst(i, credited) {
+    const strain = SWARM_BROOD_STRAINS[affix[i] - 1];
+    if (!strain) return;
+    const bx = px[i];
+    const bz = pz[i];
+    const r = finite(strain.blastRadius);
+    const dv = finite(strain.shoveDv);
+    if (!(r > 0) || !(dv > 0)) return;
+    const r2 = r * r;
+    for (let n = 0; n < CAP; n++) {
+      if (!alive[n] || n === i) continue;
+      const dx = px[n] - bx;
+      const dz = pz[n] - bz;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > r2) continue;
+      const d = Math.sqrt(d2) || 1;
+      const falloff = 1 - d / r;
+      vx[n] += (dx / d) * dv * falloff;
+      vz[n] += (dz / d) * dv * falloff;
+    }
+    if (signatureRef && signatureRef.alive !== false && signatureRef.vel) {
+      const pdx = playerX - bx;
+      const pdz = playerZ - bz;
+      const pd2 = pdx * pdx + pdz * pdz;
+      if (pd2 <= r2) {
+        const pd = Math.sqrt(pd2) || 1;
+        const falloff = 1 - pd / r;
+        const share = Math.min(1, (liveFamilyMass[family[i]] || 10) / Math.max(1, playerMass));
+        signatureRef.vel.x += (pdx / pd) * dv * falloff * share;
+        signatureRef.vel.z += (pdz / pd) * dv * falloff * share;
+        routePlayerDamage(finite(strain.blastDamage), bx, bz, `brood_strain_${strain.id}`);
+      }
+    }
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('swarm:broodBurst', {
+        familyId: liveFamilyId[family[i]],
+        strain: strain.id,
+        pos: { x: bx, z: bz },
+        radius: r,
+      });
+    }
+    void credited;
+  }
+
   // --- death bookkeeping -------------------------------------------------------------------
 
   // W-BLOOM-LOW kill law: the authored family flags are binding. `massOnly` dies only by
@@ -1975,6 +2073,7 @@ export function createBroodEngine(deps = {}) {
       killPosZ[c] = finite(sampleZ);
     }
     if (def && (def.burstRadius > 0 || def.shardRadius > 0)) broodDeathBurst(i, def, credited);
+    if (affix[i] > 0) broodStrainBurst(i, credited);
     if (def && def.births) {
       const leftover = birthLeft[i];
       if (leftover > 0) {
@@ -2289,6 +2388,7 @@ export function createBroodEngine(deps = {}) {
     view.sacBudget = sacBudget;
     view.reserveFamily = reserveFamily;
     view.reserveBudget = reserveBudget;
+    view.strain = strainDef ? strainDef.id : null;
     // The radius the damage queries add the victim's reach to, so the drawn footprints can use the
     // SAME number (telegraphFootprint.js). Runtime mirror, never serialized.
     view.victimRadius = playerRad;
@@ -2320,7 +2420,7 @@ export function createBroodEngine(deps = {}) {
       return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget, reserveBudget };
     },
     // Test seams: direct, read-only unless named as a seam.
-    _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId },
+    _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId, affix },
     _lobs: { x: lobX, z: lobZ, t: lobT, total: lobTotal, tx: lobTX, tz: lobTZ, alive: lobAlive },
     _pools: { x: poolX, z: poolZ, age: poolAge, ttl: poolTtl },
     // B3 — the Tendril's chain: read-only buffers plus one write seam for the split test.
@@ -2339,6 +2439,9 @@ export function createBroodEngine(deps = {}) {
     },
     _reserve() {
       return { family: reserveFamily, left: reserveBudget, releaseAt: reserveReleaseAt };
+    },
+    _strain() {
+      return { id: strainDef ? strainDef.id : null, mark: strainMark, left: strainLeft };
     },
     _setFamilyMirrorForTest: setFamilyMirror,
     _killDirectForTest(i, cause) {

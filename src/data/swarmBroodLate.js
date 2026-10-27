@@ -463,6 +463,101 @@ export function swarmBroodLateReserve(wave, roll) {
   return { familyId: family.id, count };
 }
 
+// ── The strain mark: waves 83+ hatch a cooked share of the fodder ──────────────
+//
+// Band 3's clock stops at 75 and the roster then runs silent until the wrapped
+// champions at 140 — the last plateau. The flag matrix is also nearly spent: every
+// composition left is a kill-gate mirror of a family already fielded (blastOnly+splits
+// is the clutchstone's egg, massOnly+births is the poxsac's tide), so a fourth band
+// would be padding. Instead the Hive stops inventing silhouettes and adulterates the
+// flesh it already floods: from wave 83 a seeded share of the wave's MITE share hatches
+// carrying a strain — the ship-side veteran-affix law (swarmThreats.js §6.4) moved onto
+// the brood's own per-body buffers. One strain, one honored effect, one mark byte per
+// body: 'volatile' pops where it dies — a small blast and a shove on the signature,
+// never a kill on the pack — so the solved verb (sweep the fodder where it lands on
+// your hull) is taxed for the rest of the run. Champion waves stay exempt — the boss
+// is that room's pressure story, same law as the late reserve.
+
+/** First wave a non-champion room may hatch marked fodder. */
+export const SWARM_BROOD_STRAIN_FROM_WAVE = 83;
+/** The marked share of the wave's mite row, seeded inside this band each wave. */
+export const SWARM_BROOD_STRAIN_SHARE_MIN = 0.12;
+export const SWARM_BROOD_STRAIN_SHARE_MAX = 0.22;
+/** A wave that fields a strain always marks at least this many bodies (mite count permitting). */
+export const SWARM_BROOD_STRAIN_MIN_MARKED = 6;
+
+/**
+ * The brood strain catalog — the veteran-affix vocabulary's brood half. `familyId` is
+ * the carrier: which family's bodies may hatch marked (the strain rides the wave's
+ * own planned bodies — it never adds one). `blastRadius`/`blastDamage`/`shoveDv` are
+ * the volatile pop's authored size: a burst, never a kill on neighbouring cells —
+ * the pop is the pilot's problem, not free crowd-clearing. `counter` is the slam-card
+ * lesson at the debut; `tint` is the standing read on the field. A strain owns no
+ * telegraph — the mark is a standing property, like the glassback's shell: the card
+ * says it once, the colour keeps saying it.
+ */
+export const SWARM_BROOD_STRAINS = Object.freeze([
+  Object.freeze({
+    id: 'volatile',
+    name: 'Volatile Brood',
+    fromWave: SWARM_BROOD_STRAIN_FROM_WAVE,
+    familyId: 'mite',
+    blastRadius: 46,
+    blastDamage: 5,
+    shoveDv: 58,
+    counter: 'The pale-hot mites pop where they die. Sweep the marked ones out there — never on your hull.',
+    // The presentation tint the marked bodies burn toward — pale-hot over the mite's rust.
+    tint: Object.freeze([1.0, 0.74, 0.22]),
+  }),
+]);
+
+/**
+ * The wave's strain pick, or null when the room hatches clean: below the gate, a
+ * champion wave, or too few mites to mark. `miteCount` is the wave's planned mite row
+ * AFTER every hold-back — the share is of the fodder that actually fields. Exactly
+ * two draws (strain, then share) so the same (seed, wave) hatches the same mark.
+ */
+export function swarmBroodStrainFor(wave, miteCount, roll) {
+  const w = Math.max(1, Math.trunc(Number(wave) || 1));
+  if (isSwarmBossWave(w)) return null;
+  const eligible = SWARM_BROOD_STRAINS.filter((strain) => w >= strain.fromWave);
+  if (eligible.length === 0) return null;
+  const mites = Math.max(0, Math.trunc(Number(miteCount) || 0));
+  if (mites <= 1) return null;
+  const draw = typeof roll === 'function' ? roll : () => 0.5;
+  const strain = eligible[Math.min(eligible.length - 1, Math.floor(draw() * eligible.length))];
+  const share = SWARM_BROOD_STRAIN_SHARE_MIN
+    + draw() * (SWARM_BROOD_STRAIN_SHARE_MAX - SWARM_BROOD_STRAIN_SHARE_MIN);
+  const count = Math.max(0, Math.min(
+    mites - 1,
+    Math.max(Math.min(mites - 1, SWARM_BROOD_STRAIN_MIN_MARKED), Math.round(mites * share)),
+  ));
+  if (count <= 0) return null;
+  return { strain, count };
+}
+
+/** The strain row debuting on exactly this wave (the slam-card seam), or null. Pure. */
+export function swarmBroodStrainDebutFor(wave) {
+  const w = Math.max(1, Math.trunc(Number(wave) || 1));
+  for (const strain of SWARM_BROOD_STRAINS) {
+    if (strain.fromWave === w) return strain;
+  }
+  return null;
+}
+
+/** The strain row for an id, or null. Pure. */
+export function swarmBroodStrainById(id) {
+  if (typeof id !== 'string') return null;
+  for (const strain of SWARM_BROOD_STRAINS) if (strain.id === id) return strain;
+  return null;
+}
+
+/** The mark byte a strain writes into the per-slot affix buffer (1-based; 0 = unmarked). */
+export function swarmBroodStrainMark(id) {
+  const idx = SWARM_BROOD_STRAINS.findIndex((strain) => strain.id === id);
+  return idx < 0 ? 0 : idx + 1;
+}
+
 /** Authoring check for the late table. Empty when honest. Does not touch the base table. */
 export function swarmBroodLateIssues() {
   const issues = [];
@@ -499,6 +594,57 @@ export function swarmBroodLateIssues() {
     }
     if (!Array.isArray(family.bodyColor) || family.bodyColor.length !== 3) {
       issues.push({ path, message: `${family.id} has no body colour recipe` });
+    }
+  });
+  // The strain table: each row needs an id, a carrier family the roster actually
+  // fields, and a counter like any debut. A telegraph is OPTIONAL — only a strain
+  // with a real transition would speak (the mark itself is standing, like the
+  // glassback's shell) — and honest blast numbers: a pop that kills the pack
+  // would be free clearing, not a problem.
+  const strainSeen = new Set();
+  let strainPrevWave = 0;
+  SWARM_BROOD_STRAINS.forEach((strain, i) => {
+    const path = `swarmBroodStrains[${i}]`;
+    if (!strain || typeof strain.id !== 'string' || !strain.id) {
+      issues.push({ path, message: 'strain has no id' });
+      return;
+    }
+    if (strainSeen.has(strain.id)) issues.push({ path, message: `duplicate strain id ${strain.id}` });
+    strainSeen.add(strain.id);
+    if (!(strain.fromWave > 0)) issues.push({ path, message: `${strain.id} has no fromWave` });
+    // Same ten-clock law as the families: a debut on a champion row would deal the
+    // card while the engine stamps nothing — the boss is that room's pressure story.
+    if (isSwarmBossWave(strain.fromWave)) {
+      issues.push({ path, message: `${strain.id} lands on a champion row` });
+    }
+    // A silhouette debut outranks the mark on the slam card — a strain sharing the
+    // wave would debut silent. Give the strain its own wave so its counter speaks.
+    const shadow = SWARM_BROOD_LATE_FAMILIES.some((family) => family.fromWave === strain.fromWave)
+      || SWARM_BROOD_FAMILIES.some((family) => family.fromWave === strain.fromWave);
+    if (shadow) issues.push({ path, message: `${strain.id} debuts under a family silhouette` });
+    if (strain.fromWave < strainPrevWave) {
+      issues.push({ path, message: `${strain.id} regresses the strain clock` });
+    }
+    strainPrevWave = Math.max(strainPrevWave, strain.fromWave);
+    if (!seen.has(strain.familyId)) {
+      issues.push({ path, message: `${strain.id} marks an unknown carrier family ${strain.familyId}` });
+    }
+    const tele = strain.telegraph;
+    if (tele !== undefined
+      && (!tele || typeof tele.bark !== 'string' || typeof tele.line !== 'string' || typeof tele.cue !== 'string'
+        || !tele.bark || !tele.line || !tele.cue)) {
+      issues.push({ path, message: `${strain.id} telegraph is not {bark,line,cue}` });
+    }
+    if (typeof strain.counter !== 'string' || strain.counter.length < 10) {
+      issues.push({ path, message: `${strain.id} has no counter card line` });
+    }
+    if (strain.id === 'volatile') {
+      if (!(strain.blastRadius > 0) || !(strain.blastDamage >= 0) || !(strain.shoveDv > 0)) {
+        issues.push({ path, message: 'volatile needs a positive blast radius and shove' });
+      }
+      if (!Array.isArray(strain.tint) || strain.tint.length !== 3) {
+        issues.push({ path, message: 'volatile needs a mark tint' });
+      }
     }
   });
   return issues;
