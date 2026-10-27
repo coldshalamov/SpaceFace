@@ -53,6 +53,11 @@ tools; it never substitutes for looking.
 Optimise cost without removing authored visuals: shared textures, one draw per material, honest
 LODs, culling. Forge hulls use six shared texture images for the whole fleet.
 
+What the shipped tree actually costs, what was wasting a third of the retail payload, and why the
+asset layer is **not** where the frame time goes: [`design/program/ASSET_PERFORMANCE_PROGRAM.md`](../../design/program/ASSET_PERFORMANCE_PROGRAM.md).
+Census and gates: `npm run perf:assets`, `npm run check:asset-census`,
+`npm run check:render-package-encoding`.
+
 ## Older documents
 
 `VISUAL_ASSET_PRODUCTION_STANDARD.md`, `ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`,
