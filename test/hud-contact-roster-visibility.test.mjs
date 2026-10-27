@@ -576,8 +576,14 @@ class HudElement {
   // Fidelity: real appendChild DETACHES first, so appending a live node MOVES it. Without this the
   // shim duplicates any node a reconciler reorders.
   appendChild(child) {
+    // A fragment hands over its children (real DOM semantics) and stays empty.
+    if (child && child.isFragment) { for (const kid of [...child.children]) this.appendChild(kid); return child; }
     if (child.parentNode) child.parentNode.removeChild(child);
     child.parentNode = this; this.children.push(child); return child;
+  }
+  replaceChildren(...nodes) {
+    for (const kid of [...this.children]) this.removeChild(kid);
+    nodes.forEach((node) => this.appendChild(node));
   }
   append(...children) { children.forEach((child) => this.appendChild(child)); }
   prepend(child) { child.parentNode = this; this.children.unshift(child); return child; }
@@ -643,6 +649,7 @@ class HudDocument {
   }
   createElement(tagName) { return new HudElement(this, tagName); }
   createElementNS(_ns, tagName) { return this.createElement(tagName); }
+  createDocumentFragment() { const fragment = this.createElement('#document-fragment'); fragment.isFragment = true; return fragment; }
   createTextNode(value) { return new HudText(String(value)); }
   getElementById(id) { return findElement([this.head, this.body], (node) => node.id === id); }
   querySelector(selector) { return this.head.querySelector(selector) || this.body.querySelector(selector); }
