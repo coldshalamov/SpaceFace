@@ -73,7 +73,7 @@ test('the activity-pocket registry includes Tethys Junction, and the older secto
   // sectors registering the same pocket id, which makes activityPocketById ambiguous.
   assert.equal(new Set(ACTIVITY_POCKETS.map((pocket) => pocket.id)).size, ACTIVITY_POCKETS.length,
     'every registered activity pocket id is unique across sectors');
-  assert.equal(activityPocketsForSector('sector_tethys_junction').length, 4);
+  assert.equal(activityPocketsForSector('sector_tethys_junction').length, 6);
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);
 
   // The discovery readers Ceres uses resolve Tethys pockets and slots too.
@@ -85,19 +85,19 @@ test('the activity-pocket registry includes Tethys Junction, and the older secto
     assert.ok(slot, `Tethys slot readable through the shared reader: ${slotId}`);
     assert.equal(slot.worldRecordSlotId, `tethys:activity:${slotId}`, 'Tethys durable slot namespace');
   }
-  assert.equal(activityRouteTopologyForSector(TETHYS_ACTIVITY_SECTOR_ID).length, 8);
+  assert.equal(activityRouteTopologyForSector(TETHYS_ACTIVITY_SECTOR_ID).length, 12);
   assert.ok(ACTIVITY_POCKETS_BY_ID.tethys_checkpoint_queue, 'Tethys joins the all-sector pocket index');
 
   // Older sectors keep their exact contracts.
   assert.equal(CERES_POCKET_ACTOR_SLOT_ORDER.length, 8);
   assert.equal(HELIOS_POCKET_ACTOR_SLOT_ORDER.length, 4);
-  assert.equal(PALLAS_POCKET_ACTOR_SLOT_ORDER.length, 8);
+  assert.equal(PALLAS_POCKET_ACTOR_SLOT_ORDER.length, 10);
   assert.equal(CERES_ROUTE_TOPOLOGY.length, 8);
   assert.equal(ACTIVITY_POCKETS_BY_ID.vesta_feedstock_seam, activityPocketById('vesta_feedstock_seam'));
 });
 
 test('Tethys pockets obey the same band, shape and topology laws Ceres does', () => {
-  assert.equal(TETHYS_ACTIVITY_POCKETS.length, 4, 'queue, lane, cache, log');
+  assert.equal(TETHYS_ACTIVITY_POCKETS.length, 6, 'queue, lane, cache, log, garrison, stores');
   assert.equal(TETHYS_POCKET_ACTOR_SLOT_ORDER.length, TETHYS_AUTHORED_ACTIVITY_CAPACITY);
   assert.equal(new Set(TETHYS_POCKET_ACTOR_SLOT_ORDER).size, TETHYS_POCKET_ACTOR_SLOT_ORDER.length);
 
@@ -259,8 +259,9 @@ test('the Tethys chain is the checkpoint day: queue, lane, cache, log', () => {
     .flatMap((entry) => entry.actorSlots.map((slot) => [slot.id, slot.lawful === true]));
   assert.deepEqual(
     lawfulFlags.filter(([, lawful]) => lawful).map(([id]) => id).sort(),
-    ['tethys_customs_patrol', 'tethys_lane_patrol'],
-    'exactly the two patrols carry the law',
+    ['tethys_customs_patrol', 'tethys_garrison_overwatch', 'tethys_garrison_relieved',
+     'tethys_garrison_watch', 'tethys_lane_patrol'],
+    'the checkpoint law and the standing garrison carry the law',
   );
 });
 
@@ -316,12 +317,12 @@ test('seed 4242: the shift is already under way when you arrive in Tethys Juncti
   const total = (state.traffic.freighters || []).length;
   assert.ok(total >= TETHYS_AUTHORED_ACTIVITY_CAPACITY, `chain plus ambient: ${total} bodies`);
 
-  // Deterministic: the same seed produces the same eight authored identities.
+  // Deterministic: the same seed produces the same twelve authored identities.
   const ids = TETHYS_POCKET_ACTOR_SLOT_ORDER.map((slotId) => {
     const entity = bySlot.get(slotId).entity;
     return `${slotId}#${entity.data.worldRecordId}`;
   });
-  assert.equal(new Set(ids).size, 8, 'eight distinct durable identities');
+  assert.equal(new Set(ids).size, 12, 'twelve distinct durable identities');
 });
 
 test('the marks sit on the authored marks: the chain strings the border the chart promises', () => {

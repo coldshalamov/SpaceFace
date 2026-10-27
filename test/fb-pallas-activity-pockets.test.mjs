@@ -15,6 +15,8 @@ const SLOT_IDS = [
   'pallas_ambush_escort',
   'pallas_grave_salvor',
   'pallas_grave_patrol',
+  'pallas_den_fence',
+  'pallas_shoal_scav',
 ];
 
 function world() {
@@ -40,13 +42,13 @@ function world() {
 
 test('Pallas pockets load as four two-actor routes on seed 4242', () => {
   const pockets = activityPocketsForSector('sector_pallas_drift');
-  assert.equal(pockets.length, 4);
+  assert.equal(pockets.length, 5);
   const ids = new Set();
   for (const pocket of pockets) {
     assert.equal(pocket.actorSlots.length, 2);
     for (const slot of pocket.actorSlots) ids.add(slot.id);
   }
-  assert.equal(ids.size, 8);
+  assert.equal(ids.size, 10);
 });
 
 test('elapsed time cannot move hulls or certify fictional Pallas handoffs', () => {
