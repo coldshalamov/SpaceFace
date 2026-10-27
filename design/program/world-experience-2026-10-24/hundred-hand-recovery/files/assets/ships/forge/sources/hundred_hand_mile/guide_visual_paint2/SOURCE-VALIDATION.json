@@ -1,0 +1,45 @@
+{
+  "schema": "spaceface.visualMaterialSourceValidation.v1",
+  "status": "PASS",
+  "rows": [
+    {
+      "file": "hundred_hand_guide.glb",
+      "sourceSha256": "9e5086e4fe85891831d45c8eaf159aad4419283815084f083fd4f51c5433d5ca",
+      "successorSha256": "ef9cfc383f7c413ff14bb6cc451f79809c55621417d58a7b5b38a60ac0eff3ea",
+      "visibleDrawGroups": 2,
+      "names": [
+        "LOD0_Armor",
+        "LOD0_Mechanical"
+      ],
+      "exactBinaryPayload": true,
+      "strictJsonDiff": true
+    },
+    {
+      "file": "hundred_hand_guide_lod1.glb",
+      "sourceSha256": "35f17f9137abd5bf46cb728900eb188ee82dd2fb9c41f9545a7664acf1e98c27",
+      "successorSha256": "dcf91a355ee9fbbfea59bf3ee2f9f88ff3e81fd5f5796ef22265597f9d7f8b1f",
+      "visibleDrawGroups": 2,
+      "names": [
+        "LOD1_Armor",
+        "LOD1_Mechanical"
+      ],
+      "exactBinaryPayload": true,
+      "strictJsonDiff": true
+    },
+    {
+      "file": "hundred_hand_guide_lod2.glb",
+      "sourceSha256": "cbb15d1a0508dcd546bebb7f058988cfc178640d7fa4f8a3db550ebbdb32357c",
+      "successorSha256": "d947a71ee46e6626f4f2a95ab67c4bddc4ff6bd35b53d6b69347bf387ba4c129",
+      "visibleDrawGroups": 2,
+      "names": [
+        "LOD2_Armor",
+        "LOD2_Mechanical"
+      ],
+      "exactBinaryPayload": true,
+      "strictJsonDiff": true
+    }
+  ],
+  "hostileCasesRejected": 42,
+  "originalPinsUnchanged": true,
+  "nativeRuntimeExecution": "not run by this verifier"
+}

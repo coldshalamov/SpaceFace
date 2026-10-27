@@ -1,0 +1,15 @@
+{
+  "sourcePaths": 67,
+  "byteEquality": true,
+  "manifestCRLF": "21fd14e76ba70438c286f095f5405a63e7ab69d3bd428e50576b5a6aeaaa4d89",
+  "restorerSha256": "21c2e3cd1f8267c6a7f95531620c0ff6e9f6cc1544997b0df6d1e81196478bee",
+  "filesystemWrapperExecuted": false,
+  "assetsOriginalRoundTrips": 44,
+  "independentReview": {
+    "verdict": "NARROW_GREEN",
+    "restorerBytes": 9024,
+    "ramBoundaryChecks": 16,
+    "scope": "Static filesystem-wrapper review and RAM pure-function fixtures; no full filesystem wrapper execution or independent 67-file/44-asset rerun."
+  },
+  "runtimeIntegration": false
+}
