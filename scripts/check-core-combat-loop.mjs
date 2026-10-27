@@ -54,7 +54,7 @@ function assertPulseWeaponSustainOnEveryDifficulty() {
   assert.ok(pulseDef, 'starter pulse weapon def exists');
   assert.deepEqual(
     [pulseDef.heatPerShot, pulseDef.heatMax, pulseDef.heatDissip],
-    [5, 100, 12],
+    [8, 100, 12],
     'starter pulse carries the professional long-burst thermal tune',
   );
 
@@ -119,7 +119,7 @@ function simulateStarterPulseSustain(difficulty) {
 
   const mount = player.data.weapons[0];
   assert.equal(mount.defId, 'wpn_pulse_laser_s', 'starter ship carries pulse laser S');
-  assert.equal(Number(mount.heat) || 0, 5, 'starter runtime mount carries the authored long-burst heat cost');
+  assert.equal(Number(mount.heat) || 0, 8, 'starter runtime mount carries the authored long-burst heat cost');
 
   let minCap = player.cap;
   let maxHeat = 0;

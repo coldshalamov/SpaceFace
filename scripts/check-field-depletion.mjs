@@ -175,8 +175,8 @@ function testPackageRegistrySaveAndScope() {
   const save = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
   assert.match(save, /data\.fieldDepletion = this\._callSerialize\('fieldDepletion'\)/,
     'save payload serializes fieldDepletion');
-  assert.match(save, /this\._callDeserialize\('fieldDepletion', data\.fieldDepletion\)/,
-    'load path deserializes fieldDepletion');
+  assert.match(save, /_callDeserializeChunked\('fieldDepletion', data\.fieldDepletion\)/,
+    'load path deserializes fieldDepletion through the chunked restore');
 
   const source = readFileSync(new URL('../src/systems/fieldDepletion.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /Math\.random|Date\.now|performance\.now|setTimeout|setInterval/,

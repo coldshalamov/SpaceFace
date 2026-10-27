@@ -625,6 +625,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
   'survivalDraftPublic', 'survivalResultsPublic', 'careers',
   'physicsVenueSession', 'world.wreckCourtRulings',
+  // Home/worksite labels and offers join native bodies through the ordinary entity journal.
+  'salvageTender', 'salvageTenderOffer', 'salvageOutfits', 'rigWorkshop',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
   'flightRuntime.angularIntent',
@@ -699,7 +701,7 @@ export function resolveDomainValue(state, key) {
 // last-signed digest per leaf path, so it stays consistent with the facade
 // state between cold/warm re-signs (facades trail live by the tier interval
 // at worst — the signed digest still describes the shipped content).
-export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1 });
+export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, salvageOutfits: 2 });
 // player: 1 — the wallet/cargo fields the UI reads hot (player.credits,
 // player.cargo) sign every pass instead of trailing the monolithic player
 // leaf's cold-tier 60-tick interval: a settled trade used to leave the facade
@@ -734,6 +736,7 @@ export const DOMAIN_CADENCE = Object.freeze({
   economy: 10, missions: 10, story: 10, factions: 30,
   sectorSim: 10, npcJobs: 30, 'npcJobs.revision': 1, factionPresence: 10, automation: 30,
   sites: 10,
+  salvageOutfits: 10,
   onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
   'save.sharedStoreStatus': 1,
   // Native phase identity shares the body reply's clock. A paced intro label over already-live

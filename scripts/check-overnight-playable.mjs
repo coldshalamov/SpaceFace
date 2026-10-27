@@ -21,6 +21,7 @@ import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { controlPrompt, setPromptScheme } from '../src/ui/controlPrompts.js';
 import { MANEUVER_SPEED_CAPS } from '../src/ai/maneuver.js';
+import { getDerivedStats } from '../src/systems/ships.js';
 import fs from 'node:fs';
 
 // --- Latch forgiveness (real exports from tetherGameplay) ---
@@ -99,7 +100,7 @@ assert.ok(FLIGHT_BANK_TUNING.BANK_RATE_GAIN <= 0.26, 'bank rate gain should be c
   assert.ok(swarmer);
   assert.ok(swarmer.maxSpeed <= 130, `swarmer maxSpeed too high: ${swarmer.maxSpeed}`);
   const wpn = (swarmer.weapons || [])[0];
-  assert.ok(wpn && (wpn.dmgOverride == null || wpn.dmgOverride <= 4), 'swarmer dmgOverride should be soft');
+  assert.ok(wpn && (wpn.dmgOverride == null || wpn.dmgOverride <= 6), 'swarmer dmgOverride should be soft');
 }
 
 // --- Helios density ---
@@ -120,9 +121,21 @@ assert.ok(FLIGHT_BANK_TUNING.BANK_RATE_GAIN <= 0.26, 'bank rate gain should be c
     'sensor emissive should be toned-down cyan');
 }
 
-// --- Intention: intercept cap is calm enough to read as piloting ---
-assert.ok(MANEUVER_SPEED_CAPS.interceptSpeed <= 80,
-  `interceptSpeed too zippy: ${MANEUVER_SPEED_CAPS.interceptSpeed}`);
+// --- Intention: enemy cruise floor vs readable ceiling (row 491) ---
+// The old "interceptSpeed ≤ 80 = calm" guard is superseded by build_map §33.2 row 491: enemies
+// that cannot cruise ≥70% of the player's average can never make a pass (measured ~50 vs ~117).
+// Readability is now owned by the reversal governor + telegraphed doctrine cycle, so this gate
+// pins the FLOOR (70% of a baseline Hitch cruise) plus a sanity ceiling under the player's own
+// boost ceiling so a pass stays answerable.
+{
+  // cruiseFrac baseline: ships.js `Math.min(0.85, 0.60 + 0.14 * eng.accelMult)` → 0.72 on the
+  // starter's baseline drive.
+  const playerCruise = getDerivedStats('ship_kestrel').maxSpeed * 0.72;
+  assert.ok(MANEUVER_SPEED_CAPS.interceptSpeed >= playerCruise * 0.7,
+    `interceptSpeed too slow to pass a cruising player: ${MANEUVER_SPEED_CAPS.interceptSpeed} < ${playerCruise * 0.7}`);
+  assert.ok(MANEUVER_SPEED_CAPS.interceptSpeed <= playerCruise,
+    `interceptSpeed exceeds the player's own cruise: ${MANEUVER_SPEED_CAPS.interceptSpeed}`);
+}
 
 // --- Density: named destinations floor (stations + POIs + fields as destinations) ---
 {

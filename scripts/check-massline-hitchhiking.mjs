@@ -33,6 +33,9 @@ function boot({ seed = 47, hitchhiking = true, withTraffic = true } = {}) {
   state.onboarding = { active: false, finished: true };
   const toasts = [];
   bus.on('toast', (payload) => toasts.push(payload));
+  // One-shot tutorial hints ride hud:firstUse (verbId + text), not toast — capture both.
+  const firstUse = [];
+  bus.on('hud:firstUse', (payload) => firstUse.push(payload));
 
   const stationA = sim.spawn({
     type: 'station', team: 2, pos: { x: 600, z: 0 }, radius: 42, mass: 1e6,
@@ -48,9 +51,11 @@ function boot({ seed = 47, hitchhiking = true, withTraffic = true } = {}) {
   state.playerId = player.id;
   if (withTraffic) {
     bus.emit('sector:enter', { sectorId: HELIOS_ID, sector: HELIOS });
-    sim.runTicks(1);
+    // Ambient traffic planning is phase-gated (AMBIENT_ACTIVE_PERIOD 2): one tick can land on the
+    // express's off phase and leave data.intent null. Three ticks cover every phase slot.
+    sim.runTicks(3);
   }
-  return { sim, state, bus, toasts, player, stationA, stationB };
+  return { sim, state, bus, toasts, firstUse, player, stationA, stationB };
 }
 
 function expressOf(state) {
@@ -80,7 +85,13 @@ try {
   assert.equal(itinerary.hitchable, true, 'itinerary explicitly advertises hitching');
   assert(itinerary.routeId && itinerary.originStationId && itinerary.destinationStationId,
     'itinerary exposes a stable route with endpoints');
-  assert.match(express.entity.data.trafficLabel, /EXPRESS|LINER/i, 'target label visibly identifies express service');
+  // The one scheduled express can wear a named-contact callsign (Cinder Run Courier) — either
+  // face still visibly identifies the express service to the player.
+  if (!express.entity.data.namedLaneContactId) {
+    assert.match(express.entity.data.trafficLabel, /EXPRESS|LINER/i, 'target label visibly identifies express service');
+  } else {
+    assert.ok(express.entity.data.trafficLabel, 'named express carries her callsign on the lane');
+  }
   assert.match(express.entity.data.scanLabel, /HITCH/i, 'scanner label teaches the hitch affordance');
   assert(express.rec.manifest && express.rec.manifest.lines.length > 0,
     'express remains embodied freight rather than a decorative route-only ship');
@@ -105,25 +116,27 @@ try {
     'ordinary traffic latch does not consume the hitch lesson');
   live.bus.emit('tether:latched', { targetId: express.entity.id });
   assert.equal(live.state.player.hints.masslineHitchhiking, true, 'express latch records one-shot hitch lesson');
-  const hitchToasts = live.toasts.filter((toast) => /express|liner|hitch/i.test(String(toast.text || '')));
-  assert.equal(hitchToasts.length, 1, 'express latch emits one terse hitch lesson');
+  const hitchLessons = live.firstUse.filter((hint) => hint.verbId === 'masslineHitchhiking');
+  assert.equal(hitchLessons.length, 1, 'express latch emits one terse hitch lesson');
   live.bus.emit('tether:latched', { targetId: express.entity.id });
-  assert.equal(live.toasts.filter((toast) => /express|liner|hitch/i.test(String(toast.text || ''))).length, 1,
+  assert.equal(live.firstUse.filter((hint) => hint.verbId === 'masslineHitchhiking').length, 1,
     'repeat latches do not repeat the lesson');
 
-  // One event cannot spend two tutorial voices: express owns its first latch, then the general
-  // throw lesson remains available for the next ordinary massline target.
+  // The express latch owns the hitch lesson; the retired first-latch 'masslineThrow' bark (INF-062)
+  // must stay dead, and an ordinary follow-up latch emits no hitch repeat. Other once-per-profile
+  // lessons (e.g. masslineBrace on a heavy hull) may share the event — each is its own lesson.
   {
     const h = boot({ hitchhiking: true });
     MASSLINE2_FLAGS.throw = true;
     const ex = expressOf(h.state);
     const normal = h.state.traffic.freighters.find((item) => item.role !== 'express');
     h.bus.emit('tether:latched', { targetId: ex.entity.id });
-    assert.equal(h.toasts.length, 1, 'first express latch emits one tutorial voice');
-    assert.equal(h.state.player.hints.masslineThrow, undefined, 'express latch leaves general throw lesson available');
+    assert.equal(h.firstUse.filter((hint) => hint.verbId === 'masslineHitchhiking').length, 1,
+      'first express latch emits the hitch voice once');
+    assert.equal(h.state.player.hints.masslineThrow, undefined, 'no retired throw bark on any latch');
     h.bus.emit('tether:latched', { targetId: normal.id });
-    assert.equal(h.state.player.hints.masslineThrow, true, 'ordinary follow-up latch teaches throwing');
-    assert.equal(h.toasts.length, 2, 'ordinary follow-up adds exactly one voice');
+    assert.equal(h.firstUse.filter((hint) => hint.verbId === 'masslineHitchhiking').length, 1,
+      'ordinary follow-up latch does not repeat the hitch lesson');
   }
 
   // Same seed => same reachable service and route metadata.
@@ -134,32 +147,66 @@ try {
     'express durable identity is deterministic');
   assert.deepEqual(repeatExpress.entity.data.itinerary, itinerary, 'express route is deterministic');
 
-  // Flag-off is inert at call time: no express spawn, no boosted saved express, no hint.
+  // Flag-off is inert at call time: ambient picks mint no express, the authored courier still
+  // sails as an ordinary named courier (her presence is fiction, not the mechanic), and no hull
+  // carries the hitch affordance, boosted transit, or hint.
   const dark = boot({ hitchhiking: false });
-  assert.equal(expressOf(dark.state), null, 'flag-off traffic mix has no express role');
+  const ambientExpress = (dark.state.traffic.freighters || [])
+    .filter((item) => item.role === 'express')
+    .map((item) => ({ rec: item, entity: dark.state.entities.get(item.id) }));
+  assert.ok(ambientExpress.length <= 1, 'flag-off traffic mix has at most the authored courier');
+  for (const { entity } of ambientExpress) {
+    assert.notEqual(entity.data.hitchable, true, 'flag-off express carries no hitchable mark');
+    assert.notEqual(entity.data.itinerary && entity.data.itinerary.kind, 'express_hitch_route',
+      'flag-off express carries no hitch route itinerary');
+    assert.doesNotMatch(String(entity.data.scanLabel || ''), /HITCH/i,
+      'flag-off express label does not advertise hitching');
+  }
   const fallback = dark.state.traffic.freighters[0];
   const fallbackEntity = dark.state.entities.get(fallback.id);
   fallback.role = 'express';
   fallbackEntity.data.trafficRole = 'express';
   fallbackEntity.data.itinerary = itinerary;
-  dark.sim.runTicks(1);
+  dark.sim.runTicks(3);
   assert.equal(fallbackEntity.data.intent.boost, false, 'flag-off saved express uses ordinary non-boost transit');
   dark.bus.emit('tether:latched', { targetId: fallbackEntity.id });
   assert.equal(dark.state.player.hints.masslineHitchhiking, undefined, 'flag-off express latch has no hint');
 
-  // Throw lesson must match all three player-facing assist modes.
-  const throwCopies = {
-    arm: /hold right mouse.*white diamond/i,
-    snap: /tap right mouse.*white diamond/i,
-    off: /tap right mouse.*current vector/i,
-  };
-  for (const [mode, pattern] of Object.entries(throwCopies)) {
+  // INF-062 — the latch lesson is taught by failure, not by the retired first-latch bark:
+  // three consecutive genuine latch denials earn ONE contextual hint naming the block, a
+  // clean latch resets the streak, player.hints keeps it once-only, and the flag gates it.
+  {
     const h = boot({ withTraffic: false });
     MASSLINE2_FLAGS.throw = true;
-    h.state.settings.gameplay.masslineReleaseAssist = mode;
+    h.bus.emit('tether:latchDenied', { reason: 'protected' });
+    h.bus.emit('tether:latchDenied', { reason: 'protected' });
+    assert.equal(h.firstUse.filter((hint) => hint.verbId === 'masslineLatchDenied').length, 0,
+      'two denials stay silent');
+    h.bus.emit('tether:latchDenied', { reason: 'protected' });
+    const denialLessons = h.firstUse.filter((hint) => hint.verbId === 'masslineLatchDenied');
+    assert.equal(denialLessons.length, 1, 'third consecutive denial earns the latch lesson');
+    assert.match(String(denialLessons[0].text || ''), /protected|latch something else/i,
+      'denial lesson names the real block');
+    assert.equal(h.state.player.hints.masslineLatchDenied, true, 'denial lesson persists once-only');
+    h.bus.emit('tether:latchDenied', { reason: 'protected' });
+    assert.equal(h.firstUse.filter((hint) => hint.verbId === 'masslineLatchDenied').length, 1,
+      'repeat denials do not repeat the lesson');
+  }
+  {
+    const h = boot({ withTraffic: false });
+    MASSLINE2_FLAGS.throw = true;
+    h.bus.emit('tether:latchDenied', { reason: 'cooldown' });
+    h.bus.emit('tether:latchDenied', { reason: 'cooldown' });
     h.bus.emit('tether:latched', { targetId: h.stationA.id });
-    const copy = h.toasts.map((toast) => toast.text).find((text) => /right mouse/i.test(String(text || '')));
-    assert.match(String(copy || ''), pattern, `${mode} release-assist hint describes its real input semantics`);
+    h.bus.emit('tether:latchDenied', { reason: 'cooldown' });
+    assert.equal(h.firstUse.filter((hint) => hint.verbId === 'masslineLatchDenied').length, 0,
+      'a clean latch resets the denial streak');
+  }
+  {
+    const h = boot({ withTraffic: false });
+    for (let i = 0; i < 4; i++) h.bus.emit('tether:latchDenied', { reason: 'blocked' });
+    assert.equal(h.firstUse.filter((hint) => hint.verbId === 'masslineLatchDenied').length, 0,
+      'flag-off latch denials earn no lesson');
   }
 
   // Advanced physics verbs each get one terse, flag-gated, persistent lesson.
@@ -169,13 +216,20 @@ try {
     MASSLINE2_FLAGS.jettisonImpulse = true;
     h.bus.emit('massline:selfSling', { anchorId: 77, bonusDv: 32 });
     h.bus.emit('massline:selfSling', { anchorId: 77, bonusDv: 32 });
+    // TEACH-01 — the drop-kick lesson must be earned at cruise speed: a parked dump teaches
+    // nothing about reaction mass and cannot spend the once-per-profile line.
+    h.bus.emit('cargo:jettisoned', { commodityId: 'ore_iron', qty: 2 });
+    assert.equal(h.state.player.hints.masslineJettisonImpulse, undefined,
+      'parked jettison does not spend the lesson');
+    const playerEntity = h.state.entities.get(h.state.playerId);
+    playerEntity.vel.x = 120; // above DROP_KICK_CRUISE_SPEED (95)
     h.bus.emit('cargo:jettisoned', { commodityId: 'ore_iron', qty: 2 });
     h.bus.emit('cargo:jettisoned', { commodityId: 'ore_iron', qty: 2 });
     assert.equal(h.state.player.hints.masslineSelfSling, true, 'self-sling lesson persists after first event');
     assert.equal(h.state.player.hints.masslineJettisonImpulse, true, 'jettison-impulse lesson persists after first event');
-    assert.equal(h.toasts.filter((toast) => /anchor.*momentum|slingshot/i.test(String(toast.text || ''))).length, 1,
+    assert.equal(h.firstUse.filter((hint) => hint.verbId === 'masslineSelfSling').length, 1,
       'self-sling event emits one lesson');
-    assert.equal(h.toasts.filter((toast) => /reaction mass|jettison.*push/i.test(String(toast.text || ''))).length, 1,
+    assert.equal(h.firstUse.filter((hint) => hint.verbId === 'masslineJettisonImpulse').length, 1,
       'jettison event emits one lesson');
   }
   {
