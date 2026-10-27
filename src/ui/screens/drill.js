@@ -13,6 +13,7 @@ import {
   visibleCablePoints,
 } from '../../systems/drill.js';
 import { BEAMS, ORES } from '../../data/mining.js';
+import { commodityDisplayName } from '../commodityNames.js';
 import { MODULES } from '../../data/modules.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
@@ -655,13 +656,9 @@ export function buildHeadlightSprite(width = 210, height = 150) {
   return oc;
 }
 
-function titleCaseWords(value) {
-  return String(value || '').replace(/^cmdty_/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 function commodityName(id) {
   const commodity = COMMODITY_BY_ID.get(id);
-  return (commodity && commodity.name) || titleCaseWords(id || 'ore');
+  return (commodity && commodity.name) || (id ? commodityDisplayName(id) : 'Ore');
 }
 
 function legendIconImg(iconKey, size = 22) {
