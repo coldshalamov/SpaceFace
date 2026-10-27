@@ -206,3 +206,5 @@ The oldest OPEN row is the next second look.
 
 | R-4a79f7f | 4a79f7fb301 | orchard max-tow acquisition: scripted escape mirrored to the open lane (−0.65); +0.65 was only ever passable via the pre-54c8669c4b8 orbit-assist throttle defect that let the pod deck-grind into the low channel | Re-check the defect classification, not just the green run: bisect to confirm the passing arc at f5f730497d9 really did depend on the tug being throttled ~5 WU/s by the old capture-cone assist (the pocket wedge at +0.65 is authored concave geometry, not a new physics regression), and confirm the sibling authored-tow-pocket +0.65 scenario still documents pods parking near the frame | |
 
+
+| 2026-10-27 | bf5b5c26dbf | EXP-25: faction_vael — patrols/writs/paper tiers (283→1900+, ~6.7×) | Re-check: telegraph wind-up lifecycle (arm→fire→prune) vs orphaned writ rows |
