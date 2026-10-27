@@ -7,7 +7,7 @@ for(let i=2;i<process.argv.length;i++)if(process.argv[i]==='--aux-root')roots.pu
 const read=p=>{const f=roots.map(r=>path.join(r,p)).find(fs.existsSync);assert.ok(f,`Missing current source ${p}`);return fs.readFileSync(f,'utf8').replace(/\r\n/g,'\n')};
 const context=vm.createContext({console}),mods=new Map();
 const add=(p,s)=>mods.set(p,new vm.SourceTextModule(s,{context,identifier:p}));
-for(const p of ['src/systems/rookBooth.js','src/characters/rookRules.js','src/data/rook.js','src/data/sectorCoordinates.js','src/core/coordinates.js','src/render/actionVfx.js','src/render/vfx/actionEventRecipes.js','src/audio/combatVerbCues.js'])add(p,read(p));
+for(const p of ['src/systems/rookBooth.js','src/characters/rookRules.js','src/data/rook.js','src/data/sectorCoordinates.js','src/core/coordinates.js','src/render/actionVfx.js','src/render/vfx/actionEventRecipes.js','src/audio/combatVerbCues.js','src/presentation/telegraphPriority.js','src/combat/telegraphFootprint.js'])add(p,read(p));
 add('src/data/frontierRegions/index.js','export const FRONTIER_ORIGINS={},FRONTIER_SECTOR_IDS=[]');
 add('src/core/sectorEnterDefer.js','export const deferSectorEnterMaterialization=()=>false');
 add('three','export class Color{constructor(value){this.value=value}}');

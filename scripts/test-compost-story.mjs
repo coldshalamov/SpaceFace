@@ -53,10 +53,11 @@ import * as receiver from './src/data/understoryReceiver.js';
 import * as campaign from './src/story/campaign47a/campaignTransitions.js';
 import * as data from './src/story/campaign47a/campaignData.js';
 import * as ecology from './src/data/factions/understory.js';
-export { garden, receiver, campaign, data, ecology };`, { context, identifier: 'entry.mjs' });
+import * as nest from './src/data/nestVisit.js';
+export { garden, receiver, campaign, data, ecology, nest };`, { context, identifier: 'entry.mjs' });
 await entry.link((specifier, ref) => moduleFor(path.posix.normalize(path.posix.join(path.posix.dirname(ref.identifier), specifier))));
 await entry.evaluate();
-const { garden: G, receiver: R, campaign: C, data: D, ecology: E } = entry.namespace;
+const { garden: G, receiver: R, campaign: C, data: D, ecology: E, nest: N } = entry.namespace;
 const missionSource = read('src/systems/missions.js').source;
 function method(name, endName) {
   const start = missionSource.indexOf(`  ${name}(`);
@@ -66,6 +67,7 @@ function method(name, endName) {
 }
 Object.assign(context, {
   getBeatStepStatus: C.getBeatStepStatus,
+  nestWaypoint: N.nestWaypoint, nestApproach: N.nestApproach, NEST_VISIT: N.NEST_VISIT, nestOutcomeReceipt: N.nestOutcomeReceipt,
   firstPlayerGardenGrowth: R.firstPlayerGardenGrowth,
   UNDERSTORY_RECEIVER: R.UNDERSTORY_RECEIVER,
   receiverStatus: R.receiverStatus, receiverApproach: R.receiverApproach,
@@ -130,7 +132,7 @@ test('real16t delivery grows retained52 to61.6 and records Compost, without a pa
   assert.equal(h.events.filter(e => e.name === 'economy:grantCredits').length, 0);
   assert.equal(h.state.story.beatIndex, 2, 'Compost does not skip Nest or Elroy');
   const wp = waypoint.call(h.missions, D.CAMPAIGN_BEATS.find(b => b.beat === 2));
-  assert.equal(wp.label, 'The Nest — Charon'); assert.equal(wp.pos, null, 'no invented Nest coordinates');
+  assert.match(wp.label, /Nest/); assert.deepEqual(plain(wp.pos), plain(N.nestApproach()), 'genuine growth points to the measured Nest approach');
   assert.equal(wp.sectorId, 'sector_charon_expanse');
 });
 test('real growth before Cinder filing reconciles later without new mass or payment', () => {

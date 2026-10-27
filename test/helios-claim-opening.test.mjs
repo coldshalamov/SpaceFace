@@ -223,7 +223,10 @@ test('actual default Helios chain advances hunt→stake at20s, not an injected s
   const chain=vm.runInNewContext(data.slice(a,b).replace('export const HELIOS_CAUSAL_CHAIN','const HELIOS_CAUSAL_CHAIN')+';HELIOS_CAUSAL_CHAIN');
   const spec={schema:'spaceface.sectorCausalChain.v1',chain,byId:new Map(chain.map(r=>[r.id,r])),maxConcurrent:2,cycleGapS:45};
   const text=fs.readFileSync(new URL('../src/systems/trafficCausalChainOps.js',import.meta.url),'utf8');
-  const methods=vm.runInNewContext(text.slice(text.indexOf('export const trafficCausalChainOps =')).replace('export const ','const ')+';trafficCausalChainOps',{
+  // Imports may legally follow the declaration. This fixture supplies the
+  // exercised Helios bindings below; do not evaluate trailing ESM as a script.
+  const declarations=text.replace(/^import[\s\S]*?;\r?\n/gm,'');
+  const methods=vm.runInNewContext(declarations.slice(declarations.indexOf('export const trafficCausalChainOps =')).replace('export const ','const ')+';trafficCausalChainOps',{
     SECTOR_CAUSAL_CHAINS:new Map([[D.sectorId,spec]]),CERES_ACTIVITY_SECTOR_ID:'sector_ceres_belt',
     TETHYS_ACTIVITY_SECTOR_ID:'sector_tethys_junction',deferredEnterNow:s=>s.simTime,
     stepHeliosClaimOpening,forEachFieldRock:(s,fn)=>{for(const e of s.entities.values())if(e.type==='asteroid')fn(e);},

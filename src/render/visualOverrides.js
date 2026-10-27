@@ -1,3 +1,4 @@
+import { attachNestBayIndicators } from './nestBayVisuals.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
@@ -1646,7 +1647,7 @@ export function installVisualOverrides(factory, options = {}) {
     assertReleaseHeroVisual(entity, visual, releaseMode);
     if (!visual || !entity || entity.type !== 'ship' || isTallyThreeAssessor(entity)) return visual;
     configureTransparentSinglePassSurfaces(visual);
-    if (!authoredShips) return visual;
+    if (!authoredShips) return attachNestBayIndicators(visual, entity);
 
     // Inspection surfaces must not replace a readable catalog ship with the generic modular kit.
     // That assembly is useful as a flight fallback, but it is not a validated complete body and its
@@ -1654,13 +1655,13 @@ export function installVisualOverrides(factory, options = {}) {
     // production whole-ship records may replace the object a player is directly manipulating.
     if (authoredWholeShipsOnly && !requiredWholeShip) {
       visual.userData.authoredAssetState = 'procedural-settled';
-      return visual;
+      return attachNestBayIndicators(visual, entity);
     }
 
     // The wrapper is synchronous and fail-closed. Live direct mounts carry no renderables; preview
     // modes may still provide a hidden bespoke/procedural substrate for isolated inspection tools.
     try {
-      return wrapShipWithAuthoredParts(entity, visual, {
+      return attachNestBayIndicators(wrapShipWithAuthoredParts(entity, visual, {
         releaseMode,
         libraryScope: options.authoredLibraryScope,
         bootstrapPlan: options.authoredBootstrapPlan,
@@ -1673,11 +1674,11 @@ export function installVisualOverrides(factory, options = {}) {
           settleIndustrialSurfacing(payload, options);
           if (typeof options.onAuthoredAssetSwap === 'function') options.onAuthoredAssetSwap(payload);
         },
-      });
+      }), entity);
     }
     catch (error) {
       reportVisualWarning(options, '[visualOverrides] authored-asset boundary failed; using selected ship visual', error);
-      return visual;
+      return attachNestBayIndicators(visual, entity);
     }
   };
 

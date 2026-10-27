@@ -1,3 +1,17 @@
+## Reviewed Nest successor — 27 October 2026, 10:06 UTC
+
+Latest remotely verified PR637 head is `03d6bd572176b506fb332cca3e89fdebfa2a2de2`, an owned-draft-only synchronization of `af101e97c500a2dce0976f8f1b22f3a9d52c9d51` and public master `b52da87af61a3ab1399c2091c642efb98ac6db63`. All newer public work in that pinned master was retained; no master merge/deployment. Later disjoint master work remains separate. The reviewed Nest successor preserves that save owner and adds the real Compost → Charon Nest → Registry Writ handoff; see [NEST_VISIT](../opening-experience-2026-10-27/NEST_VISIT.md) and [sector coverage](../opening-experience-2026-10-27/SECTOR_EXPERIENCES.md).
+
+Independent review resolved serializer side effects, pending-death rollback, generic stale/mercy retirement and false timer/abort outcomes. A subsequent ordinary-input proof rejected the mass-only Class I assumption: fresh exact authored visits now use genuinely scaled radius9/16t compact Wasps, with strict variant persistence; standard random/legacy bodies and global Line rules are unchanged. Actual nearest/preview acquisition and attachment-to-native-contact proof pass, with native rope/full flight acceptance still open. Native moving-contact evidence and actual exported-model previews exist, with ordinary flight/browser/visual acceptance still open. The next operation is verified publication and exact-head CI, then actual Registry Writ/Elroy route assembly. Do not restart the old model-production queue. All larger goals remain open.
+
+Sync-head CI exposed sparse-harness integration gaps in older opening tests; those are repaired alongside the connected increment with actual current helper bindings, not by removing assertions or treating focused checks as a green whole matrix. Remote CI remains a distinct gate.
+
+## Current connected increment — 27 October 2026, 08:45 UTC
+
+Compost is published in draft PR637 at `af101e97c500a2dce0976f8f1b22f3a9d52c9d51`, tree `f053d359aed370184efe2c3a5022b398f56852de`, sole parent `fee687a5252a1360aa9a4326964da766bc7d7a1a`. Remote bytes and exact 25-path delta are verified. No merge or deployment. Hosted CI40474556609 is still running at this checkpoint; targeted evidence is not whole-suite acceptance.
+
+The next active implementation is the real Nest visit after Compost, then the existing Registry Writ. Read-only source reproduction found a null-position Nest waypoint, weighted/random admission rather than a reachable authored visit, aborts incorrectly counting as success, and no captured active door/Wasp progress. The implementation owner is repairing this connected experience with existing assets, preserving clear/escape and Elroy scan/force/custody choices. These repairs are not yet claimed complete or published. Local agents continue to own model production. All larger goals and native/player acceptance remain open.
+
 ## Compost receiving experience — 27 October 2026, 08:22 UTC
 
 Latest verified predecessor: draft PR637 at `fee687a5252a1360aa9a4326964da766bc7d7a1a`, open/unmerged. That Cinder/Rook increment and its newly registered Books0–2 test are GitHub-backed. Hosted run40460525035 finished with failure overall; Books0–2 executed and passed on static index61 (one-based62), shard2. No overall green baseline, native flight or live visual acceptance is claimed.

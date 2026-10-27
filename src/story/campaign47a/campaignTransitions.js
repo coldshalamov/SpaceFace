@@ -4,6 +4,7 @@
 // No bus, no Math.random, no wall clock — callers pass simTime and apply intents separately.
 
 import { firstPlayerGardenGrowth } from '../../data/understoryReceiver.js';
+import { nestOutcomeReceipt } from '../../data/nestVisit.js';
 import {
   BEAT_STATUS,
   BRANCH_CHAIN,
@@ -131,6 +132,13 @@ export function recordBeatStep(state, signal, payload = {}, simTime = 0) {
   if (signal === 'understory:playerGrowth') {
     const receipt = firstPlayerGardenGrowth(state, payload);
     if (!receipt) return { ok: false, reason: 'unverified_player_garden_growth' };
+    payload = receipt;
+  }
+  // Only the encounter owner's retained positive outcome can open the Registry Writ.
+  // Setup failures, teardown, player loss and invented bus events are not Nest visits.
+  if (signal === 'encounter:resolved' && payload?.shape === 'the_nest') {
+    const receipt = nestOutcomeReceipt(state, payload);
+    if (!receipt) return { ok: false, reason: 'unverified_nest_outcome' };
     payload = receipt;
   }
   const own = ensureCampaign47aState(state);

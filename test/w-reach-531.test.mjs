@@ -53,7 +53,17 @@ function makeHarness() {
       type: 'beacon', data: {},
     }),
     say: () => true,
-    emit: (name, payload) => events.push({ name, payload }),
+    // Explicit combat port for this source-runtime test; the integration suite uses the real kernel.
+    emit: (name, payload) => {
+      events.push({ name, payload });
+      if (name === 'projectile:hit') {
+        const victim = state.entities.get(payload.targetId);
+        if (victim && victim.alive) {
+          victim.alive = false;
+          NEST.runtime.event(d, live, state, 'squadKill', { id: victim.id });
+        }
+      }
+    },
     rep: () => {},
     resolve: (lv, outcome) => { lv.phase = 'done'; lv.outcome = outcome; },
     abort: (lv, reason) => { lv.phase = 'done'; lv.outcome = `abort:${reason}`; },
@@ -122,7 +132,12 @@ test('throw its own wasps back through the bays and the carrier guts out — pla
   for (let i = 0; i < REACH.custom.nestCarrier.waspReturnHits; i++) {
     const wasp = h.state.entities.get(rec.waspIds[i]);
     NEST.runtime.event(h.d, h.live, h.state, 'tetherAttached', { actorId: 'player', targetId: wasp.id });
-    wasp.pos.x = carrier.pos.x; wasp.pos.z = carrier.pos.z + 5;
+    wasp.pos.x = carrier.pos.x; wasp.pos.z = carrier.pos.z - 20;
+    // Explicit contact port; the composition suite calls the real physics impact producer.
+    NEST.runtime.event(h.d, h.live, h.state, 'physicsImpact', {
+      aId: rec.doorIds[0], bId: wasp.id, impulse: 100, tick: h.state.tick,
+      pos: { ...h.state.entities.get(rec.doorIds[0]).pos },
+    });
     tickNest(h, 0.1);
     if (h.live.phase === 'done') break;
   }

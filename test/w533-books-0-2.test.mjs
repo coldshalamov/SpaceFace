@@ -5,7 +5,7 @@
 // Drives: B0 mine → THE SKIM (kill feed + 12.4 t) → Pit dock (manifest zero, payment
 // withheld); B1 alloy run contract → Scale 4 weigh (kesslerPod:weighed) → infested hauler
 // (kills + CR-FEED feeds); B2 cinder board (kills + Rook delivery) → Compost Run
-// (actual player-fed visible garden growth) → the Nest (encounter:resolved{shape:'the_nest'}) → the register
+// (actual player-fed visible garden growth) → the Nest (actual705 admission and clear/escape receipt) → the register
 // contract on Elroy (scan → CIVILIAN — REGISTERED → force/custody → MEDICINE).
 // Run: node --test test/w533-books-0-2.test.mjs
 
@@ -20,6 +20,11 @@ import { aftermathWrecks as aftermathProto } from '../src/systems/aftermathWreck
 import { createRookBooth } from '../src/systems/rookBooth.js';
 import { understoryGardens as understoryProto } from '../src/systems/faction_understory.js';
 import { UNDERSTORY_RECEIVER } from '../src/data/understoryReceiver.js';
+import { encounterDirector as encounterDirectorProto } from '../src/systems/encounterDirector.js';
+import { runtime as nestRuntime } from '../src/data/encounters/705-the-nest.js';
+import { tickNestVisit } from '../src/systems/nestVisit.js';
+import { NEST_VISIT, nestApproach } from '../src/data/nestVisit.js';
+import { WEAPONS } from '../src/data/weapons.js';
 import { rookPadPosition } from '../src/characters/rookRules.js';
 import { createFurnaceIntake } from '../src/systems/furnaceIntake.js';
 import { furnaceMouthGlobal } from '../src/missions/furnaceWorksite.js';
@@ -113,7 +118,7 @@ function makeHarness(seed = 47) {
     _toGlobal: sectorLocalToGlobalForSector };
   bus.on('entity:killed', (p) => handleAlienEcologyEvent(ecologyWorld, 'entity:killed', p));
   return { state, bus, missions, story, helpers, popups, skimResolved, elroyResolved, beatAdvances,
-    combat, aftermath, rook, furnace, understory, ecologyWorld };
+    combat, aftermath, rook, furnace, understory, ecologyWorld, systems, registry };
 }
 
 function acceptOffer(h, stationId, expectedTag) {
@@ -329,6 +334,57 @@ function reachB2(h) {
   assert.equal(state.story.beatIndex, 2);
 }
 
+// Genuine authored arrival and runtime outcome. Entity creation and pilot inputs are
+// test ports; neither a bare positive event nor a fabricated receipt completes the beat.
+function visitNest(h, outcome = 'clear') {
+  const { state, bus, helpers, registry } = h;
+  const director = Object.assign({}, encounterDirectorProto);
+  h.systems.encounterDirector = director;
+  director.init({ state, bus, helpers, registry });
+  h.combat.registry = registry;
+  bus.on('projectile:hit', payload => h.combat.onHit(payload));
+  state.world.currentSectorId = NEST_VISIT.sectorId;
+  state.entities.get(state.playerId).pos = { ...nestApproach() };
+  // This harness attaches the director late. Accrue the preceding flight through its
+  // real owner rather than granting pressure or forcing past the pacing gate.
+  state.simTime += 600;
+  director._accrue(state.encounterDirector, state, 600);
+  const admission = tickNestVisit(director);
+  assert.equal(admission.ok, true, `Nest admission: ${admission.reason}`);
+  const live = Object.values(state.encounterDirector.live || {}).find(row => row.shapeId === 'the_nest');
+  assert.ok(live, 'the ordinary authored approach admits the real705 encounter');
+  const carrier = state.entities.get(live.data.nest.carrierId);
+  assert.ok(carrier && carrier.alive !== false, 'a real carrier was admitted');
+  assert.equal(getBeatStepStatus(state, 2).completed.includes('nest'), false, 'arrival alone is not completion');
+  if (outcome === 'escape') {
+    state.simTime = live.data.nest.nextLaunchS + 0.1;
+    nestRuntime.tick(director, live, state, state.simTime);
+    const wasp = state.entities.get(live.data.nest.waspIds[0]);
+    assert.ok(wasp && wasp.alive !== false, 'one genuine Wasp launched');
+    state.entities.get(state.playerId).pos = { x: carrier.pos.x + 3100, z: carrier.pos.z };
+  } else {
+    const pulse = WEAPONS.find(row => row.id === 'wpn_pulse_laser_s');
+    assert.ok(pulse, 'the actual starter weapon exists');
+    const hullBefore = carrier.hull;
+    let shots = 0;
+    // Damage-pipeline proof only: this does not simulate aim, range, fire cadence or heat.
+    while (carrier.alive !== false && shots < 500) {
+      const result = h.combat.onHit({ targetId: carrier.id, ownerId: state.playerId,
+        damage: pulse.dmg, damageType: pulse.damageType, weaponId: pulse.id,
+        pos: { ...carrier.pos } });
+      assert.equal(result.ok, true, 'starter damage is admitted by the real kernel');
+      shots++;
+    }
+    assert.ok(carrier.hull < hullBefore, 'starter fire makes actual progress through carrier protection');
+    assert.equal(carrier.alive, false, 'bounded ordinary starter hits kill through the combat owner');
+    console.log(`    Nest starter damage pipeline: ${shots} hits from ${hullBefore} hull to ${carrier.hull}`);
+  }
+  nestRuntime.tick(director, live, state, state.simTime);
+  assert.equal(live.outcome, outcome === 'escape' ? 'carrier_escapes' : 'carrier_down');
+  assert.deepEqual(getBeatStepStatus(state, 2).completed, ['cinder_board', 'compost', 'nest']);
+  return { director, live };
+}
+
 check('B2: cinder board → Compost Run → the Nest → the register on Elroy', () => {
   const h = makeHarness(50);
   const { state, bus } = h;
@@ -360,7 +416,11 @@ check('B2: cinder board → Compost Run → the Nest → the register on Elroy',
   bus.emit('encounter:resolved', { shape: 'some_other_fight', sectorId: 'sector_charon_expanse' });
   status = getBeatStepStatus(state, 2);
   assert.deepEqual(status.completed, ['cinder_board', 'compost'], 'an unrelated fight is not the Nest');
-  bus.emit('encounter:resolved', { shape: 'the_nest', encounterId: 'enc_nest_1', sectorId: 'sector_charon_expanse' });
+  for (const outcome of [undefined, 'aborted:no_cast', 'aborted:sector_exit', 'subject_gone', 'carrier_down']) {
+    bus.emit('encounter:resolved', { shape: 'the_nest', encounterId: 'enc_nest_1', sectorId: 'sector_charon_expanse', outcome });
+    assert.deepEqual(getBeatStepStatus(state, 2).completed, ['cinder_board', 'compost'], 'unverified Nest events never complete the beat');
+  }
+  visitNest(h);
   status = getBeatStepStatus(state, 2);
   assert.deepEqual(status.completed, ['cinder_board', 'compost', 'nest']);
 
@@ -397,7 +457,7 @@ check('B2: the custody reel resolves Elroy without the kill', () => {
   completePatrol(h, cinder);
   deliverCinderHull(h, cinder);
   feedReceivingGarden(h, cinder);
-  bus.emit('encounter:resolved', { shape: 'the_nest', sectorId: 'sector_charon_expanse' });
+  visitNest(h, 'escape');
   const elroy = acceptOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
   bus.emit('sector:enter', { sectorId: elroy.destSectorId });
   h.missions.spawnTargetsForSector(elroy.destSectorId);

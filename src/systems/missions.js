@@ -1,3 +1,4 @@
+import { nestWaypoint, nestOutcomeReceipt } from '../data/nestVisit.js';
 import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
 import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
 import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
@@ -1586,6 +1587,7 @@ export const missions = {
     bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
     bus.on('save:loaded', () => {
       this._reconcileCompostGrowth();
+      this._reconcileNestOutcome();
       this._restoreNavigationAfterLoad();
       this._reconcileLandmarkQuestOffers();
     });
@@ -2023,6 +2025,7 @@ export const missions = {
       // Real growth can precede Cinder's filing. Reconcile at the existing nav cadence,
       // not by scanning all entities every tick; neither mass nor payment is replayed.
       this._reconcileCompostGrowth();
+      this._reconcileNestOutcome();
       this._refreshNavigation();
     }
   },
@@ -3741,6 +3744,15 @@ export const missions = {
     return best;
   },
 
+  _reconcileNestOutcome() {
+    const state = this.state;
+    if (state?.story?.beatIndex !== 2) return false;
+    const done = getBeatStepStatus(state, 2)?.completed || [];
+    if (!done.includes('compost') || done.includes('nest')) return false;
+    const receipt = nestOutcomeReceipt(state);
+    return receipt ? this._recordCampaignBookSignal('encounter:resolved', receipt) : false;
+  },
+
   _reconcileCompostGrowth(payload = null) {
     const state = this.state;
     if (state?.story?.beatIndex !== 2) return false;
@@ -3810,11 +3822,8 @@ export const missions = {
           targetEntityId: null, pos: receiverApproach() };
       }
       if (!done.has('nest')) {
-        return { ...base, label: 'The Nest — Charon',
-          reason: 'Your first garden growth is recorded. The Nest is next in Charon; the Registry Writ is not due yet.',
-          stationId: null, sectorId: UNDERSTORY_RECEIVER.sectorId,
-          sectorName: SECTOR_BY_ID.get(UNDERSTORY_RECEIVER.sectorId)?.name || null,
-          targetEntityId: null, pos: null };
+        return { ...base, ...nestWaypoint(state),
+          sectorName: SECTOR_BY_ID.get(UNDERSTORY_RECEIVER.sectorId)?.name || null };
       }
     }
     if (beat.beat === 0) {

@@ -36,9 +36,9 @@ function mod(name) {
   } else m = new vm.SourceTextModule(source(name),{context,identifier:name});
   cache.set(name,m);return m;
 }
-const entry = new vm.SourceTextModule(`import * as G from './src/systems/faction_understory.js'; import * as R from './src/data/understoryReceiver.js'; export {G,R};`,{context,identifier:'entry.mjs'});
+const entry = new vm.SourceTextModule(`import * as G from './src/systems/faction_understory.js'; import * as R from './src/data/understoryReceiver.js'; import * as C from './src/save/catalogStationRestore.js'; export {G,R,C};`,{context,identifier:'entry.mjs'});
 await entry.link((s,r)=>mod(path.posix.normalize(path.posix.join(path.posix.dirname(r.identifier),s))));await entry.evaluate();
-const {G,R}=entry.namespace;
+const {G,R,C}=entry.namespace;
 function boot() {
  let id=1;
  const state={tick:10,simTime:10,rng:()=>.5,mode:'flight',run:{kind:'adventure'},playerId:999,player:{},entities:new Map(),entityList:[],world:{currentSectorId:R.UNDERSTORY_RECEIVER.sectorId}};
@@ -76,6 +76,7 @@ const saveSource=source('src/save/saveSystem.js');
 function method(name){const start=saveSource.indexOf(`  ${name}(`);assert(start>=0,name);const end=saveSource.indexOf('\n  },',start);assert(end>start,name);return saveSource.slice(start,end+5)}
 function fn(name){const start=saveSource.indexOf(`function ${name}(`);assert(start>=0,name);return saveSource.slice(start,saveSource.indexOf('\n}',start)+2)}
 const savePorts={console,Map,Set,Object,Array,Number,Math,
+ isRestoredCatalogStation:C.isRestoredCatalogStation,restoredCatalogStation:C.restoredCatalogStation,bindRestoredCatalogStation:C.bindRestoredCatalogStation,
  pendingStuntBodyIds:()=>new Set(),pendingProjectileBodyIds:()=>[],ceresWorkfleetHostileAttachmentOwners:()=>new Map(),ceresWorkfleetEntityRef:()=>null,ceresWorkfleetRefKey:()=>{throw Error('unexpected Ceres port')},
  captureIndustrialDisasters:()=>null,serializeCombatState:()=>null,serializeShipLedgerBoard:()=>null,
  rigWorkshopSavePlanEntry:()=>['rigWorkshop',()=>null],captureRigWorkshopSaveSlot:d=>{d.rigWorkshop=null},

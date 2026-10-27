@@ -3,10 +3,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { starterWorkSite, authoredStarterSite, starterBuoySpec, starterMiningFocus, starterMiningReceiptMatches, starterBuoyRecordMarker, starterBuoyFromRecord, isStarterBuoyRecord, STARTER_WORKDAY_VERSION } from '../src/missions/starterWorkday.js';
 import { activeOwnedShip, nextStarterStep } from '../src/data/starterJobs.js';
+import * as cinderRoute from '../src/missions/cinderRoute.js';
 const src = p => readFileSync(new URL('../'+p, import.meta.url),'utf8');
 const loadOps = (p, name, deps) => {
  const code=src(p).replace(/^import[\s\S]*?;\n/gm,'').replace(`export const ${name}`,`const ${name}`);
- return Function(...Object.keys(deps),code+`;return ${name};`)(...Object.values(deps));
+ // Spawning now resolves both ordinary and retained Cinder mission identities.
+ // Exercise its real imported owner rather than a stale id-only test substitute.
+ const bindings = p === 'src/systems/missionSpawningOps.js' ? { ...cinderRoute, ...deps } : deps;
+ return Function(...Object.keys(bindings),code+`;return ${name};`)(...Object.values(bindings));
 };
 const mission=(job='starter_pelican',step=1,type='tow_recovery')=>({id:`work-${job}-${step}`,type,destSectorId:'sector_helios_prime',params:{starterJobId:job,starterStep:step,starterWorkdayVersion:1},targetEntityIds:[]});
 const global=(p)=>({x:p.x+10000,z:p.z-20000});

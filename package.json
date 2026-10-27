@@ -275,7 +275,7 @@
     "check:w533-books-0-2": "node --test test/w533-books-0-2.test.mjs",
     "check:starter-workday": "node --test test/starter-workday.test.mjs",
     "check:swarm-opening-experience": "node --test test/swarm-opening-terrain.test.mjs",
-    "check:depth-program:contracts": "npm run check:depth-program:validators && node scripts/build-encounter-index.mjs --check && node scripts/build-flavor-index.mjs --check && npm run check:flavor-corpus && npm run check:depth-program:v1 && npm run check:depth-program:v2 && npm run check:depth-program:r1 && npm run check:depth-program:r2 && npm run check:depth-program:sp1 && npm run check:depth-program:k1 && npm run check:depth-program:s3 && npm run check:doctrine-distinct && npm run check:depth-program:e1 && npm run check:depth-program:a1 && npm run check:depth-program:a2 && npm run check:depth-program:a3 && npm run check:depth-program:gt1:loot-audit && npm run check:swarm-opening-experience && npm run check:starter-workday && npm run check:helios-claim-opening && npm run check:kessler-scale-worksite && npm run check:ceres-furnace:worksite && npm run check:ceres-furnace:fauna-blast && npm run check:ceres-furnace:settlement && npm run check:cinder-route && npm run check:aftermath-lifecycle && npm run check:rook-pad && npm run check:rook-receipt-presentation && npm run check:w533-books-0-2 && npm run check:compost-visual && npm run check:compost-cargo && npm run check:compost-material && npm run check:compost-receiver && npm run check:compost-story && npm run check:compost-w533-route",
+    "check:depth-program:contracts": "npm run check:depth-program:validators && node scripts/build-encounter-index.mjs --check && node scripts/build-flavor-index.mjs --check && npm run check:flavor-corpus && npm run check:depth-program:v1 && npm run check:depth-program:v2 && npm run check:depth-program:r1 && npm run check:depth-program:r2 && npm run check:depth-program:sp1 && npm run check:depth-program:k1 && npm run check:depth-program:s3 && npm run check:doctrine-distinct && npm run check:depth-program:e1 && npm run check:depth-program:a1 && npm run check:depth-program:a2 && npm run check:depth-program:a3 && npm run check:depth-program:gt1:loot-audit && npm run check:swarm-opening-experience && npm run check:starter-workday && npm run check:helios-claim-opening && npm run check:kessler-scale-worksite && npm run check:ceres-furnace:worksite && npm run check:ceres-furnace:fauna-blast && npm run check:ceres-furnace:settlement && npm run check:cinder-route && npm run check:aftermath-lifecycle && npm run check:rook-pad && npm run check:rook-receipt-presentation && npm run check:w533-books-0-2 && npm run check:compost-visual && npm run check:compost-cargo && npm run check:compost-material && npm run check:compost-receiver && npm run check:compost-story && npm run check:compost-w533-route && npm run check:nest-route && npm run check:nest-runtime && npm run check:nest-story && npm run check:nest-combat && npm run check:nest-native-fit && npm run check:nest-visual && npm run check:nest-line-admission",
     "check:compost-visual": "node scripts/compost-visual-test.mjs",
     "check:compost-cargo": "node scripts/test-compost-cargo.mjs",
     "check:compost-material": "node scripts/test-compost-material.mjs",
@@ -702,7 +702,14 @@
     "check:sim:pallas-seam": "node --test test/pallas-seam-work.test.mjs test/pallas-seam-read-model.test.mjs",
     "check:sim:pallas-coexistence": "node --test test/pallas-sector-coexistence.test.mjs test/pallas-shift-ownership.test.mjs test/pallas-shift-read-model.test.mjs",
     "check:sim:pallas-shift": "node --test test/pallas-physical-shift.test.mjs",
-    "check:sim:ilex-ark": "node --test test/ilex-ark.test.mjs"
+    "check:sim:ilex-ark": "node --test test/ilex-ark.test.mjs",
+    "check:nest-route": "node --experimental-vm-modules scripts/test-nest-route.mjs",
+    "check:nest-runtime": "node scripts/test-nest-runtime.mjs",
+    "check:nest-story": "node --experimental-vm-modules scripts/test-nest-story.mjs",
+    "check:nest-combat": "node scripts/test-nest-combat.mjs --native-proof",
+    "check:nest-native-fit": "node scripts/test-nest-native-fit.mjs",
+    "check:nest-visual": "node --test test/nest-bay-visuals.test.mjs",
+    "check:nest-line-admission": "node scripts/test-nest-line-admission.mjs"
   },
   "private": true,
   "devDependencies": {

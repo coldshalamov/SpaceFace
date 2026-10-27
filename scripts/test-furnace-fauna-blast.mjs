@@ -32,8 +32,19 @@ const dependency = new vm.SyntheticModule(Object.keys(adapters), function () {
   for (const [name, value] of Object.entries(adapters)) this.setExport(name, value);
 }, { context });
 const source = readFileSync(new URL('../src/combat/physicalEffects.js', import.meta.url), 'utf8');
-const module = new vm.SourceTextModule(source, { context, identifier: 'physicalEffects.js' });
-await module.link(() => dependency);
+const sourceUrl = new URL('../src/combat/physicalEffects.js', import.meta.url);
+const actualModules = new Map();
+function actualModule(url) {
+  if (!actualModules.has(url.href)) actualModules.set(url.href,
+    new vm.SourceTextModule(readFileSync(url, 'utf8'), { context, identifier: url.href }));
+  return actualModules.get(url.href);
+}
+// Shield policy/geometry and occupant identities are real dependencies, not a
+// blanket "no shield" stub. Existing candidate/impulse adapters stay scoped above.
+const module = new vm.SourceTextModule(source, { context, identifier: sourceUrl.href });
+await module.link((specifier, ref) => actualModules.has(ref.identifier)
+  || specifier === './pylonShieldQuery.js' || specifier === '../core/entity.js'
+  ? actualModule(new URL(specifier, ref.identifier)) : dependency);
 await module.evaluate();
 const { schedulePhysicalBlast, queryPhysicalBodies, deliverPhysicalImpulse, tickPhysicalEffects } = module.namespace;
 const entity = (id, type, extra = {}) => ({ id, type, alive: true, pos: { x: 0, z: 0 }, radius: 4, ...extra });
@@ -100,3 +111,28 @@ assert.equal(f.mite.hull,0);assert.equal(kills,1);
 console.log('PASS: active-index scheduled blasts invoke full pinned damage router: 60 -> 30 -> 0 hull, one lethal callback. Runtime/status/identity adapters only; no ecology integration claim.');
 
 } else console.log('SKIP: unchanged damage.js absent from bounded staging tree (in-memory pinned router separately verified).');
+
+// Exercise the real shield branch, not just its no-panel early-out. A delayed
+// attributed blast cannot reach fauna across a live panel; recycled endpoints
+// invalidate that panel and must not continue protecting the same numeric ids.
+const geometry = actualModules.get(new URL('./pylonShieldGeometry.js', sourceUrl).href).namespace;
+for (const recycled of [false, true]) {
+  const f = fixture(); f.mite.pos.x = 40;
+  const panel = geometry.makePanel(20, -40, 20, 40, 1);
+  const a = entity(10, 'pylon', {occupantGeneration: 'a'});
+  const b = entity(11, 'pylon', {occupantGeneration: recycled ? 'replacement' : 'b'});
+  f.state.entities.set(a.id, a); f.state.entities.set(b.id, b);
+  f.state.shieldPylons = {schemaVersion: 1, blocking: 1, inbox: [], pairs: [{
+    id: 'test-panel', state: 'active', energy: 1000, pending: 0,
+    a: {id: 10, life: 'a'}, b: {id: 11, life: 'b'}, ownerId: 10,
+    panel, bounds: geometry.panelBounds(panel),
+  }]};
+  const reached = [];
+  schedulePhysicalBlast(f.state, {center: {x: 0, z: 0}, radius: 96,
+    alsoEligible: acceptsMite, payload: {sourceId: 99, damage: 30},
+    onBody: body => reached.push(body.id)});
+  tickPhysicalEffects(f.state, 1 / 60);
+  assert.equal(reached.includes(2), recycled);
+  assert.equal(f.state.shieldPylons.inbox.length, recycled ? 0 : 1);
+}
+console.log('PASS: actual shield geometry blocks attributed fauna blast; recycled endpoint generation removes protection.');

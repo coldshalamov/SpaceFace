@@ -1563,7 +1563,9 @@ export const save = {
   _serializeEncounterDirector() {
     const d = this.state.encounterDirector;
     if (!d || typeof d !== 'object') return {};
+    const nestVisit = this.helpers?.captureNestVisit ? this.helpers.captureNestVisit() : d.nestVisit;
     const snapshot = clonePlain({
+      ...(nestVisit !== undefined ? { nestVisit } : {}),
       named: d.named || {},
       receipts: Array.isArray(d.receipts) ? d.receipts.slice(-12) : [],
       cooldowns: d.cooldowns || {},

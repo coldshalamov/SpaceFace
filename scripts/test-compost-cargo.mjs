@@ -37,13 +37,28 @@ if(process.argv.includes('--core-sector-only')) {
 } else coordinate=await import(pathToFileURL(arg('--coordinates-source','src/data/sectorCoordinates.js')));
 const receiver=project(helperSource,{...data,...coordinate},['UNDERSTORY_MASS_EPSILON','UNDERSTORY_RECEIVER','receiverPosition','firstPlayerGardenGrowth','gardenGrowthRadius','normalizePlayerGardenGrowth','hasUnderstoryGardenVisualIdentity']);
 const gardenModule=project(read('--garden-source','src/systems/faction_understory.js'),{...data,...receiver,...clearanceGeometry},['understoryGardens','gardenEntities']);
+// Load the actual catalog-station restore dependency closure. The source reader
+// accepts the same explicit sparse roots; no constant-false identity substitute.
+const catalogContext=vm.createContext({}),catalogModules=new Map();
+function catalogModule(id) {
+ if(!catalogModules.has(id)) {
+  const file=[root,...auxRoots].map(r=>path.join(r,id)).find(fs.existsSync);
+  assert.ok(file,`Missing catalog restore source ${id}`);
+  catalogModules.set(id,new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context:catalogContext,identifier:id}));
+ }
+ return catalogModules.get(id);
+}
+const catalogEntry=catalogModule('src/save/catalogStationRestore.js');
+await catalogEntry.link((specifier,ref)=>catalogModule(path.posix.normalize(path.posix.join(path.posix.dirname(ref.identifier),specifier))));
+await catalogEntry.evaluate();
+const catalogRestore=catalogEntry.namespace;
 // Actual Save owner methods, with only allocator/entity ports and irrelevant world-ledger inputs adapted.
 const saveSource=read('--save-source','src/save/saveSystem.js');
 const saveHelpers=project(between(saveSource,'function clonePlain(v) {','function mergePlain(')+'\n'
  +between(saveSource,'function isUnsafePlainKey(key) {','function safeStringify(')+'\n'
  +between(saveSource,'function attachSavedActivity(entity, savedActivity) {','function sanitizeEntityFlagsForSave('),{},['clonePlain','attachSavedActivity']);
 const saveMethods=vm.runInNewContext('({'+between(saveSource,'  _spawnPlayer(saved, entityIdRemap = null) {','  _applySavedVitals(saved) {')+'})',{
- ...saveHelpers,SAVE_IMPORT_MAX_PERSISTENT_ENTITIES:100000,RESTORE_YIELD_SLICE_MS:Infinity,nowMs:()=>0,
+ ...catalogRestore,...saveHelpers,SAVE_IMPORT_MAX_PERSISTENT_ENTITIES:100000,RESTORE_YIELD_SLICE_MS:Infinity,nowMs:()=>0,
  worldLedgerHoldsId:()=>false,indexedWorldRecordEntity:()=>null});
 let passed=0;
 const test=(name,fn)=>{fn();passed++;console.log('PASS '+name)};
