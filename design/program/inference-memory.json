@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "seed-st-11-world-units",
-      "date": "2026-10-23",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Speed still shows WU/S and also says world units per second. Distance on that HUD says world units.",
-      "fingerprint": "verb=read,subject=world-units,sector=any,layer=hud,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "1bf8d93e92",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-st-12-first-wanted",
       "date": "2026-10-23",
       "wf": "WF-14",
@@ -1689,6 +1676,19 @@
       "references": [],
       "integration": "live",
       "commit": "e0a4c7eb51582499d76df1cfafea336e74cc5b31",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-repair-price",
+      "date": "2026-10-27",
+      "wf": "WF-06",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The market repair choice names the price the yard charges.",
+      "fingerprint": "verb=pay,subject=repair,sector=helios,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "a459ec64052a023b7cf749ed1063b1efb45e2566",
       "verification": "focused_green"
     }
   ],
