@@ -1766,6 +1766,13 @@ function hangarBankInput(result, run) {
     && outcome === 'victory');
   return {
     credits: src.credits,
+    // The window's middle seat: salvage the pilot already banked mid-run rides the run's
+    // telemetry stamp, spent out of the purse when it was secured — applyBank adds it on top
+    // of whatever fraction the ending pays on the remainder, so it is never paid twice.
+    // A result may also carry the figure flat when the run object is not in hand.
+    securedCredits: src.securedCredits != null
+      ? src.securedCredits
+      : (runSrc.telemetry && runSrc.telemetry.securedBounty),
     // The results plate says "defeat". The hangar banks a death.
     outcome: outcome === 'defeat' ? 'death' : (isCircuit && outcome === 'extracted' ? 'aborted' : outcome),
     cashOut: isCircuit ? circuitComplete : src.cashOut === true,

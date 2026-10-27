@@ -58,6 +58,13 @@ export function bossWasCleared(result) {
   return false;
 }
 
+/**
+ * The mid-run banker's cut: at an extraction window a pilot may secure this share of the
+ * purse and keep flying the rest. It is the death law's own fraction — banking half locks
+ * in exactly what a fall would have paid anyway, while the remainder stays fully at risk.
+ */
+export const PARTIAL_BANK_FRACTION = 0.5;
+
 /** Death banks half. A chosen cash-out after a boss banks all. An early cash-out banks half. */
 export function bankFraction(result) {
   if (!result) return 0;
@@ -92,7 +99,10 @@ export function applyBank(hangar, result) {
     };
   }
   const credits = Math.max(0, Math.round(Number(result && result.credits) || 0));
-  const banked = Math.floor(credits * fraction);
+  // Salvage a pilot already banked mid-run is out of the purse before the ending is decided:
+  // it always comes home whole, and only the remainder answers to the ending's fraction.
+  const secured = Math.max(0, Math.round(Number(result && result.securedCredits) || 0));
+  const banked = secured + Math.floor(credits * fraction);
   if (banked > 0 || fraction > 0) bag.settledKeys.push(key);
   bag.bounty += banked;
   return {

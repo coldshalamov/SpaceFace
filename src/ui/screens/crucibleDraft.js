@@ -33,7 +33,13 @@ import { SURVIVAL_DRAFT_CHOICES, swarmSellPrice } from '../../data/survivalDraft
 import { SWARM_CATEGORIES, catalogBlurbFor } from '../../data/swarmCatalog.js';
 import { swarmRoundPreview } from '../../data/swarmLadder.js';
 import { WEAPONS } from '../../data/weapons.js';
-import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
+import {
+  canExtract,
+  partialBankOffer,
+  requestSurvivalExtraction,
+  requestSurvivalPartialBank,
+  securedBountyOf,
+} from '../../systems/survivalExtraction.js';
 import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../systems/survivalEndless.js';
 import {
   circuitBossFor,
@@ -588,10 +594,12 @@ export function extractionPreviewLines(run) {
   const wave = Number.isInteger(run.wave) && run.wave > 0 ? run.wave : 0;
   // Swarm counts rounds everywhere else on screen (the armory, the launch key, the results hero).
   const unit = run.ruleset === 'swarm' ? 'round' : 'wave';
+  const banked = securedBountyOf(run);
   return {
     secured: `Keeps score ${score}, salvage ${salvage} cr and ${unit} ${wave} — recorded as the run's final result.`,
     risk: `Fly on to ${unit} ${wave + 1}: the shop spends salvage, and death ends the run where it falls.`,
-    amounts: 'Salvage and score are run-only — never campaign credits.',
+    amounts: 'Salvage and score are run-only — never campaign credits.'
+      + (banked > 0 ? ` ${banked} cr already sits in the hangar chest — banked salvage cannot be lost.` : ''),
   };
 }
 
@@ -615,7 +623,7 @@ export function refitFootLines(run) {
     // The swarm armory's "Rearrange loadout" opened this screen over the open draft.
     return {
       primary: 'Back to armory', primaryNote: '', finishes: false,
-      cont: '', contNote: '', extract: '', extractNote: '',
+      cont: '', contNote: '', extract: '', extractNote: '', bank: '', bankNote: '',
     };
   }
   let finishes = false;
@@ -624,6 +632,10 @@ export function refitFootLines(run) {
   const extractOk = !finishes && canExtract(r);
   const contOk = canContinueSurvivalEndless({ run: r });
   const preview = extractOk ? extractionPreviewLines(r) : null;
+  // The window's middle seat (partialBankOffer shares the extraction gate): secure half the
+  // purse in the hangar chest and fly on with the rest still at risk. No purse, no offer —
+  // a dead button is never drawn.
+  const offer = extractOk ? partialBankOffer(r) : null;
   return {
     primary: finishes ? 'Take the win' : `Launch ${unit} ${wave + 1}`,
     primaryNote: finishes
@@ -636,6 +648,11 @@ export function refitFootLines(run) {
       : '',
     extract: extractOk ? 'Extract — end the run here' : '',
     extractNote: preview ? `${preview.secured} ${preview.amounts}` : '',
+    bank: offer ? `Bank ${offer.amount} cr, keep flying` : '',
+    bankNote: offer
+      ? `${offer.amount} cr moves to the hangar chest now — it cannot be lost. `
+        + `${offer.remaining} cr stays in the purse: the shop still spends it, and death still halves it.`
+      : '',
   };
 }
 
@@ -1882,6 +1899,28 @@ export const crucibleRefitScreen = {
       });
     }
 
+    // BANK HALF, KEEP FLYING — the window's middle seat, sat BETWEEN launch and the walk-away:
+    // the foot escalates left to right, and Extract stays last so its hold cap keeps the tail
+    // position it has always had. Unlike Extract this commits nothing about how the run ends:
+    // half the purse becomes hangar bounty on the spot and the rest stays in the wallet for
+    // the shop and the death law. A tap, not a hold — the pilot is buying certainty, not
+    // ending a run — and the offer is simply not drawn when the purse cannot halve into a
+    // whole credit.
+    {
+      const bank = addWord(words, word('Bank half, keep flying', 'k-word--emph'));
+      this._bank = bank;
+      bank.addEventListener('click', () => {
+        if (!refitFootLines(ctx.state && ctx.state.run).bank) { cue('deny'); return; }
+        cue('confirm');
+        requestSurvivalPartialBank(ctx.bus);
+        // The run stays benched here — nothing closes this screen — so reprice the foot off
+        // the live purse the way a fit or a sale does: a smaller offer, or no offer once the
+        // purse cannot halve into a whole credit, instead of a word still selling the last one.
+        this.refresh(ctx);
+      });
+      this._bankNote = keyNote(bank.parentElement);
+    }
+
     // WALK AWAY WITH IT (PQ-135). Extraction has existed since PQ-133.10b and was reachable only
     // from a bus event — "No UI", says its own header — so no player has ever been offered it.
     // An endless run needs it more than the arc ever did: without a voluntary end, the ONLY way a
@@ -1946,6 +1985,17 @@ export const crucibleRefitScreen = {
         const a = document.activeElement;
         const tag = a && a.tagName;
         if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') this._feedEndHold(true);
+      }
+      // B taps the window's middle seat where it is offered — same guard as F so a spare
+      // <select> keeps its own keys.
+      if (event.key === 'b' || event.key === 'B') {
+        const a = document.activeElement;
+        const tag = a && a.tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT' && this._bank
+          && refitFootLines(ctx.state && ctx.state.run).bank) {
+          event.preventDefault();
+          this._bank.click();
+        }
       }
       // Left/Right walk the spare words of the focused hardpoint, choosing as they go.
       if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && document.activeElement
@@ -2103,6 +2153,11 @@ export const crucibleRefitScreen = {
     setNote(this._extractPreview, lines.extractNote);
     // The button's description carries the same settlement, so the offer reads whole to AT.
     if (this._extract && this._extract.title !== lines.extractNote) this._extract.title = lines.extractNote;
+
+    setWordShown(this._bank, !!lines.bank);
+    if (this._bank && lines.bank) setKeyLabel(this._bank, lines.bank, 'B', 'b');
+    setNote(this._bankNote, lines.bankNote);
+    if (this._bank && this._bank.title !== lines.bankNote) this._bank.title = lines.bankNote;
   },
 
   refresh(ctx) {
