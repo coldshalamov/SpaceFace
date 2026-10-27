@@ -1,0 +1,61 @@
+name: strategic-chaos-link-once
+on:
+  push:
+    branches: ['cloud/strategic-chaos-foundations-20261026']
+    paths: ['.github/workflows/strategic-chaos-link-once.yml']
+permissions:
+  contents: write
+jobs:
+  link:
+    if: github.repository == 'coldshalamov/SpaceFace' && github.ref == 'refs/heads/cloud/strategic-chaos-foundations-20261026'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /scripts/
+            /test/
+            /src/
+            /design/program/strategic-chaos/
+            /AGENTS.md
+            /build_map.md
+            /.github/workflows/strategic-chaos-link-once.yml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Qualify the foundation and source crosswalk
+        shell: bash
+        run: |
+          node --test test/strategic-chaos-*.test.mjs
+          node scripts/strategic-chaos.mjs validate
+      - name: Add only the requested build-map navigation
+        shell: bash
+        run: |
+          node scripts/strategic-chaos.mjs map --apply
+          node --input-type=module <<'JS'
+          import { execFileSync } from 'node:child_process';
+          import { readFileSync } from 'node:fs';
+          import { integrateBuildMap } from './scripts/lib/strategicChaosMap.mjs';
+          const original = execFileSync('git', ['show', 'HEAD:build_map.md'], {encoding:'utf8'});
+          const current = readFileSync('build_map.md', 'utf8');
+          if (current !== integrateBuildMap(original).text) throw new Error('Unexpected board change');
+          const changed = execFileSync('git', ['diff', '--name-only'], {encoding:'utf8'}).trim();
+          if (changed !== 'build_map.md') throw new Error('Unexpected changed path: ' + changed);
+          JS
+          git diff --stat -- build_map.md
+      - name: Publish the exact hunk and retire this one-shot workflow
+        shell: bash
+        run: |
+          branch='refs/heads/cloud/strategic-chaos-foundations-20261026'
+          remote=$(git ls-remote origin "$branch" | cut -f1)
+          test "$remote" = "$GITHUB_SHA"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- build_map.md
+          git rm -- .github/workflows/strategic-chaos-link-once.yml
+          git commit -m 'docs: connect Strategic Chaos foundations to the existing build map'
+          git push origin "HEAD:$branch"
