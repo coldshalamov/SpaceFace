@@ -214,6 +214,8 @@ test('H4 re-seeds the buoy with no payout, warms comms, and alone ends recurrenc
   const beforeCredits = reseeded.state.player.credits;
   id = force(reseeded, 'depth_h4_love_letter_buoy', 'reseed');
   choose(reseeded, id, 'reseed');
+  assert.equal(completion(reseeded, 'depth_h4_love_letter_buoy'), null);
+  for (let i = 0; i < 480; i++) reseeded.sim.step(1 / 60);
   assert.equal(completion(reseeded, 'depth_h4_love_letter_buoy')?.outcome, 'reseeded');
   assert.equal(reseeded.state.story.flags.kindness, true);
   assert.equal(reseeded.state.player.credits, beforeCredits);
@@ -238,6 +240,9 @@ test('physical E1 choices select deterministic exact V2 graffiti once', () => {
       const events = collect(t, ['graffiti:show']);
       const id = force(t, spec.shapeId, suffix);
       choose(t, id, spec.choiceId);
+      if (spec.shapeId === 'depth_h4_love_letter_buoy') {
+        for (let i = 0; i < 480; i++) t.sim.step(1 / 60);
+      }
       assert.equal(events.length, 1, `${spec.shapeId} must surface one authored graffiti line`);
       assert.ok(graffitiSetTexts(spec.set).has(events[0].payload.line),
         `${spec.shapeId} must consume the exact ${spec.set} corpus`);

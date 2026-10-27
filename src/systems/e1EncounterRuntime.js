@@ -180,9 +180,56 @@ const h3 = Object.freeze({
   },
 });
 
+// H4 services the original physical transmitter; it does not relocate a buoy or invent
+// a destination. The non-enumerable identity reference is transient, like the live scene.
+const H4_SERVICE_RANGE_WU = 90;
+const H4_SERVICE_SECONDS = 6;
+const H4_SERVICE_TIMEOUT_S = 90;
+
+function h4Buoy(live, state) {
+  const buoy = live._loveLetterBuoy;
+  return buoy && state.entities && state.entities.get(buoy.id) === buoy
+    && buoy.alive !== false && Number.isFinite(buoy.hull) && buoy.hull > 0
+    && buoy.data && buoy.data.encounterId === live.id
+    && buoy.data.storyPropKind === 'love_letter_buoy' ? buoy : null;
+}
+
+function h4ServiceNear(d, live, state, buoy) {
+  const player = d.player();
+  return state.mode === 'flight' && state.world.currentSectorId === live.sectorId
+    && player && player.alive !== false && Number.isFinite(player.hull) && player.hull > 0
+    && player.pos && buoy.pos
+    && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z)
+    && Number.isFinite(buoy.pos.x) && Number.isFinite(buoy.pos.z)
+    && Math.hypot(player.pos.x - buoy.pos.x, player.pos.z - buoy.pos.z) <= H4_SERVICE_RANGE_WU;
+}
+
+function reusableH4Buoy(live, state) {
+  let selected = null;
+  const active = state.encounterDirector && state.encounterDirector.live || {};
+  for (const entity of state.entities.values()) {
+    const data = entity && entity.data || {};
+    const flags = entity && entity.flags || {};
+    if (!entity || entity.type !== 'beacon' || !Number.isSafeInteger(entity.id)
+      || entity.alive === false || !Number.isFinite(entity.hull) || entity.hull <= 0
+      || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)
+      || data.storyPropKind !== 'love_letter_buoy'
+      || data.assetRef !== 'asset.slice.kessler_handoff_beacon'
+      || data.loveLetterSectorId !== live.sectorId
+      || typeof data.encounterId !== 'string' || !data.encounterId || active[data.encounterId]
+      || data.despawnAt != null || flags.persistent || flags.missionPinned
+      || data.persistent || data.missionPinned || data.missionId || data.missionTag
+      || data.worldRecordId != null || data.persistenceOwner != null
+      || data.trafficRole || data.convoyId != null || data.itinerary) continue;
+    if (!selected || entity.id < selected.id) selected = entity;
+  }
+  return selected;
+}
+
 const h4 = Object.freeze({
   fire(d, live, state) {
-    d.spawnProp(live, {
+    const reused = reusableH4Buoy(live, state);
+    const buoy = reused || d.spawnProp(live, {
       type: 'beacon',
       pos: { x: live.anchor.x + 70, z: live.anchor.z - 30 },
       radius: 5,
@@ -190,17 +237,65 @@ const h4 = Object.freeze({
       storyPropKind: 'love_letter_buoy',
       assetRef: 'asset.slice.kessler_handoff_beacon',
     });
+    if (buoy && buoy.data) {
+      // Same original transmitter, never teleported or re-created. Old untagged buoys
+      // lack sector provenance and are deliberately not migrated or deleted here.
+      buoy.data.loveLetterSectorId = live.sectorId;
+      buoy.data.encounterId = live.id;
+      if (reused) live.anchor = { x: buoy.pos.x, z: buoy.pos.z };
+    }
+    Object.defineProperty(live, '_loveLetterBuoy', { value: buoy, configurable: true });
     begin(d, live, state);
   },
-  tick(d, live, state, now) { timeoutChoice(d, live, state, now, h4.choose); },
+  tick(d, live, state, now) {
+    if (live.phase !== 'reseed_service') {
+      timeoutChoice(d, live, state, now, h4.choose);
+      return;
+    }
+    const buoy = h4Buoy(live, state);
+    if (!buoy || state.world.currentSectorId !== live.sectorId) {
+      d.abort(live, 'buoy_unavailable');
+      return;
+    }
+    if (!Number.isFinite(now) || now >= live.data.h4ServiceDeadline) {
+      d.abort(live, 'buoy_service_unfinished');
+      return;
+    }
+    const previous = live.data.h4ServiceSampleAt;
+    live.data.h4ServiceSampleAt = now;
+    // The director samples, rather than continuously watching, this service. A long
+    // unobserved gap must not complete it on the first returning sample.
+    const near = h4ServiceNear(d, live, state, buoy);
+    if (!near || !Number.isFinite(previous) || now < previous || now - previous > 2) {
+      live.data.h4ServiceSince = near ? now : null;
+      return;
+    }
+    if (live.data.h4ServiceSince == null) live.data.h4ServiceSince = now;
+    if (now - live.data.h4ServiceSince < H4_SERVICE_SECONDS) return;
+    buoy.data.scanLabel = 'Love-letter route buoy — old broadcast silenced';
+    d.emit('graffiti:show', {
+      line: authoredGraffiti(state, 'kindness', 'depth_h4_love_letter_buoy:reseed'),
+      where: 'airlock', author: 'unknown',
+    });
+    d.emit('ambientComms:toneChanged', { tone: 'warmer', reason: 'love_letter_reseeded', persistent: true });
+    finish(d, live, state, 'reseeded', { kindness: true, loveLetterReseeded: true });
+  },
   choose(d, live, state, choiceId) {
+    if (live.phase !== 'offer' && live.phase !== 'reseed_service') return;
     if (choiceId === 'reseed') {
-      d.emit('graffiti:show', {
-        line: authoredGraffiti(state, 'kindness', 'depth_h4_love_letter_buoy:reseed'),
-        where: 'airlock', author: 'unknown',
-      });
-      d.emit('ambientComms:toneChanged', { tone: 'warmer', reason: 'love_letter_reseeded', persistent: true });
-      finish(d, live, state, 'reseeded', { kindness: true, loveLetterReseeded: true });
+      if (live.phase === 'reseed_service') return;
+      const buoy = h4Buoy(live, state);
+      if (!buoy) {
+        d.abort(live, 'buoy_unavailable');
+        return;
+      }
+      const now = d.now();
+      live.phase = 'reseed_service';
+      live.deadlineAt = 0;
+      live.data.h4ServiceDeadline = now + H4_SERVICE_TIMEOUT_S;
+      live.data.h4ServiceSampleAt = now;
+      live.data.h4ServiceSince = h4ServiceNear(d, live, state, buoy) ? now : null;
+      d.say(live, 'info', 'BUOY SERVICE: Hold within 90 WU of the original route buoy for six seconds to re-seed its transmission. Leaving range interrupts the transfer.', null, { literal: true });
     } else if (choiceId === 'listen') {
       finish(d, live, state, 'heard', { loveLetterHeard: true });
     }
