@@ -14,6 +14,7 @@ const ref = process.env.VERCEL_GIT_COMMIT_REF || '';
 const allow = new Set([
   'master',
   'main',
+  'codex/iphone-oct26-launch',
   'codex/iphone14-mobile',
   'codex/oct15-maturity-checkpoint',
   'codex/mobile-release-pinning',
