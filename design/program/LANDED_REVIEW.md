@@ -1,7 +1,6 @@
 
 
 
-| R-5cbccc3 | 5cbccc3f3f5 | build_map row 534 W-BOOKS-3-4: Books 3–4 play per 06_CAMPAIGN_SCRIPT §34.7 — B3 yard list (VARIANCE ADJUSTMENT berth delivery with the four-spike seam counter, stun-gated Feed the Maw, Mirrorjaw Foreman capital_boss) + B4 door operations (Spine Break escort / Weighing+Too-Perfect Pack patrol / Barn Raising tow), optional Gate Audit evidence steps, doubled interdiction choice + YOU READ THE TAG wall line | Re-check the B4 gate order end-to-end on the live route: a `mission:completed` with storyTag `campaign47a:b4:operation` must record only after `branch_intro_accept` is in the bucket (requiresPrior), a premature op completion must read `requires_prior:branch_intro_accept`, and `buildMissionBoardContract(4)` must keep returning the `existing_branch_intro` marker until the intro settles — confirm no path lets the door operation post before the door is chosen | |
 
 | R-22d0c48 | 22d0c48c008 | presentation craft — hull ring side datums clamp inside the measured host (fixes LINE gloss running off-window at 1280×720); fit keyed on stable label/gloss strings so the per-frame spin reading never triggers a layout read | Re-check the clamp doesn't fight the yard spin: confirm paint() still makes no nodes and no getComputedTextLength calls during a carousel spin (fitKey must stay stable while only the reading changes), and that MASS on the left segment gets the symmetric anchor-end clamp without overlapping the stage's left chrome | |
 
